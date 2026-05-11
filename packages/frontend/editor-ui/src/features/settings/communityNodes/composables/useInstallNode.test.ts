@@ -10,6 +10,7 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import type { INode } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
 import { useToast } from '@/app/composables/useToast';
@@ -142,6 +143,8 @@ beforeEach(() => {
 });
 
 describe('useInstallNode', () => {
+	const workflowId = ref('test-workflow');
+
 	describe('installNode', () => {
 		it('should return error when user is not an owner or admin', async () => {
 			Object.defineProperty(usersStore, 'isAdmin', {
@@ -156,7 +159,7 @@ describe('useInstallNode', () => {
 				value: false,
 				writable: true,
 			});
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -189,7 +192,7 @@ describe('useInstallNode', () => {
 				value: isAdmin || isInstanceOwner,
 				writable: true,
 			});
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -206,7 +209,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should install verified node with npm version', async () => {
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -234,7 +237,7 @@ describe('useInstallNode', () => {
 				value: false,
 				writable: true,
 			});
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -256,7 +259,7 @@ describe('useInstallNode', () => {
 				value: true,
 				writable: true,
 			});
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -274,7 +277,7 @@ describe('useInstallNode', () => {
 				value: false,
 				writable: true,
 			});
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'unverified',
@@ -287,7 +290,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should install unverified node without npm version', async () => {
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'unverified',
@@ -322,7 +325,7 @@ describe('useInstallNode', () => {
 			];
 			workflowsStore.workflow.nodes = mockNodes as INode[];
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			await installNode({
 				type: 'verified',
@@ -355,7 +358,7 @@ describe('useInstallNode', () => {
 				},
 			] as INode[];
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			await installNode({
 				type: 'unverified',
@@ -368,7 +371,7 @@ describe('useInstallNode', () => {
 		it('should not initialize nodes when workflow has no nodes', async () => {
 			workflowsStore.workflow.nodes = [];
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			await installNode({
 				type: 'verified',
@@ -383,7 +386,7 @@ describe('useInstallNode', () => {
 			const error = new Error('Installation failed');
 			vi.mocked(communityNodesStore.installPackage).mockRejectedValue(error);
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -402,7 +405,7 @@ describe('useInstallNode', () => {
 		it('should handle getNpmVersion returning undefined', async () => {
 			vi.mocked(nodeTypesStore.getCommunityNodeAttributes).mockResolvedValue(null);
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -422,7 +425,7 @@ describe('useInstallNode', () => {
 			const error = new Error('Failed to get npm version');
 			vi.mocked(nodeTypesStore.getCommunityNodeAttributes).mockRejectedValue(error);
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			const result = await installNode({
 				type: 'verified',
@@ -435,7 +438,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should not track telemetry events when telemetry is not provided', async () => {
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 			const { track } = useTelemetry();
 
 			const result = await installNode({
@@ -448,7 +451,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should track telemetry events when telemetry is provided', async () => {
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 			const { track } = useTelemetry();
 
 			const result = await installNode({
@@ -475,7 +478,7 @@ describe('useInstallNode', () => {
 				await new Promise((resolve) => setTimeout(resolve, 10));
 			});
 
-			const { installNode, loading } = useInstallNode();
+			const { installNode, loading } = useInstallNode(workflowId);
 
 			const installPromise = installNode({
 				type: 'verified',
@@ -493,7 +496,7 @@ describe('useInstallNode', () => {
 				new Error('Installation failed'),
 			);
 
-			const { installNode, loading } = useInstallNode();
+			const { installNode, loading } = useInstallNode(workflowId);
 
 			await installNode({
 				type: 'verified',
@@ -528,7 +531,7 @@ describe('useInstallNode', () => {
 
 			// We need to access the private getNpmVersion function through the composable
 			// Since it's not exported, we'll test it indirectly through the installNode function
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			await installNode({
 				type: 'verified',
@@ -577,7 +580,7 @@ describe('useInstallNode', () => {
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			await installNode({
 				type: 'verified',
@@ -629,7 +632,7 @@ describe('useInstallNode', () => {
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
-			const { installNode } = useInstallNode();
+			const { installNode } = useInstallNode(workflowId);
 
 			await installNode({
 				type: 'verified',

@@ -10,11 +10,11 @@ import { computed, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 defineOptions({
 	inheritAttrs: false,
@@ -43,9 +43,9 @@ const props = withDefaults(
 
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useWorkflowId();
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
@@ -61,7 +61,7 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(workflowId, {
 	nodes,
 	connections,
 	workflowObject,

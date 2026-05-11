@@ -2,16 +2,15 @@ import { computed } from 'vue';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { useCredentialSetupState } from './useCredentialSetupState';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
-export const useSetupWorkflowCredentialsModalState = () => {
-	const workflowsStore = useWorkflowsStore();
+export const useSetupWorkflowCredentialsModalState = (workflowId: RefOrComputedRef<string>) => {
 	const credentialsStore = useCredentialsStore();
 	const nodeHelpers = useNodeHelpers();
 
@@ -19,9 +18,8 @@ export const useSetupWorkflowCredentialsModalState = () => {
 	// provider tree, so we can't use injectWorkflowDocumentStore(). Instead, we
 	// access the Pinia store directly using the current workflow ID.
 	const workflowDocumentStore = computed(() => {
-		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) return undefined;
-		return useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		if (!workflowId.value) return undefined;
+		return useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value));
 	});
 
 	const workflowNodes = computed(() => {

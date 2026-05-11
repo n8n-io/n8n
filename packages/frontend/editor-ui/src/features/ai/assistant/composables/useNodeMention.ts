@@ -1,7 +1,7 @@
 import { ref, computed, watch, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import { useFocusedNodesStore } from '../focusedNodes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -33,13 +33,15 @@ export interface UseNodeMentionReturn {
 	) => void;
 }
 
-export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMentionReturn {
+export function useNodeMention(
+	workflowId: RefOrComputedRef<string>,
+	options: UseNodeMentionOptions = {},
+): UseNodeMentionReturn {
 	const { maxResults = 50 } = options;
 
 	const focusedNodesStore = useFocusedNodesStore();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const showDropdown = ref(false);

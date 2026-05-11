@@ -12,6 +12,7 @@ import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = withDefaults(
 	defineProps<{
@@ -43,6 +44,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const setupPanelStore = useSetupPanelStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowId = useWorkflowId();
 
 const hadManualInteraction = ref(false);
 
@@ -77,7 +79,7 @@ const {
 	execute,
 	isInListeningState,
 	listeningHint,
-} = useTriggerExecution(executableNodeRef);
+} = useTriggerExecution(workflowId, executableNodeRef);
 
 const { webhookUrls } = useWebhookUrls(executableNodeRef);
 

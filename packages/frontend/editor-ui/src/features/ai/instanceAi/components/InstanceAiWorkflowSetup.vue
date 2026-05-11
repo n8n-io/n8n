@@ -2,7 +2,6 @@
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -54,11 +53,11 @@ const props = defineProps<{
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
-const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
+const workflowId = toRef(props, 'workflowId');
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 
 // ---------------------------------------------------------------------------
@@ -86,6 +85,7 @@ const {
 	cardHasExistingCredentials,
 	openNewCredentialForSection,
 } = useCredentialGroupSelection(
+	workflowId,
 	computed(() => cards.value),
 	testCredentialInBackground,
 	props.projectId,
@@ -102,7 +102,12 @@ const {
 	anyCardComplete,
 	allPreResolved,
 	getGroupPrimaryTriggerCard,
-} = useSetupCards(toRef(props, 'setupRequests'), getCardCredentialId, isCredentialTypeTestable);
+} = useSetupCards(
+	workflowId,
+	toRef(props, 'setupRequests'),
+	getCardCredentialId,
+	isCredentialTypeTestable,
+);
 
 // Now that cards are available, init credential group selections
 _initCredGroupSelections();
@@ -113,7 +118,7 @@ const {
 	getCardSimpleParameters,
 	onParameterValueChanged,
 	buildNodeParameters,
-} = useSetupCardParameters(cards, trackedParamNames, cardHasParamWork);
+} = useSetupCardParameters(workflowId, cards, trackedParamNames, cardHasParamWork);
 
 // Step 5: State + showFullWizard (needed by actions and template)
 const isStoreReady = ref(false);
@@ -172,7 +177,7 @@ const {
 	handleLater,
 	handleTestTrigger,
 	onCredentialSelected,
-} = useSetupActions({
+} = useSetupActions(workflowId, {
 	requestId: toRef(props, 'requestId'),
 	store,
 	cards,
@@ -204,7 +209,7 @@ const currentCardNode = computed<INodeUi | null>(() => {
 	return workflowDocumentStore.value.getNodeByName(currentCard.value.nodes[0].node.name) ?? null;
 });
 
-const expressionResolveCtx = useExpressionResolveCtx(currentCardNode);
+const expressionResolveCtx = useExpressionResolveCtx(workflowId, currentCardNode);
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 // Per-section expression context provider for grouped cards
@@ -214,7 +219,7 @@ const ExpressionContextProvider = defineComponent({
 		const node = computed(
 			() => workflowDocumentStore.value.getNodeByName(providerProps.nodeName) ?? null,
 		);
-		const ctx = useExpressionResolveCtx(node);
+		const ctx = useExpressionResolveCtx(workflowId, node);
 		provide(ExpressionLocalResolveContextSymbol, ctx);
 		return () => slots.default?.();
 	},

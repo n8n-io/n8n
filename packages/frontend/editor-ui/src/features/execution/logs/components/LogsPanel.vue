@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, computed, useTemplateRef, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useChatState } from '@/features/execution/logs/composables/useChatState';
 import LogsOverviewPanel from '@/features/execution/logs/components/LogsOverviewPanel.vue';
 import ChatMessagesPanel from '@/features/execution/logs/components/ChatMessagesPanel.vue';
@@ -32,8 +33,9 @@ const popOutContent = useTemplateRef('popOutContent');
 const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const { workflowId } = storeToRefs(workflowsStore);
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const workflowName = computed(() => workflowDocumentStore.value.name);
 
@@ -58,13 +60,15 @@ const {
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
 const { currentSessionId, chatOptions, refreshSession, displayExecution } = useChatState(
+	workflowId,
 	props.isReadOnly,
 );
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData({ isEnabled: isOpen });
+	useLogsExecutionData(workflowId, { isEnabled: isOpen });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
+	workflowId,
 	execution,
 	entries,
 	flatLogEntries,

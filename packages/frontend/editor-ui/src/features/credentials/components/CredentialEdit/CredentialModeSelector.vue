@@ -11,6 +11,7 @@ import {
 } from '@n8n/design-system/v2/components/DropdownMenu';
 import { getNodeAuthOptions, getAuthTypeForNodeCredential } from '@/app/utils/nodeTypesUtils';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 export interface CredentialModeOption {
 	type: string;
@@ -39,7 +40,8 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const i18n = useI18n();
-const { isOAuthCredentialType } = useCredentialOAuth();
+const workflowId = useWorkflowId();
+const { isOAuthCredentialType } = useCredentialOAuth(workflowId);
 
 const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.activeNode);
 const activeNodeType = computed<INodeTypeDescription | null>(() => {

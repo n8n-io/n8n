@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { ref } from 'vue';
 import {
 	extractPlaceholderLabels,
 	findPlaceholderDetails,
@@ -24,6 +25,8 @@ vi.mock('@n8n/i18n', async (importActual) => ({
 }));
 
 describe('useBuilderTodos', () => {
+	const workflowId = ref('test-workflow');
+
 	describe('extractPlaceholderLabels', () => {
 		it('returns empty array for non-string values', () => {
 			expect(extractPlaceholderLabels(123)).toEqual([]);
@@ -359,7 +362,7 @@ describe('useBuilderTodos', () => {
 				'HTTP Request': [{ json: { data: 'pinned result' } }],
 			});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node has pinned data, the placeholder issue should be excluded
 			expect(workflowTodos.value).toHaveLength(0);
@@ -380,7 +383,7 @@ describe('useBuilderTodos', () => {
 			workflowsStore.workflow.nodes = [nodeWithPlaceholder];
 			setPinData({});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node has no pinned data, the placeholder issue should be included
 			expect(workflowTodos.value).toHaveLength(1);
@@ -411,7 +414,7 @@ describe('useBuilderTodos', () => {
 				'HTTP Request': [{ json: { data: 'pinned result' } }],
 			});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node has pinned data, the credential issue should be excluded
 			expect(workflowTodos.value).toHaveLength(0);
@@ -458,7 +461,7 @@ describe('useBuilderTodos', () => {
 			const validationIssues = workflowDocumentStore.nodeValidationIssues;
 			expect(validationIssues.some((i) => i.node === 'OpenAI GPT-4o-mini')).toBe(true);
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node has pinned data, the credential issue should be excluded
 			expect(workflowTodos.value).toHaveLength(0);
@@ -508,7 +511,7 @@ describe('useBuilderTodos', () => {
 			const validationIssues = workflowDocumentStore.nodeValidationIssues;
 			expect(validationIssues.some((i) => i.node === 'OpenAI GPT-4.1-mini')).toBe(true);
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Sub-node's credential issue should be excluded because parent has pinned data
 			expect(workflowTodos.value).toHaveLength(0);
@@ -558,7 +561,7 @@ describe('useBuilderTodos', () => {
 				'AI Agent': [{ json: { response: 'pinned response' } }],
 			});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Child sub-node's credential issue should be excluded because ancestor has pinned data
 			expect(workflowTodos.value).toHaveLength(0);
@@ -585,7 +588,7 @@ describe('useBuilderTodos', () => {
 			};
 
 			// Verify pinData must have array with length > 0 to be considered pinned
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// No pinData - should show issue
 			setPinData({});
@@ -622,7 +625,7 @@ describe('useBuilderTodos', () => {
 			};
 			setPinData({});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node has no pinned data, the credential issue should be included
 			expect(workflowTodos.value).toHaveLength(1);
@@ -653,7 +656,7 @@ describe('useBuilderTodos', () => {
 				// 'Unpinned Node' has no pinned data
 			});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Only the unpinned node's issue should be included
 			expect(workflowTodos.value).toHaveLength(1);
@@ -675,7 +678,7 @@ describe('useBuilderTodos', () => {
 			workflowsStore.workflow.nodes = [disabledNode];
 			setPinData({});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node is disabled, the placeholder issue should be excluded
 			expect(workflowTodos.value).toHaveLength(0);
@@ -703,7 +706,7 @@ describe('useBuilderTodos', () => {
 			};
 			setPinData({});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node is disabled, the credential issue should be excluded
 			expect(workflowTodos.value).toHaveLength(0);
@@ -748,7 +751,7 @@ describe('useBuilderTodos', () => {
 			const validationIssues = workflowDocumentStore.nodeValidationIssues;
 			expect(validationIssues.some((i) => i.node === 'OpenAI GPT-4.1-mini')).toBe(true);
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Sub-node's credential issue should be excluded because parent is disabled
 			expect(workflowTodos.value).toHaveLength(0);
@@ -769,7 +772,7 @@ describe('useBuilderTodos', () => {
 			workflowsStore.workflow.nodes = [enabledNode];
 			setPinData({});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Since the node is enabled, the placeholder issue should be included
 			expect(workflowTodos.value).toHaveLength(1);
@@ -799,7 +802,7 @@ describe('useBuilderTodos', () => {
 			workflowsStore.workflow.nodes = [disabledNode, enabledNode];
 			setPinData({});
 
-			const { workflowTodos } = useBuilderTodos();
+			const { workflowTodos } = useBuilderTodos(workflowId);
 
 			// Only the enabled node's issue should be included
 			expect(workflowTodos.value).toHaveLength(1);
@@ -821,7 +824,7 @@ describe('useBuilderTodos', () => {
 				workflowsStore.workflow.nodes = [nodeWithPlaceholder];
 				setPinData({});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				// There are visible todos, so hasTodosHiddenByPinnedData should be false
 				expect(workflowTodos.value).toHaveLength(1);
@@ -842,7 +845,7 @@ describe('useBuilderTodos', () => {
 				workflowsStore.workflow.nodes = [cleanNode];
 				setPinData({});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				expect(workflowTodos.value).toHaveLength(0);
 				expect(hasTodosHiddenByPinnedData.value).toBe(false);
@@ -865,7 +868,7 @@ describe('useBuilderTodos', () => {
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
 				});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				// No visible todos, but they are hidden by pinned data
 				expect(workflowTodos.value).toHaveLength(0);
@@ -896,7 +899,7 @@ describe('useBuilderTodos', () => {
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
 				});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				// No visible todos, but they are hidden by pinned data
 				expect(workflowTodos.value).toHaveLength(0);
@@ -918,7 +921,7 @@ describe('useBuilderTodos', () => {
 				workflowsStore.workflow.nodes = [disabledNode];
 				setPinData({});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				// No visible todos, but they are hidden by disabled status, not pinned data
 				expect(workflowTodos.value).toHaveLength(0);
@@ -954,7 +957,7 @@ describe('useBuilderTodos', () => {
 					'AI Agent': [{ json: { response: 'pinned response' } }],
 				});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				// No visible todos because parent is pinned
 				expect(workflowTodos.value).toHaveLength(0);
@@ -978,7 +981,7 @@ describe('useBuilderTodos', () => {
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
 				});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				// Node is disabled, so even though it has pinned data, the disabled status takes precedence
 				expect(workflowTodos.value).toHaveLength(0);
@@ -1008,7 +1011,7 @@ describe('useBuilderTodos', () => {
 					'Pinned Node': [{ json: { data: 'pinned result' } }],
 				});
 
-				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
+				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos(workflowId);
 
 				// There's still a visible todo from the unpinned node
 				expect(workflowTodos.value).toHaveLength(1);
@@ -1048,7 +1051,7 @@ describe('useBuilderTodos', () => {
 					'AI Agent': [{ json: { response: 'pinned' } }],
 				});
 
-				const { workflowTodos } = useBuilderTodos();
+				const { workflowTodos } = useBuilderTodos(workflowId);
 				expect(workflowTodos.value).toHaveLength(0);
 
 				// Unpin the parent
@@ -1085,7 +1088,7 @@ describe('useBuilderTodos', () => {
 				};
 				setPinData({});
 
-				const { workflowTodos } = useBuilderTodos();
+				const { workflowTodos } = useBuilderTodos(workflowId);
 
 				// Initially parent is disabled - no todos expected
 				expect(workflowTodos.value).toHaveLength(0);

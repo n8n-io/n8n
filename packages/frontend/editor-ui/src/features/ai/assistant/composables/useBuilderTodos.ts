@@ -1,11 +1,11 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowValidationIssue } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	extractPlaceholderLabels,
 	findPlaceholderDetails,
@@ -38,12 +38,11 @@ export interface TodosTrackingPayload {
  * Composable for managing workflow todos (validation issues and placeholders)
  * used by the AI builder.
  */
-export function useBuilderTodos() {
-	const workflowsStore = useWorkflowsStore();
+export function useBuilderTodos(workflowId: RefOrComputedRef<string>) {
 	const locale = useI18n();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	/**

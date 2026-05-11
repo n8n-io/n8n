@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -50,6 +50,7 @@ function makeCard(overrides: Partial<SetupCard> = {}): SetupCard {
 }
 
 describe('useCredentialGroupSelection', () => {
+	const workflowId = ref('test-workflow');
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let credentialsStore: ReturnType<typeof useCredentialsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
@@ -85,6 +86,7 @@ describe('useCredentialGroupSelection', () => {
 
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, getCardCredentialId } = useCredentialGroupSelection(
+				workflowId,
 				cards,
 				vi.fn(),
 			);
@@ -105,6 +107,7 @@ describe('useCredentialGroupSelection', () => {
 
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, getCardCredentialId } = useCredentialGroupSelection(
+				workflowId,
 				cards,
 				vi.fn(),
 			);
@@ -129,6 +132,7 @@ describe('useCredentialGroupSelection', () => {
 
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, getCardCredentialId } = useCredentialGroupSelection(
+				workflowId,
 				cards,
 				vi.fn(),
 			);
@@ -144,6 +148,7 @@ describe('useCredentialGroupSelection', () => {
 
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, getCardCredentialId } = useCredentialGroupSelection(
+				workflowId,
 				cards,
 				vi.fn(),
 			);
@@ -168,7 +173,7 @@ describe('useCredentialGroupSelection', () => {
 			const testFn = vi.fn();
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, setCredentialForGroup, getCardCredentialId } =
-				useCredentialGroupSelection(cards, testFn);
+				useCredentialGroupSelection(workflowId, cards, testFn);
 			initCredGroupSelections();
 
 			setCredentialForGroup('slackApi', 'slackApi', 'cred-2');
@@ -191,6 +196,7 @@ describe('useCredentialGroupSelection', () => {
 			const testFn = vi.fn().mockResolvedValue(undefined);
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, setCredentialForGroup } = useCredentialGroupSelection(
+				workflowId,
 				cards,
 				testFn,
 			);
@@ -215,7 +221,7 @@ describe('useCredentialGroupSelection', () => {
 
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, clearCredentialForGroup, getCardCredentialId } =
-				useCredentialGroupSelection(cards, vi.fn());
+				useCredentialGroupSelection(workflowId, cards, vi.fn());
 			initCredGroupSelections();
 
 			clearCredentialForGroup('slackApi', 'slackApi');
@@ -231,7 +237,7 @@ describe('useCredentialGroupSelection', () => {
 			const card2 = makeCard({ id: 'card-2', credentialType: 'slackApi' });
 			const cards = computed(() => [card1, card2]);
 
-			const { isFirstCardInCredGroup } = useCredentialGroupSelection(cards, vi.fn());
+			const { isFirstCardInCredGroup } = useCredentialGroupSelection(workflowId, cards, vi.fn());
 
 			expect(isFirstCardInCredGroup(card1)).toBe(true);
 			expect(isFirstCardInCredGroup(card2)).toBe(false);
@@ -274,7 +280,11 @@ describe('useCredentialGroupSelection', () => {
 				nodes: [makeSetupNode({ credentialType: 'slackApi' })],
 			});
 			const cards = computed(() => [card]);
-			const { openNewCredentialForSection } = useCredentialGroupSelection(cards, vi.fn());
+			const { openNewCredentialForSection } = useCredentialGroupSelection(
+				workflowId,
+				cards,
+				vi.fn(),
+			);
 			const openSpy = vi.spyOn(uiStore, 'openNewCredential');
 
 			openNewCredentialForSection('slackApi', 'slackApi');
@@ -290,7 +300,11 @@ describe('useCredentialGroupSelection', () => {
 				nodes: [makeSetupNode({ credentialType: 'slackApi' })],
 			});
 			const cards = computed(() => [card]);
-			const { openNewCredentialForSection } = useCredentialGroupSelection(cards, vi.fn());
+			const { openNewCredentialForSection } = useCredentialGroupSelection(
+				workflowId,
+				cards,
+				vi.fn(),
+			);
 			const openSpy = vi.spyOn(uiStore, 'openNewCredential');
 
 			openNewCredentialForSection('slackApi', 'slackApi');
@@ -313,7 +327,11 @@ describe('useCredentialGroupSelection', () => {
 			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => []);
 
 			const cards = computed(() => [card]);
-			const { cardHasExistingCredentials } = useCredentialGroupSelection(cards, vi.fn());
+			const { cardHasExistingCredentials } = useCredentialGroupSelection(
+				workflowId,
+				cards,
+				vi.fn(),
+			);
 
 			expect(cardHasExistingCredentials(card)).toBe(true);
 		});
@@ -326,7 +344,11 @@ describe('useCredentialGroupSelection', () => {
 			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => []);
 
 			const cards = computed(() => [card]);
-			const { cardHasExistingCredentials } = useCredentialGroupSelection(cards, vi.fn());
+			const { cardHasExistingCredentials } = useCredentialGroupSelection(
+				workflowId,
+				cards,
+				vi.fn(),
+			);
 
 			expect(cardHasExistingCredentials(card)).toBe(false);
 		});

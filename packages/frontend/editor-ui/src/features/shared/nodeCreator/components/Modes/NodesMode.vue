@@ -41,6 +41,7 @@ import { useI18n } from '@n8n/i18n';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 
 import { useActions } from '../../composables/useActions';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -61,7 +62,9 @@ const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHel
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
-const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
+const workflowId = useWorkflowId();
+const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } =
+	useActions(workflowId);
 
 const { registerKeyHook } = useKeyboardNavigation();
 

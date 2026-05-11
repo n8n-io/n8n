@@ -47,6 +47,8 @@ const mockResolveExpression = () => {
 let workflowState: WorkflowState;
 
 describe('useResolvedExpression', () => {
+	const workflowId = ref('test-workflow');
+
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.useFakeTimers();
@@ -65,7 +67,7 @@ describe('useResolvedExpression', () => {
 	it('should resolve a simple expression', async () => {
 		mockResolveExpression().mockResolvedValue(4);
 		const { isExpression, resolvedExpression, resolvedExpressionString } =
-			await renderTestComponent({
+			await renderTestComponent(workflowId, {
 				expression: '={{ testValue }}',
 			});
 
@@ -77,7 +79,7 @@ describe('useResolvedExpression', () => {
 
 	it('should return an empty string for non-expressions', async () => {
 		const { isExpression, resolvedExpression, resolvedExpressionString } =
-			await renderTestComponent({
+			await renderTestComponent(workflowId, {
 				expression: 'test',
 			});
 
@@ -89,7 +91,7 @@ describe('useResolvedExpression', () => {
 	it('should handle errors', async () => {
 		mockResolveExpression().mockRejectedValue(new Error('Test error'));
 		const { isExpression, resolvedExpression, resolvedExpressionString } =
-			await renderTestComponent({
+			await renderTestComponent(workflowId, {
 				expression: '={{ testValue }}',
 			});
 
@@ -103,7 +105,7 @@ describe('useResolvedExpression', () => {
 		const resolveExpressionSpy = mockResolveExpression().mockResolvedValue(4);
 		const expression = ref('={{ testValue }}');
 
-		await renderTestComponent({ expression });
+		await renderTestComponent(workflowId, { expression });
 
 		await nextTick();
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(1);
@@ -131,7 +133,7 @@ describe('useResolvedExpression', () => {
 
 		workflowDocumentStore.setName('Old Name');
 
-		const { resolvedExpressionString } = await renderTestComponent({
+		const { resolvedExpressionString } = await renderTestComponent(workflowId, {
 			expression: '={{ $workflow.name }}',
 		});
 

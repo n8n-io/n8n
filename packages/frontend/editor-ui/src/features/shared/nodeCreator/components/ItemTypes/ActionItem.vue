@@ -8,6 +8,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useActions } from '../../composables/useActions';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nNodeCreatorNode } from '@n8n/design-system';
@@ -19,7 +20,9 @@ export interface Props {
 const props = defineProps<Props>();
 const telemetry = useTelemetry();
 
-const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } = useActions();
+const workflowId = useWorkflowId();
+const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } =
+	useActions(workflowId);
 const { activeViewStack } = useViewStacks();
 
 const state = reactive({

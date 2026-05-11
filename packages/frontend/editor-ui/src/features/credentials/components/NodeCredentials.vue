@@ -22,6 +22,7 @@ import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -107,7 +108,8 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const { hasManagedOAuthCredentials } = useCredentialOAuth();
+const workflowId = useWorkflowId();
+const { hasManagedOAuthCredentials } = useCredentialOAuth(workflowId);
 
 const aiGateway = useAiGateway();
 

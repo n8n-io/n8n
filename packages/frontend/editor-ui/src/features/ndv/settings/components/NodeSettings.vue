@@ -69,6 +69,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = withDefaults(
 	defineProps<{
@@ -134,7 +135,8 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const route = useRoute();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const workflowId = useWorkflowId();
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
 const shouldShowStaticScrollbar = ref(false);
@@ -491,7 +493,7 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
 );
 
-const iconSource = useNodeIconSource(nodeType, node);
+const iconSource = useNodeIconSource(workflowId, nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);

@@ -21,6 +21,7 @@ import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
+import type { RefOrComputedRef } from '@/app/types/utils';
 
 interface UseLogsExecutionDataOptions {
 	/**
@@ -30,11 +31,14 @@ interface UseLogsExecutionDataOptions {
 	filter?: ComputedRef<LogTreeFilter>;
 }
 
-export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
+export function useLogsExecutionData(
+	workflowId: RefOrComputedRef<string>,
+	{ isEnabled, filter }: UseLogsExecutionDataOptions = {},
+) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
@@ -172,12 +176,9 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		{ immediate: true },
 	);
 
-	watch(
-		() => workflowsStore.workflowId,
-		() => {
-			resetExecutionData();
-		},
-	);
+	watch(workflowId, () => {
+		resetExecutionData();
+	});
 
 	// Update workflow object on throttled state changes
 	// NOTE: don't turn the workflow object into a computed! It causes infinite update loop

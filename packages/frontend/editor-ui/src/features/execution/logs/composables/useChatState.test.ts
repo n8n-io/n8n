@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useChatState } from './useChatState';
@@ -68,6 +68,7 @@ describe('useChatState', () => {
 	let logsStore: ReturnType<typeof useLogsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let mockRunWorkflow: Mock;
+	const workflowId = ref('workflow-123');
 
 	// Mock node type that mirrors the real ChatTrigger structure:
 	// - Multiple 'options' collections with displayOptions at the collection level
@@ -141,6 +142,7 @@ describe('useChatState', () => {
 	};
 
 	beforeEach(() => {
+		workflowId.value = 'workflow-123';
 		const pinia = createTestingPinia({
 			stubActions: false,
 			initialState: {
@@ -195,19 +197,19 @@ describe('useChatState', () => {
 
 	describe('basic initialization', () => {
 		it('should initialize with default session ID from logsStore', () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.currentSessionId.value).toBe('session-456');
 		});
 
 		it('should use provided sessionId parameter over logsStore', () => {
-			const chatState = useChatState(false, () => 'custom-session-789');
+			const chatState = useChatState(workflowId, false, () => 'custom-session-789');
 
 			expect(chatState.webhookUrl.value).toContain('custom-session-789');
 		});
 
 		it('should find chatTriggerNode in workflow', () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.chatTriggerNode.value).toEqual(mockChatTriggerNode);
 		});
@@ -217,7 +219,7 @@ describe('useChatState', () => {
 				state.workflow.nodes = [];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.chatTriggerNode.value).toBeNull();
 		});
@@ -225,7 +227,7 @@ describe('useChatState', () => {
 
 	describe('streaming configuration', () => {
 		it('should detect streaming enabled when responseMode is "streaming"', async () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(true);
@@ -238,7 +240,7 @@ describe('useChatState', () => {
 				},
 			};
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
@@ -247,7 +249,7 @@ describe('useChatState', () => {
 		it('should use default value for responseMode when not set', async () => {
 			mockChatTriggerNode.parameters = { options: {} };
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
@@ -269,7 +271,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isFileUploadsAllowed.value).toBe(true);
@@ -289,7 +291,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isFileUploadsAllowed.value).toBe(false);
@@ -309,7 +311,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.allowedFilesMimeTypes.value).toBe('image/*,application/pdf');
@@ -318,7 +320,7 @@ describe('useChatState', () => {
 		it('should use default MIME types when not set', async () => {
 			mockChatTriggerNode.parameters = { options: {} };
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.allowedFilesMimeTypes.value).toBe('*');
@@ -327,7 +329,7 @@ describe('useChatState', () => {
 
 	describe('webhook URL generation', () => {
 		it('should generate correct webhook URL with workflow ID and session ID', () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.webhookUrl.value).toBe(
 				'https://test.n8n.io/webhook-test/workflow-123/session-456',
@@ -335,7 +337,7 @@ describe('useChatState', () => {
 		});
 
 		it('should use custom sessionId in webhook URL when provided', () => {
-			const chatState = useChatState(false, () => 'custom-session');
+			const chatState = useChatState(workflowId, false, () => 'custom-session');
 
 			expect(chatState.webhookUrl.value).toBe(
 				'https://test.n8n.io/webhook-test/workflow-123/custom-session',
@@ -347,17 +349,15 @@ describe('useChatState', () => {
 				state.workflow.nodes = [];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.webhookUrl.value).toBe('');
 		});
 
 		it('should return empty webhook URL when no workflow ID', () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.id = '';
-			});
+			workflowId.value = '';
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.webhookUrl.value).toBe('');
 		});
@@ -365,7 +365,7 @@ describe('useChatState', () => {
 
 	describe('workflow readiness', () => {
 		it('should be ready when chatTriggerNode exists and workflow has ID', () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.isWorkflowReadyForChat.value).toBe(true);
 		});
@@ -375,7 +375,7 @@ describe('useChatState', () => {
 				state.workflow.nodes = [];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			expect(chatState.isWorkflowReadyForChat.value).toBe(false);
 		});
@@ -383,7 +383,7 @@ describe('useChatState', () => {
 
 	describe('registerChatWebhook', () => {
 		it('should call runWorkflow with correct parameters', async () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			await chatState.registerChatWebhook();
 
@@ -398,7 +398,7 @@ describe('useChatState', () => {
 		it('should include destinationNode when set in workflowsStore', async () => {
 			workflowsStore.setChatPartialExecutionDestinationNode('DestinationNode');
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await chatState.registerChatWebhook();
 
 			expect(mockRunWorkflow).toHaveBeenCalledWith({
@@ -414,7 +414,7 @@ describe('useChatState', () => {
 		});
 
 		it('should not register if already registering', async () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			// Start first registration
 			const promise1 = chatState.registerChatWebhook();
@@ -432,7 +432,7 @@ describe('useChatState', () => {
 				state.workflow.nodes = [];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await chatState.registerChatWebhook();
 
 			expect(mockRunWorkflow).not.toHaveBeenCalled();
@@ -440,7 +440,7 @@ describe('useChatState', () => {
 		});
 
 		it('should use custom sessionId when provided', async () => {
-			const chatState = useChatState(false, () => 'custom-session');
+			const chatState = useChatState(workflowId, false, () => 'custom-session');
 
 			await chatState.registerChatWebhook();
 
@@ -469,7 +469,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			const options = chatState.chatOptions.value;
@@ -485,7 +485,7 @@ describe('useChatState', () => {
 		});
 
 		it('should include beforeMessageSent handler', async () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			const options = chatState.chatOptions.value;
 
 			expect(options.beforeMessageSent).toBeDefined();
@@ -503,7 +503,7 @@ describe('useChatState', () => {
 		});
 
 		it('should not store messages in read-only mode', async () => {
-			const chatState = useChatState(true);
+			const chatState = useChatState(workflowId, true);
 			const options = chatState.chatOptions.value;
 
 			await options.beforeMessageSent?.('test message');
@@ -514,7 +514,7 @@ describe('useChatState', () => {
 
 	describe('refreshSession', () => {
 		it('should reset session ID and clear messages', () => {
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 
 			chatState.refreshSession();
 
@@ -525,7 +525,7 @@ describe('useChatState', () => {
 		it('should clear partial execution destination node', () => {
 			workflowsStore.setChatPartialExecutionDestinationNode('SomeNode');
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			chatState.refreshSession();
 
 			expect(workflowsStore.chatPartialExecutionDestinationNode).toBeNull();
@@ -537,7 +537,7 @@ describe('useChatState', () => {
 			const mockWindowOpen = vi.fn();
 			window.open = mockWindowOpen;
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			chatState.displayExecution('exec-123');
 
 			expect(mockWindowOpen).toHaveBeenCalledWith('/test', '_blank');
@@ -552,7 +552,7 @@ describe('useChatState', () => {
 				configurable: true,
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
@@ -564,7 +564,7 @@ describe('useChatState', () => {
 				state.workflow.nodes = [{ ...mockChatTriggerNode, parameters: {} }];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
@@ -582,7 +582,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
@@ -598,7 +598,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(true);
@@ -614,7 +614,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(true);
@@ -635,7 +635,7 @@ describe('useChatState', () => {
 				];
 			});
 
-			const chatState = useChatState(false);
+			const chatState = useChatState(workflowId, false);
 			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);

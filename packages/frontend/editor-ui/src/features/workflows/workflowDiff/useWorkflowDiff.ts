@@ -1,7 +1,7 @@
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import { toValue, computed, ref, watchEffect, shallowRef } from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 import type { Workflow, IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
@@ -59,6 +59,7 @@ function createWorkflowRefs(
 }
 
 function createWorkflowDiff(
+	workflowId: RefOrComputedRef<string>,
 	workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	workflowNodes: Ref<INodeUi[]>,
 	workflowConnections: Ref<IConnections>,
@@ -66,7 +67,7 @@ function createWorkflowDiff(
 ) {
 	// Call useCanvasMapping at setup time, not inside computed
 	// This is required because useCanvasMapping uses inject() internally
-	const { nodes, connections } = useCanvasMapping({
+	const { nodes, connections } = useCanvasMapping(workflowId, {
 		nodes: workflowNodes,
 		connections: workflowConnections,
 		workflowObject: workflowObjectRef,
@@ -107,12 +108,12 @@ function createWorkflowDiff(
 }
 
 export const useWorkflowDiff = (
+	workflowId: RefOrComputedRef<string>,
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 ) => {
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowId.value),
 	);
 	const nodeTypesStore = useNodeTypesStore();
 
@@ -120,6 +121,7 @@ export const useWorkflowDiff = (
 	const targetRefs = createWorkflowRefs(targetWorkflow, workflowDocumentStore.createWorkflowObject);
 
 	const sourceDiff = createWorkflowDiff(
+		workflowId,
 		sourceRefs.workflowRef,
 		sourceRefs.workflowNodes,
 		sourceRefs.workflowConnections,
@@ -127,6 +129,7 @@ export const useWorkflowDiff = (
 	);
 
 	const targetDiff = createWorkflowDiff(
+		workflowId,
 		targetRefs.workflowRef,
 		targetRefs.workflowNodes,
 		targetRefs.workflowConnections,

@@ -3,40 +3,42 @@ import { ref, watch, onUnmounted, computed } from 'vue';
 import type { InstanceAiToolCallState, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { useInstanceAiStore } from '../instanceAi.store';
 import type { DisplayCard, SetupCard } from '../instanceAiWorkflowSetup.utils';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
-export function useSetupActions(deps: {
-	requestId: Ref<string>;
-	store: ReturnType<typeof useInstanceAiStore>;
-	cards: ComputedRef<SetupCard[]>;
-	currentDisplayCard: ComputedRef<DisplayCard | undefined>;
-	displayCards: ComputedRef<DisplayCard[]>;
-	buildNodeCredentials: () => Record<string, Record<string, string>>;
-	buildNodeParameters: () => Record<string, Record<string, unknown>> | undefined;
-	isCardComplete: (card: SetupCard) => boolean;
-	anyCardComplete: ComputedRef<boolean>;
-	allPreResolved: ComputedRef<boolean>;
-	showFullWizard: Ref<boolean>;
-	setCredentialForGroup: (groupKey: string, credentialType: string, credentialId: string) => void;
-	clearCredentialForGroup: (groupKey: string, credentialType: string) => void;
-	goToNext: () => void;
-	isNextDisabled: ComputedRef<boolean>;
-	credGroupKey: (req: InstanceAiWorkflowSetupNode) => string;
-	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>;
-	onApplySuccess?: () => void;
-}) {
+export function useSetupActions(
+	workflowId: RefOrComputedRef<string>,
+	deps: {
+		requestId: Ref<string>;
+		store: ReturnType<typeof useInstanceAiStore>;
+		cards: ComputedRef<SetupCard[]>;
+		currentDisplayCard: ComputedRef<DisplayCard | undefined>;
+		displayCards: ComputedRef<DisplayCard[]>;
+		buildNodeCredentials: () => Record<string, Record<string, string>>;
+		buildNodeParameters: () => Record<string, Record<string, unknown>> | undefined;
+		isCardComplete: (card: SetupCard) => boolean;
+		anyCardComplete: ComputedRef<boolean>;
+		allPreResolved: ComputedRef<boolean>;
+		showFullWizard: Ref<boolean>;
+		setCredentialForGroup: (groupKey: string, credentialType: string, credentialId: string) => void;
+		clearCredentialForGroup: (groupKey: string, credentialType: string) => void;
+		goToNext: () => void;
+		isNextDisabled: ComputedRef<boolean>;
+		credGroupKey: (req: InstanceAiWorkflowSetupNode) => string;
+		setupRequests: Ref<InstanceAiWorkflowSetupNode[]>;
+		onApplySuccess?: () => void;
+	},
+) {
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const nodeHelpers = useNodeHelpers();
 

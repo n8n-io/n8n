@@ -343,7 +343,7 @@ const currentNodePaneType = computed((): MainPanelType => {
 const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
 	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
 
-const icon = useNodeIconSource(activeNodeType, activeNode);
+const icon = useNodeIconSource(workflowId, activeNodeType, activeNode);
 
 //methods
 const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {

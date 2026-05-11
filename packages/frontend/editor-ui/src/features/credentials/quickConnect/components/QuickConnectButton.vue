@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import CredentialIcon from '../../components/CredentialIcon.vue';
 import GoogleAuthButton from '../../components/CredentialEdit/GoogleAuthButton.vue';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = withDefaults(
 	defineProps<{
@@ -30,7 +31,8 @@ defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { isGoogleOAuthType } = useCredentialOAuth();
+const workflowId = useWorkflowId();
+const { isGoogleOAuthType } = useCredentialOAuth(workflowId);
 
 const buttonLabel = computed(() => {
 	if (props.label) return props.label;

@@ -14,6 +14,7 @@ import ExperimentalEmbeddedNdvActions from '@/features/workflows/canvas/experime
 import { useCanvas } from '@/features/workflows/canvas/composables/useCanvas';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nText } from '@n8n/design-system';
@@ -61,7 +62,8 @@ const subTitle = computed(() =>
 
 const maxHeightOnFocus = computed(() => vf.dimensions.value.height * 0.8);
 
-const expressionResolveCtx = useExpressionResolveCtx(node);
+const workflowId = useWorkflowId();
+const expressionResolveCtx = useExpressionResolveCtx(workflowId, node);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);

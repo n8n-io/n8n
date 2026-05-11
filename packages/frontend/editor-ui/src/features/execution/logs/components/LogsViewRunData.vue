@@ -7,6 +7,7 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/app/constants';
@@ -41,7 +42,8 @@ const emit = defineEmits<{
 const locale = useI18n();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const workflowId = useWorkflowId();
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction(workflowId);
 
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 

@@ -6,8 +6,9 @@ import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 import RevealDataWarning from '../components/RevealDataWarning.vue';
+import type { RefOrComputedRef } from '@/app/types/utils';
 
-export function useExecutionRedaction() {
+export function useExecutionRedaction(workflowId: RefOrComputedRef<string>) {
 	const workflowsStore = useWorkflowsStore();
 	const message = useMessage();
 	const telemetry = useTelemetry();
@@ -26,7 +27,7 @@ export function useExecutionRedaction() {
 
 	async function revealData() {
 		telemetry.track('User clicked reveal data', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			execution_id: workflowsStore.getWorkflowExecution?.id,
 		});
 

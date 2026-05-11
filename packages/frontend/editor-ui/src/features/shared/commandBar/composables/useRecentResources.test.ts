@@ -63,6 +63,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 describe('useRecentResources', () => {
+	const workflowId = ref('workflow-1');
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
@@ -127,7 +128,7 @@ describe('useRecentResources', () => {
 
 	describe('node tracking via trackResourceOpened', () => {
 		it('should add node to the top of recent list for workflow', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -143,7 +144,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should move existing node to the top when reopened', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
@@ -167,7 +168,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should limit recent nodes per workflow to MAX_RECENT_ITEMS (5)', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			for (let i = 1; i <= 7; i++) {
 				const route = {
@@ -185,7 +186,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should maintain separate lists for different workflows', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
@@ -211,7 +212,7 @@ describe('useRecentResources', () => {
 
 	describe('trackResourceOpened', () => {
 		it('should register workflow when navigating to workflow view', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -226,7 +227,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should register both workflow and node when nodeId is present', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -243,7 +244,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should not register workflow when query.new is "true"', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -257,7 +258,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should not register workflow when creating new workflow', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -271,7 +272,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should not register anything when route is not a workflow view', () => {
-			const { trackResourceOpened } = useRecentResources();
+			const { trackResourceOpened } = useRecentResources(workflowId);
 
 			const route = {
 				name: 'OTHER_VIEW',
@@ -294,7 +295,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should return command items for recent nodes in current workflow', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
@@ -323,7 +324,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should filter out nodes that no longer exist', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
@@ -348,7 +349,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should call setNodeActive when node item handler is executed', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -368,7 +369,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should return command items for recent workflows', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			// Track workflows by navigating to them
 			trackResourceOpened({
@@ -394,7 +395,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should limit workflow items to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3)', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			// Track 5 workflows
 			for (let i = 1; i <= 5; i++) {
@@ -413,7 +414,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should filter out workflows that no longer exist in store', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
@@ -444,7 +445,7 @@ describe('useRecentResources', () => {
 				return null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
 			}) as typeof mockWorkflowsListStore.getWorkflowById;
 
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
@@ -459,7 +460,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should navigate using window.location.href when workflow item handler is executed', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
@@ -481,7 +482,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should not show recent nodes when not in workflow view', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -503,7 +504,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should not show recent nodes when current workflow has no recent nodes', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
+			const { trackResourceOpened, commands } = useRecentResources(workflowId);
 
 			const route = {
 				name: VIEWS.WORKFLOW,
@@ -527,7 +528,7 @@ describe('useRecentResources', () => {
 
 	describe('initialize', () => {
 		it('should fetch workflows that are not in store', async () => {
-			const { trackResourceOpened, initialize } = useRecentResources();
+			const { trackResourceOpened, initialize } = useRecentResources(workflowId);
 
 			// Mock getWorkflowById to return null for workflow-4
 			mockWorkflowsListStore.getWorkflowById = vi.fn((workflowId: string) => {
@@ -567,7 +568,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should only fetch up to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3) workflows', async () => {
-			const { trackResourceOpened, initialize } = useRecentResources();
+			const { trackResourceOpened, initialize } = useRecentResources(workflowId);
 
 			mockWorkflowsListStore.getWorkflowById = vi.fn(
 				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
@@ -592,7 +593,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should handle fetch errors gracefully', async () => {
-			const { trackResourceOpened, initialize } = useRecentResources();
+			const { trackResourceOpened, initialize } = useRecentResources(workflowId);
 
 			mockWorkflowsListStore.getWorkflowById = vi.fn(
 				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
@@ -610,7 +611,7 @@ describe('useRecentResources', () => {
 		});
 
 		it('should not fetch workflows that are already in store', async () => {
-			const { trackResourceOpened, initialize } = useRecentResources();
+			const { trackResourceOpened, initialize } = useRecentResources(workflowId);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,

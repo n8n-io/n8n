@@ -107,10 +107,12 @@ import { useBuilderSetupCards } from './useBuilderSetupCards';
 
 let currentScope: EffectScope | undefined;
 
+const workflowId = ref('test-workflow-id');
+
 function getComposable() {
 	currentScope?.stop();
 	currentScope = effectScope();
-	return currentScope.run(() => useBuilderSetupCards())!;
+	return currentScope.run(() => useBuilderSetupCards(workflowId))!;
 }
 
 describe('useBuilderSetupCards', () => {

@@ -5,7 +5,7 @@
  */
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -41,8 +41,7 @@ export type UpdateWorkflowResult =
 			error: unknown;
 	  };
 
-export function useWorkflowUpdate() {
-	const workflowsStore = useWorkflowsStore();
+export function useWorkflowUpdate(workflowId: RefOrComputedRef<string>) {
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
@@ -51,7 +50,7 @@ export function useWorkflowUpdate() {
 	const nodeHelpers = useNodeHelpers();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	/**
@@ -319,10 +318,10 @@ export function useWorkflowUpdate() {
 	 * Update workflow name if initial generation and name starts with default
 	 */
 	function updateWorkflowNameIfNeeded(name?: string, isInitialGeneration?: boolean): void {
-		if (!name || !isInitialGeneration || !workflowsStore.workflowId) return;
+		if (!name || !isInitialGeneration || !workflowId.value) return;
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		if (workflowDocumentStore.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)) {
 			workflowDocumentStore.setName(name);

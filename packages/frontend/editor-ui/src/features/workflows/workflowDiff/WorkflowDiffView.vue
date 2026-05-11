@@ -8,6 +8,7 @@ import WorkflowDiffNodeItem from '@/features/workflows/workflowDiff/WorkflowDiff
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import { useWorkflowDiffUI } from '@/features/workflows/workflowDiff/useWorkflowDiffUI';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
@@ -59,7 +60,9 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 
+const workflowId = useWorkflowId();
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
+	workflowId,
 	computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
 	computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
 );

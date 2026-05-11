@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 
 import { useNodeMention } from './useNodeMention';
 import { useFocusedNodesStore } from '../focusedNodes.store';
@@ -71,6 +72,7 @@ const mockNodes: INodeUi[] = [
 ];
 
 describe('useNodeMention', () => {
+	const workflowId = ref('test-wf');
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let focusedNodesStore: ReturnType<typeof useFocusedNodesStore>;
 
@@ -96,7 +98,7 @@ describe('useNodeMention', () => {
 
 	describe('handleInput - @ trigger conditions', () => {
 		it('should open dropdown when @ is typed at start of input', () => {
-			const { handleInput, showDropdown } = useNodeMention();
+			const { handleInput, showDropdown } = useNodeMention(workflowId);
 			const input = createMockInput('@', 1);
 
 			handleInput(createMockInputEvent(), input);
@@ -105,7 +107,7 @@ describe('useNodeMention', () => {
 		});
 
 		it('should open dropdown when @ is preceded by a space', () => {
-			const { handleInput, showDropdown } = useNodeMention();
+			const { handleInput, showDropdown } = useNodeMention(workflowId);
 			const input = createMockInput('hello @', 7);
 
 			handleInput(createMockInputEvent(), input);
@@ -114,7 +116,7 @@ describe('useNodeMention', () => {
 		});
 
 		it('should not open dropdown when @ is part of an email address', () => {
-			const { handleInput, showDropdown } = useNodeMention();
+			const { handleInput, showDropdown } = useNodeMention(workflowId);
 			const input = createMockInput('user@', 5);
 
 			handleInput(createMockInputEvent(), input);
@@ -123,7 +125,7 @@ describe('useNodeMention', () => {
 		});
 
 		it('should not open dropdown when @ is preceded by a letter', () => {
-			const { handleInput, showDropdown } = useNodeMention();
+			const { handleInput, showDropdown } = useNodeMention(workflowId);
 			const input = createMockInput('test@', 5);
 
 			handleInput(createMockInputEvent(), input);
@@ -132,7 +134,7 @@ describe('useNodeMention', () => {
 		});
 
 		it('should not open dropdown when @ is preceded by a number', () => {
-			const { handleInput, showDropdown } = useNodeMention();
+			const { handleInput, showDropdown } = useNodeMention(workflowId);
 			const input = createMockInput('abc123@', 7);
 
 			handleInput(createMockInputEvent(), input);
@@ -141,7 +143,7 @@ describe('useNodeMention', () => {
 		});
 
 		it('should open dropdown when @ is preceded by a tab character', () => {
-			const { handleInput, showDropdown } = useNodeMention();
+			const { handleInput, showDropdown } = useNodeMention(workflowId);
 			const input = createMockInput('\t@', 2);
 
 			handleInput(createMockInputEvent(), input);
@@ -152,7 +154,7 @@ describe('useNodeMention', () => {
 
 	describe('handleKeyDown - Escape', () => {
 		it('should close dropdown without removing query text on Escape', () => {
-			const { handleInput, handleKeyDown, showDropdown } = useNodeMention();
+			const { handleInput, handleKeyDown, showDropdown } = useNodeMention(workflowId);
 
 			const openInput = createMockInput('@', 1);
 			handleInput(createMockInputEvent(), openInput);
@@ -177,7 +179,7 @@ describe('useNodeMention', () => {
 
 	describe('selectNode', () => {
 		it('should confirm the selected node and close dropdown', () => {
-			const { handleInput, selectNode, showDropdown } = useNodeMention();
+			const { handleInput, selectNode, showDropdown } = useNodeMention(workflowId);
 
 			const input = createMockInput('@', 1);
 			handleInput(createMockInputEvent(), input);
@@ -194,7 +196,7 @@ describe('useNodeMention', () => {
 		it('should exclude already confirmed nodes', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'mention');
 
-			const { filteredNodes } = useNodeMention();
+			const { filteredNodes } = useNodeMention(workflowId);
 			const nodeIds = filteredNodes.value.map((n) => n.id);
 
 			expect(nodeIds).not.toContain('node-1');
@@ -202,7 +204,7 @@ describe('useNodeMention', () => {
 		});
 
 		it('should filter by search query', () => {
-			const { handleInput, filteredNodes } = useNodeMention();
+			const { handleInput, filteredNodes } = useNodeMention(workflowId);
 
 			const openInput = createMockInput('@', 1);
 			handleInput(createMockInputEvent(), openInput);

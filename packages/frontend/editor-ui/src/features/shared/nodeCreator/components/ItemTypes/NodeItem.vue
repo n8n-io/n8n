@@ -21,6 +21,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { useActions } from '../../composables/useActions';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useViewStacks } from '../../composables/useViewStacks';
 import {
 	isNodePreviewKey,
@@ -44,7 +45,8 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
-const { getAddedNodesAndConnections } = useActions();
+const workflowId = useWorkflowId();
+const { getAddedNodesAndConnections } = useActions(workflowId);
 const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,

@@ -15,6 +15,7 @@ import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 export function useQuickConnect() {
 	const settingsStore = useSettingsStore();
@@ -26,8 +27,10 @@ export function useQuickConnect() {
 	const projectsStore = useProjectsStore();
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
+	const workflowId = useWorkflowId();
 	const loading = ref(false);
-	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
+	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } =
+		useCredentialOAuth(workflowId);
 	const cleanUpHandlers: Array<() => void> = [];
 
 	const optionsByCredentialType = computed(() => {

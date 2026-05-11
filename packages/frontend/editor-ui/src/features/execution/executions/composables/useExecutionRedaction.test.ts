@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useExecutionRedaction } from './useExecutionRedaction';
@@ -23,6 +24,7 @@ vi.mock('vue-router', () => ({
 
 describe('useExecutionRedaction()', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	const workflowId = ref('test-workflow');
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -33,7 +35,7 @@ describe('useExecutionRedaction()', () => {
 	describe('computed properties', () => {
 		it('should return isRedacted=false when no execution', () => {
 			workflowsStore.getWorkflowExecution = null;
-			const { isRedacted, canReveal, isDynamicCredentials } = useExecutionRedaction();
+			const { isRedacted, canReveal, isDynamicCredentials } = useExecutionRedaction(workflowId);
 
 			expect(isRedacted.value).toBe(false);
 			expect(canReveal.value).toBe(false);
@@ -47,7 +49,7 @@ describe('useExecutionRedaction()', () => {
 				},
 			} as never;
 
-			const { isRedacted, canReveal, isDynamicCredentials } = useExecutionRedaction();
+			const { isRedacted, canReveal, isDynamicCredentials } = useExecutionRedaction(workflowId);
 
 			expect(isRedacted.value).toBe(true);
 			expect(canReveal.value).toBe(true);
@@ -65,7 +67,7 @@ describe('useExecutionRedaction()', () => {
 				},
 			} as never;
 
-			const { isDynamicCredentials, canReveal } = useExecutionRedaction();
+			const { isDynamicCredentials, canReveal } = useExecutionRedaction(workflowId);
 
 			expect(isDynamicCredentials.value).toBe(true);
 			expect(canReveal.value).toBe(false);
@@ -83,7 +85,7 @@ describe('useExecutionRedaction()', () => {
 
 			confirm.mockResolvedValue('cancel');
 
-			const { revealData } = useExecutionRedaction();
+			const { revealData } = useExecutionRedaction(workflowId);
 			await revealData();
 
 			expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
@@ -103,7 +105,7 @@ describe('useExecutionRedaction()', () => {
 				data: revealedData,
 			});
 
-			const { revealData } = useExecutionRedaction();
+			const { revealData } = useExecutionRedaction(workflowId);
 			await revealData();
 
 			expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledWith('exec-123', {
@@ -124,7 +126,7 @@ describe('useExecutionRedaction()', () => {
 			confirm.mockResolvedValue(MODAL_CONFIRM);
 			workflowsStore.fetchExecutionDataById = vi.fn().mockRejectedValue(error);
 
-			const { revealData } = useExecutionRedaction();
+			const { revealData } = useExecutionRedaction(workflowId);
 			await revealData();
 
 			expect(showError).toHaveBeenCalledWith(error, expect.any(String));
@@ -139,7 +141,7 @@ describe('useExecutionRedaction()', () => {
 
 			confirm.mockResolvedValue(MODAL_CONFIRM);
 
-			const { revealData } = useExecutionRedaction();
+			const { revealData } = useExecutionRedaction(workflowId);
 			await revealData();
 
 			expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();

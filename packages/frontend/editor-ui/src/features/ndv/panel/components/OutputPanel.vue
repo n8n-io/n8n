@@ -115,7 +115,7 @@ const node = computed(() => {
 	return ndvStore.activeNode ?? undefined;
 });
 const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction(workflowId);
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);

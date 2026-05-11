@@ -63,7 +63,7 @@ const {
 	isWorkflowRunning,
 	isExecutionWaitingForWebhook,
 	execute,
-} = useBuilderExecution(isReady);
+} = useBuilderExecution(workflowId, isReady);
 
 const containerRef = ref<HTMLElement>();
 

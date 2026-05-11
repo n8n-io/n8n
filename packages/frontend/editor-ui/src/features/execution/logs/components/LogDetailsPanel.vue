@@ -23,6 +23,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
@@ -64,7 +65,9 @@ const nodeTypeStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
-const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const workflowId = useWorkflowId();
+const { isRedacted, canReveal, isDynamicCredentials, revealData } =
+	useExecutionRedaction(workflowId);
 
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));

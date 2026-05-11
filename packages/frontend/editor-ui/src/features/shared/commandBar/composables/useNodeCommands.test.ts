@@ -49,6 +49,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 describe('useNodeCommands', () => {
+	const workflowId = ref('test-workflow');
 	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let mockSourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -107,12 +108,12 @@ describe('useNodeCommands', () => {
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
-			value: '123',
+			value: 'test-workflow',
 			writable: true,
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
-			value: { '123': true },
+			value: { 'test-workflow': true },
 			writable: true,
 		});
 
@@ -121,7 +122,7 @@ describe('useNodeCommands', () => {
 
 	describe('add node command', () => {
 		it('should include add node command when user has update permission', () => {
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -135,7 +136,7 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: true },
 			});
 
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -149,7 +150,7 @@ describe('useNodeCommands', () => {
 				value: { branchReadOnly: true },
 			});
 
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -162,7 +163,7 @@ describe('useNodeCommands', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
 			workflowDocumentStore.setIsArchived(true);
 
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -181,7 +182,7 @@ describe('useNodeCommands', () => {
 				writable: true,
 			});
 
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -200,7 +201,7 @@ describe('useNodeCommands', () => {
 				mergedNodes: mockNodes,
 			});
 
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -216,7 +217,7 @@ describe('useNodeCommands', () => {
 
 	describe('open node command', () => {
 		it('should include open node command', () => {
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -243,7 +244,7 @@ describe('useNodeCommands', () => {
 				}),
 			]);
 
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -256,7 +257,7 @@ describe('useNodeCommands', () => {
 
 	describe('add sticky note command', () => {
 		it('should include add sticky note command when user has update permission', () => {
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -270,7 +271,7 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: true },
 			});
 
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -280,7 +281,7 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should emit create:sticky event when sticky note command is executed', () => {
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 			});
@@ -294,7 +295,7 @@ describe('useNodeCommands', () => {
 
 	describe('root add node items', () => {
 		it('should not show root add node items when query is too short', () => {
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref('ht'),
 				activeNodeId: ref(null),
 			});
@@ -320,7 +321,7 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should not show root open node items when query is too short', () => {
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref('st'),
 				activeNodeId: ref(null),
 			});
@@ -330,7 +331,7 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should show root open node items when query is longer than 2 characters', () => {
-			const { commands } = useNodeCommands({
+			const { commands } = useNodeCommands(workflowId, {
 				lastQuery: ref('sta'),
 				activeNodeId: ref(null),
 			});

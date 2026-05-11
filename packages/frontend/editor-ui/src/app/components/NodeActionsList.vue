@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useActions } from '@/features/shared/nodeCreator/composables/useActions';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { CUSTOM_API_CALL_KEY } from '@/app/constants';
 import type { ActionCreateElement, INodeCreateElement, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -20,7 +21,8 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
-const { parseCategoryActions, getActionData } = useActions();
+const workflowId = useWorkflowId();
+const { parseCategoryActions, getActionData } = useActions(workflowId);
 const i18n = useI18n();
 
 const selectedActionRef = ref<HTMLElement>();

@@ -7,6 +7,7 @@ import { computed } from 'vue';
 
 import { N8nNodeIcon } from '@n8n/design-system';
 import { useNodeIconSource } from '../composables/useNodeIconSource';
+import { useWorkflowId } from '../composables/useWorkflowId';
 type Props = {
 	size?: number;
 	disabled?: boolean;
@@ -40,7 +41,8 @@ const emit = defineEmits<{
 	click: [];
 }>();
 
-const iconSourceFromNodeType = useNodeIconSource(props.nodeType, props.node ?? null);
+const workflowId = useWorkflowId();
+const iconSourceFromNodeType = useNodeIconSource(workflowId, props.nodeType, props.node ?? null);
 
 const iconSource = computed(() => props.iconSource ?? iconSourceFromNodeType.value);
 

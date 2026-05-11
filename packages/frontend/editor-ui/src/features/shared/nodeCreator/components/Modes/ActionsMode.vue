@@ -19,6 +19,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { useActions } from '../../composables/useActions';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import { useViewStacks } from '../../composables/useViewStacks';
 
@@ -47,6 +48,7 @@ const i18n = useI18n();
 const usersStore = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
+const workflowId = useWorkflowId();
 const {
 	setAddedNodeActionParameters,
 	getActionData,
@@ -54,7 +56,7 @@ const {
 	getPlaceholderTriggerActions,
 	parseCategoryActions,
 	actionsCategoryLocales,
-} = useActions();
+} = useActions(workflowId);
 
 const nodeCreatorStore = useNodeCreatorStore();
 const { openSampleWorkflowTemplate } = useCalloutHelpers();

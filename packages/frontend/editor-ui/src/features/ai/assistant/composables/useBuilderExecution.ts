@@ -8,6 +8,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useToast } from '@/app/composables/useToast';
 import { isChatNode } from '@/app/utils/aiUtils';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -21,12 +22,15 @@ const RUNNING_STATES: string[] = ['running', 'waiting'];
  *
  * @param isReady - When false, the execute button is disabled and trigger dropdown is hidden.
  */
-export function useBuilderExecution(isReady: ComputedRef<boolean>) {
+export function useBuilderExecution(
+	workflowId: RefOrComputedRef<string>,
+	isReady: ComputedRef<boolean>,
+) {
 	const router = useRouter();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();

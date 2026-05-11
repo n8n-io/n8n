@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
@@ -16,6 +17,8 @@ import type { INodeUi } from '@/Interface';
 import { CHAT_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants';
 
 describe('useNodeSettingsParameters', () => {
+	const workflowId = ref('test-workflow');
+
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 	});
@@ -51,7 +54,7 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('sets focused node parameter', async () => {
-			const { handleFocus } = useNodeSettingsParameters();
+			const { handleFocus } = useNodeSettingsParameters(workflowId);
 			const node: INodeUi = {
 				id: '1',
 				name: 'Node1',
@@ -81,7 +84,7 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('does nothing if node is undefined', async () => {
-			const { handleFocus } = useNodeSettingsParameters();
+			const { handleFocus } = useNodeSettingsParameters(workflowId);
 
 			const parameter: INodeProperties = {
 				name: 'foo',
@@ -152,7 +155,7 @@ describe('useNodeSettingsParameters', () => {
 			it('returns false for hidden parameter type', async () => {
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, {
 					...mockParameter,
@@ -164,7 +167,7 @@ describe('useNodeSettingsParameters', () => {
 			it('does not call displayParameter for hidden parameters', async () => {
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				await shouldDisplayNodeParameter({}, null, { ...mockParameter, type: 'hidden' });
 				expect(displayParameterSpy).not.toHaveBeenCalled();
@@ -176,7 +179,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				settingsStore.isCloudDeployment = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, {
 					...mockParameter,
@@ -189,7 +192,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				settingsStore.isCloudDeployment = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				await shouldDisplayNodeParameter({}, null, {
 					...mockParameter,
@@ -204,7 +207,7 @@ describe('useNodeSettingsParameters', () => {
 				settingsStore.isCloudDeployment = false;
 				displayParameterSpy.mockReturnValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, {
 					...mockParameter,
@@ -220,7 +223,7 @@ describe('useNodeSettingsParameters', () => {
 				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);
 				mockNodeHelpers({ isCustomApiCallSelected: true });
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(false);
@@ -233,7 +236,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers({ isCustomApiCallSelected: true });
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(true);
@@ -248,7 +251,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers({ isCustomApiCallSelected: false });
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(mustHideSpy).not.toHaveBeenCalled();
@@ -272,7 +275,7 @@ describe('useNodeSettingsParameters', () => {
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(false);
@@ -283,7 +286,7 @@ describe('useNodeSettingsParameters', () => {
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter(
 					{},
@@ -306,7 +309,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -327,7 +330,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -348,7 +351,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(true);
@@ -360,7 +363,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -397,7 +400,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isChatFeatureEnabled = false;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -421,7 +424,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isChatFeatureEnabled = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -444,7 +447,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isChatFeatureEnabled = false;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -517,7 +520,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isPublicChatTriggerDisabled = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, publicParameter);
 
@@ -533,7 +536,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isPublicChatTriggerDisabled = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, publicOnlyParameter);
 
@@ -550,7 +553,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isPublicChatTriggerDisabled = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, privateOnlyParameter);
 
@@ -587,7 +590,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isPublicChatTriggerDisabled = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 				const nodeParameters = {
 					foo: '=resolved',
 				};
@@ -623,7 +626,7 @@ describe('useNodeSettingsParameters', () => {
 
 				settingsStore.isPublicChatTriggerDisabled = true;
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -652,7 +655,7 @@ describe('useNodeSettingsParameters', () => {
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({}, null, {
 					...mockParameter,
@@ -666,7 +669,7 @@ describe('useNodeSettingsParameters', () => {
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const parameterWithoutDisabledOptions: INodeProperties = {
 					...mockParameter,
@@ -691,7 +694,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {
 					nested: {
@@ -729,7 +732,7 @@ describe('useNodeSettingsParameters', () => {
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {
 					nested: null,
@@ -757,7 +760,7 @@ describe('useNodeSettingsParameters', () => {
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {};
 				const node: INodeUi = {
@@ -791,7 +794,7 @@ describe('useNodeSettingsParameters', () => {
 					resolveExpression: async (expr: string) => (expr === '=1+1' ? 2 : expr),
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = { foo: '=1+1' };
 				const node: INodeUi = {
@@ -830,7 +833,7 @@ describe('useNodeSettingsParameters', () => {
 					resolveExpression: resolveExpressionSpy,
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {
 					first: '={{ $parameter.second }}',
@@ -876,7 +879,7 @@ describe('useNodeSettingsParameters', () => {
 					},
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				// Both expressions reference each other - circular dependency
 				// Object.keys() returns ['first', 'second'] in insertion order
@@ -934,7 +937,7 @@ describe('useNodeSettingsParameters', () => {
 					},
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				// Chained: first -> second -> third (which is a plain expression)
 				const nodeParameters = {
@@ -983,7 +986,7 @@ describe('useNodeSettingsParameters', () => {
 					},
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = { foo: '=invalid{{expression' };
 				const node: INodeUi = {
@@ -1019,7 +1022,7 @@ describe('useNodeSettingsParameters', () => {
 					resolveExpression: resolveExpressionSpy,
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = { foo: 'plain value' };
 				const node: INodeUi = {
@@ -1055,7 +1058,7 @@ describe('useNodeSettingsParameters', () => {
 						expr === '=resolved' ? 'resolved_value' : expr,
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {
 					nested: {
@@ -1102,7 +1105,7 @@ describe('useNodeSettingsParameters', () => {
 					resolveExpression: async () => 'resolved',
 				}));
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {
 					expr: '=expression',
@@ -1137,7 +1140,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(false);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const parameter: INodeProperties = {
 					name: 'foo',
@@ -1180,7 +1183,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = { foo: 'bar' };
 				const node: INodeUi = {
@@ -1210,7 +1213,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(false);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = { foo: 'bar' };
 				const node: INodeUi = {
@@ -1241,7 +1244,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const result = await shouldDisplayNodeParameter({ foo: 'bar' }, null, mockParameter);
 				expect(result).toBe(true);
@@ -1253,7 +1256,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const node: INodeUi = {
 					id: '1',
@@ -1274,7 +1277,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = { foo: 'bar' };
 				const node: INodeUi = {
@@ -1305,7 +1308,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {
 					stringVal: 'test',
@@ -1345,7 +1348,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters(workflowId);
 
 				const nodeParameters = {
 					level1: {

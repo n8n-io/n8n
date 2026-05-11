@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 import { useWorkflowUpdate } from './useWorkflowUpdate';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -83,6 +84,7 @@ vi.mock('@/app/utils/nodeTypesUtils', () => ({
 }));
 
 describe('useWorkflowUpdate', () => {
+	const workflowId = ref('test-workflow');
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
@@ -136,7 +138,7 @@ describe('useWorkflowUpdate', () => {
 
 	describe('updateWorkflow', () => {
 		it('should return success with empty newNodeIds when no new nodes are added', async () => {
-			const { updateWorkflow } = useWorkflowUpdate();
+			const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 			const result = await updateWorkflow({
 				nodes: [],
@@ -147,7 +149,7 @@ describe('useWorkflowUpdate', () => {
 		});
 
 		it('should call builderStore.setBuilderMadeEdits(true)', async () => {
-			const { updateWorkflow } = useWorkflowUpdate();
+			const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 			await updateWorkflow({
 				nodes: [],
@@ -167,7 +169,7 @@ describe('useWorkflowUpdate', () => {
 
 				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				const result = await updateWorkflow({
 					nodes: [newNode],
@@ -197,7 +199,7 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [], // Empty - existing node should be removed
@@ -231,7 +233,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -275,7 +277,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -324,7 +326,7 @@ describe('useWorkflowUpdate', () => {
 
 				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -374,7 +376,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -419,7 +421,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -452,7 +454,7 @@ describe('useWorkflowUpdate', () => {
 					{ ...newNode, executeOnce: true } as INodeUi,
 				]);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -490,7 +492,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -530,7 +532,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -571,7 +573,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -614,7 +616,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -651,7 +653,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -682,7 +684,7 @@ describe('useWorkflowUpdate', () => {
 				});
 				const setNameSpy = vi.spyOn(workflowDocumentStore, 'setName');
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow(
 					{
@@ -706,7 +708,7 @@ describe('useWorkflowUpdate', () => {
 				});
 				const setNameSpy = vi.spyOn(workflowDocumentStore, 'setName');
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow(
 					{
@@ -730,7 +732,7 @@ describe('useWorkflowUpdate', () => {
 				});
 				const setNameSpy = vi.spyOn(workflowDocumentStore, 'setName');
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow(
 					{
@@ -754,7 +756,7 @@ describe('useWorkflowUpdate', () => {
 
 				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [newNode],
@@ -778,7 +780,7 @@ describe('useWorkflowUpdate', () => {
 
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [], // Empty - existing node should be removed
@@ -813,7 +815,7 @@ describe('useWorkflowUpdate', () => {
 					mockWorkflowObject as Workflow,
 				);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [
@@ -861,7 +863,7 @@ describe('useWorkflowUpdate', () => {
 
 				mockCanvasOperations.addNodes.mockResolvedValue([nodeWithoutCreds as INodeUi]);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [nodeWithoutCreds],
@@ -897,7 +899,7 @@ describe('useWorkflowUpdate', () => {
 
 				mockCanvasOperations.addNodes.mockResolvedValue([nodeWithCreds as INodeUi]);
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [nodeWithCreds],
@@ -923,7 +925,7 @@ describe('useWorkflowUpdate', () => {
 					type: 'n8n-nodes-base.httpRequest',
 				});
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				const result = await updateWorkflow({
 					nodes: [newNode],
@@ -949,7 +951,7 @@ describe('useWorkflowUpdate', () => {
 						{ source: 'node-1', target: 'node-2', sourceHandle: 'main', targetHandle: 'main' },
 					]); // new connections
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				const result = await updateWorkflow({
 					nodes: [],
@@ -975,7 +977,7 @@ describe('useWorkflowUpdate', () => {
 					throw testError;
 				});
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				const result = await updateWorkflow({
 					nodes: [
@@ -1007,7 +1009,7 @@ describe('useWorkflowUpdate', () => {
 					type: 'n8n-nodes-base.httpRequest',
 				});
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [newNode],
@@ -1027,7 +1029,7 @@ describe('useWorkflowUpdate', () => {
 					type: 'n8n-nodes-base.httpRequest',
 				});
 
-				const { updateWorkflow } = useWorkflowUpdate();
+				const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 				await updateWorkflow({
 					nodes: [newNode],
@@ -1042,7 +1044,7 @@ describe('useWorkflowUpdate', () => {
 	describe('pin data deferral', () => {
 		it('should defer pin data via storeGeneratedPinData instead of applying directly', async () => {
 			builderStore.storeGeneratedPinData = vi.fn();
-			const { updateWorkflow } = useWorkflowUpdate();
+			const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 			const pinData = { 'Node A': [{ json: { test: true } }] };
 			await updateWorkflow({
@@ -1056,7 +1058,7 @@ describe('useWorkflowUpdate', () => {
 
 		it('should not call storeGeneratedPinData when pinData is empty', async () => {
 			builderStore.storeGeneratedPinData = vi.fn();
-			const { updateWorkflow } = useWorkflowUpdate();
+			const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 			await updateWorkflow({
 				nodes: [],
@@ -1069,7 +1071,7 @@ describe('useWorkflowUpdate', () => {
 
 		it('should not call storeGeneratedPinData when pinData is undefined', async () => {
 			builderStore.storeGeneratedPinData = vi.fn();
-			const { updateWorkflow } = useWorkflowUpdate();
+			const { updateWorkflow } = useWorkflowUpdate(workflowId);
 
 			await updateWorkflow({
 				nodes: [],

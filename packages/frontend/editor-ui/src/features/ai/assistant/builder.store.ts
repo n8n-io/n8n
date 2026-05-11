@@ -279,7 +279,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getRunningTools,
 	} = useBuilderMessages();
 
-	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
+	const workflowId = computed(() => workflowsStore.workflowId);
+	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } =
+		useBuilderTodos(workflowId);
 
 	const { applyCodeDiff, undoCodeDiff } = useCodeDiff({
 		chatMessages,

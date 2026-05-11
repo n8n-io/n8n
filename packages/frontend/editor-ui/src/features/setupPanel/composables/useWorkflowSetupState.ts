@@ -17,6 +17,7 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -50,6 +51,7 @@ import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCar
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
 export const useWorkflowSetupState = (
+	workflowId: RefOrComputedRef<string>,
 	nodes?: Ref<INodeUi[]>,
 	options?: {
 		/** Additional parameter names per node that should be shown in setup cards
@@ -64,7 +66,7 @@ export const useWorkflowSetupState = (
 	const environmentsStore = useEnvironmentsStore();
 	const templatesStore = useTemplatesStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes);

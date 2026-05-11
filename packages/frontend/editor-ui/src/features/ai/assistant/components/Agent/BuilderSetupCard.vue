@@ -24,6 +24,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -46,6 +47,7 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
+const workflowId = useWorkflowId();
 
 // Sticky parameter tracking — prevents inputs from flickering mid-edit
 const shownParameters = ref<INodeProperties[]>([]);
@@ -75,7 +77,7 @@ const {
 	execute,
 	isInListeningState,
 	listeningHint,
-} = useTriggerExecution(executableNode, { telemetrySource: 'aiWorkflowBuilder' });
+} = useTriggerExecution(workflowId, executableNode, { telemetrySource: 'aiWorkflowBuilder' });
 
 const { webhookUrls } = useWebhookUrls(executableNode);
 

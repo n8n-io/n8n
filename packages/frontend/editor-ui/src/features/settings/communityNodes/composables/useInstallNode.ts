@@ -5,7 +5,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, nextTick, ref } from 'vue';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -14,6 +13,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
@@ -39,13 +39,12 @@ type InstallNodeResult = {
 	error?: Error;
 };
 
-export function useInstallNode() {
+export function useInstallNode(workflowId: RefOrComputedRef<string>) {
 	const communityNodesStore = useCommunityNodesStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const userStore = useUsersStore();
 	const loading = ref(false);

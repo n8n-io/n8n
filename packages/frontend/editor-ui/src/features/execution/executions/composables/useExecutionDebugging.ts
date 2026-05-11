@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -25,7 +26,10 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
  *   This is needed when called from the same component that provides WorkflowStateKey
  *   (e.g., WorkflowLayout), since Vue's provide/inject works parent-to-child only.
  */
-export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => {
+export const useExecutionDebugging = (
+	workflowId: RefOrComputedRef<string>,
+	providedWorkflowState?: WorkflowState,
+) => {
 	const telemetry = useTelemetry();
 
 	const router = useRouter();
@@ -34,7 +38,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();

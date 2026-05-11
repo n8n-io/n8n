@@ -77,7 +77,7 @@ const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = useNDVStore();
@@ -242,7 +242,7 @@ const emptySubtitle = computed(() =>
 		: locale.baseText('nodeView.focusPanel.noParameters.subtitle'),
 );
 
-const { resolvedExpression } = useResolvedExpression({
+const { resolvedExpression } = useResolvedExpression(workflowId, {
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	stringifyObject:

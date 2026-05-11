@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from 'vue';
+import { storeToRefs } from 'pinia';
 import { N8nPromptInput, N8nIconButton, N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeMention } from '../../composables/useNodeMention';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
 import { useFocusedNodesChipUI } from '../../composables/useFocusedNodesChipUI';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeMentionDropdown from './NodeMentionDropdown.vue';
 import FocusedNodeChip from './FocusedNodeChip.vue';
@@ -42,6 +44,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const focusedNodesStore = useFocusedNodesStore();
+const { workflowId } = storeToRefs(useWorkflowsStore());
 const isFeatureEnabled = computed(() => focusedNodesStore.isFeatureEnabled);
 
 const {
@@ -58,7 +61,7 @@ const {
 	getNodeType,
 	handleChipClick,
 	handleRemove,
-} = useFocusedNodesChipUI();
+} = useFocusedNodesChipUI(workflowId);
 
 const inputRef = ref<InstanceType<typeof N8nPromptInput> | null>(null);
 const textValue = ref(props.modelValue);
@@ -86,7 +89,7 @@ const {
 	selectNode,
 	closeDropdown,
 	openDropdown,
-} = useNodeMention();
+} = useNodeMention(workflowId);
 
 const confirmedNodeIds = computed(() => focusedNodesStore.confirmedNodeIds);
 const hasConfirmedNodes = computed(() => confirmedNodes.value.length > 0);

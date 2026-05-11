@@ -15,6 +15,7 @@ import {
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const {
 	activeViewStack,
@@ -34,7 +35,8 @@ const quickConnect = computed(() => {
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const nodeCreatorStore = useNodeCreatorStore();
-const { installNode, loading } = useInstallNode();
+const workflowId = useWorkflowId();
+const { installNode, loading } = useInstallNode(workflowId);
 
 const isAdminOrOwner = computed(() => useUsersStore().isAdminOrOwner);
 

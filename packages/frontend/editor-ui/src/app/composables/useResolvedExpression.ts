@@ -24,24 +24,28 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
+import type { RefOrComputedRef } from '@/app/types/utils';
 
-export function useResolvedExpression({
-	expression,
-	additionalData,
-	isForCredential,
-	stringifyObject,
-	contextNodeName,
-}: {
-	expression: MaybeRefOrGetter<unknown>;
-	additionalData?: MaybeRefOrGetter<IDataObject>;
-	isForCredential?: MaybeRefOrGetter<boolean>;
-	stringifyObject?: MaybeRefOrGetter<boolean>;
-	contextNodeName?: MaybeRefOrGetter<string>;
-}) {
+export function useResolvedExpression(
+	workflowId: RefOrComputedRef<string>,
+	{
+		expression,
+		additionalData,
+		isForCredential,
+		stringifyObject,
+		contextNodeName,
+	}: {
+		expression: MaybeRefOrGetter<unknown>;
+		additionalData?: MaybeRefOrGetter<IDataObject>;
+		isForCredential?: MaybeRefOrGetter<boolean>;
+		stringifyObject?: MaybeRefOrGetter<boolean>;
+		contextNodeName?: MaybeRefOrGetter<string>;
+	},
+) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const { resolveExpression } = useWorkflowHelpers();

@@ -37,6 +37,7 @@ import {
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/app/plugins/telemetry';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -56,10 +57,9 @@ import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
-export const useActions = () => {
-	const workflowsStore = useWorkflowsStore();
+export const useActions = (workflowId: RefOrComputedRef<string>) => {
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();

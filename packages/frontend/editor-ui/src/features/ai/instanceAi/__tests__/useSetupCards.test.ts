@@ -37,6 +37,7 @@ function mockNodeType(properties: INodeTypeDescription['properties']) {
 }
 
 describe('useSetupCards', () => {
+	const workflowId = ref('test-workflow');
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 
 	beforeEach(() => {
@@ -71,6 +72,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				workflowId,
 				setupRequests,
 				() => null,
 				() => false,
@@ -94,6 +96,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				workflowId,
 				setupRequests,
 				() => null,
 				() => false,
@@ -129,6 +132,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				workflowId,
 				setupRequests,
 				() => null,
 				() => false,
@@ -156,6 +160,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				workflowId,
 				setupRequests,
 				() => null,
 				() => false,
@@ -180,6 +185,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				workflowId,
 				setupRequests,
 				() => null,
 				() => false,

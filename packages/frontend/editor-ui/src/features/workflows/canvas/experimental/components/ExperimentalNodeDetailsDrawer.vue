@@ -9,6 +9,7 @@ import { type INodeUi } from '@/Interface';
 import { computed, provide, ref, watch } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 import { N8nButton, N8nKeyboardShortcut, N8nText } from '@n8n/design-system';
 const { node, nodeIds, isReadOnly } = defineProps<{
@@ -23,7 +24,11 @@ const emit = defineEmits<{
 	contextMenuAction: [ContextMenuAction, nodeIds: string[]];
 }>();
 
-const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
+const workflowId = useWorkflowId();
+const expressionResolveCtx = useExpressionResolveCtx(
+	workflowId,
+	computed(() => node),
+);
 const contextMenuItems = useContextMenuItems(computed(() => nodeIds));
 const ndvStore = useNDVStore();
 

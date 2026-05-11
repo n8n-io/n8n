@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -66,6 +67,7 @@ const ndvStore = useNDVStore();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
+const workflowId = useWorkflowId();
 
 const isExpression = computed(() => {
 	return isValueExpression(props.parameter, props.modelValue);
@@ -118,7 +120,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 	};
 });
 
-const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
+const { resolvedExpression, resolvedExpressionString } = useResolvedExpression(workflowId, {
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	isForCredential: props.isForCredential,

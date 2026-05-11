@@ -16,6 +16,7 @@ import type {
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
 import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
@@ -58,7 +59,8 @@ const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
 
-const { getAddedNodesAndConnections } = useActions();
+const workflowId = useWorkflowId();
+const { getAddedNodesAndConnections } = useActions(workflowId);
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
 
 const sidePanelTooltip = computed(() => {

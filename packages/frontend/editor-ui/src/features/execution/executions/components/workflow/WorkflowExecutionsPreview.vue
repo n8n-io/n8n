@@ -43,11 +43,11 @@ const { showError } = useToast();
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
-const executionDebugging = useExecutionDebugging();
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
 const workflowId = useInjectWorkflowId();
+const executionDebugging = useExecutionDebugging(workflowId);
 const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,

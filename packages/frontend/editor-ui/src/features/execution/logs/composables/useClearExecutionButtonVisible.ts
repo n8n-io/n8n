@@ -3,17 +3,18 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
-export function useClearExecutionButtonVisible() {
+export function useClearExecutionButtonVisible(workflowId: RefOrComputedRef<string>) {
 	const route = useRoute();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);

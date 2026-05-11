@@ -113,6 +113,7 @@ const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 	}) as INodeUi;
 
 describe('useWorkflowSetupState', () => {
+	const workflowId = ref('test-workflow');
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
@@ -155,7 +156,7 @@ describe('useWorkflowSetupState', () => {
 		it('should return empty array when no nodes', () => {
 			mockWorkflowDocumentStore.allNodes = [];
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			expect(setupCards.value).toEqual([]);
 		});
@@ -169,7 +170,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			expect(setupCards.value).toHaveLength(1);
 			expect(setupCards.value[0].state!.isTrigger).toBe(true);
@@ -188,7 +189,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			expect(setupCards.value).toHaveLength(1);
 			expect(setupCards.value[0].state!.credentialType).toBe('openAiApi');
@@ -209,7 +210,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			expect(setupCards.value).toHaveLength(1);
 			const nodeNames =
@@ -236,7 +237,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			const credCards = setupCards.value.filter((c) => !!c.state?.credentialType);
 			expect(credCards).toHaveLength(2);
@@ -255,7 +256,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			const triggerOnlyCards = setupCards.value.filter(
 				(c) => c.state?.isTrigger && !c.state?.credentialType,
@@ -290,7 +291,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			const credCards = setupCards.value.filter((c) => !!c.state?.credentialType);
 			const triggerOnlyCards = setupCards.value.filter(
@@ -317,7 +318,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			expect(setupCards.value).toHaveLength(1);
 			expect(setupCards.value[0].state!.isTrigger).toBe(true);
@@ -355,7 +356,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			// Trigger card first (Webhook at index 0 in execution order),
 
@@ -371,7 +372,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			expect(setupCards.value).toEqual([]);
 		});
@@ -381,7 +382,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 
-			const { setupCards } = useWorkflowSetupState();
+			const { setupCards } = useWorkflowSetupState(workflowId);
 
 			expect(setupCards.value).toEqual([]);
 		});
@@ -402,7 +403,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			expect(credentialTypeStates.value).toHaveLength(1);
 			expect(credentialTypeStates.value[0].credentialType).toBe('openAiApi');
@@ -422,7 +423,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			const nodeNames = credentialTypeStates.value[0].nodes.map((n) => n.name);
 			expect(nodeNames).toEqual(['Node1', 'Node2']);
@@ -442,7 +443,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			expect(credentialTypeStates.value[0].isComplete).toBe(true);
 		});
@@ -462,7 +463,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			expect(credentialTypeStates.value[0].isComplete).toBe(false);
 			const triggerNodes = credentialTypeStates.value[0].nodes.filter((n) =>
@@ -486,7 +487,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			expect(credentialTypeStates.value[0].isComplete).toBe(true);
 			const triggerNodes = credentialTypeStates.value[0].nodes.filter((n) =>
@@ -501,7 +502,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			expect(credentialTypeStates.value[0].isComplete).toBe(false);
 		});
@@ -525,7 +526,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			expect(credentialTypeStates.value[0].isComplete).toBe(false);
 		});
@@ -549,7 +550,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			expect(credentialTypeStates.value[0].credentialType).toBe('apiA');
 			expect(credentialTypeStates.value[1].credentialType).toBe('apiB');
@@ -567,7 +568,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
 
-			const { triggerStates } = useWorkflowSetupState();
+			const { triggerStates } = useWorkflowSetupState(workflowId);
 
 			expect(triggerStates.value).toHaveLength(1);
 			expect(triggerStates.value[0].isComplete).toBe(true);
@@ -587,7 +588,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
-			const { triggerStates } = useWorkflowSetupState();
+			const { triggerStates } = useWorkflowSetupState(workflowId);
 
 			expect(triggerStates.value).toHaveLength(0);
 		});
@@ -602,7 +603,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
-			const { triggerStates } = useWorkflowSetupState();
+			const { triggerStates } = useWorkflowSetupState(workflowId);
 
 			expect(triggerStates.value[0].isComplete).toBe(false);
 		});
@@ -617,7 +618,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({});
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
-			const { triggerStates } = useWorkflowSetupState();
+			const { triggerStates } = useWorkflowSetupState(workflowId);
 
 			expect(triggerStates.value).toHaveLength(0);
 		});
@@ -632,7 +633,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ polling: true });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
-			const { triggerStates } = useWorkflowSetupState();
+			const { triggerStates } = useWorkflowSetupState(workflowId);
 
 			expect(triggerStates.value).toHaveLength(1);
 		});
@@ -649,7 +650,7 @@ describe('useWorkflowSetupState', () => {
 				.mockReturnValue({ triggerPanel: { header: 'Listening' } });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
-			const { triggerStates } = useWorkflowSetupState();
+			const { triggerStates } = useWorkflowSetupState(workflowId);
 
 			expect(triggerStates.value).toHaveLength(1);
 		});
@@ -674,7 +675,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'My OpenAI Key',
 			});
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'cred-1');
 
 			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
@@ -713,7 +714,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'My OpenAI Key',
 			});
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'cred-1');
 
 			expect(mockUpdateNodesCredentialsIssues).toHaveBeenCalledTimes(1);
@@ -732,7 +733,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'My OpenAI Key',
 			});
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'cred-1');
 
 			expect(mockUpdateNodeCredentialIssuesByName).not.toHaveBeenCalled();
@@ -756,7 +757,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'My OpenAI Key',
 			});
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'cred-1');
 
 			// useToast is no longer used in the composable, so no toast should be shown
@@ -769,7 +770,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'non-existent');
 
 			expect(mockUpdateNodeProperties).not.toHaveBeenCalled();
@@ -796,7 +797,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'New Cred',
 			});
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('newApi', 'cred-2');
 
 			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
@@ -840,7 +841,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'My Auth',
 			});
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
 
 			// Both nodes should get the credential because they share the same URL
@@ -886,7 +887,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'My Auth',
 			});
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
 
 			// Only the source node should get the credential
@@ -921,7 +922,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { credentialTypeStates } = useWorkflowSetupState();
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId);
 
 			// HTTP Request gets its own card, regular node gets its own card
 			expect(credentialTypeStates.value).toHaveLength(2);
@@ -958,7 +959,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { unsetCredential } = useWorkflowSetupState();
+			const { unsetCredential } = useWorkflowSetupState(workflowId);
 			unsetCredential('openAiApi');
 
 			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
@@ -991,7 +992,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { unsetCredential } = useWorkflowSetupState();
+			const { unsetCredential } = useWorkflowSetupState(workflowId);
 			unsetCredential('slackApi');
 
 			expect(mockUpdateNodesCredentialsIssues).toHaveBeenCalledTimes(1);
@@ -1002,7 +1003,7 @@ describe('useWorkflowSetupState', () => {
 		it('should return false when empty', () => {
 			mockWorkflowDocumentStore.allNodes = [];
 
-			const { isAllComplete } = useWorkflowSetupState();
+			const { isAllComplete } = useWorkflowSetupState(workflowId);
 
 			expect(isAllComplete.value).toBe(false);
 		});
@@ -1021,7 +1022,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { isAllComplete } = useWorkflowSetupState();
+			const { isAllComplete } = useWorkflowSetupState(workflowId);
 
 			expect(isAllComplete.value).toBe(true);
 		});
@@ -1053,7 +1054,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { isAllComplete } = useWorkflowSetupState();
+			const { isAllComplete } = useWorkflowSetupState(workflowId);
 
 			expect(isAllComplete.value).toBe(false);
 		});
@@ -1067,7 +1068,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
-			const { isAllComplete } = useWorkflowSetupState();
+			const { isAllComplete } = useWorkflowSetupState(workflowId);
 
 			expect(isAllComplete.value).toBe(false);
 		});
@@ -1077,7 +1078,7 @@ describe('useWorkflowSetupState', () => {
 		it('should return 0 when no credential cards exist', () => {
 			mockWorkflowDocumentStore.allNodes = [];
 
-			const { totalCredentialsMissing } = useWorkflowSetupState();
+			const { totalCredentialsMissing } = useWorkflowSetupState(workflowId);
 
 			expect(totalCredentialsMissing.value).toBe(0);
 		});
@@ -1088,7 +1089,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'credA' }, { name: 'credB' }]);
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { totalCredentialsMissing } = useWorkflowSetupState();
+			const { totalCredentialsMissing } = useWorkflowSetupState(workflowId);
 
 			expect(totalCredentialsMissing.value).toBe(2);
 		});
@@ -1107,7 +1108,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { totalCredentialsMissing } = useWorkflowSetupState();
+			const { totalCredentialsMissing } = useWorkflowSetupState(workflowId);
 
 			expect(totalCredentialsMissing.value).toBe(0);
 		});
@@ -1131,7 +1132,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			const { totalCredentialsMissing } = useWorkflowSetupState();
+			const { totalCredentialsMissing } = useWorkflowSetupState(workflowId);
 
 			expect(totalCredentialsMissing.value).toBe(1);
 		});
@@ -1150,7 +1151,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { totalCredentialsMissing } = useWorkflowSetupState();
+			const { totalCredentialsMissing } = useWorkflowSetupState(workflowId);
 
 			// One credential type card, not two
 			expect(totalCredentialsMissing.value).toBe(1);
@@ -1161,7 +1162,7 @@ describe('useWorkflowSetupState', () => {
 		it('should return 0 when no cards exist', () => {
 			mockWorkflowDocumentStore.allNodes = [];
 
-			const { totalCardsRequiringSetup } = useWorkflowSetupState();
+			const { totalCardsRequiringSetup } = useWorkflowSetupState(workflowId);
 
 			expect(totalCardsRequiringSetup.value).toBe(0);
 		});
@@ -1195,7 +1196,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { totalCardsRequiringSetup } = useWorkflowSetupState();
+			const { totalCardsRequiringSetup } = useWorkflowSetupState(workflowId);
 
 			// 1 standalone trigger card (webhook, no credentials) + 1 credential card
 			expect(totalCardsRequiringSetup.value).toBe(2);
@@ -1214,7 +1215,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 
-			const { totalCardsRequiringSetup } = useWorkflowSetupState();
+			const { totalCardsRequiringSetup } = useWorkflowSetupState(workflowId);
 
 			// 1 credential card with embedded trigger (no separate trigger card)
 			expect(totalCardsRequiringSetup.value).toBe(1);
@@ -1243,7 +1244,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			const { totalCardsRequiringSetup } = useWorkflowSetupState();
+			const { totalCardsRequiringSetup } = useWorkflowSetupState(workflowId);
 
 			// 1 credential card with first trigger embedded; second trigger gets no card
 			expect(totalCardsRequiringSetup.value).toBe(1);
@@ -1263,7 +1264,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(customNode);
 
 			const nodesRef = ref<INodeUi[]>([customNode]);
-			const { setupCards } = useWorkflowSetupState(nodesRef);
+			const { setupCards } = useWorkflowSetupState(workflowId, nodesRef);
 
 			const credCards = setupCards.value.filter((c) => !!c.state?.credentialType);
 			expect(credCards).toHaveLength(1);
@@ -1287,7 +1288,7 @@ describe('useWorkflowSetupState', () => {
 			});
 
 			const nodesRef = ref<INodeUi[]>([node1]);
-			const { credentialTypeStates } = useWorkflowSetupState(nodesRef);
+			const { credentialTypeStates } = useWorkflowSetupState(workflowId, nodesRef);
 
 			expect(credentialTypeStates.value).toHaveLength(1);
 			expect(credentialTypeStates.value[0].nodes.map((n) => n.name)).toEqual(['Node1']);
@@ -1327,7 +1328,7 @@ describe('useWorkflowSetupState', () => {
 				return null;
 			});
 
-			useWorkflowSetupState();
+			useWorkflowSetupState(workflowId);
 
 			expect(mockOnCredentialDeleted).toBeDefined();
 			mockOnCredentialDeleted!('cred-1');
@@ -1356,7 +1357,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			useWorkflowSetupState();
+			useWorkflowSetupState(workflowId);
 
 			mockOnCredentialDeleted!('cred-other');
 
@@ -1381,7 +1382,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			useWorkflowSetupState();
+			useWorkflowSetupState(workflowId);
 
 			mockOnCredentialDeleted!('cred-1');
 
@@ -1416,7 +1417,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			credentialsStore.testCredential = vi.fn().mockResolvedValue({ status: 'OK' });
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'cred-1');
 
 			await vi.waitFor(() => {
@@ -1445,7 +1446,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'cred-1');
 
 			await nextTick();
@@ -1469,7 +1470,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(false);
 			credentialsStore.isCredentialTestPending = vi.fn().mockReturnValue(true);
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('openAiApi', 'cred-1');
 
 			await nextTick();
@@ -1496,7 +1497,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			credentialsStore.testCredential = vi.fn();
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('googleApi', 'cred-1');
 
 			await vi.waitFor(() => {
@@ -1523,7 +1524,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialData = vi.fn();
 			credentialsStore.testCredential = vi.fn();
 
-			const { setCredential } = useWorkflowSetupState();
+			const { setCredential } = useWorkflowSetupState(workflowId);
 			setCredential('httpHeaderAuth', 'cred-1');
 
 			await nextTick();
@@ -1557,7 +1558,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
-			useWorkflowSetupState();
+			useWorkflowSetupState(workflowId);
 
 			await vi.waitFor(() => {
 				expect(credentialsStore.testCredential).toHaveBeenCalledWith(
@@ -1586,7 +1587,7 @@ describe('useWorkflowSetupState', () => {
 				properties: [{ name: 'url', required: true }],
 			});
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			expect(state.nodeStates.value).toHaveLength(1);
 			expect(state.nodeStates.value[0]).toMatchObject({
@@ -1617,7 +1618,7 @@ describe('useWorkflowSetupState', () => {
 				properties: [{ name: 'url', required: true }],
 			});
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			expect(state.nodeStates.value).toHaveLength(2);
 			expect(state.nodeStates.value[0].showCredentialPicker).toBe(true);
@@ -1649,7 +1650,7 @@ describe('useWorkflowSetupState', () => {
 				properties: [{ name: 'url', required: true }],
 			});
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			expect(state.nodeStates.value).toHaveLength(1);
 			expect(state.nodeStates.value[0].allNodesUsingCredential).toHaveLength(2);
@@ -1672,7 +1673,7 @@ describe('useWorkflowSetupState', () => {
 				properties: [{ name: 'url', required: true }],
 			});
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			// Initial state - has parameter issues
 			expect(state.nodeStates.value).toHaveLength(1);
@@ -1703,7 +1704,7 @@ describe('useWorkflowSetupState', () => {
 				properties: [{ name: 'url', required: true }],
 			});
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			// Should only be in nodeStates, not credentialTypeStates
 			expect(state.nodeStates.value).toHaveLength(1);
@@ -1734,7 +1735,7 @@ describe('useWorkflowSetupState', () => {
 				properties: [{ name: 'url', required: true }],
 			});
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			// Only node1 has parameter issues, so only it should get a card
 			expect(state.nodeStates.value).toHaveLength(1);
@@ -1763,7 +1764,7 @@ describe('useWorkflowSetupState', () => {
 				.fn()
 				.mockReturnValue({ id: 'cred-1', name: 'My Credential', type: 'httpHeaderAuth' });
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			// Set credential for specific node
 			state.setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request 1');
@@ -1797,7 +1798,7 @@ describe('useWorkflowSetupState', () => {
 				properties: [{ name: 'url', required: true }],
 			});
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			// Unset credential for specific node
 			state.unsetCredential('httpHeaderAuth', 'HTTP Request 1');
@@ -1827,7 +1828,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			// Card exists but is incomplete due to parameter issues
 			expect(state.nodeStates.value).toHaveLength(1);
@@ -1851,7 +1852,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(false);
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			// Card exists but is incomplete due to credential not tested
 			expect(state.nodeStates.value).toHaveLength(1);
@@ -1885,7 +1886,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
 
-			const state = useWorkflowSetupState();
+			const state = useWorkflowSetupState(workflowId);
 
 			expect(state.setupCards.value).toHaveLength(2);
 			const nodeCredCard = state.setupCards.value.find((c) => c.state?.node === node1);

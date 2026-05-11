@@ -9,6 +9,7 @@ import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBui
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { isNodeGroupCard } from '@/features/setupPanel/setupPanel.utils';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { AiBuilderScrollToBottomKey } from '@/app/constants/injectionKeys';
 
 const emit = defineEmits<{
@@ -20,6 +21,7 @@ const i18n = useI18n();
 const builderStore = useBuilderStore();
 const setupPanelStore = useSetupPanelStore();
 const scrollToBottom = inject(AiBuilderScrollToBottomKey, () => {});
+const workflowId = useWorkflowId();
 
 const {
 	currentStepIndex,
@@ -34,7 +36,7 @@ const {
 	goToPrev,
 	continueCurrent,
 	onStepExecuted,
-} = useBuilderSetupCards();
+} = useBuilderSetupCards(workflowId);
 
 const wizardDismissed = computed(
 	() => isAllComplete.value && builderStore.wizardHasExecutedWorkflow,

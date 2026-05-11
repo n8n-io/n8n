@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
@@ -48,6 +49,7 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
+const workflowId = useWorkflowId();
 
 const assignmentTypeToNodeProperty = (
 	type: string,
@@ -102,7 +104,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 	return { $vars: environmentsStore.variablesAsObject };
 });
 
-const { resolvedExpressionString, isExpression } = useResolvedExpression({
+const { resolvedExpressionString, isExpression } = useResolvedExpression(workflowId, {
 	expression: value,
 	additionalData: resolvedAdditionalExpressionData,
 });

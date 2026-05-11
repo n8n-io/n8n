@@ -14,6 +14,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -26,10 +27,13 @@ const ITEM_ID = {
 	ADD_STICKY: 'add-sticky',
 } as const;
 
-export function useNodeCommands(options: {
-	lastQuery: Ref<string>;
-	activeNodeId: Ref<string | null>;
-}): CommandGroup {
+export function useNodeCommands(
+	workflowId: RefOrComputedRef<string>,
+	options: {
+		lastQuery: Ref<string>;
+		activeNodeId: Ref<string | null>;
+	},
+): CommandGroup {
 	const i18n = useI18n();
 	const { lastQuery } = options;
 
@@ -42,7 +46,7 @@ export function useNodeCommands(options: {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const isReadOnly = computed(
@@ -56,7 +60,7 @@ export function useNodeCommands(options: {
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
-		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
+		!workflowsStore.isWorkflowSaved[workflowId.value];
 
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;

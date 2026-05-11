@@ -5,6 +5,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -13,6 +14,7 @@ import { N8nButton, N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowStore = useWorkflowsStore();
+const { workflowId } = storeToRefs(workflowStore);
 const uiStore = useUIStore();
 
 export type SetupCredentialsModalSource = 'template' | 'builder';
@@ -41,7 +43,7 @@ const {
 	setInitialCredentialSelection,
 	setCredential,
 	unsetCredential,
-} = useSetupWorkflowCredentialsModalState();
+} = useSetupWorkflowCredentialsModalState(workflowId);
 
 onMounted(() => {
 	setInitialCredentialSelection();

@@ -12,6 +12,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
+import type { RefOrComputedRef } from '@/app/types/utils';
 import type {
 	BoundingBox,
 	CanvasConnection,
@@ -68,19 +69,22 @@ import { throttledWatch } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import type { WorkflowObjectAccessors } from '@/app/types';
 
-export function useCanvasMapping({
-	nodes,
-	connections,
-	workflowObject,
-}: {
-	nodes: Ref<INodeUi[]>;
-	connections: Ref<IConnections>;
-	workflowObject: Ref<WorkflowObjectAccessors>;
-}) {
+export function useCanvasMapping(
+	workflowId: RefOrComputedRef<string>,
+	{
+		nodes,
+		connections,
+		workflowObject,
+	}: {
+		nodes: Ref<INodeUi[]>;
+		connections: Ref<IConnections>;
+		workflowObject: Ref<WorkflowObjectAccessors>;
+	},
+) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();

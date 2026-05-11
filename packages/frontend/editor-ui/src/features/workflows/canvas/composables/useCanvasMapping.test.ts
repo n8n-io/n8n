@@ -127,6 +127,8 @@ function setPinData(pinData: IPinData) {
 }
 
 describe('useCanvasMapping', () => {
+	const workflowId = ref('test-workflow');
+
 	it('should initialize with default props', () => {
 		const nodes: INodeUi[] = [];
 		const connections = {};
@@ -135,7 +137,7 @@ describe('useCanvasMapping', () => {
 			connections,
 		});
 
-		const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+		const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(workflowId, {
 			nodes: ref(nodes),
 			connections: ref(connections),
 			workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -160,7 +162,7 @@ describe('useCanvasMapping', () => {
 			});
 			workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(false);
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -254,7 +256,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -278,7 +280,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -307,7 +309,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -359,7 +361,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -401,7 +403,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -432,7 +434,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -458,7 +460,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -488,7 +490,7 @@ describe('useCanvasMapping', () => {
 					},
 				]);
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -549,7 +551,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -621,7 +623,7 @@ describe('useCanvasMapping', () => {
 					},
 				]);
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -681,7 +683,7 @@ describe('useCanvasMapping', () => {
 					},
 				]);
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -731,7 +733,7 @@ describe('useCanvasMapping', () => {
 					},
 				]);
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -811,7 +813,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -893,7 +895,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -924,7 +926,7 @@ describe('useCanvasMapping', () => {
 				const nodes = ref([]);
 				const connections = {};
 				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
+				const { additionalNodePropertiesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -943,7 +945,7 @@ describe('useCanvasMapping', () => {
 				];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
+				const { additionalNodePropertiesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -970,7 +972,7 @@ describe('useCanvasMapping', () => {
 				];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
+				const { additionalNodePropertiesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1001,7 +1003,7 @@ describe('useCanvasMapping', () => {
 				];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
+				const { additionalNodePropertiesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1038,7 +1040,7 @@ describe('useCanvasMapping', () => {
 				];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
+				const { additionalNodePropertiesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1066,7 +1068,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowRunData = {};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1103,7 +1105,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1139,7 +1141,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1184,7 +1186,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1211,7 +1213,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowRunData = {};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1251,7 +1253,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1292,7 +1294,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1320,7 +1322,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1368,7 +1370,7 @@ describe('useCanvasMapping', () => {
 					},
 				]);
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1407,7 +1409,7 @@ describe('useCanvasMapping', () => {
 					},
 				]);
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1446,7 +1448,7 @@ describe('useCanvasMapping', () => {
 					},
 				]);
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1476,7 +1478,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1511,7 +1513,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1539,7 +1541,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1557,7 +1559,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowRunData = {};
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1578,7 +1580,7 @@ describe('useCanvasMapping', () => {
 				workflowsStore.getWorkflowRunData = {};
 				setPinData({});
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1607,7 +1609,7 @@ describe('useCanvasMapping', () => {
 				};
 				setPinData({});
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1636,7 +1638,7 @@ describe('useCanvasMapping', () => {
 				};
 				setPinData({});
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1660,7 +1662,7 @@ describe('useCanvasMapping', () => {
 				workflowsStore.getWorkflowRunData = {};
 				setPinData({ 'Test Node': [{ json: {} }] });
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1684,7 +1686,7 @@ describe('useCanvasMapping', () => {
 				workflowsStore.getWorkflowRunData = {};
 				setPinData({});
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1722,7 +1724,7 @@ describe('useCanvasMapping', () => {
 				};
 				setPinData({});
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1767,7 +1769,7 @@ describe('useCanvasMapping', () => {
 				};
 				setPinData({ 'Node 1': [{ json: {} }] });
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1791,7 +1793,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1825,7 +1827,7 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodeHasIssuesById } = useCanvasMapping({
+				const { nodeHasIssuesById } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1857,7 +1859,7 @@ describe('useCanvasMapping', () => {
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
 			workflowsStore.isWorkflowRunning = true;
 
-			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
+			const { nodeExecutionWaitingForNextById } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1887,7 +1889,7 @@ describe('useCanvasMapping', () => {
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
 			workflowsStore.isWorkflowRunning = false;
 
-			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
+			const { nodeExecutionWaitingForNextById } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1917,7 +1919,7 @@ describe('useCanvasMapping', () => {
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
 			workflowsStore.isWorkflowRunning = false;
 
-			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
+			const { nodeExecutionWaitingForNextById } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1947,7 +1949,7 @@ describe('useCanvasMapping', () => {
 			workflowsStore.getWorkflowRunData = {};
 			setPinData({});
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodesList),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -1976,7 +1978,7 @@ describe('useCanvasMapping', () => {
 				workflowsStore.getWorkflowRunData = {};
 				setPinData({});
 
-				const { nodes: mappedNodes } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 					nodes: ref(nodesList),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2005,7 +2007,7 @@ describe('useCanvasMapping', () => {
 			workflowsStore.getWorkflowRunData = {};
 			setPinData({ 'Manual Trigger': [{ json: {} }] }); // Node has pinned data
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodesList),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2033,7 +2035,7 @@ describe('useCanvasMapping', () => {
 			workflowsStore.getWorkflowRunData = {};
 			setPinData({});
 
-			const { nodes: mappedNodes } = useCanvasMapping({
+			const { nodes: mappedNodes } = useCanvasMapping(workflowId, {
 				nodes: ref(nodesList),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2060,7 +2062,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			const { connections: mappedConnections } = useCanvasMapping({
+			const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2130,7 +2132,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			const { connections: mappedConnections } = useCanvasMapping({
+			const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2259,7 +2261,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2312,7 +2314,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2365,7 +2367,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2414,7 +2416,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2440,7 +2442,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2469,7 +2471,7 @@ describe('useCanvasMapping', () => {
 					[manualTriggerNode.name]: [{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }],
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2498,7 +2500,7 @@ describe('useCanvasMapping', () => {
 					[manualTriggerNode.name]: [{ json: { id: 1 } }],
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2527,7 +2529,7 @@ describe('useCanvasMapping', () => {
 					[manualTriggerNode.name]: [],
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2570,7 +2572,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2613,7 +2615,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2656,7 +2658,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2699,7 +2701,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2751,7 +2753,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2809,7 +2811,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2855,7 +2857,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2884,7 +2886,7 @@ describe('useCanvasMapping', () => {
 				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2931,7 +2933,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -2966,7 +2968,7 @@ describe('useCanvasMapping', () => {
 					});
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3011,7 +3013,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3039,7 +3041,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowRunData = {};
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3082,7 +3084,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3110,7 +3112,7 @@ describe('useCanvasMapping', () => {
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 				setPinData({});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3165,7 +3167,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3223,7 +3225,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3247,7 +3249,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3279,7 +3281,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3327,7 +3329,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3385,7 +3387,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3430,7 +3432,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3491,7 +3493,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3580,7 +3582,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
@@ -3665,7 +3667,7 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections } = useCanvasMapping({
+				const { connections: mappedConnections } = useCanvasMapping(workflowId, {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,

@@ -20,6 +20,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useNodeGroupSections } from '@/features/setupPanel/composables/useNodeGroupSections';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = defineProps<{
 	nodeGroup: NodeGroupItem;
@@ -41,6 +42,7 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
+const workflowId = useWorkflowId();
 
 const {
 	parentNodeType,
@@ -71,7 +73,7 @@ const {
 	tooltipItems: executeTooltipItems,
 	execute,
 	isInListeningState,
-} = useTriggerExecution(executableNode);
+} = useTriggerExecution(workflowId, executableNode);
 
 const isActive = computed(() => isExecuting.value || isInListeningState.value);
 

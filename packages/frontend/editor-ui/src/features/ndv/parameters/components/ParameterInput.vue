@@ -71,6 +71,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -169,7 +170,8 @@ const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const workflowHelpers = useWorkflowHelpers();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const workflowId = useWorkflowId();
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();

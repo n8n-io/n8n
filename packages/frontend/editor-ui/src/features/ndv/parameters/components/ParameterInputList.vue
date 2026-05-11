@@ -28,6 +28,7 @@ import {
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
@@ -106,7 +107,8 @@ const ndvStore = useNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const message = useMessage();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const workflowId = useWorkflowId();
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();

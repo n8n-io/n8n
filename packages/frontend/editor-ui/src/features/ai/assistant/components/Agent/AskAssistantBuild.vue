@@ -100,7 +100,7 @@ const toast = useToast();
 const { runWorkflow } = useRunWorkflow({ router });
 const nodeTypesStore = useNodeTypesStore();
 const logsStore = useLogsStore();
-const { updateWorkflow } = useWorkflowUpdate();
+const { updateWorkflow } = useWorkflowUpdate(workflowId);
 const { handleError } = useErrorHandler({
 	source: 'ai-builder',
 	titleKey: 'aiAssistant.builder.error.title',

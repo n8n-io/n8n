@@ -24,7 +24,6 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import {
 	getMainAuthField,
@@ -36,6 +35,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { RefOrComputedRef } from '@/app/types/utils';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
 	parameter.displayOptions?.show?.public?.includes(value) ?? false;
@@ -57,10 +57,9 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 	};
 };
 
-export function useNodeSettingsParameters() {
-	const workflowsStore = useWorkflowsStore();
+export function useNodeSettingsParameters(workflowId: RefOrComputedRef<string>) {
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();

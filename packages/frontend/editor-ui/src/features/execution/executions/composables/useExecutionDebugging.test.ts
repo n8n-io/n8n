@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -53,6 +54,8 @@ let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
 
 describe('useExecutionDebugging()', () => {
+	const workflowId = ref('test-workflow');
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
@@ -68,7 +71,7 @@ describe('useExecutionDebugging()', () => {
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
-		executionDebugging = useExecutionDebugging();
+		executionDebugging = useExecutionDebugging(workflowId);
 	});
 
 	it('should not throw when runData node is an empty array', async () => {
