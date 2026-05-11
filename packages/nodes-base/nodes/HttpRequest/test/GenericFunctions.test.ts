@@ -140,4 +140,48 @@ describe('Prepare Request Body', () => {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		expect(body).toEqual({ Key1: 'value1', Key2: 'value2' });
 	});
+
+	it('should skip null and undefined entries in multipart-form-data mode', async () => {
+		const parameters = [
+			{ name: 'field1', value: 'value1' },
+			null,
+			undefined,
+			{ name: 'field2', value: 'value2' },
+		];
+		const mockReducer = jest.fn();
+		await expect(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+			prepareRequestBody(parameters as any, 'multipart-form-data', 4.2, mockReducer as any),
+		).resolves.toBeDefined();
+		expect(mockReducer).not.toHaveBeenCalledWith(expect.anything(), null);
+		expect(mockReducer).not.toHaveBeenCalledWith(expect.anything(), undefined);
+	});
+
+	it('should skip null and undefined entries when using reduceAsync for form body', async () => {
+		const parameters = [
+			{ name: 'Key1', value: 'value1' },
+			null,
+			undefined,
+			{ name: 'Key2', value: 'value2' },
+		];
+		const mockReducer = jest.fn(
+			async (acc: Record<string, string>, curr: { name: string; value: string }) => {
+				acc[curr.name] = curr.value;
+				return acc;
+			},
+		);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+		await prepareRequestBody(parameters as any, 'form-urlencoded', 3, mockReducer as any);
+		expect(mockReducer).toHaveBeenCalledTimes(2);
+		expect(mockReducer).not.toHaveBeenCalledWith(expect.anything(), null);
+		expect(mockReducer).not.toHaveBeenCalledWith(expect.anything(), undefined);
+	});
+
+	it('should return empty object when all parameters are null or undefined', async () => {
+		const parameters = [null, undefined, null];
+		const mockReducer = jest.fn(async (acc: Record<string, string>) => acc);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+		const result = await prepareRequestBody(parameters as any, 'json', 4, mockReducer as any);
+		expect(result).toEqual({});
+	});
 });

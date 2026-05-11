@@ -483,6 +483,244 @@ describe('HttpRequestV3', () => {
 		});
 	});
 
+	describe('Binary Data Resource ID Validation', () => {
+		const setupBinaryBodyParams = (binaryDataId: unknown) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendBody':
+						return true;
+					case 'contentType':
+						return 'binaryData';
+					case 'specifyBody':
+						return '';
+					case 'bodyParameters.parameters':
+						return [];
+					case 'inputDataFieldName':
+						return 'data';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+				id: binaryDataId,
+				mimeType: 'image/png',
+				fileName: 'test.png',
+			});
+		};
+
+		it('should throw NodeOperationError for non-string resource ID in binaryData body', async () => {
+			setupBinaryBodyParams(12345);
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Invalid resource ID for binary data',
+			);
+		});
+
+		it('should throw NodeOperationError for object resource ID in binaryData body', async () => {
+			setupBinaryBodyParams({ nested: 'object' });
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Invalid resource ID for binary data',
+			);
+		});
+
+		it('should succeed with valid string resource ID in binaryData body', async () => {
+			setupBinaryBodyParams('valid-resource-id');
+			(executeFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(
+				Buffer.from('file-content'),
+			);
+			(executeFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue({
+				fileSize: 12,
+				mimeType: 'image/png',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(executeFunctions.helpers.getBinaryStream).toHaveBeenCalledWith('valid-resource-id');
+			expect(result).toBeDefined();
+		});
+
+		it('should throw NodeOperationError for non-string resource ID in formBinaryData parameter', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendBody':
+						return true;
+					case 'contentType':
+						return 'multipart-form-data';
+					case 'specifyBody':
+						return 'keypair';
+					case 'bodyParameters.parameters':
+						return [{ parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'data' }];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+				id: { invalid: 'object' },
+				mimeType: 'image/png',
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Invalid resource ID for binary data',
+			);
+		});
+
+		it('should succeed with valid string resource ID in formBinaryData parameter', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendBody':
+						return true;
+					case 'contentType':
+						return 'multipart-form-data';
+					case 'specifyBody':
+						return 'keypair';
+					case 'bodyParameters.parameters':
+						return [{ parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'data' }];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+				id: 'valid-stream-id',
+				mimeType: 'application/pdf',
+				fileName: 'document.pdf',
+			});
+			(executeFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(
+				Buffer.from('pdf-content'),
+			);
+			(executeFunctions.helpers.getBinaryMetadata as jest.Mock).mockResolvedValue({
+				fileSize: 11,
+				mimeType: 'application/pdf',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(executeFunctions.helpers.getBinaryStream).toHaveBeenCalledWith('valid-stream-id');
+			expect(result).toBeDefined();
+		});
+	});
+
+	describe('Header Parameter Filtering', () => {
+		it('should filter null, undefined, and nameless header entries', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendHeaders':
+						return true;
+					case 'specifyHeaders':
+						return 'keypair';
+					case 'headerParameters.parameters':
+						return [
+							{ name: 'X-Custom-Header', value: 'custom-value' },
+							null,
+							undefined,
+							{ name: '', value: 'empty-name-entry' },
+						];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result).toBeDefined();
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ 'X-Custom-Header': 'custom-value' }),
+				}),
+			);
+		});
+
+		it('should include all valid headers and exclude invalid ones', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendHeaders':
+						return true;
+					case 'specifyHeaders':
+						return 'keypair';
+					case 'headerParameters.parameters':
+						return [
+							{ name: 'X-First', value: 'first-value' },
+							null,
+							{ name: 'X-Second', value: 'second-value' },
+							{ name: '', value: 'skipped' },
+						];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			await node.execute.call(executeFunctions);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						'X-First': 'first-value',
+						'X-Second': 'second-value',
+					}),
+				}),
+			);
+		});
+	});
+
 	describe('Cross-Origin Redirects', () => {
 		it('should pass sendCredentialsOnCrossOriginRedirect = true to the request by default for node versions < 4.4', async () => {
 			(executeFunctions.getNode as jest.Mock).mockReturnValue({
