@@ -80,6 +80,8 @@ export type PubSubCommandMap = {
 	'display-workflow-activation-error': {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	};
 
 	'relay-execution-lifecycle-event': PushMessage & {
@@ -170,6 +172,38 @@ export type PubSubCommandMap = {
 	 */
 	'cancel-test-run': {
 		testRunId: string;
+	};
+
+	// #endregion
+
+	// #region Agents
+
+	/**
+	 * Reconcile a single agent chat integration across main instances.
+	 * Published by the main that handled the user's connect/disconnect request
+	 * after the change is persisted; every main applies the same connect or
+	 * disconnect locally so the in-memory `connections` map stays in sync.
+	 */
+	'agent-chat-integration-changed': {
+		agentId: string;
+		type: string;
+		credentialId: string;
+		action: 'connect' | 'disconnect';
+	};
+
+	/**
+	 * Drop the cached agent runtime in `AgentsService.runtimes` across mains.
+	 * Published by the main that handled an agent mutation (publish, unpublish,
+	 * config update, tool/skill change, delete) after the change is persisted.
+	 * Every main drops its cache entry so the next request rebuilds the runtime
+	 * from the current DB state, picking up the new model/credential/tools/skills.
+	 *
+	 * Without this, peer mains keep serving webhook traffic from a stale
+	 * compiled runtime — including stale embedded credentials — until the
+	 * 30-minute TTL evicts the entry.
+	 */
+	'agent-config-changed': {
+		agentId: string;
 	};
 
 	// #endregion

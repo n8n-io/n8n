@@ -37,6 +37,8 @@ export class Memory {
 
 	private workingMemoryScope: 'resource' | 'thread' = 'resource';
 
+	private workingMemoryInstruction?: string;
+
 	private memoryBackend?: BuiltMemory;
 
 	private titleGenerationConfig?: TitleGenerationConfig;
@@ -99,6 +101,26 @@ export class Memory {
 	 */
 	scope(s: 'resource' | 'thread'): this {
 		this.workingMemoryScope = s;
+		return this;
+	}
+
+	/**
+	 * Override the default instruction text injected into the system prompt for working memory.
+	 *
+	 * The instruction tells the model when and how to call the `updateWorkingMemory` tool.
+	 * When omitted, `WORKING_MEMORY_DEFAULT_INSTRUCTION` is used.
+	 *
+	 * Example:
+	 * ```typescript
+	 * import { WORKING_MEMORY_DEFAULT_INSTRUCTION } from '@n8n/agents';
+	 *
+	 * memory.instruction(
+	 *   WORKING_MEMORY_DEFAULT_INSTRUCTION + '\nAlways update after every user message.',
+	 * );
+	 * ```
+	 */
+	instruction(text: string): this {
+		this.workingMemoryInstruction = text;
 		return this;
 	}
 
@@ -167,12 +189,18 @@ export class Memory {
 				structured: true,
 				schema: this.workingMemorySchema,
 				scope: this.workingMemoryScope,
+				...(this.workingMemoryInstruction !== undefined && {
+					instruction: this.workingMemoryInstruction,
+				}),
 			};
 		} else if (this.workingMemoryTemplate !== undefined) {
 			workingMemory = {
 				template: this.workingMemoryTemplate,
 				structured: false,
 				scope: this.workingMemoryScope,
+				...(this.workingMemoryInstruction !== undefined && {
+					instruction: this.workingMemoryInstruction,
+				}),
 			};
 		}
 

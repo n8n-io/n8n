@@ -8,6 +8,7 @@ import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type { McpToolIncludeMode } from './types';
 import type { McpTool } from '../shared/types';
+import { isStructuredContent } from '../shared/utils';
 
 export function getSelectedTools({
 	mode,
@@ -98,12 +99,28 @@ export const createCallTool =
 			return result.toolResult;
 		}
 
+		if (isStructuredContent(result.structuredContent)) {
+			return result.structuredContent;
+		}
+
 		if (result.content !== undefined) {
 			return result.content;
 		}
 
 		return result;
 	};
+
+const MAX_MCP_TOOL_NAME_LENGTH = 64;
+
+export function buildMcpToolName(serverName: string, toolName: string): string {
+	const sanitizedServerName = serverName.replace(/[^a-zA-Z0-9]/g, '_');
+	const fullName = `${sanitizedServerName}_${toolName}`;
+	if (fullName.length <= MAX_MCP_TOOL_NAME_LENGTH) {
+		return fullName;
+	}
+	const maxPrefixLen = MAX_MCP_TOOL_NAME_LENGTH - toolName.length - 1;
+	return maxPrefixLen > 0 ? `${sanitizedServerName.slice(0, maxPrefixLen)}_${toolName}` : toolName;
+}
 
 export function mcpToolToDynamicTool(
 	tool: McpTool,

@@ -6,6 +6,7 @@ import {
 	jsonStringify,
 	deepCopy,
 	isDomainAllowed,
+	getCredentialAllowedDomains,
 	isObjectEmpty,
 	fileTypeFromMimeType,
 	randomInt,
@@ -16,6 +17,7 @@ import {
 	sleepWithAbort,
 	isCommunityPackageName,
 	sanitizeFilename,
+	sanitizeXmlName,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -581,6 +583,22 @@ describe('setSafeObjectProperty', () => {
 	});
 });
 
+describe('sanitizeXmlName', () => {
+	it.each(['__proto__', 'constructor', 'prototype'])(
+		'should prefix dangerous name "%s"',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(`sanitized_${name}`);
+		},
+	);
+
+	it.each(['name', 'id', 'root', '__custom__', 'Constructor', 'PROTOTYPE'])(
+		'should pass through safe name "%s" unchanged',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(name);
+		},
+	);
+});
+
 describe('sleepWithAbort', () => {
 	it('should resolve after the specified time when not aborted', async () => {
 		const start = Date.now();
@@ -857,6 +875,72 @@ describe('isDomainAllowed', () => {
 				}),
 			).toBe(false);
 		});
+	});
+});
+
+describe('getCredentialAllowedDomains', () => {
+	it("returns the allowed domains list in 'domains' mode with a non-empty list", () => {
+		expect(
+			getCredentialAllowedDomains({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'example.com, *.api.io',
+			}),
+		).toBe('example.com, *.api.io');
+	});
+
+	it('trims surrounding whitespace from the list', () => {
+		expect(
+			getCredentialAllowedDomains({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '  example.com  ',
+			}),
+		).toBe('example.com');
+	});
+
+	it("returns undefined in 'domains' mode when the list is empty or whitespace", () => {
+		expect(
+			getCredentialAllowedDomains({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '',
+			}),
+		).toBeUndefined();
+
+		expect(
+			getCredentialAllowedDomains({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '   ',
+			}),
+		).toBeUndefined();
+	});
+
+	it("returns undefined in 'domains' mode when the list is not a string", () => {
+		expect(
+			getCredentialAllowedDomains({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: undefined,
+			}),
+		).toBeUndefined();
+	});
+
+	it("returns undefined when mode is 'all' or 'none'", () => {
+		expect(
+			getCredentialAllowedDomains({
+				allowedHttpRequestDomains: 'all',
+				allowedDomains: 'example.com',
+			}),
+		).toBeUndefined();
+
+		expect(
+			getCredentialAllowedDomains({
+				allowedHttpRequestDomains: 'none',
+				allowedDomains: 'example.com',
+			}),
+		).toBeUndefined();
+	});
+
+	it('returns undefined when the credential is undefined or missing the restriction field', () => {
+		expect(getCredentialAllowedDomains(undefined)).toBeUndefined();
+		expect(getCredentialAllowedDomains({})).toBeUndefined();
 	});
 });
 

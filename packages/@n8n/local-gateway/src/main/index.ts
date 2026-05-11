@@ -1,3 +1,4 @@
+import type { GatewaySession } from '@n8n/computer-use/gateway-session';
 import { configure, logger } from '@n8n/computer-use/logger';
 import { app, dialog } from 'electron';
 import * as path from 'node:path';
@@ -38,7 +39,7 @@ app
 		const preloadPath = path.join(__dirname, 'preload.js');
 		const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
 
-		function confirmConnect(url: string): boolean {
+		function confirmConnect(url: string, _session: GatewaySession): boolean {
 			const lastUrl = settingsStore.getLastConnectedUrl();
 			if (lastUrl !== null && lastUrl === url) {
 				logger.info('Auto-approving connection from known URL', { url });

@@ -334,6 +334,91 @@ describe('Merge', () => {
 			expect(json.connections['Combine'].main[0]![0].node).toBe('Final');
 		});
 
+		it('should connect IF true/false branches directly to merge inputs via .input(n)', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'Check' },
+			}) as IfNode;
+			const processTrue = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Process True' },
+			});
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Combine' },
+			}) as MergeNode;
+			const downstream = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Final' },
+			});
+
+			// True branch goes through processTrue then to merge.input(0).
+			// False branch is a direct InputTarget via .onFalse(merge.input(1)).
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(ifNode.onTrue!(processTrue.to(mergeNode.input(0))).onFalse(mergeNode.input(1)))
+				.add(mergeNode)
+				.to(downstream);
+
+			const json = wf.toJSON();
+
+			// IF onTrue should branch to processTrue
+			expect(json.connections['Check'].main[0]![0].node).toBe('Process True');
+			// IF onFalse should connect directly to Combine input 1
+			expect(json.connections['Check'].main[1]![0].node).toBe('Combine');
+			expect(json.connections['Check'].main[1]![0].index).toBe(1);
+
+			// processTrue should connect to merge input 0
+			expect(json.connections['Process True'].main[0]![0].node).toBe('Combine');
+			expect(json.connections['Process True'].main[0]![0].index).toBe(0);
+
+			// Merge should connect to downstream
+			expect(json.connections['Combine'].main[0]![0].node).toBe('Final');
+		});
+
+		it('should connect Switch case branches directly to merge inputs via .input(n)', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: { name: 'Route' },
+			}) as SwitchNode;
+			const handleA = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Handle A' },
+			});
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Collect' },
+			}) as MergeNode;
+
+			// Case 0 routes through handleA to merge.input(0).
+			// Case 1 connects directly to merge.input(1) as an InputTarget.
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(switchNode.onCase!(0, handleA.to(mergeNode.input(0))).onCase(1, mergeNode.input(1)))
+				.add(mergeNode);
+
+			const json = wf.toJSON();
+
+			// Switch case 0 should fan to Handle A
+			expect(json.connections['Route'].main[0]![0].node).toBe('Handle A');
+			// Switch case 1 should connect directly to Collect input 1
+			expect(json.connections['Route'].main[1]![0].node).toBe('Collect');
+			expect(json.connections['Route'].main[1]![0].index).toBe(1);
+
+			// Handle A should connect to merge input 0
+			expect(json.connections['Handle A'].main[0]![0].node).toBe('Collect');
+			expect(json.connections['Handle A'].main[0]![0].index).toBe(0);
+		});
+
 		it('should connect Switch cases to merge via WorkflowBuilder.to()', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const switchNode = node({

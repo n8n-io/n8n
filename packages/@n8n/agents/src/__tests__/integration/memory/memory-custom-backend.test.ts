@@ -8,7 +8,7 @@
 import { expect, it, beforeEach } from 'vitest';
 
 import { Agent, Memory, type AgentDbMessage } from '../../../index';
-import type { BuiltMemory, Thread } from '../../../types/sdk/memory';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../../../types/sdk/memory';
 import { describeIf, findLastTextContent, getModel } from '../helpers';
 
 const describe = describeIf('anthropic');
@@ -17,6 +17,9 @@ const describe = describeIf('anthropic');
 // Custom in-memory BuiltMemory implementation (simulates Redis, DynamoDB, etc.)
 // ---------------------------------------------------------------------------
 class CustomMapMemory implements BuiltMemory {
+	describe(): MemoryDescriptor {
+		throw new Error('Method not implemented.');
+	}
 	readonly threads = new Map<string, Thread>();
 	readonly messages = new Map<string, AgentDbMessage[]>();
 	readonly workingMemory = new Map<string, string>();
@@ -224,7 +227,7 @@ describe('custom BuiltMemory backend', () => {
 		expect(findLastTextContent(result.messages)?.toLowerCase()).not.toContain('aurora');
 
 		// Thread 2 working memory should be independent
-		expect(store.workingMemory.get(thread2)).not.toContain('aurora');
+		expect(store.workingMemory.get(thread2)).toBeFalsy();
 	});
 
 	it('thread-scoped working memory allows recall within the same thread when history is truncated', async () => {

@@ -73,11 +73,7 @@ export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
 
 export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 
-export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
-	control: 'control',
-	variantResources: 'variant-resources',
-	variantInspiration: 'variant-inspiration',
-});
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
 
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
 export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
@@ -104,8 +100,6 @@ export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hu
 
 export const FLOATING_CHAT_HUB_PANEL_EXPERIMENT = createExperiment('078_floating_chat_hub_panel');
 
-export const AI_GATEWAY_EXPERIMENT = createExperiment('080_ai_gateway');
-
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -131,5 +125,4 @@ export const EXPERIMENTS_TO_TRACK = [
 	AA_EXPERIMENT_CHECK.name,
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
-	AI_GATEWAY_EXPERIMENT.name,
 ];

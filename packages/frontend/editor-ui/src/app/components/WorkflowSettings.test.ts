@@ -37,7 +37,7 @@ vi.mock('vue-router', async () => ({
 	useRoute: () =>
 		reactive({
 			params: {
-				name: '1',
+				workflowId: '1',
 			},
 			query: {},
 		}),
@@ -108,7 +108,7 @@ describe('WorkflowSettingsVue', () => {
 			releaseChannel: 'stable',
 		});
 		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-		workflowsStore.workflowId = '1';
+		workflowsStore.setWorkflowId('1');
 		workflowDocumentStore.setName('Test Workflow');
 		// Populate workflowsById to mark workflow as existing (not new)
 		const testWorkflow = createTestWorkflow({

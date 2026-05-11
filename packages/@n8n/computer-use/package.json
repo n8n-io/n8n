@@ -1,14 +1,16 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.2.0",
-  "description": "Local AI gateway for n8n Instance AI — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
-  "bin": {
-    "n8n-computer-use": "dist/cli.js"
+  "version": "0.5.0",
+  "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
+  "publishConfig": {
+    "bin": {
+      "n8n-computer-use": "dist/cli.js"
+    }
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "start": "node dist/cli.js serve",
-    "dev": "pnpm watch",
+    "start": "node dist/cli.js http://localhost:5678 --log-level debug --allowed-origins http://localhost:5678",
+    "dev": "pnpm build && (pnpm watch & pnpm start)",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write src",
@@ -25,7 +27,8 @@
     ".": "./dist/cli.js",
     "./daemon": "./dist/daemon.js",
     "./config": "./dist/config.js",
-    "./logger": "./dist/logger.js"
+    "./logger": "./dist/logger.js",
+    "./gateway-session": "./dist/gateway-session.js"
   },
   "module": "src/cli.ts",
   "types": "dist/cli.d.ts",
@@ -38,11 +41,11 @@
     "@jitsi/robotjs": "^0.6.21",
     "@modelcontextprotocol/sdk": "1.26.0",
     "@n8n/mcp-browser": "workspace:*",
+    "@napi-rs/image": "^1.12.0",
     "@vscode/ripgrep": "^1.17.1",
     "eventsource": "^3.0.6",
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",
-    "sharp": "^0.34.5",
     "yargs-parser": "21.1.1",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"

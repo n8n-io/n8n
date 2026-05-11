@@ -11,6 +11,7 @@ jest.mock('@n8n/instance-ai', () => ({
 
 import { mock } from 'jest-mock-extended';
 import type {
+	AiBuilderTemporaryWorkflowRepository,
 	User,
 	ExecutionRepository,
 	ProjectRepository,
@@ -31,6 +32,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { NodeTypes } from '@/node-types';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -44,6 +46,8 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
+import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { Telemetry } from '@/telemetry';
 
 jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-execute-additional-data', () => ({
@@ -74,6 +78,7 @@ const credentialsFinderService = mock<CredentialsFinderService>();
 const activeExecutions = mock<ActiveExecutions>();
 const workflowRunner = mock<WorkflowRunner>();
 const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+const nodeTypes = mock<NodeTypes>();
 const dataTableService = mock<DataTableService>();
 const dataTableRepository = mock<DataTableRepository>();
 const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -88,6 +93,8 @@ const license = mock<License>();
 const executionPersistence = mock<ExecutionPersistence>();
 const eventService = mock<EventService>();
 const roleService = mock<RoleService>();
+const telemetry = mock<Telemetry>();
+const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
 const service = new InstanceAiAdapterService(
 	logger,
@@ -103,6 +110,7 @@ const service = new InstanceAiAdapterService(
 	activeExecutions,
 	workflowRunner,
 	loadNodesAndCredentials,
+	nodeTypes,
 	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
@@ -118,6 +126,9 @@ const service = new InstanceAiAdapterService(
 	executionPersistence,
 	eventService,
 	roleService,
+	telemetry,
+	aiBuilderTemporaryWorkflowRepository,
+	mock<SsrfProtectionService>(),
 );
 
 const user = mock<User>({
@@ -131,6 +142,9 @@ const user = mock<User>({
 beforeEach(() => {
 	jest.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
+	sourceControlPreferencesService.getPreferences.mockReturnValue({
+		branchReadOnly: false,
+	} as never);
 });
 
 // ---------------------------------------------------------------------------
@@ -360,5 +374,44 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		expect(result.deletedCount).toBe(0);
 		expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
 		expect(eventService.emit).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Credential adapter — IDOR boundary for confirmation payload credential IDs
+//
+// `setupWorkflowApply` and `credentialSelection` confirmation payloads carry
+// client-supplied credential IDs. The credential adapter resolves them
+// through `credentialsService.getOne(user, ...)`, which the underlying
+// service binds to the requesting user — IDs the user can't access throw
+// rather than leaking the credential.
+// ---------------------------------------------------------------------------
+
+describe('credentialService.get — credential ownership revalidation', () => {
+	it('forwards the credential ID to credentialsService.getOne with the bound user', async () => {
+		credentialsService.getOne.mockResolvedValue({
+			id: 'cred-mine',
+			name: 'My Slack',
+			type: 'slackApi',
+		} as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.get('cred-mine');
+
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-mine', false);
+		expect(result).toEqual({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+	});
+
+	it('propagates the NotFoundError when the user cannot access the credential', async () => {
+		credentialsService.getOne.mockRejectedValue(
+			new Error('Credential with ID "cred-other" could not be found.'),
+		);
+
+		const ctx = service.createContext(user);
+
+		await expect(ctx.credentialService.get('cred-other')).rejects.toThrow(
+			'Credential with ID "cred-other" could not be found.',
+		);
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
 	});
 });

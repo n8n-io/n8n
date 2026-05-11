@@ -36,7 +36,7 @@ describe('InstanceAiMarkdown', () => {
 
 	function getProcessedContent(content: string, registry?: Map<string, ResourceEntry>): string {
 		if (registry) {
-			store.resourceRegistry = registry;
+			store.resourceNameIndex = registry;
 		}
 		const { getByTestId } = renderComponent({ props: { content } });
 		return getByTestId('markdown-output').textContent ?? '';
