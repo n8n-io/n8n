@@ -48,30 +48,37 @@ export class AgentsModule implements ModuleInterface {
 		const { NodeCatalogService } = await import('@/node-catalog');
 		await Container.get(NodeCatalogService).initialize();
 
-		// Register Chat and Schedule services. Reconnect active integrations and
-		// schedules only on the leader main — followers wait for @OnLeaderTakeover
-		// (in multi-main mode). Importing the services here also registers any
-		// @OnLeaderTakeover/@OnLeaderStepdown decorators with MultiMainMetadata
-		// before start.ts:295 wires up the listeners.
+		// Register Chat and Schedule services. Importing the services here also
+		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with
+		// MultiMainMetadata before start.ts:295 wires up the listeners.
+		//
+		// Chat integrations run on every main: webhook-driven platforms (Slack,
+		// Linear, Telegram in webhook mode) need to be connected on every main
+		// because inbound webhooks are load-balanced. Polling-driven integrations
+		// (Telegram in polling mode) are filtered to leader-only inside the
+		// service via `AgentChatIntegration.requiresLeader()`.
+		//
+		// Schedules remain leader-only by design — a cron firing on multiple
+		// mains would run the agent twice for the same tick.
 		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		const scheduleService = Container.get(AgentScheduleService);
 		const chatService = Container.get(ChatIntegrationService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
-		if (instanceSettings.isLeader) {
-			void chatService.reconnectAll().catch((error) => {
-				logger.error('[Agents] Failed to reconnect integrations on startup', {
-					error: error instanceof Error ? error.message : String(error),
-				});
+		void chatService.reconnectAll().catch((error) => {
+			logger.error('[Agents] Failed to reconnect integrations on startup', {
+				error: error instanceof Error ? error.message : String(error),
 			});
+		});
+		if (instanceSettings.isLeader) {
 			void scheduleService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect schedules on startup', {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
 		} else {
-			logger.debug('[Agents] Skipping integration and schedule reconnect on startup — not leader');
+			logger.debug('[Agents] Skipping schedule reconnect on startup — not leader');
 		}
 	}
 

@@ -165,7 +165,9 @@ export class CodeBuilderNodeSearchEngine {
 						inputs: item.inputs,
 						outputs: item.outputs,
 						score,
-						...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
+						...(item.builderHint?.searchHint && {
+							builderHintMessage: item.builderHint.searchHint,
+						}),
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 					};
 				},
@@ -210,8 +212,8 @@ export class CodeBuilderNodeSearchEngine {
 						inputs: nodeType.inputs,
 						outputs: nodeType.outputs,
 						score: connectionScore,
-						...(nodeType.builderHint?.message && {
-							builderHintMessage: nodeType.builderHint.message,
+						...(nodeType.builderHint?.searchHint && {
+							builderHintMessage: nodeType.builderHint.searchHint,
 						}),
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 					};
@@ -240,7 +242,9 @@ export class CodeBuilderNodeSearchEngine {
 					inputs: item.inputs,
 					outputs: item.outputs,
 					score: connectionScore + nameScore,
-					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
+					...(item.builderHint?.searchHint && {
+						builderHintMessage: item.builderHint.searchHint,
+					}),
 					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 				};
 			});

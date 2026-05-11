@@ -136,6 +136,7 @@
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
+      "undici@5": "^6.24.0",
       "undici@6": "^6.24.0",
       "undici@7": "^7.24.0",
       "tar": "^7.5.11",

@@ -7,6 +7,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import type { INode } from 'n8n-workflow';
 import * as useRunWorkflowModule from '@/app/composables/useRunWorkflow';
 
@@ -140,30 +145,28 @@ describe('useChatState', () => {
 		},
 	};
 
+	function setWorkflowNodes(nodes: INode[]) {
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-123'));
+		docStore.setNodes(nodes);
+	}
+
 	beforeEach(() => {
 		const pinia = createTestingPinia({
 			stubActions: false,
-			initialState: {
-				workflows: {
-					workflow: {
-						id: 'workflow-123',
-						name: 'Test Workflow',
-						active: false,
-						createdAt: 1234567890,
-						updatedAt: 1234567890,
-						nodes: [mockChatTriggerNode],
-						connections: {},
-						settings: {},
-						tags: [],
-						pinData: {},
-						versionId: '',
-						isArchived: false,
-					},
-				},
-			},
 		});
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
+		workflowsStore.setWorkflowId('workflow-123');
+
+		const testWorkflow = createTestWorkflow({
+			id: 'workflow-123',
+			name: 'Test Workflow',
+			nodes: [mockChatTriggerNode],
+			connections: {},
+		});
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-123'));
+		docStore.hydrate(testWorkflow);
+
 		logsStore = useLogsStore();
 		const rootStore = useRootStore();
 		nodeTypesStore = useNodeTypesStore();
@@ -213,9 +216,7 @@ describe('useChatState', () => {
 		});
 
 		it('should return null for chatTriggerNode when not present', () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [];
-			});
+			setWorkflowNodes([]);
 
 			const chatState = useChatState(false);
 
@@ -256,18 +257,16 @@ describe('useChatState', () => {
 
 	describe('file upload configuration', () => {
 		it('should detect file uploads allowed from options', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: {
-							options: {
-								allowFileUploads: true,
-							},
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: {
+						options: {
+							allowFileUploads: true,
 						},
 					},
-				];
-			});
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -276,18 +275,16 @@ describe('useChatState', () => {
 		});
 
 		it('should detect file uploads disabled', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: {
-							options: {
-								allowFileUploads: false,
-							},
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: {
+						options: {
+							allowFileUploads: false,
 						},
 					},
-				];
-			});
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -296,18 +293,16 @@ describe('useChatState', () => {
 		});
 
 		it('should get allowed MIME types from options', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: {
-							options: {
-								allowedFilesMimeTypes: 'image/*,application/pdf',
-							},
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: {
+						options: {
+							allowedFilesMimeTypes: 'image/*,application/pdf',
 						},
 					},
-				];
-			});
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -343,9 +338,7 @@ describe('useChatState', () => {
 		});
 
 		it('should return empty webhook URL when no chatTriggerNode', () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [];
-			});
+			setWorkflowNodes([]);
 
 			const chatState = useChatState(false);
 
@@ -353,9 +346,7 @@ describe('useChatState', () => {
 		});
 
 		it('should return empty webhook URL when no workflow ID', () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.id = '';
-			});
+			workflowsStore.setWorkflowId('');
 
 			const chatState = useChatState(false);
 
@@ -371,9 +362,7 @@ describe('useChatState', () => {
 		});
 
 		it('should not be ready when no chatTriggerNode', () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [];
-			});
+			setWorkflowNodes([]);
 
 			const chatState = useChatState(false);
 
@@ -428,9 +417,7 @@ describe('useChatState', () => {
 		});
 
 		it('should not register if no chatTriggerNode', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [];
-			});
+			setWorkflowNodes([]);
 
 			const chatState = useChatState(false);
 			await chatState.registerChatWebhook();
@@ -454,20 +441,18 @@ describe('useChatState', () => {
 
 	describe('chatOptions', () => {
 		it('should generate correct chatOptions with all configurations', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: {
-							options: {
-								responseMode: 'streaming',
-								allowFileUploads: true,
-								allowedFilesMimeTypes: 'image/*,application/pdf',
-							},
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: {
+						options: {
+							responseMode: 'streaming',
+							allowFileUploads: true,
+							allowedFilesMimeTypes: 'image/*,application/pdf',
 						},
 					},
-				];
-			});
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -560,9 +545,7 @@ describe('useChatState', () => {
 		});
 
 		it('should resolve all defaults from node type when options not set', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [{ ...mockChatTriggerNode, parameters: {} }];
-			});
+			setWorkflowNodes([{ ...mockChatTriggerNode, parameters: {} }]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -573,14 +556,12 @@ describe('useChatState', () => {
 		});
 
 		it('should default to lastNode when availableInChat is false', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: { availableInChat: false },
-					},
-				];
-			});
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: { availableInChat: false },
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -589,14 +570,12 @@ describe('useChatState', () => {
 		});
 
 		it('should default to streaming when availableInChat (Chat hub) is true', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: { availableInChat: true },
-					},
-				];
-			});
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: { availableInChat: true },
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -605,14 +584,12 @@ describe('useChatState', () => {
 		});
 
 		it('should pick the correct options collection when public is true', async () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: { public: true, availableInChat: true },
-					},
-				];
-			});
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: { public: true, availableInChat: true },
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
@@ -623,17 +600,15 @@ describe('useChatState', () => {
 		it('should use explicit responseMode over default when set', async () => {
 			// availableInChat is true (default would be streaming),
 			// but user explicitly set responseMode to lastNode
-			workflowsStore.$patch((state) => {
-				state.workflow.nodes = [
-					{
-						...mockChatTriggerNode,
-						parameters: {
-							availableInChat: true,
-							options: { responseMode: 'lastNode' },
-						},
+			setWorkflowNodes([
+				{
+					...mockChatTriggerNode,
+					parameters: {
+						availableInChat: true,
+						options: { responseMode: 'lastNode' },
 					},
-				];
-			});
+				},
+			]);
 
 			const chatState = useChatState(false);
 			await nextTick();
