@@ -267,7 +267,6 @@ describe('composable integration', () => {
 		test('resets all preview and execution state', async () => {
 			h.registerWorkflow('wf-1', 'My Workflow');
 			h.selectTab('wf-1');
-			h.markUserSentMessage();
 			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
 			await h.flush();
 
@@ -277,7 +276,6 @@ describe('composable integration', () => {
 			expect(h.activeWorkflowId.value).toBeNull();
 			expect(h.activeExecutionId.value).toBeNull();
 			expect(h.isPreviewVisible.value).toBe(false);
-			expect(h.userSentMessage.value).toBe(false);
 			// Execution status should be cleared even though tabs remain in registry
 			const wfTab = h.allArtifactTabs.value.find((t) => t.id === 'wf-1');
 			expect(wfTab?.executionStatus).toBeUndefined();

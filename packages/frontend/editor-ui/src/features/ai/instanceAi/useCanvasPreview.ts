@@ -290,11 +290,15 @@ export function useCanvasPreview({
 		});
 	}
 
-	// Clear activeExecutionId when the workflow is rebuilt
+	// Clear activeExecutionId when the workflow is rebuilt.
+	// Only fires on transitions between defined build IDs — the initial build
+	// (undefined → toolCallId) is loading historical state, not a rebuild.
 	watch(
 		() => latestBuildResult.value?.toolCallId,
-		() => {
-			activeExecutionId.value = null;
+		(newToolCallId, oldToolCallId) => {
+			if (oldToolCallId && newToolCallId && newToolCallId !== oldToolCallId) {
+				activeExecutionId.value = null;
+			}
 		},
 	);
 
