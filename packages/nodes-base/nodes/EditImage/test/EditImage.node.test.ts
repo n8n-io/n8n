@@ -12,6 +12,10 @@ const createTestBuffer = () =>
 	]);
 
 const mockGmInstance: any = {
+	write: jest.fn(function (this: any, path: string, callback: (err: any) => void) {
+		callback(null);
+		return this;
+	}),
 	background: jest.fn(function (this: any) {
 		return this;
 	}),

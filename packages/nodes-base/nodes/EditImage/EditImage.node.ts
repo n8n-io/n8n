@@ -1139,10 +1139,16 @@ export class EditImage implements INodeType {
 						cleanupFunctions.push(cleanup);
 						await fsWriteFile(path, binaryDataBuffer);
 
-						gmInstance = gm(gmInstance!.stream('png'))
-							.compose(operator)
-							.geometry(geometryString)
-							.composite(path);
+						const { path: mainImgPath, cleanup: mainImgCleanup } = await file({ postfix: '.png' });
+						cleanupFunctions.push(mainImgCleanup);
+						await new Promise<void>((resolve, reject) => {
+							gmInstance!.write(mainImgPath, (err) => {
+								if (err) reject(err);
+								else resolve();
+							});
+						});
+
+						gmInstance = gm(mainImgPath).compose(operator).geometry(geometryString).composite(path);
 
 						if (operations.length !== i + 1) {
 							// If there are other operations after the current one create a new gm instance
