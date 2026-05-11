@@ -125,18 +125,100 @@ const testAction = z.object({
 	credentialId: credentialIdField,
 });
 
-const inputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		deleteAction,
-		searchTypesAction,
-		setupAction,
-		testAction,
-	]),
-);
+const CREDENTIAL_ACTION_SCHEMAS = {
+	list: listAction,
+	get: getAction,
+	delete: deleteAction,
+	'search-types': searchTypesAction,
+	setup: setupAction,
+	test: testAction,
+} as const;
 
-type Input = z.infer<typeof inputSchema>;
+export type CredentialAction = keyof typeof CREDENTIAL_ACTION_SCHEMAS;
+type CredentialActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
+
+export interface CredentialsToolOptions {
+	allowedActions?: readonly CredentialAction[];
+	descriptionPrefix?: string;
+	descriptionSuffix?: string;
+}
+
+const CREDENTIAL_ACTION_ORDER = [
+	'list',
+	'get',
+	'delete',
+	'search-types',
+	'setup',
+	'test',
+] as const satisfies readonly CredentialAction[];
+
+const CREDENTIAL_ACTION_LABELS = {
+	list: 'list',
+	get: 'get',
+	delete: 'delete',
+	'search-types': 'search available types',
+	setup: 'set up new credentials',
+	test: 'test connections',
+} satisfies Record<CredentialAction, string>;
+
+function getCredentialActions(options: CredentialsToolOptions): CredentialAction[] {
+	if (!options.allowedActions) return [...CREDENTIAL_ACTION_ORDER];
+
+	const allowedActions = new Set(options.allowedActions);
+	return CREDENTIAL_ACTION_ORDER.filter((action) => allowedActions.has(action));
+}
+
+function createCredentialInputSchema(actions: readonly CredentialAction[]) {
+	const actionSchemas: CredentialActionSchema[] = actions.map(
+		(action) => CREDENTIAL_ACTION_SCHEMAS[action],
+	);
+
+	if (actionSchemas.length === 0) {
+		throw new Error('Credentials tool requires at least one allowed action');
+	}
+
+	if (actionSchemas.length === 1) {
+		return sanitizeInputSchema(actionSchemas[0]);
+	}
+
+	return sanitizeInputSchema(
+		z.discriminatedUnion(
+			'action',
+			actionSchemas as [
+				CredentialActionSchema,
+				CredentialActionSchema,
+				...CredentialActionSchema[],
+			],
+		),
+	);
+}
+
+type Input =
+	| z.infer<typeof listAction>
+	| z.infer<typeof getAction>
+	| z.infer<typeof deleteAction>
+	| z.infer<typeof searchTypesAction>
+	| z.infer<typeof setupAction>
+	| z.infer<typeof testAction>;
+
+function buildInputSchema(options: CredentialsToolOptions) {
+	return createCredentialInputSchema(getCredentialActions(options));
+}
+
+function formatActionList(actions: readonly CredentialAction[]): string {
+	const labels = actions.map((action) => CREDENTIAL_ACTION_LABELS[action]);
+	if (labels.length <= 2) return labels.join(' and ');
+
+	const lastLabel = labels[labels.length - 1];
+	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
+}
+
+function getToolDescription(options: CredentialsToolOptions): string {
+	const actionList = formatActionList(getCredentialActions(options));
+	const description = `${options.descriptionPrefix ?? 'Manage credentials'} — ${actionList}.`;
+
+	return options.descriptionSuffix ? `${description} ${options.descriptionSuffix}` : description;
+}
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────
 
@@ -345,11 +427,15 @@ async function handleTest(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createCredentialsTool(context: InstanceAiContext) {
+export function createCredentialsTool(
+	context: InstanceAiContext,
+	options: CredentialsToolOptions = {},
+) {
+	const inputSchema = buildInputSchema(options);
+
 	return createTool({
 		id: CREDENTIALS_TOOL_ID,
-		description:
-			'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.',
+		description: getToolDescription(options),
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

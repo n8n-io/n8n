@@ -33,7 +33,10 @@ const {
 	shouldRecoverSavedWorkflowAfterFailedSubmit,
 	createBuildWorkflowAgentTool,
 	buildWarmBuilderFollowUp,
+	determineSetupRequirement,
+	determineVerificationReadiness,
 	mergeLatestVerificationIntoOutcome,
+	supportingWorkflowIdsFromSubmitAttempts,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
@@ -117,6 +120,7 @@ describe('buildWarmBuilderFollowUp', () => {
 		expect(briefing).toContain('Do NOT stop after a successful submit without verifying');
 		expect(briefing).toContain('verify-built-workflow');
 		expect(briefing).toContain('nodes(action="explore-resources")');
+		expect(briefing).not.toContain('workflows(action="publish")');
 		expect(briefing).toContain('<requested-change>');
 		expect(briefing).toContain('Change the Gmail recipient');
 	});
@@ -175,14 +179,132 @@ describe('mergeLatestVerificationIntoOutcome', () => {
 	});
 });
 
+describe('determineVerificationReadiness', () => {
+	it('marks a mockable trigger as ready without exposing pin-data details to the prompt', () => {
+		expect(
+			determineVerificationReadiness({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+				mockedCredentialTypes: ['slackApi'],
+				mockedCredentialsByNode: { Slack: ['slackApi'] },
+				verificationPinData: { Slack: [{ _mockedCredential: 'slackApi' }] },
+			}),
+		).toEqual({ status: 'ready' });
+	});
+
+	it('accepts saved workflow pin data as verification support for mocked credentials', () => {
+		expect(
+			determineVerificationReadiness({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+				mockedCredentialTypes: ['slackApi'],
+				mockedCredentialsByNode: { Slack: ['slackApi'] },
+				usesWorkflowPinDataForVerification: true,
+			}),
+		).toEqual({ status: 'ready' });
+	});
+
+	it('routes unresolved placeholders and unverifiable mocked credentials to setup', () => {
+		expect(
+			determineVerificationReadiness({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+				hasUnresolvedPlaceholders: true,
+			}),
+		).toMatchObject({
+			status: 'needs_setup',
+			reason: 'unresolved-placeholders',
+		});
+
+		expect(
+			determineVerificationReadiness({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+				mockedCredentialTypes: ['slackApi'],
+			}),
+		).toMatchObject({
+			status: 'needs_setup',
+			reason: 'missing-mocked-credential-pin-data',
+		});
+	});
+
+	it('marks successful structured verification as already verified', () => {
+		expect(
+			determineVerificationReadiness({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+				verification: {
+					attempted: true,
+					success: true,
+					executionId: 'exec-1',
+					evidence: { nodesExecuted: ['Webhook', 'Slack'] },
+				},
+			}),
+		).toEqual({ status: 'already_verified' });
+	});
+
+	it('marks non-mockable triggers as not verifiable by the post-build flow', () => {
+		expect(
+			determineVerificationReadiness({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Github Trigger', nodeType: 'n8n-nodes-base.githubTrigger' }],
+			}),
+		).toMatchObject({
+			status: 'not_verifiable',
+			reason: 'non-mockable-trigger',
+		});
+	});
+});
+
+describe('determineSetupRequirement', () => {
+	it('requires setup for mocked credentials even when verification can run', () => {
+		expect(
+			determineSetupRequirement({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+				mockedCredentialTypes: ['slackApi'],
+				mockedCredentialsByNode: { Slack: ['slackApi'] },
+				verificationPinData: { Slack: [{ _mockedCredential: 'slackApi' }] },
+			}),
+		).toMatchObject({
+			status: 'required',
+			reason: 'mocked-credentials',
+		});
+	});
+
+	it('does not require setup when credentials and placeholders are resolved', () => {
+		expect(
+			determineSetupRequirement({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+			}),
+		).toEqual({ status: 'not_required' });
+	});
+});
+
 describe('resultFromPostStreamError', () => {
 	it('preserves the submitted workflow when the stream errors after a successful submit', () => {
 		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: '/home/daytona/workspace/chunks/fetch-weather.ts',
+				sourceHash: 'sub',
+				success: true,
+				workflowId: 'SUB_123',
+			},
 			{
 				filePath: MAIN_PATH,
 				sourceHash: 'abc',
 				success: true,
 				workflowId: 'WF_123',
+				referencedWorkflowIds: ['SUB_123'],
 			},
 		];
 
@@ -201,6 +323,7 @@ describe('resultFromPostStreamError', () => {
 			taskId: 'task_test',
 			workflowId: 'WF_123',
 			submitted: true,
+			supportingWorkflowIds: ['SUB_123'],
 		});
 		expect(result!.text).toContain('Unauthorized');
 	});
@@ -437,6 +560,57 @@ describe('resultFromPostStreamError', () => {
 				reason: 'mocked_credentials_or_placeholders',
 			},
 		});
+	});
+});
+
+describe('supportingWorkflowIdsFromSubmitAttempts', () => {
+	it('collects referenced successful non-main workflow IDs once in submit order', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: '/home/daytona/workspace/chunks/a.ts',
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'SUB_A',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/setup.ts',
+				sourceHash: 'setup',
+				success: true,
+				workflowId: 'SETUP_ONLY',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/b.ts',
+				sourceHash: 'b',
+				success: true,
+				workflowId: 'SUB_B',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/a.ts',
+				sourceHash: 'a2',
+				success: true,
+				workflowId: 'SUB_A',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/failed.ts',
+				sourceHash: 'f',
+				success: false,
+				errors: ['failed'],
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'main',
+				success: true,
+				workflowId: 'WF_123',
+				referencedWorkflowIds: ['SUB_A', 'SUB_B'],
+			},
+		];
+
+		expect(
+			supportingWorkflowIdsFromSubmitAttempts(submitAttempts, MAIN_PATH, 'WF_123', [
+				'SUB_A',
+				'SUB_B',
+			]),
+		).toEqual(['SUB_A', 'SUB_B']);
 	});
 });
 
