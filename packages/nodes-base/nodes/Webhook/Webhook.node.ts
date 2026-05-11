@@ -71,6 +71,7 @@ export class Webhook extends Node {
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		properties: [
 			{
 				displayName: 'Allow Multiple HTTP Methods',

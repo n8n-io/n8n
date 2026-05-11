@@ -40,6 +40,7 @@ const emit = defineEmits<{
 	share: [providerKey: string];
 	reload: [providerKey: string];
 	delete: [providerKey: string];
+	activate: [providerKey: string];
 }>();
 
 const provider = toRef(props, 'provider');
@@ -56,6 +57,8 @@ const formattedDate = computed(() => {
 const showDisconnectedBadge = computed(() => {
 	return provider.value.state === 'error';
 });
+
+const isDisabled = computed(() => provider.value.isEnabled === false);
 
 const canDelete = computed(() => {
 	if (rbacStore.hasScope('externalSecretsProvider:delete')) return true;
@@ -118,6 +121,14 @@ const actionDropdownOptions = computed(() => {
 			value: 'edit',
 		},
 	];
+
+	if (isDisabled.value) {
+		options.push({
+			label: i18n.baseText('generic.activate'),
+			value: 'activate',
+		});
+	}
+
 	if (isProjectScopedSecretsEnabled) {
 		options.push({
 			label: i18n.baseText('settings.secretsProviderConnections.actions.share'),
@@ -125,7 +136,7 @@ const actionDropdownOptions = computed(() => {
 		});
 	}
 
-	if (provider.value.state === 'connected' && canSync.value) {
+	if (provider.value.state === 'connected' && canSync.value && !isDisabled.value) {
 		options.push({
 			label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
 			value: 'reload',
@@ -145,6 +156,8 @@ const actionDropdownOptions = computed(() => {
 function onAction(action: string) {
 	if (action === 'edit') {
 		emit('edit', provider.value.name);
+	} else if (action === 'activate') {
+		emit('activate', provider.value.name);
 	} else if (action === 'share') {
 		emit('share', provider.value.name);
 	} else if (action === 'reload') {
@@ -170,7 +183,16 @@ function onAction(action: string) {
 					provider.name
 				}}</N8nHeading>
 				<N8nBadge
-					v-if="showDisconnectedBadge"
+					v-if="isDisabled"
+					theme="tertiary"
+					:bold="false"
+					size="xsmall"
+					data-test-id="disabled-badge"
+				>
+					{{ i18n.baseText('settings.secretsProviderConnections.state.disabled') }}
+				</N8nBadge>
+				<N8nBadge
+					v-else-if="showDisconnectedBadge"
 					theme="warning"
 					:bold="false"
 					size="xsmall"
@@ -207,7 +229,7 @@ function onAction(action: string) {
 			</N8nText>
 		</template>
 		<template #append>
-			<N8nTooltip :class="$style.cardBadge" placement="top">
+			<N8nTooltip v-if="!isDisabled" :class="$style.cardBadge" placement="top">
 				<N8nBadge
 					:class="$style.badge"
 					theme="tertiary"

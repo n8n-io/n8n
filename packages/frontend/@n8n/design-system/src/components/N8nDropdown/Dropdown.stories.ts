@@ -1,10 +1,15 @@
 import type { StoryFn } from '@storybook/vue3-vite';
+import { ElMenu } from 'element-plus';
+import { action } from 'storybook/actions';
 import { ref } from 'vue';
 
+import N8nActionDropdown from '../N8nActionDropdown/ActionDropdown.vue';
 import N8nButton from '../N8nButton';
 import N8nIconButton from '../N8nIconButton';
+import N8nMenuItem from '../N8nMenuItem';
 import N8nDropdown from './Dropdown.vue';
 import type { N8nDropdownOption } from './Dropdown.vue';
+import NavigationDropdown from '../N8nNavigationDropdown/NavigationDropdown.vue';
 
 export default {
 	title: 'Core/Dropdown',
@@ -12,6 +17,11 @@ export default {
 	argTypes: {},
 	parameters: {
 		backgrounds: { default: 'white' },
+		docs: {
+			description: {
+				component: 'A trigger-anchored menu for selecting an option or invoking an action.',
+			},
+		},
 	},
 };
 
@@ -150,4 +160,101 @@ export const WithDisabledOptions: StoryFn = () => ({
 			</p>
 		</div>
 	`,
+});
+
+const menuItems = [
+	{
+		id: 'credentials',
+		title: 'Credentials',
+		submenu: [
+			{
+				id: 'credentials-0',
+				title: 'Create',
+				disabled: true,
+			},
+			{
+				id: 'credentials-1',
+				title: 'Credentials - 1',
+				icon: 'user',
+			},
+			{
+				id: 'credentials-2',
+				title: 'Credentials - 2',
+				icon: 'user',
+			},
+		],
+	},
+	{
+		id: 'variables',
+		title: 'Variables',
+	},
+];
+
+export const MenuItemPatterns: StoryFn = () => ({
+	components: {
+		ElMenu,
+		N8nMenuItem,
+	},
+	template: `
+		<div style="width: 220px;">
+			<el-menu>
+				<n8n-menu-item
+					:item="{ id: 'workflows', icon: 'home', label: 'Workflows', secondaryIcon: { name: 'lock', size: 'small' } }"
+				/>
+				<n8n-menu-item
+					:item="{ id: 'help', icon: 'question', label: 'Help', children: [{ icon: 'book', label: 'Documentation', id: 'docs' }] }"
+				/>
+			</el-menu>
+		</div>
+	`,
+});
+
+export const ActionDropdownPatterns: StoryFn = () => ({
+	components: {
+		N8nActionDropdown: N8nActionDropdown as unknown as Record<string, unknown>,
+	},
+	template: '<n8n-action-dropdown :items="items" />',
+	data() {
+		return {
+			items: [
+				{
+					id: 'open',
+					label: 'Open node...',
+					shortcut: { keys: ['↵'] },
+				},
+				{
+					id: 'rename',
+					label: 'Rename node',
+					shortcut: { keys: ['F2'] },
+				},
+				{
+					id: 'delete',
+					divided: true,
+					label: 'Delete node',
+					shortcut: { keys: ['Del'] },
+				},
+			],
+		};
+	},
+});
+
+export const NavigationDropdownPattern: StoryFn = () => ({
+	components: {
+		NavigationDropdown,
+	},
+	methods: {
+		onSelect: action('select'),
+	},
+	template: `
+		<div style="height: 10vh; width: 220px;">
+			<n8n-navigation-dropdown :menu="menuItems" @select="onSelect">
+				<button type="button">trigger</button>
+			</n8n-navigation-dropdown>
+		</div>
+	`,
+	data() {
+		return {
+			menuItems,
+		};
+	},
 });

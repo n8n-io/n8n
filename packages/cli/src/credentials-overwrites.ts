@@ -143,6 +143,25 @@ export class CredentialsOverwrites {
 			return data;
 		}
 
+		// For skip-list types, don't apply overwrite if the credential has been
+		// customized (any overwrite field has a non-empty value that differs from
+		// the overwrite value). Since overwrites are never persisted to the DB,
+		// any non-empty stored value that differs from the overwrite is user-set.
+		if (this.globalConfig.credentials.overwrite.skipTypes.includes(type)) {
+			const isFieldCustomized = (key: string) => {
+				const storedValue = data[key];
+				return (
+					storedValue !== null &&
+					storedValue !== undefined &&
+					storedValue !== '' &&
+					storedValue !== overwrites[key]
+				);
+			};
+			if (Object.keys(overwrites).some(isFieldCustomized)) {
+				return data;
+			}
+		}
+
 		const returnData = deepCopy(data);
 		// Overwrite only if there is currently no data set
 		for (const key of Object.keys(overwrites)) {

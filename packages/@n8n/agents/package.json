@@ -1,0 +1,65 @@
+{
+  "name": "@n8n/agents",
+  "version": "0.1.0",
+  "description": "AI agent SDK for n8n's code-first execution engine",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "format": "biome format --write src examples",
+    "format:check": "biome ci src examples",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch",
+    "test:integration": "vitest run --config vitest.integration.config.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/google": "^3.0.43",
+    "@ai-sdk/openai": "^3.0.41",
+    "@ai-sdk/xai": "^3.0.67",
+    "@ai-sdk/provider-utils": "^4.0.21",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "ajv": "^8.18.0",
+    "@libsql/client": "^0.17.0",
+    "ai": "^6.0.116",
+    "pg": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "langsmith": ">=0.3.0",
+    "@opentelemetry/sdk-trace-node": ">=1.0.0",
+    "@opentelemetry/sdk-trace-base": ">=1.0.0",
+    "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0"
+  },
+  "peerDependenciesMeta": {
+    "langsmith": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-trace-node": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-trace-base": {
+      "optional": true
+    },
+    "@opentelemetry/exporter-trace-otlp-http": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/json-schema": "^7.0.15",
+    "@types/pg": "^8.15.6",
+    "testcontainers": "11.11.0"
+  }
+}

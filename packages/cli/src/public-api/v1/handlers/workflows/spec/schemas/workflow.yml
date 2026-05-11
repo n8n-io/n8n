@@ -24,6 +24,17 @@ properties:
     type: string
     format: date-time
     readOnly: true
+  isArchived:
+    type: boolean
+    readOnly: true
+  versionId:
+    type: string
+    readOnly: true
+    description: Current version identifier used for optimistic locking
+  triggerCount:
+    type: integer
+    readOnly: true
+    description: Number of active trigger nodes in the workflow
   nodes:
     type: array
     items:
@@ -41,6 +52,24 @@ properties:
         nullable: true
       - type: object
         nullable: true
+  pinData:
+    type: object
+    nullable: true
+    description: Pinned sample data for nodes, keyed by node name
+  meta:
+    type: object
+    nullable: true
+    readOnly: true
+    description: Workflow metadata such as template information
+    properties:
+      onboardingId:
+        type: string
+      templateId:
+        type: string
+      instanceId:
+        type: string
+      templateCredsSetupCompleted:
+        type: boolean
   tags:
     type: array
     items:

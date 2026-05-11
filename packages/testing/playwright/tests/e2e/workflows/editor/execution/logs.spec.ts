@@ -265,10 +265,7 @@ test.describe(
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toContainText('Waiting');
 
 			await n8n.canvas.openNode(NODES.WAIT_NODE);
-			const webhookUrl = await n8n.ndv.outputPanel
-				.getDataContainer()
-				.locator('a')
-				.getAttribute('href');
+			const webhookUrl = await n8n.ndv.outputPanel.getFirstLink().getAttribute('href');
 			await n8n.ndv.clickBackToCanvasButton();
 
 			// [CAT-1454] Assert that no duplicate logs added at this point

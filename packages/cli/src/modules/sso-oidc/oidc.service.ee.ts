@@ -306,8 +306,8 @@ export class OidcService {
 			return foundUser;
 		}
 
-		return await this.userRepository.manager.transaction(async (trx) => {
-			const { user } = await this.userRepository.createUserWithProject(
+		const user = await this.userRepository.manager.transaction(async (trx) => {
+			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{
 					firstName: userInfo.given_name,
 					lastName: userInfo.family_name,
@@ -323,14 +323,16 @@ export class OidcService {
 				trx.create(AuthIdentity, {
 					providerId: claims.sub,
 					providerType: 'oidc',
-					userId: user.id,
+					userId: newUser.id,
 				}),
 			);
 
-			await this.applySsoProvisioning(user, claims);
-
-			return user;
+			return newUser;
 		});
+
+		await this.applySsoProvisioning(user, claims);
+
+		return user;
 	}
 
 	private async applySsoProvisioning(user: User, claims: any) {

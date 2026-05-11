@@ -59,11 +59,6 @@ export async function sendMessage(
 		);
 	}
 
-	// Call afterMessageSent handler if provided
-	if (options.afterMessageSent) {
-		await options.afterMessageSent(message, response);
-	}
-
 	return response;
 }
 

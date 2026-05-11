@@ -75,7 +75,9 @@ export class CredentialsController {
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 			includeGlobal: query.includeGlobal,
-			externalSecretsStore: query.externalSecretsStore,
+			filters: {
+				externalSecretsStore: query.externalSecretsStore,
+			},
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -263,7 +265,13 @@ export class CredentialsController {
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
-		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
+		const responseData = await this.credentialsService.update(
+			credentialId,
+			newCredentialData,
+			body.data
+				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
+				: undefined,
+		);
 
 		if (responseData === null) {
 			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);

@@ -67,8 +67,12 @@ export class LoadNodesAndCredentials {
 		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
+		// Preserve any existing NODE_PATH (e.g. set by Docker ENV for global npm packages)
+		// so that the task runner subprocess can also resolve externally installed modules.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = module.paths.join(delimiter);
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
 
 		// @ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -77,6 +81,11 @@ export class LoadNodesAndCredentials {
 		if (!inE2ETests) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
+		}
+
+		if (process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS !== 'true') {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
 		}
 
 		// Load nodes from `n8n-nodes-base`

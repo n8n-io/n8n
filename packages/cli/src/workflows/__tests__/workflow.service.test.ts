@@ -1,9 +1,10 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { Project, User, WorkflowEntity } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -53,6 +54,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				mock(), // workflowFinderService
+				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // workflowValidationService
 				mock(), // nodeTypes
@@ -172,13 +174,18 @@ describe('WorkflowService', () => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			workflowRepositoryMock = mock();
 
+			const ownershipServiceMock = mock<OwnershipService>();
+			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+
 			workflowService = new WorkflowService(
 				mock(), // logger
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock as never, // workflowRepository
 				mock(), // workflowTagMappingRepository
 				mock(), // binaryDataService
-				mock(), // ownershipService
+				ownershipServiceMock, // ownershipService
 				mock(), // tagService
 				mock(), // workflowHistoryService
 				mock(), // externalHooks
@@ -190,6 +197,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // workflowValidationService
 				mock(), // nodeTypes

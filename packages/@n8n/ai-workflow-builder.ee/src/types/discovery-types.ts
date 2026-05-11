@@ -30,4 +30,11 @@ export interface DiscoveryContext {
 		availableResources?: ResourceInfo[];
 	}>;
 	bestPractices?: string;
+	/** Content fetched via web_fetch during discovery */
+	fetchedUrlContent?: Array<{
+		url: string;
+		status: 'success' | 'error';
+		title: string;
+		content: string;
+	}>;
 }

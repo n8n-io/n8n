@@ -83,10 +83,11 @@ export function processAirtableError(error: NodeApiError, id?: string, itemIndex
 	return error;
 }
 
-export const flattenOutput = (record: IDataObject) => {
+export function legacyFlattenOutput(record: IDataObject, nodeVersion: number): IDataObject {
+	if (nodeVersion >= 2.2) return record;
 	const { fields, ...rest } = record;
 	return {
 		...rest,
 		...(fields as IDataObject),
 	};
-};
+}

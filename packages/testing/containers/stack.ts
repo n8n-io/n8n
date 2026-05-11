@@ -80,6 +80,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		env = {},
 		projectName,
 		resourceQuota,
+		workerResourceQuota,
 		services: enabledServices = [],
 		external = false,
 	} = config;
@@ -208,6 +209,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			baseUrl: needsLoadBalancer ? undefined : baseUrl,
 			allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 			resourceQuota,
+			workerResourceQuota,
 			filesToMount,
 		});
 		containers.push(...n8nResult.containers);

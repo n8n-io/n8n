@@ -321,7 +321,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 	const search = props.search;
 
 	for (const node of props.nodes) {
-		const fullNode = workflowsStore.getNodeByName(node.name);
+		const fullNode = workflowDocumentStore?.value?.getNodeByName(node.name) ?? null;
 		if (!fullNode) continue;
 
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);

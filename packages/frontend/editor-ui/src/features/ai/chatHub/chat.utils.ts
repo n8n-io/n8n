@@ -381,6 +381,7 @@ export function findOneFromModelsResponse(
 export function createSessionFromStreamingState(
 	streaming: ChatStreamingState,
 	toolIds: string[],
+	isManual = false,
 ): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
@@ -390,6 +391,7 @@ export function createSessionFromStreamingState(
 		credentialId: null,
 		agentName: streaming.agent.name,
 		agentIcon: streaming.agent.icon,
+		type: isManual ? 'manual' : 'production',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		toolIds,
@@ -571,4 +573,26 @@ export function isWaitingForApproval(message: ChatMessage | null | undefined): b
 	}
 
 	return message.content.some((c) => c.type === 'with-buttons' && c.blockUserInput);
+}
+
+export function chunkFilesBySize(files: File[], maxSizeBytes: number): File[][] {
+	const chunks: File[][] = [];
+	let currentChunk: File[] = [];
+	let currentSize = 0;
+
+	for (const file of files) {
+		if (currentSize + file.size > maxSizeBytes && currentChunk.length > 0) {
+			chunks.push(currentChunk);
+			currentChunk = [];
+			currentSize = 0;
+		}
+		currentChunk.push(file);
+		currentSize += file.size;
+	}
+
+	if (currentChunk.length > 0) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
 }

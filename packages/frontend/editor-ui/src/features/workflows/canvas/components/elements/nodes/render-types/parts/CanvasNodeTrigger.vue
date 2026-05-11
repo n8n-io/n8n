@@ -6,6 +6,7 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -41,12 +42,40 @@ const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const logsStore = useLogsStore();
+const chatHubPanelStore = useChatHubPanelStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { startChat } = useCanvasOperations();
 
-const isChatOpen = computed(() => logsStore.isOpen);
+const chatTriggerNode = computed(() =>
+	workflowsStore.allNodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE),
+);
+const isChatHubAvailable = computed(
+	() =>
+		chatHubPanelStore.isFloatingChatEnabled &&
+		chatTriggerNode.value?.parameters?.availableInChat === true,
+);
+const isChatHubOpen = computed(() => chatHubPanelStore.isOpen);
+const isChatOpen = computed(() =>
+	isChatHubAvailable.value ? isChatHubOpen.value : logsStore.isOpen,
+);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
+
+function openChat() {
+	if (isChatHubAvailable.value) {
+		chatHubPanelStore.open();
+	} else {
+		startChat('node');
+	}
+}
+
+function closeChat() {
+	if (isChatHubAvailable.value) {
+		chatHubPanelStore.close();
+	} else {
+		logsStore.toggleOpen(false);
+	}
+}
 
 async function handleClickExecute() {
 	workflowsStore.setSelectedTriggerNodeName(name);
@@ -72,7 +101,7 @@ async function handleClickExecute() {
 						:disabled="isExecuting"
 						:data-test-id="testId"
 						:label="i18n.baseText('chat.hide')"
-						@click.capture="logsStore.toggleOpen(false)"
+						@click.capture="closeChat"
 					/>
 					<KeyboardShortcutTooltip
 						v-else
@@ -86,7 +115,7 @@ async function handleClickExecute() {
 							:disabled="isExecuting"
 							:data-test-id="testId"
 							:label="i18n.baseText('chat.open')"
-							@click.capture="startChat('node')"
+							@click.capture="openChat"
 						/>
 					</KeyboardShortcutTooltip>
 				</template>
@@ -132,6 +161,11 @@ async function handleClickExecute() {
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		transform: scale(var(--canvas-zoom-compensation-factor, 1));
 		transform-origin: center right;
+	}
+
+	/* Override N8nButton's .disabled { opacity: 0.5 } which has higher specificity */
+	& button[disabled] {
+		opacity: 0;
 	}
 
 	&.interactive.hovered button {

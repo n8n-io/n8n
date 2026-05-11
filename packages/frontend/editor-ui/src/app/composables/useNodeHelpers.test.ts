@@ -19,13 +19,20 @@ import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectWorkflowState, useWorkflowState } from './useWorkflowState';
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
+const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return {
 		...actual,
-		injectWorkflowState: vi.fn(),
+		useWorkflowDocumentStore: vi.fn(() => ({
+			usedCredentials: mockDocumentStoreUsedCredentials,
+			allNodes: [],
+			getNodeByName: vi.fn(),
+			setNodeIssue: vi.fn(),
+			updateNodeProperties: vi.fn(),
+		})),
 	};
 });
 
@@ -36,23 +43,10 @@ describe('useNodeHelpers()', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
-	});
-
-	describe('initialization', () => {
-		it('should use provided workflowState and not inject', () => {
-			const workflowState = useWorkflowState();
-			vi.clearAllMocks();
-
-			useNodeHelpers({ workflowState });
-
-			expect(injectWorkflowState).not.toBeCalled();
-		});
-
-		it('should create workflowState if not provided', () => {
-			useNodeHelpers();
-
-			expect(injectWorkflowState).toBeCalled();
-		});
+		// Clear mock document store state
+		for (const key of Object.keys(mockDocumentStoreUsedCredentials)) {
+			delete mockDocumentStoreUsedCredentials[key];
+		}
 	});
 
 	describe('isNodeExecutable()', () => {
@@ -241,9 +235,10 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: false,
 			});
-			mockedStore(useWorkflowsStore).usedCredentials = {
+			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
+			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithoutAccess.id]: credentialWithoutAccess,
-			};
+			});
 
 			const result = getForeignCredentialsIfSharingEnabled({
 				[credentialWithoutAccess.id]: {
@@ -285,10 +280,11 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
 			});
-			mockedStore(useWorkflowsStore).usedCredentials = {
+			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
+			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithAccess1.id]: credentialWithAccess1,
 				[credentialWithAccess2.id]: credentialWithAccess2,
-			};
+			});
 
 			const result = getForeignCredentialsIfSharingEnabled({
 				[credentialWithAccess1.id]: {
@@ -323,10 +319,11 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
 			});
-			mockedStore(useWorkflowsStore).usedCredentials = {
+			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
+			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithAccess.id]: credentialWithAccess,
 				[credentialWithoutAccess.id]: credentialWithoutAccess,
-			};
+			});
 
 			const result = getForeignCredentialsIfSharingEnabled({
 				[credentialWithAccess.id]: {
@@ -744,8 +741,7 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(nodeTypeWithFeatures);
 			const getNodeParametersIssuesSpy = vi.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
-			const workflowState = useWorkflowState();
-			const { updateNodeParameterIssues } = useNodeHelpers({ workflowState });
+			const { updateNodeParameterIssues } = useNodeHelpers();
 
 			updateNodeParameterIssues(node);
 

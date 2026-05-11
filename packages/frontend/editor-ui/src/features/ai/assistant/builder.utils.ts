@@ -1,3 +1,4 @@
+import type { QuickReplyType } from '@n8n/api-types';
 import {
 	hasRevertVersionId,
 	type ChatRequest,
@@ -28,14 +29,15 @@ export async function createBuilderPayload(
 	text: string,
 	id: string,
 	options: {
-		quickReplyType?: string;
+		workflowId: string;
+		quickReplyType?: QuickReplyType;
 		executionData?: IRunExecutionData['resultData'];
 		workflow?: IWorkflowDb;
 		nodesForSchema?: string[];
 		mode?: 'build' | 'plan';
 		isPlanModeEnabled?: boolean;
 		allowSendingParameterValues?: boolean;
-	} = {},
+	},
 ): Promise<ChatRequest.UserChatMessage> {
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
@@ -94,6 +96,7 @@ export async function createBuilderPayload(
 
 	if (options.nodesForSchema?.length) {
 		const { schemas, pinnedNodeNames } = assistantHelpers.getNodesSchemas(
+			options.workflowId,
 			options.nodesForSchema,
 			shouldExcludeParameterValues,
 		);

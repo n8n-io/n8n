@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class SettingsUsersPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/settings/users');
+	}
+
 	getSearchInput(): Locator {
 		return this.page.getByTestId('users-list-search');
 	}

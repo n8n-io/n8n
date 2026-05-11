@@ -22,6 +22,7 @@ export const SERVICE_NAMES = [
 	'mysql',
 	'localstack',
 	'kent',
+	'postgresExporter',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -68,6 +69,7 @@ export interface StackConfig {
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
+	workerResourceQuota?: { memory?: number; cpu?: number };
 	services?: readonly ServiceName[];
 	/** When true, services target host machine instead of Docker-internal n8n */
 	external?: boolean;

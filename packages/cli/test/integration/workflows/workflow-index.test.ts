@@ -5,11 +5,13 @@ import {
 	createWorkflowHistory,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { retryUntil } from '@test-integration/retry-until';
 import { ErrorReporter, Tracing } from 'n8n-core';
+import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { createOwner } from '../shared/db/users';
@@ -38,6 +40,7 @@ beforeAll(async () => {
 		Container.get(Logger),
 		Container.get(ErrorReporter),
 		Container.get(Tracing),
+		Container.get(WorkflowsConfig),
 	);
 
 	// Initialize the service to register event listeners
@@ -248,6 +251,78 @@ describe('WorkflowIndexService Integration', () => {
 					},
 				});
 			});
+		});
+	});
+
+	describe('buildIndex (server startup re-indexing)', () => {
+		const httpRequestNode: INode = {
+			id: 'node-1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const webhookNode: INode = {
+			id: 'node-2',
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: { path: 'my-webhook' },
+		};
+
+		const manualTriggerNode: INode = {
+			id: 'node-3',
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [400, 0],
+			parameters: {},
+		};
+
+		function getDependencyKeys(
+			deps: Array<{ dependencyType: string; dependencyKey: string }>,
+			type: string,
+		) {
+			return deps.filter((d) => d.dependencyType === type).map((d) => d.dependencyKey);
+		}
+
+		it('should use published version nodes (not draft) during batch re-indexing', async () => {
+			// 1. Create a workflow, publish it, then modify the draft
+			const publishedNodes = [httpRequestNode, webhookNode];
+			const workflow = await createWorkflow({ nodes: publishedNodes });
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+
+			// 2. Modify the draft nodes (different from published)
+			const draftNodes = [manualTriggerNode];
+			await workflowRepository.update(workflow.id, {
+				nodes: draftNodes,
+				versionCounter: 2,
+			});
+
+			// 3. Run buildIndex (simulates server startup re-indexing)
+			await workflowIndexService.buildIndex();
+
+			// 4. Verify the published index was built from published nodes, not draft
+			const allDeps = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+				order: { dependencyType: 'ASC', dependencyKey: 'ASC' },
+			});
+
+			const draftDeps = allDeps.filter((d) => d.publishedVersionId === null);
+			const publishedDeps = allDeps.filter((d) => d.publishedVersionId !== null);
+
+			// Draft index should reflect the modified nodes
+			const draftNodeTypes = getDependencyKeys(draftDeps, 'nodeType').sort();
+			expect(draftNodeTypes).toEqual(['n8n-nodes-base.manualTrigger']);
+
+			// Published index should reflect the original published nodes
+			const publishedNodeTypes = getDependencyKeys(publishedDeps, 'nodeType').sort();
+			expect(publishedNodeTypes).toEqual(['n8n-nodes-base.httpRequest', 'n8n-nodes-base.webhook']);
+			expect(getDependencyKeys(publishedDeps, 'webhookPath')).toContain('my-webhook');
 		});
 	});
 

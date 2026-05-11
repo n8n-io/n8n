@@ -2,6 +2,7 @@
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
@@ -17,6 +18,7 @@ const enum FloatingNodePosition {
 }
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
@@ -53,7 +55,7 @@ function onKeyDown(e: KeyboardEvent) {
 function getINodesFromNames(names: string[]): NodeConfig[] {
 	return names
 		.map((name) => {
-			const node = workflowsStore.getNodeByName(name);
+			const node = workflowDocumentStore?.value?.getNodeByName(name) ?? null;
 			if (node) {
 				const nodeType = nodeTypesStore.getNodeType(node.type);
 				if (nodeType) {

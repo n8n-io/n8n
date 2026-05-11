@@ -1,10 +1,11 @@
 import {
-	passwordSchema,
+	createPasswordSchema,
 	PasswordUpdateRequestDto,
 	UserSelfSettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
@@ -36,6 +37,7 @@ export class MeController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -195,7 +197,9 @@ export class MeController {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
-		const passwordValidation = passwordSchema.safeParse(newPassword);
+		const passwordValidation = createPasswordSchema(
+			this.globalConfig.userManagement.password.minLength,
+		).safeParse(newPassword);
 		if (!passwordValidation.success) {
 			throw new BadRequestError(
 				passwordValidation.error.errors.map(({ message }) => message).join(' '),

@@ -149,6 +149,9 @@ When you need a node that wasn't discovered:
 Do not guess node type names. Node type names must exactly match the format shown in discovery context (e.g., "n8n-nodes-base.webhook", not "webhook" or "splitOut").
 </discovered_nodes>`;
 
+const FETCHED_URL_CONTENT =
+	'If the DISCOVERY CONTEXT includes a "Fetched URL Content" section, it contains web page content that the Discovery Agent retrieved from URLs the user provided. Use this content to inform your node configuration — for example, API endpoints, field names, data shapes, or authentication details found in the documentation. If a fetched URL is marked [FAILED], the content could not be retrieved — configure the node based on available information instead.';
+
 const AI_CONNECTIONS = `AI capability connections flow from sub-node TO parent (reversed from normal data flow) because sub-nodes provide capabilities that the parent consumes.
 
 Connection patterns:
@@ -720,7 +723,9 @@ Build the complete workflow in one pass. Keep implementations minimal—the righ
 
 const RESPONSE_FORMAT = `After validation passes, stop and output a brief completion message. Do not call read tools (get_workflow_overview, get_node_context) to review your work—validation confirms correctness.
 
-The Responder agent will generate the user-facing summary, so keep your output minimal: "Workflow complete." or a single sentence noting any issues encountered.`;
+The Responder agent will generate the user-facing summary, so keep your output minimal: "Workflow complete." or a single sentence noting any issues encountered.
+
+If the Discovery Agent could not fetch content from a URL the user provided (shown as [FAILED] in the discovery context), mention that briefly in your completion message so the Responder can inform the user. Example: "Workflow complete. Note: could not fetch content from [url] — configured the node based on available information instead."`;
 
 /** Instance URL template variable for webhooks */
 export const INSTANCE_URL_PROMPT = `<instance_url>
@@ -792,6 +797,7 @@ export function buildBuilderPrompt(
 			// Structure
 			.section('node_creation', NODE_CREATION)
 			.section('use_discovered_nodes', USE_DISCOVERED_NODES)
+			.section('fetched_url_content', FETCHED_URL_CONTENT)
 			.section('ai_connections', AI_CONNECTIONS)
 			.section('connection_types', CONNECTION_TYPES)
 			.section('initial_parameters', INITIAL_PARAMETERS)

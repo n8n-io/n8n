@@ -20,7 +20,12 @@ import {
 	type ChatRequest,
 	Session,
 } from './chat-service.types';
-import { getLastNodeExecuted, getMessage, shouldResumeImmediately } from './utils';
+import {
+	getLastNodeExecuted,
+	getLastNodeMessage,
+	getMessage,
+	shouldResumeImmediately,
+} from './utils';
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;
@@ -150,7 +155,7 @@ export class ChatService {
 			session.connection.send(N8N_CONTINUE);
 			const data: ChatMessage = {
 				action: 'sendMessage',
-				chatInput: '',
+				chatInput: getLastNodeMessage(execution, lastNode),
 				sessionId: session.sessionId,
 			};
 			await this.resumeExecution(session.executionId, data, sessionKey);

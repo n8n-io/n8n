@@ -87,7 +87,6 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 
@@ -100,7 +99,6 @@ describe('DynamicCredentialsProxy', () => {
 			const workflowSettings: IWorkflowSettings = {
 				executionTimeout: 300,
 			};
-			const canUseExternalSecrets = true;
 
 			mockResolverProvider.resolveIfNeeded.mockResolvedValue({
 				data: staticData,
@@ -113,7 +111,6 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				executionContext,
 				workflowSettings,
-				canUseExternalSecrets,
 			);
 
 			expect(mockResolverProvider.resolveIfNeeded).toHaveBeenCalledWith(
@@ -121,7 +118,6 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				executionContext,
 				workflowSettings,
-				canUseExternalSecrets,
 			);
 		});
 	});

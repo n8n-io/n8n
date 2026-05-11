@@ -56,7 +56,6 @@ const mockWorkflowState = {
 	setWorkflowName: vi.fn(),
 	setActive: vi.fn(),
 	setWorkflowId: vi.fn(),
-	setWorkflowSettings: vi.fn(),
 	setNodeValue: vi.fn(),
 };
 

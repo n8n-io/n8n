@@ -33,6 +33,73 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	},
 ];
 
+// --- Benchmark profiles ---
+// Each profile represents a real-world n8n deployment configuration.
+// ONE test file runs in ALL profiles — adding a profile auto-expands coverage.
+
+const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 10);
+
+// Resource profiles matching realistic AWS instance types:
+// Main: m5.large (2 vCPU, 8GB RAM) — matches staging main
+// Workers: t3.medium (2 vCPU, 4GB RAM) — matches staging worker limits
+export const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
+export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
+
+export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
+
+const BENCHMARK_BASE_CONFIG: N8NConfig = {
+	services: [...OBSERVABILITY_SERVICES],
+	postgres: true,
+	resourceQuota: BENCHMARK_MAIN_RESOURCES,
+	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
+	env: {
+		N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS: 'true',
+	},
+};
+
+const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
+	{
+		name: 'direct',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				DB_POSTGRESDB_POOL_SIZE: '20',
+			},
+		},
+	},
+	{
+		name: 'queue',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+			},
+		},
+	},
+	{
+		name: 'queue-tuned',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+				N8N_LOG_LEVEL: 'info',
+				DB_POSTGRESDB_POOL_SIZE: '30',
+				DB_POSTGRESDB_CONNECTION_TIMEOUT: '60000',
+				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+				EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
+			},
+		},
+	},
+];
+
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
@@ -64,6 +131,17 @@ export function getProjects(): Project[] {
 					use: { containerConfig: config },
 				},
 			);
+		}
+
+		for (const { name, config } of BENCHMARK_PROFILES) {
+			projects.push({
+				name: `benchmark-${name}:infrastructure`,
+				testDir: './tests/infrastructure/benchmarks',
+				workers: 1,
+				timeout: 600_000,
+				retries: 0,
+				use: { containerConfig: config },
+			});
 		}
 	}
 

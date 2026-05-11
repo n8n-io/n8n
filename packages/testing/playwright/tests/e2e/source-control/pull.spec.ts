@@ -92,7 +92,7 @@ test.describe(
 			await n8n.canvas.openTagManagerModal();
 			await expect(n8n.canvas.tagsManagerModal.getModal()).toBeVisible();
 			await expect(n8n.canvas.tagsManagerModal.getTable()).toBeVisible();
-			await expect(n8n.canvas.tagsManagerModal.getTable().getByText('pull-test-tag')).toBeVisible();
+			await expect(n8n.canvas.tagsManagerModal.getTagByName('pull-test-tag')).toBeVisible();
 		});
 
 		test('should pull modified and deleted resources from remote', async ({ n8n }) => {

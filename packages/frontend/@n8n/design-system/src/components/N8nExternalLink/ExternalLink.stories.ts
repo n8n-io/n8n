@@ -14,6 +14,14 @@ export default {
 			control: 'boolean',
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A link component for external destinations with external-link affordances.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

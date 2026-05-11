@@ -563,6 +563,48 @@ describe('Resolution-based completions', () => {
 		});
 	});
 
+	describe('optional chaining', () => {
+		const { $input } = mockProxy;
+
+		test('should return completions for: {{ $json?.| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input.item?.json);
+
+			const found = await completions('{{ $json?.| }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(
+				Object.keys($input.item?.json ?? {}).length + extensions({ typeName: 'object' }).length,
+			);
+		});
+
+		test('should return completions for: {{ $json?.str?.| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input.item?.json.str);
+
+			const found = await completions('{{ $json?.str?.| }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(
+				extensions({ typeName: 'string' }).length +
+					natives({ typeName: 'string' }).length +
+					STRING_RECOMMENDED_OPTIONS.length,
+			);
+		});
+
+		test('should return completions for: {{ $input.first()?.json?.| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input.item?.json);
+
+			const found = await completions('{{ $input.first()?.json?.| }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(
+				Object.keys($input.item?.json ?? {}).length + extensions({ typeName: 'object' }).length,
+			);
+		});
+	});
+
 	describe('bracket access', () => {
 		const { $input } = mockProxy;
 

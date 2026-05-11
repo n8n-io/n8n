@@ -100,6 +100,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
+	workflowVersionId?: string | null;
 	customData: Record<string, string>;
 	annotation: {
 		tags: ITagBase[];
@@ -198,6 +199,7 @@ export namespace ExecutionSummaries {
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
 		projectId: string;
+		workflowVersionId: string;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
@@ -206,7 +208,12 @@ export namespace ExecutionSummaries {
 	>; // parsed from query params
 
 	type AccessFields = {
-		accessibleWorkflowIds?: string[];
+		user?: User;
+		sharingOptions?: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		};
 	};
 
 	type RangeFields = {

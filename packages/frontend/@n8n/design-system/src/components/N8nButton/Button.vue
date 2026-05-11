@@ -96,6 +96,7 @@ const handleClick = (event: MouseEvent) => {
 		:aria-busy="loading || undefined"
 		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
 		:class="classes"
+		:data-icon-only="iconOnly ? 'true' : undefined"
 		aria-live="polite"
 		@click="handleClick"
 	>
@@ -258,7 +259,7 @@ const handleClick = (event: MouseEvent) => {
 		);
 		--button--shadow:
 			0 1px 3px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
-			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
+			0 0 0 1.5px light-dark(transparent, var(--color--black-alpha-100));
 		--button--shadow--hover:
 			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
 			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
@@ -390,6 +391,8 @@ const handleClick = (event: MouseEvent) => {
 	&.iconOnly {
 		width: var(--button--height);
 		padding: 0;
+		justify-content: center;
+		align-items: center;
 
 		> * {
 			width: var(--button--height);

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { reactive, ref, nextTick } from 'vue';
+import { computed, reactive, ref, nextTick } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -9,13 +9,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE, SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
-import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
@@ -67,7 +67,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
-const renderComponent = createComponentRenderer(ExecuteMessage);
+const renderComponent = createComponentRenderer(ExecuteMessage, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow'),
+		},
+	},
+});
 
 vi.mock('./NodeIssueItem.vue', () => ({
 	default: {
@@ -115,6 +121,7 @@ describe('ExecuteMessage', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflow.id = 'test-workflow';
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
 		uiStore = mockedStore(useUIStore);
@@ -143,9 +150,6 @@ describe('ExecuteMessage', () => {
 		workflowsStore.setSelectedTriggerNodeName = vi.fn((name: string | undefined) => {
 			selectedTriggerNodeNameRef.value = name;
 		});
-		workflowsStore.getNodeByName = vi.fn(
-			(name: string) => workflowNodes.find((node) => node.name === name) ?? null,
-		);
 		logsStore.toggleOpen = vi.fn();
 		nodeTypesStore.isTriggerNode = vi
 			.fn()
@@ -445,5 +449,86 @@ describe('ExecuteMessage', () => {
 		expect(builderStore.trackWorkflowBuilderJourney).not.toHaveBeenCalledWith(
 			'no_placeholder_values_left',
 		);
+	});
+
+	describe('follow-up actions', () => {
+		it('shows pre-execution follow-ups when deferred pin data exists', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('follow-up-execute-with-mock-data')).toBeInTheDocument();
+		});
+
+		it('does not show follow-ups when no deferred pin data exists', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('follow-up-execute-with-mock-data')).not.toBeInTheDocument();
+		});
+
+		it('hides execute button when pre-execution follow-ups are shown', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('shows execute button when no follow-ups are present', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('execute-workflow-button')).toBeInTheDocument();
+		});
+
+		it('emits executeWithMockData when follow-up is clicked', async () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { getByTestId, emitted } = renderExecuteMessage();
+
+			await fireEvent.click(getByTestId('follow-up-execute-with-mock-data'));
+
+			expect(emitted('executeWithMockData')).toHaveLength(1);
+			expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+				'user_clicked_run_with_test_data',
+			);
+		});
+
+		it('shows post-execution follow-ups when pin data has been applied', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('follow-up-toggle-pin-data')).toBeInTheDocument();
+			expect(getByTestId('follow-up-execute-and-refine')).toBeInTheDocument();
+		});
+
+		it('does not show post-execution follow-ups when pinDataApplied is false', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => false });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('follow-up-toggle-pin-data')).not.toBeInTheDocument();
+			expect(queryByTestId('follow-up-execute-and-refine')).not.toBeInTheDocument();
+		});
+
+		it('hides old unpin section and execute button when post-execution follow-ups show', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
+			Object.defineProperty(builderStore, 'isCodeBuilder', { get: () => true });
+			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
+			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
+
+			const { queryByTestId, queryByText } = renderExecuteMessage();
+
+			// Old unpin button and execute button should be hidden
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+			expect(queryByText('aiAssistant.builder.executeMessage.unpinAll')).not.toBeInTheDocument();
+		});
 	});
 });

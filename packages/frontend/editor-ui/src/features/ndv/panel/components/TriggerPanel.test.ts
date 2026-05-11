@@ -6,18 +6,35 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { setActivePinia } from 'pinia';
+import { computed, shallowRef } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 
 describe('TriggerPanel.vue', () => {
 	beforeEach(async () => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
 		const node = createTestNode({ id: '0', name: 'Webhook', type: 'n8n-nodes-base.webhook' });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		workflowsStore.workflow.nodes = [node];
+
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
+			shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
+		);
+
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		const nodeTypeDescription = mockNodeTypeDescription({
 			name: 'n8n-nodes-base.webhook',
@@ -34,6 +51,11 @@ describe('TriggerPanel.vue', () => {
 	it('renders default state', () => {
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+			},
 		});
 		expect(getByTestId('trigger-header')).toBeInTheDocument();
 		expect(getByTestId('trigger-header')).toHaveTextContent('Pull in events from Webhook');
@@ -45,6 +67,11 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.executedNode = 'Webhook';
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+			},
 		});
 		expect(getByTestId('trigger-listening')).toBeInTheDocument();
 	});
@@ -54,6 +81,11 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.executedNode = 'OtherNode';
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+			},
 		});
 		expect(queryByTestId('trigger-listening')).not.toBeInTheDocument();
 	});
@@ -64,6 +96,11 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.workflowObject.getParentNodes = vi.fn(() => ['Webhook']);
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+			},
 		});
 		expect(getByTestId('trigger-listening')).toBeInTheDocument();
 	});
@@ -74,6 +111,11 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.workflowObject.getParentNodes = vi.fn(() => []);
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+			},
 		});
 		expect(queryByTestId('trigger-listening')).not.toBeInTheDocument();
 	});

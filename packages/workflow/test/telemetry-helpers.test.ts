@@ -2016,6 +2016,129 @@ describe('generateNodesGraph', () => {
 			evaluationTriggerNodeNames: [],
 		});
 	});
+
+	describe('ai_model telemetry', () => {
+		test('should capture ai_model for LM node with plain string model param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'test-model' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should capture ai_model for LM node with modelName param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelName: 'test-model' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should capture ai_model for LM node with resourceLocator model param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							model: { __rl: true, mode: 'list', value: 'test-model' },
+						},
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test.each([
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.openAi',
+				name: 'OpenAI',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.anthropic',
+				name: 'Anthropic',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.ollama',
+				name: 'Ollama',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.googleGemini',
+				name: 'Google Gemini',
+			},
+		])('should capture ai_model for $name vendor node via modelId', ({ nodeType }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							modelId: { __rl: true, mode: 'list', value: 'test-model' },
+						},
+						id: 'vendor-node-id',
+						name: 'Vendor Node',
+						type: nodeType,
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should not capture ai_model for non-AI node', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {},
+						id: 'manual-trigger-id',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBeUndefined();
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {

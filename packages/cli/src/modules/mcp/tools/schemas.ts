@@ -25,13 +25,24 @@ export const workflowDetailsOutputSchema = z.object({
 			name: z.string().nullable(),
 			active: z.boolean(),
 			isArchived: z.boolean(),
-			versionId: z.string(),
+			versionId: z.string().describe('The current workflow version ID'),
+			activeVersionId: z
+				.string()
+				.nullable()
+				.describe('The active workflow version ID, if available'),
 			triggerCount: z.number(),
 			createdAt: z.string().nullable(),
 			updatedAt: z.string().nullable(),
 			settings: workflowSettingsSchema,
 			connections: z.record(z.unknown()),
 			nodes: z.array(nodeSchema),
+			activeVersion: z
+				.object({
+					nodes: z.array(nodeSchema),
+					connections: z.record(z.unknown()),
+				})
+				.nullable()
+				.describe('Active workflow graph, if available'),
 			tags: z.array(tagSchema),
 			meta: workflowMetaSchema,
 			parentFolderId: z.string().nullable(),

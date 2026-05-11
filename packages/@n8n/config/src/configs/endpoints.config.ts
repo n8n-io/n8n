@@ -68,6 +68,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
 	includeWorkflowNameLabel: boolean = false;
 
+	/** Whether to include a histogram metric for workflow execution duration. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_EXECUTION_DURATION')
+	includeWorkflowExecutionDuration: boolean = true;
+
 	/** Whether to include workflow execution statistics as metrics. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_STATISTICS')
 	includeWorkflowStatistics: boolean = false;
@@ -125,6 +129,14 @@ export class EndpointsConfig {
 	/** Path segment for test MCP endpoints. */
 	@Env('N8N_ENDPOINT_MCP_TEST')
 	mcpTest: string = 'mcp-test';
+
+	/** Whether to enable workflow builder tools in the MCP server. */
+	@Env('N8N_MCP_BUILDER_ENABLED')
+	mcpBuilderEnabled: boolean = true;
+
+	/** Maximum number of OAuth clients that can be registered for MCP. */
+	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
+	mcpMaxRegisteredClients: number = 200;
 
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')

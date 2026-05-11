@@ -8,7 +8,7 @@ import type {
 export class PineconeApi implements ICredentialType {
 	name = 'pineconeApi';
 
-	displayName = 'PineconeApi';
+	displayName = 'Pinecone API';
 
 	documentationUrl = 'pinecone';
 

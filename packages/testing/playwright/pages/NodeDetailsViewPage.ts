@@ -26,6 +26,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-credentials-select');
 	}
 
+	getNodeCredentialsEmptyState() {
+		return this.page.getByTestId('node-credentials-empty-state');
+	}
+
+	getQuickConnectEmptyState() {
+		return this.page.getByTestId('quick-connect-empty-state');
+	}
+
 	credentialDropdownCreateNewCredential() {
 		return this.page.getByText('Create new credential');
 	}
@@ -127,6 +135,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('run-data-pane-header');
 	}
 
+	getEditOutputButton() {
+		return this.getRunDataPaneHeader().getByRole('button', { name: 'Edit Output' });
+	}
+
 	getOutputDataContainer() {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
@@ -167,6 +179,10 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
+	async clickAssignmentExpressionToggle(paramName: string) {
+		await this.getAssignmentValue(paramName).getByText('Expression').click();
+	}
+
 	/**
 	 * Get the inline expression editor input
 	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
@@ -186,6 +202,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputHint() {
 		return this.page.getByTestId('parameter-input-hint');
+	}
+
+	getParameterInputHintWithText(text: string) {
+		return this.getParameterInputHint().getByText(text);
 	}
 
 	getInputLabel() {
@@ -219,6 +239,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInput(parameterName: string, index?: number) {
 		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
+	}
+
+	getParameterInputTextbox(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).getByRole('textbox');
 	}
 
 	getParameterInputField(parameterName: string, index?: number) {
@@ -417,14 +441,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName).locator('input[type="text"]');
 	}
 
-	/**
-	 * Get the N8nInput container element for a parameter.
-	 * Use this for checking border styles since N8nInput has border on container, not input.
-	 */
-	getParameterInputContainer(parameterName: string) {
-		return this.getParameterInput(parameterName).locator('input[type="text"]').locator('..');
-	}
-
 	getInlineExpressionEditorContent() {
 		return this.getInlineExpressionEditorInput().locator('.cm-content');
 	}
@@ -489,6 +505,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.waitForTimeout(2500);
 	}
 
+	getCopyInputButton() {
+		return this.page.getByTestId('copy-input');
+	}
+
 	getOutputPagination() {
 		return this.outputPanel.get().getByTestId('ndv-data-pagination');
 	}
@@ -525,8 +545,25 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		await this.page.getByTestId('node-credentials-select').nth(eq).click();
-		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		const setupManually = this.page.getByTestId('setup-manually-link').nth(eq);
+		const setupCredential = this.page.getByTestId('setup-credential-button').nth(eq);
+		const credentialSelect = this.page.getByTestId('node-credentials-select').nth(eq);
+
+		// Wait for one of the three credential UI states to appear
+		await Promise.race([
+			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
+			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
+			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
+		]);
+
+		if (await setupManually.isVisible()) {
+			await setupManually.click();
+		} else if (await setupCredential.isVisible()) {
+			await setupCredential.click();
+		} else {
+			await credentialSelect.click();
+			await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		}
 	}
 
 	// Run selector and linking helpers
@@ -720,7 +757,32 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async addItemToFixedCollection(collectionName: string) {
-		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+		const collection = this.page.getByTestId(`fixed-collection-${collectionName}`);
+		const explicitAddControl = collection
+			.locator(
+				[
+					'[data-test-id="fixed-collection-add-top-level-button"]',
+					'[data-test-id="fixed-collection-add-top-level-dropdown"]',
+					'[data-test-id="fixed-collection-add-header"]',
+					'[data-test-id="fixed-collection-add-header-nested"]',
+					'[data-test-id="fixed-collection-add"]',
+				].join(', '),
+			)
+			.first();
+
+		if ((await explicitAddControl.count()) > 0 && (await explicitAddControl.isVisible())) {
+			await explicitAddControl.click();
+			return;
+		}
+
+		const addButtonByName = collection.getByRole('button', { name: /^Add / }).first();
+		if ((await addButtonByName.count()) > 0 && (await addButtonByName.isVisible())) {
+			await addButtonByName.click();
+			return;
+		}
+
+		// Fallback for legacy behavior where clicking the wrapper would add an item.
+		await collection.click();
 	}
 
 	getFixedCollectionPropertyPicker(index?: number) {
@@ -825,6 +887,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getFilterConditionLeft(paramName: string, index: number = 0) {
 		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
+	}
+
+	getFilterConditionLeftInput(paramName: string, index: number = 0) {
+		return this.getFilterConditionLeft(paramName, index).locator('input');
 	}
 
 	getFilterConditionOperator(paramName: string, index: number = 0) {

@@ -83,7 +83,7 @@ const isCommunityNodeActionsMode = computed(() => {
 });
 
 const viewStackTitle = computed(() => {
-	if (nodeCreatorStore.oppeningContext === 'replacement') {
+	if (nodeCreatorStore.openingContext === 'replacement') {
 		return i18n.baseText('nodeCreator.replaceNode.title');
 	}
 	return activeViewStack.value.title;
@@ -122,12 +122,12 @@ function onSearch(value: string) {
 }
 
 function onTransitionEnd() {
-	cleanupOppeningContext();
+	cleanupopeningContext();
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
-function cleanupOppeningContext() {
-	nodeCreatorStore.oppeningContext = null;
+function cleanupopeningContext() {
+	nodeCreatorStore.openingContext = null;
 }
 
 onMounted(() => {
@@ -136,7 +136,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-	cleanupOppeningContext();
+	cleanupopeningContext();
 	detachKeydownEvent();
 });
 

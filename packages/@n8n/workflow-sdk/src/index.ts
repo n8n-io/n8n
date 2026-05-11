@@ -179,6 +179,15 @@ export {
 	type SerializerPlugin,
 } from './workflow-builder/plugins';
 
+// Pin data utilities
+export {
+	needsPinData,
+	discoverOutputSchemaForNode,
+	inferSchemasFromRunData,
+	normalizePinData,
+	type IsTriggerNodeFn,
+} from './pin-data-utils';
+
 // Node type constants
 export {
 	NODE_TYPES,

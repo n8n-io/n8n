@@ -3,12 +3,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { vi } from 'vitest';
 import {
@@ -480,6 +481,83 @@ describe('ResourceLocator', () => {
 		);
 
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
+	});
+
+	it('falls back to workflow homeProject ID when currentProjectId is not available', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		projectsStore.currentProjectId = undefined as unknown as string;
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+
+		const mockWorkflowDocumentStore = shallowRef({
+			homeProject: { id: 'home-project-456', name: 'Test Project', type: 'team' },
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: mockWorkflowDocumentStore,
+				},
+			},
+		});
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'/projects/home-project-456/datatables/new',
+			'_blank',
+		);
+	});
+
+	it('clears cached resources after URL redirect so fresh data is fetched on re-open', async () => {
+		const TEST_ITEMS = [{ name: 'Old Table', value: 'old-table' }];
+		const TEST_ITEMS_UPDATED = [
+			{ name: 'Old Table', value: 'old-table' },
+			{ name: 'New Table', value: 'new-table' },
+		];
+
+		nodeTypesStore.getResourceLocatorResults
+			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: null })
+			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: null });
+
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				modelValue: { __rl: true, value: '', mode: 'list' },
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		// Open dropdown — first fetch returns old data
+		await fireEvent.focus(getByTestId('rlc-input'));
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalledTimes(1);
+		});
+		expect(getByText('Old Table')).toBeInTheDocument();
+
+		// Click "Create new" — opens URL and clears cache
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		// Re-open dropdown — should fetch fresh data since cache was cleared
+		await fireEvent.focus(getByTestId('rlc-input'));
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalledTimes(2);
+		});
+		expect(getByText('New Table')).toBeInTheDocument();
 	});
 
 	describe('slow load notice', () => {

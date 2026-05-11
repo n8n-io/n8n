@@ -327,4 +327,24 @@ describe('Score Calculator', () => {
 			expect(sum).toBeCloseTo(1.0);
 		});
 	});
+
+	describe('binary-checks weight', () => {
+		it('binary-checks evaluator has weight 0 in DEFAULT_EVALUATOR_WEIGHTS', () => {
+			expect(DEFAULT_EVALUATOR_WEIGHTS['binary-checks']).toBe(0);
+		});
+
+		it('binary-checks feedback does not affect weighted score', () => {
+			const feedback: Feedback[] = [
+				createFeedback('llm-judge', 'functionality', 0.8),
+				createFeedback('binary-checks', 'has_nodes', 1),
+				createFeedback('binary-checks', 'has_trigger', 0),
+			];
+			const scoreWithBinary = calculateWeightedScore(feedback);
+
+			const feedbackWithout: Feedback[] = [createFeedback('llm-judge', 'functionality', 0.8)];
+			const scoreWithout = calculateWeightedScore(feedbackWithout);
+
+			expect(scoreWithBinary).toBe(scoreWithout);
+		});
+	});
 });

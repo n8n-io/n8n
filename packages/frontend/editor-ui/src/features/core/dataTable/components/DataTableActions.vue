@@ -6,6 +6,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import {
 	DATA_TABLE_CARD_ACTIONS,
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
+	IMPORT_CSV_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
 
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
@@ -17,6 +18,7 @@ import { computed } from 'vue';
 import { N8nActionToggle } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
+import ImportCsvModal from './ImportCsvModal.vue';
 type Props = {
 	dataTable: DataTable;
 	isReadOnly?: boolean;
@@ -35,6 +37,7 @@ const emit = defineEmits<{
 		},
 	];
 	onDeleted: [];
+	imported: [];
 }>();
 
 const dataTableStore = useDataTableStore();
@@ -46,9 +49,15 @@ const toast = useToast();
 const telemetry = useTelemetry();
 
 const downloadModalKey = computed(() => `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${props.dataTable.id}`);
+const importCsvModalKey = computed(() => `${IMPORT_CSV_MODAL_KEY}-${props.dataTable.id}`);
 
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const availableActions = [
+		{
+			label: i18n.baseText('dataTable.importCsv'),
+			value: DATA_TABLE_CARD_ACTIONS.IMPORT_CSV,
+			disabled: !dataTableStore.projectPermissions.dataTable.writeRow || props.isReadOnly,
+		},
 		{
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
@@ -79,6 +88,10 @@ const onAction = async (action: string) => {
 				dataTable: props.dataTable,
 				action: 'rename',
 			});
+			break;
+		}
+		case DATA_TABLE_CARD_ACTIONS.IMPORT_CSV: {
+			uiStore.openModal(importCsvModalKey.value);
 			break;
 		}
 		case DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV: {
@@ -156,6 +169,12 @@ const deleteDataTable = async () => {
 			:data-table-name="dataTable.name"
 			@confirm="downloadDataTableCsv"
 			@close="() => uiStore.closeModal(downloadModalKey)"
+		/>
+		<ImportCsvModal
+			:modal-name="importCsvModalKey"
+			:data-table="dataTable"
+			@imported="emit('imported')"
+			@close="() => uiStore.closeModal(importCsvModalKey)"
 		/>
 	</div>
 </template>

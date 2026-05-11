@@ -23,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
+	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	Workflow,
 	UnexpectedError,
@@ -95,7 +96,10 @@ export class JobProcessor {
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
+			workflowName: execution.workflowData.name,
 			jobId: job.id,
+			...(job.data.projectId !== undefined && { projectId: job.data.projectId }),
+			...(job.data.projectName !== undefined && { projectName: job.data.projectName }),
 		});
 
 		const startedAt = await this.executionRepository.setRunning(executionId);
@@ -155,6 +159,7 @@ export class JobProcessor {
 				workflowData: execution.workflowData,
 				retryOf: execution.retryOf,
 				pushRef,
+				userId: execution.data.manualData?.userId,
 			},
 			executionId,
 		);
@@ -213,7 +218,10 @@ export class JobProcessor {
 				{
 					executionId,
 					workflowId,
+					workflowName: execution.workflowData.name,
 					jobId: job.id,
+					...(job.data.projectId && { projectId: job.data.projectId }),
+					...(job.data.projectName && { projectName: job.data.projectName }),
 				},
 			);
 		};
@@ -286,6 +294,10 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
+		if (run?.status === 'canceled') {
+			throw new ManualExecutionCancelledError(executionId);
+		}
+
 		const props = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING
 			? this.deriveJobFinishedProps(run, startedAt)
 			: await this.fetchJobFinishedResult(executionId);
@@ -293,8 +305,11 @@ export class JobProcessor {
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
+			workflowName: execution.workflowData.name,
 			jobId: job.id,
 			success: props.success,
+			...(job.data.projectId && { projectId: job.data.projectId }),
+			...(job.data.projectName && { projectName: job.data.projectName }),
 		});
 
 		const msg: JobFinishedMessage = {

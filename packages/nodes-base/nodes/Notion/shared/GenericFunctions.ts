@@ -122,7 +122,7 @@ export async function notionApiRequestGetBlockChildrens(
 	for (const block of blocks) {
 		responseData.push(block);
 
-		if (block.type === 'child_page') continue;
+		if (block.type === 'child_page' || block.type === 'unsupported') continue;
 
 		if (block.has_children) {
 			let childrens = await notionApiRequestAllItems.call(

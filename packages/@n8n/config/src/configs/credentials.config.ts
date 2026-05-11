@@ -1,3 +1,4 @@
+import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -20,6 +21,15 @@ class CredentialsOverwrite {
 	/** Whether to persist credential overwrites so they survive restarts. */
 	@Env('CREDENTIALS_OVERWRITE_PERSISTENCE')
 	persistence: boolean = false;
+
+	/**
+	 * Comma-separated list of credential types for which overwrites are skipped
+	 * when the credential has been customized (any overwrite field has a user-set
+	 * value differing from the overwrite).
+	 * @example `N8N_SKIP_CREDENTIAL_OVERWRITE=zohoOAuth2Api,salesforceOAuth2Api`
+	 */
+	@Env('N8N_SKIP_CREDENTIAL_OVERWRITE')
+	skipTypes: CommaSeparatedStringArray<string> = [];
 }
 
 @Config

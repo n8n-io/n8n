@@ -310,6 +310,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 						<N8nButton
 							class="n8n-button--highlightFill"
 							variant="subtle"
+							size="small"
 							icon="plus"
 							:label="placeholder"
 						/>
@@ -377,6 +378,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 						<N8nButton
 							class="n8n-button--highlightFill"
 							variant="subtle"
+							size="small"
 							icon="plus"
 							:label="placeholder"
 						/>

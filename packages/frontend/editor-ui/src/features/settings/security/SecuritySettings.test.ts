@@ -352,6 +352,25 @@ describe('SecuritySettings', () => {
 		});
 	});
 
+	it('should not show personal space toggles before settings are loaded', async () => {
+		let resolveSettings: (value: typeof defaultSettings) => void = () => {};
+		getSecuritySettings.mockImplementation(
+			async () => await new Promise((resolve) => (resolveSettings = resolve)),
+		);
+
+		const { queryByTestId } = renderView();
+
+		expect(queryByTestId('security-personal-space-sharing-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('security-personal-space-publishing-toggle')).not.toBeInTheDocument();
+
+		resolveSettings(defaultSettings);
+
+		await waitFor(() => {
+			expect(queryByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			expect(queryByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+	});
+
 	describe('when personalSpacePolicy feature is not licensed', () => {
 		beforeEach(() => {
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] =

@@ -559,7 +559,7 @@ describe('ImportService', () => {
 			await importService.enableForeignKeyConstraints(mockEntityManager);
 
 			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SET session_replication_role = DEFAULT;',
+				'SET session_replication_role = ORIGIN;',
 			);
 		});
 	});

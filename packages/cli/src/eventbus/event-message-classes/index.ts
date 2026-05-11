@@ -104,6 +104,8 @@ export const eventNamesAudit = [
 	'n8n.audit.personal-sharing-restricted.disabled',
 	'n8n.audit.2fa-enforcement.enabled',
 	'n8n.audit.2fa-enforcement.disabled',
+	'n8n.audit.execution.data.revealed',
+	'n8n.audit.execution.data.reveal_failure',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

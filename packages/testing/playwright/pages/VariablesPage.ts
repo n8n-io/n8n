@@ -4,6 +4,10 @@ import { BasePage } from './BasePage';
 import { VariableModal } from './components/VariableModal';
 
 export class VariablesPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/variables');
+	}
+
 	readonly variableModal = new VariableModal(this.page.getByTestId('variableModal-modal'));
 
 	getUnavailableResourcesList() {

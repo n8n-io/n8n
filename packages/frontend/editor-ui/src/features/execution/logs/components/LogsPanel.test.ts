@@ -7,7 +7,11 @@ import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { computed, h, nextTick, ref } from 'vue';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { computed, h, nextTick, ref, shallowRef } from 'vue';
 import {
 	aiAgentNode,
 	aiChatExecutionResponse as aiChatExecutionResponseTemplate,
@@ -18,6 +22,7 @@ import {
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createRunExecutionData, deepCopy } from 'n8n-workflow';
@@ -31,7 +36,6 @@ import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
-import type * as useNodeHelpersModule from '@/app/composables/useNodeHelpers';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -66,18 +70,6 @@ vi.mock('@/stores/pushConnection.store', () => ({
 	}),
 }));
 
-// Use a mutable reference so the mock always returns the current workflowState
-const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
-
-vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
-	const actual = await importOriginal<typeof useNodeHelpersModule>();
-	return {
-		...actual,
-		useNodeHelpers: (opts = {}) =>
-			actual.useNodeHelpers({ ...opts, workflowState: workflowStateRef.current }),
-	};
-});
-
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
 
@@ -98,6 +90,10 @@ describe('LogsPanel', () => {
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
 					[WorkflowStateKey as symbol]: workflowState,
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
 				},
 				plugins: [
 					createRouter({
@@ -123,7 +119,6 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
-		workflowStateRef.current = workflowState;
 		workflowState.setWorkflowExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);

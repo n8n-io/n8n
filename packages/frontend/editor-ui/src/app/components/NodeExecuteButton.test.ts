@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
@@ -6,7 +6,6 @@ import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
-import { nodeViewEventBus } from '@/app/event-bus';
 import {
 	AI_TRANSFORM_NODE_TYPE,
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
@@ -20,6 +19,11 @@ import {
 } from '@/app/constants';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
@@ -99,8 +103,14 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal()),
+	injectWorkflowDocumentStore: vi.fn(),
+}));
+
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 let ndvStore: MockedStore<typeof useNDVStore>;
 
@@ -110,8 +120,6 @@ let pinnedData: ReturnType<typeof usePinnedData>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let workflowState: WorkflowState;
-
-const nodeViewEventBusEmitSpy = vi.spyOn(nodeViewEventBus, 'emit');
 
 describe('NodeExecuteButton', () => {
 	beforeEach(() => {
@@ -126,6 +134,9 @@ describe('NodeExecuteButton', () => {
 		});
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'abc123';
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('abc123'));
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
@@ -136,8 +147,6 @@ describe('NodeExecuteButton', () => {
 		externalHooks = useExternalHooks();
 		message = useMessage();
 		toast = useToast();
-
-		workflowsStore.workflowId = 'abc123';
 	});
 
 	it('renders without error', () => {
@@ -151,7 +160,7 @@ describe('NodeExecuteButton', () => {
 
 	it('displays correct button label for webhook node', () => {
 		const node = mockNode({ name: 'test-node', type: WEBHOOK_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		nodeTypesStore.getNodeType = () => ({
 			...mockNodeTypeDescription(),
 			name: WEBHOOK_NODE_TYPE,
@@ -163,7 +172,7 @@ describe('NodeExecuteButton', () => {
 
 	it('displays correct button label for form trigger node', () => {
 		const node = mockNode({ name: 'test-node', type: FORM_TRIGGER_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		nodeTypesStore.getNodeType = () => ({
 			...mockNodeTypeDescription(),
 			name: FORM_TRIGGER_NODE_TYPE,
@@ -175,19 +184,19 @@ describe('NodeExecuteButton', () => {
 
 	it('displays correct button label for chat node', () => {
 		const node = mockNode({ name: 'test-node', type: CHAT_TRIGGER_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		nodeTypesStore.getNodeType = () => ({
 			...mockNodeTypeDescription(),
 			name: CHAT_TRIGGER_NODE_TYPE,
 		});
 
 		const { getByRole } = renderComponent();
-		expect(getByRole('button').textContent).toBe('Test chat');
+		expect(getByRole('button').textContent).toBe('Open chat');
 	});
 
 	it('displays correct button label for polling node', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		nodeTypesStore.getNodeType = () => ({
 			...mockNodeTypeDescription(),
 			polling: true,
@@ -199,7 +208,7 @@ describe('NodeExecuteButton', () => {
 
 	it('displays "Stop Listening" when node is listening for events', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowsStore.executionWaitingForWebhook = true;
 		nodeTypesStore.isTriggerNode = () => true;
 
@@ -209,7 +218,7 @@ describe('NodeExecuteButton', () => {
 
 	it('displays "Stop Listening" when node is running and is a trigger node', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
 		workflowsStore.isWorkflowRunning = true;
@@ -220,7 +229,7 @@ describe('NodeExecuteButton', () => {
 
 	it('sets button to loading state when node is executing', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		workflowsStore.isWorkflowRunning = true;
 
@@ -229,7 +238,7 @@ describe('NodeExecuteButton', () => {
 	});
 
 	it('should be disabled if the node is disabled and show tooltip', async () => {
-		workflowsStore.getNodeByName.mockReturnValue(
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test', type: SET_NODE_TYPE, disabled: true }),
 		);
 
@@ -249,7 +258,7 @@ describe('NodeExecuteButton', () => {
 	it('should be disabled when workflow is running but node is not executing', async () => {
 		workflowsStore.isWorkflowRunning = true;
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(false);
-		workflowsStore.getNodeByName.mockReturnValue(
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
 
@@ -268,7 +277,7 @@ describe('NodeExecuteButton', () => {
 
 	it('disables button when trigger node has issues', async () => {
 		nodeTypesStore.isTriggerNode = () => true;
-		workflowsStore.getNodeByName.mockReturnValue(
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({
 				name: 'test',
 				type: SET_NODE_TYPE,
@@ -286,7 +295,7 @@ describe('NodeExecuteButton', () => {
 	it('stops webhook when clicking button while listening for events', async () => {
 		workflowsStore.executionWaitingForWebhook = true;
 		nodeTypesStore.isTriggerNode = () => true;
-		workflowsStore.getNodeByName.mockReturnValue(
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
 
@@ -302,7 +311,7 @@ describe('NodeExecuteButton', () => {
 		nodeTypesStore.isTriggerNode = () => true;
 		useWorkflowState().setActiveExecutionId('test-execution-id');
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
-		workflowsStore.getNodeByName.mockReturnValue(
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
 
@@ -316,7 +325,7 @@ describe('NodeExecuteButton', () => {
 
 	it('runs workflow when clicking button normally', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		nodeTypesStore.getNodeType = () => mockNodeTypeDescription();
 
 		const { getByRole, emitted } = renderComponent();
@@ -336,7 +345,7 @@ describe('NodeExecuteButton', () => {
 
 	it('opens chat when clicking button for chat node', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		nodeTypesStore.getNodeType = () => mockNodeTypeDescription({ name: CHAT_TRIGGER_NODE_TYPE });
 
 		const { getByRole } = renderComponent();
@@ -344,27 +353,32 @@ describe('NodeExecuteButton', () => {
 		await userEvent.click(getByRole('button'));
 
 		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
-		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
-		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
+		expect(runWorkflow.runWorkflow).toHaveBeenCalledWith({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'RunData.ExecuteNodeButton',
+		});
 	});
 
 	it('opens chat when clicking button for chat child node', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
+		workflowsStore.workflowObject.getStartNode = vi.fn().mockReturnValue(undefined);
 
 		const { getByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button'));
 
 		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
-		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
-		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
+		expect(runWorkflow.runWorkflow).toHaveBeenCalledWith({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'RunData.ExecuteNodeButton',
+		});
 	});
 
 	it('prompts for confirmation when pinned data exists', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		pinnedData = usePinnedData(node);
 		Object.defineProperty(pinnedData.hasData, 'value', { value: true });
 
@@ -384,7 +398,7 @@ describe('NodeExecuteButton', () => {
 				name: 'test',
 				value: 'Test',
 			}));
-		const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+		const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStore, 'updateNodeProperties');
 		const node = mockNode({
 			name: 'test-node',
 			type: AI_TRANSFORM_NODE_TYPE,
@@ -393,7 +407,7 @@ describe('NodeExecuteButton', () => {
 				[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: 'Test prompt',
 			},
 		});
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 
 		const { getByRole } = renderComponent();
 

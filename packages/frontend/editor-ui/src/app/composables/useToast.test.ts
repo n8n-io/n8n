@@ -12,6 +12,10 @@ describe('useToast', () => {
 	let telemetryTrackSpy: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
+		const appEl = document.createElement('div');
+		appEl.id = 'n8n-app';
+		document.body.appendChild(appEl);
+
 		createTestingPinia();
 
 		telemetryTrackSpy = vi.fn();
@@ -20,6 +24,10 @@ describe('useToast', () => {
 		} as unknown as ReturnType<typeof useTelemetry>);
 
 		toast = useToast();
+	});
+
+	afterEach(() => {
+		document.getElementById('n8n-app')?.remove();
 	});
 
 	it('should show a message', async () => {

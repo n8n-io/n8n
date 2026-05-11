@@ -156,7 +156,11 @@ function onLogout() {
 							<span :class="$style.divider" />
 							<N8nMenuItem
 								:data-test-id="'main-sidebar-log-out'"
-								:item="{ id: 'sign-out', label: 'Sign out', icon: 'door-open' }"
+								:item="{
+									id: 'sign-out',
+									label: i18n.baseText('auth.signout'),
+									icon: 'door-open',
+								}"
 								@click="onLogout"
 							/>
 						</div>

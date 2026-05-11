@@ -4,10 +4,11 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { randomString } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialDataDecryptedObject,
+	randomString,
+} from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
@@ -822,6 +823,37 @@ describe('PATCH /credentials/:id', () => {
 		expect(unchangedCredential.isGlobal).toBe(true);
 
 		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should allow sending isGlobal with same value when sharing is not licensed', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Credential defaults to isGlobal=false, so sending isGlobal=false should succeed
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			name: 'Updated name',
+			isGlobal: false,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe('Updated name');
+
+		// Verify credential was updated
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(updatedCredential.name).toBe('Updated name');
+		expect(updatedCredential.isGlobal).toBeFalsy();
+
 		isSharingLicensedSpy.mockRestore();
 	});
 

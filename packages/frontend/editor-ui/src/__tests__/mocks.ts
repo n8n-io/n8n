@@ -282,7 +282,7 @@ export function createMockEnterpriseSettings(
 		binaryDataS3: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
 		workflowDiffs: false,
 		namedVersions: false,
 		projects: {

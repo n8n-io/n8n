@@ -84,8 +84,11 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 						shouldReport: true,
 					},
 				);
+
+				this.instanceSettings.markAsLeader();
+
+				this.emit('leader-takeover');
 			}
-			this.instanceSettings.markAsLeader();
 
 			this.logger.debug(`[Instance ID ${hostId}] Leader is this instance`);
 

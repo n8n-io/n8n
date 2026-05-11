@@ -1341,8 +1341,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow nodes on interim update by owner', async () => {
@@ -1379,8 +1379,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block owner activation on interim activation by member', async () => {
@@ -1410,8 +1410,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: ownerChecksum,
 			});
 
-			expect(activationAttemptResponse.status).toBe(400);
-			expect(activationAttemptResponse.body.code).toBe(100);
+			expect(activationAttemptResponse.status).toBe(409);
+			expect(activationAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member activation on interim activation by owner', async () => {
@@ -1450,8 +1450,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow settings on interim update by owner', async () => {
@@ -1483,8 +1483,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow name on interim update by owner', async () => {
@@ -1516,8 +1516,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 	});
 

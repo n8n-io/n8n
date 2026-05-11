@@ -369,6 +369,101 @@ describe('SlackTrigger Node', () => {
 		});
 	});
 
+	describe('webhook method - user ignore list', () => {
+		const getMessageEvent = (overrides: Record<string, unknown> = {}) => ({
+			body: {
+				type: 'event_callback',
+				event: {
+					type: 'message',
+					channel: 'C123',
+					text: 'Hello world',
+					...overrides,
+				},
+			},
+		});
+
+		beforeEach(() => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					switch (paramName) {
+						case 'trigger':
+							return ['message'];
+						case 'watchWorkspace':
+							return false;
+						case 'channelId':
+							return 'C123';
+						case 'downloadFiles':
+							return false;
+						case 'options':
+							return { userIds: ['U_IGNORED'] };
+						default:
+							return defaultValue;
+					}
+				},
+			);
+		});
+
+		it('should ignore event when event.user matches an ignored user', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(
+				getMessageEvent({ user: 'U_IGNORED' }) as any,
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result).toEqual({});
+		});
+
+		it('should ignore event when event.user is undefined but event.message.user matches an ignored user', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(
+				getMessageEvent({ user: undefined, message: { user: 'U_IGNORED' } }) as any,
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result).toEqual({});
+		});
+
+		it('should not ignore event when event.user does not match any ignored user', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(
+				getMessageEvent({ user: 'U_SOMEONE_ELSE' }) as any,
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should not ignore event when both event.user and event.message.user are absent from the ignore list', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(
+				getMessageEvent({ user: undefined, message: { user: 'U_SOMEONE_ELSE' } }) as any,
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should not ignore event when neither event.user nor event.message.user exist', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(
+				getMessageEvent({ user: undefined }) as any,
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should use event.user over event.message.user when both are present', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(
+				getMessageEvent({ user: 'U_SOMEONE_ELSE', message: { user: 'U_IGNORED' } }) as any,
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+	});
+
 	describe('webhook method - other event scenarios', () => {
 		it('should handle team_join event (no channel extraction needed)', async () => {
 			const mockRequest = {

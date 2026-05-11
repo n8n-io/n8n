@@ -1,8 +1,18 @@
+import type { SamlPreferences } from '@n8n/api-types';
 import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+
+import {
+	EC_TEST_CERTIFICATE,
+	EC_TEST_PRIVATE_KEY,
+	RSA_MISMATCHED_CERTIFICATE,
+	RSA_TEST_CERTIFICATE,
+	RSA_TEST_PRIVATE_KEY,
+} from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
@@ -285,6 +295,300 @@ describe('Check endpoint permissions', () => {
 
 		test('should NOT be able to access POST /sso/saml/config/test', async () => {
 			await testServer.authlessAgent.post('/sso/saml/config/test').expect(401);
+		});
+	});
+});
+
+describe('Signing key configuration via API', () => {
+	const originalEnv = process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+	afterEach(() => {
+		if (originalEnv !== undefined) {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = originalEnv;
+		} else {
+			delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+		}
+	});
+
+	describe('POST /sso/saml/config with signing keys', () => {
+		test('should reject signing keys when feature flag is disabled', async () => {
+			delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('SAML request signing is not enabled');
+		});
+
+		test('should accept valid RSA signing key pair', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+		});
+
+		test('should accept valid EC signing key pair', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+				})
+				.expect(200);
+		});
+
+		test('should reject mismatched key and certificate', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					authnRequestsSigned: true,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_MISMATCHED_CERTIFICATE,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('do not match');
+		});
+
+		test('should reject invalid PEM private key format', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: 'not-a-valid-pem-key',
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('Invalid signing private key format');
+		});
+
+		test('should reject invalid PEM certificate format', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: 'not-a-valid-pem-cert',
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('Invalid signing certificate format');
+		});
+
+		test('should require both key and cert when authnRequestsSigned is true', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// Clear any signing keys stored from prior tests
+			const samlService = Container.get(SamlService);
+			type PrivatePrefs = { _samlPreferences: SamlPreferences };
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingPrivateKey = undefined;
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingCertificate = undefined;
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					authnRequestsSigned: true,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain(
+				'Both signingPrivateKey and signingCertificate are required',
+			);
+		});
+	});
+
+	describe('GET /sso/saml/config after setting signing keys', () => {
+		test('should return redacted private key and plaintext certificate after POST', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// POST the config with signing keys
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// GET the config back (response is wrapped in { data: ... })
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			const config = response.body.data;
+
+			// Private key should be redacted with the blanking value, never plaintext
+			expect(config.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
+
+			// Certificate should be returned in plaintext (it's public data)
+			expect(config.signingCertificate).toBe(RSA_TEST_CERTIFICATE);
+		});
+
+		test('should return redacted EC private key and plaintext certificate after POST', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			const config = response.body.data;
+
+			expect(config.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(config.signingCertificate).toBe(EC_TEST_CERTIFICATE);
+		});
+
+		test('should not return signing fields when none were set', async () => {
+			// Clear any previously stored signing keys from prior tests
+			const samlService = Container.get(SamlService);
+			type PrivatePrefs = { _samlPreferences: SamlPreferences };
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingPrivateKey = undefined;
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingCertificate = undefined;
+
+			// POST config without signing keys
+			await authOwnerAgent.post('/sso/saml/config').send(sampleConfig).expect(200);
+
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			const config = response.body.data;
+
+			// Fields should not be present (JSON.stringify drops undefined values)
+			expect(config.signingPrivateKey).toBeUndefined();
+			expect(config.signingCertificate).toBeUndefined();
+		});
+	});
+
+	describe('POST + GET round-trip preserves decryptability', () => {
+		test('should allow service to decrypt RSA key after API round-trip', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
+		});
+
+		test('should allow service to decrypt EC key after API round-trip', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			expect(decryptedKey).toBe(EC_TEST_PRIVATE_KEY);
+		});
+
+		test('should clear signing key when empty string is sent via POST', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// POST with real key
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// Verify key is stored
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+
+			// Clear both fields
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: '',
+					signingCertificate: '',
+				})
+				.expect(200);
+
+			// Key should be cleared
+			// @ts-expect-error -- accessing private method for testing
+			expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
+
+			// GET should not return signing fields
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			expect(response.body.data.signingPrivateKey).toBeUndefined();
+			expect(response.body.data.signingCertificate).toBeUndefined();
+		});
+
+		test('should preserve existing key when POST sends back blanking value', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// POST with real key
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// Simulate UI round-trip: GET returns blanking value, UI sends it back in POST
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: CREDENTIAL_BLANKING_VALUE,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// Key should still be decryptable to original value
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
 		});
 	});
 });

@@ -282,6 +282,7 @@ export class AiController {
 				payload.workflowId,
 				req.user,
 				payload.messageId,
+				payload.versionCardId,
 				payload.codeBuilder,
 			);
 			return { success };

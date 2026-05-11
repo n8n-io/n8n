@@ -2,6 +2,10 @@ import { computed } from 'vue';
 import { useFocusedNodesStore } from '../focusedNodes.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 /** Threshold at which individual chips are bundled into a single count chip */
@@ -15,6 +19,11 @@ export function useFocusedNodesChipUI() {
 	const focusedNodesStore = useFocusedNodesStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const confirmedNodes = computed(() => focusedNodesStore.confirmedNodes);
 	const unconfirmedNodes = computed(() => focusedNodesStore.filteredUnconfirmedNodes);
@@ -24,16 +33,16 @@ export function useFocusedNodesChipUI() {
 	const allNodesConfirmed = computed(
 		() =>
 			confirmedCount.value > 0 &&
-			workflowsStore.allNodes.length > 0 &&
-			confirmedCount.value >= workflowsStore.allNodes.length,
+			(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
+			confirmedCount.value >= (workflowDocumentStore.value?.allNodes ?? []).length,
 	);
 
 	const allNodesUnconfirmed = computed(
 		() =>
 			confirmedCount.value === 0 &&
 			unconfirmedCount.value > 0 &&
-			workflowsStore.allNodes.length > 0 &&
-			unconfirmedCount.value >= workflowsStore.allNodes.length,
+			(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
+			unconfirmedCount.value >= (workflowDocumentStore.value?.allNodes ?? []).length,
 	);
 
 	const shouldBundleConfirmed = computed(() => confirmedCount.value >= CHIP_BUNDLE_THRESHOLD);

@@ -13,7 +13,7 @@ test.describe(
 				}) => {
 					// This test is marked as serial because hover/tooltips are unreliable when running in parallel against a single server due to resource contention.
 
-					await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+					await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 					await n8n.canvas.openNode('Set');
 					await n8n.ndv.inputPanel.switchDisplayMode('table');
 
@@ -51,7 +51,7 @@ test.describe(
 				});
 			});
 		test('maps expressions from json view', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set');
 			await n8n.ndv.inputPanel.switchDisplayMode('json');
 
@@ -100,7 +100,7 @@ test.describe(
 		});
 
 		test('maps expressions from previous nodes', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set1');
 			await n8n.ndv.executePrevious();
 
@@ -191,7 +191,7 @@ test.describe(
 		});
 
 		test('maps expressions from schema view', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set');
 
 			await n8n.ndv.getParameterInputField('value').clear();
@@ -265,9 +265,8 @@ test.describe(
 			);
 		});
 
-		// There is an issue here sometimes, when dragging to the target it prepends the last value that was in the window even if it was cleared
-		test.fixme('maps expressions to updated fields correctly', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+		test('maps expressions to updated fields correctly @fixme', async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set');
 
 			await n8n.ndv.fillParameterInputByName('value', 'delete me');
@@ -301,7 +300,7 @@ test.describe(
 		});
 
 		test('renders expression preview when a previous node is selected', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set');
 
 			await n8n.ndv.fillParameterInputByName('value', 'test_value');
@@ -325,7 +324,7 @@ test.describe(
 		});
 
 		test('shows you can drop to inputs, including booleans', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set');
 
 			await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeVisible();
@@ -341,18 +340,18 @@ test.describe(
 			await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeHidden();
 			await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
-			// Check border on input wrapper (N8nInput has border on wrapper, not input)
-			const includeOtherFieldsWrapper = n8n.ndv.getParameterInputContainer('includeOtherFields');
-			await expect(includeOtherFieldsWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+			// Check droppable state on parameter inputs
+			const includeOtherFieldsInput = n8n.ndv.getParameterInput('includeOtherFields');
+			await expect(includeOtherFieldsInput).toHaveClass(/droppable/);
 
-			const valueWrapper = n8n.ndv.getParameterInputContainer('value');
-			await expect(valueWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+			const valueInput = n8n.ndv.getParameterInput('value');
+			await expect(valueInput).toHaveClass(/droppable/);
 
 			await n8n.page.mouse.up();
 		});
 
 		test('maps expressions to a specific location in the editor', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set');
 
 			await n8n.ndv.fillParameterInputByName('value', '=');

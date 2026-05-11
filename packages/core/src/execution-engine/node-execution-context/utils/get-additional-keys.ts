@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
 import {
 	setWorkflowExecutionMetadata,
@@ -16,16 +16,26 @@ import {
 } from './execution-metadata';
 import { getSecretsProxy } from './get-secrets-proxy';
 
+function appendResumeToken(url: string, token: string): string {
+	const urlObj = new URL(url);
+	urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+	return urlObj.toString();
+}
+
 /** Returns the additional keys for Expressions and Function-Nodes */
 export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
-	options?: { secretsEnabled?: boolean },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
-	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
-	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+
+	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+	if (runExecutionData?.resumeToken) {
+		resumeUrl = appendResumeToken(resumeUrl, runExecutionData.resumeToken);
+		resumeFormUrl = appendResumeToken(resumeFormUrl, runExecutionData.resumeToken);
+	}
 	return {
 		$execution: {
 			id: executionId,
@@ -66,7 +76,7 @@ export function getAdditionalKeys(
 				: undefined,
 		},
 		$vars: additionalData.variables,
-		$secrets: options?.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
+		$secrets: getSecretsProxy(additionalData),
 
 		// deprecated
 		$executionId: executionId,
@@ -80,10 +90,9 @@ export function getAdditionalKeys(
  * */
 export function getNonWorkflowAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
-	options?: { secretsEnabled?: boolean },
 ): IWorkflowDataProxyAdditionalKeys {
 	return {
 		$vars: additionalData.variables,
-		$secrets: options?.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
+		$secrets: getSecretsProxy(additionalData),
 	};
 }

@@ -15,6 +15,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -87,6 +88,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
@@ -334,10 +336,12 @@ export class WorkflowService {
 		}
 
 		// Update the workflow's version when changing nodes or connections
-		const saveNewVersion =
-			('nodes' in workflowUpdateData && !isEqual(workflowUpdateData.nodes, workflow.nodes)) ||
-			('connections' in workflowUpdateData &&
-				!isEqual(workflowUpdateData.connections, workflow.connections));
+		const hasNodesKey = 'nodes' in workflowUpdateData;
+		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
+		const connectionsChanged =
+			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
+		const saveNewVersion = nodesChanged || connectionsChanged;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -357,10 +361,12 @@ export class WorkflowService {
 			workflowUpdateData.versionId = workflow.versionId;
 		}
 
-		// check credentials for old format
-		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData);
+		// check credentials for old format - scope to the workflow's owner project
+		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
+		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
 
 		// Strip redactionPolicy if user lacks scope and value is changing
 		if (
@@ -542,6 +548,17 @@ export class WorkflowService {
 		} finally {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);
+
+				// Temporary: In the future, the workflow publication service will
+				// manage this mapping. We set it here for now to support incremental
+				// development and testing.
+				if (this.globalConfig.workflows.useWorkflowPublicationService) {
+					await this.workflowPublishedVersionRepository.setPublishedVersion(
+						workflowId,
+						workflow.activeVersionId,
+					);
+				}
+
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: workflow.activeVersionId,
@@ -661,6 +678,7 @@ export class WorkflowService {
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
+		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (previousActiveVersionId) {
@@ -781,6 +799,11 @@ export class WorkflowService {
 
 		const deactivatedVersionId = workflow.activeVersionId;
 
+		// Temporary: will be removed when the workflow publication service manages this.
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+		}
+
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,
 			versionId: deactivatedVersionId,
@@ -852,7 +875,7 @@ export class WorkflowService {
 	async archive(
 		user: User,
 		workflowId: string,
-		options?: { skipArchived?: boolean; expectedChecksum?: string },
+		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -876,6 +899,12 @@ export class WorkflowService {
 
 		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
+
+			// Temporary: will be removed when the workflow publication service manages this.
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+			}
+
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
 				versionId: workflow.activeVersionId,
@@ -900,13 +929,21 @@ export class WorkflowService {
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
-		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-archived', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
 
 		return workflow;
 	}
 
-	async unarchive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async unarchive(
+		user: User,
+		workflowId: string,
+		options?: { publicApi?: boolean },
+	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
@@ -927,10 +964,22 @@ export class WorkflowService {
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
-		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-unarchived', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
 
 		return workflow;
+	}
+
+	async archiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		return await this.archive(user, workflowId, { skipArchived: true, publicApi: true });
+	}
+
+	async unarchiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		return await this.unarchive(user, workflowId, { publicApi: true });
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
@@ -1029,9 +1078,8 @@ export class WorkflowService {
 		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
 
 		if (expectedChecksum !== currentChecksum) {
-			throw new BadRequestError(
+			throw new ConflictError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-				100,
 			);
 		}
 	}
@@ -1054,6 +1102,28 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	private async _validateDynamicCredentials(
+		workflowId: string,
+		nodes: INode[],
+		workflowSettings?: IWorkflowSettings,
+	) {
+		const validation = await this.workflowValidationService.validateDynamicCredentials(
+			nodes,
+			this.nodeTypes,
+			workflowSettings,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed dynamic credentials validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Dynamic credentials validation failed',
+			);
 		}
 	}
 

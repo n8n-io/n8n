@@ -33,8 +33,6 @@ import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -59,7 +57,6 @@ const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
-const postHog = usePostHog();
 
 const i18n = useI18n();
 
@@ -77,10 +74,6 @@ const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 
 const isInstanceRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
-);
-
-const isTamperProofInviteLinksEnabled = computed(() =>
-	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
 );
 
 const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.isOidcLoginEnabled);
@@ -101,20 +94,10 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 			label: i18n.baseText('settings.users.actions.generateInviteLink'),
 			value: 'generateInviteLink',
 			guard: (user) =>
-				isTamperProofInviteLinksEnabled.value &&
 				hasPermission(['rbac'], { rbac: { scope: 'user:generateInviteLink' } }) &&
 				usersStore.usersLimitNotReached &&
 				user.id !== usersStore.currentUserId &&
 				!user.firstName,
-		},
-		{
-			label: i18n.baseText('settings.users.actions.copyInviteLink'),
-			value: 'copyInviteLink',
-			guard: (user) =>
-				!isTamperProofInviteLinksEnabled.value &&
-				usersStore.usersLimitNotReached &&
-				!user.firstName &&
-				!!user.inviteAcceptUrl,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.reinvite'),

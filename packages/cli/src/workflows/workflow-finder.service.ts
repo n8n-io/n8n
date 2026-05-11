@@ -108,6 +108,20 @@ export class WorkflowFinderService {
 		return where;
 	}
 
+	async findWorkflowIdsWithScopeForUser(
+		workflowIds: string[],
+		user: User,
+		scopes: Scope[],
+	): Promise<Set<string>> {
+		if (workflowIds.length === 0) return new Set();
+		const where = await this.findAllWhere(user, scopes);
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			select: { workflowId: true },
+			where: { ...where, workflowId: In(workflowIds) },
+		});
+		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
+	}
+
 	async findAllWorkflowIdsForUser(
 		user: User,
 		scopes: Scope[],

@@ -5,6 +5,7 @@ import type {
 	IExecuteData,
 	IExecutionContext,
 	IPinData,
+	IRedactedErrorInfo,
 	IRunData,
 	ITaskMetadata,
 	IWaitingForExecution,
@@ -32,6 +33,11 @@ export interface IRunExecutionDataV1 {
 	};
 	resultData: {
 		error?: ExecutionError;
+		/**
+		 * When present, indicates `error` was redacted.
+		 * Contains only non-PII technical metadata from the original error.
+		 */
+		redactedError?: IRedactedErrorInfo;
 		runData: IRunData;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
@@ -50,10 +56,10 @@ export interface IRunExecutionDataV1 {
 	};
 	parentExecution?: RelatedExecution;
 	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
+	 * Random token used to validate waiting webhook/form requests.
+	 * Generated when execution starts. Presence signals validation is required.
 	 */
-	validateSignature?: boolean;
+	resumeToken?: string;
 	waitTill?: Date;
 	pushRef?: string;
 

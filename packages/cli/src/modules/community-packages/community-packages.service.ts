@@ -174,19 +174,19 @@ export class CommunityPackagesService {
 			})
 			.filter((i): i is string => i !== undefined);
 
-		const hydratedPackageList: PublicInstalledPackage[] = [];
+		const packages: PublicInstalledPackage[] = [];
 
-		installedPackages.forEach((installedPackage) => {
-			const hydratedInstalledPackage = { ...installedPackage };
+		for (const installedPackage of installedPackages) {
+			const pkg = { ...installedPackage };
 
-			if (missingPackagesList.includes(hydratedInstalledPackage.packageName)) {
-				hydratedInstalledPackage.failedLoading = true;
+			if (missingPackagesList.includes(pkg.packageName)) {
+				pkg.failedLoading = true;
 			}
 
-			hydratedPackageList.push(hydratedInstalledPackage);
-		});
+			packages.push(pkg);
+		}
 
-		return hydratedPackageList;
+		return packages;
 	}
 
 	async checkNpmPackageStatus(packageName: string) {

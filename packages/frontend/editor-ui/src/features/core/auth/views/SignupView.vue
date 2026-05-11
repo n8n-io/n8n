@@ -65,8 +65,6 @@ const FORM_CONFIG: IFormBoxConfig = {
 
 const loading = ref(false);
 const inviter = ref<null | { firstName: string; lastName: string }>(null);
-const inviterId = ref<string | undefined>(undefined);
-const inviteeId = ref<string | undefined>(undefined);
 const token = ref<string | undefined>(undefined);
 
 const inviteMessage = computed(() => {
@@ -80,22 +78,16 @@ const inviteMessage = computed(() => {
 });
 
 onMounted(async () => {
-	const inviterIdParam = getQueryParameter('inviterId');
-	const inviteeIdParam = getQueryParameter('inviteeId');
 	const tokenParam = getQueryParameter('token');
 
 	try {
-		if (!tokenParam && !inviterIdParam && !inviteeIdParam) {
+		if (!tokenParam) {
 			throw new Error(i18n.baseText('auth.signup.missingTokenError'));
 		}
 
-		inviterId.value = inviterIdParam ?? undefined;
-		inviteeId.value = inviteeIdParam ?? undefined;
-		token.value = tokenParam ?? undefined;
+		token.value = tokenParam;
 
 		const invite = await usersStore.validateSignupToken({
-			inviteeId: inviteeId.value,
-			inviterId: inviterId.value,
 			token: token.value,
 		});
 		inviter.value = invite.inviter as { firstName: string; lastName: string };
@@ -106,8 +98,7 @@ onMounted(async () => {
 });
 
 async function onSubmit(values: { [key: string]: string | boolean }) {
-	if (!token.value && (!inviterId.value || !inviteeId.value)) {
-		// Legacy invitation: require both inviterId and inviteeId
+	if (!token.value) {
 		toast.showError(
 			new Error(i18n.baseText('auth.signup.tokenValidationError')),
 			i18n.baseText('auth.signup.setupYourAccountError'),
@@ -119,13 +110,9 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 		loading.value = true;
 		await usersStore.acceptInvitation({
 			...values,
-			inviterId: inviterId.value,
-			inviteeId: inviteeId.value,
 			token: token.value,
 		} as {
-			inviteeId?: string;
-			inviterId?: string;
-			token?: string;
+			token: string;
 			firstName: string;
 			lastName: string;
 			password: string;
@@ -144,7 +131,7 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 	loading.value = false;
 }
 
-function getQueryParameter(key: 'inviterId' | 'inviteeId' | 'token'): string | null {
+function getQueryParameter(key: 'token'): string | null {
 	return !route.query[key] || typeof route.query[key] !== 'string' ? null : route.query[key];
 }
 </script>

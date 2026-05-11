@@ -1,9 +1,9 @@
-import { createTeamProject, testDb } from '@n8n/backend-test-utils';
-import { AuthIdentity, ProjectRepository, UserRepository } from '@n8n/db';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import { AuthIdentity, GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
-import { createMember, createOwner } from '../../shared/db/users';
+import { createMember, createOwner, createUserShell } from '../../shared/db/users';
 
 describe('ProjectRepository', () => {
 	beforeAll(async () => {
@@ -111,6 +111,237 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			await expect(promise).rejects.toThrowError(EntityNotFoundError);
+		});
+	});
+
+	describe('findAllProjectsAndCount', () => {
+		it('returns all projects with count', async () => {
+			const owner = await createOwner();
+			await createTeamProject('Alpha', owner);
+			await createTeamProject('Beta', owner);
+			await createTeamProject('Gamma', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const [projects, count] = await repo.findAllProjectsAndCount({});
+
+			// 3 team projects + 1 personal project for the owner
+			expect(count).toBe(4);
+			expect(projects).toHaveLength(4);
+		});
+
+		it('paginates results', async () => {
+			const owner = await createOwner();
+			for (let i = 0; i < 5; i++) {
+				await createTeamProject(`Project ${i}`, owner);
+			}
+
+			const repo = Container.get(ProjectRepository);
+			const [page, count] = await repo.findAllProjectsAndCount({ skip: 0, take: 2 });
+
+			expect(count).toBe(6); // 5 team + 1 personal
+			expect(page).toHaveLength(2);
+		});
+
+		it('filters by search', async () => {
+			const owner = await createOwner();
+			await createTeamProject('Marketing Campaign', owner);
+			await createTeamProject('Engineering Sprint', owner);
+			await createTeamProject('Marketing Report', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const [projects, count] = await repo.findAllProjectsAndCount({ search: 'Marketing' });
+
+			expect(count).toBe(2);
+			expect(projects).toHaveLength(2);
+			expect(projects.every((p) => p.name.includes('Marketing'))).toBe(true);
+		});
+
+		it('filters by type', async () => {
+			const owner = await createOwner();
+			await createTeamProject('Team One', owner);
+			await createTeamProject('Team Two', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const [teamProjects, teamCount] = await repo.findAllProjectsAndCount({ type: 'team' });
+			const [personalProjects, personalCount] = await repo.findAllProjectsAndCount({
+				type: 'personal',
+			});
+
+			expect(teamCount).toBe(2);
+			expect(teamProjects).toHaveLength(2);
+			expect(personalCount).toBe(1);
+			expect(personalProjects).toHaveLength(1);
+		});
+
+		it('orders by name ASC', async () => {
+			const owner = await createOwner();
+			await createTeamProject('Zebra', owner);
+			await createTeamProject('Apple', owner);
+			await createTeamProject('Mango', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const [projects] = await repo.findAllProjectsAndCount({ type: 'team' });
+			const names = projects.map((p) => p.name);
+
+			expect(names).toEqual(['Apple', 'Mango', 'Zebra']);
+		});
+
+		it('filters out non-activated personal projects when activated=true', async () => {
+			const owner = await createOwner();
+			await createUserShell(GLOBAL_MEMBER_ROLE); // pending user (no password)
+			await createTeamProject('Team A', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const [projects, count] = await repo.findAllProjectsAndCount({ activated: true });
+
+			// owner's personal + Team A, but NOT the pending user's personal project
+			expect(count).toBe(2);
+			expect(projects).toHaveLength(2);
+			const types = projects.map((p) => p.type);
+			expect(types).toContain('team');
+			expect(types).toContain('personal');
+		});
+
+		it('orders team projects first, then activated personal, then pending personal', async () => {
+			const owner = await createOwner();
+			const pendingUser = await createUserShell(GLOBAL_MEMBER_ROLE);
+			await createTeamProject('Alpha Team', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const [projects] = await repo.findAllProjectsAndCount({});
+
+			const types = projects.map((p) => p.type);
+			// Team projects come first, then personal projects
+			const firstPersonalIndex = types.indexOf('personal');
+			const lastTeamIndex = types.lastIndexOf('team');
+			expect(lastTeamIndex).toBeLessThan(firstPersonalIndex);
+
+			// Among personal projects, activated (owner) should come before pending
+			const personalProjects = projects.filter((p) => p.type === 'personal');
+			expect(personalProjects).toHaveLength(2);
+			// Owner has a password, pending user does not — owner should be first
+			expect(personalProjects[0].creatorId).toBe(owner.id);
+			expect(personalProjects[1].creatorId).toBe(pendingUser.id);
+		});
+	});
+
+	describe('getAccessibleProjectsAndCount', () => {
+		it('returns personal projects and team projects the user belongs to', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const teamA = await createTeamProject('Accessible Team', owner);
+			await linkUserToProject(member, teamA, 'project:viewer');
+			await createTeamProject('Not Accessible Team', owner);
+
+			const repo = Container.get(ProjectRepository);
+			const [projects, count] = await repo.getAccessibleProjectsAndCount(member.id, {});
+
+			// member sees: all personal projects (owner's + member's) + teamA
+			const projectNames = projects.map((p) => p.name);
+			expect(projectNames).toContain('Accessible Team');
+			expect(projectNames).not.toContain('Not Accessible Team');
+			expect(count).toBe(projects.length);
+		});
+
+		it('paginates correctly with accurate count', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			for (let i = 0; i < 10; i++) {
+				const project = await createTeamProject(`Team ${i}`, owner);
+				await linkUserToProject(member, project, 'project:viewer');
+			}
+
+			const repo = Container.get(ProjectRepository);
+			const [page, count] = await repo.getAccessibleProjectsAndCount(member.id, {
+				skip: 0,
+				take: 3,
+			});
+
+			expect(page).toHaveLength(3);
+			// 10 team projects + 2 personal projects (owner + member)
+			expect(count).toBe(12);
+		});
+
+		it('filters by search', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const alpha = await createTeamProject('Alpha Project', owner);
+			const beta = await createTeamProject('Beta Project', owner);
+			await linkUserToProject(member, alpha, 'project:viewer');
+			await linkUserToProject(member, beta, 'project:viewer');
+
+			const repo = Container.get(ProjectRepository);
+			const [projects, count] = await repo.getAccessibleProjectsAndCount(member.id, {
+				search: 'Alpha',
+			});
+
+			expect(count).toBe(1);
+			expect(projects).toHaveLength(1);
+			expect(projects[0].name).toBe('Alpha Project');
+		});
+
+		it('does not produce duplicate rows when project matches multiple OR branches', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			// Every user's personal project is visible via `p.type = 'personal'`.
+			// The member also has a projectRelation to their own personal project
+			// (as personal owner). Without DISTINCT, the LEFT JOIN + OR would
+			// produce the personal project twice: once via the type branch and
+			// once via the relation branch.
+			const team = await createTeamProject('Shared Team', owner);
+			await linkUserToProject(member, team, 'project:editor');
+
+			const repo = Container.get(ProjectRepository);
+			const [projects, count] = await repo.getAccessibleProjectsAndCount(member.id, {});
+
+			// member's personal project should appear exactly once despite
+			// matching both OR branches (type=personal AND pr.userId=member)
+			const memberPersonalProjects = projects.filter(
+				(p) => p.type === 'personal' && p.creatorId === member.id,
+			);
+			expect(memberPersonalProjects).toHaveLength(1);
+			expect(count).toBe(projects.length);
+		});
+
+		it('filters out non-activated personal projects when activated=true', async () => {
+			await createOwner();
+			const member = await createMember();
+			await createUserShell(GLOBAL_MEMBER_ROLE); // pending user
+
+			const repo = Container.get(ProjectRepository);
+			const [projects, count] = await repo.getAccessibleProjectsAndCount(member.id, {
+				activated: true,
+			});
+
+			// member sees: owner's personal + member's personal, but NOT pending user's personal
+			const personalProjects = projects.filter((p) => p.type === 'personal');
+			expect(personalProjects).toHaveLength(2); // owner + member
+			expect(count).toBe(2);
+		});
+
+		it('orders team projects first, then activated personal, then pending personal', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const pendingUser = await createUserShell(GLOBAL_MEMBER_ROLE);
+			const team = await createTeamProject('Alpha Team', owner);
+			await linkUserToProject(member, team, 'project:viewer');
+
+			const repo = Container.get(ProjectRepository);
+			const [projects] = await repo.getAccessibleProjectsAndCount(member.id, {});
+
+			const types = projects.map((p) => p.type);
+			const firstPersonalIndex = types.indexOf('personal');
+			const lastTeamIndex = types.lastIndexOf('team');
+			expect(lastTeamIndex).toBeLessThan(firstPersonalIndex);
+
+			// Among personal projects, pending user should be last
+			const personalProjects = projects.filter((p) => p.type === 'personal');
+			const lastPersonal = personalProjects[personalProjects.length - 1];
+			expect(lastPersonal.creatorId).toBe(pendingUser.id);
 		});
 	});
 

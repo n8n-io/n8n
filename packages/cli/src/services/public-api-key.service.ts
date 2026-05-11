@@ -156,6 +156,7 @@ export class PublicApiKeyService {
 				path: req.path,
 				method: req.method,
 				apiVersion: version,
+				userAgent: req.headers['user-agent'],
 			});
 
 			req.user = user;

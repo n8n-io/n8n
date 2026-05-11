@@ -270,6 +270,7 @@ watch(
 <style lang="scss" module>
 .dropdown {
 	display: flex;
+	align-items: flex-end;
 	gap: var(--spacing--2xs);
 }
 

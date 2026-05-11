@@ -110,6 +110,8 @@ export async function getAiSessions(
 		sessionId: string;
 		messages: ChatRequest.MessageResponse[];
 		lastUpdated: string;
+		activeVersionCardId?: string | null;
+		resumeAfterRestoreMessageId?: string | null;
 	}>;
 }> {
 	const body: IDataObject = {
@@ -139,11 +141,13 @@ export async function truncateBuilderMessages(
 	ctx: IRestApiContext,
 	workflowId: string,
 	messageId: string,
+	versionCardId?: string,
 	codeBuilder?: boolean,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai/build/truncate-messages', {
 		workflowId,
 		messageId,
+		versionCardId,
 		codeBuilder,
 	});
 }

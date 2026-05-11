@@ -39,7 +39,6 @@ import * as utils from './shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -312,7 +311,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
@@ -439,7 +438,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));
@@ -631,7 +630,7 @@ describe('PATCH /projects/:projectId', () => {
 				createTeamProject(undefined, testUser1),
 				createTeamProject(undefined, testUser2),
 			]);
-			const [credential1, credential2] = await Promise.all([
+			const [_credential1, credential2] = await Promise.all([
 				saveCredential(randomCredentialPayload(), {
 					role: 'credential:owner',
 					project: teamProject1,
@@ -652,22 +651,14 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 			// Add two members to teamProject1
 			const addResp = await memberAgent.post(`/projects/${teamProject1.id}/users`).send({
 				relations: [
 					{ userId: testUser3.id, role: 'project:editor' },
 					{ userId: ownerUser.id, role: 'project:viewer' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+				],
 			});
 			expect(addResp.status).toBe(201);
-
-			// External secrets cache must be cleared for credentials owned by teamProject1
-			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
-			deleteSpy.mockClear();
 
 			const [tp1Relations, tp2Relations] = await Promise.all([
 				getProjectRelations({ projectId: teamProject1.id }),
@@ -720,10 +711,7 @@ describe('PATCH /projects/:projectId', () => {
 							// add a user to the project
 							{ userId: userToBeInvited.id, role: 'project:editor' },
 							// implicitly remove the project editor
-						] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						],
 					});
 				//.expect(403);
 
@@ -766,10 +754,7 @@ describe('PATCH /projects/:projectId', () => {
 					.authAgentFor(projectAdmin)
 					.post(`/projects/${teamProject.id}/users`)
 					.send({
-						relations: [{ userId: userToBeInvited.id, role }] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						relations: [{ userId: userToBeInvited.id, role }],
 					})
 					.expect(400);
 
@@ -857,10 +842,7 @@ describe('PATCH /projects/:projectId', () => {
 			const memberAgent = testServer.authAgentFor(testUser1);
 
 			const resp = await memberAgent.post(`/projects/${personalProject.id}/users`).send({
-				relations: [{ userId: testUser2.id, role: 'project:admin' }] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+				relations: [{ userId: testUser2.id, role: 'project:admin' }],
 			});
 			expect(resp.status).toBe(403);
 

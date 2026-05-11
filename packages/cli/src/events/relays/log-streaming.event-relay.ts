@@ -82,6 +82,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
 			'execution-deleted': (event) => this.executionDeleted(event),
+			'execution-data-revealed': (event) => this.executionDataRevealed(event),
+			'execution-data-reveal-failure': (event) => this.executionDataRevealFailure(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -739,6 +741,45 @@ export class LogStreamingEventRelay extends EventRelay {
 				...user,
 				executionIds,
 				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
+			},
+		});
+	}
+
+	@Redactable()
+	private executionDataRevealed({
+		user,
+		executionId,
+		workflowId,
+		ipAddress,
+		userAgent,
+		redactionPolicy,
+	}: RelayEventMap['execution-data-revealed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.data.revealed',
+			payload: { ...user, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
+		});
+	}
+
+	@Redactable()
+	private executionDataRevealFailure({
+		user,
+		executionId,
+		workflowId,
+		ipAddress,
+		userAgent,
+		redactionPolicy,
+		rejectionReason,
+	}: RelayEventMap['execution-data-reveal-failure']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.data.reveal_failure',
+			payload: {
+				...user,
+				executionId,
+				workflowId,
+				ipAddress,
+				userAgent,
+				redactionPolicy,
+				rejectionReason,
 			},
 		});
 	}

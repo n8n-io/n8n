@@ -79,6 +79,10 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
+		if (credentialType.__skipManagedCreation) {
+			return false;
+		}
+
 		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
 		if (overwrittenProperties.length === 0) {
 			return false;

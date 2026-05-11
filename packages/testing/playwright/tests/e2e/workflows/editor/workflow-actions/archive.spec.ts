@@ -38,7 +38,7 @@ test.describe(
 			await n8n.workflowSettingsModal.getWorkflowMenu().click();
 
 			await expect(n8n.workflowSettingsModal.getDeleteMenuItem()).toBeHidden();
-			await expect(n8n.workflowSettingsModal.getArchiveMenuItem().locator('..')).toHaveClass(
+			await expect(n8n.workflowSettingsModal.getArchiveMenuItemWrapper()).toHaveClass(
 				/is-disabled/,
 			);
 		});

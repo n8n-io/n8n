@@ -13,6 +13,8 @@ export default defineConfig(
 
 		rules: {
 			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
+			'@n8n/community-nodes/node-class-description-icon-missing': 'warn',
+			'@n8n/community-nodes/cred-class-field-icon-missing': 'warn',
 
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',

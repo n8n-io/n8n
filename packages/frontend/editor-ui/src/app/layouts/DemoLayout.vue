@@ -1,12 +1,9 @@
 <script lang="ts" setup>
-import { provide, onBeforeMount, onBeforeUnmount } from 'vue';
+import { provide, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import {
-	WorkflowIdKey,
-	WorkflowStateKey,
-	WorkflowDocumentStoreKey,
-} from '@/app/constants/injectionKeys';
+import { WorkflowStateKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
@@ -15,12 +12,12 @@ const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
 
 const {
-	workflowId,
+	initializeData,
 	currentWorkflowDocumentStore,
 	cleanup: cleanupInitialization,
 } = useWorkflowInitialization(workflowState);
 
-provide(WorkflowIdKey, workflowId);
+useProvideWorkflowId();
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
@@ -30,6 +27,10 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 
 onBeforeMount(() => {
 	setupPostMessages();
+});
+
+onMounted(async () => {
+	await initializeData();
 });
 
 onBeforeUnmount(() => {

@@ -14,76 +14,78 @@ import { test, expect } from '../../../../fixtures/base';
 // Worker-scoped fixtures must be at top level
 test.use({ capability: 'observability' });
 
-test.describe('Log Streaming to VictoriaLogs @capability:observability', {
-	annotation: [
-		{ type: 'owner', description: 'Lifecycle & Governance' },
-	],
-}, () => {
-	test.beforeEach(async ({ n8n }) => {
-		// Enable log streaming feature for the test
-		await n8n.api.enableFeature('logStreaming');
-	});
-
-	test('should configure syslog destination and send test message', async ({ api, services }) => {
-		const obs = services.observability;
-
-		// Configure syslog destination pointing to VictoriaLogs
-		// syslog contains: host, port, protocol, facility, appName
-		const destination = await api.createSyslogDestination({
-			host: obs.syslog.host,
-			port: obs.syslog.port,
-			protocol: obs.syslog.protocol,
-			facility: obs.syslog.facility,
-			app_name: obs.syslog.appName,
-			label: 'VictoriaLogs Test Destination',
+test.describe(
+	'Log Streaming to VictoriaLogs @capability:observability',
+	{
+		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n }) => {
+			// Enable log streaming feature for the test
+			await n8n.api.enableFeature('logStreaming');
 		});
 
-		expect(destination.id).toBeDefined();
-		console.log(`Created syslog destination with ID: ${destination.id}`);
+		test('should configure syslog destination and send test message', async ({ api, services }) => {
+			const obs = services.observability;
 
-		// Send test message to the destination
-		const testResult = await api.testLogStreamingDestination(destination.id);
-		expect(testResult).toBe(true);
+			// Configure syslog destination pointing to VictoriaLogs
+			// syslog contains: host, port, protocol, facility, appName
+			const destination = await api.createSyslogDestination({
+				host: obs.syslog.host,
+				port: obs.syslog.port,
+				protocol: obs.syslog.protocol,
+				facility: obs.syslog.facility,
+				app_name: obs.syslog.appName,
+				label: 'VictoriaLogs Test Destination',
+			});
 
-		// Wait for the test message to appear in VictoriaLogs
-		// Use wildcard - LogsQL interprets dots as word separators
-		const logEntry = await obs.logs.waitForLog('*destination.test*', {
-			timeoutMs: 30000,
-			start: '-1m',
+			expect(destination.id).toBeDefined();
+			console.log(`Created syslog destination with ID: ${destination.id}`);
+
+			// Send test message to the destination
+			const testResult = await api.testLogStreamingDestination(destination.id);
+			expect(testResult).toBe(true);
+
+			// Wait for the test message to appear in VictoriaLogs
+			// Use wildcard - LogsQL interprets dots as word separators
+			const logEntry = await obs.logs.waitForLog('*destination.test*', {
+				timeoutMs: 30000,
+				start: '-1m',
+			});
+
+			expect(logEntry).toBeTruthy();
+
+			// Clean up - delete the destination
+			await api.deleteLogStreamingDestination(destination.id);
 		});
 
-		expect(logEntry).toBeTruthy();
+		test('should query metrics from VictoriaMetrics', async ({ api, services }) => {
+			const obs = services.observability;
 
-		// Clean up - delete the destination
-		await api.deleteLogStreamingDestination(destination.id);
-	});
+			// Import and activate a webhook workflow to generate metrics
+			const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
+				'simple-webhook-test.json',
+			);
 
-	test('should query metrics from VictoriaMetrics', async ({ api, services }) => {
-		const obs = services.observability;
+			// Trigger the workflow via webhook to generate metrics
+			const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+				method: 'POST',
+				data: { test: 'metrics' },
+			});
+			expect(webhookResponse.ok()).toBe(true);
 
-		// Import and activate a webhook workflow to generate metrics
-		const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
-			'simple-webhook-test.json',
-		);
+			// Wait for workflow execution to complete
+			const execution = await api.workflows.waitForExecution(workflowId, 10000);
+			expect(execution.status).toBe('success');
 
-		// Trigger the workflow via webhook to generate metrics
-		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
-			method: 'POST',
-			data: { test: 'metrics' },
+			// Wait for metrics to be scraped (VictoriaMetrics scrapes every 5s)
+			// Query for n8n version info metric (always present)
+			const versionMetric = await obs.metrics.waitForMetric('n8n_version_info', {
+				timeoutMs: 30000,
+			});
+
+			expect(versionMetric).toBeTruthy();
+			console.log('n8n version metric:', versionMetric?.labels);
 		});
-		expect(webhookResponse.ok()).toBe(true);
-
-		// Wait for workflow execution to complete
-		const execution = await api.workflows.waitForExecution(workflowId, 10000);
-		expect(execution.status).toBe('success');
-
-		// Wait for metrics to be scraped (VictoriaMetrics scrapes every 5s)
-		// Query for n8n version info metric (always present)
-		const versionMetric = await obs.metrics.waitForMetric('n8n_version_info', {
-			timeoutMs: 30000,
-		});
-
-		expect(versionMetric).toBeTruthy();
-		console.log('n8n version metric:', versionMetric?.labels);
-	});
-});
+	},
+);

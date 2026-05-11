@@ -104,6 +104,7 @@ export class ExecutionLifecycleHooks {
 		readonly mode: WorkflowExecuteMode,
 		readonly executionId: string,
 		readonly workflowData: IWorkflowBase,
+		readonly retryOf?: string,
 	) {}
 
 	addHandler<Hook extends keyof ExecutionLifecycleHookHandlers>(

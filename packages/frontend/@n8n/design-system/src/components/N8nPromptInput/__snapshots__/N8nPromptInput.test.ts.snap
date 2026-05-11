@@ -42,6 +42,7 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
           aria-label="Send"
           aria-live="polite"
           class="button button solid small iconOnly disabled sendButton"
+          data-icon-only="true"
           data-test-id="send-message-button"
           disabled=""
           type="button"
@@ -85,8 +86,6 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
         </button>
       </div>
     </div>
-    <!-- Credits bar below input -->
-    <!--v-if-->
   </div>
   
 </div>
@@ -133,6 +132,7 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
           aria-label="Stop"
           aria-live="polite"
           class="button button solid small iconOnly stopButton"
+          data-icon-only="true"
           data-test-id="send-message-button"
           type="button"
         >
@@ -175,8 +175,6 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
         </button>
       </div>
     </div>
-    <!-- Credits bar below input -->
-    <!--v-if-->
   </div>
   
 </div>
