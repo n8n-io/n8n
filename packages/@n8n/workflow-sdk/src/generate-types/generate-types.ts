@@ -744,10 +744,7 @@ function mapNestedPropertyTypeInner(
 
 	switch (prop.type) {
 		case 'string': {
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+			return 'string | Expression<string>';
 		}
 		case 'number':
 			return 'number | Expression<number>';
@@ -880,6 +877,12 @@ function generateNestedPropertyJSDoc(
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(`${indent} * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(`${indent} * @placeholderSupported false`);
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -1375,14 +1378,11 @@ function generateCollectionType(
 }
 
 /**
- * Strip Expression<...> and PlaceholderValue from a type string.
+ * Strip Expression<...> from a type string.
  * Used when noDataExpression is true to produce plain types.
  */
 function stripExpressionFromType(typeStr: string): string {
-	return typeStr
-		.replace(/\s*\|\s*Expression<[^>]+>/g, '')
-		.replace(/\s*\|\s*PlaceholderValue/g, '')
-		.trim();
+	return typeStr.replace(/\s*\|\s*Expression<[^>]+>/g, '').trim();
 }
 
 /**
@@ -1436,10 +1436,7 @@ function mapPropertyTypeInner(
 
 	switch (prop.type) {
 		case 'string': {
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+			return 'string | Expression<string>';
 		}
 
 		case 'number':
@@ -1906,6 +1903,12 @@ export function generatePropertyJSDoc(
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(` * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(' * @placeholderSupported false');
 	}
 
 	// Search/load method annotations — signals to the builder agent that

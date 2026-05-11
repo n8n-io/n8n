@@ -33,6 +33,7 @@ export interface ResumableStreamContext {
 	eventBus: InstanceAiEventBus;
 	signal: AbortSignal;
 	logger: Logger;
+	onActivity?: () => void;
 }
 
 export interface ManualSuspensionControl {
@@ -1951,6 +1952,7 @@ export async function executeResumableStream(
 		options.llmStepTraceHooks?.startSegment();
 
 		for await (const chunk of activeStream) {
+			options.context.onActivity?.();
 			if (options.context.signal.aborted) {
 				if (options.llmStepTraceHooks) {
 					await options.llmStepTraceHooks.finalize(activeSource, {

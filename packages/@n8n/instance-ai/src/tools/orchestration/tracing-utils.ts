@@ -62,6 +62,14 @@ export async function createDetachedSubAgentTracing(
 		typeof context.tracing.actorRun.metadata?.agent_id === 'string'
 			? context.tracing.actorRun.metadata.agent_id
 			: context.orchestratorAgentId;
+	const n8nVersion =
+		typeof context.tracing.actorRun.metadata?.n8n_version === 'string'
+			? context.tracing.actorRun.metadata.n8n_version
+			: undefined;
+	const workflowSdkVersion =
+		typeof context.tracing.actorRun.metadata?.workflow_sdk_version === 'string'
+			? context.tracing.actorRun.metadata.workflow_sdk_version
+			: undefined;
 	const tracing = await createDetachedSubAgentTraceContext({
 		projectName: context.tracing.projectName,
 		threadId: context.threadId,
@@ -73,6 +81,8 @@ export async function createDetachedSubAgentTracing(
 		modelId: context.modelId,
 		input: options.inputs,
 		metadata: options.metadata,
+		n8nVersion,
+		workflowSdkVersion,
 		agentId: options.agentId,
 		role: options.role,
 		kind: options.kind,

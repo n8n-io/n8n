@@ -22,6 +22,7 @@ export interface ConsumeWithHitlOptions {
 	/** Returns a promise that resolves when a new user correction is queued.
 	 *  Used to unblock HITL suspensions when a correction arrives mid-confirmation. */
 	waitForCorrection?: () => Promise<void>;
+	onActivity?: () => void;
 	llmStepTraceHooks?: LlmStepTraceHooks;
 	/** Max steps for the agent — passed to resumeStream so resumed streams keep the same limit. */
 	maxSteps?: number;
@@ -61,6 +62,7 @@ export async function consumeStreamWithHitl(
 			eventBus: options.eventBus,
 			signal: options.abortSignal,
 			logger: options.logger,
+			onActivity: options.onActivity,
 		},
 		control: {
 			mode: 'auto',
