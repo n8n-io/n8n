@@ -1,6 +1,12 @@
 import jsSHA from 'jssha';
 
-import type { IConnections, INode, IPinData, IWorkflowSettings } from './interfaces';
+import type {
+	IConnections,
+	INode,
+	IPinData,
+	IWorkflowGroup,
+	IWorkflowSettings,
+} from './interfaces';
 import { isObject } from './utils';
 
 /**
@@ -17,6 +23,7 @@ export interface WorkflowSnapshot {
 	pinData?: IPinData;
 	isArchived?: boolean;
 	activeVersionId?: string | null;
+	groups?: IWorkflowGroup[] | null;
 }
 
 export const WORKFLOW_CHECKSUM_FIELDS = [
@@ -29,6 +36,7 @@ export const WORKFLOW_CHECKSUM_FIELDS = [
 	'pinData',
 	'isArchived',
 	'activeVersionId',
+	'groups',
 ] as const satisfies ReadonlyArray<keyof WorkflowSnapshot>;
 
 /**

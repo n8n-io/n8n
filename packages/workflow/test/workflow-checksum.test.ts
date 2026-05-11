@@ -143,4 +143,38 @@ describe('calculateWorkflowChecksum', () => {
 
 		expect(checksum1).not.toBe(checksum2);
 	});
+
+	it('should generate different checksums when groups change', async () => {
+		const workflow1: WorkflowSnapshot = {
+			...baseWorkflow,
+			groups: [{ id: 'group1', name: 'Group A', nodeIds: ['node1'] }],
+		};
+
+		const workflow2: WorkflowSnapshot = {
+			...baseWorkflow,
+			groups: [{ id: 'group1', name: 'Group B', nodeIds: ['node1'] }],
+		};
+
+		const checksum1 = await calculateWorkflowChecksum(workflow1);
+		const checksum2 = await calculateWorkflowChecksum(workflow2);
+
+		expect(checksum1).not.toBe(checksum2);
+	});
+
+	it('should generate different checksums when groups are added', async () => {
+		const workflow1: WorkflowSnapshot = {
+			...baseWorkflow,
+			groups: null,
+		};
+
+		const workflow2: WorkflowSnapshot = {
+			...baseWorkflow,
+			groups: [{ id: 'group1', name: 'Group A', nodeIds: ['node1'] }],
+		};
+
+		const checksum1 = await calculateWorkflowChecksum(workflow1);
+		const checksum2 = await calculateWorkflowChecksum(workflow2);
+
+		expect(checksum1).not.toBe(checksum2);
+	});
 });
