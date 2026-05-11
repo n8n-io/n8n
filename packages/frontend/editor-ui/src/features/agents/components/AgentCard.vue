@@ -97,7 +97,7 @@ async function onAction(action: string) {
 				{{ agent.name }}
 				<N8nBadge
 					v-if="!canUpdate"
-					class="ml-3xs"
+					:class="$style.readonlyBadge"
 					theme="tertiary"
 					bold
 					data-test-id="agent-card-readonly-badge"
@@ -155,6 +155,10 @@ async function onAction(action: string) {
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.readonlyBadge {
+	margin-left: var(--spacing--3xs);
 }
 
 .cardDescription {

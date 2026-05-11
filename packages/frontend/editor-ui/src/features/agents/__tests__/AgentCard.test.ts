@@ -37,6 +37,10 @@ vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissionsMock,
 }));
 
+// First mount eats the SFC transform cost for AgentCard + deps; give the
+// whole suite headroom.
+vi.setConfig({ testTimeout: 30_000 });
+
 const STUBS = {
 	N8nCard: {
 		template:
