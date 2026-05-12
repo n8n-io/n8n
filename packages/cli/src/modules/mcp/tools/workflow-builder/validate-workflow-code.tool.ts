@@ -54,7 +54,7 @@ export const createValidateWorkflowCodeTool = (
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
 		description:
-			'Validate n8n Workflow SDK code. Parses the code into a workflow and checks for errors. Returns the workflow JSON if valid, or detailed error messages to fix. Always validate before creating a workflow.',
+			'Validate n8n Workflow SDK code. Required before creating or updating workflows from code. If you have not already read get_sdk_reference, call that first; guessing SDK syntax commonly creates invalid workflows.',
 		inputSchema,
 		outputSchema,
 		annotations: {

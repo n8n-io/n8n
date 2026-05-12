@@ -148,6 +148,22 @@ jobs:
             const mod = await import('${{ github.workspace }}/.github/scripts/cla/update-pr-comment.mjs');
             await mod.default({ github, context, core });
 
+      - name: Manage cla-signed label
+        # Skip on merge_group (no PR) and when the check produced no result.
+        if: >-
+          always() &&
+          steps.context.outputs.pr_number != '' &&
+          steps.check.outputs.all_signed != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const mod = await import('${{ github.workspace }}/.github/scripts/cla/manage-label.mjs');
+            await mod.default({ github, context, core });
+
       - name: React to /cla-check comment
         if: always() && github.event_name == 'issue_comment' && steps.check.outputs.all_signed != ''
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
