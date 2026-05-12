@@ -149,7 +149,8 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 	): Promise<EvaluationCollection | null> {
 		const existing = await this.findByIdAndWorkflowId(id, workflowId);
 		if (!existing) return null;
-		Object.assign(existing, payload);
+		if (payload.name !== undefined) existing.name = payload.name;
+		if (payload.description !== undefined) existing.description = payload.description;
 		return await this.save(existing);
 	}
 }

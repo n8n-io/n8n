@@ -4,6 +4,7 @@ const EVALUATION_COLLECTION_TABLE = 'evaluation_collection';
 const TEST_RUN_TABLE = 'test_run';
 const EVALUATION_CONFIG_TABLE = 'evaluation_config';
 const WORKFLOW_TABLE = 'workflow_entity';
+const USER_TABLE = 'user';
 const FK_TEST_RUN_COLLECTION = 'FK_test_run_collection_id';
 
 export class CreateEvaluationCollection1778496086558 implements ReversibleMigration {
@@ -31,6 +32,11 @@ export class CreateEvaluationCollection1778496086558 implements ReversibleMigrat
 				tableName: EVALUATION_CONFIG_TABLE,
 				columnName: 'id',
 				onDelete: 'CASCADE',
+			})
+			.withForeignKey('createdById', {
+				tableName: USER_TABLE,
+				columnName: 'id',
+				onDelete: 'SET NULL',
 			})
 			.withIndexOn('workflowId')
 			.withIndexOn('evaluationConfigId').withTimestamps;

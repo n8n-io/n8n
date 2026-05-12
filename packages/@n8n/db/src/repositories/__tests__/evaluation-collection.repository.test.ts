@@ -199,5 +199,39 @@ describe('EvaluationCollectionRepository', () => {
 				description: null,
 			});
 		});
+
+		it('preserves description when only name is provided', async () => {
+			const existing = {
+				id: 'col-1',
+				name: 'Old',
+				description: 'old desc',
+				workflowId: 'wf-1',
+			} as EvaluationCollection;
+			entityManager.findOne.mockResolvedValueOnce(existing);
+			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+
+			await repo.updateMeta('col-1', 'wf-1', { name: 'New' });
+
+			const savedEntity = entityManager.save.mock.calls[0]?.[1] as EvaluationCollection;
+			expect(savedEntity.name).toBe('New');
+			expect(savedEntity.description).toBe('old desc');
+		});
+
+		it('preserves existing fields when payload props are undefined', async () => {
+			const existing = {
+				id: 'col-1',
+				name: 'Old',
+				description: 'old desc',
+				workflowId: 'wf-1',
+			} as EvaluationCollection;
+			entityManager.findOne.mockResolvedValueOnce(existing);
+			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+
+			await repo.updateMeta('col-1', 'wf-1', { name: undefined, description: undefined });
+
+			const savedEntity = entityManager.save.mock.calls[0]?.[1] as EvaluationCollection;
+			expect(savedEntity.name).toBe('Old');
+			expect(savedEntity.description).toBe('old desc');
+		});
 	});
 });
