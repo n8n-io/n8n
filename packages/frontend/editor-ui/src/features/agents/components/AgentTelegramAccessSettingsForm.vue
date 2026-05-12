@@ -83,7 +83,7 @@ defineExpose({ currentSettings, validationError, isDirty });
 			</N8nText>
 			<N8nSelect
 				v-model="accessMode"
-				size="small"
+				size="medium"
 				:disabled="disabled"
 				data-testid="telegram-access-mode"
 			>
@@ -102,12 +102,7 @@ defineExpose({ currentSettings, validationError, isDirty });
 			<N8nText size="small" bold>
 				{{ i18n.baseText('agents.builder.addTrigger.telegram.userIds.label') }}
 			</N8nText>
-			<N8nInput
-				v-model="userIdsInput"
-				:placeholder="i18n.baseText('agents.builder.addTrigger.telegram.userIds.placeholder')"
-				:disabled="disabled"
-				data-testid="telegram-user-ids"
-			/>
+			<N8nInput v-model="userIdsInput" :disabled="disabled" data-testid="telegram-user-ids" />
 			<N8nText
 				v-if="validationError"
 				:class="$style.error"

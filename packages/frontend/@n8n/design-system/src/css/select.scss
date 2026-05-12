@@ -68,9 +68,6 @@
 		}
 
 		&.is-disabled {
-			cursor: not-allowed;
-			opacity: 0.6;
-
 			& .el-input__inner {
 				cursor: not-allowed;
 

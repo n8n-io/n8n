@@ -5979,7 +5979,6 @@
 	"agents.builder.addTrigger.telegram.accessMode.public": "Public",
 	"agents.builder.addTrigger.telegram.public.warning": "Any Telegram user will be able to chat with this agent.",
 	"agents.builder.addTrigger.telegram.userIds.label": "Restrict to User IDs",
-	"agents.builder.addTrigger.telegram.userIds.placeholder": "123456789, 987654321",
 	"agents.builder.addTrigger.telegram.validation.invalid": "Telegram user IDs must contain numbers only.",
 	"agents.builder.addTrigger.telegram.validation.required": "Add at least one Telegram user ID.",
 	"agents.builder.addTrigger.helpText.slack": "Connect a Slack bot credential to allow this agent to receive and respond to Slack messages.",
