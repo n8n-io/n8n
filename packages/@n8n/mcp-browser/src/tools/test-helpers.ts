@@ -94,6 +94,9 @@ export function createMockAdapter() {
 		setStorage: jest.fn().mockResolvedValue(undefined),
 		clearStorage: jest.fn().mockResolvedValue(undefined),
 
+		// Credential helpers
+		getElementValue: jest.fn().mockResolvedValue(''),
+
 		// URL lookup
 		getPageUrl: jest.fn().mockReturnValue('http://test.com'),
 

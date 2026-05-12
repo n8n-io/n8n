@@ -606,4 +606,14 @@ export class AgentBrowserAdapter implements Adapter {
 	getPageUrl(pageId: string): string | undefined {
 		return this.urlCache.get(pageId);
 	}
+
+	async getElementValue(pageId: string, target: ElementTarget): Promise<string> {
+		await this.switchToTab(pageId);
+		const ref = this.resolveTarget(target);
+		const valueResp = await this.run(['get', 'value', ref]);
+		const value = (valueResp.data as { value?: string } | undefined)?.value ?? '';
+		if (value !== '') return value;
+		const textResp = await this.run(['get', 'text', ref]);
+		return (textResp.data as { text?: string } | undefined)?.text ?? '';
+	}
 }

@@ -74,7 +74,12 @@ export function createConnectedTool<
 	name: string,
 	description: string,
 	inputSchema: TSchema,
-	fn: (state: ConnectionState, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
+	fn: (
+		state: ConnectionState,
+		input: z.infer<TSchema>,
+		pageId: string,
+		context: ToolContext,
+	) => Promise<CallToolResult>,
 	outputSchema?: z.ZodObject<z.ZodRawShape>,
 	options?: ConnectedToolOptions,
 	getResourceFromArgs?: (args: z.infer<TSchema>) => string,
@@ -84,7 +89,7 @@ export function createConnectedTool<
 		description,
 		inputSchema,
 		outputSchema,
-		async execute(args: z.infer<TSchema>, _context: ToolContext) {
+		async execute(args: z.infer<TSchema>, context: ToolContext) {
 			try {
 				const { state, pageId } = resolvePageContext(connection, args);
 
@@ -96,8 +101,11 @@ export function createConnectedTool<
 				}
 
 				const result = options?.waitForCompletion
-					? await state.adapter.waitForCompletion(pageId, async () => await fn(state, args, pageId))
-					: await fn(state, args, pageId);
+					? await state.adapter.waitForCompletion(
+							pageId,
+							async () => await fn(state, args, pageId, context),
+						)
+					: await fn(state, args, pageId, context);
 
 				if (!options?.skipEnrichment) {
 					// Re-resolve: tab-creating actions (tab_open) update activePageId

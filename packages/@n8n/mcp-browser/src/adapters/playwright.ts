@@ -998,6 +998,10 @@ export class PlaywrightAdapter {
 		}
 	}
 
+	getElementValue(_pageId: string, _target: ElementTarget): never {
+		throw new Error('Not implemented');
+	}
+
 	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {
 		if ('ref' in target) {
 			return (await this.resolveRef(pageId, target.ref)) as Locator;

@@ -21,6 +21,7 @@ import {
 	type AffectedResource,
 	type CallToolResult,
 	type ConfirmResourceAccess,
+	type CreateCredentialPayload,
 	type McpTool,
 	type ResourceDecision,
 	type ToolDefinition,
@@ -137,7 +138,7 @@ export class GatewayClient {
 		if (this.disconnected) return;
 		this.disconnected = true;
 		this.shouldReconnect = false;
-		this.options.session.clearSessionRules();
+		this.options.session.clearSession();
 
 		const notifyServer = options.notifyServer ?? true;
 		if (notifyServer) {
@@ -439,7 +440,34 @@ export class GatewayClient {
 			typeof _confirmation === 'string' ? (_confirmation as ResourceDecision) : undefined;
 
 		const typedArgs: unknown = def.inputSchema.parse(cleanArgs);
-		const context = { dir: this.dir };
+		const session = this.options.session;
+		const instanceUrl = this.options.url;
+		const gatewayKey = this.apiKey;
+		const context = {
+			dir: this.dir,
+			secretsBuffer: {
+				capture: (k: string, f: string, v: string) => session.captureSecret(k, f, v),
+				getFields: (k: string) => session.getSecretFields(k),
+				clear: (k: string) => session.clearSecrets(k),
+			},
+			createCredential: async (payload: CreateCredentialPayload) => {
+				const url = `${instanceUrl}/rest/instance-ai/gateway/credentials`;
+				const headers = new Headers();
+				headers.set('Content-Type', 'application/json');
+				headers.set('X-Gateway-Key', gatewayKey);
+				const res = await fetch(url, {
+					method: 'POST',
+					headers,
+					body: JSON.stringify(payload),
+				});
+				if (!res.ok) {
+					const text = await res.text();
+					throw new Error(`Credential creation failed: ${res.status} ${text}`);
+				}
+				const body = (await res.json()) as { data: { credentialId: string } };
+				return { credentialId: body.data.credentialId };
+			},
+		};
 
 		const resources = await def.getAffectedResources(typedArgs, context);
 		await this.checkPermissions(resources, decision);

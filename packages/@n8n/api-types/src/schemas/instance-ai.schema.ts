@@ -528,6 +528,13 @@ export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 }) {}
 export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
 
+export class InstanceAiGatewayCreateCredentialDto extends Z.class({
+	name: z.string().min(1).max(128),
+	type: z.string().min(1).max(128),
+	data: z.record(z.unknown()),
+	projectId: z.string().optional(),
+}) {}
+
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
 // ---------------------------------------------------------------------------

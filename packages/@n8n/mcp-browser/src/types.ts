@@ -120,6 +120,8 @@ export interface Adapter {
 	clearStorage(pageId: string, kind: 'local' | 'session'): Promise<void>;
 	// Sync helpers used by tool helpers
 	getPageUrl(pageId: string): string | undefined;
+	// Credential capture
+	getElementValue(pageId: string, target: ElementTarget): Promise<string>;
 }
 
 export interface ConnectionState {
@@ -237,9 +239,24 @@ export interface WaitOptions {
 
 export type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
+export interface SecretsBuffer {
+	capture(credentialsKey: string, field: string, value: string): void;
+	getFields(credentialsKey: string): Map<string, string> | undefined;
+	clear(credentialsKey: string): void;
+}
+
+export interface CreateCredentialPayload {
+	name: string;
+	type: string;
+	data: Record<string, unknown>;
+	projectId?: string;
+}
+
 export interface ToolContext {
 	/** Base filesystem directory (used by filesystem tools) */
 	dir: string;
+	secretsBuffer?: SecretsBuffer;
+	createCredential?: (payload: CreateCredentialPayload) => Promise<{ credentialId: string }>;
 }
 
 export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
