@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { AgentMemoryProfilesResponse } from '@n8n/api-types';
 import { N8nCollapsiblePanel, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -25,11 +25,15 @@ const memory = computed(() => (props.config?.memory?.enabled ? props.config.memo
 const canLoadProfiles = computed(
 	() => !props.disabled && Boolean(props.projectId && props.agentId),
 );
+const profilesKey = computed(() =>
+	props.projectId && props.agentId ? `${props.projectId}:${props.agentId}` : null,
+);
 const profilesExpanded = ref(false);
-const profilesLoaded = ref(false);
+const loadedProfilesKey = ref<string | null>(null);
 const profilesLoading = ref(false);
 const profilesError = ref(false);
 const profiles = ref<AgentMemoryProfilesResponse | null>(null);
+const profilesLoaded = computed(() => loadedProfilesKey.value === profilesKey.value);
 
 function onEnableMemory() {
 	const existingMemory = props.config?.memory;
@@ -58,22 +62,26 @@ function onMemoryToggle(enabled: boolean) {
 }
 
 async function loadProfiles() {
-	if (!canLoadProfiles.value || !props.projectId || !props.agentId) return;
+	const key = profilesKey.value;
+	if (!canLoadProfiles.value || !props.projectId || !props.agentId || !key) return;
 
 	profilesLoading.value = true;
 	profilesError.value = false;
 
 	try {
-		profiles.value = await getAgentMemoryProfiles(
+		const loadedProfiles = await getAgentMemoryProfiles(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
 		);
-		profilesLoaded.value = true;
+		if (profilesKey.value !== key) return;
+		profiles.value = loadedProfiles;
+		loadedProfilesKey.value = key;
 	} catch {
+		if (profilesKey.value !== key) return;
 		profilesError.value = true;
 	} finally {
-		profilesLoading.value = false;
+		if (profilesKey.value === key) profilesLoading.value = false;
 	}
 }
 
@@ -83,6 +91,15 @@ function onProfilesExpandedChange(expanded: boolean) {
 		void loadProfiles();
 	}
 }
+
+watch(profilesKey, () => {
+	profiles.value = null;
+	loadedProfilesKey.value = null;
+	profilesError.value = false;
+	if (profilesExpanded.value && canLoadProfiles.value && !profilesLoading.value) {
+		void loadProfiles();
+	}
+});
 </script>
 
 <template>

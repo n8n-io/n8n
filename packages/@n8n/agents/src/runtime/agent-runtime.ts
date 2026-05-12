@@ -7,6 +7,7 @@ import { computeCost, getModelCost, type ModelCost } from '../sdk/catalog';
 import { isLlmMessage } from '../sdk/message';
 import type {
 	AgentRunState,
+	AgentResourceScope,
 	AnthropicThinkingConfig,
 	AttributeValue,
 	BuiltMemory,
@@ -587,18 +588,15 @@ export class AgentRuntime {
 		list: AgentMessageList,
 		persistence: AgentPersistenceOptions | undefined,
 	): Promise<void> {
-		if (
-			!isMemoryProfilesEnabled(this.config.profiles) ||
-			!this.config.memory ||
-			!persistence?.resourceId
-		) {
+		const scope = this.memoryProfileScope(persistence);
+		if (!isMemoryProfilesEnabled(this.config.profiles) || !this.config.memory || !scope) {
 			return;
 		}
 
 		try {
 			list.memoryProfile = await loadMemoryProfileContext({
 				memory: this.config.memory,
-				persistence,
+				persistence: scope,
 			});
 		} catch (error) {
 			this.eventBus.emit({
@@ -1440,13 +1438,14 @@ export class AgentRuntime {
 		list: AgentMessageList,
 	): void {
 		if (!this.config.memory || !this.config.profiles) return;
-		if (!persistence.agentId || !persistence.resourceId) return;
+		const scope = this.memoryProfileScope(persistence);
+		if (!scope) return;
 
 		const promise = updateMemoryProfilesFromTurn({
 			memory: this.config.memory,
 			config: this.config.profiles,
 			model: this.config.model,
-			scope: { agentId: persistence.agentId, resourceId: persistence.resourceId },
+			scope,
 			currentProfile: list.memoryProfile,
 			messages,
 			eventBus: this.eventBus,
@@ -1456,6 +1455,13 @@ export class AgentRuntime {
 		);
 
 		this.backgroundTasks.track(promise);
+	}
+
+	private memoryProfileScope(
+		persistence: AgentPersistenceOptions | undefined,
+	): AgentResourceScope | undefined {
+		if (!persistence?.resourceId) return undefined;
+		return { agentId: persistence.agentId ?? this.config.name, resourceId: persistence.resourceId };
 	}
 
 	private async saveEmbeddingsForMessages(

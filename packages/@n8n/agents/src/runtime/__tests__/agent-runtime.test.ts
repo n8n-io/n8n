@@ -571,6 +571,31 @@ describe('AgentRuntime — memory profiles', () => {
 		expect(prompt).not.toContain('<agent-profile>');
 		expect(prompt).not.toContain('<memory>');
 	});
+
+	it('uses the runtime name as profile scope when persistence omits agentId', async () => {
+		const memory = new InMemoryMemory();
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'user-profile', agentId: 'memory-profile-runtime', resourceId: 'user-1' },
+			'The user prefers runtime-scoped profiles.',
+		);
+		const runtime = new AgentRuntime({
+			name: 'memory-profile-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory,
+			profiles: { enabled: true },
+		});
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('What should I check first?', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+
+		const calls = generateText.mock.calls as Array<[Record<string, unknown>]>;
+		const messages = calls[0][0].messages as Array<Record<string, unknown>>;
+		const prompt = String(messages[0].content);
+		expect(prompt).toContain('The user prefers runtime-scoped profiles.');
+	});
 });
 
 // ---------------------------------------------------------------------------
