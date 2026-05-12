@@ -1,7 +1,7 @@
 import CanvasNode from './CanvasNode.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
-import { NodeConnectionTypes } from 'n8n-workflow';
+
 import { fireEvent } from '@testing-library/vue';
 import {
 	createCanvasNodeData,
@@ -67,19 +67,7 @@ describe('CanvasNode', () => {
 		it('should render correct number of input and output handles', async () => {
 			const { getAllByTestId } = renderComponent({
 				props: {
-					...createCanvasNodeProps({
-						data: {
-							inputs: [
-								{ type: NodeConnectionTypes.Main, index: 0 },
-								{ type: NodeConnectionTypes.Main, index: 0 },
-								{ type: NodeConnectionTypes.Main, index: 0 },
-							],
-							outputs: [
-								{ type: NodeConnectionTypes.Main, index: 0 },
-								{ type: NodeConnectionTypes.Main, index: 0 },
-							],
-						},
-					}),
+					...createCanvasNodeProps(),
 				},
 				global: {
 					stubs: {
@@ -98,17 +86,7 @@ describe('CanvasNode', () => {
 		it('should insert spacers after required non-main input handle', () => {
 			const { getAllByTestId } = renderComponent({
 				props: {
-					...createCanvasNodeProps({
-						data: {
-							inputs: [
-								{ type: NodeConnectionTypes.Main, index: 0 },
-								{ type: NodeConnectionTypes.AiAgent, index: 0, required: true },
-								{ type: NodeConnectionTypes.AiMemory, index: 0 },
-								{ type: NodeConnectionTypes.AiTool, index: 0 },
-							],
-							outputs: [],
-						},
-					}),
+					...createCanvasNodeProps(),
 				},
 				global: {
 					stubs: {

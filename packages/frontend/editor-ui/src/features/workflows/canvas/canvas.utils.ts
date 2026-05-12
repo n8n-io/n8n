@@ -5,7 +5,12 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from './canvas.types';
+import type {
+	BoundingBox,
+	CanvasConnection,
+	CanvasConnectionPort,
+	CanvasNodeDefaultRenderLabelSize,
+} from './canvas.types';
 import { CanvasConnectionMode } from './canvas.types';
 import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/utils/typeGuards';
@@ -263,6 +268,34 @@ export function insertSpacersBetweenEndpoints<T>(endpoints: T[], requiredEndpoin
 	}
 
 	return endpointsWithSpacers;
+}
+
+export function getLabelSize(label: string = ''): number {
+	if (label.length <= 2) {
+		return 0;
+	} else if (label.length <= 6) {
+		return 1;
+	} else {
+		return 2;
+	}
+}
+
+export function getMaxNodePortsLabelSize(
+	ports: CanvasConnectionPort[],
+): CanvasNodeDefaultRenderLabelSize {
+	const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
+	const labelSizeIndexes = ports.reduce<number[]>(
+		(sizeAcc, input) => {
+			if (input.type === NodeConnectionTypes.Main) {
+				sizeAcc.push(getLabelSize(input.label ?? ''));
+			}
+
+			return sizeAcc;
+		},
+		[0],
+	);
+
+	return labelSizes[Math.max(...labelSizeIndexes)];
 }
 
 export function shouldIgnoreCanvasShortcut(el: Element): boolean {

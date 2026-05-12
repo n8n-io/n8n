@@ -13,13 +13,11 @@ import type {
 	BoundingBox,
 	CanvasConnection,
 	CanvasConnectionData,
-	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
 	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
-	CanvasNodeDefaultRenderLabelSize,
 	CanvasNodeStickyNoteRender,
 	ExecutionOutputMap,
 } from '../canvas.types';
@@ -27,7 +25,6 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import {
 	checkOverlap,
 	mapLegacyConnectionsToCanvasConnections,
-	mapLegacyEndpointsToCanvasConnectionPort,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
 import type {
@@ -38,12 +35,7 @@ import type {
 	INodeTypeDescription,
 	ITaskData,
 } from 'n8n-workflow';
-import {
-	NodeConnectionTypes,
-	NodeHelpers,
-	SEND_AND_WAIT_OPERATION,
-	WAIT_INDEFINITELY,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import {
 	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
@@ -128,12 +120,6 @@ export function useCanvasMapping({
 					node.type,
 					node.typeVersion,
 				),
-				inputs: {
-					labelSize: nodeInputLabelSizeById.value[node.id],
-				},
-				outputs: {
-					labelSize: nodeOutputLabelSizeById.value[node.id],
-				},
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
 				icon,
@@ -200,97 +186,6 @@ export function useCanvasMapping({
 			return acc;
 		}, {});
 	});
-
-	// Computed locally from the passed-in deps (rather than delegating to
-	// `workflowDocumentStore.render.nodes`) because this composable is also
-	// driven by callers that pass workflowObject/nodes directly, decoupled
-	// from the document store (e.g. workflow-diff views and the test suite).
-	// The `render.nodes` registry is the per-field-atomic version consumed by
-	// CanvasNode.vue directly. Once the remaining consumers of this aggregate
-	// (label sizing, getConnectionData, useCanvasLayout) migrate to the
-	// per-node store API, this local computation can be removed.
-	const nodeInputsById = computed(() =>
-		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
-			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
-			const workflowObjectNode = workflowObject.value.getNode(node.name);
-			acc[node.id] =
-				workflowObjectNode && nodeTypeDescription
-					? mapLegacyEndpointsToCanvasConnectionPort(
-							NodeHelpers.getNodeInputs(
-								workflowObject.value,
-								workflowObjectNode,
-								nodeTypeDescription,
-							),
-							nodeTypeDescription.inputNames ?? [],
-						)
-					: [];
-
-			return acc;
-		}, {}),
-	);
-
-	function getLabelSize(label: string = ''): number {
-		if (label.length <= 2) {
-			return 0;
-		} else if (label.length <= 6) {
-			return 1;
-		} else {
-			return 2;
-		}
-	}
-
-	function getMaxNodePortsLabelSize(
-		ports: CanvasConnectionPort[],
-	): CanvasNodeDefaultRenderLabelSize {
-		const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
-		const labelSizeIndexes = ports.reduce<number[]>(
-			(sizeAcc, input) => {
-				if (input.type === NodeConnectionTypes.Main) {
-					sizeAcc.push(getLabelSize(input.label ?? ''));
-				}
-
-				return sizeAcc;
-			},
-			[0],
-		);
-
-		return labelSizes[Math.max(...labelSizeIndexes)];
-	}
-
-	const nodeInputLabelSizeById = computed(() =>
-		nodes.value.reduce<Record<string, CanvasNodeDefaultRenderLabelSize>>((acc, node) => {
-			acc[node.id] = getMaxNodePortsLabelSize(nodeInputsById.value[node.id]);
-			return acc;
-		}, {}),
-	);
-
-	const nodeOutputLabelSizeById = computed(() =>
-		nodes.value.reduce<Record<string, CanvasNodeDefaultRenderLabelSize>>((acc, node) => {
-			acc[node.id] = getMaxNodePortsLabelSize(nodeOutputsById.value[node.id]);
-			return acc;
-		}, {}),
-	);
-
-	const nodeOutputsById = computed(() =>
-		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
-			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
-			const workflowObjectNode = workflowObject.value.getNode(node.name);
-
-			acc[node.id] =
-				workflowObjectNode && nodeTypeDescription
-					? mapLegacyEndpointsToCanvasConnectionPort(
-							NodeHelpers.getNodeOutputs(
-								workflowObject.value,
-								workflowObjectNode,
-								nodeTypeDescription,
-							),
-							nodeTypeDescription.outputNames ?? [],
-						)
-					: [];
-
-			return acc;
-		}, {}),
-	);
 
 	const nodePinnedDataById = computed(() =>
 		nodes.value.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
@@ -701,8 +596,6 @@ export function useCanvasMapping({
 					type: node.type,
 					typeVersion: node.typeVersion,
 					disabled: node.disabled,
-					inputs: nodeInputsById.value[node.id] ?? [],
-					outputs: nodeOutputsById.value[node.id] ?? [],
 					connections: {
 						[CanvasConnectionMode.Input]: inputConnections,
 						[CanvasConnectionMode.Output]: outputConnections,
@@ -793,10 +686,11 @@ export function useCanvasMapping({
 			}
 		}
 
-		const maxConnections = [
-			...nodeInputsById.value[connection.source],
-			...nodeInputsById.value[connection.target],
-		]
+		const sourceInputs =
+			workflowDocumentStore.value.render.nodes.get(connection.source)?.inputs.value ?? [];
+		const targetInputs =
+			workflowDocumentStore.value.render.nodes.get(connection.target)?.inputs.value ?? [];
+		const maxConnections = [...sourceInputs, ...targetInputs]
 			.filter((port) => port.type === type)
 			.reduce<number | undefined>((acc, port) => {
 				if (port.maxConnections === undefined) {

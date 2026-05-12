@@ -92,7 +92,7 @@ const nodeClasses = ref<string[]>([]);
 // `.value` actually changes — not on unrelated workflow churn.
 const renderData = computed(() => workflowDocumentStore?.value?.render.nodes.get(props.id));
 const inputs = computed(() => renderData.value?.inputs.value ?? []);
-const outputs = computed(() => props.data.outputs);
+const outputs = computed(() => renderData.value?.outputs.value ?? []);
 const connections = computed(() => props.data.connections);
 const {
 	mainInputs,

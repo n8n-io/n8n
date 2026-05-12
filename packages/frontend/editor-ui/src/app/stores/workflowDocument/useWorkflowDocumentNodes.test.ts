@@ -423,14 +423,18 @@ describe('useWorkflowDocumentNodes', () => {
 	});
 
 	describe('events', () => {
-		it('setNodes does not fire onNodesChange (initialization path)', () => {
+		it('setNodes fires onNodesChange with set action', () => {
 			const hookSpy = vi.fn();
+			const node = createNode();
 
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.onNodesChange(hookSpy);
-			workflowDocumentNodes.setNodes([createNode()]);
+			workflowDocumentNodes.setNodes([node]);
 
-			expect(hookSpy).not.toHaveBeenCalled();
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'set',
+				payload: { nodeIds: [node.id] },
+			});
 		});
 
 		it('addNode fires onNodesChange with add action', () => {

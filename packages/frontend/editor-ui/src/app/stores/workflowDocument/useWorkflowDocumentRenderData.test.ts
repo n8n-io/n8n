@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computed, nextTick, ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
@@ -11,6 +11,8 @@ import {
 	useWorkflowDocumentRenderData,
 	type WorkflowDocumentRenderDataDeps,
 } from './useWorkflowDocumentRenderData';
+import { CHANGE_ACTION } from './types';
+import type { NodesChangeEvent } from './useWorkflowDocumentNodes';
 
 const getNodeType = vi.fn<(type: string, version?: number) => INodeTypeDescription | null>();
 const communityNodeType =
@@ -24,6 +26,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 const getNodeInputs = vi.fn();
+const getNodeOutputs = vi.fn();
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
 	return {
@@ -31,6 +34,7 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 		NodeHelpers: {
 			...actual.NodeHelpers,
 			getNodeInputs: (...args: unknown[]) => getNodeInputs(...args),
+			getNodeOutputs: (...args: unknown[]) => getNodeOutputs(...args),
 		},
 	};
 });
@@ -46,14 +50,38 @@ function makeWorkflowObject(nodes: INodeUi[]): Workflow {
 }
 
 function makeDeps(nodes: INodeUi[]) {
-	const allNodesRef = ref<INodeUi[]>(nodes);
+	const nodesRef = ref<INodeUi[]>(nodes);
 	const workflowObjectRef = ref<Workflow>(makeWorkflowObject(nodes));
+
+	let handler: ((event: NodesChangeEvent) => void) | null = null;
+
 	const deps: WorkflowDocumentRenderDataDeps = {
-		allNodes: computed(() => allNodesRef.value ?? []),
+		getNodeById: (id: string) => nodesRef.value.find((n) => n.id === id),
+		onNodesChange: (fn) => {
+			handler = fn;
+			return {
+				off: () => {
+					handler = null;
+				},
+			};
+		},
 		workflowObject:
 			workflowObjectRef as unknown as WorkflowDocumentRenderDataDeps['workflowObject'],
 	};
-	return { deps, allNodesRef, workflowObjectRef };
+
+	function fireEvent(event: NodesChangeEvent) {
+		handler?.(event);
+	}
+
+	/** Simulate the initial setNodes call — invoke after useWorkflowDocumentRenderData */
+	function initNodes() {
+		fireEvent({
+			action: CHANGE_ACTION.SET,
+			payload: { nodeIds: nodesRef.value.map((n) => n.id) },
+		});
+	}
+
+	return { deps, nodesRef, workflowObjectRef, fireEvent, initNodes };
 }
 
 describe('useWorkflowDocumentRenderData', () => {
@@ -62,23 +90,30 @@ describe('useWorkflowDocumentRenderData', () => {
 		getNodeType.mockReset();
 		communityNodeType.mockReset();
 		getNodeInputs.mockReset();
+		getNodeOutputs.mockReset();
 
-		// Defaults: every node has a single Main input port. Use a plain object
-		// rather than `mock<INodeTypeDescription>()` because the latter returns a
-		// proxy that auto-mocks every property, including `inputNames`, which
-		// breaks the array-indexing in mapLegacyEndpointsToCanvasConnectionPort.
-		getNodeType.mockReturnValue({ inputNames: [] } as unknown as INodeTypeDescription);
+		// Defaults: every node has a single Main input/output port. Use a plain
+		// object rather than `mock<INodeTypeDescription>()` because the latter
+		// returns a proxy that auto-mocks every property, including
+		// `inputNames`/`outputNames`, which breaks the array-indexing in
+		// mapLegacyEndpointsToCanvasConnectionPort.
+		getNodeType.mockReturnValue({
+			inputNames: [],
+			outputNames: [],
+		} as unknown as INodeTypeDescription);
 		communityNodeType.mockReturnValue(undefined);
 		getNodeInputs.mockReturnValue([NodeConnectionTypes.Main]);
+		getNodeOutputs.mockReturnValue([NodeConnectionTypes.Main]);
 	});
 
 	describe('render.nodes', () => {
 		it('populates entries for initial nodes', () => {
 			const nodeA = makeNode({ name: 'A' });
 			const nodeB = makeNode({ name: 'B' });
-			const { deps } = makeDeps([nodeA, nodeB]);
+			const { deps, initNodes } = makeDeps([nodeA, nodeB]);
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 
 			expect(render.nodes.size).toBe(2);
 			expect(render.nodes.get(nodeA.id)?.inputs.value).toEqual([
@@ -89,31 +124,33 @@ describe('useWorkflowDocumentRenderData', () => {
 			]);
 		});
 
-		it('adds an entry when a node is added', async () => {
+		it('adds an entry when a node is added', () => {
 			const nodeA = makeNode({ name: 'A' });
-			const { deps, allNodesRef } = makeDeps([nodeA]);
+			const { deps, nodesRef, fireEvent, initNodes } = makeDeps([nodeA]);
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 			expect(render.nodes.size).toBe(1);
 
 			const nodeB = makeNode({ name: 'B' });
-			allNodesRef.value = [nodeA, nodeB];
-			await nextTick();
+			nodesRef.value = [nodeA, nodeB];
+			fireEvent({ action: CHANGE_ACTION.ADD, payload: { node: nodeB } });
 
 			expect(render.nodes.size).toBe(2);
 			expect(render.nodes.has(nodeB.id)).toBe(true);
 		});
 
-		it('removes an entry when a node is removed', async () => {
+		it('removes an entry when a node is removed', () => {
 			const nodeA = makeNode({ name: 'A' });
 			const nodeB = makeNode({ name: 'B' });
-			const { deps, allNodesRef } = makeDeps([nodeA, nodeB]);
+			const { deps, nodesRef, fireEvent, initNodes } = makeDeps([nodeA, nodeB]);
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 			expect(render.nodes.size).toBe(2);
 
-			allNodesRef.value = [nodeA];
-			await nextTick();
+			nodesRef.value = [nodeA];
+			fireEvent({ action: CHANGE_ACTION.DELETE, payload: { name: nodeB.name, id: nodeB.id } });
 
 			expect(render.nodes.size).toBe(1);
 			expect(render.nodes.has(nodeB.id)).toBe(false);
@@ -121,13 +158,14 @@ describe('useWorkflowDocumentRenderData', () => {
 
 		it('does not write to inputs.value when the computed result is structurally equal', async () => {
 			const nodeA = makeNode({ name: 'A' });
-			const { deps, workflowObjectRef } = makeDeps([nodeA]);
+			const { deps, initNodes, workflowObjectRef } = makeDeps([nodeA]);
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 			const inputsRef = render.nodes.get(nodeA.id)!.inputs;
 			const firstValue = inputsRef.value;
 
-			// Trigger the watcher: replace workflowObject with an equivalent one.
+			// Replace workflowObject with an equivalent one.
 			workflowObjectRef.value = makeWorkflowObject([nodeA]);
 			await nextTick();
 
@@ -136,9 +174,10 @@ describe('useWorkflowDocumentRenderData', () => {
 
 		it('writes to inputs.value when the computed result actually changes', async () => {
 			const nodeA = makeNode({ name: 'A' });
-			const { deps, workflowObjectRef } = makeDeps([nodeA]);
+			const { deps, initNodes, workflowObjectRef } = makeDeps([nodeA]);
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 			const inputsRef = render.nodes.get(nodeA.id)!.inputs;
 			const firstValue = inputsRef.value;
 			expect(firstValue).toHaveLength(1);
@@ -158,9 +197,10 @@ describe('useWorkflowDocumentRenderData', () => {
 			communityNodeType.mockReturnValue({
 				nodeDescription: { inputNames: [] } as unknown as INodeTypeDescription,
 			});
-			const { deps } = makeDeps([nodeA]);
+			const { deps, initNodes } = makeDeps([nodeA]);
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 
 			expect(render.nodes.get(nodeA.id)?.inputs.value).toEqual([
 				{ type: NodeConnectionTypes.Main, index: 0, label: undefined },
@@ -171,21 +211,113 @@ describe('useWorkflowDocumentRenderData', () => {
 			const nodeA = makeNode({ name: 'A' });
 			getNodeType.mockReturnValue(null);
 			communityNodeType.mockReturnValue(undefined);
-			const { deps } = makeDeps([nodeA]);
+			const { deps, initNodes } = makeDeps([nodeA]);
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 
 			expect(render.nodes.get(nodeA.id)?.inputs.value).toEqual<CanvasConnectionPort[]>([]);
 		});
 
 		it('returns [] when the workflow object does not know the node', () => {
 			const nodeA = makeNode({ name: 'A' });
-			const { deps, workflowObjectRef } = makeDeps([nodeA]);
+			const { deps, initNodes, workflowObjectRef } = makeDeps([nodeA]);
 			workflowObjectRef.value = mock<Workflow>({ getNode: () => null });
 
 			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
 
 			expect(render.nodes.get(nodeA.id)?.inputs.value).toEqual<CanvasConnectionPort[]>([]);
+		});
+
+		it('populates outputs entries for initial nodes', () => {
+			const nodeA = makeNode({ name: 'A' });
+			const nodeB = makeNode({ name: 'B' });
+			const { deps, initNodes } = makeDeps([nodeA, nodeB]);
+
+			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
+
+			expect(render.nodes.get(nodeA.id)?.outputs.value).toEqual([
+				{ type: NodeConnectionTypes.Main, index: 0, label: undefined },
+			]);
+			expect(render.nodes.get(nodeB.id)?.outputs.value).toEqual([
+				{ type: NodeConnectionTypes.Main, index: 0, label: undefined },
+			]);
+		});
+
+		it('does not write to outputs.value when the computed result is structurally equal', async () => {
+			const nodeA = makeNode({ name: 'A' });
+			const { deps, initNodes, workflowObjectRef } = makeDeps([nodeA]);
+
+			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
+			const outputsRef = render.nodes.get(nodeA.id)!.outputs;
+			const firstValue = outputsRef.value;
+
+			// Replace workflowObject with an equivalent one.
+			workflowObjectRef.value = makeWorkflowObject([nodeA]);
+			await nextTick();
+
+			expect(outputsRef.value).toBe(firstValue);
+		});
+
+		it('writes to outputs.value when the computed result actually changes', async () => {
+			const nodeA = makeNode({ name: 'A' });
+			const { deps, initNodes, workflowObjectRef } = makeDeps([nodeA]);
+
+			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
+			const outputsRef = render.nodes.get(nodeA.id)!.outputs;
+			const firstValue = outputsRef.value;
+			expect(firstValue).toHaveLength(1);
+
+			// Next computation returns a different port set.
+			getNodeOutputs.mockReturnValue([NodeConnectionTypes.Main, NodeConnectionTypes.AiTool]);
+			workflowObjectRef.value = makeWorkflowObject([nodeA]);
+			await nextTick();
+
+			expect(outputsRef.value).not.toBe(firstValue);
+			expect(outputsRef.value).toHaveLength(2);
+		});
+
+		it('falls back to community node type description for outputs', () => {
+			const nodeA = makeNode({ name: 'A', type: 'community.foo' });
+			getNodeType.mockReturnValue(null);
+			communityNodeType.mockReturnValue({
+				nodeDescription: { outputNames: [] } as unknown as INodeTypeDescription,
+			});
+			const { deps, initNodes } = makeDeps([nodeA]);
+
+			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
+
+			expect(render.nodes.get(nodeA.id)?.outputs.value).toEqual([
+				{ type: NodeConnectionTypes.Main, index: 0, label: undefined },
+			]);
+		});
+
+		it('returns [] for outputs when neither core nor community node type description is available', () => {
+			const nodeA = makeNode({ name: 'A' });
+			getNodeType.mockReturnValue(null);
+			communityNodeType.mockReturnValue(undefined);
+			const { deps, initNodes } = makeDeps([nodeA]);
+
+			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
+
+			expect(render.nodes.get(nodeA.id)?.outputs.value).toEqual<CanvasConnectionPort[]>([]);
+		});
+
+		it('returns [] for outputs when the workflow object does not know the node', () => {
+			const nodeA = makeNode({ name: 'A' });
+			const { deps, initNodes, workflowObjectRef } = makeDeps([nodeA]);
+			workflowObjectRef.value = mock<Workflow>({ getNode: () => null });
+
+			const { render } = useWorkflowDocumentRenderData(deps);
+			initNodes();
+
+			expect(render.nodes.get(nodeA.id)?.outputs.value).toEqual<CanvasConnectionPort[]>([]);
 		});
 	});
 });

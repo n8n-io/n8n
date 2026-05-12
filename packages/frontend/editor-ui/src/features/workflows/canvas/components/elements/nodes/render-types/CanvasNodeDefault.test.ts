@@ -75,23 +75,12 @@ describe('CanvasNodeDefault', () => {
 			[4, 4, '160px'],
 		])(
 			'should adjust height css variable based on the number of inputs and outputs (%i inputs, %i outputs)',
-			(inputCount, outputCount, expected) => {
+			(_inputCount, _outputCount, expected) => {
 				const { getByText } = renderComponent({
 					global: {
 						stubs,
 						provide: {
-							...createCanvasNodeProvide({
-								data: {
-									inputs: Array.from({ length: inputCount }).map(() => ({
-										type: NodeConnectionTypes.Main,
-										index: 0,
-									})),
-									outputs: Array.from({ length: outputCount }).map(() => ({
-										type: NodeConnectionTypes.Main,
-										index: 0,
-									})),
-								},
-							}),
+							...createCanvasNodeProvide(),
 						},
 					},
 				});
@@ -194,8 +183,6 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								disabled: true,
-								inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
-								outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 								connections: {
 									[CanvasConnectionMode.Input]: {
 										[NodeConnectionTypes.Main]: [
@@ -306,14 +293,13 @@ describe('CanvasNodeDefault', () => {
 				],
 			])(
 				'should adjust width css variable based on the number of non-main inputs (%s)',
-				(_, nonMainInputs, expected) => {
+				(_, _nonMainInputs, expected) => {
 					const { getByText } = renderComponent({
 						global: {
 							stubs,
 							provide: {
 								...createCanvasNodeProvide({
 									data: {
-										inputs: [{ type: NodeConnectionTypes.Main, index: 0 }, ...nonMainInputs],
 										render: {
 											type: CanvasNodeRenderType.Default,
 											options: {

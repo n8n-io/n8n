@@ -33,12 +33,14 @@ import { useNodeTypesStore } from '../nodeTypes.store';
 export type NodeAddedPayload = { node: INodeUi };
 export type NodeRemovedPayload = { name: string; id: string };
 export type NodeUpdatedPayload = { name: string };
+export type NodesSetPayload = { nodeIds: string[] };
 export type NodesResetPayload = object;
 
 export type NodesChangeEvent =
 	| ChangeEvent<NodeAddedPayload>
 	| ChangeEvent<NodeRemovedPayload>
 	| ChangeEvent<NodeUpdatedPayload>
+	| ChangeEvent<NodesSetPayload>
 	| ChangeEvent<NodesResetPayload>;
 
 // --- Deps ---
@@ -120,6 +122,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		for (const node of newNodes) {
 			deps.nodeMetadata.initPristineNodeMetadata(node.name);
 		}
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.SET,
+			payload: { nodeIds: newNodes.map((n) => n.id) },
+		});
 	}
 
 	function applyAddNode(node: INodeUi) {
@@ -184,6 +190,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		}, {});
 	});
 
+	const nodesById = computed(() => new Map(nodes.value.map((n) => [n.id, n])));
+
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
 	const workflowTriggerNodes = computed(() =>
@@ -202,7 +210,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	);
 
 	function getNodeById(id: string): INodeUi | undefined {
-		return nodes.value.find((node) => node.id === id);
+		return nodesById.value.get(id);
 	}
 
 	function getNodeByName(name: string): INodeUi | null {
@@ -475,6 +483,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		// Read
 		allNodes,
 		nodesByName,
+		nodesById,
 		canvasNames,
 		workflowTriggerNodes,
 		aiNodes,

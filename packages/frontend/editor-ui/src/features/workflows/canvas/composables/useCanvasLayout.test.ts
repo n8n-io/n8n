@@ -11,6 +11,14 @@ import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('@vue-flow/core');
 
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: vi.fn(() =>
+		computed(() => ({
+			render: { nodes: new Map() },
+		})),
+	),
+}));
+
 function matchesGrid(result: CanvasLayoutResult) {
 	return result.nodes.every((node) => node.x % GRID_SIZE === 0 && node.y % GRID_SIZE === 0);
 }
@@ -235,12 +243,6 @@ describe('useCanvasLayout', () => {
 						type: CanvasNodeRenderType.Default,
 						options: { configurable: true },
 					},
-					inputs: [
-						{ type: 'main', index: 0 },
-						{ type: 'main', index: 1 },
-						{ type: 'ai_tool', index: 0 },
-					],
-					outputs: [{ type: 'main', index: 0 }],
 				},
 				dimensions: undefined,
 			}),
@@ -251,8 +253,6 @@ describe('useCanvasLayout', () => {
 						type: CanvasNodeRenderType.Default,
 						options: { configuration: true },
 					},
-					inputs: [{ type: 'main', index: 0 }],
-					outputs: [{ type: 'main', index: 0 }],
 				},
 				dimensions: { width: 0, height: 0 },
 			}),

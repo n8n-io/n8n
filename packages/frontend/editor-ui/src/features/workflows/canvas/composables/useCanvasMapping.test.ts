@@ -2,7 +2,7 @@ import type { INode, NodeApiError, Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import type { Ref } from 'vue';
-import { ref } from 'vue';
+import { computed, markRaw, ref } from 'vue';
 
 import {
 	createTestNode,
@@ -29,6 +29,7 @@ import type { IPinData } from 'n8n-workflow';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
+	type CanvasConnectionPort,
 	type CanvasNodeDefaultRender,
 } from '../canvas.types';
 import { createCanvasConnectionHandleString, createCanvasConnectionId } from '../canvas.utils';
@@ -126,6 +127,30 @@ function setPinData(pinData: IPinData) {
 	workflowDocumentStore.setPinData(pinData);
 }
 
+/**
+ * Populate the document store's `render.nodes` map directly for tests
+ * that rely on per-node inputs/outputs from the store's render data.
+ */
+function setupRenderNodes(
+	entries: Array<{
+		id: string;
+		inputs: CanvasConnectionPort[];
+		outputs?: CanvasConnectionPort[];
+	}>,
+) {
+	const workflowsStore = useWorkflowsStore();
+	const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+	for (const { id, inputs, outputs = [] } of entries) {
+		store.render.nodes.set(
+			id,
+			markRaw({
+				inputs: computed(() => inputs),
+				outputs: computed(() => outputs),
+			}),
+		);
+	}
+}
+
 describe('useCanvasMapping', () => {
 	it('should initialize with default props', () => {
 		const nodes: INodeUi[] = [];
@@ -200,20 +225,6 @@ describe('useCanvasMapping', () => {
 							outputMap: {},
 							visible: false,
 						},
-						inputs: [
-							{
-								index: 0,
-								label: undefined,
-								type: 'main',
-							},
-						],
-						outputs: [
-							{
-								index: 0,
-								label: undefined,
-								type: 'main',
-							},
-						],
 						connections: {
 							[CanvasConnectionMode.Input]: {},
 							[CanvasConnectionMode.Output]: {},
@@ -228,12 +239,6 @@ describe('useCanvasMapping', () => {
 									type: 'file',
 								},
 								trigger: true,
-								inputs: {
-									labelSize: 'small',
-								},
-								outputs: {
-									labelSize: 'small',
-								},
 							},
 						},
 					},
@@ -380,12 +385,6 @@ describe('useCanvasMapping', () => {
 					icon: {
 						src: 'http://test.local/nodes/test-node/icon.svg',
 						type: 'file',
-					},
-					inputs: {
-						labelSize: 'small',
-					},
-					outputs: {
-						labelSize: 'small',
 					},
 				},
 			});
@@ -3163,6 +3162,19 @@ describe('useCanvasMapping', () => {
 					},
 				};
 
+				setupRenderNodes([
+					{
+						id: manualTriggerNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+					},
+					{
+						id: setNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0, maxConnections: 1 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+					},
+				]);
+
 				const workflowObject = createTestWorkflowObject({
 					nodes,
 					connections,
@@ -3178,7 +3190,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should use minimum maxConnections when multiple ports have limits', () => {
-				const nodeTypesStore = mockedStore(useNodeTypesStore);
 				const manualTriggerNode = mockNode({
 					name: 'Manual Trigger',
 					type: MANUAL_TRIGGER_NODE_TYPE,
@@ -3196,30 +3207,18 @@ describe('useCanvasMapping', () => {
 					},
 				};
 
-				nodeTypesStore.nodeTypes = {
-					[MANUAL_TRIGGER_NODE_TYPE]: {
-						1: mockNodeTypeDescription({
-							name: MANUAL_TRIGGER_NODE_TYPE,
-							outputs: [
-								{
-									type: NodeConnectionTypes.Main,
-									maxConnections: 3,
-								},
-							],
-						}),
+				setupRenderNodes([
+					{
+						id: manualTriggerNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0, maxConnections: 3 }],
 					},
-					[SET_NODE_TYPE]: {
-						1: mockNodeTypeDescription({
-							name: SET_NODE_TYPE,
-							inputs: [
-								{
-									type: NodeConnectionTypes.Main,
-									maxConnections: 2,
-								},
-							],
-						}),
+					{
+						id: setNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0, maxConnections: 2 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 					},
-				};
+				]);
 
 				const workflowObject = createTestWorkflowObject({
 					nodes,

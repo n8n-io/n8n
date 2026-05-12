@@ -4,9 +4,11 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import type { CanvasNodeData } from '../canvas.types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '../canvas.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const data = computed(
 		() =>
 			node?.data.value ??
@@ -17,8 +19,6 @@ export function useCanvasNode() {
 				type: '',
 				typeVersion: 1,
 				disabled: false,
-				inputs: [],
-				outputs: [],
 				connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 				issues: { execution: [], validation: [], visible: false },
 				pinnedData: { count: 0, visible: false },
@@ -36,10 +36,11 @@ export function useCanvasNode() {
 	const id = computed(() => node?.id.value ?? '');
 	const label = computed(() => node?.label.value ?? '');
 
+	const renderData = computed(() => workflowDocumentStore.value.render.nodes.get(id.value));
 	const subtitle = computed(() => data.value.subtitle);
 	const name = computed(() => data.value.name);
-	const inputs = computed(() => data.value.inputs);
-	const outputs = computed(() => data.value.outputs);
+	const inputs = computed(() => renderData.value?.inputs.value ?? []);
+	const outputs = computed(() => renderData.value?.outputs.value ?? []);
 	const connections = computed(() => data.value.connections);
 
 	const isDisabled = computed(() => data.value.disabled);

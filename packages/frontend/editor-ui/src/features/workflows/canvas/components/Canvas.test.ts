@@ -8,7 +8,7 @@ import {
 	createCanvasConnection,
 	createCanvasNodeElement,
 } from '@/features/workflows/canvas/__tests__/utils';
-import { NodeConnectionTypes } from 'n8n-workflow';
+
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
 import { SIMULATE_NODE_TYPE } from '@/app/constants';
@@ -61,27 +61,11 @@ describe('Canvas', () => {
 			createCanvasNodeElement({
 				id: '1',
 				label: 'Node 1',
-				data: {
-					outputs: [
-						{
-							type: NodeConnectionTypes.Main,
-							index: 0,
-						},
-					],
-				},
 			}),
 			createCanvasNodeElement({
 				id: '2',
 				label: 'Node 2',
 				position: { x: 200, y: 200 },
-				data: {
-					inputs: [
-						{
-							type: NodeConnectionTypes.Main,
-							index: 0,
-						},
-					],
-				},
 			}),
 		];
 

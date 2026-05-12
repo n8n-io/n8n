@@ -200,7 +200,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
 		});
 		const workflowDocumentRenderData = useWorkflowDocumentRenderData({
-			allNodes: workflowDocumentNodes.allNodes,
+			getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
+			onNodesChange: workflowDocumentNodes.onNodesChange,
 			workflowObject: workflowDocumentWorkflowObject.workflowObject,
 		});
 

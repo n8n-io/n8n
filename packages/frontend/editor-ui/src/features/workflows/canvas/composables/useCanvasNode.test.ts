@@ -1,8 +1,13 @@
 import { useCanvasNode } from './useCanvasNode';
-import { inject, ref } from 'vue';
-import type { CanvasNodeData, CanvasNodeInjectionData } from '../canvas.types';
+import { type ComputedRef, computed, inject, ref } from 'vue';
+import type {
+	CanvasConnectionPort,
+	CanvasNodeData,
+	CanvasNodeInjectionData,
+} from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('vue', async () => {
 	const actual = await vi.importActual('vue');
@@ -12,7 +17,32 @@ vi.mock('vue', async () => {
 	};
 });
 
+const renderNodesMap = new Map<
+	string,
+	{
+		inputs: ComputedRef<CanvasConnectionPort[]>;
+		outputs: ComputedRef<CanvasConnectionPort[]>;
+	}
+>();
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return {
+		...actual,
+		injectWorkflowDocumentStore: vi.fn(() =>
+			computed(() => ({
+				render: { nodes: renderNodesMap },
+			})),
+		),
+	};
+});
+
 describe('useCanvasNode', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		renderNodesMap.clear();
+	});
+
 	it('should return default values when node is not provided', () => {
 		const result = useCanvasNode();
 
@@ -39,6 +69,15 @@ describe('useCanvasNode', () => {
 	});
 
 	it('should return node data when node is provided', () => {
+		renderNodesMap.set('1', {
+			inputs: computed<CanvasConnectionPort[]>(() => [
+				{ type: NodeConnectionTypes.Main, index: 0 },
+			]),
+			outputs: computed<CanvasConnectionPort[]>(() => [
+				{ type: NodeConnectionTypes.Main, index: 0 },
+			]),
+		});
+
 		const node = {
 			data: ref({
 				id: 'node1',
@@ -47,8 +86,6 @@ describe('useCanvasNode', () => {
 				type: 'nodeType1',
 				typeVersion: 1,
 				disabled: true,
-				inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
-				outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 				connections: {
 					[CanvasConnectionMode.Input]: { '0': [] },
 					[CanvasConnectionMode.Output]: {},
