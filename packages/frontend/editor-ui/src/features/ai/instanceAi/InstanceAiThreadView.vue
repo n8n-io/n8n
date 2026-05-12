@@ -489,6 +489,7 @@ function handleStop() {
 						"
 					/>
 					<N8nTooltip
+						v-if="!preview.isPreviewVisible.value"
 						:content="artifactsPreviewToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -673,6 +674,8 @@ function handleStop() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
+							:preview-toggle-label="artifactsPreviewToggleLabel"
+							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>
 						<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap

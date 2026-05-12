@@ -188,7 +188,7 @@ export class InstanceAiPage extends BasePage {
 	async openPreviewNodeByName(nodeName: string): Promise<void> {
 		const node = this.getPreviewNodeByName(nodeName);
 		await node.waitFor({ state: 'visible', timeout: 10_000 });
-		await node.dispatchEvent('dblclick');
+		await node.dblclick();
 	}
 
 	getPreviewExecuteNodeButton(nodeName: string): Locator {

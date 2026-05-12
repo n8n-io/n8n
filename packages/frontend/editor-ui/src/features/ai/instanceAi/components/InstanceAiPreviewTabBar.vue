@@ -21,13 +21,16 @@ const props = withDefaults(
 		tabs: ArtifactTab[];
 		activeTabId?: string;
 		isExpanded?: boolean;
+		previewToggleLabel?: string;
 	}>(),
 	{
 		isExpanded: false,
+		previewToggleLabel: undefined,
 	},
 );
 
 const emit = defineEmits<{
+	togglePreview: [];
 	toggleExpanded: [];
 }>();
 
@@ -114,13 +117,15 @@ async function handleCopyLink(tab: ArtifactTab) {
 <template>
 	<div :class="$style.header">
 		<N8nIconButton
-			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
+			v-if="previewToggleLabel"
+			icon="panel-right"
 			variant="ghost"
 			size="medium"
-			:aria-label="sizeToggleLabel"
-			:title="sizeToggleLabel"
-			data-test-id="instance-ai-preview-expand-toggle"
-			@click="emit('toggleExpanded')"
+			:aria-label="previewToggleLabel"
+			:title="previewToggleLabel"
+			:aria-pressed="true"
+			data-test-id="instance-ai-artifacts-preview-toggle"
+			@click="emit('togglePreview')"
 		/>
 		<TabsList
 			ref="tabListRef"
@@ -151,6 +156,15 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
+		<N8nIconButton
+			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
+			variant="ghost"
+			size="medium"
+			:aria-label="sizeToggleLabel"
+			:title="sizeToggleLabel"
+			data-test-id="instance-ai-preview-expand-toggle"
+			@click="emit('toggleExpanded')"
+		/>
 	</div>
 </template>
 
@@ -190,7 +204,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding-left: var(--spacing--4xs);
+	padding: 0 var(--spacing--4xs);
 	border-bottom: var(--border);
 }
 
