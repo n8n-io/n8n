@@ -16,6 +16,12 @@ import {
 	type MemoryEvalScore,
 } from './scoring';
 import {
+	countSelectedCategories,
+	createEvalJobs,
+	resolveEffectiveConcurrency,
+	type EvalJob,
+} from './scheduling';
+import {
 	Agent,
 	AgentEvent,
 	createEmbeddingModel,
@@ -58,6 +64,8 @@ interface CliOptions {
 	category?: MemoryEvalCategory;
 	repeats: number;
 	concurrency: number;
+	concurrencyExplicit: boolean;
+	parallelTopics: boolean;
 	enforceThresholds: boolean;
 	validateOnly: boolean;
 	judge: boolean;
@@ -176,6 +184,9 @@ interface Summary {
 	modelConfig: EvalModelConfig;
 	scenarios: number;
 	repeats: number;
+	concurrency: number;
+	parallelTopics: boolean;
+	selectedCategoryCount: number;
 	totalRuns: number;
 	passed: number;
 	passRate: number;
@@ -205,17 +216,13 @@ interface Summary {
 	repeatStats: RepeatStats;
 }
 
-interface EvalJob {
-	order: number;
-	repeat: number;
-	scenario: MemoryEvalScenario;
-}
-
 function parseArgs(argv: string[]): CliOptions {
 	const opts: CliOptions = {
 		suite: 'smoke',
 		repeats: 1,
 		concurrency: 1,
+		concurrencyExplicit: false,
+		parallelTopics: false,
 		enforceThresholds: false,
 		validateOnly: false,
 		judge: false,
@@ -238,7 +245,10 @@ function parseArgs(argv: string[]): CliOptions {
 			opts.repeats = parsePositiveInteger(argv[++index], '--repeats');
 		} else if (arg === '--concurrency') {
 			opts.concurrency = parsePositiveInteger(argv[++index], '--concurrency');
+			opts.concurrencyExplicit = true;
 			concurrencyFromCli = true;
+		} else if (arg === '--parallel-topics') {
+			opts.parallelTopics = true;
 		} else if (arg === '--enforce-thresholds') {
 			opts.enforceThresholds = true;
 		} else if (arg === '--validate-only') {
@@ -265,6 +275,12 @@ function parseArgs(argv: string[]): CliOptions {
 	const envConcurrency = process.env.N8N_MEMORY_EVAL_CONCURRENCY;
 	if (!concurrencyFromCli && envConcurrency) {
 		opts.concurrency = parsePositiveInteger(envConcurrency, 'N8N_MEMORY_EVAL_CONCURRENCY');
+		opts.concurrencyExplicit = true;
+	}
+
+	const envParallelTopics = process.env.N8N_MEMORY_EVAL_PARALLEL_TOPICS;
+	if (!opts.parallelTopics && isEnabledEnvFlag(envParallelTopics)) {
+		opts.parallelTopics = true;
 	}
 
 	const envCategory = process.env.N8N_MEMORY_EVAL_CATEGORY;
@@ -273,7 +289,7 @@ function parseArgs(argv: string[]): CliOptions {
 	}
 
 	const envJudge = process.env.N8N_MEMORY_EVAL_JUDGE;
-	if (!opts.judge && envJudge && envJudge !== '0' && envJudge.toLowerCase() !== 'false') {
+	if (!opts.judge && isEnabledEnvFlag(envJudge)) {
 		opts.judge = true;
 	}
 
@@ -283,6 +299,13 @@ function parseArgs(argv: string[]): CliOptions {
 	}
 
 	return opts;
+}
+
+function isEnabledEnvFlag(raw: string | undefined): boolean {
+	const value = raw?.trim();
+	return (
+		value !== undefined && value.length > 0 && value !== '0' && value.toLowerCase() !== 'false'
+	);
 }
 
 function requireArgValue(raw: string | undefined, name: string): string {
@@ -371,16 +394,6 @@ function selectScenarios(opts: CliOptions): MemoryEvalScenario[] {
 	return scenarios;
 }
 
-function createEvalJobs(scenarios: MemoryEvalScenario[], repeats: number): EvalJob[] {
-	const jobs: EvalJob[] = [];
-	for (let repeat = 1; repeat <= repeats; repeat++) {
-		for (const scenario of scenarios) {
-			jobs.push({ order: jobs.length, repeat, scenario });
-		}
-	}
-	return jobs;
-}
-
 async function runEvalJobs(
 	jobs: EvalJob[],
 	opts: CliOptions,
@@ -443,7 +456,7 @@ function printProgress(
 		? `; judge=${result.judgeScore.pass ? 'pass' : 'miss'}`
 		: '';
 	console.log(
-		`[${completed}/${total}] [${job.repeat}/${repeats}] ${job.scenario.id}: ${status}; recall_memory=${toolUsed ? 'yes' : 'no'}${judgeStatus}`,
+		`[${completed}/${total}] [${job.repeat}/${repeats}] [${job.scenario.category}] ${job.scenario.id}: ${status}; recall_memory=${toolUsed ? 'yes' : 'no'}${judgeStatus}`,
 	);
 }
 
@@ -506,7 +519,7 @@ function buildInstructions(scenario: MemoryEvalScenario): string {
 	return [
 		'You are a customer support engineering assistant.',
 		'Use <user-profile>, <memory>, and <session-memory> when they are present.',
-		'Use source-backed case memory when it is relevant, but do not invent missing details.',
+		'Use source-backed episodic memory when it is relevant, but do not invent missing details.',
 		'If memory does not contain the answer, say that you do not know from memory.',
 		'Preserve exact identifiers, field names, dates, and causal directionality.',
 		'Keep answers concise.',
@@ -885,6 +898,7 @@ function buildSummary(
 	config: EvalConfig,
 	commit: string,
 	generatedAt: string,
+	scheduling: Pick<Summary, 'concurrency' | 'parallelTopics' | 'selectedCategoryCount'>,
 ): Summary {
 	const answered = results.filter((result) => result.score.answerPassed !== null);
 	const top1 = results.filter((result) => result.score.retrievalTop1Hit !== null);
@@ -933,6 +947,9 @@ function buildSummary(
 		},
 		scenarios: new Set(results.map((result) => result.scenario.id)).size,
 		repeats: opts.repeats,
+		concurrency: scheduling.concurrency,
+		parallelTopics: scheduling.parallelTopics,
+		selectedCategoryCount: scheduling.selectedCategoryCount,
 		totalRuns: results.length,
 		passed: results.filter((result) => result.passed).length,
 		passRate: ratio(results.filter((result) => result.passed).length, results.length),
@@ -1133,6 +1150,7 @@ function renderMarkdownSummary(summary: Summary, results: ScenarioRunResult[]): 
 		`Generated: ${summary.generatedAt}`,
 		`Commit: ${summary.commit}`,
 		`Suite: ${summary.suite}`,
+		`Scheduling: concurrency=${summary.concurrency}; parallelTopics=${summary.parallelTopics ? 'yes' : 'no'}; selectedCategories=${summary.selectedCategoryCount}`,
 		'',
 		'## TL;DR',
 		'',
@@ -1422,6 +1440,9 @@ function renderHtmlHeader(summary: Summary): string {
 		renderMetaItem('Commit', summary.commit),
 		renderMetaItem('Generated', formatTimestamp(summary.generatedAt)),
 		renderMetaItem('Repeats', String(summary.repeats)),
+		renderMetaItem('Concurrency', String(summary.concurrency)),
+		renderMetaItem('Parallel topics', summary.parallelTopics ? 'yes' : 'no'),
+		renderMetaItem('Selected categories', String(summary.selectedCategoryCount)),
 		renderMetaItem('Scenarios', String(summary.scenarios)),
 		renderMetaItem('Total runs', String(summary.totalRuns)),
 		renderMetaItem('Agent model', modelConfig.agentModel),
@@ -1825,6 +1846,9 @@ function printSummary(summary: Summary): void {
 		`suite=${summary.suite} runs=${summary.totalRuns} pass=${formatPercent(summary.passRate)}`,
 	);
 	console.log(
+		`concurrency=${summary.concurrency} parallelTopics=${summary.parallelTopics ? 'yes' : 'no'} selectedCategories=${summary.selectedCategoryCount}`,
+	);
+	console.log(
 		`answer=${formatNullablePercent(summary.answerPassRate)} retrieval@1=${formatNullablePercent(summary.retrievalTop1Rate)} retrieval@3=${formatNullablePercent(summary.retrievalTop3Rate)} retrieval@12=${formatNullablePercent(summary.retrievalTop12Rate)}`,
 	);
 	console.log(
@@ -1875,10 +1899,27 @@ async function main(): Promise<void> {
 	const config = requireEvalConfig(opts);
 	const generatedAt = new Date().toISOString();
 	const commit = await getCommit();
-	const jobs = createEvalJobs(scenarios, opts.repeats);
-	const results = await runEvalJobs(jobs, opts, config);
+	const selectedCategoryCount = countSelectedCategories(scenarios);
+	const jobs = createEvalJobs({
+		scenarios,
+		repeats: opts.repeats,
+		parallelTopics: opts.parallelTopics,
+	});
+	const effectiveConcurrency = resolveEffectiveConcurrency({
+		configuredConcurrency: opts.concurrency,
+		explicitConcurrency: opts.concurrencyExplicit,
+		parallelTopics: opts.parallelTopics,
+		selectedCategoryCount,
+		jobCount: jobs.length,
+	});
+	const runOpts = { ...opts, concurrency: effectiveConcurrency };
+	const results = await runEvalJobs(jobs, runOpts, config);
 
-	const summary = buildSummary(opts, results, config, commit, generatedAt);
+	const summary = buildSummary(runOpts, results, config, commit, generatedAt, {
+		concurrency: effectiveConcurrency,
+		parallelTopics: opts.parallelTopics,
+		selectedCategoryCount,
+	});
 	const resultDir = await writeResults(results, summary, generatedAt);
 	printSummary(summary);
 	console.log(`results=${resultDir}`);

@@ -27,13 +27,16 @@ N8N_MEMORY_EVAL_LIMIT=5
 N8N_MEMORY_EVAL_CATEGORY=episodic-extraction
 N8N_MEMORY_EVAL_REPEATS=3
 N8N_MEMORY_EVAL_CONCURRENCY=2
+N8N_MEMORY_EVAL_PARALLEL_TOPICS=1
 N8N_MEMORY_EVAL_JUDGE=1
 N8N_MEMORY_EVAL_JUDGE_MODEL=anthropic/claude-haiku-4-5
 ```
 
 `--concurrency` / `N8N_MEMORY_EVAL_CONCURRENCY` runs scenario-repeat jobs in parallel.
 The default is `1` to preserve deterministic local behavior and avoid accidental rate-limit pressure.
-For judged full runs, start with `--concurrency 2` and increase only if the provider limits tolerate it.
+`--parallel-topics` / `N8N_MEMORY_EVAL_PARALLEL_TOPICS=1` schedules selected categories round-robin.
+When enabled without explicit concurrency, the runner defaults concurrency to the selected category count.
+For judged full runs, start with `--parallel-topics` and add an explicit cap such as `--concurrency 4` only if provider limits require it.
 
 ## Commands
 
@@ -85,8 +88,14 @@ Full run with LLM judge:
   set +a
 
   cd packages/@n8n/agents
-  pnpm exec tsx evals/memory/run.ts --suite full --repeats 3 --judge --concurrency 2
+  pnpm exec tsx evals/memory/run.ts --suite full --repeats 3 --judge --parallel-topics
 )
+```
+
+Optional topic-parallel cap:
+
+```bash
+pnpm exec tsx evals/memory/run.ts --suite full --repeats 3 --judge --parallel-topics --concurrency 4
 ```
 
 Threshold-gated run:

@@ -788,7 +788,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 		expect(searchSpy).not.toHaveBeenCalled();
 		expect(embed).not.toHaveBeenCalled();
 		expect(getSystemPromptFromGenerateCall()).not.toContain(
-			'Source-backed case entries from prior conversations, retrieved for this turn.',
+			'Source-backed episodic entries from prior conversations, retrieved by relevance for this turn.',
 		);
 	});
 
@@ -806,7 +806,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 		expect(searchSpy).not.toHaveBeenCalled();
 		expect(embed).not.toHaveBeenCalled();
 		expect(getSystemPromptFromGenerateCall()).not.toContain(
-			'Source-backed case entries from prior conversations, retrieved for this turn.',
+			'Source-backed episodic entries from prior conversations, retrieved by relevance for this turn.',
 		);
 	});
 
@@ -834,7 +834,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 		const prompt = getSystemPromptFromGenerateCall();
 		expect(prompt).toContain('<memory>');
 		expect(prompt).toContain(
-			'Source-backed case entries from prior conversations, retrieved for this turn.',
+			'Source-backed episodic entries from prior conversations, retrieved by relevance for this turn.',
 		);
 		expect(prompt.indexOf('The user prefers concise responses without emojis.')).toBeLessThan(
 			prompt.indexOf('The user is working on cross-thread memory in @n8n/agents.'),
@@ -874,7 +874,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 		);
 		expect(prompt).not.toContain('<agent-profile>');
 		expect(prompt.indexOf('<user-profile>')).toBeLessThan(
-			prompt.indexOf('<memory>\n<description>Source-backed case entries'),
+			prompt.indexOf('<memory>\n<description>Source-backed episodic entries'),
 		);
 	});
 
@@ -907,7 +907,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 		});
 
 		expect(getSystemPromptFromGenerateCall()).not.toContain(
-			'Source-backed case entries from prior conversations, retrieved for this turn.',
+			'Source-backed episodic entries from prior conversations, retrieved by relevance for this turn.',
 		);
 	});
 
@@ -975,7 +975,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 
 		expect(result.finishReason).toBe('stop');
 		expect(getSystemPromptFromGenerateCall()).not.toContain(
-			'Source-backed case entries from prior conversations, retrieved for this turn.',
+			'Source-backed episodic entries from prior conversations, retrieved by relevance for this turn.',
 		);
 		expect(errors).toEqual([
 			expect.objectContaining({

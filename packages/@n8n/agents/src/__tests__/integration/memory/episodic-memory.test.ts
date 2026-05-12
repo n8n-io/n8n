@@ -38,7 +38,7 @@ describe('episodic memory entries', () => {
 				embeddingModel: 'openai/text-embedding-3-small',
 				prompts: {
 					extraction:
-						'Extract source-backed case memory entries from the transcript. Return only JSON: {"entries":[{"content":"..."}]}. Include exact codenames.',
+						'Extract source-backed episodic memory entries from the transcript. Return only JSON: {"entries":[{"content":"..."}]}. Include exact codenames.',
 				},
 			});
 

@@ -409,7 +409,7 @@
 
 			<section class="card" id="retrieval">
 				<h2>Retrieval and injection</h2>
-				<p>The runtime retrieves broadly enough for the current turn, then injects entries most-recent-first so stale case context is less likely to dominate fresh context.</p>
+				<p>The runtime retrieves broadly enough for the current turn, then injects entries in retrieval order with relative age labels so relevance stays primary while age remains visible.</p>
 				<div class="detail-grid">
 					<div class="block">
 						<strong>Default retrieval</strong>
@@ -431,8 +431,10 @@
 					</div>
 				</div>
 				<pre>&lt;memory&gt;
-&lt;description&gt;Source-backed case entries retrieved from previous threads for this turn.&lt;/description&gt;
+&lt;description&gt;Source-backed episodic entries retrieved from previous threads for this turn.&lt;/description&gt;
 &lt;value&gt;
+Source-backed episodic entries from prior conversations, retrieved by relevance for this turn. Entries include age labels. Use entries only when relevant to the current request. If entries conflict, prefer explicit corrections, newer corrected states, and user-confirmed facts. Treat older entries as context, not authority. If the current user message contradicts memory, follow the current user message.
+
 - A priority item routed incorrectly because the source emitted tier=enterprise_plus while the matcher expected tier=enterprise-plus. Updating the matcher to accept both variants resolved the case. (2 days ago)
 &lt;/value&gt;
 &lt;/memory&gt;</pre>
