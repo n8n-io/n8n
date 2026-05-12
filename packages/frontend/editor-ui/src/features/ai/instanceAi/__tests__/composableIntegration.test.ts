@@ -270,7 +270,7 @@ describe('composable integration', () => {
 			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
 			await h.flush();
 
-			await h.switchThread('thread-2');
+			await h.routeToThread('thread-2');
 
 			expect(h.activeTabId.value).toBeUndefined();
 			expect(h.activeWorkflowId.value).toBeNull();
@@ -529,7 +529,7 @@ describe('composable integration', () => {
 			expect(beforeThreadSwitch).toBeGreaterThan(0);
 
 			// Switch thread mid-execution — clears everything
-			await h.switchThread('thread-2');
+			await h.routeToThread('thread-2');
 			expect(h.activeTabId.value).toBeUndefined();
 
 			// No more relay after thread switch
