@@ -998,7 +998,7 @@ class ExtensionConnection {
 			// Protocol-level ping kept for backward compatibility with extensions
 			// that don't yet implement the JSON ping/pong handler.
 			this.ws.ping();
-      this.lastPingSentAt = Date.now();
+			this.lastPingSentAt = Date.now();
 		}, HEARTBEAT_INTERVAL_MS);
 	}
 
