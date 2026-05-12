@@ -506,6 +506,8 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Returns credentials that are both accessible to the user AND accessible to the project.
+	 * A credential shared with the project but not with the requesting user would be excluded.
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
