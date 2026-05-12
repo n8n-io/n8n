@@ -30,11 +30,13 @@ const profilesKey = computed(() =>
 );
 const profilesExpanded = ref(false);
 const loadedProfilesKey = ref<string | null>(null);
-const loadingProfilesKey = ref<string | null>(null);
+const loadingProfilesKeys = ref(new Set<string>());
 const profilesError = ref(false);
 const profiles = ref<AgentMemoryProfilesResponse | null>(null);
 const profilesLoaded = computed(() => loadedProfilesKey.value === profilesKey.value);
-const profilesLoading = computed(() => loadingProfilesKey.value === profilesKey.value);
+const profilesLoading = computed(
+	() => profilesKey.value !== null && loadingProfilesKeys.value.has(profilesKey.value),
+);
 
 function onEnableMemory() {
 	const existingMemory = props.config?.memory;
@@ -64,17 +66,19 @@ function onMemoryToggle(enabled: boolean) {
 
 async function loadProfiles() {
 	const key = profilesKey.value;
-	if (!canLoadProfiles.value || !props.projectId || !props.agentId || !key) return;
-	if (loadingProfilesKey.value === key) return;
+	const projectId = props.projectId;
+	const agentId = props.agentId;
+	if (!canLoadProfiles.value || !projectId || !agentId || !key) return;
+	if (loadingProfilesKeys.value.has(key)) return;
 
-	loadingProfilesKey.value = key;
+	loadingProfilesKeys.value = new Set([...loadingProfilesKeys.value, key]);
 	profilesError.value = false;
 
 	try {
 		const loadedProfiles = await getAgentMemoryProfiles(
 			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
+			projectId,
+			agentId,
 		);
 		if (profilesKey.value !== key) return;
 		profiles.value = loadedProfiles;
@@ -83,7 +87,9 @@ async function loadProfiles() {
 		if (profilesKey.value !== key) return;
 		profilesError.value = true;
 	} finally {
-		if (loadingProfilesKey.value === key) loadingProfilesKey.value = null;
+		const nextLoadingKeys = new Set(loadingProfilesKeys.value);
+		nextLoadingKeys.delete(key);
+		loadingProfilesKeys.value = nextLoadingKeys;
 	}
 }
 

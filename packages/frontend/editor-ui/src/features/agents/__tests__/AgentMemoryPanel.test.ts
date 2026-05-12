@@ -310,4 +310,41 @@ describe('AgentMemoryPanel', () => {
 			'Profile for the second agent.',
 		);
 	});
+
+	it('does not start a duplicate profile request when switching back to an in-flight agent id', async () => {
+		const firstLoad = deferred<{ userProfile: string | null }>();
+		const secondLoad = deferred<{ userProfile: string | null }>();
+		getAgentMemoryProfilesMock
+			.mockReturnValueOnce(firstLoad.promise)
+			.mockReturnValueOnce(secondLoad.promise);
+		const wrapper = mountPanel();
+
+		await wrapper.find('[data-testid="agent-memory-profiles-toggle"]').trigger('click');
+		await wrapper.setProps({ agentId: 'agent-2' });
+		await wrapper.setProps({ agentId: 'agent-1' });
+
+		expect(getAgentMemoryProfilesMock).toHaveBeenCalledTimes(2);
+		expect(getAgentMemoryProfilesMock).toHaveBeenNthCalledWith(
+			1,
+			restApiContext,
+			'project-1',
+			'agent-1',
+		);
+		expect(getAgentMemoryProfilesMock).toHaveBeenNthCalledWith(
+			2,
+			restApiContext,
+			'project-1',
+			'agent-2',
+		);
+
+		secondLoad.resolve({ userProfile: 'Stale second profile.' });
+		await flushPromises();
+		expect(wrapper.text()).toContain('Loading user profile...');
+
+		firstLoad.resolve({ userProfile: 'Profile for the first agent.' });
+		await flushPromises();
+		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
+			'Profile for the first agent.',
+		);
+	});
 });
