@@ -167,7 +167,6 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'user:list',
 	'variable:list',
 	'variable:read',
-	'insights:read',
 	'dataTable:list',
 	'mcp:oauth',
 	'mcpApiKey:create',

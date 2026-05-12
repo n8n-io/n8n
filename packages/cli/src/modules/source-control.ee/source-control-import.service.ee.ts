@@ -46,6 +46,7 @@ import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
@@ -135,6 +136,7 @@ export class SourceControlImportService {
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
+		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -736,6 +738,11 @@ export class SourceControlImportService {
 			return;
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		this.redactionEnforcementService.assertPolicyChangeAllowed(
+			existingWorkflow?.settings?.redactionPolicy,
+			importedWorkflow.settings?.redactionPolicy,
+		);
 
 		const { shouldPublishAfterImport, publishingError } = await this.preparePublishStateForImport(
 			existingWorkflow,

@@ -30,6 +30,7 @@ import type { VariablesService } from '@/environments.ee/variables/variables.ser
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
@@ -64,6 +65,7 @@ describe('SourceControlImportService', () => {
 	const dataTableRepository = mock<DataTableRepository>();
 	const dataTableColumnRepository = mock<DataTableColumnRepository>();
 	const dataTableDDLService = mock<DataTableDDLService>();
+	const redactionEnforcementService = mock<RedactionEnforcementService>();
 
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
@@ -96,6 +98,7 @@ describe('SourceControlImportService', () => {
 		dataTableRepository,
 		dataTableColumnRepository,
 		dataTableDDLService,
+		redactionEnforcementService,
 	);
 
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
@@ -1085,6 +1088,98 @@ describe('SourceControlImportService', () => {
 						publishingError: 'Failed to unpublish workflow before import',
 					},
 				]);
+			});
+		});
+
+		describe('redaction policy enforcement', () => {
+			const mockUserId = 'user-id-123';
+
+			beforeEach(() => {
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+					Object.assign(new Project(), {
+						id: 'personal-project-id-123',
+						name: 'Personal Project',
+						type: 'personal',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}),
+				);
+				folderRepository.find.mockResolvedValue([]);
+				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+				workflowRepository.upsert.mockResolvedValue({
+					identifiers: [{ id: '1' }],
+					generatedMaps: [],
+					raw: [],
+				});
+			});
+
+			it('rejects an import when the incoming policy differs and enforcement is on', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: '1',
+					settings: { redactionPolicy: 'all' },
+				});
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+
+				fsReadFile.mockResolvedValueOnce(
+					JSON.stringify({
+						id: '1',
+						name: 'Workflow 1',
+						active: false,
+						nodes: [],
+						connections: {},
+						versionId: 'v1',
+						parentFolderId: null,
+						settings: { redactionPolicy: 'none' },
+					}),
+				);
+
+				redactionEnforcementService.assertPolicyChangeAllowed.mockImplementationOnce(() => {
+					throw new Error(
+						'Workflow redaction policy is enforced at the instance level and cannot be modified.',
+					);
+				});
+
+				const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: '1' })];
+
+				await expect(service.importWorkflowFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+					'Workflow redaction policy is enforced at the instance level',
+				);
+
+				expect(redactionEnforcementService.assertPolicyChangeAllowed).toHaveBeenCalledWith(
+					'all',
+					'none',
+				);
+				expect(workflowRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('allows the import to proceed when enforcement is off', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: '1',
+					settings: { redactionPolicy: 'all' },
+				});
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+
+				fsReadFile.mockResolvedValueOnce(
+					JSON.stringify({
+						id: '1',
+						name: 'Workflow 1',
+						active: false,
+						nodes: [],
+						connections: {},
+						versionId: 'v1',
+						parentFolderId: null,
+						settings: { redactionPolicy: 'none' },
+					}),
+				);
+
+				// Default mock returns undefined (no throw) — simulating enforcement off.
+				const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: '1' })];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+				expect(workflowRepository.upsert).toHaveBeenCalled();
 			});
 		});
 	});

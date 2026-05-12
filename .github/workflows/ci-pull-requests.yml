@@ -92,6 +92,7 @@ jobs:
               packages/cli/src/modules/instance-ai/**
               packages/core/src/execution-engine/eval-mock-helpers.ts
               .github/workflows/test-evals-instance-ai*.yml
+              .github/workflows/test-evals-discovery.yml
             db:
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
@@ -305,6 +306,23 @@ jobs:
       github.repository == 'n8n-io/n8n' &&
       (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
     uses: ./.github/workflows/test-evals-instance-ai.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  # In-process discovery eval — asserts the orchestrator reaches for browser/computer-use
+  # tools at OAuth/screenshot moments. Lightweight (no Docker), runs in parallel with the
+  # heavy workflow eval. Non-blocking initially; promote to required after stability.
+  instance-ai-discovery-evals:
+    name: Instance AI Discovery Evals
+    needs: install-and-build
+    if: >-
+      !cancelled() &&
+      needs.install-and-build.result == 'success' &&
+      needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
+    uses: ./.github/workflows/test-evals-discovery.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
