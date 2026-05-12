@@ -20,7 +20,7 @@ export class CreateEvaluationCollection1778496086558 implements ReversibleMigrat
 				column('description').text,
 				column('workflowId').varchar(36).notNull,
 				column('evaluationConfigId').varchar(36).notNull,
-				column('createdById').varchar(36),
+				column('createdById').uuid,
 				column('insightsCache').json,
 			)
 			.withForeignKey('workflowId', {

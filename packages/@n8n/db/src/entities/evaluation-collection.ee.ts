@@ -44,7 +44,7 @@ export class EvaluationCollection extends WithTimestamps {
 	@Column('varchar', { length: 36 })
 	evaluationConfigId: string;
 
-	@Column('varchar', { length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 
 	/**
