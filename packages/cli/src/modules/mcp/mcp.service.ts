@@ -409,7 +409,7 @@ export class McpService {
 			'n8n://workflow-sdk/reference',
 			{
 				description:
-					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows. Get this FIRST before building workflows to learn the SDK.',
+					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
 			async () => ({
 				contents: [

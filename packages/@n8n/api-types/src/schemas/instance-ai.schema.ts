@@ -250,6 +250,17 @@ export const workflowSetupNodeSchema = z.object({
 			'Whether this node still requires user intervention. ' +
 				'False when credentials are set and valid, parameters are resolved, etc.',
 		),
+	subnodeRootNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+			typeVersion: z.number(),
+			id: z.string(),
+		})
+		.optional()
+		.describe(
+			'Snapshot of the root node for this sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the group header even when the root node itself has no setup request.',
+		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 
@@ -324,6 +335,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'questions',
 	'plan-review',
 	'resource-decision',
+	'continue',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -350,7 +362,8 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
-				'resource-decision shows 5-option gateway permission dialog',
+				'resource-decision shows 5-option gateway permission dialog, ' +
+				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
 		.array(
@@ -427,6 +440,7 @@ export function isDisplayableConfirmationRequest(
 	switch (inputType) {
 		case 'approval':
 		case 'text':
+		case 'continue':
 			return isNonEmptyString(payload.message);
 		case 'questions':
 			return hasItems(payload.questions);
@@ -637,7 +651,8 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
+	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });
@@ -691,7 +706,7 @@ export interface InstanceAiConfirmation {
 	message: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;
 	webSearch?: WebSearchMeta;
 	credentialFlow?: InstanceAiCredentialFlow;
@@ -930,9 +945,19 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 };
 
-/** Permission keys that remain active when branchReadOnly is enabled.
- *  When changing this set, also update the read-only section in
- *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+/**
+ * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * This set mirrors n8n's own backend permission model for protected branches:
+ * publish/unpublish, credential delete/update, and workflow update have no
+ * hard backend lockout — only project-scope gates. branchReadOnly is a
+ * UX-level nudge toward the source-control sync workflow, not a global write
+ * block (only data-table mutations have a hard middleware lockout). Trimming
+ * this set would make the AI stricter than human users on the same instance.
+ *
+ * When changing this set, also update the read-only section in
+ * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
+ */
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
 	'readFilesystem',
 	'fetchUrl',
@@ -977,7 +1002,6 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
-	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -997,7 +1021,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
-	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -1080,12 +1103,19 @@ export interface InstanceAiEvalMockHints {
 	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
 }
 
+export interface InstanceAiEvalMockedCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
 	nodeResults: Record<string, InstanceAiEvalNodeResult>;
 	errors: string[];
 	hints: InstanceAiEvalMockHints;
+	mockedCredentials: InstanceAiEvalMockedCredential[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({

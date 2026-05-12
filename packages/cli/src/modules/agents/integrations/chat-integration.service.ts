@@ -4,13 +4,17 @@ import {
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
@@ -67,10 +71,46 @@ export class ChatIntegrationService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly urlService: UrlService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
+		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	/**
+	 * In multi-main mode, broadcast a connect/disconnect change so every other
+	 * main reconciles its in-memory `connections` map. Single-instance setups
+	 * skip the round-trip.
+	 *
+	 * The originating main has already applied the change locally before
+	 * calling this — only peer mains need to act on the published command.
+	 */
+	async broadcastIntegrationChange(
+		agentId: string,
+		type: string,
+		credentialId: string,
+		action: 'connect' | 'disconnect',
+	): Promise<void> {
+		if (!this.globalConfig.multiMainSetup.enabled) return;
+		try {
+			await this.publisher.publishCommand({
+				command: 'agent-chat-integration-changed',
+				payload: { agentId, type, credentialId, action },
+			});
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] Failed to publish ${action} for ${type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
 
 	private connectionKey(agentId: string, type: string, credentialId: string): string {
 		return `${agentId}:${type}:${credentialId}`;
+	}
+
+	/** Extract the integration type segment from a `connectionKey()` value. */
+	private connectionTypeFromKey(key: string): string | undefined {
+		const parts = key.split(':');
+		return parts.length >= 3 ? parts[1] : undefined;
 	}
 
 	/**
@@ -78,6 +118,14 @@ export class ChatIntegrationService {
 	 *
 	 * Creates a Chat instance with the appropriate adapter, initializes it,
 	 * and wires up the AgentChatBridge for event handling.
+	 *
+	 * `options.skipExternalHooks` skips `onBeforeConnect` and `onAfterConnect`.
+	 * These hooks touch external services (DB validation, Telegram `setWebhook`)
+	 * and must run exactly once per cluster — by the originator on a
+	 * user-initiated connect, or by the leader on startup. Peer mains reacting
+	 * to a PubSub broadcast pass `true` so we don't, for example, race two
+	 * `setWebhook` calls into Telegram's 1/sec rate limit and 429 ourselves out
+	 * of a healthy connection.
 	 */
 	async connect(
 		agentId: string,
@@ -85,6 +133,7 @@ export class ChatIntegrationService {
 		integrationType: string,
 		userId: string,
 		projectId: string,
+		options: { skipExternalHooks?: boolean } = {},
 	): Promise<void> {
 		const key = this.connectionKey(agentId, integrationType, credentialId);
 
@@ -111,7 +160,7 @@ export class ChatIntegrationService {
 		// Pre-connect hook — webhook-based platforms use this to detect
 		// credential conflicts (e.g. a Telegram bot token already in use) and
 		// abort the connect before we touch any external API.
-		if (integration.onBeforeConnect) {
+		if (integration.onBeforeConnect && !options.skipExternalHooks) {
 			await integration.onBeforeConnect(ctx);
 		}
 
@@ -153,7 +202,7 @@ export class ChatIntegrationService {
 
 		// Post-initialize hooks (e.g. Telegram setWebhook) run AFTER chat is live.
 		// If one throws we must shut the chat down, otherwise adapters/timers leak.
-		if (integration.onAfterConnect) {
+		if (integration.onAfterConnect && !options.skipExternalHooks) {
 			try {
 				await integration.onAfterConnect(ctx);
 			} catch (error) {
@@ -196,15 +245,33 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Disconnect every active integration. Called on `leader-stepdown` so a
-	 * demoted main releases all chat sessions (Telegram setWebhook, polling, etc.)
-	 * before another main takes over.
+	 * Disconnect every active integration regardless of type. Used by tests and
+	 * for explicit shutdown paths; the leader-stepdown lifecycle uses
+	 * {@link disconnectLeaderOnlyIntegrations} so webhook integrations keep
+	 * answering on the demoted main (now a follower).
 	 */
-	@OnLeaderStepdown()
 	async disconnectAll(): Promise<void> {
 		const keys = [...this.connections.keys()];
 		for (const key of keys) {
 			await this.disconnectOne(key);
+		}
+	}
+
+	/**
+	 * On leader stepdown, release only the integrations that require leader
+	 * exclusivity (e.g. Telegram polling). Webhook-driven integrations stay
+	 * connected on the demoted main so it can keep handling inbound webhooks
+	 * routed to it by the load balancer.
+	 */
+	@OnLeaderStepdown()
+	async disconnectLeaderOnlyIntegrations(): Promise<void> {
+		for (const key of [...this.connections.keys()]) {
+			const type = this.connectionTypeFromKey(key);
+			if (!type) continue;
+			const integration = this.integrationRegistry.get(type);
+			if (integration?.requiresLeader()) {
+				await this.disconnectOne(key);
+			}
 		}
 	}
 
@@ -239,6 +306,12 @@ export class ChatIntegrationService {
 			if (!nextKeys.has(key(integration))) {
 				try {
 					await this.disconnect(agent.id, integration.type, integration.credentialId);
+					await this.broadcastIntegrationChange(
+						agent.id,
+						integration.type,
+						integration.credentialId,
+						'disconnect',
+					);
 				} catch (error) {
 					this.logger.warn('[ChatIntegrationService] Disconnect during sync failed', {
 						agentId: agent.id,
@@ -290,7 +363,14 @@ export class ChatIntegrationService {
 					});
 				}
 			}
-			if (!connected) {
+			if (connected) {
+				await this.broadcastIntegrationChange(
+					agent.id,
+					integration.type,
+					integration.credentialId,
+					'connect',
+				);
+			} else {
 				this.logger.warn(
 					'[ChatIntegrationService] Could not connect integration during sync — no project member had credential access',
 					{ agentId: agent.id, type: integration.type, credentialId: integration.credentialId },
@@ -349,8 +429,16 @@ export class ChatIntegrationService {
 
 	/**
 	 * Reconnect all agents that have integrations configured. Called on startup
-	 * (gated by `InstanceSettings.isLeader` in `AgentsModule.init()`) and on
-	 * `leader-takeover` in multi-main mode.
+	 * (every main) and on `leader-takeover` in multi-main mode.
+	 *
+	 * Webhook-driven integrations connect on every main so that inbound webhooks
+	 * load-balanced across mains always find a live handler. Integrations that
+	 * declare `requiresLeader()` (e.g. Telegram polling) only connect on the
+	 * leader so a single instance owns the long-poll loop.
+	 *
+	 * Already-connected keys are skipped so this is a safe idempotent operation
+	 * — important for leader takeover, where a former follower already holds
+	 * webhook integrations and only needs to add the leader-only ones.
 	 */
 	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
@@ -364,6 +452,17 @@ export class ChatIntegrationService {
 					continue;
 				}
 
+				const definition = this.integrationRegistry.get(integration.type);
+				if (definition?.requiresLeader() && !this.instanceSettings.isLeader) {
+					this.logger.debug(
+						`[ChatIntegrationService] Skipping ${integration.type} for agent ${agent.id} — leader-only and this main is a follower`,
+					);
+					continue;
+				}
+
+				const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
+				if (this.connections.has(key)) continue;
+
 				const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(
 					agent.projectId,
 				);
@@ -373,6 +472,12 @@ export class ChatIntegrationService {
 					);
 					continue;
 				}
+
+				// External setup (Telegram setWebhook, etc.) runs once per cluster —
+				// the leader claims that role on startup; followers only build local
+				// state so a stampede of reconnecting mains doesn't trip remote rate
+				// limits.
+				const skipExternalHooks = !this.instanceSettings.isLeader;
 
 				// Try each project member until one succeeds — the first user may not
 				// have access to the integration credential.
@@ -385,6 +490,7 @@ export class ChatIntegrationService {
 							integration.type,
 							userId,
 							agent.projectId,
+							{ skipExternalHooks },
 						);
 						connected = true;
 						break;
@@ -401,6 +507,71 @@ export class ChatIntegrationService {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Reconcile a single integration when notified via PubSub by another main.
+	 *
+	 * The originating main (the one that handled the user's connect/disconnect
+	 * request) updated its own state synchronously before publishing — this
+	 * handler runs on every other main so all `connections` maps stay aligned.
+	 *
+	 * On `connect`, integrations that require the leader are skipped on
+	 * followers. On `disconnect`, the integration is always torn down regardless
+	 * of role.
+	 */
+	@OnPubSubEvent('agent-chat-integration-changed', { instanceType: 'main' })
+	async handleIntegrationChanged(
+		payload: PubSubCommandMap['agent-chat-integration-changed'],
+	): Promise<void> {
+		const { agentId, type, credentialId, action } = payload;
+
+		if (action === 'disconnect') {
+			await this.disconnect(agentId, type, credentialId);
+			return;
+		}
+
+		const definition = this.integrationRegistry.get(type);
+		if (definition?.requiresLeader() && !this.instanceSettings.isLeader) {
+			this.logger.debug(
+				`[ChatIntegrationService] Ignoring connect for ${type} on agent ${agentId} — leader-only integration on follower`,
+			);
+			return;
+		}
+
+		const key = this.connectionKey(agentId, type, credentialId);
+		if (this.connections.has(key)) return;
+
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		if (!agent) {
+			this.logger.warn(
+				`[ChatIntegrationService] Cannot connect ${type} — agent ${agentId} not found`,
+			);
+			return;
+		}
+
+		const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(
+			agent.projectId,
+		);
+		for (const userId of userIds) {
+			try {
+				// The originating main already ran external setup (DB validation,
+				// Telegram setWebhook). We only need local state here — skipping
+				// the hooks also avoids racing the originator into Telegram's 1/sec
+				// rate limit.
+				await this.connect(agentId, credentialId, type, userId, agent.projectId, {
+					skipExternalHooks: true,
+				});
+				return;
+			} catch (error) {
+				this.logger.debug(
+					`[ChatIntegrationService] User ${userId} could not connect ${type} for agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+		this.logger.error(
+			`[ChatIntegrationService] Failed to connect ${type} for agent ${agentId} — no project member could access the credential`,
+		);
 	}
 
 	// ---------------------------------------------------------------------------

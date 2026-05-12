@@ -1,0 +1,3 @@
+{"kind":"header","version":1,"testName":"recording","recordedAt":"2026-05-05T09:48:28.988Z"}
+{"kind":"tool-call","stepId":1,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"list","query":"B3 Workflow Setup Route Back To Earlier Card"},"output":{"workflows":[{"id":"LbRYxtzMzYY6sOMd","name":"B3 Workflow Setup Route Back To Earlier Card","versionId":"e08e0c11-7b52-4c41-9b6b-8b28dbb9968d","activeVersionId":null,"createdAt":"2026-05-05T09:48:24.704Z","updatedAt":"2026-05-05T09:48:24.704Z"}]}}
+{"kind":"tool-call","stepId":2,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"setup","workflowId":"LbRYxtzMzYY6sOMd"},"output":{"success":false}}

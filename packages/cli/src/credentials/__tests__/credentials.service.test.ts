@@ -1583,6 +1583,61 @@ describe('CredentialsService', () => {
 					filters: { dependency: undefined },
 				});
 			});
+
+			it('should forward the credential type filter to the global credentials lookup (owner user)', async () => {
+				// ARRANGE
+				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(ownerUser, {
+					includeGlobal: true,
+					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
+				});
+
+				// ASSERT
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					type: 'slackOAuth2Api',
+					filters: { dependency: undefined },
+				});
+			});
+
+			it('should forward the credential type filter to the global credentials lookup (member user)', async () => {
+				// ARRANGE
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [],
+					count: 0,
+				});
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(memberUser, {
+					includeGlobal: true,
+					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
+				});
+
+				// ASSERT
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					type: 'slackOAuth2Api',
+					filters: { dependency: undefined },
+				});
+			});
+
+			it('should not pass a type filter when the listQueryOptions filter has no type', async () => {
+				// ARRANGE
+				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(ownerUser, { includeGlobal: true });
+
+				// ASSERT
+				const lastCall =
+					credentialsRepository.findAllGlobalCredentials.mock.calls.at(-1)?.[0] ?? {};
+				expect(lastCall).not.toHaveProperty('type');
+			});
 		});
 
 		describe('with includeGlobal = false', () => {

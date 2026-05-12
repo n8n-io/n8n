@@ -49,6 +49,7 @@ import {
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -99,6 +100,7 @@ export class AgentsController {
 		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	@Post('/')
@@ -217,14 +219,6 @@ export class AgentsController {
 		const { projectId } = req.params;
 		await this.agentsService.deleteSkill(agentId, projectId, skillId);
 		return { ok: true };
-	}
-
-	@Get('/:agentId/credentials')
-	@ProjectScope('agent:read')
-	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		const { projectId } = req.params;
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
-		return await credentialProvider.list();
 	}
 
 	@Get('/catalog/models')
@@ -399,7 +393,11 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message, sessionId } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -551,7 +549,11 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -604,7 +606,11 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -650,6 +656,13 @@ export class AgentsController {
 				`Agent "${agentId}" must be published before connecting an integration`,
 			);
 
+		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			req.user,
+			{ projectId: agent.projectId },
+		);
+		const credential = usableCredentials.find((c) => c.id === credentialId);
+		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
+
 		await this.chatIntegrationService.connect(
 			agentId,
 			credentialId,
@@ -664,10 +677,18 @@ export class AgentsController {
 			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 		);
 		if (!alreadyExists) {
-			const credential = await this.credentialsService.getOne(req.user, credentialId, false);
 			agent.integrations = [...existing, { type, credentialId, credentialName: credential.name }];
 			await this.agentRepository.save(agent);
 		}
+
+		// Notify peer mains so they connect the integration too — without this
+		// step inbound webhooks load-balanced to a follower would 404.
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			agentId,
+			type,
+			credentialId,
+			'connect',
+		);
 
 		return { status: 'connected' };
 	}
@@ -691,6 +712,13 @@ export class AgentsController {
 			(i) => !isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
 		);
 		await this.agentRepository.save(agent);
+
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			agentId,
+			type,
+			credentialId,
+			'disconnect',
+		);
 
 		return { status: 'disconnected' };
 	}
@@ -784,6 +812,16 @@ export class AgentsController {
 		const webhookHandler = this.chatIntegrationService.getWebhookHandler(agentId, platform);
 
 		if (!webhookHandler) {
+			// Allow platforms to respond to setup-time webhooks (e.g. Slack's
+			// `url_verification` challenge) before credentials are configured,
+			// so the user doesn't have to come back and re-verify URLs after
+			// connecting the credential.
+			const integration = this.chatIntegrationRegistry.get(platform);
+			const earlyResponse = integration?.handleUnauthenticatedWebhook?.(req.body);
+			if (earlyResponse) {
+				res.status(earlyResponse.status).json(earlyResponse.body);
+				return;
+			}
 			res.status(404).json({ error: `No active ${platform} integration for agent "${agentId}"` });
 			return;
 		}
