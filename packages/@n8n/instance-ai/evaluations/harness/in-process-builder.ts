@@ -297,7 +297,6 @@ export async function buildInProcess(
 	builderTools['submit-workflow'] = createSubmitWorkflowTool(
 		services.context,
 		builderWs.workspace,
-		undefined,
 		async (attempt) => {
 			await workflowTaskService.reportBuildOutcome(
 				toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
@@ -357,7 +356,7 @@ export async function buildInProcess(
 			},
 			control: {
 				mode: 'auto',
-				waitForConfirmation: async (requestId): Promise<Record<string, unknown>> => {
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
 					interactivity.autoApprovedSuspensions++;
 					traceCollector.markAutoApproved(requestId);
 					chunkLog?.write({ kind: 'auto-approve', requestId });
@@ -639,7 +638,7 @@ function silentLogger(): Logger {
 // In-memory event bus — the stream executor publishes mapped events here.
 // ---------------------------------------------------------------------------
 
-function createInMemoryEventBus(): InstanceAiEventBus {
+export function createInMemoryEventBus(): InstanceAiEventBus {
 	const storeByThread = new Map<string, StoredEvent[]>();
 	const subscribersByThread = new Map<string, Array<(event: StoredEvent) => void>>();
 
@@ -684,7 +683,7 @@ function createInMemoryEventBus(): InstanceAiEventBus {
 	};
 }
 
-function wrapEventBusWithObserver(
+export function wrapEventBusWithObserver(
 	bus: InstanceAiEventBus,
 	observe: (event: InstanceAiEvent) => void,
 ): InstanceAiEventBus {
