@@ -93,10 +93,12 @@ describe('InstanceAiInput', () => {
 
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
 
-		expect(textbox).toHaveAttribute(
-			'placeholder',
-			"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
-		);
+		await waitFor(() => {
+			expect(textbox).toHaveAttribute(
+				'placeholder',
+				"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
+			);
+		});
 
 		await userEvent.unhover(getByTestId('instance-ai-suggestion-build-workflow'));
 
@@ -400,7 +402,10 @@ describe('InstanceAiInput', () => {
 		const textbox = getByRole('textbox');
 		const initialPlaceholder = textbox.getAttribute('placeholder') ?? '';
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
-		expect(textbox.getAttribute('placeholder')).not.toBe(initialPlaceholder);
+
+		await waitFor(() => {
+			expect(textbox.getAttribute('placeholder')).not.toBe(initialPlaceholder);
+		});
 
 		await rerender(inputProps({ suggestions, isSubmitting: true }));
 

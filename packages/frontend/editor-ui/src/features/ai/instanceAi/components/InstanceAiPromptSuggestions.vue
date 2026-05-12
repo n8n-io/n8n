@@ -80,25 +80,36 @@ onMounted(() => {
 
 onUnmounted(() => {
 	document.removeEventListener('keydown', handleDocumentKeydown);
+	clearHoverTimer();
 });
 
 onClickOutside(rootRef, closeQuickExamples);
 
 let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
+function clearHoverTimer() {
+	if (!hoverTimer) {
+		return;
+	}
+
+	clearTimeout(hoverTimer);
+	hoverTimer = null;
+}
+
 function handleSuggestionEnter(suggestion: InstanceAiEmptyStateSuggestion) {
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
 
-	hoverTimer = setTimeout(() => setPreview(suggestion.promptKey), 300);
+	clearHoverTimer();
+	hoverTimer = setTimeout(() => {
+		hoverTimer = null;
+		setPreview(suggestion.promptKey);
+	}, 300);
 }
 
 function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
-	if (hoverTimer) {
-		clearTimeout(hoverTimer);
-		hoverTimer = null;
-	}
+	clearHoverTimer();
 
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
