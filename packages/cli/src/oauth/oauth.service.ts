@@ -451,6 +451,8 @@ export class OauthService {
 							`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
 							// 3. OpenID Connect Discovery 1.0 (path appending)
 							`${authorizationServerUrl}/.well-known/openid-configuration`,
+							// 4. RFC 8414 origin-only fallback (matches MCP TypeScript SDK behavior)
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
 						]
 					: [
 							// For root-level issuers or already-well-known paths

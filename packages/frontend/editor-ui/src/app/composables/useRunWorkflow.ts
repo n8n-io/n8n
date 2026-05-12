@@ -532,6 +532,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			} else if (execution?.finished) {
 				// execution finished before it could be stopped
 				const executedData = {
+					id: execution.id,
 					data: execution.data,
 					workflowData: workflowDocumentStore.value.getSnapshot(),
 					finished: execution.finished,
@@ -539,6 +540,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IExecutionResponse;
+				// Clear the active id so setWorkflowExecutionData's else branch sets
+				// displayedExecutionId to the freshly-fetched finished id.
+				workflowState.setActiveExecutionId(undefined);
 				workflowState.setWorkflowExecutionData(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
