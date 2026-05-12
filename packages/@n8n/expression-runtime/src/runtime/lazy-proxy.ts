@@ -29,12 +29,23 @@ interface ObjectMetadata {
 	__keys: string[];
 }
 
-function isObjectMetadata(value: unknown): value is ObjectMetadata {
+interface ArrayMetadata {
+	__isArray: true;
+	__length: number;
+}
+
+export function isObjectMetadata(value: unknown): value is ObjectMetadata {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
 		'__isObject' in value &&
 		value.__isObject === true
+	);
+}
+
+export function isArrayMetadata(value: unknown): value is ArrayMetadata {
+	return (
+		typeof value === 'object' && value !== null && '__isArray' in value && value.__isArray === true
 	);
 }
 
@@ -67,6 +78,17 @@ export function getProxyPath(obj: object): string[] | undefined {
 }
 
 /**
+ * Tagged-union shape descriptor for a deep lazy proxy.
+ *
+ * - `object` proxies wrap a plain object target. `keys` is optional —
+ *   when omitted, ownKeys/Object.keys() trigger a lazy `getValueAtPath`
+ *   round-trip to fetch them.
+ * - `array` proxies wrap an array target so `Array.isArray(proxy)` is `true`
+ *   and structured clone / `Array.prototype.map` iterate indices correctly.
+ */
+export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; length: number };
+
+/**
  * Creates a deep lazy-loading proxy for workflow data.
  *
  * This proxy system enables on-demand loading of nested properties across
@@ -75,18 +97,18 @@ export function getProxyPath(obj: object): string[] | undefined {
  * Pattern:
  * 1. When property accessed: Call getValueAtPath([path]) to get metadata
  * 2. Metadata indicates type: primitive, object, array, or function
- * 3. For objects/arrays: Create nested proxy for lazy loading
+ * 3. For objects/arrays: Create nested proxy (shape-matched) for lazy loading
  * 4. For functions: Create wrapper that calls callFunctionAtPath
  * 5. Cache all fetched values in target to avoid repeated callbacks
  *
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
- * @param knownKeys - Optional pre-known keys for the proxy
+ * @param meta - Optional shape descriptor (object/array + known keys/length)
  * @param callbacks - ivm.Reference callbacks for cross-isolate communication
  * @returns Proxy object with lazy loading behavior
  */
 export function createDeepLazyProxy(
 	basePath: string[] = [],
-	knownKeys?: string[],
+	meta?: ProxyMeta,
 	callbacks?: {
 		getValueAtPath: any;
 		getArrayElement: any;
@@ -97,12 +119,17 @@ export function createDeepLazyProxy(
 		throw new Error('createDeepLazyProxy requires callbacks parameter');
 	}
 	const { getValueAtPath, getArrayElement, callFunctionAtPath } = callbacks;
-	// Cache for keys fetched from the bridge (root proxies without knownKeys).
+
+	const isArray = meta?.kind === 'array';
+	const arrayLength = isArray ? meta.length : 0;
+	const objectKeys = meta?.kind === 'object' ? meta.keys : undefined;
+
+	// Cache for keys fetched from the bridge (root object proxies without known keys).
 	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
 	let fetchedKeys: string[] | undefined;
 
-	function resolveKeys(): string[] {
-		if (knownKeys) return knownKeys;
+	function resolveObjectKeys(): string[] {
+		if (objectKeys) return objectKeys;
 		if (fetchedKeys) return fetchedKeys;
 		const value = getValueAtPath.applySync(null, [basePath], {
 			arguments: { copy: true },
@@ -116,44 +143,139 @@ export function createDeepLazyProxy(
 		return [];
 	}
 
-	const proxy = new Proxy({} as Record<string, unknown>, {
-		ownKeys(): string[] {
-			return resolveKeys();
+	function isInArrayBounds(prop: string): number | undefined {
+		const idx = Number(prop);
+		if (!Number.isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
+		if (String(idx) !== prop) return undefined; // reject '00', '1.0', etc.
+		return idx;
+	}
+
+	function materializeChild(basePath: string[], propOrIdx: string, value: unknown): unknown {
+		if (value === undefined || value === null) return value;
+		throwIfErrorSentinel(value);
+		// `path = [...basePath, propOrIdx]` is built only inside the three branches
+		// that actually use it, so non-metadata objects don't pay for the spread.
+		if (value && typeof value === 'object' && (value as { __isFunction?: unknown }).__isFunction) {
+			const path = [...basePath, propOrIdx];
+			return function (...args: any[]) {
+				const result = callFunctionAtPath.applySync(null, [path, ...args], {
+					arguments: { copy: true },
+					result: { copy: true },
+				});
+				throwIfErrorSentinel(result);
+				return result;
+			};
+		}
+		if (isArrayMetadata(value)) {
+			const path = [...basePath, propOrIdx];
+			return createDeepLazyProxy(path, { kind: 'array', length: value.__length }, callbacks);
+		}
+		if (isObjectMetadata(value)) {
+			const path = [...basePath, propOrIdx];
+			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
+		}
+		return value;
+	}
+
+	const target: object = isArray ? [] : {};
+
+	const proxy = new Proxy(target as any, {
+		ownKeys(): Array<string | symbol> {
+			if (isArray) {
+				const keys: Array<string | symbol> = Array.from({ length: arrayLength }, (_, i) =>
+					String(i),
+				);
+				// Required by proxy invariant: target [] has non-configurable 'length'
+				keys.push('length');
+				return keys;
+			}
+			return resolveObjectKeys();
 		},
 		getOwnPropertyDescriptor(_target: any, prop: string | symbol): PropertyDescriptor | undefined {
 			if (typeof prop === 'symbol') return undefined;
-			if (resolveKeys().includes(prop)) {
+			if (isArray) {
+				if (prop === 'length') {
+					// Match the target array's own length descriptor shape so the
+					// proxy invariant holds: writable & non-configurable.
+					return {
+						configurable: false,
+						enumerable: false,
+						writable: true,
+						value: arrayLength,
+					};
+				}
+				if (isInArrayBounds(prop) !== undefined) {
+					// Lazy proxies are read-only views of host data — writes from
+					// expression code must not propagate back across the isolate.
+					// Reading `proxy[prop]` triggers the get trap, which fetches the
+					// element from the host (if not cached) and stores it on the
+					// target. Including `value` matches a native array's data
+					// descriptor; the fetch is one-shot per index because of caching.
+					return {
+						configurable: true,
+						enumerable: true,
+						writable: false,
+						value: proxy[prop],
+					};
+				}
+				return undefined;
+			}
+			if (resolveObjectKeys().includes(prop)) {
 				return { configurable: true, enumerable: true, writable: false };
 			}
 			return undefined;
 		},
-		get(target: any, prop: string | symbol): unknown {
-			// Handle Symbol properties - return undefined
-			// Symbols like Symbol.toStringTag are accessed internally
-			// We can't transfer Symbols via isolated-vm
+		get(targetObj: any, prop: string | symbol): unknown {
+			// Symbol-keyed access falls through to the proxy target so that
+			// well-known symbols on the prototype chain are reachable. For array
+			// proxies this exposes `Array.prototype[Symbol.iterator]` etc., which
+			// `[...arr]`, `for…of`, and destructuring need. For object proxies the
+			// `{}` target has no own symbol-keyed entries; reads return undefined.
+			// Symbols themselves aren't transferred across the isolate boundary —
+			// only the values yielded by iteration, which already pay the proxy's
+			// indexed `[[Get]]` (primitives or sub-proxies).
 			if (typeof prop === 'symbol') {
-				return undefined;
+				return targetObj[prop];
 			}
 
-			// Handle common Object.prototype methods within isolate
-			// Don't fetch from parent to avoid native function transfer issues
-			if (prop === 'toString') {
-				return function () {
-					return '[object Object]';
-				};
-			}
-			if (prop === 'valueOf') {
-				return function () {
-					return target;
-				};
+			// `toString` and `valueOf` aren't intercepted — they fall through to the
+			// target's prototype via the cache check below. That means `arr.toString()`
+			// returns the canonical comma-joined string (via `Array.prototype.toString`
+			// → `.join(',')`, paying one bridge call per element), and `obj.valueOf()`
+			// returns the proxy itself instead of the internal target. Pre-fix this
+			// trap shortcut to `''` / `targetObj` to avoid the O(n) cost, but the
+			// divergence from native was surprising in expressions like
+			// `={{ "items: " + $json.arr }}`. Users who care about the cost can call
+			// `$json.arr.length` and index explicitly.
+
+			// Array length is known at construction — no bridge call needed
+			if (isArray && prop === 'length') {
+				return arrayLength;
 			}
 
 			// Check cache - if already fetched, return cached value
-			if (prop in target) {
-				return target[prop];
+			if (prop in targetObj) {
+				return targetObj[prop];
 			}
 
-			// Build path for this property
+			if (isArray) {
+				const idx = isInArrayBounds(prop);
+				if (idx === undefined) return undefined;
+				const element = getArrayElement.applySync(null, [basePath, idx], {
+					arguments: { copy: true },
+					result: { copy: true },
+				});
+				// Primitives (and null) skip `materializeChild`'s metadata checks.
+				if (element === null || typeof element !== 'object') {
+					targetObj[prop] = element;
+					return element;
+				}
+				targetObj[prop] = materializeChild(basePath, String(idx), element);
+				return targetObj[prop];
+			}
+
+			// Build path for this property — needed for the getValueAtPath call.
+			// materializeChild rebuilds it only inside metadata branches.
 			const path = [...basePath, prop];
 
 			// Call back to host to get metadata/value
@@ -163,111 +285,26 @@ export function createDeepLazyProxy(
 				result: { copy: true },
 			});
 
-			// Handle undefined/null - cache and return
-			if (value === undefined || value === null) {
-				target[prop] = value;
-				return value;
-			}
-
-			// Handle errors serialized by host-side callbacks — reconstruct and throw
-			// so the isolate's outer try-catch can serialize them back via __reportError
-			throwIfErrorSentinel(value);
-
-			// Handle functions - metadata: { __isFunction: true, __name: string }
-			if (value && typeof value === 'object' && value.__isFunction) {
-				// Create function wrapper that calls back to parent
-				target[prop] = function (...args: any[]) {
-					const result = callFunctionAtPath.applySync(null, [path, ...args], {
-						arguments: { copy: true },
-						result: { copy: true },
-					});
-					// Check if the host-side function threw — reconstruct and throw
-					throwIfErrorSentinel(result);
-					return result;
-				};
-				return target[prop];
-			}
-
-			// Handle arrays - metadata: { __isArray: true, __length: number }
-			if (value && typeof value === 'object' && value.__isArray) {
-				const arrayProxy = new Proxy([] as any[], {
-					has(arrTarget: any, arrProp: string | symbol): boolean {
-						if (typeof arrProp === 'symbol') return arrProp in arrTarget;
-						const index = Number(arrProp);
-						if (!isNaN(index) && index >= 0 && index < value.__length) {
-							return true;
-						}
-						return arrProp in arrTarget;
-					},
-					get(arrTarget: any, arrProp: string | symbol): unknown {
-						// Symbols can't be transferred via isolated-vm; return undefined
-						if (typeof arrProp === 'symbol') {
-							return undefined;
-						}
-
-						// Handle array length
-						if (arrProp === 'length') {
-							return value.__length;
-						}
-
-						// Handle numeric index
-						const index = Number(arrProp);
-						if (!isNaN(index) && index >= 0) {
-							// Check cache
-							if (!(arrProp in arrTarget)) {
-								// Fetch element from parent
-								const element = getArrayElement.applySync(null, [path, index], {
-									arguments: { copy: true },
-									result: { copy: true },
-								});
-								throwIfErrorSentinel(element);
-								// Handle element metadata (arrays and objects need proxies)
-								if (element && typeof element === 'object' && element.__isArray) {
-									const elementPath = [...path, String(index)];
-									arrTarget[arrProp] = createDeepLazyProxy(elementPath, undefined, callbacks);
-								} else if (isObjectMetadata(element)) {
-									// Object metadata: create nested proxy, passing known keys to
-									// avoid an extra __getValueAtPath round-trip for ownKeys/Object.keys()
-									const elementPath = [...path, String(index)];
-									arrTarget[arrProp] = createDeepLazyProxy(elementPath, element.__keys, callbacks);
-								} else {
-									// Primitive element
-									arrTarget[arrProp] = element;
-								}
-							}
-							return arrTarget[arrProp];
-						}
-
-						// Array methods (map, filter, etc.)
-						// Note: These require full array - limitation for now
-						return arrTarget[arrProp];
-					},
-				});
-
-				target[prop] = arrayProxy;
-				return target[prop];
-			}
-
-			// Handle objects - metadata: { __isObject: true, __keys: string[] }
-			if (isObjectMetadata(value)) {
-				// Create nested proxy for recursive lazy loading, passing known keys
-				target[prop] = createDeepLazyProxy(path, value.__keys, callbacks);
-				return target[prop];
-			}
-
-			// Primitive value - cache and return
-			target[prop] = value;
-			return value;
+			targetObj[prop] = materializeChild(basePath, prop, value);
+			return targetObj[prop];
 		},
 
-		has(target: any, prop: string | symbol): boolean {
+		has(targetObj: any, prop: string | symbol): boolean {
 			// Implement 'in' operator support
 			// Example: '$json' in data
 
-			if (typeof prop === 'symbol') return false;
+			// Mirror the get trap: symbol-keyed lookups defer to the target so
+			// `Symbol.iterator in arr` reflects the prototype chain.
+			if (typeof prop === 'symbol') return prop in targetObj;
+
+			if (isArray) {
+				if (prop === 'length') return true;
+				if (prop in targetObj) return true;
+				return isInArrayBounds(prop) !== undefined;
+			}
 
 			// Check cache first
-			if (prop in target) {
+			if (prop in targetObj) {
 				return true;
 			}
 

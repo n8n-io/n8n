@@ -53,6 +53,8 @@ export interface AgentActivity {
 	agentId: string;
 	role: string;
 	parentId?: string;
+	/** Tool names the sub-agent was spawned with, captured from the `agent-spawned` event payload. */
+	tools: string[];
 	toolCalls: CapturedToolCall[];
 	textContent: string;
 	reasoning: string;
