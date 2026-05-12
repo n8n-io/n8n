@@ -26,6 +26,7 @@ import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetr
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
@@ -67,6 +68,8 @@ const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
 const agentId = computed(() => route.params.agentId as string);
+
+const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
 // UI state
 const {
@@ -457,7 +460,11 @@ async function onConfigUpdated() {
 	builderTelemetry.trackSkillsAdded();
 }
 
-const headerActions = [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }];
+const headerActions = computed(() =>
+	canDeleteAgent.value
+		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
+		: [],
+);
 
 async function onHeaderAction(action: string) {
 	if (action === 'delete') {
@@ -894,6 +901,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:is-build-chat-streaming="isBuildChatStreaming"
 					:is-published="Boolean(agent?.publishedVersion)"
 					:is-full-width="isChatFullWidth"
+					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"
 					@session-select="onSessionPick"
 					@new-chat="onNewChat"
@@ -921,6 +929,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:applied-skills="appliedSkills"
 				:connected-triggers="connectedTriggers"
 				:is-build-chat-streaming="isBuildChatStreaming"
+				:can-edit-agent="canEditAgent"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
 				@update:config="onConfigFieldUpdate"
