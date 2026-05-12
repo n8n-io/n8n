@@ -40,16 +40,27 @@ import path from 'node:path';
 import { normalizeWorkflow } from './normalize-workflow';
 import { stringifyError, truncate } from './redact';
 import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
+import {
+	createInMemoryWorkflowTaskService,
+	type InMemoryWorkflowTaskService,
+} from './stub-workflow-task-service';
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { registerWithMastra } from '../../src/agent/register-with-mastra';
+import { MAX_STEPS } from '../../src/constants/max-steps';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
 import { createAllTools } from '../../src/tools';
 import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/build-workflow-agent.prompt';
-import { createSubmitWorkflowTool } from '../../src/tools/workflows/submit-workflow.tool';
-import type { ModelConfig } from '../../src/types';
+import { createVerifyBuiltWorkflowTool } from '../../src/tools/orchestration/verify-built-workflow.tool';
+import {
+	createSubmitWorkflowTool,
+	type SubmitWorkflowAttempt,
+} from '../../src/tools/workflows/submit-workflow.tool';
+import type { ModelConfig, OrchestrationContext } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
+import { createRemediation } from '../../src/workflow-loop/remediation';
+import type { WorkflowBuildOutcome } from '../../src/workflow-loop/workflow-loop-state';
 import type {
 	BuilderSandboxFactory,
 	BuilderWorkspace,
@@ -129,6 +140,15 @@ export interface BuildInProcessOptions {
 	 * `WorkflowJSON`. The workspace is destroyed on completion.
 	 */
 	sandboxFactory: BuilderSandboxFactory;
+	/**
+	 * Optional pre-generated work item ID. Pass this when the caller has
+	 * already embedded `[WORK ITEM ID: ${workItemId}]` into the prompt's
+	 * briefing — `verify-built-workflow` reads the same value back from the
+	 * in-memory `workflowTaskService` keyed on this ID. When omitted, a
+	 * fresh ID is generated; in that case `verify-built-workflow` won't be
+	 * called by the agent (the briefing didn't tell it what value to pass).
+	 */
+	workItemId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,7 +161,11 @@ export async function buildInProcess(
 	const started = Date.now();
 	const timeoutMs = options.timeoutMs ?? 20 * 60 * 1000;
 	const modelId: ModelConfig = options.modelId ?? 'anthropic/claude-sonnet-4-6';
-	const maxSteps = options.maxSteps ?? 30;
+	// Match production: builds run with the same MAX_STEPS.BUILDER cap as
+	// `build-workflow-agent.tool.ts` uses inside the orchestrator. Halving
+	// the budget for evals makes the harness run out of steps on examples
+	// that production would complete, inflating `no_workflow_built` rates.
+	const maxSteps = options.maxSteps ?? MAX_STEPS.BUILDER;
 
 	const interactivity = {
 		askUserCount: 0,
@@ -225,6 +249,35 @@ export async function buildInProcess(
 	}
 	const prompt = createSandboxBuilderAgentPrompt(root);
 
+	// Per-build identifiers — match what production (`build-workflow-agent.tool.ts`)
+	// generates per orchestrator-dispatched task. The builder agent reads
+	// `workItemId` from the briefing's `additionalContext`, then passes it to
+	// `verify-built-workflow` to round-trip its build outcome.
+	const workItemId = options.workItemId ?? 'wi_' + nanoid(8);
+	const taskId = 'eval-task-' + nanoid(6);
+	const threadId = 'eval-thread-' + nanoid(6);
+	const runId = 'eval-run-' + nanoid(6);
+	const agentId = 'eval-builder-' + nanoid(6);
+	const logger = silentLogger();
+
+	// In-memory build-outcome / verification store. Lives for the duration
+	// of this single build; never shared. The workflowTaskService interface
+	// is what `verify-built-workflow` reads from after `submit-workflow`
+	// records the attempt below.
+	const workflowTaskService: InMemoryWorkflowTaskService = createInMemoryWorkflowTaskService();
+
+	// Minimal OrchestrationContext shim for `createVerifyBuiltWorkflowTool`.
+	// Verify-built-workflow only reads `workflowTaskService`, `domainContext`,
+	// `runId`, and `logger` at runtime — the rest of OrchestrationContext is
+	// orchestrator scaffolding the builder doesn't touch.
+	const verifyContext = {
+		threadId,
+		runId,
+		logger,
+		domainContext: services.context,
+		workflowTaskService,
+	} as unknown as OrchestrationContext;
+
 	const sandboxToolNames = [
 		'nodes',
 		'workflows',
@@ -236,9 +289,22 @@ export async function buildInProcess(
 		const tool = (allTools as Record<string, unknown>)[name];
 		if (tool) builderTools[name] = tool;
 	}
-	builderTools['submit-workflow'] = createSubmitWorkflowTool(services.context, builderWs.workspace);
 
-	const agentId = 'eval-builder-' + nanoid(6);
+	// `submit-workflow` reports each attempt back via the onAttempt callback.
+	// Production wires this to `workflowTaskService.reportBuildOutcome` so the
+	// builder loop and `verify-built-workflow` can read it. We mirror that
+	// here so the same prompt contract works in eval.
+	builderTools['submit-workflow'] = createSubmitWorkflowTool(
+		services.context,
+		builderWs.workspace,
+		async (attempt) => {
+			await workflowTaskService.reportBuildOutcome(
+				toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
+			);
+		},
+	);
+	builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(verifyContext);
+
 	const agent = new Agent({
 		id: agentId,
 		name: 'Eval Workflow Builder',
@@ -261,14 +327,11 @@ export async function buildInProcess(
 
 	const abortController = new AbortController();
 	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
-	const threadId = 'eval-thread-' + nanoid(6);
-	const runId = 'eval-run-' + nanoid(6);
 	const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 		observeEvent(event, interactivity);
 		traceCollector.observe(event);
 		chunkLog?.writeEvent(event);
 	});
-	const logger = silentLogger();
 
 	let finalText: string | undefined;
 	try {
@@ -293,7 +356,7 @@ export async function buildInProcess(
 			},
 			control: {
 				mode: 'auto',
-				waitForConfirmation: async (requestId): Promise<Record<string, unknown>> => {
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
 					interactivity.autoApprovedSuspensions++;
 					traceCollector.markAutoApproved(requestId);
 					chunkLog?.write({ kind: 'auto-approve', requestId });
@@ -305,6 +368,24 @@ export async function buildInProcess(
 						interactivity.askUserCount++;
 					}
 				},
+				// Match production (`consumeStreamWithHitl`): when a suspension
+				// auto-resumes, pass `maxSteps` and the same providerOptions to
+				// `resumeStream`. Without these, Mastra's `resumeStream` defaults
+				// to its built-in `stepCountIs(5)` cap — which silently truncates
+				// the agent's post-suspension work after every HITL tool. In a
+				// builder run that creates data tables before writing the file,
+				// the resume budget gets eaten by the time the agent reaches
+				// `submit-workflow`, and the run dies mid-flow with a stale
+				// `finishReason: 'suspended'`. See `consume-with-hitl.ts` for
+				// the production wiring.
+				buildResumeOptions: ({ mastraRunId, suspension }) => ({
+					runId: mastraRunId,
+					toolCallId: suspension.toolCallId,
+					maxSteps,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' as const } },
+					},
+				}),
 			},
 		});
 
@@ -557,7 +638,7 @@ function silentLogger(): Logger {
 // In-memory event bus — the stream executor publishes mapped events here.
 // ---------------------------------------------------------------------------
 
-function createInMemoryEventBus(): InstanceAiEventBus {
+export function createInMemoryEventBus(): InstanceAiEventBus {
 	const storeByThread = new Map<string, StoredEvent[]>();
 	const subscribersByThread = new Map<string, Array<(event: StoredEvent) => void>>();
 
@@ -602,7 +683,7 @@ function createInMemoryEventBus(): InstanceAiEventBus {
 	};
 }
 
-function wrapEventBusWithObserver(
+export function wrapEventBusWithObserver(
 	bus: InstanceAiEventBus,
 	observe: (event: InstanceAiEvent) => void,
 ): InstanceAiEventBus {
@@ -793,4 +874,63 @@ async function safeSettle<T>(value: Promise<T> | undefined): Promise<T | undefin
 	} catch {
 		return undefined;
 	}
+}
+
+/**
+ * Convert a `submit-workflow` attempt into a `WorkflowBuildOutcome`.
+ *
+ * Production's `build-workflow-agent.tool.ts` does the same thing inside the
+ * orchestrator. We mirror it here (minus orchestrator-only fields like
+ * triggerType detection) so `verify-built-workflow` finds a sensible outcome
+ * stored against the workItemId.
+ */
+function toWorkflowBuildOutcome(
+	workItemId: string,
+	runId: string,
+	taskId: string,
+	attempt: SubmitWorkflowAttempt,
+): WorkflowBuildOutcome {
+	if (!attempt.success) {
+		return {
+			workItemId,
+			runId,
+			taskId,
+			submitted: false,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			failureSignature: attempt.errors?.join('; '),
+			remediation: attempt.remediation,
+			summary: attempt.errors?.join(' ') ?? 'Workflow submission failed.',
+		};
+	}
+	const placeholderRemediation = attempt.hasUnresolvedPlaceholders
+		? createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance:
+					'Workflow submitted successfully, but unresolved setup values remain. Stop code edits.',
+			})
+		: undefined;
+	return {
+		workItemId,
+		runId,
+		taskId,
+		workflowId: attempt.workflowId,
+		submitted: true,
+		// Eval doesn't run trigger-aware verification, so the value here is
+		// cosmetic — the verify tool branches on `executionService.run` result,
+		// not this field.
+		triggerType: 'manual_or_testable',
+		needsUserInput: Boolean(placeholderRemediation),
+		blockingReason: placeholderRemediation?.guidance,
+		mockedNodeNames: attempt.mockedNodeNames,
+		mockedCredentialTypes: attempt.mockedCredentialTypes,
+		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
+		triggerNodes: attempt.triggerNodes,
+		verificationPinData: attempt.verificationPinData,
+		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
+		remediation: placeholderRemediation ?? attempt.remediation,
+		summary: 'Workflow submitted and ready for verification.',
+	};
 }

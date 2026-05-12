@@ -34,6 +34,7 @@ export {
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
 export * from './instance-registry-types';
+export * from './redaction-enforcement';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -323,8 +324,11 @@ export {
 	UNLIMITED_CREDITS,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
+	webSearchMetaSchema,
 	credentialFlowSchema,
+	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	instanceGatewayResourceDecisionSchema,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -400,8 +404,11 @@ export type {
 	InstanceAiTargetResource,
 	DomainAccessAction,
 	DomainAccessMeta,
+	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
+	InstanceGatewayResourceDecision,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	PlannedTaskArg,
@@ -409,6 +416,7 @@ export type {
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
+	InstanceAiEvalMockedCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,
@@ -433,6 +441,7 @@ export {
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
+export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,

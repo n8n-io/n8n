@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import dateformat from 'dateformat';
-import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
 
@@ -27,17 +28,33 @@ const locale = useI18n();
 const rootStore = useRootStore();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
+const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
+	() => props.projectId,
+);
 
 const isPublished = computed(() => props.agent.publishedVersion !== null);
 
 const actions = computed(() => {
-	return [
-		isPublished.value
-			? { value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') }
-			: { value: 'publish', label: locale.baseText('agents.list.actions.publish') },
-		{ value: 'delete', label: locale.baseText('agents.list.actions.delete'), divided: true },
-	];
+	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
+
+	if (isPublished.value && canUnpublish.value) {
+		items.push({ value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') });
+	} else if (!isPublished.value && canPublish.value) {
+		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
+	}
+
+	if (canDelete.value) {
+		items.push({
+			value: 'delete',
+			label: locale.baseText('agents.list.actions.delete'),
+			divided: items.length > 0,
+		});
+	}
+
+	return items;
 });
+
+const showActions = computed(() => actions.value.length > 0);
 
 const formattedCreatedAtDate = computed(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -78,6 +95,15 @@ async function onAction(action: string) {
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
 				{{ agent.name }}
+				<N8nBadge
+					v-if="!canUpdate"
+					:class="$style.readonlyBadge"
+					theme="tertiary"
+					bold
+					data-test-id="agent-card-readonly-badge"
+				>
+					{{ locale.baseText('agents.list.readonly') }}
+				</N8nBadge>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -100,6 +126,7 @@ async function onAction(action: string) {
 					</N8nText>
 				</div>
 				<N8nActionToggle
+					v-if="showActions"
 					:actions="actions"
 					theme="dark"
 					data-test-id="agent-card-actions"
@@ -128,6 +155,10 @@ async function onAction(action: string) {
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.readonlyBadge {
+	margin-left: var(--spacing--3xs);
 }
 
 .cardDescription {

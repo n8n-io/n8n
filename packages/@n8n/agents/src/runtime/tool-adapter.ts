@@ -142,6 +142,7 @@ export async function executeTool(
 	builtTool: BuiltTool,
 	resumeData?: unknown,
 	parentTelemetry?: BuiltTelemetry,
+	toolCallId?: string,
 ): Promise<unknown> {
 	if (!builtTool.handler) {
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
@@ -154,11 +155,12 @@ export async function executeTool(
 			},
 			resumeData,
 			parentTelemetry,
+			toolCallId,
 		};
 		return await builtTool.handler(args, ctx);
 	}
 
-	const ctx: ToolContext = { parentTelemetry };
+	const ctx: ToolContext = { parentTelemetry, toolCallId };
 	return await builtTool.handler(args, ctx);
 }
 

@@ -166,7 +166,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			throw new OperationalError('Agent execution is not available in this context');
 		}
 
-		const threadId = `${executionId}-${itemIndex}`;
+		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
 
 		return await this.additionalData.executeAgent(
 			agentInfo.agentId,

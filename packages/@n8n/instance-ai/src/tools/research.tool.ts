@@ -2,17 +2,36 @@
  * Consolidated research tool — web-search + fetch-url.
  */
 import { createTool } from '@mastra/core/tools';
+import { get as pslGet } from 'psl';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	checkDomainAccess,
+	checkWebSearchAccess,
 	applyDomainAccessResume,
+	applyWebSearchAccessResume,
 	domainGatingSuspendSchema,
 	domainGatingResumeSchema,
 } from '../domain-access';
 import type { InstanceAiContext } from '../types';
 import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
+
+/** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
+function isSameRegistrableDomainOverHttps(originalUrl: string, redirectUrl: string): boolean {
+	let originalHost: string;
+	let redirectUrlObj: URL;
+	try {
+		originalHost = new URL(originalUrl).hostname;
+		redirectUrlObj = new URL(redirectUrl);
+	} catch {
+		return false;
+	}
+	if (redirectUrlObj.protocol !== 'https:') return false;
+	const originalDomain = pslGet(originalHost);
+	const redirectDomain = pslGet(redirectUrlObj.hostname);
+	return originalDomain !== null && redirectDomain !== null && originalDomain === redirectDomain;
+}
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -59,9 +78,44 @@ type Input = z.infer<typeof inputSchema>;
 async function handleWebSearch(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'web-search' }>,
+	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
 	if (!context.webResearchService?.search) {
 		return { query: input.query, results: [] };
+	}
+
+	const resumeData = ctx?.agent?.resumeData as z.infer<typeof domainGatingResumeSchema> | undefined;
+	const suspend = ctx?.agent?.suspend as
+		| ((payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<void>)
+		| undefined;
+
+	// ── Resume path: apply user's decision ─────────────────────────
+	if (resumeData !== undefined && resumeData !== null) {
+		const { proceed } = applyWebSearchAccessResume({
+			resumeData,
+			tracker: context.domainAccessTracker,
+			runId: context.runId,
+		});
+		if (!proceed) {
+			return { query: input.query, results: [] };
+		}
+	}
+
+	// ── Initial check: is web-search allowed? ──────────────────────
+	if (resumeData === undefined || resumeData === null) {
+		const check = checkWebSearchAccess({
+			query: input.query,
+			tracker: context.domainAccessTracker,
+			permissionMode: context.permissions?.webSearch,
+			runId: context.runId,
+		});
+		if (!check.allowed) {
+			if (check.blocked) {
+				return { query: input.query, results: [] };
+			}
+			await suspend?.(check.suspendPayload!);
+			return { query: input.query, results: [] };
+		}
 	}
 
 	const result = await context.webResearchService.search(input.query, {
@@ -165,13 +219,15 @@ async function handleFetchUrl(
 			permissionMode: context.permissions?.fetchUrl,
 			runId: context.runId,
 		});
-		if (!redirectCheck.allowed) {
-			const reason = redirectCheck.blocked
-				? `Access to ${new URL(targetUrl).hostname} is blocked by admin.`
-				: `Redirect to ${new URL(targetUrl).hostname} requires approval. ` +
-					`Retry with the direct URL: ${targetUrl}`;
-			throw new Error(reason);
+		if (redirectCheck.allowed) return;
+		if (redirectCheck.blocked) {
+			throw new Error(`Access to ${new URL(targetUrl).hostname} is blocked by admin.`);
 		}
+		if (isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
+		throw new Error(
+			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed. ` +
+				'Skip this URL and try a different research strategy — retrying the same URL will not help.',
+		);
 	};
 
 	const result = await context.webResearchService.fetchUrl(input.url, {
@@ -194,7 +250,7 @@ export function createResearchTool(context: InstanceAiContext) {
 		execute: async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'web-search':
-					return await handleWebSearch(context, input);
+					return await handleWebSearch(context, input, ctx);
 				case 'fetch-url':
 					return await handleFetchUrl(context, input, ctx);
 			}

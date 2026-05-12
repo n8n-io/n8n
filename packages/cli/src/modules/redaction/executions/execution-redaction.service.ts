@@ -17,7 +17,6 @@ import type {
 	RedactionContext,
 } from './execution-redaction.interfaces';
 import { FullItemRedactionStrategy } from './strategies/full-item-redaction.strategy';
-import { NodeDefinedFieldRedactionStrategy } from './strategies/node-defined-field-redaction.strategy';
 
 const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
 
@@ -41,7 +40,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 		private readonly fullItemRedactionStrategy: FullItemRedactionStrategy,
-		private readonly nodeDefinedFieldRedactionStrategy: NodeDefinedFieldRedactionStrategy,
 	) {}
 
 	async init(): Promise<void> {
@@ -123,8 +121,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 
 		// Unified pipeline execution. buildPipeline excludes FullItemRedactionStrategy on the
-		// reveal path (redactExecutionData === false). NodeDefinedFieldRedactionStrategy
-		// always runs — node-declared sensitive fields are never revealable.
+		// reveal path (redactExecutionData === false).
 
 		for (let i = 0; i < executions.length; i++) {
 			const execution = executions[i];
@@ -184,8 +181,12 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
 	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials.
 	 *   It is never included on the reveal path (`redactExecutionData === false`).
-	 * - `NodeDefinedFieldRedactionStrategy` is always appended last — node-declared
-	 *   sensitive fields are never revealable.
+	 *
+	 * Note: `NodeDefinedFieldRedactionStrategy` (node-declared `sensitiveOutputFields`)
+	 * is intentionally not wired in here. The previous always-on behaviour broke
+	 * partial/single-step execution because the FE replays the redacted push payload
+	 * back to the server, and is being redesigned. Re-introduce only after the
+	 * product approach (per-workflow gating + partial-run rehydration) is settled.
 	 */
 	private buildPipeline(
 		execution: RedactableExecution,
@@ -208,8 +209,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		if (shouldClearItems) {
 			pipeline.push(this.fullItemRedactionStrategy);
 		}
-
-		pipeline.push(this.nodeDefinedFieldRedactionStrategy);
 
 		return pipeline;
 	}
