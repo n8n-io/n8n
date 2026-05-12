@@ -493,6 +493,18 @@ describe('createDeepLazyProxy', () => {
 			});
 		});
 
+		it('index descriptor includes the actual value (matches native array)', () => {
+			const p = arrayProxy(['arr'], 3);
+			mocks.getArrayElement.mockReturnValue('first');
+			const desc = Object.getOwnPropertyDescriptor(p, '0');
+			expect(desc).toEqual({
+				configurable: true,
+				enumerable: true,
+				writable: false,
+				value: 'first',
+			});
+		});
+
 		it('indexed access fetches via getArrayElement', () => {
 			const p = arrayProxy(['arr'], 3);
 			mocks.getArrayElement.mockReturnValue('first');

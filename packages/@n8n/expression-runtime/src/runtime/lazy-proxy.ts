@@ -207,7 +207,16 @@ export function createDeepLazyProxy(
 				if (isInArrayBounds(prop) !== undefined) {
 					// Lazy proxies are read-only views of host data — writes from
 					// expression code must not propagate back across the isolate.
-					return { configurable: true, enumerable: true, writable: false };
+					// Reading `proxy[prop]` triggers the get trap, which fetches the
+					// element from the host (if not cached) and stores it on the
+					// target. Including `value` matches a native array's data
+					// descriptor; the fetch is one-shot per index because of caching.
+					return {
+						configurable: true,
+						enumerable: true,
+						writable: false,
+						value: proxy[prop],
+					};
 				}
 				return undefined;
 			}
