@@ -2,18 +2,22 @@ import type {
 	AgentDbMessage,
 	AgentMessage,
 	BuiltMemory,
-	BuiltObservationStore,
+	BuiltObservationLogStore,
 	MemoryDescriptor,
-	NewObservation,
-	Observation,
+	NewObservationLogEntry,
 	ObservationCursor,
+	ObservationLogEntry,
+	ObservationLogReadOptions,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogScopeKind,
 	ObservationLockHandle,
-	ScopeKind,
 	Thread,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
-import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeorm';
+import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -29,8 +33,10 @@ import { AgentObservationRepository } from '../repositories/agent-observation.re
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
+const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
+
 @Service()
-export class N8nMemory implements BuiltMemory, BuiltObservationStore {
+export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	constructor(
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly messageRepository: AgentMessageRepository,
@@ -131,11 +137,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			entities.reverse();
 		}
 
-		return entities.map((e) => {
-			const msg = e.content as AgentMessage & { id?: string };
-			msg.id = e.id;
-			return msg as AgentDbMessage;
-		});
+		return entities.map((e) => this.toAgentDbMessage(e));
 	}
 
 	async saveMessages(args: {
@@ -206,63 +208,58 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 		// observation-log pipeline will own memory state.
 	}
 
-	// ── Observational memory: data ───────────────────────────────────────
+	// ── Observation log ──────────────────────────────────────────────────
 
-	async appendObservations(rows: NewObservation[]): Promise<Observation[]> {
+	async appendObservationLogEntries(
+		rows: NewObservationLogEntry[],
+	): Promise<ObservationLogEntry[]> {
 		if (rows.length === 0) return [];
 
 		const entities: AgentObservationEntity[] = rows.map((row) =>
 			this.observationRepository.create({
 				scopeKind: row.scopeKind,
 				scopeId: row.scopeId,
-				kind: row.kind,
-				payload: row.payload,
-				durationMs: row.durationMs,
-				schemaVersion: row.schemaVersion,
+				marker: row.marker,
+				text: row.text,
+				parentId: row.parentId ?? null,
+				tokenCount: row.tokenCount ?? estimateObservationTokens(row.text),
+				status: 'active',
+				supersededBy: null,
 				createdAt: row.createdAt,
 			}),
 		);
 
 		const saved = await this.observationRepository.save(entities);
-		return saved.map((e) => this.toObservation(e));
+		return saved.map((e) => this.toObservationLogEntry(e));
 	}
 
-	async getObservations(opts: {
-		scopeKind: ScopeKind;
-		scopeId: string;
-		since?: { sinceCreatedAt: Date; sinceObservationId: string };
-		kindIs?: string;
-		limit?: number;
-		schemaVersionAtMost?: number;
-	}): Promise<Observation[]> {
+	async getActiveObservationLog(
+		scope: ObservationLogScope & { limit?: number; order?: 'asc' | 'desc' },
+	): Promise<ObservationLogEntry[]> {
+		return await this.getObservationLog({ ...scope, status: 'active' });
+	}
+
+	async getObservationLog(opts: ObservationLogReadOptions): Promise<ObservationLogEntry[]> {
 		const baseWhere: FindOptionsWhere<AgentObservationEntity> = {
 			scopeKind: opts.scopeKind,
 			scopeId: opts.scopeId,
-			...(opts.kindIs !== undefined && { kind: opts.kindIs }),
-			...(opts.schemaVersionAtMost !== undefined && {
-				schemaVersion: LessThanOrEqual(opts.schemaVersionAtMost),
-			}),
+			...(opts.status !== undefined && { status: opts.status }),
+			...(opts.parentId !== undefined && { parentId: opts.parentId ?? IsNull() }),
 		};
-		const where: FindOptionsWhere<AgentObservationEntity>[] = opts.since
-			? [
-					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
-					{
-						...baseWhere,
-						createdAt: Equal(opts.since.sinceCreatedAt),
-						id: MoreThan(opts.since.sinceObservationId),
-					},
-				]
-			: [baseWhere];
+
 		const entities = await this.observationRepository.find({
-			where,
-			order: { createdAt: 'ASC', id: 'ASC' },
+			where: [baseWhere],
+			order: {
+				createdAt: opts.order === 'desc' ? 'DESC' : 'ASC',
+				id: opts.order === 'desc' ? 'DESC' : 'ASC',
+			},
 			...(opts.limit !== undefined && { take: opts.limit }),
 		});
-		return entities.map((e) => this.toObservation(e));
+		return entities.map((e) => this.toObservationLogEntry(e));
 	}
 
 	async getMessagesForScope(
-		scopeKind: ScopeKind,
+		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
 		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
 	): Promise<AgentDbMessage[]> {
@@ -288,21 +285,80 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			where,
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
-		return entities.map((e) => {
-			const msg = e.content as AgentMessage & { id?: string };
-			msg.id = e.id;
-			return msg as AgentDbMessage;
-		});
+		return entities.map((e) => this.toAgentDbMessage(e));
 	}
 
-	async deleteObservations(ids: string[]): Promise<void> {
+	async dropObservationLogEntries(ids: string[]): Promise<void> {
 		if (ids.length === 0) return;
-		await this.observationRepository.delete({ id: In(ids) });
+		await this.observationRepository.update(
+			{ id: In(ids) },
+			{ status: 'dropped', supersededBy: null },
+		);
+	}
+
+	async supersedeObservationLogEntries(ids: string[], supersededBy: string): Promise<void> {
+		if (ids.length === 0) return;
+		await this.observationRepository.update(
+			{ id: In(ids) },
+			{ status: 'superseded', supersededBy },
+		);
+	}
+
+	async applyObservationLogReflection(
+		scope: ObservationLogScope,
+		reflection: ObservationLogReflection,
+	): Promise<ObservationLogReflectionResult> {
+		return await this.observationRepository.manager.transaction(async (trx) => {
+			const repo = trx.getRepository(AgentObservationEntity);
+			const inserted = reflection.merge.length
+				? await repo.save(
+						reflection.merge.map((entry) =>
+							repo.create({
+								scopeKind: scope.scopeKind,
+								scopeId: scope.scopeId,
+								marker: entry.marker,
+								text: entry.text,
+								parentId: entry.parentId ?? null,
+								tokenCount: entry.tokenCount ?? estimateObservationTokens(entry.text),
+								status: 'active',
+								supersededBy: null,
+								createdAt: entry.createdAt,
+							}),
+						),
+					)
+				: [];
+
+			if (reflection.drop.length > 0) {
+				await repo.update(
+					{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(reflection.drop) },
+					{ status: 'dropped', supersededBy: null },
+				);
+			}
+
+			for (const [index, merge] of reflection.merge.entries()) {
+				const replacement = inserted[index];
+				if (replacement && merge.supersedes.length > 0) {
+					await repo.update(
+						{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(merge.supersedes) },
+						{ status: 'superseded', supersededBy: replacement.id },
+					);
+				}
+			}
+
+			return {
+				droppedIds: [...reflection.drop],
+				supersededIds: reflection.merge.flatMap((entry) => entry.supersedes),
+				inserted: inserted.map((entry) => this.toObservationLogEntry(entry)),
+			};
+		});
 	}
 
 	// ── Observational memory: cursors ────────────────────────────────────
 
-	async getCursor(scopeKind: ScopeKind, scopeId: string): Promise<ObservationCursor | null> {
+	async getCursor(
+		scopeKind: ObservationLogScopeKind,
+		scopeId: string,
+	): Promise<ObservationCursor | null> {
 		const entity = await this.observationCursorRepository.findOneBy({ scopeKind, scopeId });
 		if (!entity) return null;
 		return {
@@ -314,7 +370,9 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 		};
 	}
 
-	async setCursor(cursor: ObservationCursor): Promise<void> {
+	async setCursor(
+		cursor: ObservationCursor & { scopeKind: ObservationLogScopeKind },
+	): Promise<void> {
 		await this.observationCursorRepository.upsert(
 			{
 				scopeKind: cursor.scopeKind,
@@ -330,7 +388,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	// ── Observational memory: locks ──────────────────────────────────────
 
 	async acquireObservationLock(
-		scopeKind: ScopeKind,
+		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<ObservationLockHandle | null> {
@@ -340,7 +398,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 		const updateResult = await this.observationLockRepository
 			.createQueryBuilder()
 			.update(AgentObservationLockEntity)
-			.set({ holderId: opts.holderId, heldUntil })
+			.set({ taskKind: 'observer', holderId: opts.holderId, heldUntil })
 			.where('"scopeKind" = :scopeKind')
 			.andWhere('"scopeId" = :scopeId')
 			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
@@ -355,7 +413,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			.createQueryBuilder()
 			.insert()
 			.into(AgentObservationLockEntity)
-			.values({ scopeKind, scopeId, holderId: opts.holderId, heldUntil })
+			.values({ scopeKind, scopeId, taskKind: 'observer', holderId: opts.holderId, heldUntil })
 			.orIgnore()
 			.execute();
 
@@ -369,7 +427,9 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 		return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
 	}
 
-	async releaseObservationLock(handle: ObservationLockHandle): Promise<void> {
+	async releaseObservationLock(
+		handle: ObservationLockHandle & { scopeKind: ObservationLogScopeKind },
+	): Promise<void> {
 		await this.observationLockRepository.delete({
 			scopeKind: handle.scopeKind,
 			scopeId: handle.scopeId,
@@ -385,15 +445,24 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 
 	// ── Helpers ──────────────────────────────────────────────────────────
 
-	private toObservation(entity: AgentObservationEntity): Observation {
+	private toAgentDbMessage(entity: AgentMessageEntity): AgentDbMessage {
+		const msg = entity.content as AgentMessage & { id?: string; createdAt?: Date };
+		msg.id = entity.id;
+		msg.createdAt = entity.createdAt;
+		return msg as AgentDbMessage;
+	}
+
+	private toObservationLogEntry(entity: AgentObservationEntity): ObservationLogEntry {
 		return {
 			id: entity.id,
 			scopeKind: entity.scopeKind,
 			scopeId: entity.scopeId,
-			kind: entity.kind,
-			payload: entity.payload as Observation['payload'],
-			durationMs: entity.durationMs === null ? null : Number(entity.durationMs),
-			schemaVersion: Number(entity.schemaVersion),
+			marker: entity.marker,
+			text: entity.text,
+			parentId: entity.parentId,
+			tokenCount: Number(entity.tokenCount),
+			status: entity.status,
+			supersededBy: entity.supersededBy,
 			createdAt: entity.createdAt,
 		};
 	}
