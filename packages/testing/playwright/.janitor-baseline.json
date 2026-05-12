@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-11T13:19:16.191Z",
-	"totalViolations": 443,
+	"generated": "2026-05-12T08:06:17.170Z",
+	"totalViolations": 416,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -44,165 +44,15 @@
 		"pages/InstanceAiPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 23,
+				"line": 85,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 49,
+				"line": 130,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 53,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 57,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 61,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 65,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 73,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 77,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 82,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 86,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 102,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 106,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 110,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 114,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 118,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 124,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 143,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 161,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 165,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 195,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 211,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 215,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 236,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 242,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 242,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "deduplication",
-				"line": 143,
-				"message": "Duplicate locator: this.page.getByTestId(\"workflow-preview-iframe\") in pages scope",
-				"hash": "d333305f8c67"
-			},
-			{
-				"rule": "deduplication",
-				"line": 165,
-				"message": "Duplicate locator: this.page.getByTestId(\"workflow-preview-iframe\") in pages scope",
-				"hash": "d333305f8c67"
 			}
 		],
 		"pages/NodeDetailsViewPage.ts": [
@@ -889,20 +739,6 @@
 				"line": 146,
 				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
 				"hash": "840a1c453e83"
-			}
-		],
-		"tests/e2e/instance-ai/instance-ai-workflow-setup-actions.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 158,
-				"message": "Direct page locator call: n8n.page.getByTestId('instance-ai-workflow-setup-applying')",
-				"hash": "7f6477b17241"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 235,
-				"message": "Direct page locator call: n8n.page.getByTestId('instance-ai-workflow-setup-applying')",
-				"hash": "7f6477b17241"
 			}
 		],
 		"tests/e2e/node-creator/categories.spec.ts": [
