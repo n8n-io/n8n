@@ -70,13 +70,18 @@ const reasoningEffort = ref<ReasoningEffort>(
 );
 const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
 const requireToolApproval = ref(props.config?.config?.requireToolApproval ?? false);
-const profileLoaded = ref(false);
-const profileLoading = ref(false);
+const profileKey = computed(() =>
+	props.projectId && props.agentId ? `${props.projectId}:${props.agentId}` : null,
+);
+const loadedProfileKey = ref<string | null>(null);
+const loadingProfileKey = ref<string | null>(null);
 const profileError = ref(false);
 const profile = ref<AgentMemoryProfilesResponse | null>(null);
 let profilePollInterval: ReturnType<typeof setInterval> | null = null;
 
 const canLoadProfile = computed(() => !props.disabled && Boolean(props.projectId && props.agentId));
+const profileLoaded = computed(() => loadedProfileKey.value === profileKey.value);
+const profileLoading = computed(() => loadingProfileKey.value === profileKey.value);
 
 watch(
 	() => props.config,
@@ -147,22 +152,27 @@ function onApprovalToggle(value: boolean) {
 }
 
 async function loadProfile() {
-	if (!canLoadProfile.value || !props.projectId || !props.agentId) return;
+	const key = profileKey.value;
+	if (!canLoadProfile.value || !props.projectId || !props.agentId || !key) return;
+	if (loadingProfileKey.value === key) return;
 
-	profileLoading.value = !profileLoaded.value;
+	loadingProfileKey.value = key;
 	profileError.value = false;
 
 	try {
-		profile.value = await getAgentMemoryProfiles(
+		const loadedProfile = await getAgentMemoryProfiles(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
 		);
-		profileLoaded.value = true;
+		if (profileKey.value !== key) return;
+		profile.value = loadedProfile;
+		loadedProfileKey.value = key;
 	} catch {
+		if (profileKey.value !== key) return;
 		profileError.value = true;
 	} finally {
-		profileLoading.value = false;
+		if (loadingProfileKey.value === key) loadingProfileKey.value = null;
 	}
 }
 
@@ -192,10 +202,10 @@ watch(isExpanded, (expanded) => {
 });
 
 watch(
-	() => [props.projectId, props.agentId],
+	profileKey,
 	() => {
 		profile.value = null;
-		profileLoaded.value = false;
+		loadedProfileKey.value = null;
 		if (isExpanded.value) {
 			void loadProfile();
 			startProfilePolling();
