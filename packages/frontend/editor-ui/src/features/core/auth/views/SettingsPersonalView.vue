@@ -585,7 +585,7 @@ onBeforeUnmount(() => {
 									i18n.baseText('settings.personal.method.status.notSetUp')
 								}}</N8nBadge>
 							</div>
-							<N8nText size="small" color="text-light">{{ passkeyDetail }}</N8nText>
+							<span :class="$style.methodDetail">{{ passkeyDetail }}</span>
 						</div>
 						<N8nButton
 							v-if="!hasPasskey"
@@ -643,11 +643,11 @@ onBeforeUnmount(() => {
 										i18n.baseText('settings.personal.method.status.notSetUp')
 									}}</N8nBadge>
 								</div>
-								<N8nText size="small" color="text-light">{{
+								<span :class="$style.methodDetail">{{
 									option.method === 'security_key'
 										? securityKeyDetail
 										: i18n.baseText(option.descriptionKey as never)
-								}}</N8nText>
+								}}</span>
 							</div>
 							<N8nButton
 								v-if="isMethodActive(option.method)"
@@ -766,8 +766,14 @@ onBeforeUnmount(() => {
 }
 
 .infoText {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtle);
+}
+
+.methodDetail {
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtle);
+	line-height: var(--line-height--md);
 }
 
 .themeSelect {
@@ -795,7 +801,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
-	background: var(--color--background--light-3);
+	background: var(--background--surface);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--md);
 	align-items: center;
