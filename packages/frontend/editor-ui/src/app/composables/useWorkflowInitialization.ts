@@ -387,10 +387,10 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 					params: { entityType: 'workflow' },
 				});
 			}
-
 			toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
-			void router.push({
-				name: VIEWS.NEW_WORKFLOW,
+			await new Promise((resolve) => setTimeout(resolve, 1500));
+			void router.replace({
+				name: VIEWS.WORKFLOWS,
 			});
 		} finally {
 			uiStore.nodeViewInitialized = true;
