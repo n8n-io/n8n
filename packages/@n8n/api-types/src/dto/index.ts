@@ -217,6 +217,8 @@ export {
 export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
+	redactionScopeSchema,
+	type RedactionScope,
 } from './security-settings/security-settings.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
