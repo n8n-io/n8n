@@ -37,6 +37,20 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			),
 	}),
 	z.object({
+		type: z.literal('setNodeParameter'),
+		nodeName: z.string().describe('Name of the existing node to update.'),
+		path: z
+			.string()
+			.min(2)
+			.describe(
+				'JSON Pointer (RFC 6901) path to the parameter to set, e.g. "/jsonSchema" or "/options/systemMessage". Must start with "/". Intermediate objects are created on demand. Array indices are NOT supported — to change a value inside an array, set the whole array. Use this instead of `updateNodeParameters` when you only need to set one nested key — the payload stays small regardless of the rest of the parameters object.',
+			),
+		value: z
+			.unknown()
+			.refine((v) => v !== undefined, { message: 'value is required' })
+			.describe('Value to set at the path. Any defined JSON value.'),
+	}),
+	z.object({
 		type: z.literal('addNode'),
 		node: z
 			.object({
@@ -160,6 +174,57 @@ const sanitizeUnsafeKeys = (value: unknown): unknown => {
 		out[key] = sanitizeUnsafeKeys(v);
 	}
 	return out;
+};
+
+/**
+ * Decode a JSON Pointer path (RFC 6901) into safe property segments.
+ * Returns null if the path is malformed, empty, contains an empty segment,
+ * or contains an unsafe segment. The leading "/" is required.
+ * Array indices are not supported: numeric segments are treated as object keys,
+ * and descent into an array (or any non-object) fails at apply time.
+ */
+const parseJsonPointer = (path: string): string[] | null => {
+	if (!path.startsWith('/')) return null;
+	const tail = path.slice(1);
+	if (tail.length === 0) return null;
+	const rawSegments = tail.split('/');
+	const segments: string[] = [];
+	for (const raw of rawSegments) {
+		// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
+		if (/~(?:[^01]|$)/.test(raw)) return null;
+		const seg = raw.replace(/~1/g, '/').replace(/~0/g, '~');
+		if (seg.length === 0 || !isSafeObjectProperty(seg)) return null;
+		segments.push(seg);
+	}
+	return segments;
+};
+
+/**
+ * Set `value` at `segments` inside `root`, creating intermediate objects on demand.
+ * Returns an error message if an intermediate segment exists but is not a plain object,
+ * otherwise mutates `root` in place and returns null.
+ */
+const setAtPointer = (
+	root: Record<string, unknown>,
+	segments: string[],
+	value: unknown,
+): string | null => {
+	let cursor: Record<string, unknown> = root;
+	for (let i = 0; i < segments.length - 1; i++) {
+		const key = segments[i];
+		const next = cursor[key];
+		if (next === undefined) {
+			const child: Record<string, unknown> = {};
+			cursor[key] = child;
+			cursor = child;
+		} else if (isPlainObject(next)) {
+			cursor = next;
+		} else {
+			return `cannot descend into non-object at '/${segments.slice(0, i + 1).join('/')}'`;
+		}
+	}
+	cursor[segments[segments.length - 1]] = sanitizeUnsafeKeys(value);
+	return null;
 };
 
 const deepMerge = (
@@ -290,6 +355,20 @@ export function applyOperations(
 					? sanitized
 					: deepMerge((node.parameters ?? {}) as Record<string, unknown>, sanitized);
 				node.parameters = merged as INodeParameters;
+				break;
+			}
+
+			case 'setNodeParameter': {
+				const node = nodeByName.get(op.nodeName);
+				if (!node) return fail(i, `node '${op.nodeName}' not found`);
+				const segments = parseJsonPointer(op.path);
+				if (!segments) {
+					return fail(i, `path '${op.path}' is invalid or contains unsafe segments`);
+				}
+				const params = (node.parameters ?? {}) as Record<string, unknown>;
+				const setError = setAtPointer(params, segments, op.value);
+				if (setError) return fail(i, setError);
+				node.parameters = params as INodeParameters;
 				break;
 			}
 

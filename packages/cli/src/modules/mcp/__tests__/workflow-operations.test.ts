@@ -2,6 +2,7 @@ import type { IConnections, INode } from 'n8n-workflow';
 
 import {
 	applyOperations,
+	partialUpdateOperationSchema,
 	type PartialUpdateOperation,
 } from '../tools/workflow-builder/workflow-operations';
 
@@ -91,6 +92,225 @@ describe('applyOperations', () => {
 				{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
 			]);
 			expect(JSON.stringify(wf)).toBe(before);
+		});
+	});
+
+	describe('setNodeParameter', () => {
+		test('sets a top-level parameter via JSON Pointer', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/url', value: 'https://new' },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				url: 'https://new',
+			});
+		});
+
+		test('preserves sibling keys at the leaf', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { url: 'https://old', method: 'GET' };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/method', value: 'POST' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				url: 'https://old',
+				method: 'POST',
+			});
+		});
+
+		test('creates intermediate objects on demand for a deep path', () => {
+			const ops: PartialUpdateOperation[] = [
+				{
+					type: 'setNodeParameter',
+					nodeName: 'B',
+					path: '/options/systemMessage',
+					value: 'You are a helpful assistant',
+				},
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const params = result.workflow.nodes.find((n) => n.name === 'B')!.parameters as {
+				url: string;
+				options: { systemMessage: string };
+			};
+			expect(params.url).toBe('https://old');
+			expect(params.options.systemMessage).toBe('You are a helpful assistant');
+		});
+
+		test('descends into existing nested objects without clobbering siblings', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { options: { mode: 'manual', timeout: 30 } };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/options/timeout', value: 60 },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				options: { mode: 'manual', timeout: 60 },
+			});
+		});
+
+		test('accepts non-string values', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/retries', value: 3 },
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/disabled', value: false },
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/headers', value: { 'x-id': '1' } },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const params = result.workflow.nodes.find((n) => n.name === 'B')!.parameters;
+			expect(params).toMatchObject({
+				retries: 3,
+				disabled: false,
+				headers: { 'x-id': '1' },
+			});
+		});
+
+		test('decodes ~1 and ~0 escapes in path segments', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/a~1b', value: 1 },
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/c~0d', value: 2 },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const params = result.workflow.nodes.find((n) => n.name === 'B')!.parameters as Record<
+				string,
+				unknown
+			>;
+			expect(params['a/b']).toBe(1);
+			expect(params['c~d']).toBe(2);
+		});
+
+		test('rejects when node does not exist', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'Missing', path: '/x', value: 1 },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects path that does not start with /', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: 'url', value: 'x' },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects unsafe segment in path', () => {
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/__proto__/polluted', value: true },
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(false);
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+		});
+
+		test('sanitizes unsafe keys inside the value', () => {
+			const ops: PartialUpdateOperation[] = [
+				{
+					type: 'setNodeParameter',
+					nodeName: 'B',
+					path: '/options',
+					value: { __proto__: { polluted: true }, mode: 'manual' },
+				},
+			];
+			const result = applyOperations(baseWorkflow(), ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const options = (
+				result.workflow.nodes.find((n) => n.name === 'B')!.parameters as {
+					options: Record<string, unknown>;
+				}
+			).options;
+			expect(options.mode).toBe('manual');
+			expect(Object.prototype.hasOwnProperty.call(options, '__proto__')).toBe(false);
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+		});
+
+		test('rejects descent through a non-object intermediate', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { options: 'not-an-object' };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/options/mode', value: 'manual' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain('cannot descend');
+		});
+
+		test('rejects descent through a null intermediate (does not silently overwrite)', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { options: null };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/options/mode', value: 'manual' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain('cannot descend');
+			expect(wf.nodes[1].parameters).toEqual({ options: null });
+		});
+
+		test('does not mutate input on success', () => {
+			const wf = baseWorkflow();
+			const before = JSON.stringify(wf);
+			applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/url', value: 'https://new' },
+			]);
+			expect(JSON.stringify(wf)).toBe(before);
+		});
+
+		test('schema rejects an omitted (undefined) value', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeParameter',
+				nodeName: 'B',
+				path: '/url',
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		test('rejects paths with empty segments', () => {
+			for (const path of ['/foo//bar', '/foo/', '//bar']) {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 1 },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) continue;
+				expect(result.error).toContain('invalid');
+			}
+		});
+
+		test('rejects paths with invalid ~ escape sequences', () => {
+			for (const path of ['/foo~2bar', '/foo~', '/~', '/foo/bar~']) {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 1 },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) continue;
+				expect(result.error).toContain('invalid');
+			}
+		});
+
+		test('fails clearly when descending through an array (indices not supported)', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'Content-Type', value: 'application/json' }] };
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/0/value', value: 'text/plain' },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain('cannot descend');
 		});
 	});
 
