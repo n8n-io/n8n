@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, type ShallowRef } from 'vue';
+import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -40,7 +40,6 @@ import { deepCopy } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import { useWorkflowsStore } from './workflows.store';
 
 export {
 	getPinDataSize,
@@ -424,23 +423,11 @@ export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflo
 
 /**
  * Injects the workflow document store from the current component tree.
- * Returns fallback document store if not within a component context
+ * Returns null if not within a component context that has provided the store.
  *
  * Use this in composables/stores that need to interact with the current workflow's
- * document store and avoid calling this outside a component tree.
+ * document store but may be called outside of the NodeView tree.
  */
-export function injectWorkflowDocumentStore(): ShallowRef<
-	ReturnType<typeof useWorkflowDocumentStore>
-> {
-	const workflowsStore = useWorkflowsStore();
-	const fallback = computed(() => {
-		// TODO: once usages outside of a component tree is eliminated,
-		// this can be replaced with useWorkflowId()
-		const fallbackWorkflowId = workflowsStore.workflowId;
-
-		return useWorkflowDocumentStore(createWorkflowDocumentId(fallbackWorkflowId));
-	});
-	const injected = inject(WorkflowDocumentStoreKey, null);
-
-	return computed(() => injected?.value ?? fallback.value);
+export function injectWorkflowDocumentStore() {
+	return inject(WorkflowDocumentStoreKey, null);
 }

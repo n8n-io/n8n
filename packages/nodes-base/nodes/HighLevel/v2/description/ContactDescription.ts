@@ -270,9 +270,6 @@ const createProperties: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		builderHint: {
-			propertyHint: 'To add notes to contacts, set additionalFields.notes',
-		},
 		options: [
 			{
 				displayName: 'Address',

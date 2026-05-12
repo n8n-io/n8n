@@ -1,7 +1,7 @@
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	createRunExecutionData,
-	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
 import type {
 	ITaskData,
@@ -229,7 +229,12 @@ export const waitingNodeTooltip = (
 	return '';
 };
 
-export { isTrimmedNodeExecutionData };
+/**
+ * Check whether node execution data contains a trimmed item.
+ */
+export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
+	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
+}
 
 /**
  * Check whether task data contains a trimmed item.

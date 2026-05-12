@@ -469,7 +469,7 @@ export class CanvasPage extends BasePage {
 
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.clickContextMenuAction('duplicate');
+		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
 	}
 
 	nodeConnections(): Locator {
@@ -702,8 +702,8 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId(`context-menu-item-${itemId}`);
 	}
 
-	async clickContextMenuAction(actionId: string): Promise<void> {
-		await this.getContextMenuItem(actionId).click();
+	async clickContextMenuAction(actionText: string): Promise<void> {
+		await this.page.getByTestId('context-menu').getByText(actionText).click();
 	}
 
 	async executeNodeFromContextMenu(nodeName: string): Promise<void> {
@@ -819,18 +819,12 @@ export class CanvasPage extends BasePage {
 			closeNDV = false,
 			exactMatch = false,
 			subcategory,
-			exactSubcategory = false,
-		}: {
-			closeNDV?: boolean;
-			exactMatch?: boolean;
-			subcategory?: string;
-			exactSubcategory?: boolean;
-		} = {},
+		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
 
 		if (subcategory) {
-			await this.nodeCreator.navigateToSubcategory(subcategory, { exact: exactSubcategory });
+			await this.nodeCreator.navigateToSubcategory(subcategory);
 		}
 
 		if (exactMatch) {
@@ -982,7 +976,7 @@ export class CanvasPage extends BasePage {
 
 	async deleteNodeFromContextMenu(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.clickContextMenuAction('delete');
+		await this.page.getByTestId('context-menu').getByText('Delete').click();
 	}
 
 	async hitDeleteAllNodes(): Promise<void> {

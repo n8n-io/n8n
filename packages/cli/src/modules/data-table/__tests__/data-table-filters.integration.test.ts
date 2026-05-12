@@ -577,9 +577,10 @@ describe('dataTable filters', () => {
 						});
 
 						// ASSERT
-						await expect(result).rejects.toThrow(DataTableValidationError);
 						await expect(result).rejects.toThrow(
-							`${condition.toUpperCase()} filter value cannot be null or undefined`,
+							new DataTableValidationError(
+								`${condition.toUpperCase()} filter value cannot be null or undefined`,
+							),
 						);
 					});
 
@@ -609,9 +610,10 @@ describe('dataTable filters', () => {
 						});
 
 						// ASSERT
-						await expect(result).rejects.toThrow(DataTableValidationError);
 						await expect(result).rejects.toThrow(
-							`${condition.toUpperCase()} filter value must be a string`,
+							new DataTableValidationError(
+								`${condition.toUpperCase()} filter value must be a string`,
+							),
 						);
 					});
 				},
@@ -1362,9 +1364,10 @@ describe('dataTable filters', () => {
 							});
 
 							// ASSERT
-							await expect(result).rejects.toThrow(DataTableValidationError);
 							await expect(result).rejects.toThrow(
-								`${condition.toUpperCase()} filter value cannot be null or undefined`,
+								new DataTableValidationError(
+									`${condition.toUpperCase()} filter value cannot be null or undefined`,
+								),
 							);
 						});
 

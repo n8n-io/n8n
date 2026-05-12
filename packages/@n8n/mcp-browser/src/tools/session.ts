@@ -61,7 +61,7 @@ function browserConnect(
 			}
 		},
 		getAffectedResources(_args, _context: ToolContext): AffectedResource[] {
-			return [];
+			return [{ toolGroup: 'browser', resource: 'browser', description: 'Connect to browser' }];
 		},
 	};
 }
@@ -96,7 +96,9 @@ function browserDisconnect(
 			}
 		},
 		getAffectedResources(_args, _context: ToolContext): AffectedResource[] {
-			return [];
+			return [
+				{ toolGroup: 'browser', resource: 'browser', description: 'Disconnect from browser' },
+			];
 		},
 	};
 }

@@ -6,7 +6,7 @@ import { N8nButton, N8nInlineTextEdit } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
 import { ref } from 'vue';
-import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
+import ToolSettingsContent from './ToolSettingsContent.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -20,7 +20,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 
-const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
+const contentRef = ref<InstanceType<typeof ToolSettingsContent> | null>(null);
 const isValid = ref(false);
 const nodeName = ref(props.data.node?.name ?? '');
 
@@ -76,7 +76,7 @@ function handleNodeNameUpdate(name: string) {
 		</template>
 		<template #content>
 			<div :class="$style.contentWrapper">
-				<NodeToolSettingsContent
+				<ToolSettingsContent
 					ref="contentRef"
 					:initial-node="data.node"
 					:existing-tool-names="data.existingToolNames"

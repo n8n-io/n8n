@@ -6,15 +6,13 @@ import {
 	DeleteDataTableRowsDto,
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import type express from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 
 import type { DataTableRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
@@ -22,14 +20,16 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-const handleError = (error: unknown) => {
+const handleError = (error: unknown, res: express.Response): express.Response => {
 	if (error instanceof DataTableNotFoundError) {
-		throw new NotFoundError(error.message);
+		return res.status(404).json({ message: error.message });
 	}
 	if (error instanceof DataTableValidationError) {
-		throw new BadRequestError(error.message);
+		return res.status(400).json({ message: error.message });
 	}
-
+	if (error instanceof Error) {
+		return res.status(400).json({ message: error.message });
+	}
 	throw error;
 };
 
@@ -47,26 +47,20 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
-type DataTableRowsHandlers = {
-	getDataTableRows: PublicAPIEndpoint<DataTableRequest.GetRows>;
-	insertDataTableRows: PublicAPIEndpoint<DataTableRequest.InsertRows>;
-	updateDataTableRows: PublicAPIEndpoint<DataTableRequest.UpdateRows>;
-	upsertDataTableRow: PublicAPIEndpoint<DataTableRequest.UpsertRow>;
-	deleteDataTableRows: PublicAPIEndpoint<DataTableRequest.DeleteRows>;
-};
-
-const dataTableRowsHandlers: DataTableRowsHandlers = {
+export = {
 	getDataTableRows: [
 		publicApiScope('dataTableRow:read'),
 		projectScope('dataTable:readRow', 'dataTable'),
 		validCursor,
-		async (req, res) => {
+		async (req: DataTableRequest.GetRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = PublicApiListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid query parameters',
+					});
 				}
 
 				const { offset, limit, filter, sortBy, search } = payload.data;
@@ -95,7 +89,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 					}),
 				});
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
@@ -103,13 +97,15 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 	insertDataTableRows: [
 		publicApiScope('dataTableRow:create'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.InsertRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = AddDataTableRowsDto.safeParse(req.body);
 				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
 				}
 
 				const projectId =
@@ -124,7 +120,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
@@ -132,13 +128,15 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 	updateDataTableRows: [
 		publicApiScope('dataTableRow:update'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.UpdateRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = UpdateDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
 				}
 
 				const projectId =
@@ -155,7 +153,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
@@ -163,13 +161,15 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 	upsertDataTableRow: [
 		publicApiScope('dataTableRow:upsert'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.UpsertRow, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = UpsertDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
 				}
 
 				const projectId =
@@ -186,7 +186,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
@@ -194,13 +194,15 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 	deleteDataTableRows: [
 		publicApiScope('dataTableRow:delete'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.DeleteRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = DeleteDataTableRowsDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid query parameters',
+					});
 				}
 
 				const projectId =
@@ -217,10 +219,8 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
 };
-
-export = dataTableRowsHandlers;

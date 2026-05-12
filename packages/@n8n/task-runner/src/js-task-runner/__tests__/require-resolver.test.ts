@@ -1,5 +1,6 @@
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 
+import { DisallowedModuleError } from '../errors/disallowed-module.error';
 import { createRequireResolver, type RequireResolverOpts } from '../require-resolver';
 
 describe('require resolver', () => {
@@ -44,8 +45,9 @@ describe('require resolver', () => {
 
 		it('should throw when requiring non-allowlisted external modules', () => {
 			const resolver = createRequireResolver(defaultOpts);
-			expect(() => resolver('express')).toThrow(ExecutionError);
-			expect(() => resolver('express')).toThrow('express');
+			expect(() => resolver('express')).toThrow(
+				new ExecutionError(new DisallowedModuleError('express')),
+			);
 		});
 
 		it('should allow all external modules when allowedExternalModules is "*"', () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { createThreadComponentRenderer } from './createThreadComponentRenderer';
+import { createComponentRenderer } from '@/__tests__/render';
 import type {
 	InstanceAiConfirmation,
 	InstanceAiToolCallState,
@@ -62,10 +62,7 @@ vi.mock('../components/InstanceAiQuestions.vue', () => ({
 }));
 
 vi.mock('../components/DomainAccessApproval.vue', () => ({
-	default: {
-		template: '<div />',
-		props: ['requestId', 'url', 'host', 'query', 'severity'],
-	},
+	default: { template: '<div />', props: ['requestId', 'url', 'host', 'severity'] },
 }));
 vi.mock('../components/GatewayResourceDecision.vue', () => ({
 	default: {
@@ -89,7 +86,7 @@ vi.mock('../components/PlanReviewPanel.vue', () => ({
 	default: { template: '<div />', props: ['plannedTasks', 'message', 'readOnly'] },
 }));
 
-const renderComponent = createThreadComponentRenderer(InstanceAiConfirmationPanel);
+const renderComponent = createComponentRenderer(InstanceAiConfirmationPanel);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -295,44 +292,6 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 							options: [],
 						},
 					],
-				}),
-			);
-		});
-	});
-
-	describe('continue confirmation', () => {
-		it('renders a single primary button and resolves as approved', async () => {
-			injectPendingConfirmation(store, {
-				requestId: 'req-continue',
-				severity: 'info',
-				message: 'Enter the values privately into n8n.',
-				inputType: 'continue',
-			});
-			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
-
-			const { getByTestId, queryByTestId } = renderComponent();
-
-			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
-			expect(queryByTestId('instance-ai-panel-confirm-deny')).toBeNull();
-
-			await userEvent.click(getByTestId('instance-ai-panel-continue'));
-
-			expect(confirmSpy).toHaveBeenCalledWith('req-continue', {
-				kind: 'approval',
-				approved: true,
-			});
-			expect(mockTelemetryTrack).toHaveBeenCalledWith(
-				'User finished providing input',
-				expect.objectContaining({
-					type: 'continue',
-					provided_inputs: [
-						{
-							label: 'Enter the values privately into n8n.',
-							options: ['continue'],
-							option_chosen: 'continue',
-						},
-					],
-					skipped_inputs: [],
 				}),
 			);
 		});

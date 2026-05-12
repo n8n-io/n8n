@@ -1,17 +1,16 @@
 import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
-import { ProjectRelationRepository, type AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
+import type express from 'express';
+import type { Response } from 'express';
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { UserRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
@@ -24,26 +23,20 @@ type Create = AuthenticatedRequest<{}, {}, InviteUsersRequestDto>;
 type Delete = UserRequest.Delete;
 type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto, {}>;
 
-type UsersHandlers = {
-	getUser: PublicAPIEndpoint<UserRequest.Get>;
-	getUsers: PublicAPIEndpoint<UserRequest.Get>;
-	createUser: PublicAPIEndpoint<Create>;
-	deleteUser: PublicAPIEndpoint<Delete>;
-	changeRole: PublicAPIEndpoint<ChangeRole>;
-};
-
-const usersHandlers: UsersHandlers = {
+export = {
 	getUser: [
 		validLicenseWithUserQuota,
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:read' }),
-		async (req, res) => {
+		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
 
 			const user = await getUser({ withIdentifier: id, includeRole });
 
 			if (!user) {
-				throw new NotFoundError(`Could not find user with id: ${id}`);
+				return res.status(404).json({
+					message: `Could not find user with id: ${id}`,
+				});
 			}
 
 			Container.get(EventService).emit('user-retrieved-user', {
@@ -58,7 +51,7 @@ const usersHandlers: UsersHandlers = {
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
 		validLicenseWithUserQuota,
 		validCursor,
-		async (req, res) => {
+		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false, projectId } = req.query;
 
 			await Container.get(UserService).assertGetUsersAccess(req.user, projectId);
@@ -91,10 +84,10 @@ const usersHandlers: UsersHandlers = {
 	],
 	createUser: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:create' }),
-		async (req, res) => {
+		async (req: Create, res: Response) => {
 			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
 			if (error) {
-				throw new BadRequestError(error.errors[0]?.message ?? 'Invalid request body');
+				return res.status(400).json(error.errors[0]);
 			}
 
 			const usersInvited = await Container.get(InvitationController).inviteUser(
@@ -107,7 +100,7 @@ const usersHandlers: UsersHandlers = {
 	],
 	deleteUser: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:delete' }),
-		async (req, res) => {
+		async (req: Delete, res: Response) => {
 			await Container.get(UsersController).deleteUser(req);
 
 			return res.status(204).send();
@@ -116,10 +109,12 @@ const usersHandlers: UsersHandlers = {
 	changeRole: [
 		isLicensed('feat:advancedPermissions'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:changeRole' }),
-		async (req, res) => {
+		async (req: ChangeRole, res: Response) => {
 			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {
-				throw new BadRequestError(validation.error.errors[0]?.message ?? 'Invalid request body');
+				return res.status(400).json({
+					message: validation.error.errors[0],
+				});
 			}
 
 			await Container.get(UsersController).changeGlobalRole(
@@ -133,5 +128,3 @@ const usersHandlers: UsersHandlers = {
 		},
 	],
 };
-
-export = usersHandlers;

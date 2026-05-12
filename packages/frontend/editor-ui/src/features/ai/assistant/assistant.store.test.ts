@@ -18,7 +18,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { VIEWS } from '@/app/constants';
-import { reactive, shallowRef } from 'vue';
+import { reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
@@ -28,7 +28,6 @@ import type { INodeUi } from '@/Interface';
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [] as INodeUi[],
-		workflowTriggerNodes: [] as INodeUi[],
 		name: '',
 		settings: {},
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -39,7 +38,6 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
-	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -457,9 +455,10 @@ describe('AI Assistant store', () => {
 
 	it('should call telemetry for opening assistant with build_with_ai source on empty canvas', () => {
 		const assistantStore = useAssistantStore();
+		const workflowsStore = useWorkflowsStore();
 
 		// Ensure canvas is empty
-		mockWorkflowDocumentStore.allNodes = [];
+		workflowsStore.workflow.nodes = [];
 
 		assistantStore.trackUserOpenedAssistant({
 			task: 'placeholder',
@@ -485,7 +484,7 @@ describe('AI Assistant store', () => {
 		const workflowsStore = useWorkflowsStore();
 
 		// Set workflow id so workflowDocumentStore is created
-		workflowsStore.workflowId = 'test-wf';
+		workflowsStore.workflow.id = 'test-wf';
 
 		// Add a node to the workflow
 		mockWorkflowDocumentStore.allNodes = [

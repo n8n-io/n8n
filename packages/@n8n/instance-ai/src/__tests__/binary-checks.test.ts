@@ -9,7 +9,6 @@ function makeWorkflow(overrides: Partial<WorkflowResponse> = {}): WorkflowRespon
 		id: 'wf-1',
 		name: 'Test Workflow',
 		active: false,
-		versionId: 'v-1',
 		nodes: [
 			{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 			{

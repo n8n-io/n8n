@@ -38,7 +38,11 @@ import {
 import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
@@ -49,10 +53,14 @@ import {
 } from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
+import { useCanvasStore } from '@/app/stores/canvas.store';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
 export const useActions = () => {
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
@@ -250,8 +258,9 @@ export const useActions = () => {
 
 	function shouldPrependManualTrigger(addedNodes: AddedNode[]): boolean {
 		const { selectedView, openSource } = useNodeCreatorStore();
+		const { workflowTriggerNodes } = useWorkflowsStore();
 		const hasTrigger = addedNodes.some((node) => useNodeTypesStore().isTriggerNode(node.type));
-		const workflowContainsTrigger = workflowDocumentStore.value.workflowTriggerNodes.length > 0;
+		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 
@@ -284,7 +293,7 @@ export const useActions = () => {
 
 	// AI-226: Prepend LLM Chain node when adding a language model
 	function shouldPrependLLMChain(addedNodes: AddedNode[]): boolean {
-		const canvasHasAINodes = workflowDocumentStore.value.aiNodes.length > 0;
+		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
 		if (canvasHasAINodes) return false;
 
 		return addedNodes.some((node) => {

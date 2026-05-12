@@ -4,10 +4,10 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
-import type { NodeCatalogService } from '@/node-catalog';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
+import type { WorkflowBuilderToolsService } from './workflow-builder-tools.service';
 
 const inputSchema = {
 	queries: z
@@ -30,7 +30,7 @@ const outputSchema = {
  */
 export const createSearchWorkflowNodesTool = (
 	user: User,
-	nodeCatalogService: NodeCatalogService,
+	workflowBuilderToolsService: WorkflowBuilderToolsService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
@@ -55,21 +55,14 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			const { results, queriesWithNoResults } = await nodeCatalogService.searchNodes(queries);
+			const result = await workflowBuilderToolsService.searchNodes(queries);
 
-			telemetryPayload.results = {
-				success: true,
-				data: {
-					queryCount: queries.length,
-					noResultQueryCount: queriesWithNoResults.length,
-					queriesWithNoResults,
-				},
-			};
+			telemetryPayload.results = { success: true, data: { queryCount: queries.length } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: results }],
-				structuredContent: { results },
+				content: [{ type: 'text', text: result }],
+				structuredContent: { results: result },
 			};
 		} catch (error) {
 			telemetryPayload.results = {

@@ -76,15 +76,6 @@ export class Jira implements INodeType {
 					},
 				},
 			},
-			{
-				name: 'jiraSoftwareCloudOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						jiraVersion: ['cloudOAuth2'],
-					},
-				},
-			},
 		],
 		properties: [
 			{
@@ -95,10 +86,6 @@ export class Jira implements INodeType {
 					{
 						name: 'Cloud',
 						value: 'cloud',
-					},
-					{
-						name: 'Cloud (OAuth2)',
-						value: 'cloudOAuth2',
 					},
 					{
 						name: 'Server (Self Hosted)',

@@ -61,7 +61,6 @@ const classes = computed(() =>
 		props.loading && $style.loading,
 		props.iconOnly && $style.iconOnly,
 		props.disabled && $style.disabled,
-		isDisabled.value && 'is-disabled',
 		props.class,
 	),
 );
@@ -180,9 +179,7 @@ const handleClick = (event: MouseEvent) => {
 			var(--button--shadow--hover);
 	}
 
-	&:active,
-	&[aria-expanded='true'],
-	:global([aria-expanded='true']) & {
+	&:active {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),

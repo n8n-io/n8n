@@ -11,7 +11,7 @@ import {
 	type NodeParameterValue,
 } from 'n8n-workflow';
 import { computed, reactive, watch, watchEffect } from 'vue';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
 	DEFAULT_MAX_CONDITIONS,
@@ -52,7 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const ndvStore = injectNDVStore();
+const ndvStore = useNDVStore();
 const { debounce } = useDebounce();
 
 const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });

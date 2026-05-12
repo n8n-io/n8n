@@ -1,5 +1,6 @@
 import { AddDataTableColumnDto, updateDataTableColumnSchema } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import type express from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -8,32 +9,13 @@ import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/da
 import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
 
 import type { DataTableRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { projectScope, publicApiScope } from '../../shared/middlewares/global.middleware';
 
-const handleError = (error: unknown) => {
-	if (
-		error instanceof DataTableColumnNameConflictError ||
-		error instanceof DataTableSystemColumnNameConflictError
-	) {
-		throw new ConflictError(error.message);
-	}
-
-	throw error;
-};
-
-type DataTableColumnsHandlers = {
-	listDataTableColumns: PublicAPIEndpoint<DataTableRequest.ListColumns>;
-	createDataTableColumn: PublicAPIEndpoint<DataTableRequest.CreateColumn>;
-	deleteDataTableColumn: PublicAPIEndpoint<DataTableRequest.DeleteColumn>;
-	updateDataTableColumn: PublicAPIEndpoint<DataTableRequest.UpdateColumn>;
-};
-
-const dataTableColumnsHandlers: DataTableColumnsHandlers = {
+export = {
 	listDataTableColumns: [
 		publicApiScope('dataTableColumn:read'),
 		projectScope('dataTable:readColumn', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.ListColumns, res: express.Response) => {
 			const { dataTableId } = req.params;
 			const projectId = await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 			return res.json(await Container.get(DataTableService).getColumns(dataTableId, projectId));
@@ -43,7 +25,7 @@ const dataTableColumnsHandlers: DataTableColumnsHandlers = {
 	createDataTableColumn: [
 		publicApiScope('dataTableColumn:create'),
 		projectScope('dataTable:writeColumn', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.CreateColumn, res: express.Response) => {
 			const { dataTableId } = req.params;
 			const payload = AddDataTableColumnDto.safeParse(req.body);
 			if (!payload.success) {
@@ -59,7 +41,13 @@ const dataTableColumnsHandlers: DataTableColumnsHandlers = {
 				);
 				return res.status(201).json(column);
 			} catch (error) {
-				return handleError(error);
+				if (
+					error instanceof DataTableColumnNameConflictError ||
+					error instanceof DataTableSystemColumnNameConflictError
+				) {
+					throw new ConflictError(error.message);
+				}
+				throw error;
 			}
 		},
 	],
@@ -67,7 +55,7 @@ const dataTableColumnsHandlers: DataTableColumnsHandlers = {
 	deleteDataTableColumn: [
 		publicApiScope('dataTableColumn:delete'),
 		projectScope('dataTable:writeColumn', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.DeleteColumn, res: express.Response) => {
 			const { dataTableId, columnId } = req.params;
 			const projectId = await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 			await Container.get(DataTableService).deleteColumn(dataTableId, projectId, columnId);
@@ -78,7 +66,7 @@ const dataTableColumnsHandlers: DataTableColumnsHandlers = {
 	updateDataTableColumn: [
 		publicApiScope('dataTableColumn:update'),
 		projectScope('dataTable:writeColumn', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.UpdateColumn, res: express.Response) => {
 			try {
 				const { dataTableId, columnId } = req.params;
 				const payload = updateDataTableColumnSchema.safeParse(req.body);
@@ -101,10 +89,14 @@ const dataTableColumnsHandlers: DataTableColumnsHandlers = {
 				const updatedColumn = await service.getColumnById({ projectId, dataTableId, columnId });
 				return res.json(updatedColumn);
 			} catch (error) {
-				return handleError(error);
+				if (
+					error instanceof DataTableColumnNameConflictError ||
+					error instanceof DataTableSystemColumnNameConflictError
+				) {
+					throw new ConflictError(error.message);
+				}
+				throw error;
 			}
 		},
 	],
 };
-
-export = dataTableColumnsHandlers;

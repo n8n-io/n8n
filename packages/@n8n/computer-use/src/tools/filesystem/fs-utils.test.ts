@@ -1,12 +1,7 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
-import {
-	buildFilesystemResource,
-	isLikelyBinaryContent,
-	resolveReadablePath,
-	resolveSafePath,
-} from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 import * as config from '../../config';
 
 jest.mock('node:fs/promises');
@@ -158,38 +153,6 @@ describe('resolveSafePath', () => {
 	});
 });
 
-describe('isLikelyBinaryContent', () => {
-	it('treats text as valid when a multibyte character crosses the sample boundary', () => {
-		const buffer = Buffer.concat([Buffer.alloc(8191, 'a'), Buffer.from('é')]);
-
-		expect(isLikelyBinaryContent(buffer)).toBe(false);
-	});
-
-	it('detects null bytes outside the sample boundary', () => {
-		const buffer = Buffer.concat([Buffer.alloc(8192, 'a'), Buffer.from([0])]);
-
-		expect(isLikelyBinaryContent(buffer)).toBe(true);
-	});
-});
-
-describe('resolveReadablePath', () => {
-	beforeEach(() => {
-		jest.resetAllMocks();
-		jest.mocked(fs.lstat).mockRejectedValue(enoent());
-	});
-
-	it('throws when a symlink resolves into an excluded directory segment', async () => {
-		mockRealpath([
-			[BASE, BASE],
-			[`${BASE}/link`, `${BASE}/node_modules`],
-		]);
-
-		await expect(resolveReadablePath(BASE, 'link/pkg/index.js')).rejects.toThrow(
-			'excluded from filesystem reads',
-		);
-	});
-});
-
 describe('buildFilesystemResource — settings self-protection', () => {
 	const settingsDir = config.getSettingsDir();
 	const settingsFile = config.getSettingsFilePath();
@@ -232,45 +195,5 @@ describe('buildFilesystemResource — settings self-protection', () => {
 			'Write file',
 		);
 		expect(result.resource).toBe('/base/src/index.ts');
-	});
-
-	it('throws for filesystemRead targeting an excluded directory segment', async () => {
-		mockRealpath([[BASE, BASE]]);
-
-		await expect(
-			buildFilesystemResource(BASE, 'node_modules/pkg/index.js', 'filesystemRead', 'Read file'),
-		).rejects.toThrow('excluded from filesystem reads');
-	});
-
-	it('throws for filesystemRead when a symlink targets an excluded directory segment', async () => {
-		mockRealpath([
-			[BASE, BASE],
-			[`${BASE}/link`, `${BASE}/node_modules`],
-		]);
-
-		await expect(
-			buildFilesystemResource(BASE, 'link/pkg/index.js', 'filesystemRead', 'Read file'),
-		).rejects.toThrow('excluded from filesystem reads');
-	});
-
-	it('matches excluded directory segments case-insensitively', async () => {
-		mockRealpath([[BASE, BASE]]);
-
-		await expect(
-			buildFilesystemResource(BASE, 'Node_Modules/pkg/index.js', 'filesystemRead', 'Read file'),
-		).rejects.toThrow('excluded from filesystem reads');
-	});
-
-	it('does not apply excluded segment policy to filesystemWrite resources', async () => {
-		mockRealpath([[BASE, BASE]]);
-
-		const result = await buildFilesystemResource(
-			BASE,
-			'dist/generated.js',
-			'filesystemWrite',
-			'Write generated file',
-		);
-
-		expect(result.resource).toBe('/base/dist/generated.js');
 	});
 });

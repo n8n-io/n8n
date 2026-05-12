@@ -19,7 +19,7 @@ describe('components', () => {
 					],
 				},
 				global: {
-					stubs: ['N8nIcon', 'ElTooltip', 'N8nIconButton', 'N8nLoading', 'N8nBadge'],
+					stubs: ['N8nIcon', 'ElTooltip', 'ElDropdown', 'ElDropdownMenu', 'ElDropdownItem'],
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -49,7 +49,7 @@ describe('components', () => {
 					],
 				},
 				global: {
-					stubs: ['N8nIcon', 'N8nIconButton', 'N8nLoading', 'N8nBadge'],
+					stubs: ['N8nIcon', 'ElDropdown', 'ElDropdownMenu', 'ElDropdownItem'],
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -73,7 +73,7 @@ describe('components', () => {
 					],
 				},
 				global: {
-					stubs: ['N8nIcon', 'N8nBadge', 'N8nIconButton', 'N8nLoading'],
+					stubs: ['N8nIcon', 'N8nBadge', 'ElDropdown', 'ElDropdownMenu', 'ElDropdownItem'],
 				},
 			});
 

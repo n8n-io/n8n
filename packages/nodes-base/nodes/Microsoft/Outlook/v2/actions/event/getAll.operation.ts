@@ -21,40 +21,6 @@ export const properties: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Include Recurring Event Instances',
-		name: 'includeRecurringInstances',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether to expand recurring events into individual instances within the specified date range. When disabled, recurring events are returned as a single series master event.',
-	},
-	{
-		displayName: 'Start Date',
-		name: 'startDateTime',
-		type: 'dateTime',
-		default: '',
-		required: true,
-		description: 'Start of the date range to retrieve event instances for',
-		displayOptions: {
-			show: {
-				includeRecurringInstances: [true],
-			},
-		},
-	},
-	{
-		displayName: 'End Date',
-		name: 'endDateTime',
-		type: 'dateTime',
-		default: '',
-		required: true,
-		description: 'End of the date range to retrieve event instances for',
-		displayOptions: {
-			show: {
-				includeRecurringInstances: [true],
-			},
-		},
-	},
 	...returnAllOrLimit,
 	{
 		displayName: 'Output',
@@ -95,11 +61,6 @@ export const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		displayOptions: {
-			show: {
-				includeRecurringInstances: [false],
-			},
-		},
 		options: [
 			{
 				displayName: 'Filter Query',
@@ -127,11 +88,8 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	const qs = {} as IDataObject;
 
 	const returnAll = this.getNodeParameter('returnAll', index);
+	const filters = this.getNodeParameter('filters', index, {});
 	const output = this.getNodeParameter('output', index) as string;
-	const includeRecurringInstances = this.getNodeParameter(
-		'includeRecurringInstances',
-		index,
-	) as boolean;
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
@@ -142,22 +100,15 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		qs.$select = 'id,subject,bodyPreview,start,end,organizer,attendees,webLink';
 	}
 
-	if (includeRecurringInstances) {
-		qs.startDateTime = this.getNodeParameter('startDateTime', index) as string;
-		qs.endDateTime = this.getNodeParameter('endDateTime', index) as string;
-	} else {
-		const filters = this.getNodeParameter('filters', index, {});
+	if (Object.keys(filters).length) {
+		const filterString: string[] = [];
 
-		if (Object.keys(filters).length) {
-			const filterString: string[] = [];
+		if (filters.custom) {
+			filterString.push(filters.custom as string);
+		}
 
-			if (filters.custom) {
-				filterString.push(filters.custom as string);
-			}
-
-			if (filterString.length) {
-				qs.$filter = filterString.join(' and ');
-			}
+		if (filterString.length) {
+			qs.$filter = filterString.join(' and ');
 		}
 	}
 
@@ -182,9 +133,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	const limit = this.getNodeParameter('limit', index, 0);
 
 	for (const calendarId of calendars) {
-		const endpoint = includeRecurringInstances
-			? `/calendars/${calendarId}/calendarView`
-			: `/calendars/${calendarId}/events`;
+		const endpoint = `/calendars/${calendarId}/events`;
 
 		if (returnAll) {
 			const response = await microsoftApiRequestAllItems.call(

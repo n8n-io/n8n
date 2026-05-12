@@ -45,11 +45,6 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
 		allLatestNodeTypes: [aiTransformNode, ...otherNodes],
-		getAllNodeTypes: vi.fn().mockReturnValue({
-			nodeTypes: {},
-			init: async () => {},
-			getByNameAndVersion: () => undefined,
-		}),
 	})),
 }));
 

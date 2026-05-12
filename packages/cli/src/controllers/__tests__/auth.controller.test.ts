@@ -153,36 +153,6 @@ describe('AuthController', () => {
 				body.password,
 			);
 			expect(authService.issueCookie).not.toHaveBeenCalled();
-			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
-				authenticationMethod: 'email',
-				userEmail: body.emailOrLdapLoginId,
-				reason: 'SSO is enabled, please log in with SSO',
-			});
-		});
-
-		it('should emit login failed event on invalid password if SSO is enabled', async () => {
-			const body = mock<LoginRequestDto>({
-				emailOrLdapLoginId: 'user@example.com',
-				password: 'wrong-password',
-			});
-
-			const req = mock<AuthenticatedRequest>({
-				body,
-			});
-			const res = mock<Response>();
-
-			emailAuthHandler.handleLogin.mockResolvedValue(undefined);
-			config.set('userManagement.authenticationMethod', 'oidc');
-
-			await expect(controller.login(req, res, body)).rejects.toThrowError(
-				new AuthError('SSO is enabled, please log in with SSO'),
-			);
-
-			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
-				authenticationMethod: 'email',
-				userEmail: body.emailOrLdapLoginId,
-				reason: 'SSO is enabled, please log in with SSO',
-			});
 		});
 
 		it('should allow owners to login with email if "OIDC" is the authentication method', async () => {
@@ -256,10 +226,10 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow(
-				'Invite links are not supported on this system, please use single sign on instead.',
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError(
+					'Invite links are not supported on this system, please use single sign on instead.',
+				),
 			);
 		});
 
@@ -295,9 +265,9 @@ describe('AuthController', () => {
 			});
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(false);
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(ForbiddenError);
-			await expect(promise).rejects.toThrow(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED),
+			);
 		});
 
 		it('throws a BadRequestError if the users are not found', async () => {
@@ -333,9 +303,9 @@ describe('AuthController', () => {
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([]);
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow('Invalid invite URL');
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid invite URL'),
+			);
 		});
 
 		it('throws a BadRequestError if the invitee already has a password', async () => {
@@ -380,10 +350,8 @@ describe('AuthController', () => {
 				}),
 			]);
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow(
-				'The invitation was likely either deleted or already claimed',
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('The invitation was likely either deleted or already claimed'),
 			);
 		});
 
@@ -431,9 +399,9 @@ describe('AuthController', () => {
 				}),
 			]);
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow('Invalid request');
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid request'),
+			);
 		});
 
 		it('returns the inviter if the invitation is valid', async () => {
@@ -580,9 +548,9 @@ describe('AuthController', () => {
 				.spyOn(userService, 'getInvitationIdsFromPayload')
 				.mockRejectedValue(new BadRequestError('Invalid invite URL'));
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow('Invalid invite URL');
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid invite URL'),
+			);
 		});
 
 		it('throws BadRequestError if JWT token payload is missing inviterId or inviteeId', async () => {
@@ -614,9 +582,9 @@ describe('AuthController', () => {
 				.spyOn(userService, 'getInvitationIdsFromPayload')
 				.mockRejectedValue(new BadRequestError('Invalid invite URL'));
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow('Invalid invite URL');
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid invite URL'),
+			);
 		});
 
 		it('throws BadRequestError if token is missing', async () => {
@@ -644,9 +612,9 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			const promise = authController.resolveSignupToken(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow('Token is required');
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Token is required'),
+			);
 		});
 	});
 });

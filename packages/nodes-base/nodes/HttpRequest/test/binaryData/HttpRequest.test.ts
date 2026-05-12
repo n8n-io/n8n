@@ -4,7 +4,7 @@ import nock from 'nock';
 describe('Test Binary Data Download', () => {
 	const baseUrl = 'https://dummy.domain';
 
-	beforeAll(() => {
+	beforeAll(async () => {
 		nock(baseUrl)
 			.persist()
 			.get('/path/to/image.png')

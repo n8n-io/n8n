@@ -1,7 +1,4 @@
-import type {
-	EncryptionKey as EncryptionKeyApiType,
-	EncryptionKeysSortOption,
-} from '@n8n/api-types';
+import type { EncryptionKeyResponseDto } from '@n8n/api-types';
 
 export type EncryptionKeyStatus = 'active' | 'inactive';
 
@@ -10,24 +7,18 @@ export type EncryptionKeyStatus = 'active' | 'inactive';
  * transitions from `active` to `inactive` its `updatedAt` is bumped, and that
  * transition cannot be undone.
  */
-export type EncryptionKey = Omit<EncryptionKeyApiType, 'status'> & {
+export type EncryptionKey = Omit<EncryptionKeyResponseDto, 'status'> & {
 	status: EncryptionKeyStatus;
 };
 
 export type EncryptionKeySortField = 'createdAt' | 'updatedAt' | 'status';
-export type EncryptionKeySortDirection = 'asc' | 'desc';
 
 export type EncryptionKeySort = {
 	field: EncryptionKeySortField;
-	direction: EncryptionKeySortDirection;
+	direction: 'asc' | 'desc';
 };
 
 export type EncryptionKeyFilters = {
-	/** ISO datetime, inclusive lower bound */
 	activatedFrom: string | null;
-	/** ISO datetime, inclusive upper bound */
 	activatedTo: string | null;
 };
-
-export const toApiSort = (sort: EncryptionKeySort): EncryptionKeysSortOption =>
-	`${sort.field}:${sort.direction}` as EncryptionKeysSortOption;

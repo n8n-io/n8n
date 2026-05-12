@@ -115,13 +115,13 @@ describe('SetupWorkflowCredentialsButton', () => {
 	});
 
 	it('renders', () => {
-		workflowsStore.workflowId = EMPTY_WORKFLOW.id;
+		workflowsStore.workflow = EMPTY_WORKFLOW;
 		setWorkflowDocumentStoreState(EMPTY_WORKFLOW.meta, []);
 		expect(() => renderComponent()).not.toThrow();
 	});
 
 	it('does not render the button if there are no nodes', () => {
-		workflowsStore.workflowId = EMPTY_WORKFLOW.id;
+		workflowsStore.workflow = EMPTY_WORKFLOW;
 		setWorkflowDocumentStoreState(EMPTY_WORKFLOW.meta, []);
 		const { queryByTestId } = renderComponent();
 		expect(queryByTestId('setup-credentials-button')).toBeNull();
@@ -141,7 +141,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 				},
 			],
 		};
-		workflowsStore.workflowId = workflowWithNodes.id;
+		workflowsStore.workflow = workflowWithNodes;
 		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
 		setupPanelStore.isFeatureEnabled = true;
 		focusPanelStore.focusPanelActive = true;
@@ -165,7 +165,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 				},
 			],
 		};
-		workflowsStore.workflowId = workflowWithNodes.id;
+		workflowsStore.workflow = workflowWithNodes;
 		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
 		setupPanelStore.isFeatureEnabled = true;
 		focusPanelStore.focusPanelActive = false;
@@ -189,7 +189,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 				},
 			],
 		};
-		workflowsStore.workflowId = workflowWithNodes.id;
+		workflowsStore.workflow = workflowWithNodes;
 		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
 		mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
 		setupPanelStore.isFeatureEnabled = false;
@@ -215,7 +215,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 				},
 			],
 		};
-		workflowsStore.workflowId = readyToRunWorkflow.id;
+		workflowsStore.workflow = readyToRunWorkflow;
 		setWorkflowDocumentStoreState(readyToRunWorkflow.meta, readyToRunWorkflow.nodes);
 
 		mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
@@ -234,7 +234,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 			meta: { templateId: 'ready-to-run-ai-workflow-v5', templateCredsSetupCompleted: false },
 			nodes: [],
 		};
-		workflowsStore.workflowId = templateWorkflow.id;
+		workflowsStore.workflow = templateWorkflow;
 		setWorkflowDocumentStoreState(templateWorkflow.meta, []);
 
 		mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
@@ -265,7 +265,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		};
 
 		it('opens modal when all conditions are met and setup panel is disabled', async () => {
-			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowsStore.workflow = workflowWithUnfilledCredentials;
 			setWorkflowDocumentStoreState(
 				workflowWithUnfilledCredentials.meta,
 				workflowWithUnfilledCredentials.nodes,
@@ -283,7 +283,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		});
 
 		it('opens setup panel when all conditions are met and setup panel is enabled', async () => {
-			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowsStore.workflow = workflowWithUnfilledCredentials;
 			setWorkflowDocumentStoreState(
 				workflowWithUnfilledCredentials.meta,
 				workflowWithUnfilledCredentials.nodes,
@@ -303,7 +303,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		});
 
 		it('does not open modal when not on template import route (no templateId in query)', () => {
-			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowsStore.workflow = workflowWithUnfilledCredentials;
 			setWorkflowDocumentStoreState(
 				workflowWithUnfilledCredentials.meta,
 				workflowWithUnfilledCredentials.nodes,
@@ -319,7 +319,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		});
 
 		it('does not open modal when feature flag is disabled', () => {
-			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowsStore.workflow = workflowWithUnfilledCredentials;
 			setWorkflowDocumentStoreState(
 				workflowWithUnfilledCredentials.meta,
 				workflowWithUnfilledCredentials.nodes,
@@ -339,7 +339,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 				...workflowWithUnfilledCredentials,
 				meta: { templateId: '123', templateCredsSetupCompleted: true },
 			};
-			workflowsStore.workflowId = completedWorkflow.id;
+			workflowsStore.workflow = completedWorkflow;
 			setWorkflowDocumentStoreState(completedWorkflow.meta, completedWorkflow.nodes);
 			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
 			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
@@ -356,7 +356,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 				...workflowWithUnfilledCredentials,
 				meta: {},
 			};
-			workflowsStore.workflowId = nonTemplateWorkflow.id;
+			workflowsStore.workflow = nonTemplateWorkflow;
 			setWorkflowDocumentStoreState(nonTemplateWorkflow.meta, nonTemplateWorkflow.nodes);
 			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
 			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
@@ -369,7 +369,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		});
 
 		it('does not open modal when all credentials are already filled', () => {
-			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowsStore.workflow = workflowWithUnfilledCredentials;
 			setWorkflowDocumentStoreState(
 				workflowWithUnfilledCredentials.meta,
 				workflowWithUnfilledCredentials.nodes,
@@ -385,7 +385,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		});
 
 		it('does not open modal for ready-to-run workflows', () => {
-			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowsStore.workflow = workflowWithUnfilledCredentials;
 			setWorkflowDocumentStoreState(
 				workflowWithUnfilledCredentials.meta,
 				workflowWithUnfilledCredentials.nodes,

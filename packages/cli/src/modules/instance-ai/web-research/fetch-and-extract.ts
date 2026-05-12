@@ -72,8 +72,7 @@ export async function fetchAndExtract(
 			});
 		} finally {
 			clearTimeout(timeout);
-			// Fire-and-forget — awaiting Agent.close() deadlocks against an unread body.
-			void dispatcher.close().catch(() => {});
+			await dispatcher.close();
 		}
 
 		// Follow redirects manually so each hop is SSRF-checked
@@ -225,34 +224,19 @@ async function extractPdf(
 	maxContentLength: number,
 ): Promise<FetchedPage> {
 	// Dynamic import to avoid loading pdf-parse unless needed
-	const { PDFParse } = await import('pdf-parse');
-	const parser = new PDFParse({ data: body });
-	let textResult;
-	let title = '';
-	try {
-		textResult = await parser.getText();
-		try {
-			const infoResult = await parser.getInfo();
-			const titleField: unknown = infoResult.info?.Title;
-			if (typeof titleField === 'string') title = titleField;
-		} catch {
-			// Metadata is decorative — fall through with empty title rather than
-			// dropping the successfully extracted text.
-		}
-	} finally {
-		await parser.destroy();
-	}
+	const pdfParse = (await import('pdf-parse')).default;
+	const result = await pdfParse(body);
 
-	const truncated = textResult.text.length > maxContentLength;
-	const content = truncated ? textResult.text.slice(0, maxContentLength) : textResult.text;
+	const truncated = result.text.length > maxContentLength;
+	const content = truncated ? result.text.slice(0, maxContentLength) : result.text;
 
 	return {
 		url,
 		finalUrl,
-		title,
+		title: result.info?.Title ?? '',
 		content,
 		truncated,
-		contentLength: textResult.text.length,
+		contentLength: result.text.length,
 	};
 }
 

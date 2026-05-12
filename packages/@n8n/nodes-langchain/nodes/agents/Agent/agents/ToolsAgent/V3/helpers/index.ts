@@ -10,6 +10,6 @@ export { runAgent } from './runAgent';
 
 export { finalizeResult } from './finalizeResult';
 
-export { executeBatch, type AgentMemoryHitCounters } from './executeBatch';
+export { executeBatch } from './executeBatch';
 
 export { checkMaxIterations } from './checkMaxIterations';

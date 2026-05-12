@@ -108,7 +108,7 @@ describe('WorkflowSettingsVue', () => {
 			releaseChannel: 'stable',
 		});
 		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-		workflowsStore.setWorkflowId('1');
+		workflowsStore.workflowId = '1';
 		workflowDocumentStore.setName('Test Workflow');
 		// Populate workflowsById to mark workflow as existing (not new)
 		const testWorkflow = createTestWorkflow({
@@ -968,11 +968,11 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	describe('Redaction Policy', () => {
-		it('should show locked redaction policy when licensed but user lacks updateRedactionSetting scope', async () => {
-			const { getByTestId } = createComponent({ pinia });
+		it('should not render redaction policy when env feature flag is missing', async () => {
+			const { queryByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			expect(getByTestId('workflow-settings-redaction-policy')).toBeInTheDocument();
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
 		});
 
 		it('should not render redaction policy when redaction module is inactive', async () => {
@@ -995,20 +995,13 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
 		});
 
-		it('should disable redaction dropdowns when user lacks updateRedactionSetting scope', async () => {
+		it('should not render redaction policy when user lacks updateRedactionSetting scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
-			const { getByTestId } = createComponent({ pinia });
+			const { queryByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			const productionCombobox = within(
-				getByTestId('workflow-settings-redact-production-select'),
-			).getByRole('combobox');
-			const manualCombobox = within(
-				getByTestId('workflow-settings-redact-manual-select'),
-			).getByRole('combobox');
-			expect(productionCombobox).toBeDisabled();
-			expect(manualCombobox).toBeDisabled();
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
 		});
 
 		it('should render redaction policy when module is active and user has scope', async () => {

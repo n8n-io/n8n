@@ -1,13 +1,12 @@
 import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Response } from 'express';
 
 import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { VariablesRequest } from '@/requests';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
@@ -15,21 +14,14 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { paginateArray } from '../../shared/services/pagination.service';
 
-type VariablesHandlers = {
-	createVariable: PublicAPIEndpoint<AuthenticatedRequest>;
-	updateVariable: PublicAPIEndpoint<AuthenticatedRequest<{ id: string }>>;
-	deleteVariable: PublicAPIEndpoint<AuthenticatedRequest<{ id: string }>>;
-	getVariables: PublicAPIEndpoint<VariablesRequest.GetAll>;
-};
-
-const variablesHandlers: VariablesHandlers = {
+export = {
 	createVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:create' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
+				return res.status(400).json(payload.error.errors[0]);
 			}
 			await Container.get(VariablesController).createVariable(req, res, payload.data);
 
@@ -39,10 +31,10 @@ const variablesHandlers: VariablesHandlers = {
 	updateVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
 			const payload = UpdateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
+				return res.status(400).json(payload.error.errors[0]);
 			}
 			await Container.get(VariablesController).updateVariable(req, res, payload.data);
 
@@ -52,7 +44,7 @@ const variablesHandlers: VariablesHandlers = {
 	deleteVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);
 
 			return res.status(204).send();
@@ -62,7 +54,7 @@ const variablesHandlers: VariablesHandlers = {
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
 		validCursor,
-		async (req, res) => {
+		async (req: VariablesRequest.GetAll, res: Response) => {
 			const { offset = 0, limit = 100, projectId, state } = req.query;
 
 			const variables = await Container.get(VariablesService).getAllForUser(req.user, {
@@ -74,5 +66,3 @@ const variablesHandlers: VariablesHandlers = {
 		},
 	],
 };
-
-export = variablesHandlers;

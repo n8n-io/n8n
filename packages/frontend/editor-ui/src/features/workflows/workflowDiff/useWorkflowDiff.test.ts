@@ -17,17 +17,15 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	}),
 }));
 
-const mockDocumentStore = vi.hoisted(() => ({
-	createWorkflowObject: vi.fn().mockReturnValue({
-		id: 'test-workflow',
-		nodes: [],
-		connections: {},
-	}),
-}));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: () => mockDocumentStore,
+	useWorkflowDocumentStore: () => ({
+		createWorkflowObject: vi.fn().mockReturnValue({
+			id: 'test-workflow',
+			nodes: [],
+			connections: {},
+		}),
+	}),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
-	injectWorkflowDocumentStore: () => ({ value: mockDocumentStore }),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({

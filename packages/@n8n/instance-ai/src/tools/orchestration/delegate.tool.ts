@@ -204,7 +204,6 @@ export async function startDetachedDelegateTask(
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
 						waitForCorrection,
-						onActivity: () => context.touchBackgroundTask?.(taskId),
 						llmStepTraceHooks,
 					});
 
@@ -357,7 +356,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 							threadId: context.threadId,
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
-							onActivity: context.touchRun,
 							llmStepTraceHooks,
 						});
 					});

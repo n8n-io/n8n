@@ -267,7 +267,7 @@ function registerAuthenticationHooks() {
 		});
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
-		await settingsStore.getModuleSettings();
+		void settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();
 	});
 

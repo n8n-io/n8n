@@ -43,7 +43,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.setWorkflowId(workflow.id);
+	workflowsStore.workflow = workflow;
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.setNodes(workflow.nodes);
 	workflowDocumentStore.setConnections(workflow.connections);

@@ -52,7 +52,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.page.getByTestId('chat-model-selector-credential');
+		return this.getModelSelectorButton().locator('span.n8n-text').first();
 	}
 
 	getChatInput(): Locator {

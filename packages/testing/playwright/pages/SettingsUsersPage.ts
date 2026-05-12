@@ -69,15 +69,11 @@ export class SettingsUsersPage extends BasePage {
 
 	async selectAccountType(email: string, type: 'Admin' | 'Member') {
 		await this.clickAccountType(email);
-		await this.page
-			.getByRole('menu')
-			.filter({ visible: true })
-			.getByRole('menuitem', { name: new RegExp(`^${type}\\b`) })
-			.click();
+		await this.page.getByRole('menuitem', { name: type }).click();
 	}
 
 	async openActions(email: string) {
-		await this.getRow(email).getByTestId('action-toggle').getByRole('button').click();
+		await this.getRow(email).getByTestId('action-toggle').click();
 	}
 
 	async clickDeleteUser(email: string) {

@@ -6,14 +6,7 @@ import ResourceFeatureCard from '../ResourceFeatureCard.vue';
 import type { ResourceItem } from '../../data/resourceCenterData';
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: () => ({
-		getNodeType: vi.fn(() => null),
-		getAllNodeTypes: vi.fn().mockReturnValue({
-			nodeTypes: {},
-			init: async () => {},
-			getByNameAndVersion: () => undefined,
-		}),
-	}),
+	useNodeTypesStore: () => ({ getNodeType: vi.fn(() => null) }),
 }));
 
 const readyToRunItem: ResourceItem = {

@@ -17,10 +17,6 @@ import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -714,10 +710,9 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
-			workflowDocumentStore.setNodes([
+			workflowsStore.workflow.nodes = [
 				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
-			]);
+			];
 
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
@@ -744,10 +739,9 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
-			workflowDocumentStore.setNodes([
+			workflowsStore.workflow.nodes = [
 				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			]);
+			];
 
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
@@ -774,10 +768,9 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			const docStore2 = useWorkflowDocumentStore(createWorkflowDocumentId(''));
-			docStore2.setNodes([
+			workflowsStore.workflow.nodes = [
 				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			]);
+			];
 
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });

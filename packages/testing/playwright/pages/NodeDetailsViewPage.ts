@@ -30,10 +30,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-credentials-empty-state');
 	}
 
-	getNodeCredentialsQuickConnectEmptyState() {
-		return this.container.getByTestId('quick-connect-empty-state');
-	}
-
 	credentialDropdownCreateNewCredential() {
 		return this.page.getByText('Create new credential');
 	}
@@ -438,7 +434,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').getByRole('button').click();
+		await selectColumn.getByTestId('action-toggle').click();
 		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
 		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
 	}

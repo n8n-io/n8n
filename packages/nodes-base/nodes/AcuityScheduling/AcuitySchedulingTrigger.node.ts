@@ -8,7 +8,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { verifySignature } from './AcuitySchedulingTriggerHelpers';
 import { acuitySchedulingApiRequest } from './GenericFunctions';
 
 export class AcuitySchedulingTrigger implements INodeType {
@@ -162,12 +161,6 @@ export class AcuitySchedulingTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		if (!(await verifySignature.call(this))) {
-			const res = this.getResponseObject();
-			res.status(401).send('Unauthorized').end();
-			return { noWebhookResponse: true };
-		}
-
 		const req = this.getRequestObject();
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;

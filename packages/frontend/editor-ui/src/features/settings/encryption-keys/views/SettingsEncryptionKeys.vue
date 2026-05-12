@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, shallowRef, watch } from 'vue';
-import { parseDate, type CalendarDate } from '@internationalized/date';
+import { parseDate } from '@internationalized/date';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nAlertDialog,
+	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nDateRangePicker,
@@ -17,10 +18,11 @@ import {
 	type DateRange,
 	type DateValue,
 } from '@n8n/design-system';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
+import { useClipboard } from '@/app/composables/useClipboard';
 
 import { useEncryptionKeysStore } from '../encryption-keys.store';
 import type { EncryptionKey, EncryptionKeySortField } from '../encryption-keys.types';
@@ -28,23 +30,17 @@ import type { EncryptionKey, EncryptionKeySortField } from '../encryption-keys.t
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const { showMessage, showError } = useToast();
+const clipboard = useClipboard();
 const store = useEncryptionKeysStore();
 
 const DOCS_URL = 'https://docs.n8n.io/hosting/configuration/encryption-keys/';
-
-const SORT_FIELDS: readonly EncryptionKeySortField[] = ['createdAt', 'updatedAt', 'status'];
-
-// Drives the date-input segment order in the picker (e.g. dd/mm/yyyy vs mm/dd/yyyy).
-// Falls back to a sensible default if the browser does not expose a language.
-const browserLocale =
-	typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-GB';
 
 const isConfirmRotateOpen = ref(false);
 
 const sortOptions = computed<Array<{ value: EncryptionKeySortField; label: string }>>(() => [
 	{ value: 'createdAt', label: i18n.baseText('settings.encryptionKeys.sortBy.activated') },
 	{ value: 'updatedAt', label: i18n.baseText('settings.encryptionKeys.sortBy.archived') },
-	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.status') },
+	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.type') },
 ]);
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -73,7 +69,7 @@ const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
 		minWidth: 220,
 	},
 	{
-		title: i18n.baseText('settings.encryptionKeys.column.status'),
+		title: i18n.baseText('settings.encryptionKeys.column.type'),
 		key: 'status',
 		value: (row) => row.status,
 		minWidth: 120,
@@ -95,25 +91,14 @@ const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
 const archiveDate = (key: EncryptionKey): string | null =>
 	key.status === 'inactive' ? key.updatedAt : null;
 
-const tableOptions = ref<TableOptions>({
-	page: 0,
-	itemsPerPage: 25,
-	sortBy: [{ id: 'createdAt', desc: true }],
-});
+const visibleKeys = computed(() => store.visibleKeys);
 
-const isSortField = (id: string): id is EncryptionKeySortField =>
-	(SORT_FIELDS as readonly string[]).includes(id);
+const pageState = ref({ page: 1, itemsPerPage: 25 });
 
 const sortByModel = computed<EncryptionKeySortField>({
 	get: () => store.sort.field,
 	set: (field: EncryptionKeySortField) => {
 		store.setSort({ field, direction: store.sort.direction });
-		tableOptions.value = {
-			...tableOptions.value,
-			page: 0,
-			sortBy: [{ id: field, desc: store.sort.direction === 'desc' }],
-		};
-		void refetch();
 	},
 });
 
@@ -122,9 +107,7 @@ const isFilterOpen = ref(false);
 const stringToDateValue = (value: string | null): DateValue | undefined => {
 	if (!value) return undefined;
 	try {
-		// `value` is an ISO datetime in the store, but the picker reads only
-		// the calendar-day component. Slice off the time portion before parsing.
-		return parseDate(value.slice(0, 10));
+		return parseDate(value);
 	} catch {
 		return undefined;
 	}
@@ -132,26 +115,6 @@ const stringToDateValue = (value: string | null): DateValue | undefined => {
 
 const dateValueToString = (value: DateValue | undefined): string | null =>
 	value ? value.toString() : null;
-
-/**
- * Convert a local-calendar day (`YYYY-MM-DD`) into the start-of-day instant
- * in the user's local timezone, expressed as ISO. Without `Z`, `new Date(...)`
- * parses a local-time wall clock — which is what we want here.
- */
-const localDayToIsoStart = (day: string) => new Date(`${day}T00:00:00`).toISOString();
-
-/**
- * Convert a local-calendar day to the end-of-day instant (23:59:59.999) in the
- * user's local timezone, expressed as ISO. Used as the inclusive upper bound
- * so a single-day filter `from=to=2026-04-21` includes all keys created during
- * the user's local 2026-04-21.
- */
-const localDayToIsoEnd = (day: string) => {
-	const d = new Date(`${day}T00:00:00`);
-	d.setDate(d.getDate() + 1);
-	d.setMilliseconds(d.getMilliseconds() - 1);
-	return d.toISOString();
-};
 
 const draftRange = shallowRef<DateRange>({
 	start: stringToDateValue(store.filters.activatedFrom),
@@ -173,54 +136,18 @@ const hasActiveFilter = computed(
 	() => store.filters.activatedFrom !== null || store.filters.activatedTo !== null,
 );
 
-const refetch = async () => {
-	try {
-		await store.fetchKeys();
-	} catch (error) {
-		showError(error, i18n.baseText('settings.encryptionKeys.loadError'));
-	}
-};
-
-const onUpdateOptions = async (next: TableOptions) => {
-	tableOptions.value = next;
-	// Only forward sort/page-size changes when they actually changed, otherwise
-	// the store's reset-to-page-0 side effects would silently override an
-	// in-flight page change.
-	if (store.itemsPerPage !== next.itemsPerPage) {
-		store.setItemsPerPage(next.itemsPerPage);
-	}
-	if (next.sortBy.length > 0) {
-		const first = next.sortBy[0];
-		const field = isSortField(first.id) ? first.id : 'createdAt';
-		const direction = first.desc ? 'desc' : 'asc';
-		if (store.sort.field !== field || store.sort.direction !== direction) {
-			store.setSort({ field, direction });
-		}
-	}
-	// Apply page last so the user's selected page wins over any reset side effect.
-	store.setPage(next.page);
-	await refetch();
-};
-
-const onApplyFilter = async () => {
-	const startDay = dateValueToString(draftRange.value.start as CalendarDate | undefined);
-	const endDay = dateValueToString(draftRange.value.end as CalendarDate | undefined);
-
+const onApplyFilter = () => {
 	store.setFilters({
-		activatedFrom: startDay ? localDayToIsoStart(startDay) : null,
-		activatedTo: endDay ? localDayToIsoEnd(endDay) : null,
+		activatedFrom: dateValueToString(draftRange.value.start),
+		activatedTo: dateValueToString(draftRange.value.end),
 	});
-	tableOptions.value = { ...tableOptions.value, page: 0 };
 	isFilterOpen.value = false;
-	await refetch();
 };
 
-const onClearFilter = async () => {
+const onClearFilter = () => {
 	store.resetFilters();
-	tableOptions.value = { ...tableOptions.value, page: 0 };
 	seedDraftFromStore();
 	isFilterOpen.value = false;
-	await refetch();
 };
 
 const openRotateConfirm = () => {
@@ -236,12 +163,6 @@ const closeRotateConfirm = () => {
 const onConfirmRotate = async () => {
 	try {
 		await store.rotateKey();
-		// Sync table chrome with the store's reset to page 0 / createdAt:desc.
-		tableOptions.value = {
-			...tableOptions.value,
-			page: 0,
-			sortBy: [{ id: 'createdAt', desc: true }],
-		};
 		isConfirmRotateOpen.value = false;
 		showMessage({
 			type: 'success',
@@ -252,9 +173,21 @@ const onConfirmRotate = async () => {
 	}
 };
 
+const copyKeyId = async (id: string) => {
+	await clipboard.copy(id);
+	showMessage({
+		type: 'success',
+		title: i18n.baseText('settings.encryptionKeys.copyId.success'),
+	});
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.encryptionKeys.title'));
-	await refetch();
+	try {
+		await store.fetchKeys();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.encryptionKeys.loadError'));
+	}
 });
 </script>
 
@@ -266,18 +199,15 @@ onMounted(async () => {
 			</N8nHeading>
 			<N8nText color="text-base">
 				{{ i18n.baseText('settings.encryptionKeys.description') }}
-				<N8nLink theme="text" :href="DOCS_URL" new-window underline>
-					<span :class="$style.docsLinkLabel">
-						{{ i18n.baseText('settings.encryptionKeys.description.docsLink') }}
-						<N8nIcon icon="arrow-up-right" size="small" />
-					</span>
+				<N8nLink :href="DOCS_URL" new-window>
+					{{ i18n.baseText('settings.encryptionKeys.description.docsLink') }}
 				</N8nLink>
 			</N8nText>
 		</header>
 
 		<div :class="$style.controls">
 			<div :class="$style.sortControl">
-				<N8nText tag="label" color="text-light" :class="$style.sortLabel">
+				<N8nText tag="label" color="text-light" size="small" :class="$style.sortLabel">
 					{{ i18n.baseText('settings.encryptionKeys.sortBy.label') }}
 				</N8nText>
 				<N8nSelect
@@ -295,12 +225,12 @@ onMounted(async () => {
 				</N8nSelect>
 			</div>
 
-			<N8nDateRangePicker v-model="draftRange" v-model:open="isFilterOpen" :locale="browserLocale">
+			<N8nDateRangePicker v-model="draftRange" v-model:open="isFilterOpen">
 				<template #trigger>
 					<N8nIconButton
 						icon="funnel"
-						variant="outline"
-						size="xlarge"
+						type="tertiary"
+						size="medium"
 						data-testid="encryption-keys-filter-button"
 						:title="i18n.baseText('settings.encryptionKeys.filter.title')"
 					/>
@@ -327,8 +257,8 @@ onMounted(async () => {
 			</N8nDateRangePicker>
 
 			<N8nButton
-				variant="solid"
-				size="xlarge"
+				type="primary"
+				size="medium"
 				:loading="store.isRotating"
 				data-testid="encryption-keys-rotate-button"
 				@click="openRotateConfirm"
@@ -343,30 +273,32 @@ onMounted(async () => {
 
 		<div :class="$style.tableWrapper">
 			<N8nDataTableServer
-				v-model:sort-by="tableOptions.sortBy"
-				v-model:page="tableOptions.page"
-				v-model:items-per-page="tableOptions.itemsPerPage"
+				v-model:page="pageState.page"
+				v-model:items-per-page="pageState.itemsPerPage"
 				:headers="headers"
-				:items="store.items"
-				:items-length="store.totalCount"
+				:items="visibleKeys"
+				:items-length="visibleKeys.length"
 				:loading="store.isLoading"
 				:page-sizes="[10, 25, 50]"
 				data-testid="encryption-keys-table"
-				@update:options="onUpdateOptions"
 			>
 				<template #[`item.id`]="{ item }">
-					<code :class="$style.keyValue">{{ maskId(item.id) }}</code>
+					<div :class="$style.keyCell">
+						<code :class="$style.keyValue">{{ maskId(item.id) }}</code>
+						<N8nIconButton
+							icon="copy"
+							type="tertiary"
+							size="mini"
+							data-testid="encryption-keys-copy-id-button"
+							:title="i18n.baseText('settings.encryptionKeys.copyId.success')"
+							@click="copyKeyId(item.id)"
+						/>
+					</div>
 				</template>
 
 				<template #[`item.status`]="{ item }">
-					<span :class="$style.statusCell">
-						<N8nIcon
-							v-if="item.status === 'active'"
-							icon="status-completed"
-							color="success"
-							size="large"
-						/>
-						<span v-else :class="$style.statusDot" aria-hidden="true" />
+					<N8nBadge :theme="item.status === 'active' ? 'success' : 'default'" size="small">
+						<N8nIcon :icon="item.status === 'active' ? 'circle-check' : 'circle'" size="xsmall" />
 						{{
 							i18n.baseText(
 								item.status === 'active'
@@ -374,7 +306,7 @@ onMounted(async () => {
 									: 'settings.encryptionKeys.status.inactive',
 							)
 						}}
-					</span>
+					</N8nBadge>
 				</template>
 
 				<template #[`item.createdAt`]="{ item }">
@@ -452,31 +384,16 @@ onMounted(async () => {
 	position: relative;
 }
 
+.keyCell {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .keyValue {
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	font-size: var(--font-size--sm);
 	letter-spacing: 0.02em;
-}
-
-.statusCell {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.statusDot {
-	display: inline-block;
-	width: var(--font-size--md);
-	height: var(--font-size--md);
-	border-radius: 50%;
-	background-color: var(--text-color--subtler);
-	flex-shrink: 0;
-}
-
-.docsLinkLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
 }
 
 .rotateIcon {

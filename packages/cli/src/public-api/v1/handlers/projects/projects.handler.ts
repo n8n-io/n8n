@@ -9,14 +9,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
+import type { Response } from 'express';
 
 import { ProjectController } from '@/controllers/project.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import type { PaginatedRequest } from '@/public-api/types';
 import { ProjectService } from '@/services/project.service.ee';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
@@ -25,31 +25,14 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type GetAll = PaginatedRequest;
-type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & GetAll;
-
-type ProjectHandlers = {
-	createProject: PublicAPIEndpoint<AuthenticatedRequest>;
-	updateProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
-	deleteProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
-	getProjects: PublicAPIEndpoint<GetAll>;
-	getProjectUsers: PublicAPIEndpoint<GetProjectUsersRequest>;
-	addUsersToProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
-	changeUserRoleInProject: PublicAPIEndpoint<
-		AuthenticatedRequest<{ projectId: string; userId: string }>
-	>;
-	deleteUserFromProject: PublicAPIEndpoint<
-		AuthenticatedRequest<{ projectId: string; userId: string }>
-	>;
-};
-
-const projectHandlers: ProjectHandlers = {
+export = {
 	createProject: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:create' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateProjectDto.safeParse(req.body);
 			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
+				return res.status(400).json(payload.error.errors[0]);
 			}
 
 			const project = await Container.get(ProjectController).createProject(req, res, payload.data);
@@ -60,10 +43,10 @@ const projectHandlers: ProjectHandlers = {
 	updateProject: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = UpdateProjectWithRelationsDto.safeParse(req.body);
 			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
+				return res.status(400).json(payload.error.errors[0]);
 			}
 
 			await Container.get(ProjectController).updateProject(
@@ -79,10 +62,10 @@ const projectHandlers: ProjectHandlers = {
 	deleteProject: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:delete' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const query = DeleteProjectDto.safeParse(req.query);
 			if (query.error) {
-				throw new BadRequestError(query.error.errors[0].message);
+				return res.status(400).json(query.error.errors[0]);
 			}
 
 			await Container.get(ProjectController).deleteProject(
@@ -99,7 +82,7 @@ const projectHandlers: ProjectHandlers = {
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:list' }),
 		validCursor,
-		async (req, res) => {
+		async (req: GetAll, res: Response) => {
 			const { offset = 0, limit = 100 } = req.query;
 
 			const [projects, count] = await Container.get(ProjectRepository).findAndCount({
@@ -121,63 +104,77 @@ const projectHandlers: ProjectHandlers = {
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
 		validCursor,
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ projectId: string }> & GetAll, res: Response) => {
 			const { projectId } = req.params;
 			const offset = Number(req.query.offset) || 0;
 			const limit = Number(req.query.limit) || 100;
 
-			const projectService = Container.get(ProjectService);
-			const project = await projectService.getProjectWithScope(req.user, projectId, [
-				'project:list',
-			]);
-			if (!project) {
-				throw new NotFoundError(`Could not find project with ID "${projectId}"`);
+			try {
+				const projectService = Container.get(ProjectService);
+				const project = await projectService.getProjectWithScope(req.user, projectId, [
+					'project:list',
+				]);
+				if (!project) {
+					throw new NotFoundError(`Could not find project with ID "${projectId}"`);
+				}
+
+				const projectRelationRepository = Container.get(ProjectRelationRepository);
+				const [relations, count] = await projectRelationRepository.findAndCount({
+					where: { projectId },
+					relations: { user: true, role: true },
+					skip: offset,
+					take: limit,
+				});
+
+				const memberFields = [
+					'id',
+					'email',
+					'firstName',
+					'lastName',
+					'createdAt',
+					'updatedAt',
+				] as const;
+				const data = relations.map((relation) => ({
+					...pick(relation.user, memberFields),
+					role: relation.role?.slug ?? null,
+				}));
+
+				return res.json({
+					data,
+					nextCursor: encodeNextCursor({
+						offset,
+						limit,
+						numberOfTotalRecords: count,
+					}),
+				});
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).json({ message: error.message });
+				}
+				throw error;
 			}
-
-			const projectRelationRepository = Container.get(ProjectRelationRepository);
-			const [relations, count] = await projectRelationRepository.findAndCount({
-				where: { projectId },
-				relations: { user: true, role: true },
-				skip: offset,
-				take: limit,
-			});
-
-			const memberFields = [
-				'id',
-				'email',
-				'firstName',
-				'lastName',
-				'createdAt',
-				'updatedAt',
-			] as const;
-			const data = relations.map((relation) => ({
-				...pick(relation.user, memberFields),
-				role: relation.role?.slug ?? null,
-			}));
-
-			return res.json({
-				data,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
 		},
 	],
 	addUsersToProject: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = AddUsersToProjectDto.safeParse(req.body);
 			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
+				return res.status(400).json(payload.error.errors[0]);
 			}
 
-			await Container.get(ProjectService).addUsersToProject(
-				req.params.projectId,
-				payload.data.relations,
-			);
+			try {
+				await Container.get(ProjectService).addUsersToProject(
+					req.params.projectId,
+					payload.data.relations,
+				);
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).send({ message: error.message });
+				}
+				throw error;
+			}
 
 			return res.status(201).send();
 		},
@@ -185,15 +182,22 @@ const projectHandlers: ProjectHandlers = {
 	changeUserRoleInProject: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ projectId: string; userId: string }>, res: Response) => {
 			const payload = ChangeUserRoleInProject.safeParse(req.body);
 			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
+				return res.status(400).json(payload.error.errors[0]);
 			}
 
 			const { projectId, userId } = req.params;
 			const { role } = payload.data;
-			await Container.get(ProjectService).changeUserRoleInProject(projectId, userId, role);
+			try {
+				await Container.get(ProjectService).changeUserRoleInProject(projectId, userId, role);
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).send({ message: error.message });
+				}
+				throw error;
+			}
 
 			return res.status(204).send();
 		},
@@ -201,14 +205,17 @@ const projectHandlers: ProjectHandlers = {
 	deleteUserFromProject: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
-		async (req, res) => {
+		async (req: AuthenticatedRequest<{ projectId: string; userId: string }>, res: Response) => {
 			const { projectId, userId } = req.params;
-
-			await Container.get(ProjectService).deleteUserFromProject(projectId, userId);
-
+			try {
+				await Container.get(ProjectService).deleteUserFromProject(projectId, userId);
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).send({ message: error.message });
+				}
+				throw error;
+			}
 			return res.status(204).send();
 		},
 	],
 };
-
-export = projectHandlers;

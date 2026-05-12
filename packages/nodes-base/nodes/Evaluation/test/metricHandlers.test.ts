@@ -252,9 +252,12 @@ describe('metricHandlers', () => {
 					return undefined;
 				});
 
-				const promise = metricHandlers.toolsUsed.call(mockExecuteFunctions, 0);
-				await expect(promise).rejects.toThrow(NodeOperationError);
-				await expect(promise).rejects.toThrow('Intermediate steps missing');
+				await expect(metricHandlers.toolsUsed.call(mockExecuteFunctions, 0)).rejects.toThrow(
+					new NodeOperationError(mockNode, 'Intermediate steps missing', {
+						description:
+							"Make sure to enable returning intermediate steps in your agent node's options, then map them in here",
+					}),
+				);
 			});
 
 			it('should throw error for empty object intermediate steps', async () => {

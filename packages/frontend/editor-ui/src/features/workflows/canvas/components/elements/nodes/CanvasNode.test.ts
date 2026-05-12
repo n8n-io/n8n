@@ -16,11 +16,6 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 			name: 'test',
 			description: 'Test Node Description',
 		})),
-		getAllNodeTypes: vi.fn().mockReturnValue({
-			nodeTypes: {},
-			init: async () => {},
-			getByNameAndVersion: () => undefined,
-		}),
 	})),
 }));
 

@@ -140,7 +140,6 @@ export class SourceControlGitService {
 					// ensures that the credentials are only used for the configured repositoryUrl of the environment
 					'credential.useHttpPath=true',
 				],
-				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
 			// Add proxy configuration if proxy environment variables are set
@@ -172,12 +171,7 @@ export class SourceControlGitService {
 			// - Subsequent connections: verifies against saved key
 			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=accept-new -i "${escapedPrivateKeyPath}"`;
 
-			// Allow GIT_SSH_COMMAND so we can point SSH at n8n's own private key and known_hosts.
-			// This is safe because the command is constructed internally above, not from user input.
-			this.git = simpleGit({
-				...this.gitOptions,
-				unsafe: { allowUnsafeSshCommand: true },
-			})
+			this.git = simpleGit(this.gitOptions)
 				.env('GIT_SSH_COMMAND', sshCommand)
 				.env('GIT_TERMINAL_PROMPT', '0');
 		}

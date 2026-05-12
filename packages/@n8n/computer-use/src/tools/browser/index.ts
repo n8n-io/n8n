@@ -6,13 +6,10 @@ import type { ToolDefinition, ToolModule } from '../types';
 export interface BrowserModuleConfig {
 	defaultBrowser?: string;
 	logLevel?: LogLevel;
-	adapter?: 'playwright' | 'agent-browser';
 }
 
 function toBrowserConfig(config: BrowserModuleConfig): Partial<BrowserConfig> {
-	const browserConfig: Partial<BrowserConfig> = {
-		adapter: config.adapter ?? 'agent-browser',
-	};
+	const browserConfig: Partial<BrowserConfig> = {};
 	if (config.defaultBrowser) {
 		browserConfig.defaultBrowser = config.defaultBrowser as BrowserConfig['defaultBrowser'];
 	}

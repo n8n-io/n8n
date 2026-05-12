@@ -59,9 +59,8 @@ export async function syncDataset(
 	datasetName: string,
 	logger: EvalLogger,
 	filter?: string,
-	exclude?: string,
 ): Promise<string> {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter, exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter);
 
 	// Round-robin ordering ensures evaluate() triggers diverse builds early
 	// rather than burning all concurrency slots on one test case.

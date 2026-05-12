@@ -3,11 +3,10 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as encryptionKeysApi from './encryption-keys.api';
-import {
-	toApiSort,
-	type EncryptionKey,
-	type EncryptionKeyFilters,
-	type EncryptionKeySort,
+import type {
+	EncryptionKey,
+	EncryptionKeyFilters,
+	EncryptionKeySort,
 } from './encryption-keys.types';
 
 const DEFAULT_SORT: EncryptionKeySort = { field: 'createdAt', direction: 'desc' };
@@ -17,45 +16,68 @@ const DEFAULT_FILTERS: EncryptionKeyFilters = {
 	activatedTo: null,
 };
 
-const DEFAULT_PAGE = 0;
-const DEFAULT_ITEMS_PER_PAGE = 25;
+// `en-CA` formats a Date as `YYYY-MM-DD` in the user's local time zone — same
+// shape as the date strings produced by the picker, enabling lexicographic
+// comparison without time-of-day or UTC-offset surprises.
+const localDateFormatter = new Intl.DateTimeFormat('en-CA');
 
 export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 	const rootStore = useRootStore();
 
-	const items = ref<EncryptionKey[]>([]);
-	const totalCount = ref(0);
+	const keys = ref<EncryptionKey[]>([]);
 	const isLoading = ref(false);
 	const isRotating = ref(false);
-
-	const page = ref(DEFAULT_PAGE);
-	const itemsPerPage = ref(DEFAULT_ITEMS_PER_PAGE);
 	const sort = ref<EncryptionKeySort>({ ...DEFAULT_SORT });
 	const filters = ref<EncryptionKeyFilters>({ ...DEFAULT_FILTERS });
 
-	const hasActiveFilters = computed(
-		() => filters.value.activatedFrom !== null || filters.value.activatedTo !== null,
-	);
+	const compareKeys = (a: EncryptionKey, b: EncryptionKey, field: EncryptionKeySort['field']) => {
+		if (field === 'status') {
+			return a.status.localeCompare(b.status);
+		}
 
-	const activeKey = computed(() => items.value.find((key) => key.status === 'active') ?? null);
+		if (field === 'updatedAt') {
+			const valueA = a.status === 'inactive' ? a.updatedAt : null;
+			const valueB = b.status === 'inactive' ? b.updatedAt : null;
+			if (valueA === null && valueB === null) return 0;
+			if (valueA === null) return 1;
+			if (valueB === null) return -1;
+			return new Date(valueA).getTime() - new Date(valueB).getTime();
+		}
 
-	const isEmpty = computed(
-		() => !isLoading.value && totalCount.value === 0 && !hasActiveFilters.value,
-	);
+		return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+	};
+
+	const matchesFilters = (key: EncryptionKey) => {
+		const { activatedFrom, activatedTo } = filters.value;
+		if (!activatedFrom && !activatedTo) return true;
+
+		// Compare on the user's local calendar day so `from === to` includes keys
+		// activated at any time during that day.
+		const activatedDay = localDateFormatter.format(new Date(key.createdAt));
+
+		if (activatedFrom && activatedDay < activatedFrom) return false;
+		if (activatedTo && activatedDay > activatedTo) return false;
+
+		return true;
+	};
+
+	const visibleKeys = computed<EncryptionKey[]>(() => {
+		const filtered = keys.value.filter(matchesFilters);
+		const sorted = [...filtered].sort((a, b) => {
+			const diff = compareKeys(a, b, sort.value.field);
+			return sort.value.direction === 'asc' ? diff : -diff;
+		});
+		return sorted;
+	});
+
+	const activeKey = computed(() => keys.value.find((key) => key.status === 'active') ?? null);
+
+	const isEmpty = computed(() => !isLoading.value && keys.value.length === 0);
 
 	const fetchKeys = async () => {
 		isLoading.value = true;
 		try {
-			const response = await encryptionKeysApi.getEncryptionKeys(rootStore.restApiContext, {
-				type: 'data_encryption',
-				skip: page.value * itemsPerPage.value,
-				take: itemsPerPage.value,
-				sortBy: toApiSort(sort.value),
-				activatedFrom: filters.value.activatedFrom ?? undefined,
-				activatedTo: filters.value.activatedTo ?? undefined,
-			});
-			items.value = response.items as EncryptionKey[];
-			totalCount.value = response.count;
+			keys.value = await encryptionKeysApi.getEncryptionKeys(rootStore.restApiContext);
 		} finally {
 			isLoading.value = false;
 		}
@@ -65,55 +87,35 @@ export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 		isRotating.value = true;
 		try {
 			await encryptionKeysApi.rotateEncryptionKey(rootStore.restApiContext);
-			// After rotation, jump back to the first page sorted by `createdAt:desc`
-			// so the newly active key is visible regardless of the previous view.
-			page.value = DEFAULT_PAGE;
-			sort.value = { ...DEFAULT_SORT };
 			await fetchKeys();
 		} finally {
 			isRotating.value = false;
 		}
 	};
 
-	const setPage = (next: number) => {
-		page.value = next;
-	};
-
-	const setItemsPerPage = (next: number) => {
-		itemsPerPage.value = next;
-		page.value = DEFAULT_PAGE;
-	};
-
 	const setSort = (next: EncryptionKeySort) => {
 		sort.value = { ...next };
-		page.value = DEFAULT_PAGE;
 	};
 
 	const setFilters = (next: Partial<EncryptionKeyFilters>) => {
 		filters.value = { ...filters.value, ...next };
-		page.value = DEFAULT_PAGE;
 	};
 
 	const resetFilters = () => {
 		filters.value = { ...DEFAULT_FILTERS };
-		page.value = DEFAULT_PAGE;
 	};
 
 	return {
-		items,
-		totalCount,
+		keys,
+		visibleKeys,
 		activeKey,
 		isLoading,
 		isRotating,
 		isEmpty,
-		page,
-		itemsPerPage,
 		sort,
 		filters,
 		fetchKeys,
 		rotateKey,
-		setPage,
-		setItemsPerPage,
 		setSort,
 		setFilters,
 		resetFilters,

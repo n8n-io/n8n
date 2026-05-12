@@ -231,7 +231,7 @@ describe('extractBinaryMessages', () => {
 			type: 'input_audio',
 			input_audio: {
 				data: Buffer.from(audioContent).toString('base64'),
-				format: 'mpeg',
+				format: 'mp3',
 			},
 		});
 	});

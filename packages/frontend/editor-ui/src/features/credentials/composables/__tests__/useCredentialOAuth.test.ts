@@ -79,26 +79,6 @@ const slackOAuth2Api: ICredentialType = {
 	],
 };
 
-const mcpOAuth2ApiWithNoVisibleProps: ICredentialType = {
-	name: 'mcpOAuth2Api',
-	extends: ['oAuth2Api'],
-	displayName: 'MCP OAuth2 API',
-	properties: [
-		{
-			displayName: 'Use Dynamic Client Registration',
-			name: 'useDynamicClientRegistration',
-			type: 'hidden',
-			default: true,
-		},
-		{
-			displayName: 'Server URL',
-			name: 'serverUrl',
-			type: 'hidden',
-			default: 'https://mcp.example.com/mcp',
-		},
-	],
-};
-
 const nonOAuthApi: ICredentialType = {
 	name: 'openAiApi',
 	displayName: 'OpenAI API',
@@ -213,15 +193,15 @@ describe('useCredentialOAuth', () => {
 		});
 	});
 
-	describe('canOAuthCredentialQuickConnect', () => {
+	describe('hasManagedOAuthCredentials', () => {
 		it('should return false for non-OAuth types', () => {
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('openAiApi')).toBe(false);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('openAiApi')).toBe(false);
 		});
 
 		it('should return false when no overwritten properties', () => {
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
 		});
 
 		it('should return false when some required properties not overwritten', () => {
@@ -231,8 +211,8 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['someOtherProp'],
 			};
 
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
 		});
 
 		it('should return true when all required properties are overwritten', () => {
@@ -242,8 +222,8 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId'],
 			};
 
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(true);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(true);
 		});
 
 		it('should ignore notice-type properties', () => {
@@ -263,8 +243,8 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId'],
 			};
 
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(true);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(true);
 		});
 
 		it('should ignore hidden properties even when required', () => {
@@ -292,13 +272,13 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('dropboxOAuth2Api')).toBe(true);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('dropboxOAuth2Api')).toBe(true);
 		});
 
 		it('should return false for unknown credential types', () => {
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('unknownType')).toBe(false);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('unknownType')).toBe(false);
 		});
 
 		it('should return false when __skipManagedCreation is true', () => {
@@ -309,16 +289,8 @@ describe('useCredentialOAuth', () => {
 				__skipManagedCreation: true,
 			};
 
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
-		});
-
-		it('should return when there are no visible properties even if there are no overwritten properties', () => {
-			const credentialsStore = mockedStore(useCredentialsStore);
-			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
-
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-			expect(canOAuthCredentialQuickConnect('mcpOAuth2Api')).toBe(true);
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
 		});
 	});
 

@@ -13,9 +13,8 @@ import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useExecutionsStore } from '../executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { storeToRefs } from 'pinia';
-import { onBeforeMount, onBeforeUnmount, onMounted, watch } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -26,11 +25,8 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
-const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
-
-const isAgentsView = () => settingsStore.isModuleActive('agents') && route.query.view === 'agents';
 const overview = useProjectPages();
 
 const {
@@ -54,21 +50,8 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('executionsList.workflowExecutions'));
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 
-	if (!isAgentsView()) {
-		await executionsStore.initialize();
-	}
+	await executionsStore.initialize();
 });
-
-// When switching from agents view back to workflows, initialize the executions
-// store if it hasn't been loaded yet (skipped on mount when ?view=agents).
-watch(
-	() => route.query.view,
-	async (newView, oldView) => {
-		if (oldView === 'agents' && newView !== 'agents') {
-			await executionsStore.initialize();
-		}
-	},
-);
 
 onBeforeUnmount(() => {
 	executionsStore.reset();
@@ -86,7 +69,7 @@ async function loadWorkflows() {
 function onDocumentVisibilityChange() {
 	if (document.visibilityState === 'hidden') {
 		executionsStore.stopAutoRefreshInterval();
-	} else if (!isAgentsView()) {
+	} else {
 		void executionsStore.startAutoRefreshInterval();
 	}
 }

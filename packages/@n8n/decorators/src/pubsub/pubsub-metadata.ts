@@ -27,9 +27,7 @@ export type PubSubEventName =
 	| 'relay-chat-message-edit'
 	| 'reload-sso-provisioning-configuration'
 	| 'reload-source-control-config'
-	| 'cancel-test-run'
-	| 'agent-chat-integration-changed'
-	| 'agent-config-changed';
+	| 'cancel-test-run';
 
 export type PubSubEventFilter =
 	| {

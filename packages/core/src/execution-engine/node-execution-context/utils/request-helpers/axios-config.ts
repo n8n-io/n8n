@@ -1,7 +1,7 @@
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
-import type { InternalAxiosRequestConfig } from 'axios';
 import { stringify } from 'qs';
 
 import { setAxiosAgents } from './axios-utils';
@@ -36,8 +36,11 @@ axios.interceptors.request.use((config) => {
 	return config;
 });
 
-function applyVendorHeaders(config: InternalAxiosRequestConfig) {
+function applyVendorHeaders(config: AxiosRequestConfig) {
 	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
-		config.headers.set(Container.get(AiConfig).openAiDefaultHeaders, false);
+		config.headers = {
+			...Container.get(AiConfig).openAiDefaultHeaders,
+			...(config.headers ?? {}),
+		};
 	}
 }

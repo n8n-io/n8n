@@ -104,8 +104,7 @@ describe('normalizeItems', () => {
 			},
 		];
 		test.each(errorTests)('$description', ({ input }) => {
-			expect(() => normalizeItems(input)).toThrow(ApplicationError);
-			expect(() => normalizeItems(input)).toThrow('Inconsistent item format');
+			expect(() => normalizeItems(input)).toThrow(new ApplicationError('Inconsistent item format'));
 		});
 	});
 });

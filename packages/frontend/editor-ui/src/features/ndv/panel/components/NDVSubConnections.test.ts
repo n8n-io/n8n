@@ -55,10 +55,9 @@ const getNodeType = vi.fn();
 let mockGetNodeByName: Mock<(name: string) => INodeUi | null> = vi.fn(() => node);
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: () => ({
+	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		getAllNodeTypes: () => ({}),
-	}),
+	})),
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', async (importActual) => ({

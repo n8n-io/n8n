@@ -1,6 +1,5 @@
 import type { LICENSE_FEATURES, InstanceType } from '@n8n/constants';
 import { Container, Service, type Constructable } from '@n8n/di';
-import type { NodeLoader } from 'n8n-workflow';
 
 import { ModuleMetadata } from './module-metadata';
 
@@ -83,14 +82,12 @@ export interface ModuleInterface {
 	context?(): Promise<ModuleContext>;
 
 	/**
-	 * Return zero or more node loaders contributed by this module.
+	 * Return a path to a dir to load nodes and credentials from.
 	 *
-	 * A loader can wrap a directory of node packages (using`scanDirectoryForPackages`)
-	 * or return nodes from any source (external APIs, static data...).
-	 *
-	 * Each loader's `packageName` must be unique across all loaders.
+	 * @returns Path to a dir to load nodes and credentials from. `null` to skip.
+	 * @example '/Users/nathan/.n8n/nodes/node_modules'
 	 */
-	nodeLoaders?(): Promise<NodeLoader[]>;
+	loadDir?(): Promise<string | null>;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;

@@ -226,9 +226,8 @@ describe('isDisplayableConfirmationRequest', () => {
 			questions: true,
 			'plan-review': true,
 			'resource-decision': true,
-			continue: true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(6);
+		expect(Object.keys(handled)).toHaveLength(5);
 	});
 });

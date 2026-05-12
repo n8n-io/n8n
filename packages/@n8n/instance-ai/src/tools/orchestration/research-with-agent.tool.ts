@@ -146,7 +146,6 @@ export async function startResearchAgentTask(
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
 						waitForCorrection,
-						onActivity: () => context.touchBackgroundTask?.(taskId),
 						llmStepTraceHooks,
 					});
 

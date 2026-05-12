@@ -1,7 +1,8 @@
-/** A resolved credential. May contain an API key and/or provider-specific fields. */
-export type ResolvedCredential = {
+/** A resolved credential containing at minimum an API key. */
+export interface ResolvedCredential {
+	apiKey: string;
 	[key: string]: unknown;
-};
+}
 
 /** Summary of a credential available for use. */
 export interface CredentialListItem {

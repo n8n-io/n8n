@@ -221,22 +221,6 @@ describe('util: Node Icon', () => {
 			});
 		});
 
-		it('should not prefix baseUrl when iconUrl is an absolute URL', () => {
-			const result = getNodeIconSource(
-				mock<IconNodeType>({
-					iconUrl: 'https://mcp.notion.com/notion-logo-block-main.svg',
-					name: undefined,
-				}),
-				null,
-				null,
-			);
-			expect(result).toEqual({
-				type: 'file',
-				src: 'https://mcp.notion.com/notion-logo-block-main.svg',
-				badge: undefined,
-			});
-		});
-
 		it('should create an icon source from icon if available', () => {
 			const result = getNodeIconSource(
 				mock<IconNodeType>({

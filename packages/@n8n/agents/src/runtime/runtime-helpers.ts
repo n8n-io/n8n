@@ -4,7 +4,8 @@
  */
 import type { GenerateResult, StreamChunk, TokenUsage } from '../types';
 import { toTokenUsage } from './stream';
-import type { AgentMessage, ContentToolCall } from '../types/sdk/message';
+import type { AgentMessage, ContentToolResult } from '../types/sdk/message';
+import type { JSONValue } from '../types/utils/json';
 
 /**
  * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
@@ -17,16 +18,55 @@ export function normalizeInput(input: AgentMessage[] | string): AgentMessage[] {
 	return input;
 }
 
-/** Stringify an error value for use in a rejected tool-call block. */
-export function stringifyError(error: unknown): string {
-	return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+/** Build an AI SDK tool ModelMessage for a tool execution result. */
+export function makeToolResultMessage(
+	toolCallId: string,
+	toolName: string,
+	result: unknown,
+): AgentMessage {
+	return {
+		role: 'tool',
+		content: [
+			{
+				type: 'tool-result',
+				toolCallId,
+				toolName,
+				result: result as JSONValue,
+			},
+		],
+	};
 }
 
-/** Extract all settled (resolved or rejected) tool-call blocks from a flat list of agent messages. */
-export function extractSettledToolCalls(messages: AgentMessage[]): ContentToolCall[] {
+/**
+ * Build an AI SDK tool ModelMessage for a tool execution error.
+ * The LLM receives this as a tool result so it can self-correct on the next iteration.
+ * The error is surfaced via the output json value so the LLM can read and reason about it.
+ */
+export function makeErrorToolResultMessage(
+	toolCallId: string,
+	toolName: string,
+	error: unknown,
+): AgentMessage {
+	const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+	return {
+		role: 'tool',
+		content: [
+			{
+				type: 'tool-result',
+				toolCallId,
+				toolName,
+				result: { error: message } as JSONValue,
+				isError: true,
+			},
+		],
+	};
+}
+
+/** Extract all tool-result content parts from a flat list of agent messages. */
+export function extractToolResults(messages: AgentMessage[]): ContentToolResult[] {
 	return messages
 		.flatMap((m) => ('content' in m ? m.content : []))
-		.filter((c): c is ContentToolCall => c.type === 'tool-call' && c.state !== 'pending');
+		.filter((c): c is ContentToolResult => c.type === 'tool-result');
 }
 
 /**

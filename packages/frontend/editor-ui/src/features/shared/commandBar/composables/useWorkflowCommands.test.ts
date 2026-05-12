@@ -99,7 +99,7 @@ describe('useWorkflowCommands', () => {
 
 		saveCurrentWorkflowMock.mockResolvedValue(true);
 
-		mockWorkflowsStore.workflowId = mockWorkflow.value.id;
+		mockWorkflowsStore.workflow = mockWorkflow.value;
 		// Mark workflow as existing by adding it to workflowsById
 		mockWorkflowsListStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
 

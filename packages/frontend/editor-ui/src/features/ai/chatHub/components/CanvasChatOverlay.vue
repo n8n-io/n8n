@@ -2,13 +2,20 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import CanvasChatFloatingWindow from './CanvasChatFloatingWindow.vue';
 
 const route = useRoute();
 const chatHubPanelStore = useChatHubPanelStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 
 const canvasChatFloatingWindowRef = ref<InstanceType<typeof CanvasChatFloatingWindow>>();
 

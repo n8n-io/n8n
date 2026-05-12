@@ -92,9 +92,6 @@ export class Webhook extends BaseCommand {
 		Container.get(LogStreamingEventRelay).init();
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
-
-		await this.executionContextHookRegistry.init();
-		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async run() {

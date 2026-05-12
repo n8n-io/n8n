@@ -2128,9 +2128,11 @@ describe('GoogleGemini Node', () => {
 			});
 			executeFunctionsMock.getNode.mockReturnValue({ name: 'Google Gemini' } as INode);
 
-			const promise = video.generate.execute.call(executeFunctionsMock, 0);
-			await expect(promise).rejects.toThrow(NodeOperationError);
-			await expect(promise).rejects.toThrow('Failed to generate video');
+			await expect(video.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				new NodeOperationError(executeFunctionsMock.getNode(), 'Failed to generate video', {
+					description: 'Error generating video',
+				}),
+			);
 		});
 
 		it('should throw error for non-Veo model', async () => {
@@ -2147,10 +2149,14 @@ describe('GoogleGemini Node', () => {
 
 			executeFunctionsMock.getNode.mockReturnValue({ name: 'Google Gemini' } as INode);
 
-			const promise = video.generate.execute.call(executeFunctionsMock, 0);
-			await expect(promise).rejects.toThrow(NodeOperationError);
-			await expect(promise).rejects.toThrow(
-				'Model models/gemini-2.0-flash is not supported for video generation. Please use a Veo model',
+			await expect(video.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				new NodeOperationError(
+					executeFunctionsMock.getNode(),
+					'Model models/gemini-2.0-flash is not supported for video generation. Please use a Veo model',
+					{
+						description: 'Video generation is only supported by Veo models',
+					},
+				),
 			);
 		});
 

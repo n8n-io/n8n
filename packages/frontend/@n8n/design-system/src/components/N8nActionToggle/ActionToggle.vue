@@ -1,89 +1,91 @@
-<script setup lang="ts" generic="T extends string">
-import { computed, getCurrentInstance, ref } from 'vue';
+<script lang="ts" setup generic="UserType extends IUser, Actions extends UserAction<UserType>[]">
+import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
+import { ref } from 'vue';
 
-import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
-import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import { useParentScroll } from '../../composables/useParentScroll';
+import type { IUser, UserAction } from '../../types';
+import type { IconOrientation, IconSize } from '../../types/icon';
 import N8nIcon from '../N8nIcon';
-import N8nIconButton from '../N8nIconButton';
 import N8nLoading from '../N8nLoading';
 
-type ActionToggleItem<T extends string> = {
-	label: string;
-	disabled?: boolean;
-	type?: 'external-link';
-} & ({ id: T; value?: T } | { id?: T; value: T });
+const SIZE = ['mini', 'small', 'medium'] as const;
+const THEME = ['default', 'dark'] as const;
 
-interface ActionToggleProps {
-	actions?: Array<ActionToggleItem<T>>;
-	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
-	theme?: 'default' | 'dark';
-	iconOrientation?: 'horizontal' | 'vertical';
+interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAction<UserType>>> {
+	actions?: Actions;
+	placement?: Placement;
+	size?: (typeof SIZE)[number];
+	iconSize?: IconSize;
+	theme?: (typeof THEME)[number];
+	iconOrientation?: IconOrientation;
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;
 	popperClass?: string;
 	trigger?: 'click' | 'hover';
+	closeOnParentScroll?: boolean;
 }
 
-type ActionValue = T;
+type ActionValue = Actions[number]['value'];
 
 defineOptions({ name: 'N8nActionToggle' });
-const props = withDefaults(defineProps<ActionToggleProps>(), {
-	actions: () => [],
-	placement: 'bottom',
-	theme: 'default',
-	iconOrientation: 'vertical',
-	loading: false,
-	loadingRowCount: 3,
-	disabled: false,
-	trigger: 'click',
-});
+const props = withDefaults(
+	defineProps<ActionToggleProps<UserType, Array<UserAction<UserType>>>>(),
+	{
+		actions: () => [],
+		placement: 'bottom',
+		size: 'medium',
+		theme: 'default',
+		iconSize: 'medium',
+		iconOrientation: 'vertical',
+		loading: false,
+		loadingRowCount: 3,
+		disabled: false,
+		popperClass: '',
+		trigger: 'click',
+		closeOnParentScroll: true,
+	},
+);
+
+const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 
 const emit = defineEmits<{
 	action: [value: ActionValue];
-	'visible-change': [open: boolean];
-	'update:modelValue': [open: boolean];
-	'item-mouseup': [action: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>];
+	'visible-change': [value: boolean];
+	'item-mouseup': [action: UserAction<UserType>];
 }>();
 
-const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
-const dropdownId = `n8n-action-toggle-dropdown-${getCurrentInstance()?.uid ?? 0}`;
-
-const items = computed((): Array<DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>> => {
-	return props.actions.map((action) => ({
-		id: (action.id ?? action.value) as ActionValue,
-		testId: `action-${String(action.id ?? action.value)}`,
-		label: action.label,
-		disabled: action.disabled,
-		data: action,
-	}));
+// Close dropdown when parent scrolls
+const { attachScrollListeners, detachScrollListeners } = useParentScroll(actionToggleRef, () => {
+	if (props.closeOnParentScroll) {
+		actionToggleRef.value?.handleClose();
+	}
 });
 
-const onAction = (value: ActionValue) => emit('action', value);
-const onOpenChange = (open: boolean) => {
-	emit('visible-change', open);
-	emit('update:modelValue', open);
-};
-const onItemMouseUp = (item: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>) => {
-	const action =
-		item.data ?? props.actions.find((candidate) => (candidate.id ?? candidate.value) === item.id);
+const onCommand = (value: string) => emit('action', value);
+const onVisibleChange = (value: boolean) => {
+	emit('visible-change', value);
 
-	if (action) {
-		emit('item-mouseup', item);
+	if (props.closeOnParentScroll) {
+		if (value) {
+			attachScrollListeners();
+		} else {
+			detachScrollListeners();
+		}
 	}
-	dropdownRef.value?.close();
 };
 
 const openActionToggle = (isOpen: boolean) => {
-	if (props.disabled) {
-		return;
-	}
-
 	if (isOpen) {
-		dropdownRef.value?.open();
+		actionToggleRef.value?.handleOpen();
 	} else {
-		dropdownRef.value?.close();
+		actionToggleRef.value?.handleClose();
 	}
+};
+
+const onActionMouseUp = (action: UserAction<UserType>) => {
+	emit('item-mouseup', action);
+	actionToggleRef.value?.handleClose();
 };
 
 defineExpose({
@@ -93,58 +95,63 @@ defineExpose({
 
 <template>
 	<span
-		class="action-toggle"
-		:class="$style.container"
+		:class="['action-toggle', $style.container]"
 		data-test-id="action-toggle"
 		@click.stop.prevent
 	>
-		<N8nDropdownMenu
-			ref="dropdownRef"
-			:id="dropdownId"
-			:items="items"
-			content-test-id="action-toggle-dropdown"
-			:modal="false"
+		<ElDropdown
+			ref="actionToggleRef"
 			:placement="placement"
+			:size="size"
 			:disabled="disabled"
+			:popper-class="popperClass"
 			:trigger="trigger"
-			:loading="loading"
-			:loading-item-count="loadingRowCount"
-			:extra-popper-class="popperClass"
-			@select="onAction"
-			@update:model-value="onOpenChange"
-			@item-mouseup="onItemMouseUp"
+			@command="onCommand"
+			@visible-change="onVisibleChange"
 		>
-			<template #trigger>
-				<slot>
-					<N8nIconButton
-						variant="ghost"
-						:class="$style[theme]"
+			<slot>
+				<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
+					<N8nIcon
 						:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
-						size="small"
-						:disabled="disabled"
-						role="button"
-						:aria-controls="dropdownId"
+						:size="iconSize"
 					/>
-				</slot>
+				</span>
+			</slot>
+
+			<template #dropdown>
+				<ElDropdownMenu
+					v-if="loading"
+					:class="$style['loading-dropdown']"
+					data-test-id="action-toggle-loading-dropdown"
+				>
+					<ElDropdownItem v-for="index in loadingRowCount" :key="index" :disabled="true">
+						<template #default>
+							<N8nLoading :class="$style.loading" animated variant="text" />
+						</template>
+					</ElDropdownItem>
+				</ElDropdownMenu>
+				<ElDropdownMenu v-else data-test-id="action-toggle-dropdown">
+					<ElDropdownItem
+						v-for="action in actions"
+						:key="action.value"
+						:command="action.value"
+						:disabled="action.disabled"
+						:data-test-id="`action-${action.value}`"
+						@mouseup="onActionMouseUp(action)"
+					>
+						{{ action.label }}
+						<div :class="$style.iconContainer">
+							<N8nIcon
+								v-if="action.type === 'external-link'"
+								icon="external-link"
+								size="xsmall"
+								color="text-base"
+							/>
+						</div>
+					</ElDropdownItem>
+				</ElDropdownMenu>
 			</template>
-			<template #loading>
-				<N8nLoading
-					v-for="i in loadingRowCount"
-					:key="i"
-					:class="$style['loading-item']"
-					animated
-					variant="text"
-				/>
-			</template>
-			<template #item-trailing="slotProps">
-				<N8nIcon
-					v-if="slotProps.item.data?.type === 'external-link'"
-					icon="external-link"
-					size="xsmall"
-					color="text-base"
-				/>
-			</template>
-		</N8nDropdownMenu>
+		</ElDropdown>
 	</span>
 </template>
 
@@ -153,10 +160,20 @@ defineExpose({
 	line-height: 1;
 }
 
-.trigger {
-	display: inline-flex;
-	&[aria-expanded='true'] button {
-		background-color: var(--background-active);
+.button {
+	cursor: pointer;
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+	display: flex;
+	align-items: center;
+
+	&:hover {
+		color: var(--color--primary);
+		cursor: pointer;
+	}
+
+	&:focus {
+		color: var(--color--primary);
 	}
 }
 
@@ -168,7 +185,22 @@ defineExpose({
 	}
 }
 
-.loading-item {
+.iconContainer {
+	display: inline;
+}
+
+li:hover .iconContainer svg {
+	color: var(--color--primary--tint-1);
+}
+
+.loading-dropdown {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing--xs) 0;
+	gap: var(--spacing--2xs);
+}
+
+.loading {
 	display: flex;
 	width: 100%;
 	min-width: var(--spacing--3xl);

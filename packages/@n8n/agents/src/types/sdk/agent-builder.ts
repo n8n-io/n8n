@@ -1,4 +1,5 @@
 import type { ModelConfig } from './agent';
+import type { CredentialProvider } from './credential-provider';
 import type { BuiltEval } from './eval';
 import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
@@ -15,6 +16,7 @@ import type { BuiltProviderTool, BuiltTool } from './tool';
  */
 export interface AgentBuilder {
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this;
+	credential(name: string): this;
 	instructions(text: string): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
 	providerTool(t: BuiltProviderTool): this;
@@ -23,6 +25,7 @@ export interface AgentBuilder {
 	requireToolApproval(): this;
 	memory(m: unknown): this;
 	checkpoint(storage: 'memory' | CheckpointStore): this;
+	credentialProvider(p: CredentialProvider): this;
 	inputGuardrail(g: BuiltGuardrail): this;
 	outputGuardrail(g: BuiltGuardrail): this;
 	eval(e: BuiltEval): this;

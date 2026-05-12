@@ -415,14 +415,14 @@ export function getConditions(options: IDataObject): string | undefined {
 export function getDefaultFields(sobject: string) {
 	return (
 		{
-			Account: 'id,name,type,LastModifiedDate',
-			Lead: 'id,company,firstname,lastname,street,postalCode,city,email,status,LastModifiedDate',
-			Contact: 'id,firstname,lastname,email,LastModifiedDate',
-			Opportunity: 'id,accountId,amount,probability,type,LastModifiedDate',
-			Case: 'id,accountId,contactId,priority,status,subject,type,LastModifiedDate',
-			Task: 'id,subject,status,priority,LastModifiedDate',
-			Attachment: 'id,name,LastModifiedDate',
-			User: 'id,name,email,LastModifiedDate',
+			Account: 'id,name,type',
+			Lead: 'id,company,firstname,lastname,street,postalCode,city,email,status',
+			Contact: 'id,firstname,lastname,email',
+			Opportunity: 'id,accountId,amount,probability,type',
+			Case: 'id,accountId,contactId,priority,status,subject,type',
+			Task: 'id,subject,status,priority',
+			Attachment: 'id,name',
+			User: 'id,name,email',
 		} as IDataObject
 	)[sobject];
 }
@@ -446,10 +446,7 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 			);
 		}
 	} else {
-		fields.push.apply(
-			fields,
-			((getDefaultFields(validSobject) as string) || 'id,LastModifiedDate').split(','),
-		);
+		fields.push.apply(fields, ((getDefaultFields(validSobject) as string) || 'id').split(','));
 	}
 	const conditions = getConditions(options);
 
@@ -490,12 +487,10 @@ export function filterAndManageProcessedItems(
 	for (const item of responseData) {
 		if (typeof item.Id !== 'string') continue;
 
-		const itemKey =
-			typeof item.LastModifiedDate === 'string' ? `${item.Id}_${item.LastModifiedDate}` : item.Id;
-
-		if (!processedIdsSet.has(itemKey)) {
+		const itemId = item.Id;
+		if (!processedIdsSet.has(itemId)) {
 			newItems.push(item);
-			newItemIds.push(itemKey);
+			newItemIds.push(itemId);
 		}
 	}
 

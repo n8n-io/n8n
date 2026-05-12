@@ -28,9 +28,12 @@ describe('handleError', () => {
 		response.statusCode = 409;
 		response.body = { code: 'Conflict', message: 'Container already exists' } as JsonObject;
 
-		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
-		await expect(promise).rejects.toThrow(NodeApiError);
-		await expect(promise).rejects.toThrow(ErrorMap.Container.Conflict.getMessage('container'));
+		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
+			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
+				message: ErrorMap.Container.Conflict.getMessage('container'),
+				description: ErrorMap.Container.Conflict.description,
+			}),
+		);
 	});
 
 	test('should throw NodeApiError for container not found', async () => {
@@ -39,9 +42,12 @@ describe('handleError', () => {
 		response.statusCode = 404;
 		response.body = { code: 'NotFound', message: 'Container not found' } as JsonObject;
 
-		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
-		await expect(promise).rejects.toThrow(NodeApiError);
-		await expect(promise).rejects.toThrow(ErrorMap.Container.NotFound.getMessage('container'));
+		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
+			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
+				message: ErrorMap.Container.NotFound.getMessage('container'),
+				description: ErrorMap.Container.NotFound.description,
+			}),
+		);
 	});
 
 	test('should throw NodeApiError for item not found', async () => {
@@ -50,9 +56,12 @@ describe('handleError', () => {
 		response.statusCode = 404;
 		response.body = { code: 'NotFound', message: 'Item not found' } as JsonObject;
 
-		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
-		await expect(promise).rejects.toThrow(NodeApiError);
-		await expect(promise).rejects.toThrow(ErrorMap.Item.NotFound.getMessage('item'));
+		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
+			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
+				message: ErrorMap.Item.NotFound.getMessage('item'),
+				description: ErrorMap.Item.NotFound.description,
+			}),
+		);
 	});
 
 	test('should throw generic error if no specific mapping exists', async () => {
@@ -61,9 +70,12 @@ describe('handleError', () => {
 		response.statusCode = 400;
 		response.body = { code: 'BadRequest', message: 'Invalid request' } as JsonObject;
 
-		const promise = handleError.call(mockExecuteSingleFunctions, data, response);
-		await expect(promise).rejects.toThrow(NodeApiError);
-		await expect(promise).rejects.toThrow('BadRequest');
+		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
+			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
+				message: 'BadRequest',
+				description: 'Invalid request',
+			}),
+		);
 	});
 
 	test('should handle error details correctly when match is successful', async () => {
@@ -107,13 +119,25 @@ describe('handleError', () => {
 		}
 
 		if (errorDetails && errorDetails.length > 0) {
-			const promise = handleError.call(mockExecuteSingleFunctions, data, {
-				statusCode: 500,
-				body: { code: 'InternalServerError', message: errorMessage },
-				headers: {},
-			});
-			await expect(promise).rejects.toThrow(NodeApiError);
-			await expect(promise).rejects.toThrow('InternalServerError');
+			await expect(
+				handleError.call(mockExecuteSingleFunctions, data, {
+					statusCode: 500,
+					body: { code: 'InternalServerError', message: errorMessage },
+					headers: {},
+				}),
+			).rejects.toThrow(
+				new NodeApiError(
+					mockExecuteSingleFunctions.getNode(),
+					{
+						code: 'InternalServerError',
+						message: errorMessage,
+					} as JsonObject,
+					{
+						message: 'InternalServerError',
+						description: errorDetails.join('\n'),
+					},
+				),
+			);
 		}
 	});
 
@@ -129,13 +153,25 @@ describe('handleError', () => {
 		}
 
 		if (errorDetails && errorDetails.length > 0) {
-			const promise = handleError.call(mockExecuteSingleFunctions, data, {
-				statusCode: 500,
-				body: { code: 'InternalServerError', message: errorMessage },
-				headers: {},
-			});
-			await expect(promise).rejects.toThrow(NodeApiError);
-			await expect(promise).rejects.toThrow('InternalServerError');
+			await expect(
+				handleError.call(mockExecuteSingleFunctions, data, {
+					statusCode: 500,
+					body: { code: 'InternalServerError', message: errorMessage },
+					headers: {},
+				}),
+			).rejects.toThrow(
+				new NodeApiError(
+					mockExecuteSingleFunctions.getNode(),
+					{
+						code: 'InternalServerError',
+						message: errorMessage,
+					} as JsonObject,
+					{
+						message: 'InternalServerError',
+						description: 'Internal Server Error',
+					},
+				),
+			);
 		}
 	});
 });

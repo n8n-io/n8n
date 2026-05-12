@@ -3147,7 +3147,6 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		const payload = {
 			nodes: [],
-			connections: {},
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);

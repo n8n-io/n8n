@@ -1,19 +1,13 @@
 import type { z } from 'zod';
 
 import { InMemoryMemory } from '../runtime/memory-store';
-import { hasObservationStore } from '../runtime/observation-store';
 import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
 	MemoryConfig,
-	ObservationalMemoryConfig,
 	SemanticRecallConfig,
 	TitleGenerationConfig,
 } from '../types';
-import { DEFAULT_OBSERVATION_GAP_THRESHOLD_MS } from '../types';
-
-const DEFAULT_OBSERVATION_LOCK_TTL_MS = 30_000;
-const DEFAULT_OBSERVATION_COMPACTION_THRESHOLD = 5;
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
@@ -49,8 +43,6 @@ export class Memory {
 
 	private titleGenerationConfig?: TitleGenerationConfig;
 
-	private observationalMemoryConfig?: ObservationalMemoryConfig;
-
 	/** The configured number of recent messages to include. */
 	get lastMessageCount(): number {
 		return this.lastMessagesValue;
@@ -60,7 +52,7 @@ export class Memory {
 	 * Set the storage backend for conversation history.
 	 *
 	 * - `'memory'` — in-process memory (default, lost on restart)
-	 * - A `BuiltMemory` instance — for a persistent backend (e.g. cli's `N8nMemory`)
+	 * - A `BuiltMemory` instance — for persistent storage (e.g. SqliteMemory)
 	 */
 	storage(backend: 'memory' | BuiltMemory): this {
 		if (backend === 'memory') {
@@ -152,11 +144,6 @@ export class Memory {
 		return this;
 	}
 
-	observationalMemory(config: ObservationalMemoryConfig = {}): this {
-		this.observationalMemoryConfig = config;
-		return this;
-	}
-
 	/**
 	 * Validate configuration and produce a `MemoryConfig`.
 	 *
@@ -217,59 +204,12 @@ export class Memory {
 			};
 		}
 
-		const baseConfig = {
+		return {
 			memory,
 			lastMessages: this.lastMessagesValue,
 			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
 			titleGeneration: this.titleGenerationConfig,
-		};
-
-		if (!this.observationalMemoryConfig) {
-			return baseConfig;
-		}
-
-		if (!hasObservationStore(memory)) {
-			throw new Error(
-				"Observational memory requires a storage backend that implements BuiltObservationStore (e.g. SqliteMemory or n8n's N8nMemory).",
-			);
-		}
-
-		if (!workingMemory) {
-			throw new Error(
-				'Observational memory requires working memory. Add .freeform(template) or .structured(schema) before .observationalMemory().',
-			);
-		}
-
-		if (workingMemory.scope !== 'thread') {
-			throw new Error(
-				"Observational memory requires thread-scoped working memory. Add .scope('thread') before .observationalMemory().",
-			);
-		}
-
-		if (!memory.saveWorkingMemory) {
-			throw new Error(
-				'Observational memory requires a storage backend that implements saveWorkingMemory().',
-			);
-		}
-
-		return {
-			...baseConfig,
-			memory,
-			observationalMemory: {
-				...this.observationalMemoryConfig,
-				lockTtlMs: this.observationalMemoryConfig.lockTtlMs ?? DEFAULT_OBSERVATION_LOCK_TTL_MS,
-				compactionThreshold:
-					this.observationalMemoryConfig.compactionThreshold ??
-					DEFAULT_OBSERVATION_COMPACTION_THRESHOLD,
-				trigger: this.observationalMemoryConfig.trigger ?? { type: 'per-turn' },
-				gapThresholdMs:
-					this.observationalMemoryConfig.gapThresholdMs ??
-					(this.observationalMemoryConfig.trigger?.type === 'idle-timer'
-						? this.observationalMemoryConfig.trigger.gapThresholdMs
-						: undefined) ??
-					DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
-			},
 		};
 	}
 }

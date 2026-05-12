@@ -1,24 +1,50 @@
-import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { StructuredToolkit } from 'n8n-core';
 import {
+	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
+import { buildMcpToolName, createCallTool, getSelectedTools, mcpToolToDynamicTool } from './utils';
 import { credentials, transportSelect } from '../shared/descriptions';
-import { buildMcpToolkit, executeMcpTool, type ResolvedMcpConfig } from '../shared/runtime';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
+import {
+	connectMcpClient,
+	getAllTools,
+	getAuthHeaders,
+	isStructuredContent,
+	mapToNodeOperationError,
+	tryRefreshOAuth2Token,
+} from '../shared/utils';
+import type { JSONSchema7 } from 'json-schema';
+import pick from 'lodash/pick';
 
-function resolveConfigFromNodeParameters(
+/**
+ * Get node parameters for MCP client configuration
+ */
+function getNodeConfig(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
-): ResolvedMcpConfig {
+): {
+	authentication: McpAuthenticationOption;
+	timeout: number;
+	serverTransport: McpServerTransport;
+	endpointUrl: string;
+	mode: McpToolIncludeMode;
+	includeTools: string[];
+	excludeTools: string[];
+} {
 	const node = ctx.getNode();
 	const authentication = ctx.getNodeParameter(
 		'authentication',
@@ -26,27 +52,69 @@ function resolveConfigFromNodeParameters(
 	) as McpAuthenticationOption;
 	const timeout = ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number;
 
-	let transport: McpServerTransport;
+	let serverTransport: McpServerTransport;
 	let endpointUrl: string;
 	if (node.typeVersion === 1) {
-		transport = 'sse';
+		serverTransport = 'sse';
 		endpointUrl = ctx.getNodeParameter('sseEndpoint', itemIndex) as string;
 	} else {
-		transport = ctx.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
+		serverTransport = ctx.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
 		endpointUrl = ctx.getNodeParameter('endpointUrl', itemIndex) as string;
 	}
 
+	const mode = ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode;
+	const includeTools = ctx.getNodeParameter('includeTools', itemIndex, []) as string[];
+	const excludeTools = ctx.getNodeParameter('excludeTools', itemIndex, []) as string[];
+
 	return {
 		authentication,
-		transport,
-		endpointUrl,
 		timeout,
-		toolFilter: {
-			mode: ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode,
-			includeTools: ctx.getNodeParameter('includeTools', itemIndex, []) as string[],
-			excludeTools: ctx.getNodeParameter('excludeTools', itemIndex, []) as string[],
-		},
+		serverTransport,
+		endpointUrl,
+		mode,
+		includeTools,
+		excludeTools,
 	};
+}
+
+/**
+ * Connect to MCP server and get filtered tools
+ */
+async function connectAndGetTools(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	config: ReturnType<typeof getNodeConfig>,
+) {
+	const node = ctx.getNode();
+	const { headers } = await getAuthHeaders(ctx, config.authentication);
+
+	const client = await connectMcpClient({
+		serverTransport: config.serverTransport,
+		endpointUrl: config.endpointUrl,
+		headers,
+		name: node.type,
+		version: node.typeVersion,
+		onUnauthorized: async (headers) =>
+			await tryRefreshOAuth2Token(ctx, config.authentication, headers),
+	});
+
+	if (!client.ok) {
+		return { client, mcpTools: null, error: client.error };
+	}
+
+	try {
+		const allTools = await getAllTools(client.result);
+		const mcpTools = getSelectedTools({
+			tools: allTools,
+			mode: config.mode,
+			includeTools: config.includeTools,
+			excludeTools: config.excludeTools,
+		});
+
+		return { client: client.result, mcpTools, error: null };
+	} catch (error) {
+		await client.result.close();
+		throw error;
+	}
 }
 
 export class McpClientTool implements INodeType {
@@ -285,12 +353,149 @@ export class McpClientTool implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		return await buildMcpToolkit(this, itemIndex, resolveConfigFromNodeParameters(this, itemIndex));
+		const node = this.getNode();
+		const config = getNodeConfig(this, itemIndex);
+
+		const setError = (error: NodeOperationError): SupplyData => {
+			this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+			throw error;
+		};
+
+		const signal = this.getExecutionCancelSignal();
+		if (signal?.aborted) {
+			return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
+		}
+
+		const { client, mcpTools, error } = await connectAndGetTools(this, config);
+
+		if (error) {
+			this.logger.error('McpClientTool: Failed to connect to MCP Server', { error });
+			return setError(mapToNodeOperationError(node, error));
+		}
+
+		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
+
+		if (!mcpTools?.length) {
+			await client.close();
+			return setError(
+				new NodeOperationError(node, 'MCP Server returned no tools', {
+					itemIndex,
+					description:
+						'Connected successfully to your MCP server but it returned an empty list of tools.',
+				}),
+			);
+		}
+
+		try {
+			const tools = mcpTools.map((tool) => {
+				const prefixedName = buildMcpToolName(node.name, tool.name);
+				return logWrapper(
+					mcpToolToDynamicTool(
+						{ ...tool, name: prefixedName },
+						createCallTool(
+							tool.name,
+							client,
+							config.timeout,
+							(errorMessage) => {
+								const error = new NodeOperationError(node, errorMessage, { itemIndex });
+								void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+								this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
+									error,
+								});
+							},
+							() => this.getExecutionCancelSignal(),
+						),
+					),
+					this,
+				);
+			});
+
+			this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
+
+			const toolkit = new StructuredToolkit(tools);
+
+			return { response: toolkit, closeFunction: async () => await client.close() };
+		} catch (e) {
+			await client.close();
+			throw e;
+		}
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return await executeMcpTool(this, (itemIndex) =>
-			resolveConfigFromNodeParameters(this, itemIndex),
-		);
+		const node = this.getNode();
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const signal = this.getExecutionCancelSignal();
+			if (signal?.aborted) {
+				throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
+			}
+
+			const item = items[itemIndex];
+			const config = getNodeConfig(this, itemIndex);
+
+			const { client, mcpTools, error } = await connectAndGetTools(this, config);
+
+			if (error) {
+				throw new NodeOperationError(node, error.error, { itemIndex });
+			}
+
+			try {
+				if (!mcpTools?.length) {
+					throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
+				}
+
+				// Check for tool name in item.json.tool (for toolkit execution from agent)
+				if (!item.json.tool || typeof item.json.tool !== 'string') {
+					throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
+						itemIndex,
+					});
+				}
+
+				const toolName = item.json.tool;
+				for (const tool of mcpTools) {
+					const prefixedName = buildMcpToolName(node.name, tool.name);
+					if (toolName === prefixedName) {
+						// Extract the tool name from arguments before passing to MCP
+						const { tool: _, ...toolArguments } = item.json;
+						const schema: JSONSchema7 = tool.inputSchema;
+						// When additionalProperties is not explicitly true, filter to schema-defined properties.
+						// Otherwise, pass all arguments through
+						const sanitizedToolArguments: IDataObject =
+							schema.additionalProperties !== true
+								? pick(toolArguments, Object.keys(schema.properties ?? {}))
+								: toolArguments;
+
+						const params: {
+							name: string;
+							arguments: IDataObject;
+						} = {
+							name: tool.name,
+							arguments: sanitizedToolArguments,
+						};
+						const result = await client.callTool(params, CallToolResultSchema, {
+							timeout: config.timeout,
+							signal: this.getExecutionCancelSignal(),
+						});
+						returnData.push({
+							json: {
+								response: result.content as IDataObject,
+								...(isStructuredContent(result.structuredContent) && {
+									structuredContent: result.structuredContent,
+								}),
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+					}
+				}
+			} finally {
+				await client.close();
+			}
+		}
+
+		return [returnData];
 	}
 }

@@ -63,12 +63,11 @@ describe('toModelOutput integration', () => {
 		expect(rawOutput.total).toBe(3);
 		expect(rawOutput.records[0].data).toBe('x'.repeat(200));
 
-		// Tool-call block in messages stores the transformed output (what the LLM saw)
+		// ContentToolResult in messages stores the transformed output (what the LLM saw)
 		const toolResults = findAllToolResults(result.messages);
 		const searchToolResult = toolResults.find((tr) => tr.toolName === 'search_db');
 		expect(searchToolResult).toBeDefined();
-		expect(searchToolResult!.state).toBe('resolved');
-		const modelOutput = (searchToolResult as unknown as { output: { summary: string } }).output;
+		const modelOutput = searchToolResult!.result as { summary: string };
 		expect(modelOutput.summary).toContain('Found 3 records');
 		expect(modelOutput.summary).toContain('Widget A');
 	});
@@ -107,14 +106,15 @@ describe('toModelOutput integration', () => {
 		const { stream } = await agent.stream('Get report RPT-001');
 		const chunks = await collectStreamChunks(stream);
 
-		// The discrete tool-result chunks in the stream contain the transformed output
-		const toolResults = chunksOfType(chunks, 'tool-result');
+		// The tool result messages in the stream contain the transformed output
+		const messageChunks = chunksOfType(chunks, 'message');
+		const toolResults = findAllToolResults(messageChunks.map((c) => c.message));
 
 		const reportResult = toolResults.find((tr) => tr.toolName === 'fetch_report');
 		expect(reportResult).toBeDefined();
 
 		// The model output (transformed) should have the truncated fields
-		const modelOutput = reportResult!.output as { id: string; title: string; pageCount: number };
+		const modelOutput = reportResult!.result as { id: string; title: string; pageCount: number };
 		expect(modelOutput.id).toBe('RPT-001');
 		expect(modelOutput.title).toBe('Q4 Sales Report');
 		expect(modelOutput.pageCount).toBe(42);
@@ -140,14 +140,11 @@ describe('toModelOutput integration', () => {
 
 		const result = await agent.generate('Echo the message "hello world"');
 
-		// Without toModelOutput, tool-call block in messages has the raw output
+		// Without toModelOutput, tool result in messages should have the raw output
 		const toolResults = findAllToolResults(result.messages);
 		const echoResult = toolResults.find((tr) => tr.toolName === 'echo');
 		expect(echoResult).toBeDefined();
-		expect(echoResult!.state).toBe('resolved');
-		expect((echoResult as unknown as { output: { echoed: string } }).output.echoed).toBe(
-			'hello world',
-		);
+		expect((echoResult!.result as { echoed: string }).echoed).toBe('hello world');
 
 		// And toolCalls should also have the same raw output
 		expect(result.toolCalls).toBeDefined();
@@ -199,14 +196,11 @@ describe('toModelOutput integration', () => {
 		expect(multiplyEntry).toBeDefined();
 		expect((multiplyEntry!.output as { result: number }).result).toBe(56);
 
-		// Tool-call block in messages stores the transformed output for the LLM
+		// Tool result in messages stores the transformed output for the LLM
 		const toolResults = findAllToolResults(result.messages);
 		const multiplyToolResult = toolResults.find((tr) => tr.toolName === 'multiply');
 		expect(multiplyToolResult).toBeDefined();
-		expect(multiplyToolResult!.state).toBe('resolved');
-		const modelOutput = (
-			multiplyToolResult as unknown as { output: { answer: number; note: string } }
-		).output;
+		const modelOutput = multiplyToolResult!.result as { answer: number; note: string };
 		expect(modelOutput.answer).toBe(56);
 		expect(modelOutput.note).toBe('multiplication complete');
 

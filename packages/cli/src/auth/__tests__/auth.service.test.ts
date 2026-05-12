@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -40,10 +39,9 @@ describe('AuthService', () => {
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
-	const logger = mock<Logger>();
 	const authService = new AuthService(
 		globalConfig,
-		logger,
+		mock(),
 		license,
 		jwtService,
 		urlService,
@@ -832,19 +830,6 @@ describe('AuthService', () => {
 	});
 
 	describe('resolvePasswordResetToken', () => {
-		const expectTokenNotLogged = (token: string) => {
-			const allLogCalls = [
-				...logger.debug.mock.calls,
-				...logger.info.mock.calls,
-				...logger.warn.mock.calls,
-				...logger.error.mock.calls,
-			];
-			for (const call of allLogCalls) {
-				const serialized = JSON.stringify(call);
-				expect(serialized).not.toContain(token);
-			}
-		};
-
 		it('should not return a user if the token in invalid', async () => {
 			const resolvedUser = await authService.resolvePasswordResetToken('invalid-token');
 			expect(resolvedUser).toBeUndefined();
@@ -881,31 +866,6 @@ describe('AuthService', () => {
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toEqual(user);
-		});
-
-		it('should not include the raw token in any log entry when the token is malformed', async () => {
-			const malformedToken = 'this-is-not-a-valid-jwt';
-
-			await authService.resolvePasswordResetToken(malformedToken);
-
-			expectTokenNotLogged(malformedToken);
-		});
-
-		it('should not include the raw token in any log entry when the token is expired', async () => {
-			const expiredToken = authService.generatePasswordResetToken(user, '-1h');
-
-			await authService.resolvePasswordResetToken(expiredToken);
-
-			expectTokenNotLogged(expiredToken);
-		});
-
-		it('should not include the raw token in any log entry when the referenced user is missing', async () => {
-			userRepository.findOne.mockResolvedValueOnce(null);
-			const validToken = authService.generatePasswordResetToken(user);
-
-			await authService.resolvePasswordResetToken(validToken);
-
-			expectTokenNotLogged(validToken);
 		});
 	});
 

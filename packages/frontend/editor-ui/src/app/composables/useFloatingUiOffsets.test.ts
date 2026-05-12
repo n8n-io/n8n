@@ -34,7 +34,7 @@ describe(useFloatingUiOffsets, () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		currentRouteName = '';
 		const workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('test-workflow');
+		workflowsStore.workflow.id = 'test-workflow';
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);

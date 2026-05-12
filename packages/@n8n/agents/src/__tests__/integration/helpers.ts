@@ -1,15 +1,19 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { describe as _describe } from 'vitest';
 import { z } from 'zod';
 
 import {
 	Agent,
 	type ContentToolCall,
+	type ContentToolResult,
 	filterLlmMessages,
 	Tool,
 	type StreamChunk,
 	type AgentMessage,
 } from '../../index';
-import { InMemoryMemory } from '../../runtime/memory-store';
+import { SqliteMemory } from '../../storage/sqlite-memory';
 
 export type { StreamChunk };
 
@@ -400,10 +404,10 @@ export const findAllToolCalls = (messages: AgentMessage[]): ContentToolCall[] =>
 		.map((m) => m.content.filter((c) => c.type === 'tool-call'))
 		.flat();
 };
-export const findAllToolResults = (messages: AgentMessage[]): ContentToolCall[] => {
-	return filterLlmMessages(messages).flatMap((m) =>
-		m.content.filter((c): c is ContentToolCall => c.type === 'tool-call' && c.state !== 'pending'),
-	);
+export const findAllToolResults = (messages: AgentMessage[]): ContentToolResult[] => {
+	return filterLlmMessages(messages)
+		.filter((m) => m.content.find((c) => c.type === 'tool-result'))
+		.map((m) => m.content.find((c) => c.type === 'tool-result') as ContentToolResult);
 };
 export const collectTextDeltas = (chunks: StreamChunk[]): string => {
 	return chunks
@@ -413,18 +417,25 @@ export const collectTextDeltas = (chunks: StreamChunk[]): string => {
 };
 
 export function createSqliteMemory(): {
-	memory: InMemoryMemory;
+	memory: SqliteMemory;
 	cleanup: () => void;
 	url: string;
 } {
-	// In-memory backend; the `url` field is kept on the return type so existing
-	// integration tests that reference it (e.g. for "restart" scenarios) keep
-	// compiling, but it's not load-bearing — InMemoryMemory has no persistence.
+	const dbPath = path.join(
+		os.tmpdir(),
+		`test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
+	);
+	const url = `file:${dbPath}`;
+	const memory = new SqliteMemory({ url });
 	return {
-		memory: new InMemoryMemory(),
-		url: '',
+		memory,
+		url,
 		cleanup: () => {
-			// no-op for in-memory backend
+			try {
+				fs.unlinkSync(dbPath);
+			} catch {
+				// File may already be removed — ignore
+			}
 		},
 	};
 }

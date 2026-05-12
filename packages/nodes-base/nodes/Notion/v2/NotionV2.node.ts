@@ -117,23 +117,26 @@ export class NotionV2 implements INodeType {
 								responseData = await notionApiRequestGetBlockChildrens.call(this, responseData);
 							}
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = await notionApiRequestAllItems.call(
+							const limit = this.getNodeParameter('limit', i);
+							qs.page_size = limit;
+							responseData = await notionApiRequest.call(
 								this,
-								'results',
 								'GET',
 								`/blocks/${blockId}/children`,
 								{},
-								{ page_size: Math.min(limit, 100), limit },
+								qs,
 							);
+							const results = responseData.results;
 
 							if (fetchNestedBlocks) {
 								responseData = await notionApiRequestGetBlockChildrens.call(
 									this,
-									responseData,
+									results,
 									[],
 									limit,
 								);
+							} else {
+								responseData = results;
 							}
 						}
 
@@ -218,16 +221,9 @@ export class NotionV2 implements INodeType {
 								body,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							body.page_size = Math.min(limit, 100);
-							responseData = await notionApiRequestAllItems.call(
-								this,
-								'results',
-								'POST',
-								'/search',
-								body,
-								{ limit },
-							);
+							body.page_size = this.getNodeParameter('limit', i);
+							responseData = await notionApiRequest.call(this, 'POST', '/search', body);
+							responseData = responseData.results;
 						}
 						if (simple) {
 							responseData = simplifyObjects(responseData, download);
@@ -488,16 +484,15 @@ export class NotionV2 implements INodeType {
 								{},
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							body.page_size = Math.min(limit, 100);
-							responseData = await notionApiRequestAllItems.call(
+							body.page_size = this.getNodeParameter('limit', i);
+							responseData = await notionApiRequest.call(
 								this,
-								'results',
 								'POST',
 								`/databases/${databaseId}/query`,
 								body,
-								{ limit },
+								qs,
 							);
+							responseData = responseData.results;
 						}
 						if (download) {
 							responseData = await downloadFiles.call(this, responseData as FileRecord[], [

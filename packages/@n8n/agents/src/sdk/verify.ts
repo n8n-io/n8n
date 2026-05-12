@@ -45,7 +45,15 @@ export function verify(source: string): VerifyResult {
 	}
 
 	if (/process\.env\b/.test(source)) {
-		errors.push('process.env is not available. Use const variables for configuration.');
+		errors.push(
+			'process.env is not available. Use .credential() for API keys, or const variables for configuration.',
+		);
+	}
+
+	if (!/\.credential\s*\(/.test(source)) {
+		errors.push(
+			"No .credential() found. Every agent must declare a credential (e.g. .credential('anthropic')).",
+		);
 	}
 
 	return { ok: errors.length === 0, errors };

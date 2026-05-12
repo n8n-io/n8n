@@ -90,7 +90,7 @@ describe('CredentialCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActionsOpener);
+		await userEvent.click(cardActions);
 		const actions = document.querySelector(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');

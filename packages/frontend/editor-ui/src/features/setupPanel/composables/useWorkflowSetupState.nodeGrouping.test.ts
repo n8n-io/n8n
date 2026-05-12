@@ -38,9 +38,7 @@ const mockWorkflowDocumentStore = {
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
-	connectionsBySourceNode: {} as Record<string, unknown>,
-	connectionsByDestinationNode: {} as Record<string, unknown>,
-	workflowTriggerNodes: [] as INodeUi[],
+	connectionsByDestinationNode: {},
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -49,7 +47,6 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
-		injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 	};
 });
 
@@ -128,8 +125,6 @@ describe('useWorkflowSetupState – node grouping', () => {
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];
-		mockWorkflowDocumentStore.connectionsBySourceNode = {};
-		mockWorkflowDocumentStore.connectionsByDestinationNode = {};
 		mockWorkflowDocumentStore.getNodeByName = vi.fn();
 		mockWorkflowDocumentStore.getNodes = vi.fn();
 		mockUpdateNodeProperties.mockReset();

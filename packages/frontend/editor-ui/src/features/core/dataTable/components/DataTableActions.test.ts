@@ -1,5 +1,4 @@
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
@@ -80,11 +79,6 @@ const renderComponent = createComponentRenderer(DataTableActions, {
 	},
 });
 
-const openActionsDropdown = async (getByTestId: (testId: string) => HTMLElement) => {
-	const actionToggle = getByTestId('data-table-card-actions');
-	await userEvent.click(within(actionToggle).getByRole('button'));
-};
-
 let dataTableStore: MockedStore<typeof useDataTableStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 
@@ -119,7 +113,8 @@ describe('DataTableActions', () => {
 	it('should emit rename event when rename action is triggered', async () => {
 		const { getByTestId, emitted } = renderComponent();
 
-		await openActionsDropdown(getByTestId);
+		// Click on the action toggle to open dropdown
+		await userEvent.click(getByTestId('data-table-card-actions'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the rename action
@@ -137,7 +132,8 @@ describe('DataTableActions', () => {
 	it('should show confirmation dialog when delete action is triggered', async () => {
 		const { getByTestId } = renderComponent();
 
-		await openActionsDropdown(getByTestId);
+		// Click on the action toggle to open dropdown
+		await userEvent.click(getByTestId('data-table-card-actions'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -156,7 +152,8 @@ describe('DataTableActions', () => {
 	it('should call delete when confirmed and emit onDeleted', async () => {
 		const { getByTestId, emitted } = renderComponent();
 
-		await openActionsDropdown(getByTestId);
+		// Click on the action toggle to open dropdown
+		await userEvent.click(getByTestId('data-table-card-actions'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -171,7 +168,8 @@ describe('DataTableActions', () => {
 
 		const { getByTestId, emitted } = renderComponent();
 
-		await openActionsDropdown(getByTestId);
+		// Click on the action toggle to open dropdown
+		await userEvent.click(getByTestId('data-table-card-actions'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -186,7 +184,8 @@ describe('DataTableActions', () => {
 
 		const { getByTestId } = renderComponent();
 
-		await openActionsDropdown(getByTestId);
+		// Click on the action toggle to open dropdown
+		await userEvent.click(getByTestId('data-table-card-actions'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -204,7 +203,8 @@ describe('DataTableActions', () => {
 
 		const { getByTestId } = renderComponent();
 
-		await openActionsDropdown(getByTestId);
+		// Click on the action toggle to open dropdown
+		await userEvent.click(getByTestId('data-table-card-actions'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -226,7 +226,7 @@ describe('DataTableActions', () => {
 				},
 			});
 
-			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId('data-table-card-actions'));
 			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV}`));
 
 			expect(uiStore.openModal).toHaveBeenCalledWith(
@@ -249,7 +249,7 @@ describe('DataTableActions', () => {
 				},
 			});
 
-			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId('data-table-card-actions'));
 			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV}`));
 
 			unmount();
@@ -262,7 +262,7 @@ describe('DataTableActions', () => {
 				},
 			});
 
-			await openActionsDropdown(getByTestId2);
+			await userEvent.click(getByTestId2('data-table-card-actions'));
 			await userEvent.click(getByTestId2(`action-${DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV}`));
 
 			expect(uiStore.openModal).toHaveBeenCalledTimes(2);
@@ -281,7 +281,8 @@ describe('DataTableActions', () => {
 				},
 			});
 
-			await openActionsDropdown(getByTestId);
+			// Click on the action toggle to open dropdown
+			await userEvent.click(getByTestId('data-table-card-actions'));
 			expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 			// Check that rename action is present
@@ -297,7 +298,8 @@ describe('DataTableActions', () => {
 				},
 			});
 
-			await openActionsDropdown(getByTestId);
+			// Click on the action toggle to open dropdown
+			await userEvent.click(getByTestId('data-table-card-actions'));
 			expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 			// Check that rename action is NOT present

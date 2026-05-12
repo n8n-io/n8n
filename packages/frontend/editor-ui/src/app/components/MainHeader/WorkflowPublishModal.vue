@@ -26,14 +26,19 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const { showMessage } = useToast();
@@ -46,7 +51,7 @@ const description = ref('');
 const versionName = ref('');
 
 const foundTriggers = computed(() =>
-	getActivatableTriggerNodes(workflowDocumentStore.value.workflowTriggerNodes),
+	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
 );
 
 const containsTrigger = computed((): boolean => {

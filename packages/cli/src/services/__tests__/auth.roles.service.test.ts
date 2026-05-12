@@ -429,7 +429,6 @@ describe('AuthRolesService', () => {
 					const scopes = roleDef.scopes.map((scopeSlug) => createMinimalScope(scopeSlug));
 					if (roleDef.slug === PROJECT_OWNER_ROLE_SLUG) {
 						scopes.push(createMinimalScope('workflow:publish'));
-						scopes.push(createMinimalScope('agent:publish'));
 						scopes.push(createMinimalScope('workflow:share'));
 						scopes.push(createMinimalScope('credential:share'));
 						scopes.push(createMinimalScope('credential:move'));

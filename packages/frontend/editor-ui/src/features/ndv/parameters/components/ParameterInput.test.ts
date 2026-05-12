@@ -52,11 +52,6 @@ function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 function getNodeTypesStateMock(): Partial<ReturnType<typeof useNodeTypesStore>> {
 	return {
 		allNodeTypes: [],
-		getAllNodeTypes: vi.fn().mockReturnValue({
-			nodeTypes: {},
-			init: async () => {},
-			getByNameAndVersion: () => undefined,
-		}),
 	};
 }
 
@@ -77,7 +72,6 @@ beforeEach(() => {
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
-		injectNDVStore: vi.fn(() => mockNdvState),
 	};
 });
 
@@ -165,11 +159,6 @@ describe('ParameterInput.vue', () => {
 		mockNodeTypesState = {
 			allNodeTypes: [],
 			getNodeType: vi.fn().mockReturnValue(null),
-			getAllNodeTypes: vi.fn().mockReturnValue({
-				nodeTypes: {},
-				init: async () => {},
-				getByNameAndVersion: () => undefined,
-			}),
 		};
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
 	});

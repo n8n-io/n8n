@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
@@ -23,7 +23,7 @@ const { nodeId, isReadOnly } = defineProps<{
 }>();
 
 const i18n = useI18n();
-const ndvStore = injectNDVStore();
+const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
 const nodeTypesStore = useNodeTypesStore();

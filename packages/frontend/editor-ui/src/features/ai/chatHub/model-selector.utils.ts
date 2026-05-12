@@ -395,9 +395,6 @@ export function buildModelSelectorMenuItems(
 	let dividerInserted = false;
 
 	for (const provider of sortedProviders) {
-		if (!agents[provider]) {
-			continue;
-		}
 		const item = buildLlmProviderMenuItem(provider, agents[provider], options);
 
 		if (item) {

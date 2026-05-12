@@ -5,10 +5,9 @@ import { isWindowsFilePath } from '@n8n/utils';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import type { Class, Types } from 'n8n-core';
+import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
-	DirectoryLoader,
 	ErrorReporter,
 	InstanceSettings,
 	CustomDirectoryLoader,
@@ -28,9 +27,8 @@ import type {
 	IVersionedNodeType,
 	INodeProperties,
 	LoadedNodesAndCredentials,
-	NodeLoader,
 } from 'n8n-workflow';
-import { ensureError, UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -48,7 +46,7 @@ export class LoadNodesAndCredentials {
 	// actual file, or the lazy loaded json
 	types: Types = { nodes: [], credentials: [] };
 
-	loaders: Record<string, NodeLoader> = {};
+	loaders: Record<string, DirectoryLoader> = {};
 
 	excludeNodes = this.globalConfig.nodes.exclude;
 
@@ -104,25 +102,11 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		await this.loadNodesFromCustomDirectories();
-
-		for (const loader of this.moduleRegistry.nodeLoaders) {
-			if (loader.packageName in this.loaders) {
-				throw new UnexpectedError(
-					picocolors.red(`Node loader ${loader.packageName} is already registered.`),
-				);
-			}
-			try {
-				await loader.loadAll();
-				this.loaders[loader.packageName] = loader;
-			} catch (error) {
-				this.logger.error(`Failed to load package "${loader.packageName}"`, {
-					error: ensureError(error),
-				});
-				this.errorReporter.error(error, { extra: { packageName: loader.packageName } });
-			}
+		for (const dir of this.moduleRegistry.loadDirs) {
+			await this.loadNodesFromNodeModules(dir);
 		}
 
+		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
 	}
 
@@ -183,13 +167,19 @@ export class LoadNodesAndCredentials {
 
 	private async loadNodesFromNodeModules(
 		nodeModulesDir: string,
-		packageName: string,
+		packageName?: string,
 	): Promise<void> {
-		const installedPackagePaths = await glob(packageName, {
+		const globOptions = {
 			cwd: nodeModulesDir,
 			onlyDirectories: true,
 			deep: 1,
-		});
+		};
+		const installedPackagePaths = packageName
+			? await glob(packageName, globOptions)
+			: [
+					...(await glob('n8n-nodes-*', globOptions)),
+					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
+				];
 
 		for (const packagePath of installedPackagePaths) {
 			try {
@@ -225,7 +215,7 @@ export class LoadNodesAndCredentials {
 	resolveIcon(packageName: string, url: string): string | undefined {
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
 		const loader = this.loaders[packageName];
-		if (!loader || !(loader instanceof DirectoryLoader)) {
+		if (!loader) {
 			return undefined;
 		}
 
@@ -517,7 +507,7 @@ export class LoadNodesAndCredentials {
 			await loader.ensureTypesLoaded();
 
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, packageName } = loader;
+			const { known, types, directory, packageName } = loader;
 			this.types.nodes = this.types.nodes.concat(
 				types.nodes.map(({ name, ...rest }) => ({
 					...rest,
@@ -551,8 +541,8 @@ export class LoadNodesAndCredentials {
 			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
 			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in known.credentials) {
-				const credentialType = loader.getCredential(credentialTypeName);
+			for (const credentialTypeName in loader.credentialTypes) {
+				const credentialType = loader.credentialTypes[credentialTypeName];
 				if (this.shouldAddDomainRestrictions(credentialType)) {
 					// Access properties through the type field
 					credentialType.type.properties = this.injectDomainRestrictionFields([
@@ -565,7 +555,7 @@ export class LoadNodesAndCredentials {
 				const { className, sourcePath } = known.nodes[type];
 				this.known.nodes[`${packageName}.${type}`] = {
 					className,
-					sourcePath: loader.resolveSourcePath(sourcePath),
+					sourcePath: path.join(directory, sourcePath),
 				};
 			}
 
@@ -578,7 +568,7 @@ export class LoadNodesAndCredentials {
 				} = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
-					sourcePath: loader.resolveSourcePath(sourcePath),
+					sourcePath: path.join(directory, sourcePath),
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
 							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
@@ -650,7 +640,6 @@ export class LoadNodesAndCredentials {
 		const push = Container.get(Push);
 
 		for (const loader of Object.values(this.loaders)) {
-			if (!(loader instanceof DirectoryLoader)) continue;
 			const { directory } = loader;
 			try {
 				await fsPromises.access(directory);

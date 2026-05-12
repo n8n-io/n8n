@@ -8,8 +8,7 @@ jest.mock('node:os', () => {
 });
 
 import type { GatewayConfig } from './config';
-import { SettingsStore } from './settings-store';
-import { isAllDeny } from './startup-config-cli';
+import { ensureSettingsFile, isAllDeny } from './startup-config-cli';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -78,10 +77,10 @@ describe('isAllDeny', () => {
 });
 
 // ---------------------------------------------------------------------------
-// SettingsStore.ensureInitialized (CLI entry path; replaces legacy ensureSettingsFile helper)
+// ensureSettingsFile
 // ---------------------------------------------------------------------------
 
-describe('SettingsStore.ensureInitialized', () => {
+describe('ensureSettingsFile', () => {
 	let tmpDir: string;
 
 	beforeEach(async () => {
@@ -96,7 +95,7 @@ describe('SettingsStore.ensureInitialized', () => {
 	});
 
 	it('creates the settings file with recommended defaults when absent', async () => {
-		await SettingsStore.ensureInitialized(BASE_CONFIG);
+		await ensureSettingsFile(BASE_CONFIG);
 
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
 		const parsed = parseJson<Record<string, unknown>>(raw);
@@ -117,7 +116,7 @@ describe('SettingsStore.ensureInitialized', () => {
 			...BASE_CONFIG,
 			permissions: { shell: 'allow' },
 		};
-		await SettingsStore.ensureInitialized(config);
+		await ensureSettingsFile(config);
 
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
 		const parsed = parseJson<{ permissions: Record<string, string> }>(raw);
@@ -135,15 +134,15 @@ describe('SettingsStore.ensureInitialized', () => {
 		const existing = JSON.stringify({ permissions: { shell: 'allow' }, filesystemDir: '/custom' });
 		await fs.writeFile(file, existing, 'utf-8');
 
-		await SettingsStore.ensureInitialized(BASE_CONFIG);
+		await ensureSettingsFile(BASE_CONFIG);
 
 		const raw = await fs.readFile(file, 'utf-8');
 		expect(raw).toBe(existing);
 	});
 
 	it('is safe to call multiple times — only creates once', async () => {
-		await SettingsStore.ensureInitialized(BASE_CONFIG);
-		await SettingsStore.ensureInitialized(BASE_CONFIG);
+		await ensureSettingsFile(BASE_CONFIG);
+		await ensureSettingsFile(BASE_CONFIG);
 
 		// Second call must not throw and must not alter the file
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');

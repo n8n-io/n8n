@@ -7,7 +7,7 @@ type Props = {
 	modelValue: string;
 	readOnly?: boolean;
 	maxLength?: number;
-	maxWidth?: number | string;
+	maxWidth?: number;
 	minWidth?: number;
 	placeholder?: string;
 	disabled?: boolean;
@@ -41,29 +41,15 @@ watchEffect(() => {
 
 // Resize logic
 const { width: measuredWidth } = useElementSize(measureSpan);
-const maxWidth = computed(() =>
-	typeof props.maxWidth === 'number' ? `${props.maxWidth}px` : props.maxWidth,
+const inputWidth = computed(() =>
+	Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth)),
 );
-const inputWidth = computed(() => {
-	const measuredContentWidth = `${measuredWidth.value + 1}px`;
-
-	if (typeof props.maxWidth === 'number') {
-		return `${Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth))}px`;
-	}
-
-	return `clamp(${props.minWidth}px, ${measuredContentWidth}, ${props.maxWidth})`;
-});
 
 const computedInlineStyles = computed(() => ({
-	width: inputWidth.value,
-	maxWidth: maxWidth.value,
+	width: `${inputWidth.value}px`,
+	maxWidth: `${props.maxWidth}px`,
 	zIndex: 1,
 }));
-const computedContentStyles = {
-	width: '100%',
-	maxWidth: '100%',
-	zIndex: 1,
-};
 
 function forceFocus() {
 	if (editableRoot.value && !props.readOnly && !props.disabled) {
@@ -131,7 +117,7 @@ defineExpose({ forceFocus, forceCancel });
 			<EditablePreview
 				data-test-id="inline-edit-preview"
 				:class="$style.inlineRenamePreview"
-				:style="computedContentStyles"
+				:style="computedInlineStyles"
 			/>
 			<!-- Stop propagation for space key to prevent VueFlow from intercepting it -->
 			<!-- when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999 -->
@@ -139,7 +125,7 @@ defineExpose({ forceFocus, forceCancel });
 				ref="input"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
-				:style="computedContentStyles"
+				:style="computedInlineStyles"
 				@input="onInput($event.target.value)"
 				@keydown.space.stop
 			/>

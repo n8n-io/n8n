@@ -56,10 +56,7 @@ export class NodeCreator {
 	}
 
 	// Item getters
-	getItem(text: string, options: { exact?: boolean } = {}): Locator {
-		if (options.exact) {
-			return this.getNodeItems().filter({ has: this.page.getByText(text, { exact: true }) });
-		}
+	getItem(text: string): Locator {
 		return this.getNodeItems().filter({ hasText: text }).first();
 	}
 
@@ -93,8 +90,8 @@ export class NodeCreator {
 		await this.getCategoryItem(text).click();
 	}
 
-	async navigateToSubcategory(category: string, options: { exact?: boolean } = {}): Promise<void> {
-		await this.getItem(category, options).click();
+	async navigateToSubcategory(category: string): Promise<void> {
+		await this.getItem(category).click();
 		await expect(this.getActiveSubcategory()).toContainText(category);
 	}
 

@@ -120,7 +120,7 @@ function renderModal({ valid = false, node = createMockNode() as INode | null } 
 		global: {
 			stubs: {
 				...sharedStubs,
-				NodeToolSettingsContent: createToolSettingsStub(valid),
+				ToolSettingsContent: createToolSettingsStub(valid),
 			},
 		},
 	});

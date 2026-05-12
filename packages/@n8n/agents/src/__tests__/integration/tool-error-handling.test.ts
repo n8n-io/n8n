@@ -5,6 +5,7 @@ import {
 	collectStreamChunks,
 	chunksOfType,
 	collectTextDeltas,
+	findAllToolResults,
 	createAgentWithAlwaysErrorTool,
 	createAgentWithFlakyTool,
 } from './helpers';
@@ -54,20 +55,20 @@ describe('tool error handling integration', () => {
 		expect(mentionsFailure).toBe(true);
 	});
 
-	it('error tool-result appears in the stream', async () => {
+	it('error tool-result appears in the message list', async () => {
 		const agent = createAgentWithAlwaysErrorTool('anthropic');
 
 		const { stream } = await agent.stream('Fetch the data for id "abc123".');
 		const chunks = await collectStreamChunks(stream);
 
-		// There should be a discrete tool-result chunk for the failed call
-		const toolResults = chunksOfType(chunks, 'tool-result');
+		// There should be a tool-result message in the stream
+		const messageChunks = chunksOfType(chunks, 'message');
+		const toolResults = findAllToolResults(messageChunks.map((c) => c.message));
 
 		// The tool should have been called and produced a result (even if it errored)
 		expect(toolResults.length).toBeGreaterThan(0);
 		const brokenResult = toolResults.find((r) => r.toolName === 'broken_tool');
 		expect(brokenResult).toBeDefined();
-		expect(brokenResult!.isError).toBe(true);
 	});
 
 	it('LLM can self-correct by retrying a flaky tool', async () => {

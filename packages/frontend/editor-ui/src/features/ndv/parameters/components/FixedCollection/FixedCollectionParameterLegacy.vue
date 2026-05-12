@@ -17,9 +17,9 @@ import { useI18n } from '@n8n/i18n';
 import ParameterInputList from '../ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { storeToRefs } from 'pinia';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { telemetry } from '@/app/plugins/telemetry';
+import { storeToRefs } from 'pinia';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 import {
@@ -62,7 +62,7 @@ const emit = defineEmits<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
-const ndvStore = injectNDVStore();
+const ndvStore = useNDVStore();
 
 const { activeNode } = storeToRefs(ndvStore);
 

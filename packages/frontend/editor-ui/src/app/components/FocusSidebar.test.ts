@@ -2,6 +2,7 @@ import { createCanvasGraphNode } from '@/features/workflows/canvas/__tests__/uti
 import {
 	createTestNode,
 	createTestNodeProperties,
+	createTestWorkflow,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -89,7 +90,7 @@ describe('FocusSidebar', () => {
 			}),
 		]);
 		workflowsStore = useWorkflowsStore(pinia);
-		workflowsStore.setWorkflowId('w0');
+		workflowsStore.workflow = createTestWorkflow({ id: 'w0' });
 
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
 		workflowDocumentStore.setNodes(testNodes);

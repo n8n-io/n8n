@@ -32,7 +32,7 @@ describe('FormTrigger', () => {
 		expect(authParam).toMatchObject({
 			default: 'none',
 			builderHint: {
-				propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
 			},
 		});
 	});

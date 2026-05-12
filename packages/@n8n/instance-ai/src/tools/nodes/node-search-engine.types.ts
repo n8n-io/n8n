@@ -67,17 +67,6 @@ export interface SearchableNodeType {
 	builderHint?: {
 		message?: string;
 		inputs?: BuilderHintInputs;
-		/**
-		 * Multi-line content variations emitted into generated `.d.ts` only;
-		 * intentionally ignored by the search engine to keep results lightweight.
-		 */
-		extraTypeDefContent?: Array<{
-			content: string;
-			displayOptions?: {
-				show?: Record<string, unknown[]>;
-				hide?: Record<string, unknown[]>;
-			};
-		}>;
 	};
 }
 

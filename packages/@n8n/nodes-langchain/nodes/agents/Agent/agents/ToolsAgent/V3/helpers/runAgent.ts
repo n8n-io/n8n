@@ -17,13 +17,17 @@ import type {
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import type { ItemContext } from './prepareItemContext';
-import { isExecuteFunctions } from '../../../utils';
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
+import type { ItemContext } from './prepareItemContext';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 
+function isExecuteFunctions(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+): context is IExecuteFunctions {
+	return 'getExecuteData' in context;
+}
 /**
  * Runs the agent for a single item, choosing between streaming or non-streaming execution.
  * Handles both regular execution and execution after tool calls.
@@ -43,7 +47,6 @@ export async function runAgent(
 	model: BaseChatModel,
 	memory: BaseChatMemory | undefined,
 	response?: EngineResponse<RequestResponseMetadata>,
-	memoryHits?: { loads: number; saves: number },
 ): Promise<RunAgentResult> {
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
@@ -76,9 +79,6 @@ export async function runAgent(
 		ctx.getNode().typeVersion >= 2.1
 	) {
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
-		if (memory && memoryHits) {
-			memoryHits.loads++;
-		}
 		const eventStream = executorWithTracing.streamEvents(
 			{
 				...invokeParams,
@@ -105,9 +105,6 @@ export async function runAgent(
 		if (memory && input && result?.output) {
 			const previousCount = response?.metadata?.previousRequests?.length;
 			await saveToMemory(input, result.output, memory, steps, previousCount);
-			if (memoryHits) {
-				memoryHits.saves++;
-			}
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -118,9 +115,6 @@ export async function runAgent(
 	} else {
 		// Handle regular execution
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
-		if (memory && memoryHits) {
-			memoryHits.loads++;
-		}
 
 		const modelResponse = await executorWithTracing.invoke(
 			{
@@ -135,9 +129,6 @@ export async function runAgent(
 			if (memory && input && modelResponse.returnValues.output) {
 				const previousCount = response?.metadata?.previousRequests?.length;
 				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
-				if (memoryHits) {
-					memoryHits.saves++;
-				}
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };

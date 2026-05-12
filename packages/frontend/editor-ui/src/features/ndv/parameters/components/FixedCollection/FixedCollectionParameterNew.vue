@@ -3,13 +3,13 @@ import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectio
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { N8nDropdownOption } from '@n8n/design-system';
 import {
 	N8nButton,
 	N8nCollapsiblePanel,
-	N8nDropdownMenu,
+	N8nDropdown,
 	N8nHeaderAction,
 	N8nSectionHeader,
 	N8nTooltip,
@@ -31,7 +31,7 @@ import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
 
 const locale = useI18n();
-const ndvStore = injectNDVStore();
+const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
@@ -346,11 +346,11 @@ const addTooltipText = computed(() =>
 const dropdownOptions = computed(
 	() =>
 		parameterOptions.value.map((option) => ({
-			id: option.name,
 			label: locale
 				.nodeText(activeNode.value?.type)
 				.collectionOptionDisplayName(props.parameter, option, props.path),
-		})) as Array<DropdownMenuItemProps<string>>,
+			value: option.name,
+		})) as Array<N8nDropdownOption<string>>,
 );
 
 const shouldShowSectionHeader = computed(
@@ -567,13 +567,13 @@ const onHeaderAddClick = async () => {
 	}
 
 	if (hasSingleOption.value && dropdownOptions.value[0]) {
-		optionSelected(dropdownOptions.value[0].id);
+		optionSelected(dropdownOptions.value[0].value);
 	}
 };
 
 const onAddButtonClick = () => {
 	if (hasSingleOption.value && dropdownOptions.value[0]) {
-		optionSelected(dropdownOptions.value[0].id);
+		optionSelected(dropdownOptions.value[0].value);
 	}
 };
 </script>
@@ -590,9 +590,9 @@ const onAddButtonClick = () => {
 				<template v-if="shouldShowAddInHeader" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
-						<N8nDropdownMenu
+						<N8nDropdown
 							v-if="hasMultipleOptions"
-							:items="dropdownOptions"
+							:options="dropdownOptions"
 							:disabled="isAddDisabled"
 							data-test-id="fixed-collection-add-header"
 							@select="optionSelected"
@@ -600,7 +600,7 @@ const onAddButtonClick = () => {
 							<template #trigger>
 								<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 							</template>
-						</N8nDropdownMenu>
+						</N8nDropdown>
 						<N8nHeaderAction
 							v-else
 							icon="plus"
@@ -679,9 +679,9 @@ const onAddButtonClick = () => {
 					:disabled="isAddDisabled"
 					@click="onAddButtonClick"
 				/>
-				<N8nDropdownMenu
+				<N8nDropdown
 					v-else-if="hasMultipleOptions"
-					:items="dropdownOptions"
+					:options="dropdownOptions"
 					:class="$style.dropdown"
 					:data-test-id="`fixed-collection-add-top-level-dropdown`"
 					:disabled="isAddDisabled"
@@ -697,7 +697,7 @@ const onAddButtonClick = () => {
 							:disabled="isAddDisabled"
 						/>
 					</template>
-				</N8nDropdownMenu>
+				</N8nDropdown>
 			</div>
 		</template>
 
@@ -710,18 +710,18 @@ const onAddButtonClick = () => {
 			<template #actions>
 				<N8nTooltip v-if="shouldShowAddInCollapsibleActions" :show-after="TOOLTIP_DELAY_MS">
 					<template #content>{{ addTooltipText }}</template>
-					<N8nDropdownMenu
+					<N8nDropdown
 						v-if="hasMultipleOptions"
-						:items="dropdownOptions"
+						:options="dropdownOptions"
 						:disabled="isAddDisabled"
 						data-test-id="fixed-collection-add-header"
 						@select="optionSelected"
-						@update:model-value="isDropdownOpen = $event"
+						@update:open="isDropdownOpen = $event"
 					>
 						<template #trigger>
 							<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 						</template>
-					</N8nDropdownMenu>
+					</N8nDropdown>
 					<N8nHeaderAction
 						v-else
 						icon="plus"
@@ -780,9 +780,9 @@ const onAddButtonClick = () => {
 							:label="placeholder"
 							@click="onAddButtonClick"
 						/>
-						<N8nDropdownMenu
+						<N8nDropdown
 							v-else-if="hasMultipleOptions"
-							:items="dropdownOptions"
+							:options="dropdownOptions"
 							:class="$style.dropdown"
 							:data-test-id="`fixed-collection-add-nested-dropdown`"
 							@select="optionSelected"
@@ -796,7 +796,7 @@ const onAddButtonClick = () => {
 									:label="placeholder"
 								/>
 							</template>
-						</N8nDropdownMenu>
+						</N8nDropdown>
 					</div>
 				</template>
 

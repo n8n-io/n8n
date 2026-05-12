@@ -55,7 +55,8 @@ vi.mock('@/app/stores/versions.store', () => ({
 }));
 
 vi.mock('@vueuse/core', async () => {
-	const originalModule = await vi.importActual('@vueuse/core');
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
 
 	return {
 		...originalModule,

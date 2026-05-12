@@ -3,14 +3,14 @@ import type { IConnections, IPinData, IWorkflowSettings } from 'n8n-workflow';
 import { Workflow, deepCopy } from 'n8n-workflow';
 import { ref, type Ref } from 'vue';
 import { DEFAULT_SETTINGS } from './useWorkflowDocumentSettings';
-import { useNodeTypesStore } from '../nodeTypes.store';
+import { useWorkflowsStore } from '../workflows.store';
 
 export interface WorkflowDocumentWorkflowObjectDeps {
 	workflowId: string;
 }
 
 export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflowObjectDeps) {
-	const nodeTypesStore = useNodeTypesStore();
+	const workflowsStore = useWorkflowsStore();
 	const workflowObject = ref<Workflow>(
 		new Workflow({
 			id: deps.workflowId,
@@ -18,7 +18,7 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: nodeTypesStore.getAllNodeTypes(),
+			nodeTypes: workflowsStore.getNodeTypes(),
 			settings: { ...DEFAULT_SETTINGS },
 		}),
 	);
@@ -37,7 +37,7 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 			nodes: deepCopy(opts.nodes),
 			connections: deepCopy(opts.connections),
 			active: false,
-			nodeTypes: nodeTypesStore.getAllNodeTypes(),
+			nodeTypes: workflowsStore.getNodeTypes(),
 			settings: opts.settings,
 			pinData: opts.pinData,
 		});
@@ -64,7 +64,7 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 		connections: IConnections,
 		copyData?: boolean,
 	): Workflow {
-		const nodeTypes = nodeTypesStore.getAllNodeTypes();
+		const nodeTypes = workflowsStore.getNodeTypes();
 
 		return new Workflow({
 			id: deps.workflowId,

@@ -100,7 +100,6 @@ const {
 			ref="createBtn"
 			data-test-id="universal-add"
 			:menu="menu"
-			:teleport="true"
 			@select="handleMenuSelect"
 		>
 			<N8nIconButton

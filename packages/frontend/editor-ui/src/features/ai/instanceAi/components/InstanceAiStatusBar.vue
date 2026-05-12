@@ -3,10 +3,10 @@ import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiMessage } from '@n8n/api-types';
-import { useThread } from '../instanceAi.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 
-const thread = useThread();
+const store = useInstanceAiStore();
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
 
@@ -47,13 +47,13 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 }
 
 const activity = computed(() => {
-	if (thread.isAwaitingConfirmation) {
+	if (store.isAwaitingConfirmation) {
 		return { label: i18n.baseText('instanceAi.statusBar.waitingForInput') };
 	}
-	return deriveActivity(thread.messages);
+	return deriveActivity(store.messages);
 });
 
-const isVisible = computed(() => thread.isStreaming);
+const isVisible = computed(() => store.isStreaming);
 
 const formattedElapsed = computed(() => {
 	const s = elapsed.value;
@@ -63,7 +63,7 @@ const formattedElapsed = computed(() => {
 	return `${String(m)}m ${String(remaining).padStart(2, '0')}s`;
 });
 
-const isCountingElapsed = computed(() => isVisible.value && !thread.isAwaitingConfirmation);
+const isCountingElapsed = computed(() => isVisible.value && !store.isAwaitingConfirmation);
 
 watch(isVisible, (visible) => {
 	if (visible) {
@@ -98,11 +98,11 @@ onUnmounted(() => {
 		<Transition name="status-bar">
 			<div
 				v-if="isVisible && activity"
-				:class="[$style.bar, { [$style.muted]: thread.isAwaitingConfirmation }]"
+				:class="[$style.bar, { [$style.muted]: store.isAwaitingConfirmation }]"
 				data-test-id="instance-ai-status-bar"
 			>
 				<N8nIcon
-					v-if="thread.isAwaitingConfirmation"
+					v-if="store.isAwaitingConfirmation"
 					:class="$style.glyph"
 					icon="circle-pause"
 					size="xsmall"
@@ -111,7 +111,7 @@ onUnmounted(() => {
 				<span :class="$style.label">{{ activity.label }}</span>
 				<span v-if="activity.detail" :class="$style.separator">&middot;</span>
 				<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
-				<template v-if="!thread.isAwaitingConfirmation">
+				<template v-if="!store.isAwaitingConfirmation">
 					<span :class="$style.separator">&middot;</span>
 					<span :class="$style.elapsed">{{ formattedElapsed }}</span>
 				</template>

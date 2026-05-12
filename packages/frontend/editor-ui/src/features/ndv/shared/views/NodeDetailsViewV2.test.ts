@@ -40,7 +40,7 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 	const nodeTypesStore = useNodeTypesStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.setWorkflowId(workflow.id);
+	workflowsStore.workflow = workflow;
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
 	workflowDocumentStore.setAllNodeMetadata(

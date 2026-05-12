@@ -17,7 +17,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const NESTED_PARAM_TYPES = new Set([
 	'collection',
@@ -51,7 +55,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 const ndvStore = useNDVStore();
 
 const nodeType = computed(() =>

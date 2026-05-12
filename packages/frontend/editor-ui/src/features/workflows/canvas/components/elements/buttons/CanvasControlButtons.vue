@@ -6,7 +6,6 @@ import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const props = withDefaults(
 	defineProps<{
 		zoom?: number;
@@ -30,8 +29,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const experimentalNdvStore = useExperimentalNdvStore();
-
-const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(props.zoom));
 
@@ -57,10 +54,6 @@ function onZoomToFit() {
 
 function onTidyUp() {
 	emit('tidy-up');
-}
-
-function handleClickCollapseAll() {
-	experimentalNdvStore.collapseAllNodes(workflowDocumentStore.value.allNodes);
 }
 </script>
 <template>
@@ -173,7 +166,7 @@ function handleClickCollapseAll() {
 				size="large"
 				icon="minimize-2"
 				:aria-label="i18n.baseText('nodeView.collapseAllNodes')"
-				@click="handleClickCollapseAll"
+				@click="experimentalNdvStore.collapseAllNodes"
 			/>
 		</N8nTooltip>
 	</Controls>

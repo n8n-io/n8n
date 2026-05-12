@@ -22,7 +22,6 @@ import {
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
-import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -85,23 +84,21 @@ describe('LogsPanel', () => {
 
 	let aiChatExecutionResponse: typeof aiChatExecutionResponseTemplate;
 
-	function setWorkflow(workflow: IWorkflowDb) {
-		workflowsStore.setWorkflowId(workflow.id);
-		const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	function hydrateDocumentStore(workflow: IWorkflowDb) {
+		const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 		store.hydrate(workflow);
 	}
 
 	function render() {
-		const wfId = workflowsStore.workflowId;
 		const wrapper = renderComponent(LogsPanel, {
 			global: {
 				provide: {
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
 					[WorkflowStateKey as symbol]: workflowState,
-					[WorkflowIdKey as unknown as string]: computed(() => wfId),
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 					[WorkflowDocumentStoreKey as symbol]: shallowRef(
-						useWorkflowDocumentStore(createWorkflowDocumentId(wfId)),
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
 					),
 				},
 				plugins: [
@@ -169,7 +166,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should only render logs panel if the workflow has no chat trigger', async () => {
-		setWorkflow(aiManualWorkflow);
+		workflowsStore.workflow = aiManualWorkflow;
 
 		const rendered = render();
 
@@ -178,7 +175,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should render chat panel and logs panel if the workflow has chat trigger', async () => {
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 
 		const rendered = render();
 
@@ -188,7 +185,7 @@ describe('LogsPanel', () => {
 
 	it('should render only output panel of selected node by default', async () => {
 		logsStore.toggleOpen(true);
-		setWorkflow(aiManualWorkflow);
+		workflowsStore.workflow = aiManualWorkflow;
 		workflowState.setWorkflowExecutionData(aiManualExecutionResponse);
 
 		const rendered = render();
@@ -202,7 +199,7 @@ describe('LogsPanel', () => {
 
 	it('should render both input and output panel of selected node by default if it is sub node', async () => {
 		logsStore.toggleOpen(true);
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -215,7 +212,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('toggles panel when header is clicked', async () => {
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 
 		const rendered = render();
 
@@ -231,7 +228,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should toggle panel when chevron icon button in the overview panel is clicked', async () => {
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 
 		const rendered = render();
 
@@ -245,7 +242,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should open log details panel when a log entry is clicked in the logs overview panel', async () => {
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -262,7 +259,7 @@ describe('LogsPanel', () => {
 	});
 
 	it("should show the button to toggle panel in the header of log details panel when it's opened", async () => {
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -327,7 +324,7 @@ describe('LogsPanel', () => {
 
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
 		logsStore.toggleOpen(true);
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
 			id: IN_PROGRESS_EXECUTION_ID,
@@ -366,9 +363,7 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
 		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
-		useExecutionDataStore(
-			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
-		).updateNodeExecutionStatus({
+		workflowsStore.updateNodeExecutionStatus({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			itemCountByConnectionType: { ai_agent: [1] },
@@ -405,8 +400,7 @@ describe('LogsPanel', () => {
 	it('should still show logs for a removed node', async () => {
 		const operations = useCanvasOperations();
 
-		const workflow = deepCopy(aiChatWorkflow);
-		setWorkflow(workflow);
+		workflowsStore.workflow = deepCopy(aiChatWorkflow);
 		logsStore.toggleOpen(true);
 		workflowState.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
@@ -425,14 +419,13 @@ describe('LogsPanel', () => {
 
 		await nextTick();
 
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
-		expect(docStore.allNodes.find((n) => n.name === 'AI Agent')).toBeUndefined();
+		expect(workflowsStore.workflow.nodes.find((n) => n.name === 'AI Agent')).toBeUndefined();
 		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
 	});
 
 	it('should open NDV if the button is clicked', async () => {
 		logsStore.toggleOpen(true);
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -451,7 +444,7 @@ describe('LogsPanel', () => {
 
 	it('should toggle subtree when chevron icon button is pressed', async () => {
 		logsStore.toggleOpen(true);
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -478,7 +471,7 @@ describe('LogsPanel', () => {
 
 	it('should toggle input and output panel when the button is clicked', async () => {
 		logsStore.toggleOpen(true);
-		setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -508,7 +501,8 @@ describe('LogsPanel', () => {
 		// Create deep copy so that renaming doesn't affect other test cases
 		const workflow = deepCopy(aiChatWorkflow);
 		workflow.id = 'test-workflow-id';
-		setWorkflow(workflow);
+		workflowsStore.workflow = workflow;
+		hydrateDocumentStore(workflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -523,17 +517,17 @@ describe('LogsPanel', () => {
 		await canvasOperations.renameNode('AI Model', 'Renamed!!');
 
 		await waitFor(() => {
-			expect(rendered.getByTestId('log-details-header')).toHaveTextContent('Renamed!!');
 			expect(
-				within(rendered.getByRole('tree')).getAllByText('Renamed!!').length,
-			).toBeGreaterThanOrEqual(1);
+				within(rendered.getByTestId('log-details-header')).getByText('Renamed!!'),
+			).toBeInTheDocument();
+			expect(within(rendered.getByRole('tree')).getByText('Renamed!!')).toBeInTheDocument();
 		});
 	});
 
 	describe('selection', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
-			setWorkflow(aiChatWorkflow);
+			workflowsStore.workflow = aiChatWorkflow;
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 		});
 
@@ -592,7 +586,8 @@ describe('LogsPanel', () => {
 
 			const workflow = deepCopy(aiChatWorkflow);
 			workflow.id = 'test-workflow-id';
-			setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
+			hydrateDocumentStore(workflow);
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 			logsStore.toggleLogSelectionSync(true);
@@ -614,7 +609,7 @@ describe('LogsPanel', () => {
 	describe('chat', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
-			setWorkflow(aiChatWorkflow);
+			workflowsStore.workflow = aiChatWorkflow;
 		});
 
 		describe('rendering', () => {

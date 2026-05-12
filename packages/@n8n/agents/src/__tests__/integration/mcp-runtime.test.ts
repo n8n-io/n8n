@@ -17,7 +17,7 @@ import {
 	chunksOfType,
 } from './helpers';
 import { startSseServer, type TestServer } from './mcp-server-helpers';
-import { Agent, McpClient, Tool } from '../../index';
+import { Agent, McpClient, Tool, isLlmMessage } from '../../index';
 
 // ---------------------------------------------------------------------------
 // McpClient constructor validation — no MCP server required
@@ -234,10 +234,13 @@ describe_llm('agent stream() with MCP tool', () => {
 		const { stream } = await agent.stream('Echo "stream works" using tools_echo.');
 
 		const chunks = await collectStreamChunks(stream);
-		// Tool calls now ride their own discrete `tool-call` chunks rather than
-		// being wrapped in `message` envelopes.
-		const toolCallChunks = chunksOfType(chunks, 'tool-call');
-		expect(toolCallChunks.length).toBeGreaterThan(0);
+		const messageChunks = chunksOfType(chunks, 'message');
+		const messages = messageChunks.map((c) => c.message);
+
+		const hasToolCall = messages.some(
+			(m) => isLlmMessage(m) && m.content.some((c) => c.type === 'tool-call'),
+		);
+		expect(hasToolCall).toBe(true);
 
 		await client.close();
 	});

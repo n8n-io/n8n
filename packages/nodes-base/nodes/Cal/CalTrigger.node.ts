@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import {
 	type IDataObject,
 	type IHookFunctions,
@@ -11,7 +10,6 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { verifySignature } from './CalTriggerHelpers';
 import { calApiRequest, sortOptionParameters } from './GenericFunctions';
 
 export class CalTrigger implements INodeType {
@@ -211,13 +209,10 @@ export class CalTrigger implements INodeType {
 				const options = this.getNodeParameter('options');
 				const active = true;
 
-				const webhookSecret = randomBytes(32).toString('hex');
-
 				const body = {
 					subscriberUrl,
 					eventTriggers,
 					active,
-					secret: webhookSecret,
 					...(options as object),
 				};
 
@@ -232,7 +227,6 @@ export class CalTrigger implements INodeType {
 				}
 
 				webhookData.webhookId = responseData.webhook.id as string;
-				webhookData.webhookSecret = webhookSecret;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -253,7 +247,6 @@ export class CalTrigger implements INodeType {
 					// Remove from the static workflow data so that it is clear
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
-					delete webhookData.webhookSecret;
 				}
 				return true;
 			},
@@ -261,14 +254,6 @@ export class CalTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		if (!verifySignature.call(this)) {
-			const res = this.getResponseObject();
-			res.status(401).send('Unauthorized').end();
-			return {
-				noWebhookResponse: true,
-			};
-		}
-
 		const req = this.getRequestObject();
 		return {
 			workflowData: [

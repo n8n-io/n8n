@@ -153,7 +153,6 @@ export async function startDataTableAgentTask(
 						threadId: context.threadId,
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
-						onActivity: () => context.touchBackgroundTask?.(taskId),
 						llmStepTraceHooks,
 					});
 

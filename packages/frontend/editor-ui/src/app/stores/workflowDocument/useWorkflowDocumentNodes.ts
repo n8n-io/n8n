@@ -1,9 +1,6 @@
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type {
-	INode,
-	INodeCredentials,
-	INodeCredentialsDetails,
 	INodeIssueData,
 	INodeIssueObjectProperty,
 	INodeParameters,
@@ -16,6 +13,7 @@ import type {
 	IUpdateInformation,
 	XYPosition,
 } from '@/Interface';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { isObject } from '@/app/utils/objectUtils';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
@@ -26,7 +24,6 @@ import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { isPresent } from '@/app/utils/typesUtils';
-import { useNodeTypesStore } from '../nodeTypes.store';
 
 // --- Event types ---
 
@@ -59,8 +56,7 @@ export interface WorkflowDocumentNodesDeps {
 // Once that happens, the direct import (and the import-cycle warning it causes)
 // will go away.
 export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
-	const nodeTypesStore = useNodeTypesStore();
-	const nodes = ref<INodeUi[]>([]);
+	const workflowsStore = useWorkflowsStore();
 
 	const onNodesChange = createEventHook<NodesChangeEvent>();
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
@@ -77,14 +73,14 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
 		if (nodeIndex === -1) return false;
 
-		const node = nodes.value[nodeIndex];
+		const node = workflowsStore.workflow.nodes[nodeIndex];
 		const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
 		const changed = !isEqual(existingData, nodeData);
 
 		if (changed) {
 			Object.assign(node, nodeData);
-			nodes.value[nodeIndex] = node;
-			deps.syncWorkflowObject(nodes.value);
+			workflowsStore.workflow.nodes[nodeIndex] = node;
+			deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 			void onNodesChange.trigger({
 				action: CHANGE_ACTION.UPDATE,
 				payload: { name: node.name },
@@ -98,8 +94,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// Apply methods — will become the CRDT entry point. Today they delegate.
 	// -----------------------------------------------------------------------
 
-	function applySetNodes(newNodes: INodeUi[]) {
-		for (const node of newNodes) {
+	function applySetNodes(nodes: INodeUi[]) {
+		for (const node of nodes) {
 			if (!node.id) {
 				deps.assignNodeId(node);
 			}
@@ -113,11 +109,11 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			}
 		}
 
-		nodes.value = newNodes;
-		deps.syncWorkflowObject(nodes.value);
+		workflowsStore.workflow.nodes = nodes;
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		// setNodes replaces the full node list, so reset metadata to match
 		deps.nodeMetadata.setAllNodeMetadata({});
-		for (const node of newNodes) {
+		for (const node of nodes) {
 			deps.nodeMetadata.initPristineNodeMetadata(node.name);
 		}
 	}
@@ -127,8 +123,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			return;
 		}
 
-		nodes.value.push(node);
-		deps.syncWorkflowObject(nodes.value);
+		workflowsStore.workflow.nodes.push(node);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.initNodeMetadata(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.ADD,
@@ -138,12 +134,15 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyRemoveNode(node: INodeUi) {
-		const idx = nodes.value.findIndex((n) => n.name === node.name);
+		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.name === node.name);
 		if (idx !== -1) {
-			nodes.value = [...nodes.value.slice(0, idx), ...nodes.value.slice(idx + 1)];
+			workflowsStore.workflow.nodes = [
+				...workflowsStore.workflow.nodes.slice(0, idx),
+				...workflowsStore.workflow.nodes.slice(idx + 1),
+			];
 		}
 
-		deps.syncWorkflowObject(nodes.value);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.removeNodeMetadata(node.name);
 		deps.unpinNodeData(node.name);
 		void onNodesChange.trigger({
@@ -154,12 +153,15 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyRemoveNodeById(id: string) {
-		const node = nodes.value.find((n) => n.id === id);
-		const idx = nodes.value.findIndex((n) => n.id === id);
+		const node = workflowsStore.workflow.nodes.find((n) => n.id === id);
+		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.id === id);
 		if (idx !== -1) {
-			nodes.value = [...nodes.value.slice(0, idx), ...nodes.value.slice(idx + 1)];
+			workflowsStore.workflow.nodes = [
+				...workflowsStore.workflow.nodes.slice(0, idx),
+				...workflowsStore.workflow.nodes.slice(idx + 1),
+			];
 		}
-		deps.syncWorkflowObject(nodes.value);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		if (node) {
 			deps.nodeMetadata.removeNodeMetadata(node.name);
 			deps.unpinNodeData(node.name);
@@ -175,10 +177,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// Read API
 	// -----------------------------------------------------------------------
 
-	const allNodes = computed<INodeUi[]>(() => nodes.value);
+	const allNodes = computed<INodeUi[]>(() => workflowsStore.workflow.nodes);
 
 	const nodesByName = computed(() => {
-		return nodes.value.reduce<Record<string, INodeUi>>((acc, node) => {
+		return workflowsStore.workflow.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
 			acc[node.name] = node;
 			return acc;
 		}, {});
@@ -186,23 +188,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
-	const workflowTriggerNodes = computed(() =>
-		nodes.value.filter((node: INodeUi) => {
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			return nodeType && nodeType.group.includes('trigger');
-		}),
-	);
-
-	const aiNodes = computed<INodeUi[]>(() =>
-		nodes.value.filter(
-			(node) =>
-				node.type.includes('langchain') ||
-				(node.type === 'n8n-nodes-base.evaluation' && node.parameters?.operation === 'setMetrics'),
-		),
-	);
-
 	function getNodeById(id: string): INodeUi | undefined {
-		return nodes.value.find((node) => node.id === id);
+		return workflowsStore.workflow.nodes.find((node) => node.id === id);
 	}
 
 	function getNodeByName(name: string): INodeUi | null {
@@ -210,7 +197,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
-		return nodes.value.find((node) => node.id.startsWith(partialId));
+		return workflowsStore.workflow.nodes.find((node) => node.id.startsWith(partialId));
 	}
 
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
@@ -238,7 +225,9 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
-		const nodeIndex = nodes.value.findIndex((node) => node.name === updateInformation.name);
+		const nodeIndex = workflowsStore.workflow.nodes.findIndex(
+			(node) => node.name === updateInformation.name,
+		);
 
 		if (nodeIndex === -1) {
 			throw new Error(
@@ -246,7 +235,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			);
 		}
 
-		const { name, parameters } = nodes.value[nodeIndex];
+		const { name, parameters } = workflowsStore.workflow.nodes[nodeIndex];
 
 		const newParameters =
 			!!append && isObject(updateInformation.value)
@@ -264,7 +253,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
-		const latestNode = findLast(nodes.value, (node) => node.type === updateInformation.key);
+		const latestNode = findLast(
+			workflowsStore.workflow.nodes,
+			(node) => node.type === updateInformation.key,
+		);
 		if (!latestNode) return;
 
 		const nodeType = deps.getNodeType(latestNode.type);
@@ -283,7 +275,9 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function setNodeValue(updateInformation: IUpdateInformation): void {
-		const nodeIndex = nodes.value.findIndex((node) => node.name === updateInformation.name);
+		const nodeIndex = workflowsStore.workflow.nodes.findIndex(
+			(node) => node.name === updateInformation.name,
+		);
 
 		if (nodeIndex === -1 || !updateInformation.key) {
 			throw new Error(
@@ -302,25 +296,27 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
 		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			deps.nodeMetadata.touchParametersLastUpdatedAt(nodes.value[nodeIndex].name);
+			deps.nodeMetadata.touchParametersLastUpdatedAt(workflowsStore.workflow.nodes[nodeIndex].name);
 		}
 	}
 
 	function setNodePositionById(id: string, position: XYPosition): void {
-		const node = nodes.value.find((n) => n.id === id);
+		const node = workflowsStore.workflow.nodes.find((n) => n.id === id);
 		if (!node) return;
 
 		setNodeValue({ name: node.name, key: 'position', value: position });
 	}
 
 	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
-		const nodeIndex = nodes.value.findIndex((node) => node.id === nodeId);
+		const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => node.id === nodeId);
 		if (nodeIndex === -1) return false;
 		return updateNodeAtIndex(nodeIndex, nodeData);
 	}
 
 	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
-		const nodeIndex = nodes.value.findIndex((node) => node.name === updateInformation.name);
+		const nodeIndex = workflowsStore.workflow.nodes.findIndex(
+			(node) => node.name === updateInformation.name,
+		);
 
 		if (nodeIndex !== -1) {
 			for (const key of Object.keys(updateInformation.properties)) {
@@ -337,12 +333,14 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function setNodeIssue(nodeIssueData: INodeIssueData): void {
-		const nodeIndex = nodes.value.findIndex((node) => node.name === nodeIssueData.node);
+		const nodeIndex = workflowsStore.workflow.nodes.findIndex(
+			(node) => node.name === nodeIssueData.node,
+		);
 		if (nodeIndex === -1) {
 			return;
 		}
 
-		const node = nodes.value[nodeIndex];
+		const node = workflowsStore.workflow.nodes[nodeIndex];
 
 		if (nodeIssueData.value === null) {
 			if (node.issues?.[nodeIssueData.type] === undefined) {
@@ -365,8 +363,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function removeAllNodes(): void {
-		nodes.value.splice(0, nodes.value.length);
-		deps.syncWorkflowObject(nodes.value);
+		workflowsStore.workflow.nodes.splice(0, workflowsStore.workflow.nodes.length);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.setAllNodeMetadata({});
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
@@ -375,100 +373,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function resetAllNodesIssues(): boolean {
-		nodes.value.forEach((node) => {
+		workflowsStore.workflow.nodes.forEach((node) => {
 			node.issues = undefined;
 		});
 		return true;
-	}
-
-	// replace invalid credentials in workflow
-	function replaceInvalidWorkflowCredentials(data: {
-		credentials: INodeCredentialsDetails;
-		invalid: INodeCredentialsDetails;
-		type: string;
-	}) {
-		nodes.value.forEach((node: INodeUi) => {
-			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
-			if (!nodeCredentials?.[data.type]) {
-				return;
-			}
-
-			const nodeCredentialDetails: INodeCredentialsDetails | string = nodeCredentials[data.type];
-
-			if (
-				typeof nodeCredentialDetails === 'string' &&
-				nodeCredentialDetails === data.invalid.name
-			) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				return;
-			}
-
-			if (nodeCredentialDetails.id === null) {
-				if (nodeCredentialDetails.name === data.invalid.name) {
-					(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				}
-				return;
-			}
-
-			if (nodeCredentialDetails.id === data.invalid.id) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-			}
-		});
-	}
-
-	// Assign credential to all nodes that support it but don't have it set
-	function assignCredentialToMatchingNodes(data: {
-		credentials: INodeCredentialsDetails;
-		type: string;
-		currentNodeName: string;
-	}): number {
-		let updatedNodesCount = 0;
-
-		nodes.value.forEach((node: INodeUi) => {
-			// Skip the current node (it was just set)
-			if (node.name === data.currentNodeName) {
-				return;
-			}
-
-			// Skip if node already has credential set
-			if (node.credentials && Object.keys(node.credentials).length > 0) {
-				return;
-			}
-
-			// Get node type to check if it supports this credential
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (!nodeType?.credentials) {
-				return;
-			}
-
-			// Check if this node type supports the credential type
-			// and if the credential is actually active given the node's current parameters
-			const credentialDescription = nodeType.credentials.find((cred) => cred.name === data.type);
-			if (!credentialDescription) {
-				return;
-			}
-
-			if (
-				credentialDescription.displayOptions &&
-				!NodeHelpers.displayParameterPath(
-					node.parameters,
-					credentialDescription,
-					'',
-					node,
-					node?.type ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null,
-				)
-			) {
-				return;
-			}
-
-			// Assign the same credential to the node
-			node.credentials ??= {} satisfies INodeCredentials;
-			node.credentials[data.type] = data.credentials;
-
-			updatedNodesCount++;
-		});
-
-		return updatedNodesCount;
 	}
 
 	return {
@@ -476,8 +384,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		allNodes,
 		nodesByName,
 		canvasNames,
-		workflowTriggerNodes,
-		aiNodes,
 		getNodeById,
 		getNodeByName,
 		findNodeByPartialId,
@@ -497,8 +403,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		removeAllNodes,
 		resetAllNodesIssues,
 		setLastNodeParameters,
-		replaceInvalidWorkflowCredentials,
-		assignCredentialToMatchingNodes,
 
 		// Events
 		onNodesChange: onNodesChange.on,

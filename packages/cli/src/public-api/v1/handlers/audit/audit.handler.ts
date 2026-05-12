@@ -1,27 +1,25 @@
 import { Container } from '@n8n/di';
+import type { Response } from 'express';
 
 import type { AuditRequest } from '@/public-api/types';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
-type AuditHandlers = {
-	generateAudit: PublicAPIEndpoint<AuditRequest.Generate>;
-};
-
-const auditHandlers: AuditHandlers = {
+export = {
 	generateAudit: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'securityAudit:generate' }),
-		async (req, res) => {
-			const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
-			const result = await Container.get(SecurityAuditService).run(
-				req.body?.additionalOptions?.categories,
-				req.body?.additionalOptions?.daysAbandonedWorkflow,
-			);
+		async (req: AuditRequest.Generate, res: Response): Promise<Response> => {
+			try {
+				const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
+				const result = await Container.get(SecurityAuditService).run(
+					req.body?.additionalOptions?.categories,
+					req.body?.additionalOptions?.daysAbandonedWorkflow,
+				);
 
-			return res.json(result);
+				return res.json(result);
+			} catch (error) {
+				return res.status(500).json(error);
+			}
 		},
 	],
 };
-
-export = auditHandlers;

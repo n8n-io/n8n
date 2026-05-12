@@ -10,7 +10,6 @@ import type {
 import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
 import { gitlabApiRequest } from './GenericFunctions';
-import { generateWebhookSecret, verifySignature } from './GitlabTriggerHelpers';
 
 const GITLAB_EVENTS = [
 	{
@@ -200,7 +199,6 @@ export class GitlabTrigger implements INodeType {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
-						delete webhookData.webhookSecret;
 
 						return false;
 					}
@@ -242,13 +240,10 @@ export class GitlabTrigger implements INodeType {
 
 				const endpoint = `/projects/${path}/hooks`;
 
-				const webhookSecret = generateWebhookSecret();
-
 				const body = {
 					url: webhookUrl,
 					...events,
 					enable_ssl_verification: false,
-					token: webhookSecret,
 				};
 
 				let responseData;
@@ -268,7 +263,6 @@ export class GitlabTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.id as string;
 				webhookData.webhookEvents = eventsArray;
-				webhookData.webhookSecret = webhookSecret;
 
 				return true;
 			},
@@ -294,7 +288,6 @@ export class GitlabTrigger implements INodeType {
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
-					delete webhookData.webhookSecret;
 				}
 
 				return true;
@@ -302,16 +295,7 @@ export class GitlabTrigger implements INodeType {
 		},
 	};
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		if (!verifySignature.call(this)) {
-			const res = this.getResponseObject();
-			res.status(401).send('Unauthorized').end();
-			return {
-				noWebhookResponse: true,
-			};
-		}
-
 		const bodyData = this.getBodyData();
 
 		const returnData: IDataObject[] = [];

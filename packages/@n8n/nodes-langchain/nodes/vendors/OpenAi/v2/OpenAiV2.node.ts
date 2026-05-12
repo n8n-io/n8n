@@ -47,7 +47,7 @@ export class OpenAiV2 implements INodeType {
 							name: 'Text',
 							value: 'text',
 							builderHint: {
-								propertyHint:
+								message:
 									'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model instead of this resource.',
 							},
 						},

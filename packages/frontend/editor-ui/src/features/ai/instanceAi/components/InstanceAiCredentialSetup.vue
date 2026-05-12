@@ -12,7 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useThread } from '../instanceAi.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const props = defineProps<{
@@ -26,7 +26,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const thread = useThread();
+const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 
@@ -246,7 +246,7 @@ function onCredentialSelected(
 }
 
 function trackCredentialInput() {
-	const tc = thread.findToolCallByRequestId(props.requestId);
+	const tc = store.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 	const skipped: Array<{ label: string; options: string[] }> = [];
@@ -259,7 +259,7 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: thread.currentThreadId,
+		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
@@ -279,12 +279,12 @@ async function handleContinue() {
 
 	isSubmitted.value = true;
 
-	const success = await thread.confirmAction(props.requestId, {
+	const success = await store.confirmAction(props.requestId, {
 		kind: 'credentialSelection',
 		credentials,
 	});
 	if (success) {
-		thread.resolveConfirmation(props.requestId, 'approved');
+		store.resolveConfirmation(props.requestId, 'approved');
 	} else {
 		isSubmitted.value = false;
 	}
@@ -296,12 +296,12 @@ async function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
-	const success = await thread.confirmAction(props.requestId, {
+	const success = await store.confirmAction(props.requestId, {
 		kind: 'approval',
 		approved: false,
 	});
 	if (success) {
-		thread.resolveConfirmation(props.requestId, 'deferred');
+		store.resolveConfirmation(props.requestId, 'deferred');
 	} else {
 		isSubmitted.value = false;
 		isDeferred.value = false;
@@ -347,7 +347,6 @@ async function handleLater() {
 							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
 							hide-issues
-							hide-ask-assistant
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 						/>
 						<N8nButton

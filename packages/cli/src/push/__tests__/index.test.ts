@@ -178,8 +178,9 @@ describe('Push', () => {
 					req.headers['x-forwarded-host'] = xForwardedHost;
 
 					if (backendName === 'sse') {
-						expect(() => push.handleRequest(req, res)).toThrow(BadRequestError);
-						expect(() => push.handleRequest(req, res)).toThrow('Invalid origin!');
+						expect(() => push.handleRequest(req, res)).toThrow(
+							new BadRequestError('Invalid origin!'),
+						);
 					} else {
 						push.handleRequest(req, res);
 						expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
@@ -273,8 +274,9 @@ describe('Push', () => {
 					} else {
 						// Expected behavior: connection should be rejected
 						if (backendName === 'sse') {
-							expect(() => push.handleRequest(req, res)).toThrow(BadRequestError);
-							expect(() => push.handleRequest(req, res)).toThrow('Invalid origin!');
+							expect(() => push.handleRequest(req, res)).toThrow(
+								new BadRequestError('Invalid origin!'),
+							);
 						} else {
 							push.handleRequest(req, res);
 							expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
@@ -289,9 +291,8 @@ describe('Push', () => {
 				req.query = { pushRef: '' };
 
 				if (backendName === 'sse') {
-					expect(() => push.handleRequest(req, res)).toThrow(BadRequestError);
 					expect(() => push.handleRequest(req, res)).toThrow(
-						'The query parameter "pushRef" is missing!',
+						new BadRequestError('The query parameter "pushRef" is missing!'),
 					);
 				} else {
 					push.handleRequest(req, mock());

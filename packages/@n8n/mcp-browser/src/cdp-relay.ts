@@ -52,7 +52,7 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 // ---------------------------------------------------------------------------
 
 export interface CDPRelayServerOptions {
-	/** Timeout in ms waiting for extension to connect. Default 30_000 */
+	/** Timeout in ms waiting for extension to connect. Default 15_000 */
 	connectionTimeoutMs?: number;
 }
 
@@ -99,7 +99,7 @@ export class CDPRelayServer {
 	private readonly cdpEvents = new EventEmitter();
 
 	constructor(options?: CDPRelayServerOptions) {
-		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 30_000;
+		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 15_000;
 
 		const uuid = randomUUID();
 		this.cdpPath = `/cdp/${uuid}`;
@@ -142,9 +142,7 @@ export class CDPRelayServer {
 		return `ws://127.0.0.1:${port}${this.extensionPath}`;
 	}
 
-	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance.
-	 *  The underlying relay connection remains open so the extension can still connect later.
-	 */
+	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance. */
 	async waitForExtension(options?: WaitForExtensionOptions): Promise<void> {
 		if (this.extensionConn) return;
 
@@ -153,31 +151,23 @@ export class CDPRelayServer {
 		const phase: ExtensionNotConnectedPhase =
 			options?.browserWasLaunched === false ? 'browser_not_launched' : 'extension_missing';
 
-		let timeoutId: ReturnType<typeof setTimeout>;
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timeoutId = setTimeout(() => {
-				log.error('extension connection timed out, phase:', phase);
-				reject(
-					new ExtensionNotConnectedError(
-						this.connectionTimeoutMs,
-						phase,
-						getExtensionInstallInstructions(),
-					),
-				);
-			}, this.connectionTimeoutMs);
-		});
+		const timer = setTimeout(() => {
+			log.error('extension connection timed out, phase:', phase);
+			this.extensionConnectedReject?.(
+				new ExtensionNotConnectedError(
+					this.connectionTimeoutMs,
+					phase,
+					getExtensionInstallInstructions(),
+				),
+			);
+		}, this.connectionTimeoutMs);
 
 		try {
-			await Promise.race([this.extensionConnectedPromise, timeoutPromise]);
+			await this.extensionConnectedPromise;
 			log.debug('extension connected');
 		} finally {
-			clearTimeout(timeoutId!);
+			clearTimeout(timer);
 		}
-	}
-
-	/** Whether the extension is currently connected. */
-	isExtensionConnected(): boolean {
-		return this.extensionConn !== null;
 	}
 
 	/** Shut down the relay, closing all connections. */
@@ -308,10 +298,9 @@ export class CDPRelayServer {
 
 	private handlePlaywrightConnection(ws: WebSocket): void {
 		if (this.playwrightWs) {
-			const stale = this.playwrightWs;
-			this.playwrightWs = null;
-			stale.terminate();
-			log.debug('replaced stale Playwright connection');
+			log.debug('rejected duplicate Playwright connection');
+			ws.close(1000, 'Another CDP client already connected');
+			return;
 		}
 
 		log.debug('Playwright connected');
@@ -330,7 +319,6 @@ export class CDPRelayServer {
 		});
 
 		ws.on('close', () => {
-			log.debug('Adapter WS closed');
 			if (this.playwrightWs !== ws) return;
 			log.debug('Playwright disconnected');
 			this.playwrightWs = null;
@@ -378,30 +366,6 @@ export class CDPRelayServer {
 
 			case 'Target.disposeBrowserContext':
 				return {};
-
-			case 'Target.getTargets': {
-				const tabs = await this.listTabs();
-				return {
-					targetInfos: tabs.map((entry) => ({
-						targetId: entry.id,
-						type: 'page',
-						title: entry.title,
-						url: entry.url,
-						attached: false,
-						browserContextId: this.browserContextId,
-					})),
-				};
-			}
-
-			case 'Target.setDiscoverTargets':
-				return {};
-
-			case 'Target.attachToTarget': {
-				const targetId = (params as { targetId: string })?.targetId;
-				if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
-				await this.extensionConn.send('attachTab', { id: targetId });
-				return { sessionId: targetId };
-			}
 
 			case 'Target.setAutoAttach': {
 				// Child session auto-attach: forward to extension so Chrome attaches to iframes
@@ -878,7 +842,6 @@ class ExtensionConnection {
 	>();
 	private lastId = 0;
 	private lastPongAt = Date.now();
-	private lastPingSentAt = 0;
 	private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
 
 	/** The reason string from the WebSocket close frame, if any. */
@@ -973,10 +936,7 @@ class ExtensionConnection {
 			}
 
 			const elapsed = Date.now() - this.lastPongAt;
-			// Only terminate if we already sent a ping since the last pong with no response.
-			// This prevents false timeouts after system sleep, where the timer fires with a
-			// large elapsed value before any new ping has been sent (and thus answered).
-			if (elapsed > HEARTBEAT_TIMEOUT_MS && this.lastPingSentAt > this.lastPongAt) {
+			if (elapsed > HEARTBEAT_TIMEOUT_MS) {
 				log.debug('heartbeat timeout: no pong for', elapsed, 'ms');
 				this.closeReason = 'heartbeat_timeout';
 				this.stopHeartbeat();
@@ -984,7 +944,6 @@ class ExtensionConnection {
 				return;
 			}
 
-			this.lastPingSentAt = Date.now();
 			this.ws.ping();
 		}, HEARTBEAT_INTERVAL_MS);
 	}

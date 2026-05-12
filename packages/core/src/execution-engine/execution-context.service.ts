@@ -4,11 +4,9 @@ import {
 	IExecuteData,
 	IExecutionContext,
 	INodeExecutionData,
-	ISecureArtifacts,
 	PlaintextExecutionContext,
 	toCredentialContext,
 	toExecutionContextEstablishmentHookParameter,
-	toSecureArtifacts,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -31,15 +29,9 @@ export class ExecutionContextService {
 			const decrypted = await this.cipher.decryptV2(context.credentials);
 			credentials = toCredentialContext(decrypted);
 		}
-		let secureArtifacts: ISecureArtifacts | undefined = undefined;
-		if (context.secureArtifacts) {
-			const decrypted = await this.cipher.decryptV2(context.secureArtifacts);
-			secureArtifacts = toSecureArtifacts(decrypted);
-		}
 		return {
 			...context,
 			credentials,
-			secureArtifacts,
 		};
 	}
 
@@ -48,14 +40,9 @@ export class ExecutionContextService {
 		if (context.credentials) {
 			credentials = await this.cipher.encryptV2(context.credentials);
 		}
-		let secureArtifacts = undefined;
-		if (context.secureArtifacts) {
-			secureArtifacts = await this.cipher.encryptV2(context.secureArtifacts);
-		}
 		return {
 			...context,
 			credentials,
-			secureArtifacts,
 		};
 	}
 

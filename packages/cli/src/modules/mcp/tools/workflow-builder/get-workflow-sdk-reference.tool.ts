@@ -11,7 +11,6 @@ import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-referenc
 
 const VALID_SECTIONS: SdkReferenceSection[] = [
 	'patterns',
-	'patterns_detailed',
 	'expressions',
 	'functions',
 	'rules',
@@ -26,7 +25,7 @@ const inputSchema = {
 		.enum(VALID_SECTIONS as [string, ...string[]])
 		.optional()
 		.describe(
-			'Optional section to retrieve. Omit this for the full reference, or use a section for targeted lookup.',
+			'Optional section to retrieve: "patterns", "expressions", "functions", "rules", "import", "guidelines", "design", or "all" (default)',
 		),
 } satisfies z.ZodRawShape;
 
@@ -45,7 +44,7 @@ export const createGetWorkflowSdkReferenceTool = (
 	name: MCP_GET_SDK_REFERENCE_TOOL.toolName,
 	config: {
 		description:
-			'Required reference for building n8n Workflow SDK code. Call this BEFORE writing workflow code to learn workflow(), trigger()/node(), .add()/.to(), expr(), and credential patterns.',
+			'Get the n8n Workflow SDK reference documentation including patterns, expression syntax, and rules. Call this FIRST before building workflows to learn the SDK.',
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -80,7 +80,6 @@ export type JobFinishedProps = {
 	lastNodeExecuted?: string;
 	usedDynamicCredentials?: boolean;
 	metadata?: Record<string, string>;
-	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
 };

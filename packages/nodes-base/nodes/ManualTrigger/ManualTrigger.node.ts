@@ -24,7 +24,7 @@ export class ManualTrigger implements INodeType {
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
-			searchHint: 'There can only be one manual trigger node per workflow',
+			message: 'There can only be one manual trigger node per workflow',
 		},
 		properties: [
 			{

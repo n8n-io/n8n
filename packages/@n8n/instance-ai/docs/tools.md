@@ -209,9 +209,9 @@ are configured.
 
 ---
 
-## Workflow Tools (9–13)
+## Workflow Tools (8–12)
 
-Core count is 9; up to 4 more are conditionally registered based on license.
+Core count is 8; up to 4 more are conditionally registered based on license.
 
 ### `list-workflows`
 
@@ -221,11 +221,8 @@ List workflows accessible to the current user.
 |-------|------|----------|---------|-------------|
 | `query` | string | no | — | Filter workflows by name |
 | `limit` | number | no | 50 | Max results (1–100) |
-| `status` | `"active" \| "archived" \| "all"` | no | `"active"` | Which workflows to list |
 
-**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt }] }`
-
-`activeVersionId` is `null` when the workflow is unpublished.
+**Returns**: `{ workflows: [{ id, name, active, createdAt, updatedAt }] }`
 
 ### `get-workflow`
 
@@ -235,9 +232,7 @@ Get full workflow definition including nodes, connections, and settings.
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
 
-**Returns**: `{ id, name, activeVersionId, isArchived, nodes, connections, settings }`
-
-`activeVersionId` is `null` when the workflow is unpublished.
+**Returns**: `{ id, name, active, nodes, connections, settings }`
 
 ### `get-workflow-as-code`
 
@@ -268,22 +263,11 @@ workflow JSON, applies layout engine positioning, resolves credentials.
 
 ### `delete-workflow`
 
-Archive a workflow (soft delete, deactivates if needed). This is reversible
-with `unarchive-workflow`.
+Archive a workflow (soft delete, deactivates if needed).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to archive |
-
-**Returns**: `{ success: boolean }`
-
-### `unarchive-workflow`
-
-Restore an archived workflow without publishing it.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `workflowId` | string | yes | Archived workflow to restore |
 
 **Returns**: `{ success: boolean }`
 

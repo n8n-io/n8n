@@ -1,26 +1,27 @@
 import { PullWorkFolderRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type express from 'express';
+import type { StatusResult } from 'simple-git';
 
-import { EventService } from '@/events/event.service';
 import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
 } from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import type { ImportResult } from '@/modules/source-control.ee/types/import-result';
+import { EventService } from '@/events/event.service';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
-type SourceControlHandlers = {
-	pull: PublicAPIEndpoint<AuthenticatedRequest>;
-};
-
-const sourceControlHandlers: SourceControlHandlers = {
+export = {
 	pull: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:pull' }),
-		async (req, res) => {
+		async (
+			req: AuthenticatedRequest,
+			res: express.Response,
+		): Promise<ImportResult | StatusResult | Promise<express.Response>> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 			if (!isSourceControlLicensed()) {
 				return res
@@ -52,5 +53,3 @@ const sourceControlHandlers: SourceControlHandlers = {
 		},
 	],
 };
-
-export = sourceControlHandlers;

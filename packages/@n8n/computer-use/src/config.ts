@@ -257,12 +257,8 @@ export function getSettingsDir(): string {
  * Used to prevent computer-use tools from modifying their own configuration.
  */
 export function isProtectedSettingsPath(absolutePath: string): boolean {
-	let dir = path.resolve(getSettingsDir());
-	let target = path.resolve(absolutePath);
-	if (process.platform === 'darwin' || process.platform === 'win32') {
-		dir = dir.toLowerCase();
-		target = target.toLowerCase();
-	}
+	const dir = path.resolve(getSettingsDir());
+	const target = path.resolve(absolutePath);
 	return target === dir || target.startsWith(dir + path.sep);
 }
 

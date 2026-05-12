@@ -13,12 +13,7 @@ import { createResultError, createResultOk, NodeOperationError } from 'n8n-workf
 
 import { proxyFetch } from '@n8n/ai-utilities';
 
-import {
-	isMcpOAuth2Authentication,
-	type McpAuthenticationOption,
-	type McpServerTransport,
-	type McpTool,
-} from './types';
+import type { McpAuthenticationOption, McpServerTransport, McpTool } from './types';
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -218,16 +213,6 @@ export async function getAuthHeaders(
 	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
 	authentication: McpAuthenticationOption,
 ): Promise<{ headers?: Record<string, string> }> {
-	if (isMcpOAuth2Authentication(authentication)) {
-		const result = await ctx
-			.getCredentials<{ oauthTokenData: { access_token: string } }>(authentication)
-			.catch(() => null);
-
-		if (!result) return {};
-
-		return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
-	}
-
 	switch (authentication) {
 		case 'headerAuth': {
 			const header = await ctx
@@ -246,6 +231,15 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
+		}
+		case 'mcpOAuth2Api': {
+			const result = await ctx
+				.getCredentials<{ oauthTokenData: { access_token: string } }>('mcpOAuth2Api')
+				.catch(() => null);
+
+			if (!result) return {};
+
+			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
 		}
 		case 'multipleHeadersAuth': {
 			const result = await ctx
@@ -278,14 +272,14 @@ export async function getAuthHeaders(
  * @param ctx - The execution context
  * @param authentication - The authentication method
  * @param headers - The headers to refresh
- * @returns The refreshed headers or null if authentication is not an MCP OAuth2 credential type or has failed
+ * @returns The refreshed headers or null if the authentication method is not oAuth2Api or has failed
  */
 export async function tryRefreshOAuth2Token(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
 	headers?: Record<string, string>,
 ) {
-	if (!isMcpOAuth2Authentication(authentication)) {
+	if (authentication !== 'mcpOAuth2Api') {
 		return null;
 	}
 
@@ -293,7 +287,7 @@ export async function tryRefreshOAuth2Token(
 	try {
 		const result = (await ctx.helpers.refreshOAuth2Token.call(
 			ctx,
-			authentication,
+			'mcpOAuth2Api',
 		)) as ClientOAuth2TokenData;
 		access_token = result?.access_token;
 	} catch (error) {

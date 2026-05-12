@@ -1,5 +1,3 @@
-import type { ToolsInput } from '@mastra/core/agent';
-
 jest.mock('@mastra/core/agent', () => ({
 	Agent: jest.fn().mockImplementation(function Agent(
 		this: { __registerMastra?: jest.Mock } & Record<string, unknown>,
@@ -64,31 +62,16 @@ const { ToolSearchProcessor } =
 const { Agent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('@mastra/core/agent') as { Agent: jest.Mock };
-const { createToolsFromLocalMcpServer } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('../../tools/filesystem/create-tools-from-mcp-server') as {
-		createToolsFromLocalMcpServer: jest.Mock;
-	};
-const { createOrchestratorDomainTools } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('../../tools') as { createOrchestratorDomainTools: jest.Mock };
 
-function createMcpManagerStub(regularTools: ToolsInput = {}, browserTools: ToolsInput = {}) {
+function createMcpManagerStub() {
 	return {
-		getRegularTools: jest.fn().mockResolvedValue(regularTools),
-		getBrowserTools: jest.fn().mockResolvedValue(browserTools),
+		getRegularTools: jest.fn().mockResolvedValue({}),
+		getBrowserTools: jest.fn().mockResolvedValue({}),
 		disconnect: jest.fn().mockResolvedValue(undefined),
 	};
 }
 
 describe('createInstanceAgent', () => {
-	beforeEach(() => {
-		Agent.mockClear();
-		ToolSearchProcessor.mockClear();
-		createToolsFromLocalMcpServer.mockReset();
-		createToolsFromLocalMcpServer.mockReturnValue({});
-	});
-
 	it('creates a fresh deferred tool processor for each run-scoped toolset', async () => {
 		const memoryConfig = {
 			storage: { id: 'memory-store' },
@@ -128,6 +111,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
+		Agent.mockClear();
 		const memoryConfig = { storage: { id: 'memory-store' } } as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
@@ -155,89 +139,5 @@ describe('createInstanceAgent', () => {
 		const firstCall = calls[0];
 		expect(firstCall).toBeDefined();
 		expect(firstCall[0]).not.toHaveProperty('workspace');
-	});
-
-	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
-		createOrchestratorDomainTools.mockReturnValueOnce({
-			workflows: { id: 'workflows' },
-			browser_connect: { id: 'browser_connect' },
-			browser_navigate: { id: 'browser_navigate' },
-		});
-		createToolsFromLocalMcpServer.mockReturnValue({
-			browser_connect: { id: 'browser_connect' },
-			browser_navigate: { id: 'browser_navigate' },
-		});
-
-		const memoryConfig = { storage: { id: 'memory-store' } } as never;
-		const localMcpServer = {
-			getToolsByCategory: jest
-				.fn()
-				.mockReturnValue([{ name: 'browser_connect' }, { name: 'browser_navigate' }]),
-		};
-
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'browser-test',
-				localGatewayStatus: undefined,
-				licenseHints: undefined,
-				localMcpServer,
-			},
-			orchestrationContext: { runId: 'browser-test', browserMcpConfig: undefined },
-			memoryConfig,
-			mcpManager: createMcpManagerStub(),
-			disableDeferredTools: true,
-		} as never);
-
-		const calls = Agent.mock.calls as Array<[{ tools: Record<string, { id: string }> }]>;
-		const agentTools = calls[0]?.[0].tools;
-		expect(agentTools).toMatchObject({
-			browser_connect: { id: 'browser_connect' },
-			browser_navigate: { id: 'browser_navigate' },
-		});
-	});
-
-	it('prefers local gateway tools over external MCP tools when names collide', async () => {
-		const memoryConfig = { storage: { id: 'memory-store' } } as never;
-		const localMcpServer = {
-			getToolsByCategory: jest.fn().mockReturnValue([]),
-		};
-		const localTools = {
-			shared_tool: { id: 'local-shared' },
-		} as unknown as ToolsInput;
-		const externalTools = {
-			shared_tool: { id: 'external-shared' },
-			github_workflows: { id: 'github-workflows' },
-			custom_plan: { id: 'custom-plan' },
-		} as unknown as ToolsInput;
-		const orchestrationContext: Record<string, unknown> = {
-			runId: 'local-priority',
-			browserMcpConfig: undefined,
-		};
-		createToolsFromLocalMcpServer.mockReturnValue(localTools);
-
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'local-priority',
-				localGatewayStatus: undefined,
-				licenseHints: undefined,
-				localMcpServer,
-			},
-			orchestrationContext,
-			memoryConfig,
-			mcpManager: createMcpManagerStub(externalTools),
-			disableDeferredTools: true,
-		} as never);
-
-		const calls = Agent.mock.calls as Array<[Record<string, { tools?: ToolsInput }>]>;
-		const agentTools = calls[0]?.[0].tools as Record<string, { id: string }>;
-		const mcpContextTools = orchestrationContext.mcpTools as Record<string, { id: string }>;
-
-		expect(agentTools.shared_tool).toMatchObject({ id: 'local-shared' });
-		expect(agentTools.github_workflows).toMatchObject({ id: 'github-workflows' });
-		expect(agentTools.custom_plan).toMatchObject({ id: 'custom-plan' });
-		expect(mcpContextTools.shared_tool).toMatchObject({ id: 'local-shared' });
-		expect(mcpContextTools.github_workflows).toMatchObject({ id: 'github-workflows' });
 	});
 });

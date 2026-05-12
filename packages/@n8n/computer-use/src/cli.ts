@@ -5,20 +5,20 @@ import * as fs from 'node:fs/promises';
 
 import { isOriginAllowed, parseConfig } from './config';
 import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
-import { GatewayAuthError, GatewayClient } from './gateway-client';
+import { GatewayClient } from './gateway-client';
 import { GatewaySession } from './gateway-session';
 import {
 	configure,
 	logger,
 	printBanner,
 	printConnected,
-	printInvalidToken,
 	printModuleStatus,
 	printToolList,
 } from './logger';
 import { SettingsStore } from './settings-store';
 import {
 	editPermissions,
+	ensureSettingsFile,
 	isAllDeny,
 	printPermissionsTable,
 	promptFilesystemDir,
@@ -173,7 +173,7 @@ async function main(
 		process.exit(1);
 	}
 
-	await SettingsStore.ensureInitialized(config);
+	await ensureSettingsFile(config);
 
 	const settingsStore = await SettingsStore.create();
 	const defaults = settingsStore.getDefaults(parsed.config);
@@ -224,15 +224,7 @@ async function main(
 	process.on('SIGINT', shutdown);
 	process.on('SIGTERM', shutdown);
 
-	try {
-		await client.start();
-	} catch (error) {
-		if (error instanceof GatewayAuthError) {
-			printInvalidToken(origin);
-			process.exit(1);
-		}
-		throw error;
-	}
+	await client.start();
 
 	printConnected(url);
 	printToolList(client.tools);

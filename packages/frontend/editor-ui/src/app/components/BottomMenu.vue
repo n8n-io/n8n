@@ -212,6 +212,8 @@ function onLogout() {
 .popover {
 	padding: var(--spacing--4xs);
 	min-width: 260px;
+	border-radius: var(--radius);
+	background-color: var(--menu--color--background, var(--color--background--light-2));
 }
 
 .popoverTitle {

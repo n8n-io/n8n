@@ -8,13 +8,12 @@ import markdownItFootnote from 'markdown-it-footnote';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import 'katex/dist/katex.min.css';
 import type StateCore from 'markdown-it/lib/rules_core/state_core';
-import type * as LanguageModules from './languageModules';
 
 let hljsInstance: HLJSApi | undefined;
 let asyncImport:
 	| {
 			status: 'inProgress';
-			promise: Promise<[HLJSApi, typeof LanguageModules]>;
+			promise: Promise<[typeof import('highlight.js'), typeof import('./languageModules')]>;
 	  }
 	| { status: 'uninitialized' }
 	| { status: 'done' } = { status: 'uninitialized' };
@@ -103,17 +102,14 @@ export function useChatHubMarkdownOptions(
 		}
 
 		try {
-			const promise = Promise.all([
-				import('highlight.js').then(({ default: highlight }) => highlight),
-				import('./languageModules'),
-			]);
+			const promise = Promise.all([import('highlight.js'), import('./languageModules')]);
 
 			asyncImport = { status: 'inProgress', promise };
 
-			const [hljs, languages] = await promise;
+			const [hljs, languages] = await asyncImport.promise;
 
 			asyncImport = { status: 'done' };
-			hljsInstance = hljs.newInstance();
+			hljsInstance = hljs.default.newInstance();
 
 			for (const [lang, module] of Object.entries(languages)) {
 				hljsInstance.registerLanguage(lang, module);

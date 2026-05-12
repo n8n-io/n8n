@@ -5,7 +5,11 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import HtmlEditor from '@/features/shared/editors/components/HtmlEditor/HtmlEditor.vue';
 import JsEditor from '@/features/shared/editors/components/JsEditor/JsEditor.vue';
 import { useI18n } from '@n8n/i18n';
@@ -23,7 +27,10 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const rootStore = useRootStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 
 type ChatEmbedModalTabValue = 'cdn' | 'vue' | 'react' | 'other';
 type ChatEmbedModalTab = {

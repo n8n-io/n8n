@@ -1,52 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions } from '../emptyStateSuggestions';
 
+const toggleResearchMode = vi.fn();
 const telemetryTrack = vi.fn();
-
-type InputTestProps = {
-	isStreaming: boolean;
-	isSendingMessage: boolean;
-	isAwaitingConfirmation: boolean;
-	currentThreadId: string;
-	amendContext: { agentId: string; role: string } | null;
-	contextualSuggestion: string | null;
-	researchMode: boolean;
-	suggestions?: typeof suggestions;
-};
-
-const defaultProps = (): InputTestProps => ({
-	isStreaming: false,
-	isSendingMessage: false,
-	isAwaitingConfirmation: false,
+const storeState = reactive({
+	amendContext: null as { agentId: string; role: string } | null,
+	contextualSuggestion: null as string | null,
 	currentThreadId: 'thread-1',
-	amendContext: null,
-	contextualSuggestion: null,
 	researchMode: false,
+	isSendingMessage: false,
+	toggleResearchMode,
 });
-
-function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
-	return {
-		...defaultProps(),
-		...overrides,
-	};
-}
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiInput, {
-	props: defaultProps(),
-});
+vi.mock('../instanceAi.store', () => ({
+	useInstanceAiStore: vi.fn(() => storeState),
+}));
+
+const renderComponent = createComponentRenderer(InstanceAiInput);
 
 describe('InstanceAiInput', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		telemetryTrack.mockReset();
+		storeState.amendContext = null;
+		storeState.contextualSuggestion = null;
+		storeState.currentThreadId = 'thread-1';
+		storeState.researchMode = false;
+		storeState.isSendingMessage = false;
 	});
 
 	it('uses the shared suggestions fixture with the expected top-level contract', () => {
@@ -104,11 +93,11 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('fills the textarea from the contextual suggestion when Tab is pressed on an empty input', async () => {
+		storeState.contextualSuggestion = 'Summarize the last workflow error for me';
 		const { getByRole } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
-				contextualSuggestion: 'Summarize the last workflow error for me',
 			},
 		});
 
@@ -347,7 +336,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('hides suggestions while a send is pending', async () => {
-		const { queryByTestId, rerender } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -356,7 +345,7 @@ describe('InstanceAiInput', () => {
 
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();
 
-		await rerender(inputProps({ suggestions, isSendingMessage: true }));
+		storeState.isSendingMessage = true;
 
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
@@ -364,7 +353,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('toggles research mode from the composer footer button', async () => {
-		const { emitted, getByTestId } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -373,7 +362,7 @@ describe('InstanceAiInput', () => {
 
 		await userEvent.click(getByTestId('instance-ai-research-toggle'));
 
-		expect(emitted()['toggle-research-mode']).toEqual([[]]);
+		expect(toggleResearchMode).toHaveBeenCalledTimes(1);
 	});
 
 	it('emits stop when the streaming stop button is clicked', async () => {
@@ -390,7 +379,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('clears the ghost prompt when suggestions become hidden', async () => {
-		const { getByRole, getByTestId, queryByTestId, rerender } = renderComponent({
+		const { getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -402,7 +391,7 @@ describe('InstanceAiInput', () => {
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
 		expect(textbox.getAttribute('placeholder')).not.toBe(initialPlaceholder);
 
-		await rerender(inputProps({ suggestions, isSendingMessage: true }));
+		storeState.isSendingMessage = true;
 
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
@@ -411,11 +400,12 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('tracks suggestions shown once when suggestions hide and reappear in the same thread', async () => {
-		const { rerender } = renderComponent({
+		storeState.currentThreadId = 'thread-shown';
+
+		renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
-				currentThreadId: 'thread-shown',
 			},
 		});
 
@@ -427,29 +417,24 @@ describe('InstanceAiInput', () => {
 			});
 		});
 
-		await rerender(
-			inputProps({
-				suggestions,
-				currentThreadId: 'thread-shown',
-				isSendingMessage: true,
-			}),
-		);
+		storeState.isSendingMessage = true;
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledTimes(1);
 		});
 
-		await rerender(inputProps({ suggestions, currentThreadId: 'thread-shown' }));
+		storeState.isSendingMessage = false;
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledTimes(1);
 		});
 	});
 
 	it('tracks suggestions shown again when the empty-state thread changes', async () => {
-		const { rerender } = renderComponent({
+		storeState.currentThreadId = 'thread-a';
+
+		renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
-				currentThreadId: 'thread-a',
 			},
 		});
 
@@ -461,7 +446,7 @@ describe('InstanceAiInput', () => {
 			});
 		});
 
-		await rerender(inputProps({ suggestions, currentThreadId: 'thread-b' }));
+		storeState.currentThreadId = 'thread-b';
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
@@ -498,11 +483,11 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('includes research mode in the quick examples telemetry payload when enabled', async () => {
+		storeState.researchMode = true;
 		const { getByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
-				researchMode: true,
 			},
 		});
 
@@ -553,11 +538,11 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('includes the research-mode flag when tracking top-level suggestion selection telemetry', async () => {
+		storeState.researchMode = true;
 		const { getByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
-				researchMode: true,
 			},
 		});
 

@@ -26,8 +26,6 @@ export interface BuiltTelemetry {
 	readonly metadata?: Record<string, AttributeValue>;
 	readonly recordInputs: boolean;
 	readonly recordOutputs: boolean;
-	/** Whether AgentRuntime should add a generic chain span around generate/stream loops. */
-	readonly runtimeRootSpanEnabled?: boolean;
 	/** Integrations are pre-wrapped with redaction if .redact() was set at build time. */
 	readonly integrations: TelemetryIntegration[];
 	readonly tracer?: OpaqueTracer;

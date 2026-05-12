@@ -37,8 +37,6 @@ vi.mock('n8n-workflow', async () => ({
 	sleep: vi.fn(),
 }));
 
-const emptyMemoryHits = { loads: 0, saves: 0 };
-
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
 
@@ -74,7 +72,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 			request: undefined,
-			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -110,7 +107,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 			request: undefined,
-			memoryHits: emptyMemoryHits,
 		};
 
 		const mockResponse: EngineResponse<RequestResponseMetadata> = {
@@ -156,13 +152,11 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 				{ json: { output: 'success 2' }, pairedItem: { item: 1 } },
 			],
 			request: undefined,
-			memoryHits: emptyMemoryHits,
 		};
 
 		const mockBatchResult2 = {
 			returnData: [{ json: { output: 'success 3' }, pairedItem: { item: 2 } }],
 			request: undefined,
-			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -230,7 +224,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [],
 			request: mockRequest,
-			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -282,16 +275,8 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
 		vi.spyOn(helpers, 'executeBatch')
-			.mockResolvedValueOnce({
-				returnData: [],
-				request: mockRequest1,
-				memoryHits: emptyMemoryHits,
-			})
-			.mockResolvedValueOnce({
-				returnData: [],
-				request: mockRequest2,
-				memoryHits: emptyMemoryHits,
-			});
+			.mockResolvedValueOnce({ returnData: [], request: mockRequest1 })
+			.mockResolvedValueOnce({ returnData: [], request: mockRequest2 });
 
 		const result = (await toolsAgentExecute.call(
 			mockContext,
@@ -319,7 +304,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
-			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -348,7 +332,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
-			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -373,7 +356,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
-			memoryHits: emptyMemoryHits,
 		};
 
 		const mockResponse: EngineResponse<RequestResponseMetadata> = {
@@ -415,105 +397,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		);
 	});
 
-	it('should report ai.agent.tool_calls.completed from inbound EngineResponse regardless of returnIntermediateSteps', async () => {
-		const mockExecutionContext = {
-			items: [{ json: { text: 'test input 1' } }],
-			batchSize: 1,
-			delayBetweenBatches: 0,
-			needsFallback: false,
-			model: {} as any,
-			fallbackModel: null,
-			memory: undefined,
-		};
-
-		const mockBatchResult = {
-			// Note: no `intermediateSteps` on the returnData — simulates returnIntermediateSteps: false
-			returnData: [{ json: { output: 'final answer' }, pairedItem: { item: 0 } }],
-			request: undefined,
-			memoryHits: emptyMemoryHits,
-		};
-
-		// Inbound response carries 3 completed tool runs from prior iterations.
-		const mockResponse: EngineResponse<RequestResponseMetadata> = {
-			actionResponses: [
-				{
-					action: {
-						id: 'call_1',
-						nodeName: 'Tool A',
-						input: { id: 'call_1' },
-						metadata: { itemIndex: 0 },
-						actionType: 'ExecutionNodeAction',
-						type: 'ai_tool',
-					},
-					data: {
-						data: { ai_tool: [[{ json: { result: 'a' } }]] },
-						executionTime: 0,
-						startTime: 0,
-						executionIndex: 0,
-						source: [],
-					},
-				},
-				{
-					action: {
-						id: 'call_2',
-						nodeName: 'Tool B',
-						input: { id: 'call_2' },
-						metadata: { itemIndex: 0 },
-						actionType: 'ExecutionNodeAction',
-						type: 'ai_tool',
-					},
-					data: {
-						data: { ai_tool: [[{ json: { result: 'b' } }]] },
-						executionTime: 0,
-						startTime: 0,
-						executionIndex: 1,
-						source: [],
-					},
-				},
-				{
-					action: {
-						id: 'call_3',
-						nodeName: 'Tool C',
-						input: { id: 'call_3' },
-						metadata: { itemIndex: 0 },
-						actionType: 'ExecutionNodeAction',
-						type: 'ai_tool',
-					},
-					data: {
-						data: { ai_tool: [[{ json: { result: 'c' } }]] },
-						executionTime: 0,
-						startTime: 0,
-						executionIndex: 2,
-						source: [],
-					},
-				},
-			],
-			metadata: { previousRequests: [] },
-		};
-
-		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
-			if (param === 'options.enableStreaming') return true;
-			if (param === 'options.autoSaveHighlightedData') return false;
-			return defaultValue;
-		});
-		// V3 only emits tracing metadata when invoked from an IExecuteFunctions-shaped
-		// context (detected by the presence of `getExecuteData`).
-		mockContext.getExecuteData.mockReturnValue({} as any);
-
-		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
-
-		await toolsAgentExecute.call(mockContext, mockResponse);
-
-		expect(mockContext.setMetadata).toHaveBeenCalledWith({
-			tracing: expect.objectContaining({
-				'ai.agent.version': 'v3',
-				'ai.agent.tool_calls.completed': 3,
-				'ai.agent.execution.succeeded': true,
-			}),
-		});
-	});
-
 	it('should collect return data from multiple batches', async () => {
 		const mockExecutionContext = {
 			items: [{ json: { text: 'test input 1' } }, { json: { text: 'test input 2' } }],
@@ -530,12 +413,10 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			.mockResolvedValueOnce({
 				returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 				request: undefined,
-				memoryHits: emptyMemoryHits,
 			})
 			.mockResolvedValueOnce({
 				returnData: [{ json: { output: 'success 2' }, pairedItem: { item: 1 } }],
 				request: undefined,
-				memoryHits: emptyMemoryHits,
 			});
 
 		const result = await toolsAgentExecute.call(mockContext);

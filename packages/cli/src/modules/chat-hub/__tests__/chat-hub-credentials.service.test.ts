@@ -62,9 +62,9 @@ describe('ChatHubCredentialsService', () => {
 		it('should throw ForbiddenError when user does not have access to the credential', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			const promise = service.ensureCredentialAccess(mockUser, CREDENTIAL_ID);
-			await expect(promise).rejects.toThrow(ForbiddenError);
-			await expect(promise).rejects.toThrow("You don't have access to the provided credentials");
+			await expect(service.ensureCredentialAccess(mockUser, CREDENTIAL_ID)).rejects.toThrow(
+				new ForbiddenError("You don't have access to the provided credentials"),
+			);
 		});
 	});
 
@@ -90,9 +90,9 @@ describe('ChatHubCredentialsService', () => {
 		it('should throw ForbiddenError when no personal project is found', async () => {
 			projectRepository.getPersonalProjectForUser.mockResolvedValue(null);
 
-			const promise = service.findPersonalProject(mockUser, mockTrx);
-			await expect(promise).rejects.toThrow(ForbiddenError);
-			await expect(promise).rejects.toThrow('Missing personal project');
+			await expect(service.findPersonalProject(mockUser, mockTrx)).rejects.toThrow(
+				new ForbiddenError('Missing personal project'),
+			);
 
 			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith(
 				mockUser.id,
@@ -138,14 +138,10 @@ describe('ChatHubCredentialsService', () => {
 				openAiApi: { id: CREDENTIAL_ID, name: 'OpenAI Credentials' },
 			};
 
-			const promise = service.findWorkflowCredentialAndProject(
-				'anthropic',
-				mockCredentials,
-				'workflow-123',
-			);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow(
-				'No credentials provided for the selected model provider',
+			await expect(
+				service.findWorkflowCredentialAndProject('anthropic', mockCredentials, 'workflow-123'),
+			).rejects.toThrow(
+				new BadRequestError('No credentials provided for the selected model provider'),
 			);
 		});
 
@@ -164,13 +160,9 @@ describe('ChatHubCredentialsService', () => {
 			credentialsService.findAllCredentialIdsForWorkflow.mockResolvedValue([]);
 			credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 
-			const promise = service.findWorkflowCredentialAndProject(
-				'openai',
-				mockCredentials,
-				'workflow-123',
-			);
-			await expect(promise).rejects.toThrow(ForbiddenError);
-			await expect(promise).rejects.toThrow("You don't have access to the provided credentials");
+			await expect(
+				service.findWorkflowCredentialAndProject('openai', mockCredentials, 'workflow-123'),
+			).rejects.toThrow(new ForbiddenError("You don't have access to the provided credentials"));
 		});
 	});
 });

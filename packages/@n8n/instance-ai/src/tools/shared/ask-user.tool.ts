@@ -2,8 +2,6 @@ import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-export const ASK_USER_TOOL_ID = 'ask-user';
-
 const questionSchema = z.object({
 	id: z.string().describe('Unique question identifier'),
 	question: z.string().describe('The question text to display to the user'),
@@ -38,7 +36,7 @@ export const askUserResumeSchema = z.object({
 
 export function createAskUserTool() {
 	return createTool({
-		id: ASK_USER_TOOL_ID,
+		id: 'ask-user',
 		description:
 			'Ask the user one or more structured questions. Each question can be ' +
 			'single-select (pick one), multi-select (pick many), or free-text. ' +

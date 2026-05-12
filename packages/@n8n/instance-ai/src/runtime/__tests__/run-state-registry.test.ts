@@ -1,7 +1,6 @@
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext } from '../../types';
-import { InstanceAiLivenessPolicy } from '../liveness-policy';
 import type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
@@ -56,13 +55,6 @@ function createBackgroundTask(
 describe('RunStateRegistry', () => {
 	let registry: RunStateRegistry<TestUser>;
 	let nanoidCounter: number;
-	const policy = new InstanceAiLivenessPolicy({
-		confirmationTimeoutMs: 30_000,
-		backgroundTaskIdleTimeoutMs: 30_000,
-		backgroundTaskMaxLifetimeMs: 90_000,
-		activeRunIdleTimeoutMs: 30_000,
-		activeRunMaxLifetimeMs: 90_000,
-	});
 
 	beforeEach(() => {
 		registry = new RunStateRegistry<TestUser>();
@@ -592,25 +584,6 @@ describe('RunStateRegistry', () => {
 			});
 		});
 
-		describe('cancelActiveRun', () => {
-			it('removes and returns only the active run for the thread', () => {
-				const started = registry.startRun({
-					threadId: 'thread-1',
-					user: { id: 'u1', name: 'A' },
-				});
-
-				const result = registry.cancelActiveRun('thread-1');
-
-				expect(result?.runId).toBe(started.runId);
-				expect(registry.hasActiveRun('thread-1')).toBe(false);
-				expect(registry.hasSuspendedRun('thread-1')).toBe(false);
-			});
-
-			it('returns undefined when no active run exists', () => {
-				expect(registry.cancelActiveRun('thread-1')).toBeUndefined();
-			});
-		});
-
 		describe('suspendRun', () => {
 			it('moves run from active to suspended', () => {
 				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
@@ -666,24 +639,6 @@ describe('RunStateRegistry', () => {
 				const result = registry.activateSuspendedRun('nonexistent');
 
 				expect(result).toBeUndefined();
-			});
-		});
-
-		describe('cancelSuspendedRun', () => {
-			it('removes and returns only the suspended run for the thread', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
-				registry.suspendRun('thread-1', suspendedState);
-
-				const result = registry.cancelSuspendedRun('thread-1');
-
-				expect(result).toBe(suspendedState);
-				expect(registry.hasSuspendedRun('thread-1')).toBe(false);
-				expect(registry.hasActiveRun('thread-1')).toBe(false);
-			});
-
-			it('returns undefined when no suspended run exists', () => {
-				expect(registry.cancelSuspendedRun('thread-1')).toBeUndefined();
 			});
 		});
 
@@ -788,34 +743,6 @@ describe('RunStateRegistry', () => {
 			});
 
 			expect(result).toBe(false);
-		});
-
-		describe('pending confirmation queries', () => {
-			it('returns pending confirmation metadata without consuming it', () => {
-				const resolve = jest.fn();
-				const pending: PendingConfirmation = {
-					resolve,
-					threadId: 'thread-1',
-					userId: 'user-1',
-					createdAt: Date.now(),
-				};
-
-				registry.registerPendingConfirmation('req-1', pending);
-
-				expect(registry.getPendingConfirmation('req-1')).toMatchObject({
-					threadId: 'thread-1',
-					userId: 'user-1',
-				});
-				expect(registry.hasPendingConfirmationForThread('thread-1')).toBe(true);
-				expect(registry.resolvePendingConfirmation('user-1', 'req-1', { approved: true })).toBe(
-					true,
-				);
-			});
-
-			it('reports no pending confirmation for unknown requests or threads', () => {
-				expect(registry.getPendingConfirmation('req-1')).toBeUndefined();
-				expect(registry.hasPendingConfirmationForThread('thread-1')).toBe(false);
-			});
 		});
 
 		describe('rejectPendingConfirmation', () => {
@@ -1078,18 +1005,6 @@ describe('RunStateRegistry', () => {
 	// ── sweepTimedOut ─────────────────────────────────────────────────────────
 
 	describe('sweepTimedOut', () => {
-		it('identifies active runs that stop reporting activity', () => {
-			registry.startRun({ threadId: 'thread-old', user: { id: 'u1', name: 'A' } });
-			registry.touchActiveRun('thread-old', 0);
-
-			registry.startRun({ threadId: 'thread-new', user: { id: 'u2', name: 'B' } });
-			registry.touchActiveRun('thread-new', 20_000);
-
-			const result = registry.sweepTimedOut(policy, 30_000);
-
-			expect(result.activeThreadIds).toEqual(['thread-old']);
-		});
-
 		it('identifies suspended runs older than maxAgeMs', () => {
 			const now = Date.now();
 			registry.startRun({ threadId: 'thread-old', user: { id: 'u1', name: 'A' } });
@@ -1104,7 +1019,7 @@ describe('RunStateRegistry', () => {
 				createSuspendedRunState({ threadId: 'thread-new', createdAt: now - 10_000 }),
 			);
 
-			const result = registry.sweepTimedOut(policy, now);
+			const result = registry.sweepTimedOut(30_000);
 
 			expect(result.suspendedThreadIds).toEqual(['thread-old']);
 		});
@@ -1126,33 +1041,9 @@ describe('RunStateRegistry', () => {
 				createdAt: now - 10_000,
 			});
 
-			const result = registry.sweepTimedOut(policy, now);
+			const result = registry.sweepTimedOut(30_000);
 
 			expect(result.confirmationRequestIds).toEqual(['req-old']);
-		});
-
-		it('does not time out an active run while a pending confirmation owns the wait', () => {
-			const confirmationPolicy = new InstanceAiLivenessPolicy({
-				confirmationTimeoutMs: 60_000,
-				backgroundTaskIdleTimeoutMs: 0,
-				backgroundTaskMaxLifetimeMs: 0,
-				activeRunIdleTimeoutMs: 10_000,
-				activeRunMaxLifetimeMs: 0,
-			});
-
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.touchActiveRun('thread-1', 0);
-			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
-				threadId: 'thread-1',
-				userId: 'user-1',
-				createdAt: 20_000,
-			});
-
-			const result = registry.sweepTimedOut(confirmationPolicy, 30_000);
-
-			expect(result.activeThreadIds).toEqual([]);
-			expect(result.confirmationRequestIds).toEqual([]);
 		});
 
 		it('does NOT mutate state', () => {
@@ -1170,7 +1061,7 @@ describe('RunStateRegistry', () => {
 				createdAt: now - 60_000,
 			});
 
-			registry.sweepTimedOut(policy, now);
+			registry.sweepTimedOut(30_000);
 
 			// State should still be intact
 			expect(registry.hasSuspendedRun('thread-1')).toBe(true);
@@ -1186,9 +1077,8 @@ describe('RunStateRegistry', () => {
 				createSuspendedRunState({ threadId: 'thread-1', createdAt: now }),
 			);
 
-			const result = registry.sweepTimedOut(policy, now);
+			const result = registry.sweepTimedOut(30_000);
 
-			expect(result.activeThreadIds).toEqual([]);
 			expect(result.suspendedThreadIds).toEqual([]);
 			expect(result.confirmationRequestIds).toEqual([]);
 		});
@@ -1201,7 +1091,7 @@ describe('RunStateRegistry', () => {
 				createSuspendedRunState({ threadId: 'thread-1', createdAt: now - 30_000 }),
 			);
 
-			const result = registry.sweepTimedOut(policy, now);
+			const result = registry.sweepTimedOut(30_000);
 
 			// now - createdAt === maxAgeMs, so >= matches
 			expect(result.suspendedThreadIds).toEqual(['thread-1']);

@@ -194,9 +194,12 @@ describe('workflow-builder/validation-helpers', () => {
 			expect(issues[0].path).toBe('items[1]');
 		});
 
-		it('skips placeholder marker strings', () => {
+		it('skips PlaceholderValue objects', () => {
 			const issues = findMissingExpressionPrefixes({
-				field: '<__PLACEHOLDER_VALUE__{{ $json.field }}__>',
+				field: {
+					__placeholder: true,
+					hint: '{{ $json.field }}',
+				},
 			});
 			expect(issues).toHaveLength(0);
 		});

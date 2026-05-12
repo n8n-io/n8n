@@ -91,17 +91,12 @@ export class CredentialModal extends BaseModal {
 
 	/**
 	 * Wait for save to fully complete.
-	 * After saving (and optional credential testing), the button either shows a
-	 * "Saved" label or settles back to a disabled "Save" state.
+	 * After saving (and optional credential testing), the button shows "Saved" label.
 	 */
 	async waitForSaveComplete(): Promise<void> {
-		const saveCompleted = this.root.getByText('Saved', { exact: true }).or(
-			this.getSaveButton()
-				.locator('button[disabled]')
-				.filter({ hasText: /^Save$/ }),
-		);
-
-		await expect(saveCompleted).toBeVisible({ timeout: 20_000 });
+		await expect(this.getSaveButton().getByText('Saved', { exact: true })).toBeVisible({
+			timeout: 10000,
+		});
 	}
 
 	async save(): Promise<void> {
@@ -130,14 +125,10 @@ export class CredentialModal extends BaseModal {
 		await this.fillAllFields(fields);
 		if (options?.name) {
 			await this.getCredentialName().click();
-			const nameInput = this.getNameInput();
-			await nameInput.fill(options.name);
-			await nameInput.press('Enter');
-			await expect(this.getCredentialName()).toContainText(options.name);
+			await this.getNameInput().fill(options.name);
 		}
 
 		if (!options?.skipSave) {
-			await expect(this.getSaveButton()).toBeEnabled();
 			await this.save();
 		}
 

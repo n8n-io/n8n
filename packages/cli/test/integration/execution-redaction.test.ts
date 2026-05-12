@@ -354,8 +354,15 @@ describe('GET /executions/:id — Execution Redaction', () => {
 				.query({ redactExecutionData: 'false' })
 				.expect(403);
 
-			expect(response.status).toBe(403);
-			expect(response.body.message).toContain('execution:reveal');
+			expect(response.body).toMatchObject({
+				code: 403,
+				message: expect.stringContaining('execution:reveal'),
+				hint: expect.any(String),
+				meta: {
+					errorCode: 'EXECUTION_REVEAL_FORBIDDEN',
+					requiredScope: 'execution:reveal',
+				},
+			});
 		});
 
 		test('project editor without execution:reveal scope can still reveal when policy allows it (policy=none)', async () => {
@@ -726,8 +733,10 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 				.get(`/executions/${execution.id}?includeData=true&redactExecutionData=false`)
 				.expect(403);
 
-			expect(response.status).toBe(403);
-			expect(response.body.message).toContain('execution:reveal');
+			expect(response.body).toMatchObject({
+				code: 403,
+				message: expect.stringContaining('execution:reveal'),
+			});
 		});
 
 		test('member without execution:reveal scope can still reveal when policy allows it (policy=none)', async () => {
@@ -913,8 +922,10 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 				.get('/executions?includeData=true&redactExecutionData=false')
 				.expect(403);
 
-			expect(response.status).toBe(403);
-			expect(response.body.message).toContain('execution:reveal');
+			expect(response.body).toMatchObject({
+				code: 403,
+				message: expect.stringContaining('execution:reveal'),
+			});
 		});
 	});
 });

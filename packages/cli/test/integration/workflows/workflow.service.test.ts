@@ -148,29 +148,7 @@ describe('update()', () => {
 
 	test('should save workflow history version with backfilled data when connection change', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory(
-			{
-				nodes: [
-					{
-						id: 'uuid-1',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [240, 300],
-						parameters: {},
-					},
-					{
-						id: 'uuid-2',
-						name: 'Code Node',
-						type: 'n8n-nodes-base.code',
-						typeVersion: 1,
-						position: [500, 300],
-						parameters: {},
-					},
-				],
-			},
-			owner,
-		);
+		const workflow = await createWorkflowWithHistory({}, owner);
 
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
@@ -303,7 +281,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1',
 				name: 'test',
 				typeVersion: 0,
-				type: 'n8n-nodes-base.webhook',
+				type: '',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -312,7 +290,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1-2',
 				name: 'test2',
 				typeVersion: 0,
-				type: 'n8n-nodes-base.webhook',
+				type: '',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -330,9 +308,9 @@ describe('activateWorkflow()', () => {
 			{
 				id: '123',
 				webhookId: 'version2',
-				name: 'updatedNode',
+				name: '',
 				typeVersion: 0,
-				type: 'n8n-nodes-base.webhook',
+				type: '',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -352,7 +330,7 @@ describe('activateWorkflow()', () => {
 					webhookId: 'version2',
 					name: 'newNode',
 					typeVersion: 0,
-					type: 'n8n-nodes-base.webhook',
+					type: '',
 					position: [1, 2],
 					parameters: {},
 				},
@@ -376,7 +354,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1',
 				name: 'test',
 				typeVersion: 0,
-				type: 'n8n-nodes-base.webhook',
+				type: '',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -385,7 +363,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1-2',
 				name: 'test2',
 				typeVersion: 0,
-				type: 'n8n-nodes-base.webhook',
+				type: '',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -404,7 +382,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version2',
 				name: 'newNode',
 				typeVersion: 0,
-				type: 'n8n-nodes-base.webhook',
+				type: '',
 				position: [1, 2],
 				parameters: {},
 			},

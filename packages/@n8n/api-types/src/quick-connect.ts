@@ -1,9 +1,3 @@
-export type QuickConnectDisclaimer = {
-	text: string;
-	linkUrl: string;
-	linkLabel?: string;
-};
-
 type QuickConnectGenericOption = {
 	packageName: string;
 	credentialType: string;
@@ -11,7 +5,6 @@ type QuickConnectGenericOption = {
 	quickConnectType: string;
 	consentText?: string;
 	consentCheckbox?: string;
-	disclaimer?: QuickConnectDisclaimer;
 	config?: never;
 };
 

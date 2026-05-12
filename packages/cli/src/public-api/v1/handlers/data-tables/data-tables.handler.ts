@@ -4,11 +4,10 @@ import {
 	UpdateDataTableDto,
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import type express from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
@@ -18,7 +17,6 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service';
 import type { DataTableRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
@@ -26,20 +24,22 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-const handleError = (error: unknown) => {
-	if (error instanceof DataTableValidationError) {
-		throw new BadRequestError(error.message);
-	}
+const handleError = (error: unknown, res: express.Response): express.Response => {
 	if (error instanceof DataTableNotFoundError) {
-		throw new NotFoundError(error.message);
-	}
-	if (error instanceof ForbiddenError) {
-		throw new ForbiddenError(error.message);
+		return res.status(404).json({ message: error.message });
 	}
 	if (error instanceof DataTableNameConflictError) {
-		throw new ConflictError(error.message);
+		return res.status(409).json({ message: error.message });
 	}
-
+	if (error instanceof DataTableValidationError) {
+		return res.status(400).json({ message: error.message });
+	}
+	if (error instanceof ForbiddenError) {
+		return res.status(error.httpStatusCode).json({ message: error.message });
+	}
+	if (error instanceof Error) {
+		return res.status(400).json({ message: error.message });
+	}
 	throw error;
 };
 
@@ -57,23 +57,17 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
-type DataTableHandlers = {
-	listDataTables: PublicAPIEndpoint<DataTableRequest.List>;
-	createDataTable: PublicAPIEndpoint<DataTableRequest.Create>;
-	getDataTable: PublicAPIEndpoint<DataTableRequest.Get>;
-	updateDataTable: PublicAPIEndpoint<DataTableRequest.Update>;
-	deleteDataTable: PublicAPIEndpoint<DataTableRequest.Delete>;
-};
-
-const dataTableHandlers: DataTableHandlers = {
+export = {
 	listDataTables: [
 		publicApiScope('dataTable:list'),
 		validCursor,
-		async (req, res) => {
+		async (req: DataTableRequest.List, res: express.Response): Promise<express.Response> => {
 			try {
 				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid query parameters',
+					});
 				}
 
 				const { offset, limit, filter, sortBy } = payload.data;
@@ -117,14 +111,14 @@ const dataTableHandlers: DataTableHandlers = {
 					}),
 				});
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
 
 	createDataTable: [
 		publicApiScope('dataTable:create'),
-		async (req, res) => {
+		async (req: DataTableRequest.Create, res: express.Response): Promise<express.Response> => {
 			const payload = PublicApiCreateDataTableDto.safeParse(req.body);
 			if (!payload.success) {
 				throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
@@ -141,7 +135,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.status(201).json(dataTable);
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
@@ -149,7 +143,7 @@ const dataTableHandlers: DataTableHandlers = {
 	getDataTable: [
 		publicApiScope('dataTable:read'),
 		projectScope('dataTable:read', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.Get, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
@@ -169,7 +163,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.json(dataTable);
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
@@ -177,13 +171,15 @@ const dataTableHandlers: DataTableHandlers = {
 	updateDataTable: [
 		publicApiScope('dataTable:update'),
 		projectScope('dataTable:update', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.Update, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = UpdateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
 				}
 
 				const projectId =
@@ -204,7 +200,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.json(dataTable);
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
@@ -212,7 +208,7 @@ const dataTableHandlers: DataTableHandlers = {
 	deleteDataTable: [
 		publicApiScope('dataTable:delete'),
 		projectScope('dataTable:delete', 'dataTable'),
-		async (req, res) => {
+		async (req: DataTableRequest.Delete, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
 
@@ -223,10 +219,8 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.status(204).send();
 			} catch (error) {
-				return handleError(error);
+				return handleError(error, res);
 			}
 		},
 	],
 };
-
-export = dataTableHandlers;

@@ -4,10 +4,7 @@ import type { Result } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { isSafeMcpIdentifierName } from '../agent/mcp-tool-name-validation';
 import { sanitizeMcpToolSchemas } from '../agent/sanitize-mcp-schemas';
-import type { McpSchemaSanitizationError } from '../agent/sanitize-mcp-schemas';
-import type { Logger } from '../logger';
 import type { McpServerConfig } from '../types';
 
 /**
@@ -33,37 +30,6 @@ function buildMcpServers(configs: McpServerConfig[]): Record<string, McpServerEn
 		}
 	}
 	return servers;
-}
-
-function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
-	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped MCP tool with unsupported schema', {
-			toolName: error.details.toolName,
-			source,
-			path: error.details.path,
-			depth: error.details.depth,
-			maxDepth: error.details.maxDepth,
-			limitType: error.details.limitType,
-			limit: error.details.limit,
-			reason: error.message,
-		});
-	};
-}
-
-function getSafeMcpServers(
-	configs: McpServerConfig[],
-	logger: Logger | undefined,
-	source: string,
-): McpServerConfig[] {
-	return configs.filter((config) => {
-		if (isSafeMcpIdentifierName(config.name)) return true;
-
-		logger?.warn('Skipped MCP server with unsafe name', {
-			serverName: config.name,
-			source,
-		});
-		return false;
-	});
 }
 
 /**
@@ -97,48 +63,32 @@ export class McpClientManager {
 
 	constructor(private readonly ssrfValidator?: SsrfUrlValidator) {}
 
-	async getRegularTools(configs: McpServerConfig[], logger?: Logger): Promise<ToolsInput> {
-		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
-		if (safeConfigs.length === 0) return {};
+	async getRegularTools(configs: McpServerConfig[]): Promise<ToolsInput> {
+		if (configs.length === 0) return {};
 
-		const key = JSON.stringify(safeConfigs);
+		const key = JSON.stringify(configs);
 		return await this.getOrLoad(
 			this.regularToolsByKey,
 			this.inFlightRegularByKey,
 			key,
 			async () => {
-				await this.validateConfigs(safeConfigs);
-				return await this.connectAndListTools(
-					`mcp-${nanoid(6)}`,
-					safeConfigs,
-					key,
-					logger,
-					'external MCP',
-				);
+				await this.validateConfigs(configs);
+				return await this.connectAndListTools(`mcp-${nanoid(6)}`, configs, key);
 			},
 		);
 	}
 
-	async getBrowserTools(config: McpServerConfig | undefined, logger?: Logger): Promise<ToolsInput> {
+	async getBrowserTools(config: McpServerConfig | undefined): Promise<ToolsInput> {
 		if (!config) return {};
 
-		const [safeConfig] = getSafeMcpServers([config], logger, 'browser MCP');
-		if (!safeConfig) return {};
-
-		const key = JSON.stringify(safeConfig);
+		const key = JSON.stringify(config);
 		return await this.getOrLoad(
 			this.browserToolsByKey,
 			this.inFlightBrowserByKey,
 			key,
 			async () => {
-				await this.validateConfigs([safeConfig]);
-				return await this.connectAndListTools(
-					`browser-mcp-${nanoid(6)}`,
-					[safeConfig],
-					key,
-					logger,
-					'browser MCP',
-				);
+				await this.validateConfigs([config]);
+				return await this.connectAndListTools(`browser-mcp-${nanoid(6)}`, [config], key);
 			},
 		);
 	}
@@ -217,13 +167,9 @@ export class McpClientManager {
 		id: string,
 		configs: McpServerConfig[],
 		clientKey: string,
-		logger: Logger | undefined,
-		source: string,
 	): Promise<ToolsInput> {
 		const client = new MCPClient({ id, servers: buildMcpServers(configs) });
 		this.clientsByKey.set(clientKey, client);
-		return sanitizeMcpToolSchemas(await client.listTools(), {
-			onError: warnSkippedMcpSchema(logger, source),
-		});
+		return sanitizeMcpToolSchemas(await client.listTools());
 	}
 }

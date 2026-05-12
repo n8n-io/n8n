@@ -16,11 +16,7 @@ import type {
 	SwitchCaseComposite,
 } from '../../../types/base';
 import { isNodeChain } from '../../../types/base';
-import {
-	isIfElseBuilder,
-	isInputTarget,
-	isSwitchCaseBuilder,
-} from '../../node-builders/node-builder';
+import { isIfElseBuilder, isSwitchCaseBuilder } from '../../node-builders/node-builder';
 import {
 	isIfElseComposite,
 	isSwitchCaseComposite,
@@ -35,10 +31,6 @@ import type { MutablePluginContext } from '../types';
  */
 export function getTargetNodeId(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
-
-	if (isInputTarget(target)) {
-		return target.node.id;
-	}
 
 	if (isNodeChain(target)) {
 		return target.head.id;
@@ -78,11 +70,6 @@ export function getTargetNodeId(target: unknown): string | undefined {
  */
 export function getTargetNodeName(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
-
-	// Handle InputTarget (e.g. merge.input(1)) - return the underlying node's name
-	if (isInputTarget(target)) {
-		return target.node.name;
-	}
 
 	// Handle NodeChain
 	if (isNodeChain(target)) {
@@ -157,13 +144,6 @@ export function addBranchTargetNodes(target: unknown, ctx: MutablePluginContext)
 		return;
 	}
 
-	// Handle InputTarget (e.g. merge.input(1)) - add the underlying node so it
-	// participates in the graph. Idempotent if already added via .add(merge).
-	if (isInputTarget(target)) {
-		ctx.addBranchToGraph(target.node);
-		return;
-	}
-
 	// Add the branch using the context's addBranchToGraph method
 	ctx.addBranchToGraph(target);
 }
@@ -188,20 +168,12 @@ export function processBranchForComposite(
 		const targets: ConnectionTarget[] = [];
 		for (const branchNode of branch as Array<NodeInstance<string, string, unknown> | null>) {
 			if (branchNode === null) continue;
-			if (isInputTarget(branchNode)) {
-				const branchHead = ctx.addBranchToGraph(branchNode.node);
-				targets.push({ node: branchHead, type: 'main', index: branchNode.inputIndex });
-				continue;
-			}
 			const branchHead = ctx.addBranchToGraph(branchNode);
 			targets.push({ node: branchHead, type: 'main', index: 0 });
 		}
 		if (targets.length > 0) {
 			mainConns.set(outputIndex, targets);
 		}
-	} else if (isInputTarget(branch)) {
-		const branchHead = ctx.addBranchToGraph(branch.node);
-		mainConns.set(outputIndex, [{ node: branchHead, type: 'main', index: branch.inputIndex }]);
 	} else {
 		const branchHead = ctx.addBranchToGraph(branch);
 		mainConns.set(outputIndex, [{ node: branchHead, type: 'main', index: 0 }]);
@@ -231,8 +203,7 @@ export function processBranchForBuilder(
 		for (const t of branch) {
 			const targetName = getTargetNodeName(t);
 			if (targetName) {
-				const targetIndex = isInputTarget(t) ? t.inputIndex : 0;
-				targets.push({ node: targetName, type: 'main', index: targetIndex });
+				targets.push({ node: targetName, type: 'main', index: 0 });
 				const id = getTargetNodeId(t);
 				if (id) ids.push(id);
 			}
@@ -246,8 +217,7 @@ export function processBranchForBuilder(
 	} else {
 		const targetName = getTargetNodeName(branch);
 		if (targetName) {
-			const targetIndex = isInputTarget(branch) ? branch.inputIndex : 0;
-			mainConns.set(outputIndex, [{ node: targetName, type: 'main', index: targetIndex }]);
+			mainConns.set(outputIndex, [{ node: targetName, type: 'main', index: 0 }]);
 			const id = getTargetNodeId(branch);
 			if (targetNodeIds && id) {
 				targetNodeIds.set(outputIndex, [id]);

@@ -3,7 +3,7 @@ import { ref, watch, onMounted, nextTick } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { storeToRefs } from 'pinia';
 
 import { ElDialog } from 'element-plus';
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 const inputField = ref<HTMLInputElement | null>(null);
 const tempValue = ref('');
 
-const ndvStore = injectNDVStore();
+const ndvStore = useNDVStore();
 const i18n = useI18n();
 
 const { activeNode } = storeToRefs(ndvStore);

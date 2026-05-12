@@ -30,8 +30,6 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
-	/** Whether to allow requests from bot user agents (e.g. Slackbot) */
-	allowBots: boolean;
 	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
 	allowUnauthenticated: boolean;

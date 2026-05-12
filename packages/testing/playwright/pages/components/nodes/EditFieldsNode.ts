@@ -59,12 +59,10 @@ export class EditFieldsNode extends BasePage {
 	private async setFieldType(assignment: Locator, type: string): Promise<void> {
 		const typeSelect = assignment.getByTestId('assignment-type-select');
 		await typeSelect.waitFor({ state: 'visible' });
-		await typeSelect.getByRole('button').click();
+		await typeSelect.click();
 
-		const option = this.page
-			.getByTestId('assignment-type-select-dropdown')
-			.filter({ visible: true })
-			.getByTestId(`action-${type}`);
+		const typeOptionText = this.getTypeOptionText(type);
+		const option = this.page.getByRole('menuitem', { name: typeOptionText });
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}
@@ -82,6 +80,17 @@ export class EditFieldsNode extends BasePage {
 		} else {
 			await this.setTextValue(valueContainer, String(value));
 		}
+	}
+
+	private getTypeOptionText(type: string): string {
+		const typeMap = new Map([
+			['string', 'String'],
+			['number', 'Number'],
+			['boolean', 'Boolean'],
+			['array', 'Array'],
+			['object', 'Object'],
+		]);
+		return typeMap.get(type) ?? 'String';
 	}
 
 	private async setTextValue(valueContainer: Locator, value: string): Promise<void> {

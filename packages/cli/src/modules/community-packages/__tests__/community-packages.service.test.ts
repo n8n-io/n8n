@@ -492,12 +492,14 @@ describe('CommunityPackagesService', () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
 
 			// ACT & ASSERT
-			const promise = communityPackagesService.updatePackage(
-				installedPackageForUpdateTest.packageName,
-				installedPackageForUpdateTest,
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).rejects.toThrow(
+				new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY),
 			);
-			await expect(promise).rejects.toThrow(FeatureNotLicensedError);
-			await expect(promise).rejects.toThrow(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		});
 	});
 

@@ -8,7 +8,10 @@ import {
 } from 'n8n-workflow';
 import { computed, reactive, ref, watch, type Ref } from 'vue';
 import { useWorkflowsStore } from '../stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -32,7 +35,9 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const nodeTypesStore = useNodeTypesStore();
 	const agentRequestStore = useAgentRequestStore();
 
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 
 	const selectedToolMap = reactive<Record<string, string | undefined>>({});
 	const error = ref<Error | undefined>(undefined);

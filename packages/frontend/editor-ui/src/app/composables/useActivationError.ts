@@ -1,13 +1,20 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '../stores/workflowDocument.store';
 
 /**
  * Composable for activation error helpers.
  * Resolves a node ID to a formatted activation error message reactively.
  */
 export function useActivationError(nodeId: MaybeRefOrGetter<string | undefined>) {
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const i18n = useI18n();
 
 	const errorMessage = computed(() => {

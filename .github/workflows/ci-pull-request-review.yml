@@ -41,12 +41,7 @@ jobs:
   chromatic:
     name: Chromatic
     needs: filter
-    # Skip on fork PRs — they don't have access to the Chromatic secret.
-    # This job is intentionally not in `required-review-checks` needs, so it
-    # is non-blocking and won't gate merging.
-    if: >-
-      needs.filter.outputs.design_system == 'true' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+    if: needs.filter.outputs.design_system == 'true'
     uses: ./.github/workflows/test-visual-chromatic.yml
     with:
       ref: ${{ needs.filter.outputs.commit_sha }}
@@ -56,7 +51,7 @@ jobs:
   # PRs cannot be merged unless this job passes.
   required-review-checks:
     name: Required Review Checks
-    needs: [filter]
+    needs: [filter, chromatic]
     if: always()
     runs-on: ubuntu-slim
     steps:

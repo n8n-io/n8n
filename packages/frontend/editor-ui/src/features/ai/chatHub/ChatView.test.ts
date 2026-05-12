@@ -85,12 +85,6 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
 		nodeTypes: [],
-		getNodeType: vi.fn(() => null),
-		getAllNodeTypes: vi.fn().mockReturnValue({
-			nodeTypes: {},
-			init: async () => {},
-			getByNameAndVersion: () => undefined,
-		}),
 	}),
 }));
 
@@ -116,6 +110,7 @@ const mockRouterPush = vi.fn((route) => {
 });
 
 vi.mock('vue-router', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('vue-router')>();
 
 	return {

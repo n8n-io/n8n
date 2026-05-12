@@ -50,6 +50,7 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
+import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 export type CommunityNodeDetails = {
@@ -68,7 +69,6 @@ import { type NodeIconSource } from '@/app/utils/nodeIcon';
 import { getThemedValue } from '@/app/utils/nodeTypesUtils';
 
 import nodePopularity from 'virtual:node-popularity-data';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type NodeCreatorFilter = INodeFilter & {
 	conditions?: Array<(item: INodeCreateElement) => boolean>;
@@ -110,7 +110,6 @@ const nodePopularityMap = Object.values(nodePopularity).reduce((acc, node) => {
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 	const i18n = useI18n();
 	const settingsStore = useSettingsStore();
@@ -125,7 +124,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (stack.search && searchBaseItems.value) {
 			let searchBase: INodeCreateElement[] = searchBaseItems.value;
-			const canvasHasAINodes = workflowDocumentStore.value.aiNodes.length > 0;
+			const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
 			if (searchBaseItems.value.length === 0) {
 				searchBase = flattenCreateElements(stack.baselineItems ?? []);
 			}
@@ -282,7 +281,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		sortAlphabetically: boolean,
 	) {
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
-		const canvasHasAINodes = workflowDocumentStore.value.aiNodes.length > 0;
+		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
 		const isVectorStoresCategory = stack?.title === AI_CATEGORY_VECTOR_STORES;
 		const isToolsCategory = stack?.title === AI_CATEGORY_TOOLS;
 		if (

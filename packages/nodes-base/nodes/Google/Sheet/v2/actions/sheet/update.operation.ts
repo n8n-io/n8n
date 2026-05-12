@@ -1,12 +1,7 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, UserError } from 'n8n-workflow';
 
-import {
-	cellFormat,
-	columnsResourceMapperBuilderHint,
-	handlingExtraData,
-	locationDefine,
-} from './commonDescription';
+import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	ROW_NUMBER,
@@ -162,7 +157,6 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
-		builderHint: columnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
@@ -198,7 +192,6 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
-		builderHint: columnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {

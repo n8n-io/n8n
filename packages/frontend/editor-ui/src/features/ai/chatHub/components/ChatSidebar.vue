@@ -15,15 +15,8 @@ import ChatSidebarContent from '@/features/ai/chatHub/components/ChatSidebarCont
 const i18n = useI18n();
 const router = useRouter();
 
-const {
-	isCollapsed,
-	isResizing,
-	sidebarWidth,
-	onResizeStart,
-	onResize,
-	onResizeEnd,
-	toggleCollapse,
-} = useSidebarLayout();
+const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
+	useSidebarLayout();
 
 function openCommandBar(event: MouseEvent) {
 	event.stopPropagation();
@@ -71,10 +64,9 @@ const onLogout = () => {
 		:class="{
 			[$style.sideMenu]: true,
 			[$style.sideMenuCollapsed]: isCollapsed,
-			[$style.sideMenuResizing]: isResizing,
 		}"
 		:width="sidebarWidth"
-		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
+		:style="{ width: `${sidebarWidth}px` }"
 		:supported-directions="['right']"
 		:min-width="200"
 		:max-width="500"
@@ -106,16 +98,10 @@ const onLogout = () => {
 	flex-direction: column;
 	border-right: var(--border);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
-	transition: width var(--duration--snappy) var(--easing--ease-out);
-	will-change: width;
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
 		min-width: auto;
-	}
-
-	&.sideMenuResizing {
-		transition: none;
 	}
 }
 

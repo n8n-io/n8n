@@ -18,13 +18,11 @@ import {
 } from '../constants';
 
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
-import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const router = useRouter();
@@ -33,9 +31,7 @@ const i18n = useI18n();
 const modalTitle = computed(() => i18n.baseText('activationModal.workflowPublished'));
 
 const triggerContent = computed(() => {
-	const foundTriggers = getActivatableTriggerNodes(
-		workflowDocumentStore.value.workflowTriggerNodes,
-	);
+	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
 	if (!foundTriggers.length) {
 		return '';
 	}

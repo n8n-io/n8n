@@ -145,7 +145,7 @@ export const promptTypeOptions: INodeProperties = {
 	],
 	default: 'auto',
 	builderHint: {
-		propertyHint: "Use 'auto' when following a chat trigger, 'define' when custom prompt needed",
+		message: "Use 'auto' when following a chat trigger, 'define' when custom prompt needed",
 	},
 };
 
@@ -161,8 +161,8 @@ export const textInput: INodeProperties = {
 	},
 	builderHint: {
 		placeholderSupported: false,
-		propertyHint:
-			"Use expressions to include dynamic data from previous nodes (e.g., expr('{{ $json.input }}')). Static text prompts ignore incoming data.",
+		message:
+			'Use expressions to include dynamic data from previous nodes (e.g., "={{ $json.input }}"). Static text prompts ignore incoming data.',
 	},
 };
 

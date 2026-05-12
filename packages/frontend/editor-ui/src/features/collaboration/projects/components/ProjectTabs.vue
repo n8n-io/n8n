@@ -116,15 +116,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 
 	if (props.additionalTabs?.length) {
 		const processedAdditionalTabs = processDynamicTabs(props.additionalTabs, projectId.value);
-		for (const processed of processedAdditionalTabs) {
-			const { insertAfter, ...tab } = processed;
-			const anchorIndex = insertAfter ? tabs.findIndex((t) => t.value === insertAfter) : -1;
-			if (anchorIndex !== -1) {
-				tabs.splice(anchorIndex + 1, 0, tab);
-			} else {
-				tabs.push(tab);
-			}
-		}
+		tabs.push(...processedAdditionalTabs);
 	}
 
 	if (props.showSettings) {

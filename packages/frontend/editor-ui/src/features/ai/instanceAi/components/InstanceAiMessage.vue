@@ -4,7 +4,7 @@ import type { RatingFeedback } from '@n8n/design-system';
 import { N8nCallout, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -15,7 +15,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
-const thread = useThread();
 const showDebugInfo = ref(false);
 
 const isUser = computed(() => props.message.role === 'user');
@@ -67,16 +66,16 @@ const responseId = computed(() => props.message.messageGroupId ?? props.message.
 const isRateable = computed(
 	() =>
 		!isUser.value &&
-		thread.rateableResponseId === responseId.value &&
-		!(responseId.value in thread.feedbackByResponseId),
+		store.rateableResponseId === responseId.value &&
+		!(responseId.value in store.feedbackByResponseId),
 );
 
 const hasSubmittedFeedback = computed(
-	() => !isUser.value && responseId.value in thread.feedbackByResponseId,
+	() => !isUser.value && responseId.value in store.feedbackByResponseId,
 );
 
 function onFeedback(payload: RatingFeedback) {
-	thread.submitFeedback(responseId.value, payload);
+	store.submitFeedback(responseId.value, payload);
 }
 
 function formatJson(value: unknown): string {

@@ -81,10 +81,7 @@ export const descriptions: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
-		builderHint: {
-			propertyHint:
-				"Default to mode: 'list' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
-		},
+		builderHint: { message: "Default to mode: 'list' which is easier for users to set up" },
 		modes: [
 			{
 				displayName: 'From List',
@@ -142,10 +139,7 @@ export const descriptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		// default: '', //empty string set to progresivly reveal fields
 		required: true,
-		builderHint: {
-			propertyHint:
-				"Default to mode: 'list' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
-		},
+		builderHint: { message: "Default to mode: 'list' which is easier for users to set up" },
 		typeOptions: {
 			loadOptionsDependsOn: ['documentId.value'],
 		},

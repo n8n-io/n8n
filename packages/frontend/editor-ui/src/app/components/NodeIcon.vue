@@ -40,10 +40,7 @@ const emit = defineEmits<{
 	click: [];
 }>();
 
-const iconSourceFromNodeType = useNodeIconSource(
-	() => props.nodeType,
-	() => props.node ?? null,
-);
+const iconSourceFromNodeType = useNodeIconSource(props.nodeType, props.node ?? null);
 
 const iconSource = computed(() => props.iconSource ?? iconSourceFromNodeType.value);
 

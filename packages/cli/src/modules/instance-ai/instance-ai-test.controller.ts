@@ -1,13 +1,11 @@
-import { UserRepository, WorkflowRepository } from '@n8n/db';
-import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
+import { WorkflowRepository } from '@n8n/db';
+import { RestController, Get, Post, Delete, Param } from '@n8n/decorators';
 import type { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { InstanceAiService } from './instance-ai.service';
-import { InstanceAiMemoryService } from './instance-ai-memory.service';
 
 /**
  * Test-only endpoints for trace replay in Instance AI e2e tests.
@@ -19,8 +17,6 @@ export class InstanceAiTestController {
 		private readonly instanceAiService: InstanceAiService,
 		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly workflowRepo: WorkflowRepository,
-		private readonly userRepo: UserRepository,
-		private readonly memoryService: InstanceAiMemoryService,
 	) {}
 
 	@Post('/test/tool-trace', { skipAuth: true })
@@ -39,23 +35,6 @@ export class InstanceAiTestController {
 	getToolTrace(_req: Request, _res: Response, @Param('slug') slug: string) {
 		this.assertTraceReplayEnabled();
 		return { events: this.instanceAiService.getTraceEvents(slug) };
-	}
-
-	@Post('/test/background-timeout/start', { skipAuth: true })
-	async startBackgroundTimeoutSimulation(@Body payload: { userId: string; threadId?: string }) {
-		this.assertTraceReplayEnabled();
-		const threadId = payload.threadId ?? uuidv4();
-		const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
-
-		await this.memoryService.ensureThread(user.id, threadId);
-		return await this.instanceAiService.startStuckBackgroundTaskForTest(user, threadId);
-	}
-
-	@Post('/test/liveness-sweep', { skipAuth: true })
-	async runLivenessSweep(@Body payload: { now?: number } = {}) {
-		this.assertTraceReplayEnabled();
-		await this.instanceAiService.runLivenessSweepForTest(payload.now);
-		return { ok: true };
 	}
 
 	@Delete('/test/tool-trace/:slug', { skipAuth: true })
@@ -87,10 +66,7 @@ export class InstanceAiTestController {
 		for (const { id } of threads) {
 			await this.instanceAiService.clearThreadState(id);
 		}
-		// `repo.clear()` issues TRUNCATE without CASCADE, which Postgres rejects
-		// when child tables (messages, snapshots, …) still reference these rows.
-		// QueryBuilder DELETE fires the FK CASCADE/SET-NULL actions correctly.
-		await this.threadRepo.createQueryBuilder().delete().execute();
+		await this.threadRepo.clear();
 
 		const workflowIds = await this.workflowRepo.find({ select: ['id'] });
 		for (const { id } of workflowIds) {

@@ -23,7 +23,6 @@ export const SERVICE_NAMES = [
 	'localstack',
 	'kent',
 	'postgresExporter',
-	'cadvisor',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -63,8 +62,6 @@ export interface StartContext {
 	baseUrl?: string;
 }
 
-export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
-
 export interface StackConfig {
 	mains?: number;
 	workers?: number;
@@ -76,12 +73,6 @@ export interface StackConfig {
 	services?: readonly ServiceName[];
 	/** When true, services target host machine instead of Docker-internal n8n */
 	external?: boolean;
-	/**
-	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`.
-	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
-	 * Benchmarks should set `'round_robin'` to actually distribute load.
-	 */
-	lbPolicy?: LoadBalancerPolicy;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

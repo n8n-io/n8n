@@ -99,7 +99,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
@@ -138,7 +138,6 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
-import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/executions.utils';
 
 defineOptions({
 	name: 'NodeView',
@@ -192,7 +191,7 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 
-const ndvStore = injectNDVStore();
+const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
 const agentRequestStore = useAgentRequestStore();
@@ -410,13 +409,11 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
-const selectableTriggerNodes = computed(() =>
-	triggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
-);
 const isRunButtonSplit = computed(() => {
-	return (
-		selectableTriggerNodes.value.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined
+	const selectableTriggerNodes = triggerNodes.value.filter(
+		(node) => !node.disabled && !isChatNode(node),
 	);
+	return selectableTriggerNodes.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined;
 });
 
 function onTidyUp(
@@ -488,10 +485,10 @@ function onClickNode(_id: string, event: VueFlowXYPosition) {
 	closeNodeCreator();
 }
 
-async function onSetNodeActivated(id: string, event?: MouseEvent) {
+function onSetNodeActivated(id: string, event?: MouseEvent) {
 	// Handle Ctrl/Cmd + Double Click case
 	if (event?.metaKey || event?.ctrlKey) {
-		const didOpen = await tryToOpenSubworkflowInNewTab(id);
+		const didOpen = tryToOpenSubworkflowInNewTab(id);
 		if (didOpen) {
 			return;
 		}
@@ -1683,51 +1680,6 @@ watch(
 			}
 		}
 	},
-);
-
-const workflowExecutionTriggerNodeName = computed(() => {
-	if (!isWorkflowRunning.value) {
-		return undefined;
-	}
-
-	if (workflowsStore.workflowExecutionData?.triggerNode) {
-		return workflowsStore.workflowExecutionData.triggerNode;
-	}
-
-	// In case of partial execution, triggerNode is not set, so I'm trying to find from runData
-	return Object.keys(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {}).find(
-		(name) => workflowDocumentStore?.value?.workflowTriggerNodes.some((node) => node.name === name),
-	);
-});
-
-watch(
-	[selectableTriggerNodes, workflowExecutionTriggerNodeName],
-	([newSelectable, currentTrigger], [oldSelectable]) => {
-		if (currentTrigger !== undefined) {
-			workflowsStore.setSelectedTriggerNodeName(currentTrigger);
-			return;
-		}
-
-		if (
-			workflowsStore.selectedTriggerNodeName === undefined ||
-			newSelectable.every((node) => node.name !== workflowsStore.selectedTriggerNodeName)
-		) {
-			workflowsStore.setSelectedTriggerNodeName(
-				findTriggerNodeToAutoSelect(selectableTriggerNodes.value, nodeTypesStore.getNodeType)?.name,
-			);
-			return;
-		}
-
-		const newTrigger = newSelectable?.find((node) =>
-			oldSelectable?.every((old) => old.name !== node.name),
-		);
-
-		if (newTrigger !== undefined) {
-			// Select newly added node
-			workflowsStore.setSelectedTriggerNodeName(newTrigger.name);
-		}
-	},
-	{ immediate: true },
 );
 
 onBeforeRouteLeave(async (to, from, next) => {

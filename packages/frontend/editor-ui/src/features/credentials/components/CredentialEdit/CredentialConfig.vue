@@ -72,7 +72,6 @@ type Props = {
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
-	hideAskAssistant?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -195,7 +194,6 @@ const isNewCredential = computed(() => props.mode === 'new' && !props.credential
 
 const isAskAssistantAvailable = computed(
 	() =>
-		!props.hideAskAssistant &&
 		documentationUrl.value &&
 		documentationUrl.value.includes(DOCS_DOMAIN) &&
 		props.credentialProperties.length &&
@@ -295,11 +293,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<template v-if="isQuickConnectMode">
-				<QuickConnectBanner
-					v-if="quickConnectBannerText || quickConnectOption?.disclaimer"
-					:text="quickConnectBannerText"
-					:disclaimer="quickConnectOption?.disclaimer"
-				/>
+				<QuickConnectBanner v-if="quickConnectBannerText" :text="quickConnectBannerText" />
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"

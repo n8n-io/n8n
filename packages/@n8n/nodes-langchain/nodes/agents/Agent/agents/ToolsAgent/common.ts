@@ -117,11 +117,16 @@ export async function extractBinaryMessages(
 						base64Data = data.data.includes('base64,') ? data.data.split('base64,')[1] : data.data;
 					}
 
+					let format = data.mimeType.split('/')[1] || 'mp3';
+					if (format === 'mpeg') {
+						format = 'mp3';
+					}
+
 					return {
 						type: 'input_audio',
 						input_audio: {
 							data: base64Data,
-							format: data.mimeType.split('/')[1] || 'mp3',
+							format,
 						},
 					};
 				}

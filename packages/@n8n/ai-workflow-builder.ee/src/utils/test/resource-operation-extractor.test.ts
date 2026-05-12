@@ -647,7 +647,7 @@ describe('resource-operation-extractor', () => {
 							name: 'Message',
 							value: 'message',
 							description: 'Work with email messages',
-							builderHint: { propertyHint: 'Use for reading, sending, or managing emails' },
+							builderHint: { message: 'Use for reading, sending, or managing emails' },
 						},
 						{
 							name: 'Draft',
@@ -667,7 +667,7 @@ describe('resource-operation-extractor', () => {
 							name: 'Send',
 							value: 'send',
 							description: 'Send an email message',
-							builderHint: { propertyHint: 'Use to send composed emails to recipients' },
+							builderHint: { message: 'Use to send composed emails to recipients' },
 						},
 						{
 							name: 'Get All',
@@ -690,7 +690,7 @@ describe('resource-operation-extractor', () => {
 			const messageResource = result?.resources.find((r) => r.value === 'message');
 			expect(messageResource?.description).toBe('Work with email messages');
 			expect(messageResource?.builderHint).toEqual({
-				propertyHint: 'Use for reading, sending, or managing emails',
+				message: 'Use for reading, sending, or managing emails',
 			});
 
 			const draftResource = result?.resources.find((r) => r.value === 'draft');
@@ -701,7 +701,7 @@ describe('resource-operation-extractor', () => {
 			const sendOp = messageResource?.operations.find((op) => op.value === 'send');
 			expect(sendOp?.description).toBe('Send an email message');
 			expect(sendOp?.builderHint).toEqual({
-				propertyHint: 'Use to send composed emails to recipients',
+				message: 'Use to send composed emails to recipients',
 			});
 
 			const getAllOp = messageResource?.operations.find((op) => op.value === 'getAll');

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { createThreadComponentRenderer } from './createThreadComponentRenderer';
+import { createComponentRenderer } from '@/__tests__/render';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -49,7 +49,7 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	},
 }));
 
-const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
+const renderComponent = createComponentRenderer(InstanceAiCredentialSetup);
 
 /** Creates requests with no existing credentials (shows setup button) */
 function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {

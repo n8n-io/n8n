@@ -54,8 +54,8 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
@@ -325,7 +325,7 @@ export async function resolveRequiredParameters(
 }
 
 function getNodeTypes(): INodeTypes {
-	return useNodeTypesStore().getAllNodeTypes();
+	return useWorkflowsStore().getNodeTypes();
 }
 
 // TODO: move to separate file
@@ -503,7 +503,9 @@ export function useWorkflowHelpers() {
 
 	const i18n = useI18n();
 
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowDocumentStore.value.allNodes;
@@ -830,6 +832,11 @@ export function useWorkflowHelpers() {
 			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
 		});
 
+		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
+		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
+			workflowsStore.workflow.versionId = payload.versionId;
+		});
+
 		initializedWorkflowDocumentStore.setName(workflowData.name);
 		initializedWorkflowDocumentStore.setTags(tagIds);
 		initializedWorkflowDocumentStore.setActiveState({
@@ -855,6 +862,14 @@ export function useWorkflowHelpers() {
 
 		return { workflowDocumentStore: initializedWorkflowDocumentStore };
 	}
+
+	/**
+	 * Check if workflow contains any node from specified package
+	 * by performing a quick check based on the node type name.
+	 */
+	const containsNodeFromPackage = (workflow: IWorkflowDb, packageName: string) => {
+		return workflow.nodes.some((node) => node.type.startsWith(packageName));
+	};
 
 	function getMethods(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
@@ -932,6 +947,7 @@ export function useWorkflowHelpers() {
 		getWorkflowProjectRole,
 		initState,
 		getNodeParametersWithResolvedExpressions,
+		containsNodeFromPackage,
 		checkConflictingWebhooks,
 	};
 }

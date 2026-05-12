@@ -60,9 +60,9 @@ describe('useContextMenu', () => {
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId(testWorkflowId);
+		workflowsStore.workflow.id = testWorkflowId;
+		workflowsStore.workflow.nodes = nodes;
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
-		workflowDocumentStore.setNodes(nodes);
 		workflowDocumentStore.setScopes(['workflow:update']);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 

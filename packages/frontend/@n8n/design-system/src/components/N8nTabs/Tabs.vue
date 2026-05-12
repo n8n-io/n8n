@@ -6,7 +6,6 @@ import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 interface TabsProps {
 	modelValue?: Value;
@@ -107,15 +106,13 @@ const scrollRight = () => scroll(50);
 						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
 						@click="() => handleTabClick(option.value)"
 					>
-						<div :class="$style.externalLinkContent">
+						<div>
 							{{ option.label }}
 							<N8nIcon
 								:class="$style.external"
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<PreviewTag v-if="option.preview" />
-							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 						</div>
 					</a>
 					<RouterLink
@@ -128,7 +125,6 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
@@ -157,7 +153,6 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
-						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>
@@ -266,16 +261,6 @@ const scrollRight = () => scroll(50);
 
 	.noText & {
 		display: block;
-		margin-left: 0;
-	}
-}
-
-.externalLinkContent {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-
-	.external {
 		margin-left: 0;
 	}
 }

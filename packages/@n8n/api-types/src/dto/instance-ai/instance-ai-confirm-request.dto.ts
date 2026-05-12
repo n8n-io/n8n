@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-import {
-	domainAccessActionSchema,
-	instanceGatewayResourceDecisionSchema,
-} from '../../schemas/instance-ai.schema';
+import { domainAccessActionSchema } from '../../schemas/instance-ai.schema';
 
 /**
  * Plain approval/denial. Also carries optional `userInput` for:
@@ -49,10 +46,13 @@ const domainAccessDenySchema = z.object({
 	kind: z.literal('domainAccessDeny'),
 });
 
-/** Gateway resource-access decision (inputType='resource-decision'). Approval is implied. */
+/** Gateway resource-access decision (inputType='resource-decision'). Approval is implied.
+ *  `resourceDecision` is one of the opaque tokens listed in the request's `options[]` array
+ *  (e.g. `'denyOnce'`, `'allowOnce'`, `'allowForSession'`) — the daemon defines the vocabulary,
+ *  so we keep this as a string rather than a fixed enum. */
 const resourceDecisionConfirmSchema = z.object({
 	kind: z.literal('resourceDecision'),
-	resourceDecision: instanceGatewayResourceDecisionSchema,
+	resourceDecision: z.string(),
 });
 
 /** Per-node credential map: `Record<nodeName, Record<credentialType, credentialId>>`. */
@@ -90,4 +90,3 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;
 export type InstanceAiConfirmRequestKind = InstanceAiConfirmRequest['kind'];
-export type InstanceAiResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;

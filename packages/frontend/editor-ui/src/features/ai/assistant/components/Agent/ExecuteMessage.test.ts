@@ -11,10 +11,6 @@ import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { CHAT_TRIGGER_NODE_TYPE, SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -123,17 +119,14 @@ describe('ExecuteMessage', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.setWorkflowId('test-workflow');
+		workflowsStore.workflow.id = 'test-workflow';
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
 		uiStore = mockedStore(useUIStore);
 		builderStore = mockedStore(useBuilderStore);
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId('test-workflow'),
-		);
-		workflowDocumentStore.setNodes(workflowNodes);
-		workflowDocumentStore.setConnections({});
+		workflowsStore.workflow.nodes = workflowNodes as unknown as INodeUi[];
+		workflowsStore.workflow.connections = {} as never;
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
 		});

@@ -12,8 +12,6 @@ import type { InstanceAiContext } from '../types';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
 
-export const DATA_TABLES_TOOL_ID = 'data-tables';
-
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
 const filterSchema = z.object({
@@ -599,7 +597,7 @@ export function createDataTablesTool(
 		const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...readOnlyActions]));
 
 		return createTool({
-			id: DATA_TABLES_TOOL_ID,
+			id: 'data-tables',
 			description: 'Manage data tables — list, get schema, and query rows.',
 			inputSchema,
 			execute: async (input: ReadOnlyInput) => {
@@ -618,7 +616,7 @@ export function createDataTablesTool(
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return createTool({
-		id: DATA_TABLES_TOOL_ID,
+		id: 'data-tables',
 		description: 'Manage data tables — list, query, create, modify columns, and manage rows.',
 		inputSchema,
 		suspendSchema: confirmationSuspendSchema,

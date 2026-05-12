@@ -175,11 +175,7 @@ onMounted(async () => {
 			</N8nTooltip>
 		</div>
 
-		<QuickConnectBanner
-			v-if="quickConnect"
-			:text="quickConnect?.text"
-			:disclaimer="quickConnect?.disclaimer"
-		/>
+		<QuickConnectBanner v-if="quickConnect" :text="quickConnect?.text" />
 		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>

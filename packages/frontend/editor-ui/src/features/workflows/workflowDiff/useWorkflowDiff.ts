@@ -1,12 +1,16 @@
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { toValue, computed, ref, watchEffect, shallowRef } from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 import type { Workflow, IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 export function mapConnections(connections: CanvasConnection[]) {
 	return connections.reduce(
@@ -106,17 +110,14 @@ export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 ) => {
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const nodeTypesStore = useNodeTypesStore();
 
-	const sourceRefs = createWorkflowRefs(
-		sourceWorkflow,
-		workflowDocumentStore.value.createWorkflowObject,
-	);
-	const targetRefs = createWorkflowRefs(
-		targetWorkflow,
-		workflowDocumentStore.value.createWorkflowObject,
-	);
+	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowDocumentStore.createWorkflowObject);
+	const targetRefs = createWorkflowRefs(targetWorkflow, workflowDocumentStore.createWorkflowObject);
 
 	const sourceDiff = createWorkflowDiff(
 		sourceRefs.workflowRef,

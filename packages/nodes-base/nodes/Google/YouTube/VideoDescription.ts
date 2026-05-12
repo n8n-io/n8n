@@ -776,7 +776,7 @@ export const videoFields: INodeProperties[] = [
 					},
 					{
 						name: 'Unlisted',
-						value: 'unlisted',
+						value: 'unlistef',
 					},
 				],
 				default: '',

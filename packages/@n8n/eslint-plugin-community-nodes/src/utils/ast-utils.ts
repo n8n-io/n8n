@@ -130,11 +130,7 @@ export function hasArrayLiteralValue(
 export function getTopLevelObjectInJson(
 	node: TSESTree.ObjectExpression,
 ): TSESTree.ObjectExpression | null {
-	// In a JSON file parsed as JS, the root object is the sole expression of
-	// the program, so its parent is an ExpressionStatement. Anything else
-	// (Property, ArrayExpression, etc.) is nested and must not be treated as
-	// the package root.
-	if (node.parent?.type !== AST_NODE_TYPES.ExpressionStatement) {
+	if (node.parent?.type === AST_NODE_TYPES.Property) {
 		return null;
 	}
 	return node;

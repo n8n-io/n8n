@@ -165,17 +165,12 @@ export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 
 	// Selected node
 	const selectedNode = computed<INodeUi | undefined>(() => {
-		const id = selectedDetailId.value;
-		if (!id) return undefined;
+		if (!selectedDetailId.value) return undefined;
 
-		// Prefer the target workflow so modified nodes whose type changed
-		// surface the new node (and its icon) rather than the base version.
-		// Falls back to source for deleted nodes, then to the diff entry.
-		return (
-			targetWorkflow.value?.nodes.find((node) => node.id === id) ??
-			sourceWorkflow.value?.nodes.find((node) => node.id === id) ??
-			nodesDiff.value.get(id)?.node
-		);
+		const node = nodesDiff.value.get(selectedDetailId.value)?.node;
+		if (!node) return undefined;
+
+		return node;
 	});
 
 	// Node diffs for aside panel

@@ -1,7 +1,8 @@
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { IConnection, IConnections, INodeConnections } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import * as workflowUtils from 'n8n-workflow/common';
@@ -31,7 +32,7 @@ export interface WorkflowDocumentConnectionsDeps {
 // private state owned by workflowDocumentStore. Once that happens, the direct import
 // (and the import-cycle warning it causes) will go away.
 export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnectionsDeps) {
-	const connections = ref<IConnections>({});
+	const workflowsStore = useWorkflowsStore();
 
 	const onConnectionsChange = createEventHook<ConnectionsChangeEvent>();
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
@@ -42,8 +43,8 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	// -----------------------------------------------------------------------
 
 	function applySetConnections(value: IConnections) {
-		connections.value = value;
-		deps.syncWorkflowObject(connections.value);
+		workflowsStore.workflow.connections = value;
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 	}
 
 	function applyAddConnection(data: { connection: IConnection[] }) {
@@ -51,7 +52,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 
 		const sourceData: IConnection = data.connection[0];
 		const destinationData: IConnection = data.connection[1];
-		const wfConnections = connections.value;
+		const wfConnections = workflowsStore.workflow.connections;
 
 		if (!wfConnections.hasOwnProperty(sourceData.node)) {
 			wfConnections[sourceData.node] = {};
@@ -99,7 +100,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 			}
 		}
 
-		deps.syncWorkflowObject(connections.value);
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.ADD,
 			payload: { connection: data.connection },
@@ -110,26 +111,26 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	function applyRemoveConnection(data: { connection: IConnection[] }) {
 		const sourceData = data.connection[0];
 		const destinationData = data.connection[1];
+		const wfConnections = workflowsStore.workflow.connections;
 
-		if (!connections.value.hasOwnProperty(sourceData.node)) return;
-		if (!connections.value[sourceData.node].hasOwnProperty(sourceData.type)) return;
-		if (connections.value[sourceData.node][sourceData.type].length < sourceData.index + 1) return;
+		if (!wfConnections.hasOwnProperty(sourceData.node)) return;
+		if (!wfConnections[sourceData.node].hasOwnProperty(sourceData.type)) return;
+		if (wfConnections[sourceData.node][sourceData.type].length < sourceData.index + 1) return;
 
-		const matchedConnections =
-			connections.value[sourceData.node][sourceData.type][sourceData.index];
-		if (!matchedConnections) return;
+		const connections = wfConnections[sourceData.node][sourceData.type][sourceData.index];
+		if (!connections) return;
 
-		for (const index in matchedConnections) {
+		for (const index in connections) {
 			if (
-				matchedConnections[index].node === destinationData.node &&
-				matchedConnections[index].type === destinationData.type &&
-				matchedConnections[index].index === destinationData.index
+				connections[index].node === destinationData.node &&
+				connections[index].type === destinationData.type &&
+				connections[index].index === destinationData.index
 			) {
-				matchedConnections.splice(Number.parseInt(index, 10), 1);
+				connections.splice(Number.parseInt(index, 10), 1);
 			}
 		}
 
-		deps.syncWorkflowObject(connections.value);
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { connection: data.connection },
@@ -143,7 +144,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	) {
 		const preserveInput = opts?.preserveInputConnections ?? false;
 		const preserveOutput = opts?.preserveOutputConnections ?? false;
-		const wfConnections = connections.value;
+		const wfConnections = workflowsStore.workflow.connections;
 
 		if (!preserveOutput) {
 			delete wfConnections[node.name];
@@ -171,7 +172,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 			}
 		}
 
-		deps.syncWorkflowObject(connections.value);
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { nodeName: node.name },
@@ -180,18 +181,18 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	}
 
 	function applyRemoveAllConnections() {
-		connections.value = {};
-		deps.syncWorkflowObject(connections.value);
+		workflowsStore.workflow.connections = {};
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 	}
 
 	// -----------------------------------------------------------------------
 	// Read API
 	// -----------------------------------------------------------------------
 
-	const connectionsBySourceNode = computed(() => connections.value);
+	const connectionsBySourceNode = computed(() => workflowsStore.workflow.connections);
 
 	const connectionsByDestinationNode = computed<IConnections>(() =>
-		workflowUtils.mapConnectionsByDestination(connections.value),
+		workflowUtils.mapConnectionsByDestination(workflowsStore.workflow.connections),
 	);
 
 	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {

@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import { VIEWS } from '@/app/constants';
+import { waitFor } from '@testing-library/vue';
 import { useEvaluationStore } from '../evaluation.store';
 import TestRunDetailView from './TestRunDetailView.vue';
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
@@ -17,11 +16,6 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
-const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: trackMock }),
-}));
-
 const mockRouter = {
 	currentRoute: {
 		value: {
@@ -32,7 +26,6 @@ const mockRouter = {
 		},
 	},
 	back: vi.fn(),
-	push: vi.fn(),
 	resolve: vi.fn(() => ({ href: '/test-execution-url' })),
 };
 
@@ -48,10 +41,10 @@ const mockTestRun: TestRunRecord = {
 	id: 'test-run-id',
 	workflowId: 'test-workflow-id',
 	status: 'completed',
-	createdAt: '2023-10-02T10:00:00Z',
-	updatedAt: '2023-10-02T10:00:00Z',
-	completedAt: '2023-10-02T10:00:01Z',
-	runAt: '2023-10-02T10:00:00Z',
+	createdAt: '2023-10-01T10:00:00Z',
+	updatedAt: '2023-10-01T10:00:00Z',
+	completedAt: '2023-10-01T10:00:00Z',
+	runAt: '2023-10-01T10:00:00Z',
 	metrics: {
 		accuracy: 0.95,
 		precision: 0.92,
@@ -59,47 +52,38 @@ const mockTestRun: TestRunRecord = {
 	finalResult: 'success',
 };
 
-const mockPreviousRun: TestRunRecord = {
-	id: 'previous-run-id',
-	workflowId: 'test-workflow-id',
-	status: 'completed',
-	createdAt: '2023-10-01T10:00:00Z',
-	updatedAt: '2023-10-01T10:00:00Z',
-	completedAt: '2023-10-01T10:00:01Z',
-	runAt: '2023-10-01T10:00:00Z',
-	metrics: {
-		accuracy: 0.85,
-		precision: 0.95,
-	},
-	finalResult: 'success',
-};
-
 const mockTestCases = [
 	mock<TestCaseExecutionRecord>({
 		id: 'test-case-1',
-		testRunId: 'test-run-id',
-		status: 'success',
-		runAt: '2023-10-02T10:00:00Z',
-		updatedAt: '2023-10-02T10:00:01Z',
+		status: 'completed',
+		runAt: '2023-10-01T10:00:00Z',
 		executionId: 'execution-1',
 		metrics: {
 			accuracy: 0.98,
 			precision: 0.95,
-			totalTokens: 1500,
+		},
+		inputs: {
+			input1: 'value1',
+		},
+		outputs: {
+			output1: 'result1',
 		},
 	}),
 	mock<TestCaseExecutionRecord>({
 		id: 'test-case-2',
-		testRunId: 'test-run-id',
 		status: 'error',
-		runAt: '2023-10-02T10:01:00Z',
-		updatedAt: '2023-10-02T10:01:01Z',
+		runAt: '2023-10-01T10:01:00Z',
 		executionId: 'execution-2',
 		errorCode: 'INTERRUPTED',
 		metrics: {
 			accuracy: 0.85,
 			precision: 0.88,
-			totalTokens: 1200,
+		},
+		inputs: {
+			input1: 'value2',
+		},
+		outputs: {
+			output1: 'result2',
 		},
 	}),
 ];
@@ -107,6 +91,20 @@ const mockTestCases = [
 const mockWorkflow = mock<IWorkflowDb>({
 	id: 'test-workflow-id',
 	name: 'Test Workflow',
+	active: true,
+	nodes: [],
+	connections: {},
+	createdAt: '2023-10-01T09:00:00Z',
+	updatedAt: '2023-10-01T09:00:00Z',
+	versionId: 'version-1',
+	tags: [],
+	settings: {},
+	pinData: {},
+	homeProject: { id: 'home-project', name: 'Home' },
+	sharedWithProjects: [],
+	scopes: [],
+	usedCredentials: [],
+	meta: {},
 });
 
 describe('TestRunDetailView', () => {
@@ -118,7 +116,6 @@ describe('TestRunDetailView', () => {
 				evaluation: {
 					testRunsById: {
 						'test-run-id': mockTestRun,
-						'previous-run-id': mockPreviousRun,
 					},
 				},
 				workflows: {
@@ -139,19 +136,9 @@ describe('TestRunDetailView', () => {
 	beforeEach(() => {
 		evaluationStore = useEvaluationStore();
 
+		// Mock store methods
 		vi.mocked(evaluationStore.getTestRun).mockResolvedValue(mockTestRun);
-		vi.spyOn(evaluationStore, 'fetchTestRuns').mockResolvedValue([mockTestRun, mockPreviousRun]);
-		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockImplementation(async () => {
-			// Seed the store directly so `testCases` (now a computed) reads from it.
-			evaluationStore.testCaseExecutionsById = mockTestCases.reduce(
-				(acc, testCase) => {
-					acc[testCase.id] = testCase as TestCaseExecutionRecord;
-					return acc;
-				},
-				{} as Record<string, TestCaseExecutionRecord>,
-			);
-			return mockTestCases as TestCaseExecutionRecord[];
-		});
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(mockTestCases);
 
 		vi.clearAllMocks();
 	});
@@ -160,228 +147,306 @@ describe('TestRunDetailView', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders the run detail container', async () => {
+	it('should render component', () => {
 		const { container } = renderComponent();
-		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
-		});
+		expect(container).toBeTruthy();
 	});
 
-	it('fetches test run + cases on mount', async () => {
+	it('should fetch test run data on mount', async () => {
 		renderComponent();
+
 		await waitFor(() => {
 			expect(evaluationStore.getTestRun).toHaveBeenCalledWith({
 				workflowId: 'test-workflow-id',
 				runId: 'test-run-id',
 			});
+		});
+	});
+
+	it('should display test run detail view', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should display summary cards', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			const summaryCards = container.querySelectorAll('.summaryCard');
+			expect(summaryCards.length).toBeGreaterThan(0);
+		});
+	});
+
+	it('should handle error state', async () => {
+		const errorTestRun = {
+			...mockTestRun,
+			status: 'error' as const,
+			errorCode: 'TIMEOUT',
+		};
+
+		vi.mocked(evaluationStore.getTestRun).mockResolvedValue(errorTestRun);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should display metrics in summary', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			const summaryCards = container.querySelectorAll('.summaryCard');
+			expect(summaryCards.length).toBeGreaterThan(2); // At least total cases, date, status + metrics
+		});
+	});
+
+	it('should display back navigation', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			const backButton = container.querySelector('.backButton');
+			expect(backButton).toBeTruthy();
+		});
+	});
+
+	it('should display test table when data is loaded', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			// TestTableBase component should be rendered
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should handle partial failures', async () => {
+		// Test with cases that have errors
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(mockTestCases);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should handle empty test cases', async () => {
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue([]);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should handle fetch errors', async () => {
+		const error = new Error('Failed to fetch');
+		vi.mocked(evaluationStore.getTestRun).mockRejectedValue(error);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should render scrollable summary section', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			const scrollableSection = container.querySelector('.scrollableSummary');
+			expect(scrollableSection).toBeTruthy();
+		});
+	});
+
+	it('should display notice callout when no input columns and run is successful', async () => {
+		// Mock test cases with no inputs
+		const testCasesWithoutInputs = mockTestCases.map((tc) => ({
+			...tc,
+			inputs: {},
+		}));
+
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(testCasesWithoutInputs);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			// Should render the component
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should display inputs correctly in test table', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
 			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
 				workflowId: 'test-workflow-id',
 				runId: 'test-run-id',
 			});
 		});
-	});
 
-	it('renders the metric summary strip with one card per user-defined metric', async () => {
-		const { container } = renderComponent();
 		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="metric-summary-strip"]')).toBeTruthy();
-			const cards = container.querySelectorAll('[data-test-id="metric-summary-card"]');
-			expect(cards.length).toBe(2);
+			// Check that inputs are displayed
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Inputs should be rendered in the table
+			expect(container.textContent).toContain('value1');
+			expect(container.textContent).toContain('value2');
 		});
 	});
 
-	it('does not render the AI summary section (hidden per Figma rebuild)', async () => {
+	it('should display outputs correctly in test table', async () => {
 		const { container } = renderComponent();
-		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="metric-summary-strip"]')).toBeTruthy();
-		});
-		expect(container.querySelector('[data-test-id="ai-summary-section"]')).toBeNull();
-	});
 
-	it('renders one TestCaseCard per case', async () => {
-		const { container } = renderComponent();
 		await waitFor(() => {
-			const cards = container.querySelectorAll('[data-test-id="test-case-card"]');
-			expect(cards.length).toBe(mockTestCases.length);
+			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
+				workflowId: 'test-workflow-id',
+				runId: 'test-run-id',
+			});
 		});
-	});
 
-	it('does not render a partial-failure callout — failures are surfaced per-card via RunStatusPill', async () => {
-		const { container, queryByText } = renderComponent();
 		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="run-status-pill"]')).toBeTruthy();
-		});
-		expect(queryByText('Finished with errors')).toBeNull();
-	});
-
-	it('renders the back button', async () => {
-		const { container } = renderComponent();
-		await waitFor(() => {
-			const backButton = container.querySelector('button');
-			expect(backButton).toBeTruthy();
+			// Check that outputs are displayed
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Outputs should be rendered in the table
+			expect(container.textContent).toContain('result1');
+			expect(container.textContent).toContain('result2');
 		});
 	});
 
-	it('renders gracefully when there are no test cases', async () => {
-		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue([]);
+	it('should display metrics correctly for individual test cases', async () => {
 		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
+				workflowId: 'test-workflow-id',
+				runId: 'test-run-id',
+			});
+		});
+
+		await waitFor(() => {
+			// Check that metrics are displayed in the table
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Individual test case metrics should be shown
+			expect(container.textContent).toContain('0.98'); // accuracy for test-case-1
+			expect(container.textContent).toContain('0.95'); // precision for test-case-1
+			expect(container.textContent).toContain('0.85'); // accuracy for test-case-2
+			expect(container.textContent).toContain('0.88'); // precision for test-case-2
+		});
+	});
+
+	it('should display overall run metrics in summary cards', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			// Check that overall metrics are displayed in summary
+			const summaryCards = container.querySelectorAll('.summaryCard');
+			expect(summaryCards.length).toBeGreaterThan(0);
+			// Overall run metrics should be shown
+			expect(container.textContent).toContain('0.95'); // overall accuracy
+			expect(container.textContent).toContain('0.92'); // overall precision
+		});
+	});
+
+	it('should handle test cases with missing metrics gracefully', async () => {
+		const testCasesWithMissingMetrics = [
+			mock<TestCaseExecutionRecord>({
+				id: 'test-case-3',
+				status: 'completed',
+				runAt: '2023-10-01T10:02:00Z',
+				executionId: 'execution-3',
+				inputs: { input1: 'value3' },
+				outputs: { output1: 'result3' },
+				// No metrics property
+			}),
+		];
+
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(
+			testCasesWithMissingMetrics,
+		);
+
+		const { container } = renderComponent();
+
 		await waitFor(() => {
 			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
-			expect(container.querySelectorAll('[data-test-id="test-case-card"]').length).toBe(0);
+			// Should still display inputs and outputs
+			expect(container.textContent).toContain('value3');
+			expect(container.textContent).toContain('result3');
 		});
 	});
 
-	it('renders without crashing when the run status is error', async () => {
-		vi.mocked(evaluationStore.getTestRun).mockResolvedValue({
-			...mockTestRun,
-			status: 'error',
-			errorCode: 'INTERRUPTED',
-		});
+	it('should display error status for failed test cases', async () => {
 		const { container } = renderComponent();
+
 		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
+				workflowId: 'test-workflow-id',
+				runId: 'test-run-id',
+			});
+		});
+
+		await waitFor(() => {
+			// Check that error status and error code are displayed
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Error status should be shown for test-case-2
+			expect(container.textContent).toContain('error');
+			expect(container.textContent).toContain('run was interrupted');
 		});
 	});
 
-	it('shows the trend delta badge when a previous run is available', async () => {
-		const { container } = renderComponent();
-		await waitFor(() => {
-			const badges = container.querySelectorAll('[data-test-id="trend-delta-badge"]');
-			// accuracy improved (positive), precision declined (negative); both should show a badge
-			expect(badges.length).toBe(2);
-		});
-	});
-
-	it('skips non-completed runs when picking the previous run for delta comparison', async () => {
-		// Three runs ordered by runAt: completed → cancelled (in between) →
-		// current (completed). The cancelled run sits at index-1 but has no
-		// usable metrics. The delta should still compare against the earlier
-		// completed run instead of falling back to "no previous run" or the
-		// cancelled one. The test asserts both badges still render — they
-		// would disappear if `previousRun` resolved to null or to the
-		// cancelled record.
-		const cancelledRunBetween: TestRunRecord = {
-			id: 'cancelled-between',
-			workflowId: 'test-workflow-id',
-			status: 'cancelled',
-			createdAt: '2023-10-01T11:00:00Z',
-			updatedAt: '2023-10-01T11:00:00Z',
-			completedAt: '2023-10-01T11:00:01Z',
-			runAt: '2023-10-01T11:00:00Z',
-			metrics: null,
-			finalResult: 'error',
-		};
-
-		const { container } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {
-					evaluation: {
-						testRunsById: {
-							'previous-run-id': mockPreviousRun,
-							'cancelled-between': cancelledRunBetween,
-							'test-run-id': {
-								...mockTestRun,
-								// Bump the current run's runAt past the cancelled one so
-								// the chronological order is: previous → cancelled → current.
-								runAt: '2023-10-01T12:00:00Z',
-							},
+	it('should handle complex input and output objects', async () => {
+		const testCasesWithComplexData = [
+			mock<TestCaseExecutionRecord>({
+				id: 'test-case-complex',
+				status: 'completed',
+				runAt: '2023-10-01T10:03:00Z',
+				executionId: 'execution-complex',
+				inputs: {
+					complexInput: {
+						nested: {
+							value: 'nested-value',
+							array: [1, 2, 3],
 						},
 					},
-					workflows: {
-						workflowsById: { 'test-workflow-id': mockWorkflow },
+				},
+				outputs: {
+					complexOutput: {
+						result: 'complex-result',
+						metadata: {
+							processed: true,
+							timestamp: '2023-10-01T10:03:00Z',
+						},
 					},
 				},
-				stubActions: false,
+				metrics: {
+					accuracy: 0.97,
+					precision: 0.94,
+				},
 			}),
-			global: {
-				provide: { [WorkflowIdKey]: computed(() => 'test-workflow-id') },
-			},
-		});
+		];
+
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(
+			testCasesWithComplexData,
+		);
+
+		const { container } = renderComponent();
 
 		await waitFor(() => {
-			const badges = container.querySelectorAll('[data-test-id="trend-delta-badge"]');
-			// Same two badges as the happy-path test — proves the cancelled
-			// run between us and the previous completed run did not displace
-			// the comparison.
-			expect(badges.length).toBe(2);
-		});
-	});
-
-	it('routes to the new run detail using the testRunId returned by startTestRun (no dependency on fetchTestRuns picking up the row)', async () => {
-		// Regression for the race where the BE created the test-run row in
-		// fire-and-forget mode and the immediate FE refetch sometimes
-		// happened before the row was visible — the old diffing fallback
-		// then found nothing and routed back to the edit page. With the BE
-		// now awaiting the row insert and surfacing `testRunId`, navigation
-		// must use that id directly. The fresh `createTestingPinia` below
-		// is intentional: the file's shared pinia carries spies set up in
-		// `beforeEach`, and re-spying `startTestRun` against that shared
-		// store interacts badly with the existing `clearAllMocks` cycle —
-		// owning the pinia for this test isolates the path under test.
-		const localPinia = createTestingPinia({
-			initialState: {
-				evaluation: {
-					testRunsById: {
-						'test-run-id': mockTestRun,
-						'previous-run-id': mockPreviousRun,
-					},
-				},
-				workflows: {
-					workflowsById: { 'test-workflow-id': mockWorkflow },
-				},
-			},
-			stubActions: false,
-		});
-		const localStore = useEvaluationStore(localPinia);
-		const startSpy = vi.spyOn(localStore, 'startTestRun').mockResolvedValue({
-			success: true,
-			testRunId: 'freshly-created-run-id',
-		});
-		// Stale fetch (no new row) on purpose — proves routing uses the
-		// API response, not the refetch list.
-		vi.spyOn(localStore, 'fetchTestRuns').mockResolvedValue([mockTestRun, mockPreviousRun]);
-		vi.spyOn(localStore, 'fetchTestCaseExecutions').mockImplementation(async () => {
-			localStore.testCaseExecutionsById = mockTestCases.reduce(
-				(acc, testCase) => {
-					acc[testCase.id] = testCase as TestCaseExecutionRecord;
-					return acc;
-				},
-				{} as Record<string, TestCaseExecutionRecord>,
-			);
-			return mockTestCases as TestCaseExecutionRecord[];
-		});
-		vi.mocked(localStore.getTestRun).mockResolvedValue(mockTestRun);
-
-		const { getByTestId } = renderComponent({
-			pinia: localPinia,
-			global: { provide: { [WorkflowIdKey]: computed(() => 'test-workflow-id') } },
-		});
-
-		const rerunButton = await waitFor(() => getByTestId('test-case-rerun-button'));
-		await fireEvent.click(rerunButton);
-
-		await waitFor(() => expect(startSpy).toHaveBeenCalledWith('test-workflow-id'));
-		await waitFor(() => {
-			expect(mockRouter.push).toHaveBeenCalledWith({
-				name: VIEWS.EVALUATION_RUNS_DETAIL,
-				params: { workflowId: 'test-workflow-id', runId: 'freshly-created-run-id' },
-			});
-		});
-	});
-
-	it('fires "User viewed run detail" telemetry on mount', async () => {
-		renderComponent();
-		await waitFor(() => {
-			expect(trackMock).toHaveBeenCalledWith('User viewed run detail', {
-				run_id: 'test-run-id',
-				workflow_id: 'test-workflow-id',
-				has_previous_run: true,
-				// `accuracy` and `precision` only — `getUserDefinedMetricNames`
-				// excludes predefined keys like `totalTokens`/`executionTime`.
-				metric_count: 2,
-				test_case_count: mockTestCases.length,
-				failed_test_case_count: 1,
-			});
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+			// Complex data should be handled and displayed
+			expect(container.textContent).toContain('0.97');
+			expect(container.textContent).toContain('0.94');
+			expect(container.textContent).toContain('complexInput');
+			expect(container.textContent).toContain('complexOutput');
 		});
 	});
 });

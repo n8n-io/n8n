@@ -14,7 +14,6 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		allNodes: [],
 		name: '',
 		settings: {},
-		workflowTriggerNodes: [],
 		mergeSettings: vi.fn(),
 		setChecksum: vi.fn(),
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -25,7 +24,6 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 	createWorkflowDocumentId: (id: string) => id,
-	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
 const makeEvent = (
@@ -78,7 +76,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('does nothing for the document store when the workflow is not the active one', async () => {
-		workflowsStore.setWorkflowId('other-workflow');
+		workflowsStore.workflow.id = 'other-workflow';
 
 		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
 
@@ -87,7 +85,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('merges settings and uses payload checksum for the active document', async () => {
-		workflowsStore.setWorkflowId('wf-current');
+		workflowsStore.workflow.id = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -107,7 +105,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('applies settings but skips checksum refresh when none is provided', async () => {
-		workflowsStore.setWorkflowId('wf-current');
+		workflowsStore.workflow.id = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -125,7 +123,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('merges multiple settings keys in one event', async () => {
-		workflowsStore.setWorkflowId('wf-current');
+		workflowsStore.workflow.id = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',

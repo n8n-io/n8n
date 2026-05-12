@@ -8,7 +8,10 @@ import type {
 	SchemaType,
 } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
 import { isObj } from '@/app/utils/typeGuards';
@@ -23,14 +26,12 @@ import {
 	type ITaskDataConnections,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 import { DEFAULT_SETTINGS } from '../stores/workflowDocument/useWorkflowDocumentSettings';
 
 export function useDataSchema() {
-	const workflowDocumentStore = injectWorkflowDocumentStore();
-
 	function getSchema(
 		input: Optional<Primitives | object>,
 		path = '',
@@ -210,9 +211,11 @@ export function useDataSchema() {
 	): INodeExecutionData[] {
 		if (!node) return [];
 
-		const pinnedData = workflowDocumentStore.value
-			.getNodePinData(node.name)
-			?.map((item) => item.json);
+		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const pinnedData = workflowDocumentStore.getNodePinData(node.name)?.map((item) => item.json);
 		let inputData = getNodeInputData(node, runIndex, outputIndex);
 
 		if (pinnedData) {
@@ -393,7 +396,6 @@ const isEmptySchema = (schema: Schema) => {
 const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${title}]` : title);
 
 export const useFlattenSchema = () => {
-	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const closedNodes = ref<Set<string>>(new Set());
 	const toggleNode = (id: string) => {
 		if (closedNodes.value.has(id)) {
@@ -552,6 +554,11 @@ export const useFlattenSchema = () => {
 				acc.push(emptyItem(item.hasBinary ? 'emptySchemaWithBinary' : 'emptySchema', { level: 1 }));
 				return acc;
 			}
+
+			const workflowsStore = useWorkflowsStore();
+			const workflowDocumentStore = computed(() =>
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+			);
 
 			acc = acc.concat(
 				flattenSchema({

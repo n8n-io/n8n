@@ -17,11 +17,8 @@ describe('RssFeedReadTrigger', () => {
 		const newItemDate = '2022-01-02T00:00:00.000Z';
 
 		const node = new RssFeedReadTrigger();
-		const helpers = mock<IPollFunctions['helpers']>({ returnJsonArray });
-		const pollFunctions = mock<IPollFunctions>({ helpers });
-
-		beforeEach(() => {
-			jest.clearAllMocks();
+		const pollFunctions = mock<IPollFunctions>({
+			helpers: mock({ returnJsonArray }),
 		});
 
 		it('should throw an error if the feed URL is empty', async () => {
@@ -30,16 +27,14 @@ describe('RssFeedReadTrigger', () => {
 			await expect(node.poll.call(pollFunctions)).rejects.toThrowError();
 
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(helpers.httpRequest).not.toHaveBeenCalled();
-			expect(Parser.prototype.parseString).not.toHaveBeenCalled();
+			expect(Parser.prototype.parseURL).not.toHaveBeenCalled();
 		});
 
 		it('should return new items from the feed', async () => {
 			const pollData = mock({ lastItemDate });
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
-			helpers.httpRequest.mockResolvedValue('<rss />');
-			(Parser.prototype.parseString as jest.Mock).mockResolvedValue({
+			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({
 				items: [{ isoDate: lastItemDate }, { isoDate: newItemDate }],
 			});
 
@@ -48,10 +43,7 @@ describe('RssFeedReadTrigger', () => {
 			expect(result).toEqual([[{ json: { isoDate: newItemDate } }]]);
 			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(helpers.httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({ method: 'GET', url: feedUrl }),
-			);
-			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
+			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
 			expect(pollData.lastItemDate).toEqual(newItemDate);
 		});
 
@@ -59,36 +51,28 @@ describe('RssFeedReadTrigger', () => {
 			const pollData = mock();
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
-			helpers.httpRequest.mockResolvedValue('<rss />');
-			(Parser.prototype.parseString as jest.Mock).mockResolvedValue({ items: [{}, {}] });
+			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({ items: [{}, {}] });
 
 			const result = await node.poll.call(pollFunctions);
 
 			expect(result).toEqual(null);
 			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(helpers.httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({ method: 'GET', url: feedUrl }),
-			);
-			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
+			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
 		});
 
 		it('should return null if the feed is empty', async () => {
 			const pollData = mock({ lastItemDate });
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
 			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
-			helpers.httpRequest.mockResolvedValue('<rss />');
-			(Parser.prototype.parseString as jest.Mock).mockResolvedValue({ items: [] });
+			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({ items: [] });
 
 			const result = await node.poll.call(pollFunctions);
 
 			expect(result).toEqual(null);
 			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(helpers.httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({ method: 'GET', url: feedUrl }),
-			);
-			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
+			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
 			expect(pollData.lastItemDate).toEqual(lastItemDate);
 		});
 	});
