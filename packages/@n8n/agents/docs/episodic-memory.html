@@ -271,7 +271,7 @@
 				<p class="kicker">Episodic memory</p>
 				<h1>Episodic memory</h1>
 				<p class="lede">
-					Episodic memory is the embedding-backed memory layer for source-backed entries from previous threads. It helps an agent recognize similar cases without mixing case evidence into the user profile or session memory.
+					Episodic memory is the embedding-backed memory layer for source-backed entries from previous threads. It helps an agent recognize similar situations without mixing episodic evidence into the user profile or session memory.
 				</p>
 			</header>
 
@@ -291,7 +291,7 @@
 					</div>
 					<div class="stat">
 						<strong>Requires</strong>
-						<span>An OpenAI credential in n8n for <code>openai/text-embedding-3-small</code>.</span>
+						<span>An OpenAI credential in n8n. The n8n integration currently uses <code>openai/text-embedding-3-small</code>.</span>
 					</div>
 				</div>
 			</section>
@@ -323,14 +323,14 @@
 					<div class="step">
 						<span class="step-number">5</span>
 						<h3>Extract</h3>
-						<p>After the turn, extract, validate, dedupe, embed, and store new case entries.</p>
+						<p>After the turn, extract, validate, dedupe, embed, and store new source-backed entries.</p>
 					</div>
 				</div>
 			</section>
 
 			<section class="card" id="entries">
 				<h2>Entry shape</h2>
-				<p>Case entries are compact notes about concrete situations. They should preserve the useful mechanism, not just an isolated statement.</p>
+				<p>Stored entries are compact notes about concrete situations. They should preserve the useful mechanism, not just an isolated statement.</p>
 				<div class="detail-grid">
 					<div class="block">
 						<strong>What belongs here</strong>
@@ -364,7 +364,7 @@
 
 			<section class="card" id="extraction">
 				<h2>Extractor decisions</h2>
-				<p>The extractor reads the role-labeled transcript JSON after the agent has answered. It writes entries only when the transcript contains durable case context that could help a future turn recognize a similar situation, continue an investigation, avoid repeated work, or apply a previous mechanism or fix. Known <code>&lt;user-profile&gt;</code> and <code>&lt;memory&gt;</code> context can be passed in for dedupe and exclusions, but those blocks are not sources for new entries.</p>
+				<p>The extractor reads the role-labeled transcript JSON after the agent has answered. It writes entries only when the transcript contains durable episodic context that could help a future turn recognize a similar situation, continue an investigation, avoid repeated work, or apply a previous mechanism or fix. Known <code>&lt;user-profile&gt;</code> and <code>&lt;memory&gt;</code> context can be passed in for dedupe and exclusions, but those blocks are not sources for new entries.</p>
 				<div class="detail-grid">
 					<div class="block">
 						<strong>When it stores an entry</strong>
@@ -465,6 +465,8 @@
 				</div>
 				<ul>
 					<li><code>agents_memory_entries</code> stores content, content hash, provenance fields, embedding model name, embedding values, metadata, and timestamps.</li>
+					<li>n8n JSON config stores only the episodic memory credential. The integration maps that credential to <code>openai/text-embedding-3-small</code>.</li>
+					<li>SDK consumers pass a Vercel AI SDK <code>embedder</code>. <code>embeddingModel</code> is the stored label for that embedder, not a frontend setting.</li>
 					<li>n8n resolves embedding credentials through n8n credentials. Episodic memory does not read embedding credentials from environment variables.</li>
 					<li><code>semanticRecall</code> is a separate older recall path and is not part of Episodic memory.</li>
 				</ul>
@@ -473,7 +475,7 @@
 			<section class="card" id="boundaries">
 				<h2>Boundaries</h2>
 				<div class="callout">
-					<p>Episodic memory is not the user profile and not session memory. It only powers source-backed entries injected through <code>&lt;memory&gt;</code> and queried through <code>recall_memory</code>. Use <a href="memory-stack.html">the memory stack doc</a> for <code>&lt;user-profile&gt;</code> and <code>&lt;session-memory&gt;</code>.</p>
+					<p>Episodic memory only powers source-backed entries injected through <code>&lt;memory&gt;</code> and queried through <code>recall_memory</code>. <code>&lt;user-profile&gt;</code> is separate and stores what this agent remembers about the user. <code>&lt;session-memory&gt;</code> is separate and stores current-thread state.</p>
 				</div>
 				<ul>
 					<li>Read and write scope is fixed to <code>agentId + resourceId</code>.</li>
