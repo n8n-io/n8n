@@ -54,6 +54,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		encryptionKey: {},
 		credentialResolver: {},
 		instanceAi: {},
+		cloudAgent: {},
 		securitySettings: {},
 		roleMappingRule: {},
 	});
