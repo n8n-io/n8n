@@ -11,6 +11,17 @@ const routeQuery: Record<string, string | undefined> = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
+const {
+	fetchAllCredentialsForWorkflowMock,
+	fetchAllCredentialsMock,
+	fetchCredentialTypesMock,
+	setCredentialsMock,
+} = vi.hoisted(() => ({
+	fetchAllCredentialsForWorkflowMock: vi.fn().mockResolvedValue(undefined),
+	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
+	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
+	setCredentialsMock: vi.fn(),
+}));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, replace: routerReplace }),
 	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: routeQuery }),
@@ -33,8 +44,10 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		fetchAllCredentials: vi.fn().mockResolvedValue(undefined),
-		fetchCredentialTypes: vi.fn().mockResolvedValue(undefined),
+		fetchAllCredentials: fetchAllCredentialsMock,
+		fetchAllCredentialsForWorkflow: fetchAllCredentialsForWorkflowMock,
+		fetchCredentialTypes: fetchCredentialTypesMock,
+		setCredentials: setCredentialsMock,
 	}),
 }));
 
@@ -358,6 +371,14 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(toggle.exists()).toBe(true);
 		const vm = wrapper.vm as unknown as { chatMode: string };
 		expect(vm.chatMode).toBe('build');
+	});
+
+	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
+		await renderView();
+
+		expect(setCredentialsMock).toHaveBeenCalledWith([]);
+		expect(fetchAllCredentialsForWorkflowMock).toHaveBeenCalledWith({ projectId: 'p1' });
+		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 
 	it('lazy-mounts each chat panel on first activation and toggles visibility via v-show afterwards', async () => {

@@ -323,6 +323,8 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
 			toolRef: newRef,
+			projectId: props.data.projectId,
+			agentId: props.data.agentId,
 			existingToolNames: getExistingToolNames(workingTools.value),
 			onConfirm: (savedRef: AgentJsonToolRef) => {
 				addToolRef(savedRef);
@@ -393,6 +395,8 @@ function handleConfigureTool(tool: ConfiguredToolView | ConfiguredWorkflowView) 
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
 			toolRef,
+			projectId: props.data.projectId,
+			agentId: props.data.agentId,
 			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				workingToolEntries.value = workingToolEntries.value.map((entry) =>

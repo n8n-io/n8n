@@ -70,8 +70,7 @@ docs/
 ```
 
 The **`index.ts`** surface also exports `Workspace` / sandbox / filesystem types,
-`SqliteMemory` / `PostgresMemory`, `LangSmithTelemetry`, and `evals` alongside the
-core SDK builders.
+`InMemoryMemory`, `LangSmithTelemetry`, and `evals` alongside the core SDK builders.
 
 Optional **peer dependencies** (telemetry): `langsmith`, `@opentelemetry/sdk-trace-node`,
 `@opentelemetry/sdk-trace-base`, `@opentelemetry/exporter-trace-otlp-http` — all

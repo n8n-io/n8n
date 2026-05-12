@@ -379,6 +379,26 @@ describe('CredentialModeSelector', () => {
 			],
 		};
 
+		const nonConfigurableOAuthType: ICredentialType = {
+			name: 'mcpOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'MCP OAuth2 API',
+			properties: [
+				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: true,
+				},
+				{
+					displayName: 'Server URL',
+					name: 'serverURL',
+					type: 'hidden',
+					default: 'https://mcp.example.com/mcp',
+				},
+			],
+		};
+
 		const singleCredNodeType = {
 			displayName: 'Firecrawl',
 			name: 'n8n-nodes-base.firecrawl',
@@ -391,6 +411,24 @@ describe('CredentialModeSelector', () => {
 			credentials: [
 				{
 					name: 'firecrawlApi',
+					required: true,
+				},
+			],
+			properties: [],
+		} as unknown as INodeTypeDescription;
+
+		const singleCredMcpNodeType = {
+			displayName: 'Notion MCP',
+			name: '@n8n/n8n-nodes-langchain.mcpClientTool',
+			group: ['transform'],
+			version: 1,
+			description: 'MCP tool node',
+			defaults: { name: 'Notion MCP' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'mcpOAuth2Api',
 					required: true,
 				},
 			],
@@ -457,6 +495,27 @@ describe('CredentialModeSelector', () => {
 				expect(emitted('update:authType')).toHaveLength(1);
 				expect(emitted('update:authType')[0]).toEqual([{ type: '' }]);
 			});
+		});
+
+		it('should not show selector when there are no configurable credential fields', () => {
+			const pinia = setupStores({
+				nodeType: singleCredMcpNodeType,
+				node: makeNode('@n8n/n8n-nodes-langchain.mcpClientTool', ''),
+				credentialTypes: {
+					mcpOAuth2Api: nonConfigurableOAuthType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: nonConfigurableOAuthType,
+					quickConnectAvailable: true,
+					isQuickConnectMode: true,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not show selector when quickConnectAvailable is false for single-cred nodes', () => {

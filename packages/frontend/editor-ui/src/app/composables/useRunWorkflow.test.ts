@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
@@ -87,6 +88,7 @@ const { mockDocumentStore } = vi.hoisted(() => {
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStore,
+	injectWorkflowDocumentStore: () => shallowRef(mockDocumentStore),
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
