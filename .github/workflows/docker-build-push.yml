@@ -100,6 +100,9 @@ jobs:
         env:
           RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          N8N_INCLUDE_BUILD_INFO: ${{ (needs.determine-build-context.outputs.release_type == 'dev' || needs.determine-build-context.outputs.release_type == 'branch') && 'true' || '' }}
+          N8N_BUILD_COMMIT_HASH: ${{ github.sha }}
+          N8N_BUILD_BRANCH: ${{ github.ref_name }}
 
       - name: Determine Docker tags for all images
         id: determine-tags

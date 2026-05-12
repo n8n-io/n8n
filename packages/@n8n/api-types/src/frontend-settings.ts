@@ -107,6 +107,11 @@ export interface FrontendSettings {
 	};
 	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
+	buildInfo?: {
+		commitHash: string;
+		branch: string;
+		buildDate: string;
+	};
 	n8nMetadata?: {
 		userId?: string;
 		[key: string]: string | number | undefined;

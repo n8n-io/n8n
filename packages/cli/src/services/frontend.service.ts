@@ -11,7 +11,7 @@ import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } 
 import path from 'path';
 
 import config from '@/config';
-import { inE2ETests, N8N_VERSION } from '@/constants';
+import { BUILD_INFO, inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { License } from '@/license';
@@ -219,6 +219,7 @@ export class FrontendService {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
 			releaseChannel: this.globalConfig.generic.releaseChannel,
+			buildInfo: BUILD_INFO,
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
