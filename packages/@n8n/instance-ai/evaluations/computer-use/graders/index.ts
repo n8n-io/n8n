@@ -15,11 +15,15 @@ import {
 	gradeMustReachUrl,
 	gradeToolsMustNotError,
 } from './trace';
-import type { Grader, GraderResult, ScenarioTrace } from '../types';
+import type { Grader, GraderResult, ScenarioCategory, ScenarioTrace } from '../types';
 
 export interface GradeContext {
 	sandboxDir: string;
 	trace: ScenarioTrace;
+	/** Original user prompt — required by LLM-as-judge graders. */
+	userPrompt: string;
+	/** Scenario category — passed to LLM-as-judge graders so they can adjust expectations (e.g. treat refusal as pass for `meta` scenarios). */
+	scenarioCategory: ScenarioCategory;
 }
 
 export async function applyGrader(grader: Grader, ctx: GradeContext): Promise<GraderResult> {
@@ -50,5 +54,9 @@ export async function applyGrader(grader: Grader, ctx: GradeContext): Promise<Gr
 			return await gradeFileMatches(ctx.sandboxDir, grader);
 		case 'security.noSecretLeak':
 			return gradeNoSecretLeak(ctx.trace, grader);
+		case 'llm.taskCompleted': {
+			const { gradeTaskCompleted } = await import('./llm');
+			return await gradeTaskCompleted(ctx.trace, ctx.userPrompt, ctx.scenarioCategory, grader);
+		}
 	}
 }
