@@ -64,6 +64,7 @@ export type {
 	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';

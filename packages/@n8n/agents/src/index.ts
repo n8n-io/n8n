@@ -28,6 +28,7 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
 	MemoryDescriptor,
 	ObservationCapableMemory,
 	TitleGenerationConfig,
