@@ -6,6 +6,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInputs, ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { WebAuthnCredentialResponse } from '@n8n/api-types';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
@@ -143,6 +144,60 @@ const has2fa = computed(
 const twoFactorMethod = computed<TwoFactorMethod | null>(() =>
 	has2fa.value ? activeMfaMethod.value : null,
 );
+
+const webauthnCredentials = ref<WebAuthnCredentialResponse[]>([]);
+
+const isPlatformCredential = (c: WebAuthnCredentialResponse) =>
+	(c.transports ?? []).includes('internal') || c.deviceType === 'multiDevice';
+
+const passkeyCredential = computed<WebAuthnCredentialResponse | null>(
+	() => webauthnCredentials.value.find(isPlatformCredential) ?? null,
+);
+const securityKeyCredential = computed<WebAuthnCredentialResponse | null>(
+	() => webauthnCredentials.value.find((c) => !isPlatformCredential(c)) ?? null,
+);
+
+const formatSetupDate = (iso: string) => {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return null;
+	return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+};
+
+const formatCredentialDetail = (c: WebAuthnCredentialResponse) => {
+	const setupDate = formatSetupDate(c.createdAt);
+	const setupSuffix = setupDate
+		? i18n.baseText('settings.personal.method.detail.setUpOn', {
+				interpolate: { date: setupDate },
+			})
+		: '';
+	return [c.label, setupSuffix].filter(Boolean).join(' · ');
+};
+
+const passkeyDetail = computed(() => {
+	if (hasPasskey.value && passkeyCredential.value) {
+		return formatCredentialDetail(passkeyCredential.value);
+	}
+	return i18n.baseText('settings.personal.twoFactor.method.passkey.detail');
+});
+
+const securityKeyDetail = computed(() => {
+	if (twoFactorMethod.value === 'security_key' && securityKeyCredential.value) {
+		return formatCredentialDetail(securityKeyCredential.value);
+	}
+	return i18n.baseText('settings.personal.twoFactor.method.security_key.detail');
+});
+
+async function refreshWebauthnCredentials() {
+	if (!hasPasskey.value && twoFactorMethod.value !== 'security_key') {
+		webauthnCredentials.value = [];
+		return;
+	}
+	try {
+		webauthnCredentials.value = await usersStore.fetchWebAuthnCredentials();
+	} catch {
+		webauthnCredentials.value = [];
+	}
+}
 const { reverify } = useMfaReverify();
 
 const hasAnyPersonalisationChanges = computed((): boolean => {
@@ -186,6 +241,7 @@ const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globa
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
+	void refreshWebauthnCredentials();
 	formInputs.value = [
 		{
 			name: 'firstName',
@@ -406,6 +462,7 @@ async function disableMfa(_intent: 'removedPasskey' | 'disabled2fa') {
 			type: 'success',
 			duration: 0,
 		});
+		await refreshWebauthnCredentials();
 	} catch (e) {
 		showError(e, i18n.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
 	}
@@ -430,12 +487,18 @@ const onWizardBack = () => {
 	void openMethodPicker();
 };
 
+const onWizardCompleted = () => {
+	void refreshWebauthnCredentials();
+};
+
 twoFactorPickerBus.on('selected', onPickerSelected);
 twoFactorWizardBus.on('back', onWizardBack);
+twoFactorWizardBus.on('completed', onWizardCompleted);
 
 onBeforeUnmount(() => {
 	twoFactorPickerBus.off('selected', onPickerSelected);
 	twoFactorWizardBus.off('back', onWizardBack);
+	twoFactorWizardBus.off('completed', onWizardCompleted);
 });
 </script>
 
@@ -522,9 +585,7 @@ onBeforeUnmount(() => {
 									i18n.baseText('settings.personal.method.status.notSetUp')
 								}}</N8nBadge>
 							</div>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('settings.personal.twoFactor.method.passkey.detail')
-							}}</N8nText>
+							<N8nText size="small" color="text-light">{{ passkeyDetail }}</N8nText>
 						</div>
 						<N8nButton
 							v-if="!hasPasskey"
@@ -580,7 +641,9 @@ onBeforeUnmount(() => {
 									}}</N8nBadge>
 								</div>
 								<N8nText size="small" color="text-light">{{
-									i18n.baseText(option.descriptionKey as never)
+									option.method === 'security_key'
+										? securityKeyDetail
+										: i18n.baseText(option.descriptionKey as never)
 								}}</N8nText>
 							</div>
 							<N8nButton
