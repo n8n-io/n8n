@@ -1,8 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
+import { Service } from '@n8n/di';
+
 import { CredentialsService } from '@/credentials/credentials.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Service } from '@n8n/di';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -11,11 +14,6 @@ import { WorkflowService } from '@/workflows/workflow.service';
  * with per-call RBAC enforced via the passed `User`. The cloud agent never
  * touches n8n services directly — it asks for an action, the adapter
  * decides if the user is allowed and what to return.
- *
- * Reads (workflows.list/get, credentials.list/get, nodes.search/get-type-
- * definition) are wired through. Writes (workflows.create/deploy) are
- * stubbed in this commit and return a TODO marker so the agent surfaces
- * a clear "not yet implemented" to the user. They land in a follow-up.
  */
 @Service()
 export class CloudAgentAdapter {
@@ -23,6 +21,7 @@ export class CloudAgentAdapter {
 		private readonly logger: Logger,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
@@ -78,15 +77,47 @@ export class CloudAgentAdapter {
 				}
 			}
 
-			case 'create':
-			case 'deploy':
-				return {
-					output: {
-						_notImplemented: true,
-						message: `workflows.${args.action} is not yet wired on the n8n side. Phase B follow-up.`,
-					},
-					isError: true,
-				};
+			case 'create': {
+				if (!args.name) return this.argError('workflows.create requires name');
+				if (!Array.isArray(args.nodes))
+					return this.argError('workflows.create requires nodes array');
+				try {
+					const entity = new WorkflowEntity();
+					entity.name = args.name;
+					// The agent already produced these via `tsx workflow.ts > workflow.json`
+					// in the cloud sandbox using @n8n/workflow-sdk, so the shapes match
+					// n8n's INode[] / IConnections expectations.
+					entity.nodes = args.nodes as unknown as WorkflowEntity['nodes'];
+					entity.connections = (args.connections as unknown as WorkflowEntity['connections']) ?? {};
+					entity.active = false;
+					entity.settings = (args.settings as unknown as WorkflowEntity['settings']) ?? undefined;
+
+					const saved = await this.workflowCreationService.createWorkflow(user, entity, {});
+					return {
+						output: {
+							id: saved.id,
+							name: saved.name,
+							active: saved.active,
+						},
+						isError: false,
+					};
+				} catch (err) {
+					return this.toError(err);
+				}
+			}
+
+			case 'deploy': {
+				if (!args.id) return this.argError('workflows.deploy requires id');
+				try {
+					const activated = await this.workflowService.activateWorkflow(user, args.id);
+					return {
+						output: { id: activated.id, active: activated.active },
+						isError: false,
+					};
+				} catch (err) {
+					return this.toError(err);
+				}
+			}
 
 			default:
 				return this.argError(`Unknown workflows action: ${(args as { action: string }).action}`);
