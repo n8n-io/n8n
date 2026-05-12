@@ -39,14 +39,18 @@ function extractZip(zipPath: string, outputDir: string, label: string) {
 	console.log(`Extracting ${label} from zip...`);
 	const zip = new AdmZip(zipPath);
 	const entries = zip.getEntries();
+	const resolvedOutputDir = path.resolve(outputDir);
 
 	let count = 0;
 	for (const entry of entries) {
-		if (entry.entryName.endsWith('.json')) {
-			const outputPath = path.join(outputDir, entry.entryName);
-			fs.writeFileSync(outputPath, entry.getData());
-			count++;
+		if (!entry.entryName.endsWith('.json')) continue;
+		const outputPath = path.resolve(outputDir, entry.entryName);
+		if (outputPath !== resolvedOutputDir && !outputPath.startsWith(resolvedOutputDir + path.sep)) {
+			console.warn(`Skipping out-of-bounds entry: ${entry.entryName}`);
+			continue;
 		}
+		fs.writeFileSync(outputPath, entry.getData());
+		count++;
 	}
 
 	console.log(`Extracted ${count} ${label} files`);
