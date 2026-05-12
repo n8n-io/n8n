@@ -74,14 +74,16 @@ const profileKey = computed(() =>
 	props.projectId && props.agentId ? `${props.projectId}:${props.agentId}` : null,
 );
 const loadedProfileKey = ref<string | null>(null);
-const loadingProfileKey = ref<string | null>(null);
+const loadingProfileKeys = ref(new Set<string>());
 const profileError = ref(false);
 const profile = ref<AgentMemoryProfilesResponse | null>(null);
 let profilePollInterval: ReturnType<typeof setInterval> | null = null;
 
 const canLoadProfile = computed(() => !props.disabled && Boolean(props.projectId && props.agentId));
 const profileLoaded = computed(() => loadedProfileKey.value === profileKey.value);
-const profileLoading = computed(() => loadingProfileKey.value === profileKey.value);
+const profileLoading = computed(
+	() => profileKey.value !== null && loadingProfileKeys.value.has(profileKey.value),
+);
 
 watch(
 	() => props.config,
@@ -153,18 +155,16 @@ function onApprovalToggle(value: boolean) {
 
 async function loadProfile() {
 	const key = profileKey.value;
-	if (!canLoadProfile.value || !props.projectId || !props.agentId || !key) return;
-	if (loadingProfileKey.value === key) return;
+	const projectId = props.projectId;
+	const agentId = props.agentId;
+	if (!canLoadProfile.value || !projectId || !agentId || !key) return;
+	if (loadingProfileKeys.value.has(key)) return;
 
-	loadingProfileKey.value = key;
+	loadingProfileKeys.value = new Set([...loadingProfileKeys.value, key]);
 	profileError.value = false;
 
 	try {
-		const loadedProfile = await getAgentMemoryProfiles(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
+		const loadedProfile = await getAgentMemoryProfiles(rootStore.restApiContext, projectId, agentId);
 		if (profileKey.value !== key) return;
 		profile.value = loadedProfile;
 		loadedProfileKey.value = key;
@@ -172,7 +172,9 @@ async function loadProfile() {
 		if (profileKey.value !== key) return;
 		profileError.value = true;
 	} finally {
-		if (loadingProfileKey.value === key) loadingProfileKey.value = null;
+		const nextLoadingKeys = new Set(loadingProfileKeys.value);
+		nextLoadingKeys.delete(key);
+		loadingProfileKeys.value = nextLoadingKeys;
 	}
 }
 
