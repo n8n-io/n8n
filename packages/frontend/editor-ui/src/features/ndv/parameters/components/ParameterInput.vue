@@ -1435,7 +1435,6 @@ onUpdated(async () => {
 
 		<ExperimentalEmbeddedNdvMapper
 			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
-			:workflow="workflowDocumentStore.getWorkflowObjectAccessorSnapshot()"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="wrapper"
