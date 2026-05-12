@@ -16,17 +16,13 @@ import {
 } from 'n8n-workflow';
 
 import {
-	ExecutionType,
-	type InvokeAgentDetails,
 	InvokeAgentScope,
-	type TenantDetails,
 	BaggageBuilder,
 	ObservabilityManager,
 	type Builder,
 	defaultObservabilityConfigurationProvider,
 } from '@microsoft/agents-a365-observability';
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
-import { v4 as uuid } from 'uuid';
 import { invokeAgent } from './langchain-utils';
 import {
 	McpToolServerConfigurationService,
@@ -279,33 +275,31 @@ export const configureActivityCallback = (
 	return async (turnContext: TurnContext) => {
 		const agentId = turnContext.activity.recipient?.agenticAppId ?? clientId;
 		const agentName = turnContext.activity.recipient?.name ?? 'Microsoft Agent 365';
-		const tenantDetails: TenantDetails = {
-			tenantId: turnContext.activity.recipient?.tenantId ?? tenantId ?? '',
-		};
+		const resolvedTenantId = turnContext.activity.recipient?.tenantId ?? tenantId ?? '';
 		const conversationId = turnContext.activity.conversation?.id;
 		const inputText = turnContext.activity.text || '';
 
 		const baggageScope = new BaggageBuilder()
-			.tenantId(tenantDetails.tenantId)
+			.tenantId(resolvedTenantId)
 			.agentId(agentId)
-			.correlationId(uuid())
 			.agentName(agentName)
 			.conversationId(conversationId)
 			.build();
 
 		await baggageScope.run(async () => {
-			const invokeAgentDetails: InvokeAgentDetails = {
-				agentId,
-				agentName,
-				conversationId,
-				request: {
+			const invokeAgentScope = InvokeAgentScope.start(
+				{
 					content: inputText || 'Unknown text',
-					executionType: ExecutionType.HumanToAgent,
 					sessionId: conversationId,
+					conversationId,
 				},
-			};
-
-			const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantDetails);
+				{},
+				{
+					agentId,
+					agentName,
+					tenantId: resolvedTenantId,
+				},
+			);
 
 			await invokeAgentScope.withActiveSpanAsync(async () => {
 				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
@@ -464,6 +458,28 @@ export function configureAdapterProcessCallback(
 				activityCapture,
 			);
 			agent.onActivity(ActivityTypes.Message, onActivity, ['agentic']);
+
+			agent.onActivity(
+				ActivityTypes.Event,
+				async (eventTurnContext: TurnContext) => {
+					const activity = eventTurnContext.activity;
+					if (
+						activity.name === 'agentLifecycle' &&
+						activity.valueType === 'AgenticUserWorkloadOnboardingUpdated' &&
+						(activity.value as { workloadOnboardingState?: string })?.workloadOnboardingState ===
+							'succeeded'
+					) {
+						const welcomeMessage = nodeContext.getNodeParameter(
+							'options.welcomeMessage',
+							'',
+						) as string;
+						if (welcomeMessage) {
+							await eventTurnContext.sendActivity(welcomeMessage);
+						}
+					}
+				},
+				['agentic'],
+			);
 
 			await agent.run(turnContext);
 		} catch (error) {
