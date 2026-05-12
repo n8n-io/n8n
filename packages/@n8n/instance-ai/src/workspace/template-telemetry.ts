@@ -82,7 +82,7 @@ export function createTemplateTelemetrySession(
 		if (!open) return;
 		searchCount++;
 		emit('Builder template search', {
-			query: truncate(query, MAX_QUERY_LENGTH),
+			query: scrubAndTruncateQuery(query),
 			result_count: resultCount,
 		});
 	}
@@ -94,7 +94,7 @@ export function createTemplateTelemetrySession(
 		if (SEARCH_PATTERN.test(command)) {
 			searchCount++;
 			emit('Builder template search', {
-				query: extractGrepQuery(command),
+				query: scrubAndTruncateQuery(extractGrepQuery(command)),
 				result_count: countResultLines(stdout),
 			});
 		}
@@ -159,6 +159,15 @@ function countResultLines(stdout: string): number {
 function truncate(s: string, max: number): string {
 	if (s.length <= max) return s;
 	return s.slice(0, max);
+}
+
+/**
+ * Scrub credential patterns from a grep query, then enforce the size cap.
+ * Scrub-before-truncate prevents a secret that straddles the cap from
+ * surviving in a half-form the regex no longer matches.
+ */
+function scrubAndTruncateQuery(query: string): string {
+	return truncate(scrubSecretsInText(query), MAX_QUERY_LENGTH);
 }
 
 // ---------------------------------------------------------------------------

@@ -18,6 +18,8 @@ describe('examples-loader', () => {
 			expect(file.content).toContain('@template');
 			expect(file.content).toContain("from '@n8n/workflow-sdk'");
 			expect(file.content).toContain('export default');
+			// Untrusted catalog description must not be embedded in JSDoc.
+			expect(file.content).not.toContain('@description');
 		}
 
 		// Index lines match the file count

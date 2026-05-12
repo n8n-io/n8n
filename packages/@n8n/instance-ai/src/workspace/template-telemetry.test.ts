@@ -248,6 +248,32 @@ describe('observeTypedRead / observeTypedSearch', () => {
 		expect(typeof search!.props.query).toBe('string');
 		expect((search!.props.query as string).length).toBe(200);
 	});
+
+	it('redacts secrets from typed search query before emit', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.observeTypedSearch('Bearer abcdef0123456789ABCDEF and password=hunter2', 1);
+
+		const search = calls.find((c) => c.name === 'Builder template search');
+		const query = search!.props.query as string;
+		expect(query).not.toContain('abcdef0123456789ABCDEF');
+		expect(query).not.toContain('hunter2');
+		expect(query).toContain('[REDACTED]');
+	});
+
+	it('redacts secrets from grep-derived search query before emit', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.observe(
+			'grep -i "sk-proj-abcdef0123456789xyz" /workspace/examples/index.txt',
+			'nothing\n',
+		);
+
+		const search = calls.find((c) => c.name === 'Builder template search');
+		const query = search!.props.query as string;
+		expect(query).not.toContain('sk-proj-abcdef0123456789xyz');
+		expect(query).toContain('[REDACTED]');
+	});
 });
 
 describe('createTypedToolObserver', () => {

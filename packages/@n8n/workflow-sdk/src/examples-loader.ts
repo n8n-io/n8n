@@ -110,11 +110,13 @@ function loadFromDisk(): ExampleFilesBundle {
 }
 
 function buildJsdocHeader(entry: ManifestEntry): string {
+	// Description is intentionally omitted: it's untrusted author-supplied prose
+	// from the public catalog that the builder agent would read verbatim. Name +
+	// nodes + tags + source already disambiguate templates.
 	return [
 		'/**',
 		' * @template',
 		` * @name ${entry.name}`,
-		` * @description ${entry.description.replace(/\s+/g, ' ').trim()}`,
 		` * @nodes ${entry.nodes.join(', ')}`,
 		` * @tags ${entry.tags.join(', ')}`,
 		` * @source ${entry.source}`,
