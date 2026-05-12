@@ -2044,4 +2044,95 @@ describe('WorkflowDataProxy', () => {
 			expect(proxy.$('Edit').item.json.test).toBe('1111');
 		});
 	});
+
+	// Regression guard: secureArtifacts live on `executionData.runtimeData`,
+	// outside the surface the data proxy can reach. Keep them unreachable from
+	// expressions so a Webhook-stripped artifact can never be referenced via
+	// `$node('Webhook').json.<path>`.
+	describe('secureArtifacts are unreachable from expressions', () => {
+		const workflow: IWorkflowBase = {
+			id: '123',
+			name: 'secure-artifacts-guard',
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node2',
+					name: 'Edit',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 1,
+					position: [300, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Webhook: {
+					main: [[{ node: 'Edit', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
+		const run: IRun = {
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						Webhook: [
+							{
+								startTime: 0,
+								executionTime: 1,
+								executionIndex: 0,
+								source: [null],
+								data: {
+									main: [[{ json: {}, pairedItem: { item: 0 } }]],
+								},
+							},
+						],
+					},
+				},
+				executionData: {
+					// Encrypted blob — the proxy never decrypts; the only thing we
+					// are asserting here is that nothing the proxy exposes maps to
+					// this field.
+					runtimeData: {
+						version: 1,
+						establishedAt: 0,
+						source: 'webhook',
+						secureArtifacts: 'encrypted-blob-placeholder',
+					},
+				},
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+		};
+
+		test('$("Webhook").json.headers.authorization resolves to undefined', () => {
+			const proxy = getProxyFromFixture(workflow, run, 'Edit');
+			expect(proxy.$('Webhook').first().json?.headers?.authorization).toBeUndefined();
+		});
+
+		test('$("Webhook").json["headers.authorization"] resolves to undefined', () => {
+			const proxy = getProxyFromFixture(workflow, run, 'Edit');
+			expect(proxy.$('Webhook').first().json['headers.authorization']).toBeUndefined();
+		});
+
+		test('$("Webhook") does not expose a secureArtifacts surface', () => {
+			const proxy = getProxyFromFixture(workflow, run, 'Edit');
+			const node = proxy.$('Webhook');
+			expect((node as unknown as Record<string, unknown>).secureArtifacts).toBeUndefined();
+			expect((node.first() as unknown as Record<string, unknown>).secureArtifacts).toBeUndefined();
+		});
+	});
 });

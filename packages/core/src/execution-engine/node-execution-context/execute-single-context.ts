@@ -10,6 +10,7 @@ import type {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	IExecuteData,
+	IDataObject,
 } from 'n8n-workflow';
 import { ApplicationError, createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -83,6 +84,19 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 				),
 			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};
+	}
+
+	async getInboundArtifact(
+		nodeName: string,
+		path: string,
+		itemIndex: number = this.itemIndex,
+	): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getInboundArtifact(
+			this.runExecutionData,
+			nodeName,
+			path,
+			itemIndex,
+		);
 	}
 
 	evaluateExpression(expression: string, itemIndex: number = this.itemIndex) {

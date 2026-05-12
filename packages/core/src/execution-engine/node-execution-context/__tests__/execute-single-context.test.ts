@@ -197,4 +197,49 @@ describe('ExecuteSingleContext', () => {
 			]);
 		});
 	});
+
+	describe('getInboundArtifact', () => {
+		beforeEach(() => {
+			additionalData.getInboundArtifact.mockReset();
+		});
+
+		it('defaults itemIndex to 0 when omitted', async () => {
+			additionalData.getInboundArtifact.mockResolvedValue('Bearer xyz');
+
+			const result = await executeSingleContext.getInboundArtifact(
+				'Webhook',
+				'headers.authorization',
+			);
+
+			expect(result).toBe('Bearer xyz');
+			expect(additionalData.getInboundArtifact).toHaveBeenCalledWith(
+				runExecutionData,
+				'Webhook',
+				'headers.authorization',
+				0,
+			);
+		});
+
+		it('forwards an explicit itemIndex', async () => {
+			additionalData.getInboundArtifact.mockResolvedValue('Bearer abc');
+
+			const result = await executeSingleContext.getInboundArtifact('Webhook', 'k', 3);
+
+			expect(result).toBe('Bearer abc');
+			expect(additionalData.getInboundArtifact).toHaveBeenCalledWith(
+				runExecutionData,
+				'Webhook',
+				'k',
+				3,
+			);
+		});
+
+		it('returns undefined when the underlying callback yields undefined', async () => {
+			additionalData.getInboundArtifact.mockResolvedValue(undefined);
+
+			const result = await executeSingleContext.getInboundArtifact('Webhook', 'missing');
+
+			expect(result).toBeUndefined();
+		});
+	});
 });

@@ -55,6 +55,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { InboundSecretProxyService } from './services/inbound-secret-proxy.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -566,6 +567,14 @@ export async function getBase({
 		setExecutionStatus,
 		variables,
 		workflowSettings,
+		async getInboundArtifact(runExecutionData, nodeName, path, itemIndex) {
+			return await Container.get(InboundSecretProxyService).getInboundArtifacts(
+				runExecutionData,
+				nodeName,
+				path,
+				itemIndex,
+			);
+		},
 		async getRunExecutionData(executionId) {
 			const executionRepository = Container.get(ExecutionRepository);
 			const executionData = await executionRepository.findSingleExecution(executionId, {

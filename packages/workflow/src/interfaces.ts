@@ -1111,6 +1111,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
+		getInboundArtifact(
+			nodeName: string,
+			path: string,
+			itemIndex?: number,
+		): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -1177,6 +1182,11 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	getInboundArtifact(
+		nodeName: string,
+		path: string,
+		itemIndex?: number,
+	): Promise<IDataObject[string] | undefined>;
 
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
@@ -3208,6 +3218,12 @@ export interface IWorkflowExecuteAdditionalData {
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
+	getInboundArtifact(
+		runExecutionData: IRunExecutionData,
+		nodeName: string,
+		path: string,
+		itemIndex: number,
+	): Promise<IDataObject[string] | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;

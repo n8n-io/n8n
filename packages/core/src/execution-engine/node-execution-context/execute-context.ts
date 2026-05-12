@@ -141,6 +141,19 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
+	async getInboundArtifact(
+		nodeName: string,
+		path: string,
+		itemIndex: number = 0,
+	): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getInboundArtifact(
+			this.runExecutionData,
+			nodeName,
+			path,
+			itemIndex,
+		);
+	}
+
 	isStreaming(): boolean {
 		// Check if we have sendChunk handlers
 		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
