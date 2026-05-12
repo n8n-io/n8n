@@ -261,22 +261,32 @@ export async function executeAgent(
 	threadId: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Promise<ExecuteAgentData> {
-	if (!additionalData.userId) {
-		throw new UnexpectedError('Cannot execute agent without a userId in additional data');
+	let userId = additionalData.userId;
+	let projectId = additionalData.projectId;
+
+	// Trigger-fired and webhook executions build `additionalData` without a
+	// `userId` (see `getBase` callers in `active-workflow-manager`,
+	// `webhooks/*`, `scaling/job-processor`). Resolve the workflow's owning
+	// project to derive both `userId` and `projectId` so the agent runs under
+	// the workflow owner's identity, mirroring the projectId backfill below.
+	if ((!userId || !projectId) && additionalData.workflowId) {
+		const { OwnershipService } = await import('@/services/ownership.service');
+		const ownershipService = Container.get(OwnershipService);
+		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
+		projectId = projectId ?? project.id;
+		if (!userId) {
+			const owner = await ownershipService.getPersonalProjectOwnerCached(project.id);
+			userId = owner?.id;
+		}
 	}
 
-	let projectId = additionalData.projectId;
+	if (!userId) {
+		throw new UnexpectedError('Cannot execute agent without a userId in additional data');
+	}
 	if (!projectId) {
-		if (!additionalData.workflowId) {
-			throw new UnexpectedError(
-				'Cannot execute agent without a projectId or workflowId in additional data',
-			);
-		}
-		const { OwnershipService } = await import('@/services/ownership.service');
-		const project = await Container.get(OwnershipService).getWorkflowProjectCached(
-			additionalData.workflowId,
+		throw new UnexpectedError(
+			'Cannot execute agent without a projectId or workflowId in additional data',
 		);
-		projectId = project.id;
 	}
 
 	const { AgentsService } = await import('@/modules/agents/agents.service');
@@ -287,7 +297,7 @@ export async function executeAgent(
 		message,
 		executionId,
 		threadId,
-		additionalData.userId,
+		userId,
 		projectId,
 	);
 }

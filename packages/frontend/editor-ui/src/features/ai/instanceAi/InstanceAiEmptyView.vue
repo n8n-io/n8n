@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import type { InstanceAiAttachment } from '@n8n/api-types';
@@ -10,6 +10,10 @@ import { useInstanceAiStore } from './instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import {
+	InstanceAiProactiveStarterMessage,
+	useInstanceAiProactiveAgentExperiment,
+} from '@/experiments/instanceAiProactiveAgent';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -22,6 +26,9 @@ const router = useRouter();
 const toast = useToast();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
+const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
+	useInstanceAiProactiveAgentExperiment();
+const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 
 // Reset to a blank "no active thread" state so the sidebar doesn't keep
 // highlighting the previous thread alongside the empty main view, and SSE
@@ -65,7 +72,34 @@ function handleStop() {
 		<InstanceAiViewHeader />
 
 		<div :class="$style.contentArea">
-			<div :class="$style.emptyLayout">
+			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
+				<div :class="$style.proactiveMessageList">
+					<InstanceAiProactiveStarterMessage />
+				</div>
+				<div :class="$style.proactiveInput">
+					<CreditWarningBanner
+						v-if="creditBanner.visible.value"
+						:credits-remaining="store.creditsRemaining"
+						:credits-quota="store.creditsQuota"
+						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+						@dismiss="creditBanner.dismiss()"
+					/>
+					<InstanceAiInput
+						ref="chatInputRef"
+						:is-streaming="store.isStreaming"
+						:is-sending-message="store.isSendingMessage"
+						:is-awaiting-confirmation="store.isAwaitingConfirmation"
+						:current-thread-id="store.currentThreadId"
+						:amend-context="store.amendContext"
+						:contextual-suggestion="store.contextualSuggestion"
+						:research-mode="store.researchMode"
+						@submit="handleSubmit"
+						@stop="handleStop"
+						@toggle-research-mode="store.toggleResearchMode()"
+					/>
+				</div>
+			</div>
+			<div v-else :class="$style.emptyLayout">
 				<InstanceAiEmptyState />
 				<div :class="$style.centeredInput">
 					<CreditWarningBanner
@@ -126,5 +160,30 @@ function handleStop() {
 .centeredInput {
 	width: 100%;
 	max-width: 680px;
+}
+
+.proactiveLayout {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.proactiveMessageList {
+	flex: 1;
+	width: 100%;
+	max-width: 800px;
+	margin: 0 auto;
+	padding: var(--spacing--lg);
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+}
+
+.proactiveInput {
+	width: 100%;
+	max-width: 750px;
+	margin: 0 auto;
+	padding: 0 var(--spacing--lg) var(--spacing--sm);
 }
 </style>

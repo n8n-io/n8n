@@ -380,6 +380,7 @@ function onCreateCredential(integration: ChatIntegrationDescriptor) {
 		props.data.projectId,
 		undefined,
 		undefined,
+		undefined,
 		{
 			hideAskAssistant: true,
 		},

@@ -260,7 +260,8 @@ describe('NodeCredentials', () => {
 			false,
 			undefined,
 			undefined,
-			undefined,
+			httpNode.name,
+			httpNode,
 			{ hideAskAssistant: false },
 		);
 	});
@@ -679,7 +680,7 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('setup-manually-link'));
 
-			// createNewCredential calls openNewCredential with (type, showAuthOptions, forceManualMode, projectId)
+			// createNewCredential calls openNewCredential with context for auth-option resolution
 			// "setup manually" passes forceManualMode=true
 			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
 				'slackOAuth2Api',
@@ -687,7 +688,12 @@ describe('NodeCredentials', () => {
 				true,
 				undefined,
 				undefined,
-				undefined,
+				slackNode.name,
+				expect.objectContaining({
+					id: slackNode.id,
+					name: slackNode.name,
+					type: slackNode.type,
+				}),
 				{ hideAskAssistant: false },
 			);
 		});
