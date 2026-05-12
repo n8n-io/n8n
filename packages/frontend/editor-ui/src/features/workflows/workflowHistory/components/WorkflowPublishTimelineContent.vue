@@ -268,8 +268,15 @@ onMounted(loadTimeline);
 								</N8nText>
 							</div>
 							<div :class="$style.timelineHeader">
-								<N8nText :bold="true" size="small" color="text-dark" :class="$style.timelineTitle">
-									{{ entry.title }}
+								<div :class="$style.timelineTitle">
+									<N8nText
+										:bold="true"
+										size="small"
+										color="text-dark"
+										:class="$style.timelineTitleText"
+									>
+										{{ entry.title }}
+									</N8nText>
 									<N8nTooltip
 										v-if="entry.isDeletedVersion"
 										placement="top"
@@ -281,7 +288,7 @@ onMounted(loadTimeline);
 									>
 										<N8nIcon icon="info" size="small" :class="$style.deletedVersionHint" />
 									</N8nTooltip>
-								</N8nText>
+								</div>
 								<N8nText size="small" color="text-base" :class="$style.dateText">
 									{{ entry.shortDate }}
 								</N8nText>
@@ -412,8 +419,14 @@ onMounted(loadTimeline);
 }
 
 .timelineTitle {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	flex: 1;
+	min-width: 0;
+}
+
+.timelineTitleText {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -421,8 +434,7 @@ onMounted(loadTimeline);
 }
 
 .deletedVersionHint {
-	margin-left: var(--spacing--4xs);
-	vertical-align: middle;
+	flex-shrink: 0;
 	color: var(--color--text--tint-2);
 }
 
