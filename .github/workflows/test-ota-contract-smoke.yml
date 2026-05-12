@@ -76,7 +76,7 @@ jobs:
           ota tasks --workflow app .
           ota tasks --workflow backend .
           ota tasks --workflow instant .
-          ota execution topology --workflow app --json .
+          ota execution topology --json .
 
       - name: Validate contract and inspect workflows [pwsh]
         if: matrix.run_shell == 'pwsh'
@@ -87,7 +87,7 @@ jobs:
           ota tasks --workflow app .
           ota tasks --workflow backend .
           ota tasks --workflow instant .
-          ota execution topology --workflow app --json .
+          ota execution topology --json .
 
       - name: Smoke ota up + doctor (instant) [bash]
         if: matrix.run_shell == 'bash'
@@ -225,7 +225,7 @@ jobs:
         shell: bash
         run: |
           ota clean . || true
-          ota proof runtime --workflow docker --mode container --json .
+          ota proof runtime --workflow docker --json .
           ota clean .
 
       - name: Upload failure artifacts
