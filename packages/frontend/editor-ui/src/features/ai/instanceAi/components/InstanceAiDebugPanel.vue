@@ -2,12 +2,13 @@
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
 
 const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const thread = useThread();
 const debugStore = useInstanceAiDebugStore();
 
 // --- Tab state ---
@@ -17,7 +18,7 @@ const activeTab = ref<Tab>('events');
 // --- Events tab state ---
 const expandedIndex = ref<number | null>(null);
 const eventListRef = useTemplateRef<HTMLElement>('eventList');
-const events = computed(() => store.debugEvents);
+const events = computed(() => thread.debugEvents);
 
 // --- Threads tab state ---
 const expandedMessageIndex = ref<number | null>(null);
@@ -81,7 +82,7 @@ function contentPreview(content: unknown): string {
 }
 
 async function handleCopyTrace() {
-	const trace = store.copyFullTrace();
+	const trace = thread.copyFullTrace();
 	await navigator.clipboard.writeText(trace);
 }
 
@@ -116,7 +117,7 @@ function handleRefreshThreads() {
 // Tool call timing summary
 const toolCallTimings = computed(() => {
 	const timings: Array<{ name: string; duration: string; toolCallId: string }> = [];
-	for (const msg of store.messages) {
+	for (const msg of thread.messages) {
 		if (!msg.agentTree) continue;
 		const nodes = [msg.agentTree, ...msg.agentTree.children];
 		for (const node of nodes) {
@@ -177,8 +178,8 @@ onMounted(() => {
 		<template v-if="activeTab === 'events'">
 			<!-- Connection status -->
 			<div :class="$style.statusBar">
-				<span :class="$style.statusDot" :data-state="store.sseState" />
-				<span>SSE: {{ store.sseState }}</span>
+				<span :class="$style.statusDot" :data-state="thread.sseState" />
+				<span>SSE: {{ thread.sseState }}</span>
 				<span :class="$style.eventCount">{{ events.length }} events</span>
 			</div>
 

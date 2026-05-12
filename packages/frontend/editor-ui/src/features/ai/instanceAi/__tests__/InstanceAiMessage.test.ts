@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import InstanceAiMessageComponent from '../components/InstanceAiMessage.vue';
 import type { InstanceAiMessage, InstanceAiAgentNode } from '@n8n/api-types';
@@ -11,7 +11,7 @@ vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiMessageComponent, {
+const renderComponent = createThreadComponentRenderer(InstanceAiMessageComponent, {
 	global: {
 		stubs: {
 			AgentActivityTree: {

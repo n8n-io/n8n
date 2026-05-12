@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.20.0",
+  "version": "2.21.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -116,6 +116,7 @@
       "dist/credentials/FacebookGraphAppApi.credentials.js",
       "dist/credentials/FacebookLeadAdsOAuth2Api.credentials.js",
       "dist/credentials/FigmaApi.credentials.js",
+      "dist/credentials/FigmaOAuth2Api.credentials.js",
       "dist/credentials/FileMaker.credentials.js",
       "dist/credentials/FilescanApi.credentials.js",
       "dist/credentials/FlowApi.credentials.js",

@@ -431,19 +431,32 @@ export interface CodeBuilderSearchToolOptions {
 	nodeFilter?: (nodeId: string) => boolean;
 }
 
+export interface CodeBuilderSearchResult {
+	results: string;
+	queriesWithNoResults: string[];
+}
+
+interface SearchForQueryResult {
+	result: string;
+	hasResults: boolean;
+}
+
 /**
- * Search for a single query and return the formatted result block.
+ * Search for a single query and return the formatted result block with match metadata.
  * Extracted to keep the tool handler's cyclomatic complexity within limits.
  */
 function searchForQuery(
 	nodeTypeParser: NodeTypeParser,
 	query: string,
 	nodeFilter?: (nodeId: string) => boolean,
-): string {
+): SearchForQueryResult {
 	const results = nodeTypeParser.searchNodeTypes(query, 5, nodeFilter);
 
 	if (results.length === 0) {
-		return `## "${query}"\nNo nodes found. Try a different search term.`;
+		return {
+			result: `## "${query}"\nNo nodes found. Try a different search term.`,
+			hasResults: false,
+		};
 	}
 
 	// Track which node IDs have been shown to avoid duplicates
@@ -528,7 +541,29 @@ function searchForQuery(
 	}
 
 	const countSuffix = totalRelatedCount > 0 ? ` (+ ${totalRelatedCount} related)` : '';
-	return `## "${query}"\nFound ${results.length} nodes${countSuffix}:\n\n${allNodeLines.join('\n\n')}`;
+	return {
+		result: `## "${query}"\nFound ${results.length} nodes${countSuffix}:\n\n${allNodeLines.join('\n\n')}`,
+		hasResults: true,
+	};
+}
+
+export function searchCodeBuilderNodes(
+	nodeTypeParser: NodeTypeParser,
+	queries: string[],
+	options?: CodeBuilderSearchToolOptions,
+): CodeBuilderSearchResult {
+	const { nodeFilter } = options ?? {};
+	const searchResults = queries.map((query) => ({
+		query,
+		...searchForQuery(nodeTypeParser, query, nodeFilter),
+	}));
+
+	return {
+		results: searchResults.map(({ result }) => result).join('\n\n---\n\n'),
+		queriesWithNoResults: searchResults
+			.filter(({ hasResults }) => !hasResults)
+			.map(({ query }) => query),
+	};
 }
 
 /**
@@ -540,15 +575,9 @@ export function createCodeBuilderSearchTool(
 	nodeTypeParser: NodeTypeParser,
 	options?: CodeBuilderSearchToolOptions,
 ) {
-	const { nodeFilter } = options ?? {};
-
 	return tool(
-		async (input: { queries: string[] }) => {
-			const allResults = input.queries.map((query) =>
-				searchForQuery(nodeTypeParser, query, nodeFilter),
-			);
-			return allResults.join('\n\n---\n\n');
-		},
+		async (input: { queries: string[] }) =>
+			searchCodeBuilderNodes(nodeTypeParser, input.queries, options).results,
 		{
 			name: 'search_nodes',
 			description:

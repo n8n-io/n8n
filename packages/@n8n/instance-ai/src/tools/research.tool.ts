@@ -2,6 +2,7 @@
  * Consolidated research tool — web-search + fetch-url.
  */
 import { createTool } from '@mastra/core/tools';
+import { get as pslGet } from 'psl';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -15,6 +16,22 @@ import {
 } from '../domain-access';
 import type { InstanceAiContext } from '../types';
 import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
+
+/** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
+function isSameRegistrableDomainOverHttps(originalUrl: string, redirectUrl: string): boolean {
+	let originalHost: string;
+	let redirectUrlObj: URL;
+	try {
+		originalHost = new URL(originalUrl).hostname;
+		redirectUrlObj = new URL(redirectUrl);
+	} catch {
+		return false;
+	}
+	if (redirectUrlObj.protocol !== 'https:') return false;
+	const originalDomain = pslGet(originalHost);
+	const redirectDomain = pslGet(redirectUrlObj.hostname);
+	return originalDomain !== null && redirectDomain !== null && originalDomain === redirectDomain;
+}
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -202,13 +219,15 @@ async function handleFetchUrl(
 			permissionMode: context.permissions?.fetchUrl,
 			runId: context.runId,
 		});
-		if (!redirectCheck.allowed) {
-			const reason = redirectCheck.blocked
-				? `Access to ${new URL(targetUrl).hostname} is blocked by admin.`
-				: `Redirect to ${new URL(targetUrl).hostname} requires approval. ` +
-					`Retry with the direct URL: ${targetUrl}`;
-			throw new Error(reason);
+		if (redirectCheck.allowed) return;
+		if (redirectCheck.blocked) {
+			throw new Error(`Access to ${new URL(targetUrl).hostname} is blocked by admin.`);
 		}
+		if (isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
+		throw new Error(
+			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed. ` +
+				'Skip this URL and try a different research strategy — retrying the same URL will not help.',
+		);
 	};
 
 	const result = await context.webResearchService.fetchUrl(input.url, {

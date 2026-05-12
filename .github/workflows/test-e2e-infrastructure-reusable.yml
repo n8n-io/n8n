@@ -38,4 +38,5 @@ jobs:
       workers: '1'
       runner: ${{ matrix.runner }}
       timeout-minutes: 120
+      artifact-prefix: benchmark
     secrets: inherit
