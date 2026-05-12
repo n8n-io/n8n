@@ -250,6 +250,11 @@ export function createDeepLazyProxy(
 					arguments: { copy: true },
 					result: { copy: true },
 				});
+				// Primitives (and null) skip `materializeChild`'s metadata checks.
+				if (element === null || typeof element !== 'object') {
+					targetObj[prop] = element;
+					return element;
+				}
 				targetObj[prop] = materializeChild(elementPath, element);
 				return targetObj[prop];
 			}
