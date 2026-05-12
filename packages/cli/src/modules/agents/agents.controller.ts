@@ -2,7 +2,6 @@ import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
 	type AgentCredentialIntegration,
-	type AgentIntegrationStatusEntry,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
@@ -700,24 +699,14 @@ export class AgentsController {
 		const credential = usableCredentials.find((c) => c.id === credentialId);
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
 
-		if (settings) {
-			await this.chatIntegrationService.connect(
-				agentId,
-				credentialId,
-				type,
-				req.user.id,
-				agent.projectId,
-				{ settings },
-			);
-		} else {
-			await this.chatIntegrationService.connect(
-				agentId,
-				credentialId,
-				type,
-				req.user.id,
-				agent.projectId,
-			);
-		}
+		await this.chatIntegrationService.connect(
+			agentId,
+			credentialId,
+			type,
+			req.user.id,
+			agent.projectId,
+			settings ? { settings } : {},
+		);
 
 		// Persist the integration reference on the agent
 		const existing = agent.integrations ?? [];
@@ -730,6 +719,8 @@ export class AgentsController {
 			credentialName: credential.name,
 			...(settings ? { settings } : {}),
 		};
+
+		// Replace existing integration or append a new one
 		agent.integrations = alreadyExists
 			? existing.map((existingIntegration) =>
 					isAgentCredentialIntegration(existingIntegration) &&
@@ -851,31 +842,24 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		// Surface only integrations that are live in the chat service AND persisted
-		// on the agent — the persisted entry is the single source of truth for
-		// settings (the live bridge cannot drift since reconnect tears it down).
+		// Decorate live chat connections with the settings persisted on the agent.
+		// The bridge doesn't surface them itself (the persisted entry is the
+		// single source of truth), so the controller stitches them in here.
 		const chatStatus = this.chatIntegrationService.getStatus(agentId);
-		const liveKeys = new Set(
-			chatStatus.integrations
-				.filter((i): i is AgentIntegrationStatusEntry & { credentialId: string } =>
-					Boolean(i.credentialId),
-				)
-				.map((i) => `${i.type}:${i.credentialId}`),
-		);
-		const chatIntegrations: AgentIntegrationStatusEntry[] = (agent.integrations ?? [])
-			.filter(
-				(i): i is AgentCredentialIntegration =>
-					isAgentCredentialIntegration(i) && liveKeys.has(`${i.type}:${i.credentialId}`),
-			)
-			.map((i) => ({
-				type: i.type,
-				credentialId: i.credentialId,
-				...(i.settings ? { settings: i.settings } : {}),
-			}));
+		const settingsByKey = new Map<string, AgentTelegramIntegrationSettings>();
+		for (const i of agent.integrations ?? []) {
+			if (isAgentCredentialIntegration(i) && i.settings) {
+				settingsByKey.set(`${i.type}:${i.credentialId}`, i.settings);
+			}
+		}
+		const chatIntegrations = chatStatus.integrations.map((i) => {
+			const settings = i.credentialId
+				? settingsByKey.get(`${i.type}:${i.credentialId}`)
+				: undefined;
+			return settings ? { ...i, settings } : i;
+		});
 		const schedule = this.agentScheduleService.getConfig(agent);
-		const scheduleIntegrations: AgentIntegrationStatusEntry[] = schedule.active
-			? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }]
-			: [];
+		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
 		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
 
 		return {
