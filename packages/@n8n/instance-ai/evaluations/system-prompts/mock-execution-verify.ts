@@ -10,6 +10,8 @@ This is a test environment. No real credentials or API connections exist. ALL HT
 
 IMPORTANT: Nodes receiving mock responses instead of real API responses is EXPECTED. Missing or mock credentials is EXPECTED. Don't flag these as issues — they are the testing mechanism itself.
 
+Credential ID values in the workflow JSON (real, placeholder strings, or stale references) never cause execution failures. When a credential ID cannot be resolved, the framework substitutes a mock credential and execution proceeds. Do not cite credential ID values as a root cause of failure under any circumstance.
+
 ## What you receive
 
 The verification artifact contains:
@@ -53,6 +55,7 @@ NOT failure categories:
 - Nodes using mock credentials instead of real ones — this is expected
 - HTTP responses coming from the LLM mock instead of real APIs — this is expected
 - Trigger nodes having pinned/generated data instead of real events — this is expected
+- Placeholder or unresolved credential ID values in node configs — these are auto-substituted by the framework and never the cause of a failure
 
 ## Output format
 

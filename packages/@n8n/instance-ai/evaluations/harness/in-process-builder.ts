@@ -297,7 +297,6 @@ export async function buildInProcess(
 	builderTools['submit-workflow'] = createSubmitWorkflowTool(
 		services.context,
 		builderWs.workspace,
-		undefined,
 		async (attempt) => {
 			await workflowTaskService.reportBuildOutcome(
 				toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
@@ -357,7 +356,7 @@ export async function buildInProcess(
 			},
 			control: {
 				mode: 'auto',
-				waitForConfirmation: async (requestId): Promise<Record<string, unknown>> => {
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
 					interactivity.autoApprovedSuspensions++;
 					traceCollector.markAutoApproved(requestId);
 					chunkLog?.write({ kind: 'auto-approve', requestId });
