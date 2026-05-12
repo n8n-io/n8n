@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.20.0",
+  "version": "2.21.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -136,6 +136,7 @@
     "@opentelemetry/instrumentation": "^0.213.0",
     "@opentelemetry/resources": "^2.6.0",
     "@opentelemetry/sdk-node": "^0.213.0",
+    "@opentelemetry/sdk-trace-base": "^2.6.0",
     "@opentelemetry/sdk-trace-node": "^2.6.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
     "@parcel/watcher": "^2.5.1",
@@ -177,6 +178,7 @@
     "json-diff": "1.0.6",
     "jsonschema": "1.4.1",
     "jsonwebtoken": "catalog:",
+    "langsmith": "catalog:",
     "ldapts": "4.2.6",
     "lodash": "catalog:",
     "luxon": "catalog:",

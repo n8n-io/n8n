@@ -80,6 +80,12 @@ export class NodeCatalogService {
 	/**
 	 * Search the node catalog for node IDs matching `queries`.
 	 * Results are cached per `(filter, queries)` pair and invalidated on node-type refresh.
+	 *
+	 * Calls the plain `searchCodeBuilderNodes` helper from `@n8n/ai-workflow-builder`
+	 * rather than its LangChain `tool(...)` wrapper. When `LANGCHAIN_TRACING_V2` is on
+	 * (the agents SDK enables it for the OTel exporter), the wrapper would register a
+	 * separate LangSmith root run for every invocation — fragmenting traces. The plain
+	 * helper runs entirely inside the caller's OTel span.
 	 */
 	async searchNodes(
 		queries: string[],

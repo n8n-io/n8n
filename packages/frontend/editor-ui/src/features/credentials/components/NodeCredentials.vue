@@ -11,7 +11,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
+import {
+	hasProxyAuth,
+	getAppNameFromCredType,
+	getAuthTypeForNodeCredential,
+	getNodeCredentialForSelectedAuthType,
+	updateNodeAuthType,
+} from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
 
 import TitledList from '@/app/components/TitledList.vue';
@@ -29,12 +35,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { assert } from '@n8n/utils/assert';
-import {
-	getAppNameFromCredType,
-	getAuthTypeForNodeCredential,
-	getNodeCredentialForSelectedAuthType,
-	updateNodeAuthType,
-} from '@/app/utils/nodeTypesUtils';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
@@ -110,7 +110,7 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields } = useCredentialOAuth();
 
 const aiGateway = useAiGateway();
 
@@ -224,7 +224,7 @@ watch(
 			if (aiGateway.isEnabled.value) {
 				for (const { type } of types) {
 					if (aiGateway.isCredentialTypeSupported(type.name)) {
-						onAiGatewaySelector(type.name, true);
+						onAiGatewaySelector(type.name, true, false);
 					}
 				}
 			}
@@ -542,7 +542,7 @@ function showAiGatewaySelector(credentialType: string): boolean {
 	return true;
 }
 
-function onAiGatewaySelector(credentialType: string, enable: boolean): void {
+function onAiGatewaySelector(credentialType: string, enable: boolean, isUserAction = true): void {
 	const credentials = { ...(props.node.credentials ?? {}) };
 
 	if (enable) {
@@ -562,6 +562,15 @@ function onAiGatewaySelector(credentialType: string, enable: boolean): void {
 		} else {
 			delete credentials[credentialType];
 		}
+	}
+
+	if (isUserAction) {
+		telemetry.track('User toggled n8n connect credential', {
+			credential_type: credentialType,
+			node_type: props.node.type,
+			mode: enable ? 'n8n_connect' : 'own',
+			workflow_id: props.standalone ? '' : workflowsStore.workflowId,
+		});
 	}
 
 	emit('credentialSelected', {
@@ -652,6 +661,15 @@ function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
 }
 
+function canManuallySetUpCredential(credentialTypeName: string): boolean {
+	const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
+	if (!credentialType) {
+		return true;
+	}
+
+	return hasManualCredentialInputFields(credentialType);
+}
+
 async function onQuickConnectSignIn(credentialTypeName: string) {
 	subscribedToCredentialType.value = credentialTypeName;
 	const serviceName = getServiceName(credentialTypeName);
@@ -726,7 +744,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						:service-name="getServiceName(quickConnectCredentialType)"
 						@click="onQuickConnectSignIn(quickConnectCredentialType)"
 					/>
-					<span :class="$style.setupManuallyContainer">
+					<span v-if="canManuallySetUpCredential(type.name)" :class="$style.setupManuallyContainer">
 						<N8nText size="small" :class="$style.setupManuallyOr">
 							{{ i18n.baseText('nodeCredentials.quickConnect.or') }}
 						</N8nText>

@@ -11,9 +11,22 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 
-const { replaceMock, showErrorMock } = vi.hoisted(() => ({
+const { experimentMocks, replaceMock, showErrorMock } = vi.hoisted(() => ({
+	experimentMocks: {
+		proactiveAgentEnabled: { value: false },
+	},
 	replaceMock: vi.fn(),
 	showErrorMock: vi.fn(),
+}));
+
+vi.mock('@/experiments/instanceAiProactiveAgent', () => ({
+	useInstanceAiProactiveAgentExperiment: () => ({
+		isFeatureEnabled: experimentMocks.proactiveAgentEnabled,
+	}),
+	InstanceAiProactiveStarterMessage: {
+		name: 'InstanceAiProactiveStarterMessageStub',
+		template: '<div data-test-id="instance-ai-proactive-starter">starter</div>',
+	},
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -80,6 +93,7 @@ describe('InstanceAiEmptyView', () => {
 
 		store = mockedStore(useInstanceAiStore);
 		store.currentThreadId = 'thread-placeholder';
+		experimentMocks.proactiveAgentEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -91,6 +105,16 @@ describe('InstanceAiEmptyView', () => {
 		// 4 suggestions in INSTANCE_AI_EMPTY_STATE_SUGGESTIONS — suggestions array
 		// renders as its `.length`.
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('4');
+	});
+
+	it('renders the proactive starter and moves suggestions out of the composer when enabled', () => {
+		experimentMocks.proactiveAgentEnabled.value = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
+		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
 	it('clears the current thread on mount (AI-2408)', () => {
