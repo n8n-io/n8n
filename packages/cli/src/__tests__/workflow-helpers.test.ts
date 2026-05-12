@@ -423,6 +423,18 @@ describe('validateWorkflowNodeGroups', () => {
 			}),
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
+
+	it('should throw when group names are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+				],
+			}),
+		).toThrow('Duplicate node group name "Duplicate".');
+	});
 });
 
 describe('validatePinDataSize', () => {

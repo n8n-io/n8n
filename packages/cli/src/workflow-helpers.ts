@@ -126,7 +126,8 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
- * Validates that all nodeIds in nodeGroups reference existing node IDs.
+ * Validates that all nodeIds in nodeGroups reference existing node IDs
+ * and that group names are unique.
  * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
  * may not have IDs until that step assigns them.
  */
@@ -135,8 +136,14 @@ export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes'
 	if (!nodeGroups || nodeGroups.length === 0) return;
 
 	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+	const seenGroupNames = new Set<string>();
 
 	for (const group of nodeGroups) {
+		if (seenGroupNames.has(group.name)) {
+			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
+		}
+		seenGroupNames.add(group.name);
+
 		for (const nodeId of group.nodeIds) {
 			if (!nodeIds.has(nodeId)) {
 				throw new BadRequestError(
