@@ -29,9 +29,6 @@ import { AgentObservationRepository } from '../repositories/agent-observation.re
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
-/** Key inside the metadata JSON where working memory content is stored. */
-const WORKING_MEMORY_KEY = 'workingMemory';
-
 @Service()
 export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	constructor(
@@ -193,24 +190,20 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 		resourceId: string;
 		scope: 'resource' | 'thread';
 	}): Promise<string | null> {
-		if (params.scope === 'resource') {
-			const resource = await this.resourceRepository.findOneBy({ id: params.resourceId });
-			return this.extractWorkingMemory(resource?.metadata ?? null);
-		}
-
-		const thread = await this.threadRepository.findOneBy({ id: params.threadId });
-		return this.extractWorkingMemory(thread?.metadata ?? null);
+		void params;
+		// Legacy `workingMemory` metadata is intentionally ignored. The new
+		// observation-log pipeline will own memory state.
+		return null;
 	}
 
 	async saveWorkingMemory(
 		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
 		content: string,
 	): Promise<void> {
-		if (params.scope === 'resource') {
-			await this.upsertResourceMetadata(params.resourceId, content);
-		} else {
-			await this.upsertThreadMetadata(params.threadId, params.resourceId, content);
-		}
+		void params;
+		void content;
+		// Legacy `workingMemory` metadata is intentionally ignored. The new
+		// observation-log pipeline will own memory state.
 	}
 
 	// ── Observational memory: data ───────────────────────────────────────
@@ -422,66 +415,5 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 		};
-	}
-
-	private extractWorkingMemory(metadataJson: string | null): string | null {
-		if (!metadataJson) return null;
-		try {
-			const parsed = JSON.parse(metadataJson) as Record<string, unknown>;
-			const wm = parsed[WORKING_MEMORY_KEY];
-			return typeof wm === 'string' ? wm : null;
-		} catch {
-			return null;
-		}
-	}
-
-	private mergeWorkingMemory(existingJson: string | null, content: string): string {
-		let parsed: Record<string, unknown> = {};
-		if (existingJson) {
-			try {
-				parsed = JSON.parse(existingJson) as Record<string, unknown>;
-			} catch {
-				// start fresh on corrupt JSON
-			}
-		}
-		parsed[WORKING_MEMORY_KEY] = content;
-		return JSON.stringify(parsed);
-	}
-
-	private async upsertResourceMetadata(resourceId: string, content: string): Promise<void> {
-		const existing = await this.resourceRepository.findOneBy({ id: resourceId });
-		if (existing) {
-			existing.metadata = this.mergeWorkingMemory(existing.metadata, content);
-			await this.resourceRepository.save(existing);
-		} else {
-			const entity = this.resourceRepository.create({
-				id: resourceId,
-				metadata: this.mergeWorkingMemory(null, content),
-			});
-			await this.resourceRepository.save(entity);
-		}
-	}
-
-	private async upsertThreadMetadata(
-		threadId: string,
-		resourceId: string,
-		content: string,
-	): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: threadId });
-		if (existing) {
-			existing.metadata = this.mergeWorkingMemory(existing.metadata, content);
-			await this.threadRepository.save(existing);
-			return;
-		}
-
-		await this.ensureResource(resourceId);
-		await this.threadRepository.save(
-			this.threadRepository.create({
-				id: threadId,
-				resourceId,
-				title: null,
-				metadata: this.mergeWorkingMemory(null, content),
-			}),
-		);
 	}
 }
