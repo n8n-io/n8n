@@ -46,6 +46,8 @@ import type { BackgroundTaskResult, InstanceAiContext, OrchestrationContext } fr
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import {
 	createRemediation,
+	createTerminalRemediationGuard,
+	type RemediationMetadata,
 	type TriggerType,
 	type WorkflowBuildOutcome,
 	type WorkflowSetupRequirement,
@@ -556,6 +558,19 @@ function hashContent(content: string | null): string {
 		.digest('hex');
 }
 
+function createLinkedAbortController(parentSignal: AbortSignal): AbortController {
+	const controller = new AbortController();
+	if (parentSignal.aborted) {
+		controller.abort(parentSignal.reason);
+		return controller;
+	}
+
+	parentSignal.addEventListener('abort', () => controller.abort(parentSignal.reason), {
+		once: true,
+	});
+	return controller;
+}
+
 function deterministicSuffix(seed: string, label: string, length: number): string {
 	return createHash('sha256')
 		.update(label)
@@ -680,6 +695,47 @@ export function resultFromPostStreamError(input: {
 				attempt.referencedWorkflowIds,
 			),
 		),
+	};
+}
+
+export function resultFromTerminalRemediation(input: {
+	remediation: RemediationMetadata;
+	submitAttempts: SubmitWorkflowAttempt[];
+	mainWorkflowPath: string;
+	workItemId: string;
+	runId: string;
+	taskId: string;
+}): { text: string; outcome: WorkflowBuildOutcome } {
+	const latestAttempt = latestMainSubmit(input.submitAttempts, input.mainWorkflowPath);
+	const attempt =
+		latestAttempt &&
+		!latestAttempt.success &&
+		shouldRecoverSavedWorkflowAfterFailedSubmit(latestAttempt)
+			? (latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath) ?? latestAttempt)
+			: latestAttempt;
+	const text = input.remediation.guidance;
+	const outcome = buildOutcome(
+		input.workItemId,
+		input.runId,
+		input.taskId,
+		attempt,
+		text,
+		supportingWorkflowIdsFromSubmitAttempts(
+			input.submitAttempts,
+			input.mainWorkflowPath,
+			attempt?.workflowId,
+			attempt?.referencedWorkflowIds,
+		),
+	);
+
+	return {
+		text,
+		outcome: withDeterministicRouting({
+			...outcome,
+			needsUserInput: outcome.needsUserInput || input.remediation.category === 'needs_setup',
+			blockingReason: input.remediation.guidance,
+			remediation: input.remediation,
+		}),
 	};
 }
 
@@ -1016,6 +1072,19 @@ export async function startBuildWorkflowAgentTask(
 					// Append-only history so a later failed submit for the main path
 					// cannot mask an earlier successful submit during post-error recovery.
 					const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
+					const builderAbortController = createLinkedAbortController(signal);
+					const terminalRemediationGuard = createTerminalRemediationGuard((remediation) => {
+						context.trackTelemetry?.('Builder terminal remediation reached', {
+							thread_id: context.threadId,
+							run_id: context.runId,
+							work_item_id: workItemId,
+							category: remediation.category,
+							attempt_count: remediation.attemptCount,
+							reason: remediation.reason,
+						});
+						builderAbortController.abort(new Error(remediation.guidance));
+					});
+					let clearFilesystemMutationGuard: (() => void) | undefined;
 					try {
 						if (useSandbox) {
 							let workspace: BuilderWorkspace['workspace'];
@@ -1058,6 +1127,31 @@ export async function startBuildWorkflowAgentTask(
 							}
 
 							const mainWorkflowPath = `${root}/src/workflow.ts`;
+							const setFilesystemMutationGuard =
+								activeBuilderSession?.setFilesystemMutationGuard ??
+								builderWs?.setFilesystemMutationGuard;
+							if (setFilesystemMutationGuard) {
+								setFilesystemMutationGuard(() => terminalRemediationGuard.get());
+								clearFilesystemMutationGuard = () => setFilesystemMutationGuard(undefined);
+							}
+							const finishTerminalRemediation = async (remediation: RemediationMetadata) => {
+								const terminalResult = resultFromTerminalRemediation({
+									remediation,
+									submitAttempts: submitAttemptHistory,
+									mainWorkflowPath,
+									workItemId,
+									runId: context.runId,
+									taskId,
+								});
+								if (terminalResult.outcome.submitted && terminalResult.outcome.workflowId) {
+									await promoteMainWorkflow(
+										domainContext,
+										context.logger,
+										terminalResult.outcome.workflowId,
+									);
+								}
+								return await finalizeBuildResult(context, workItemId, terminalResult);
+							};
 							builderTools['submit-workflow'] = createIdentityEnforcedSubmitWorkflowTool({
 								context: domainContext,
 								workspace,
@@ -1067,6 +1161,7 @@ export async function startBuildWorkflowAgentTask(
 								tracingRoot: traceContext?.rootRun,
 								getWorkflowLoopState: async () =>
 									await context.workflowTaskService?.getWorkflowLoopState(workItemId),
+								getTerminalRemediation: () => terminalRemediationGuard.get(),
 								onGuardFired: (event) => {
 									context.trackTelemetry?.('Builder remediation guard fired', {
 										thread_id: context.threadId,
@@ -1077,6 +1172,9 @@ export async function startBuildWorkflowAgentTask(
 										attempt_count: event.attemptCount,
 										reason: event.reason,
 									});
+								},
+								onTerminalRemediation: (remediation) => {
+									terminalRemediationGuard.record(remediation);
 								},
 								onAttempt: async (attempt) => {
 									submitAttempts.set(attempt.filePath, attempt);
@@ -1165,7 +1263,7 @@ export async function startBuildWorkflowAgentTask(
 									};
 									const stream = await subAgent.stream(briefing, {
 										maxSteps: MAX_STEPS.BUILDER,
-										abortSignal: signal,
+										abortSignal: builderAbortController.signal,
 										modelSettings: { temperature: TEMPERATURE.BUILDER },
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1188,7 +1286,7 @@ export async function startBuildWorkflowAgentTask(
 										eventBus: context.eventBus,
 										logger: context.logger,
 										threadId: context.threadId,
-										abortSignal: signal,
+										abortSignal: builderAbortController.signal,
 										waitForConfirmation: context.waitForConfirmation,
 										drainCorrections,
 										waitForCorrection,
@@ -1199,8 +1297,18 @@ export async function startBuildWorkflowAgentTask(
 									});
 								});
 
+								const terminalRemediation = terminalRemediationGuard.get();
+								if (terminalRemediation) {
+									return await finishTerminalRemediation(terminalRemediation);
+								}
+
 								finalText = await hitlResult.text;
 							} catch (error) {
+								const terminalRemediation = terminalRemediationGuard.get();
+								if (terminalRemediation) {
+									return await finishTerminalRemediation(terminalRemediation);
+								}
+
 								const recovered = resultFromPostStreamError({
 									error,
 									submitAttempts: submitAttemptHistory,
@@ -1218,6 +1326,11 @@ export async function startBuildWorkflowAgentTask(
 									return await finalizeBuildResult(context, workItemId, recovered);
 								}
 								throw error;
+							}
+
+							const terminalRemediation = terminalRemediationGuard.get();
+							if (terminalRemediation) {
+								return await finishTerminalRemediation(terminalRemediation);
 							}
 
 							const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
@@ -1481,6 +1594,7 @@ export async function startBuildWorkflowAgentTask(
 						await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
 						return { text: toolFinalText };
 					} finally {
+						clearFilesystemMutationGuard?.();
 						if (activeBuilderSession && context.builderSandboxSessionRegistry) {
 							await context.builderSandboxSessionRegistry.release(activeBuilderSession.sessionId, {
 								keep: !signal.aborted,

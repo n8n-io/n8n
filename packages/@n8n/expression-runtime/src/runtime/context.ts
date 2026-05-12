@@ -4,7 +4,12 @@ import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
 import { __sanitize, createSafeErrorSubclass, ExpressionError } from './safe-globals';
-import { createDeepLazyProxy, throwIfErrorSentinel } from './lazy-proxy';
+import {
+	createDeepLazyProxy,
+	isArrayMetadata,
+	isObjectMetadata,
+	throwIfErrorSentinel,
+} from './lazy-proxy';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -154,13 +159,17 @@ export function buildContext(
 			return true;
 		}
 
-		// Object metadata — create a lazy proxy for deep access
-		if (
-			value &&
-			typeof value === 'object' &&
-			('__isObject' in (value as any) || '__isArray' in (value as any))
-		) {
-			target[key] = createDeepLazyProxy([key], undefined, callbacks);
+		// Object / array metadata — create a shape-matched lazy proxy for deep access
+		if (isArrayMetadata(value)) {
+			target[key] = createDeepLazyProxy(
+				[key],
+				{ kind: 'array', length: value.__length },
+				callbacks,
+			);
+			return true;
+		}
+		if (isObjectMetadata(value)) {
+			target[key] = createDeepLazyProxy([key], { kind: 'object', keys: value.__keys }, callbacks);
 			return true;
 		}
 
