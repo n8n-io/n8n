@@ -108,18 +108,23 @@ describe('WorkflowPublishTimelineContent', () => {
 		expect(queryByRole('link')).not.toBeInTheDocument();
 	});
 
-	it('should show the user attribution when an event has an associated user', async () => {
-		const { findByText } = renderWithEvents([
+	it('should show the user attribution and datetime as a tooltip when an event has an associated user', async () => {
+		const { findByText, findAllByText } = renderWithEvents([
 			buildEvent({ user: { firstName: 'Alice', lastName: 'Anderson' } }),
 		]);
 
-		expect(await findByText('Alice Anderson')).toBeInTheDocument();
+		const trigger = await findByText('Published');
+		await userEvent.hover(trigger);
+
+		const matches = await findAllByText(/^Published by Alice Anderson, .+ at .+/);
+		expect(matches.length).toBeGreaterThan(0);
 	});
 
 	it('should not show user attribution when no user is associated with the event', async () => {
 		const { findByText, queryByText } = renderWithEvents([buildEvent({ user: null })]);
 
-		await findByText('Published');
+		const trigger = await findByText('Published');
+		await userEvent.hover(trigger);
 		expect(queryByText(/Alice Anderson/)).not.toBeInTheDocument();
 	});
 

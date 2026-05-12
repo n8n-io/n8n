@@ -3969,6 +3969,8 @@
 	"workflowHistory.publishTimeline.activeDuration": "Active for {duration}",
 	"workflowHistory.publishTimeline.inactiveDuration": "Inactive for {duration}",
 	"workflowHistory.publishTimeline.by": "by {user}",
+	"workflowHistory.publishTimeline.tooltip.byUser": "{action} by {user}, {datetime}",
+	"workflowHistory.publishTimeline.tooltip.noUser": "{action}, {datetime}",
 	"workflowHistory.publishTimeline.deletedVersionsDisclaimer": "History before {date} may be incomplete",
 	"workflowHistory.publishTimeline.deletedVersionsDisclaimer.tooltip": "Until version 2.17 pruned workflow versions also removed associated publish history.",
 	"favorites.add": "Favorite",

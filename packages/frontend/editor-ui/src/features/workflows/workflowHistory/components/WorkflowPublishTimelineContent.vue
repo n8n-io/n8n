@@ -5,11 +5,12 @@ import { useI18n } from '@n8n/i18n';
 import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
+import { formatTimestamp, generateVersionLabelFromId } from '../utils';
+import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
+import type { WorkflowHistoryVersionStatus } from '../types';
 
 /** Brief unpublished gaps shorter than this are version-change artefacts, not real deactivations */
 const TRANSIENT_DEACTIVATION_MS = 2000;
-/** Active/inactive duration is shown on entries only when the period lasted at least this long */
-const MIN_DURATION_FOR_LABEL_MS = 10 * 60 * 1000;
 /** Adoption point for publish-timeline tracking — older events may be incomplete */
 const ADOPTION_VERSION = { major: 2, minor: 17, patch: 0 } as const;
 
@@ -41,11 +42,12 @@ type TimelineEntry = {
 	isClickable: boolean;
 	isSelected: boolean;
 	isDeletedVersion: boolean;
-	hasDuration: boolean;
 	title: string;
 	durationLabel: string;
 	shortDate: string;
-	fullDate: string;
+	tooltipLabel: string;
+	tooltipStatus: WorkflowHistoryVersionStatus;
+	tooltipSecondaryText: string;
 };
 
 // ---- formatters --------------------------------------------------------
@@ -64,8 +66,6 @@ const formatShortDate = (date: Date) => {
 	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm';
 	return dateformat(date, format);
 };
-
-const formatFullDate = (date: Date) => dateformat(date, 'mmm d, yyyy HH:MM:ss');
 
 const formatDuration = (start: Date, end: Date | null) => {
 	const ms = (end ?? new Date()).getTime() - start.getTime();
@@ -100,6 +100,36 @@ const titleFor = (event: PublishTimelineEvent): string => {
 	return i18n.baseText('workflowHistory.publishTimeline.event.activated');
 };
 
+const tooltipLabelFor = (event: PublishTimelineEvent): string => {
+	if (event.event === 'deactivated') {
+		return i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
+	}
+	if (!event.versionId) {
+		return i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
+	}
+	return event.versionName ?? generateVersionLabelFromId(event.versionId);
+};
+
+const buildSecondaryText = (event: PublishTimelineEvent, user: string | null): string => {
+	const action =
+		event.event === 'activated'
+			? i18n.baseText('workflowHistory.publishTimeline.event.activated')
+			: i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
+	const { date, time } = formatTimestamp(event.createdAt);
+	const datetime = i18n.baseText('workflowHistory.item.createdAt', {
+		interpolate: { date, time },
+	});
+
+	if (user) {
+		return i18n.baseText('workflowHistory.publishTimeline.tooltip.byUser', {
+			interpolate: { action, user, datetime },
+		});
+	}
+	return i18n.baseText('workflowHistory.publishTimeline.tooltip.noUser', {
+		interpolate: { action, datetime },
+	});
+};
+
 const buildEntry = (
 	event: PublishTimelineEvent,
 	next: PublishTimelineEvent | undefined,
@@ -107,8 +137,9 @@ const buildEntry = (
 	const status: EntryStatus = event.event === 'activated' ? 'published' : 'unpublished';
 	const startedAt = new Date(event.createdAt);
 	const endedAt = next ? new Date(next.createdAt) : null;
-	const durationMs = (endedAt ?? new Date()).getTime() - startedAt.getTime();
 	const versionId = status === 'published' ? event.versionId : null;
+	const user = event.user ? `${event.user.firstName} ${event.user.lastName}` : null;
+	const isLatest = !next;
 	const durationKey =
 		status === 'published'
 			? 'workflowHistory.publishTimeline.activeDuration'
@@ -119,18 +150,19 @@ const buildEntry = (
 		startedAt,
 		endedAt,
 		versionId,
-		user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
-		isLatest: !next,
+		user,
+		isLatest,
 		isClickable: status === 'published' && !!versionId,
 		isSelected: !!versionId && versionId === props.selectedVersionId,
 		isDeletedVersion: status === 'published' && !versionId,
-		hasDuration: durationMs >= MIN_DURATION_FOR_LABEL_MS,
 		title: titleFor(event),
 		durationLabel: i18n.baseText(durationKey, {
 			interpolate: { duration: formatDuration(startedAt, endedAt) },
 		}),
 		shortDate: formatShortDate(startedAt),
-		fullDate: formatFullDate(startedAt),
+		tooltipLabel: tooltipLabelFor(event),
+		tooltipStatus: isLatest && status === 'published' ? 'published' : 'default',
+		tooltipSecondaryText: buildSecondaryText(event, user),
 	};
 };
 
@@ -185,86 +217,78 @@ onMounted(loadTimeline);
 	<div :class="$style.content">
 		<N8nLoading v-if="isLoading" :rows="4" />
 		<div v-else-if="entries.length === 0" :class="$style.empty">
-			<N8nText>{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}</N8nText>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}
+			</N8nText>
 		</div>
 		<template v-else>
 			<div :class="$style.timeline">
-				<div
+				<WorkflowHistoryPublishedTooltip
 					v-for="(entry, idx) in entries"
 					:key="idx"
-					:class="[
-						$style.timelineItem,
-						entry.isClickable && $style.timelineItemClickable,
-						entry.isSelected && $style.timelineItemSelected,
-						entry.hasDuration && $style.timelineItemTall,
-					]"
-					:role="entry.isClickable ? 'button' : undefined"
-					:tabindex="entry.isClickable ? 0 : undefined"
-					@click="entry.isClickable && handleSelect(entry)"
-					@keydown.enter="entry.isClickable && handleSelect(entry)"
-					@keydown.space.prevent="entry.isClickable && handleSelect(entry)"
+					placement="left"
+					:label="entry.tooltipLabel"
+					:status="entry.tooltipStatus"
+					:secondary-text="entry.tooltipSecondaryText"
 				>
-					<div :class="$style.timelineIndicator">
-						<span
-							:class="[
-								$style.timelineLine,
-								idx === 0 && entry.status !== 'published' && $style.timelineLineHidden,
-							]"
-						/>
-						<span v-if="entry.status === 'unpublished'" :class="$style.timelineMarker">
-							<N8nIcon icon="x" size="small" />
-						</span>
-						<span
-							v-else
-							:class="[
-								$style.timelineDot,
-								entry.isLatest ? $style.dotPublished : $style.dotPastPublished,
-							]"
-						/>
-						<span
-							:class="[
-								$style.timelineLine,
-								idx === entries.length - 1 && $style.timelineLineHidden,
-							]"
-						/>
-					</div>
-					<div :class="$style.timelineContent">
-						<div :class="$style.durationRow">
-							<template v-if="entry.hasDuration">
-								<N8nIcon icon="clock" size="small" />
-								<N8nText size="xsmall" color="text-light">
+					<div
+						:class="[
+							$style.timelineItem,
+							entry.isClickable && $style.timelineItemClickable,
+							entry.isSelected && $style.timelineItemSelected,
+						]"
+						:role="entry.isClickable ? 'button' : undefined"
+						:tabindex="entry.isClickable ? 0 : undefined"
+						@click="entry.isClickable && handleSelect(entry)"
+						@keydown.enter="entry.isClickable && handleSelect(entry)"
+						@keydown.space.prevent="entry.isClickable && handleSelect(entry)"
+					>
+						<div :class="$style.timelineIndicator">
+							<span
+								:class="[
+									$style.timelineLine,
+									idx === 0 && entry.status !== 'published' && $style.timelineLineHidden,
+								]"
+							/>
+							<span v-if="entry.status === 'unpublished'" :class="$style.timelineMarker">
+								<N8nIcon icon="x" size="small" />
+							</span>
+							<span
+								v-else
+								:class="[
+									$style.timelineDot,
+									entry.isLatest ? $style.dotPublished : $style.dotPastPublished,
+								]"
+							/>
+						</div>
+						<div :class="$style.timelineContent">
+							<div :class="$style.durationRow">
+								<N8nText size="xsmall" color="text-base">
 									{{ entry.durationLabel }}
 								</N8nText>
-							</template>
-						</div>
-						<div :class="$style.timelineHeader">
-							<N8nText :bold="true" size="small" :class="$style.timelineTitle">
-								{{ entry.title }}
-								<N8nTooltip
-									v-if="entry.isDeletedVersion"
-									placement="top"
-									:content="
-										i18n.baseText(
-											'workflowHistory.publishTimeline.event.activatedDeletedVersion.tooltip',
-										)
-									"
-								>
-									<N8nIcon icon="info" size="small" :class="$style.deletedVersionHint" />
-								</N8nTooltip>
-							</N8nText>
-							<N8nTooltip placement="left" :content="entry.fullDate">
-								<N8nText size="small" color="text-light" :class="$style.dateText">
+							</div>
+							<div :class="$style.timelineHeader">
+								<N8nText :bold="true" size="small" color="text-dark" :class="$style.timelineTitle">
+									{{ entry.title }}
+									<N8nTooltip
+										v-if="entry.isDeletedVersion"
+										placement="top"
+										:content="
+											i18n.baseText(
+												'workflowHistory.publishTimeline.event.activatedDeletedVersion.tooltip',
+											)
+										"
+									>
+										<N8nIcon icon="info" size="small" :class="$style.deletedVersionHint" />
+									</N8nTooltip>
+								</N8nText>
+								<N8nText size="small" color="text-base" :class="$style.dateText">
 									{{ entry.shortDate }}
 								</N8nText>
-							</N8nTooltip>
-						</div>
-						<div :class="$style.userText">
-							<N8nText size="xsmall" color="text-light">
-								{{ entry.user }}
-							</N8nText>
+							</div>
 						</div>
 					</div>
-				</div>
+				</WorkflowHistoryPublishedTooltip>
 			</div>
 			<N8nTooltip
 				v-if="showDeletedVersionsDisclaimer"
@@ -296,6 +320,7 @@ onMounted(loadTimeline);
 .empty {
 	display: flex;
 	place-content: center;
+	padding: var(--spacing--xl) var(--spacing--m);
 	min-height: 200px;
 }
 
@@ -306,15 +331,9 @@ onMounted(loadTimeline);
 
 .timelineItem {
 	display: flex;
-	gap: var(--spacing--2xs);
-	margin: var(--spacing--4xs);
-	padding: var(--spacing--4xs);
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
 	border-radius: var(--radius);
-	height: 60px;
-
-	&.timelineItemTall {
-		height: 80px;
-	}
 
 	&.timelineItemClickable {
 		cursor: pointer;
@@ -336,7 +355,8 @@ onMounted(loadTimeline);
 	flex-direction: column;
 	align-items: center;
 	flex-shrink: 0;
-	width: 13px;
+	width: 11px;
+	padding-bottom: 3px;
 }
 
 .timelineDot {
@@ -347,7 +367,7 @@ onMounted(loadTimeline);
 }
 
 .dotPublished {
-	background-color: var(--color--success);
+	background-color: var(--color--mint-600);
 }
 
 .dotPastPublished {
@@ -378,6 +398,7 @@ onMounted(loadTimeline);
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
+	gap: var(--spacing--sm);
 	flex-grow: 1;
 	min-width: 0;
 }
@@ -412,13 +433,7 @@ onMounted(loadTimeline);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	min-height: var(--spacing--xs);
 	color: var(--color--text--tint-2);
-	padding-bottom: var(--spacing--2xs);
-}
-
-.userText {
-	min-height: var(--spacing--xs);
 }
 
 .deletedVersionsDisclaimer {
