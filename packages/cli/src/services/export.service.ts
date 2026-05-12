@@ -15,7 +15,7 @@ export class ExportService {
 		private readonly logger: Logger,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
-	) {}
+	) { }
 
 	private async clearExistingEntityFiles(outputDir: string, entityName: string): Promise<void> {
 		const existingFiles = await readdir(outputDir);
@@ -53,19 +53,43 @@ export class ExportService {
 			await this.dataSource.query(
 				`SELECT id FROM ${this.dataSource.driver.escape(migrationsTableName)} LIMIT 1`,
 			);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			if (
+				errorMessage.includes('no such table') ||
+				errorMessage.includes('does not exist') ||
+				errorMessage.includes("doesn't exist") ||
+				errorMessage.includes('not found')
+			) {
+				this.logger.info(
+					`   ⚠️  Migrations table ${migrationsTableName} not found or not accessible, skipping...`,
+					{ error },
+				);
+				return systemTablesExported;
+			}
+			throw error;
+		}
 
-			this.logger.info(`\n📊 Processing system table: ${migrationsTableName}`);
+		this.logger.info(`\n📊 Processing system table: ${migrationsTableName}`);
 
-			// Clear existing files for migrations
-			await this.clearExistingEntityFiles(outputDir, 'migrations');
+		// Clear existing files for migrations
+		await this.clearExistingEntityFiles(outputDir, 'migrations');
 
-			// Export all migrations data to a single file (no pagination needed for small table)
-			const formattedTableName = this.dataSource.driver.escape(migrationsTableName);
-			const allMigrations = await this.dataSource.query(`SELECT * FROM ${formattedTableName}`);
+		// Export all migrations data to a single file (no pagination needed for small table)
+		const formattedTableName = this.dataSource.driver.escape(migrationsTableName);
+		const allMigrations = await this.dataSource.query(`SELECT * FROM ${formattedTableName}`);
 
-			const fileName = 'migrations.jsonl';
-			const filePath = safeJoinPath(outputDir, fileName);
+		const fileName = 'migrations.jsonl';
+		const filePath = safeJoinPath(outputDir, fileName);
 
+		const migrationsJsonl: string = allMigrations
+			.map((migration: unknown) => JSON.stringify(migration))
+			.join('\n');
+		await appendFile(
+			filePath,
+			this.cipher.encrypt(migrationsJsonl ?? '' + '\n', customEncryptionKey),
+			'utf8',
+		);
 			const migrationsJsonl: string = allMigrations
 				.map((migration: unknown) => JSON.stringify(migration))
 				.join('\n');
@@ -75,17 +99,11 @@ export class ExportService {
 				'utf8',
 			);
 
-			this.logger.info(
-				`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
-			);
+		this.logger.info(
+			`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
+		);
 
-			systemTablesExported = 1; // Successfully exported migrations table
-		} catch (error) {
-			this.logger.info(
-				`   ⚠️  Migrations table ${migrationsTableName} not found or not accessible, skipping...`,
-				{ error },
-			);
-		}
+		systemTablesExported = 1; // Successfully exported migrations table
 
 		return systemTablesExported;
 	}
@@ -116,7 +134,7 @@ export class ExportService {
 			}
 		}
 
-		await rm(outputDir, { recursive: true }).catch(() => {});
+		await rm(outputDir, { recursive: true }).catch(() => { });
 		// Ensure output directory exists
 		await mkdir(outputDir, { recursive: true });
 
@@ -142,6 +160,25 @@ export class ExportService {
 					`   💭 Skipping table: ${tableName} (${metadata.name}) as it exists as an exclusion`,
 				);
 				continue;
+			}
+
+			// Test if the table exists before proceeding to export
+			try {
+				await this.dataSource.query(
+					`SELECT 1 FROM ${this.dataSource.driver.escape(tableName)} LIMIT 1`,
+				);
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				if (
+					errorMessage.includes('no such table') ||
+					errorMessage.includes('does not exist') ||
+					errorMessage.includes("doesn't exist") ||
+					errorMessage.includes('not found')
+				) {
+					this.logger.warn(`   ⚠️  Table ${tableName} (${metadata.name}) not found, skipping...`);
+					continue;
+				}
+				throw error;
 			}
 
 			const entityName = metadata.name.toLowerCase();
@@ -182,7 +219,9 @@ export class ExportService {
 				// Determine which file to write to based on current entity count
 				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
 				const fileName =
-					targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
+					targetFileIndex === 1
+						? `${entityName}.jsonl`
+						: `${entityName}.${targetFileIndex}.jsonl`;
 				const filePath = safeJoinPath(outputDir, fileName);
 
 				// If we've moved to a new file, log the completion of the previous file

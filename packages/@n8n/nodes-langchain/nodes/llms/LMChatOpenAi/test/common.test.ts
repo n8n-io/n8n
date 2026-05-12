@@ -214,4 +214,55 @@ describe('prepareAdditionalResponsesParams', () => {
 		} as unknown as IDataObject);
 		expect(body).toEqual({ reasoning: { effort: 'low' } });
 	});
+
+	describe('Regression tests for Issue #24492 (Array handling in fixedCollections)', () => {
+		it('should handle textOptions as an array (n8n default for some fixedCollections)', () => {
+			const body = prepareAdditionalResponsesParams({
+				textFormat: {
+					textOptions: [
+						{ type: 'text', verbosity: 'medium' }
+					]
+				},
+			} as unknown as IDataObject);
+
+			expect(body).toEqual({
+				text: {
+					verbosity: 'medium',
+					format: { type: 'text' }
+				}
+			});
+		});
+
+		it('should handle promptOptions as an array', () => {
+			const body = prepareAdditionalResponsesParams({
+				promptConfig: {
+					promptOptions: [
+						{ promptId: 'p1', version: 'v1' }
+					]
+				},
+			} as unknown as IDataObject);
+
+			expect(body).toEqual({
+				prompt: {
+					id: 'p1',
+					version: 'v1'
+				}
+			});
+		});
+
+		it('should still handle textOptions as an object (backward compatibility)', () => {
+			const body = prepareAdditionalResponsesParams({
+				textFormat: {
+					textOptions: { type: 'json_object', verbosity: 'low' }
+				},
+			} as unknown as IDataObject);
+
+			expect(body).toEqual({
+				text: {
+					verbosity: 'low',
+					format: { type: 'json_object' }
+				}
+			});
+		});
+	});
 });
