@@ -150,6 +150,21 @@ export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
+export {
+	parseObservationLogMarkdown,
+	renderObserverTranscript,
+	runObservationLogObserver,
+} from './runtime/observation-log-observer';
+export type {
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
+	ObservationLogObserverMemory,
+	ParsedObservationLogEntry,
+	ParseObservationLogMarkdownResult,
+	RenderObserverTranscriptOptions,
+	RunObservationLogObserverOpts,
+	RunObservationLogObserverResult,
+} from './runtime/observation-log-observer';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
