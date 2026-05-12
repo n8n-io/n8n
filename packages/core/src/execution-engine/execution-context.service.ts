@@ -29,9 +29,26 @@ export class ExecutionContextService {
 			const decrypted = await this.cipher.decryptV2(context.credentials);
 			credentials = toCredentialContext(decrypted);
 		}
+
+		let secureArtifacts: PlaintextExecutionContext['secureArtifacts'] = undefined;
+		if (context.secureArtifacts) {
+			const entries = await Promise.all(
+				Object.entries(context.secureArtifacts).map(async ([nodeName, paths]) => {
+					const decryptedPaths = await Promise.all(
+						Object.entries(paths).map(
+							async ([path, ct]) => [path, await this.cipher.decryptV2(ct)] as const,
+						),
+					);
+					return [nodeName, Object.fromEntries(decryptedPaths)] as const;
+				}),
+			);
+			secureArtifacts = Object.fromEntries(entries);
+		}
+
 		return {
 			...context,
 			credentials,
+			secureArtifacts,
 		};
 	}
 
@@ -40,9 +57,26 @@ export class ExecutionContextService {
 		if (context.credentials) {
 			credentials = await this.cipher.encryptV2(context.credentials);
 		}
+
+		let secureArtifacts: IExecutionContext['secureArtifacts'] = undefined;
+		if (context.secureArtifacts) {
+			const entries = await Promise.all(
+				Object.entries(context.secureArtifacts).map(async ([nodeName, paths]) => {
+					const encryptedPaths = await Promise.all(
+						Object.entries(paths).map(
+							async ([path, pt]) => [path, await this.cipher.encryptV2(pt)] as const,
+						),
+					);
+					return [nodeName, Object.fromEntries(encryptedPaths)] as const;
+				}),
+			);
+			secureArtifacts = Object.fromEntries(entries);
+		}
+
 		return {
 			...context,
 			credentials,
+			secureArtifacts,
 		};
 	}
 

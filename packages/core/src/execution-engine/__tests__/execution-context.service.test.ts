@@ -97,6 +97,58 @@ describe('ExecutionContextService', () => {
 				credentials: parsedCreds,
 			});
 		});
+
+		it('should leave secureArtifacts undefined when absent', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			};
+
+			const result = await service.decryptExecutionContext(context);
+
+			expect(result.secureArtifacts).toBeUndefined();
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+		});
+
+		it('should decrypt secureArtifacts when present', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				secureArtifacts: {
+					nodeA: { p1: 'ct-A1', p2: 'ct-A2' },
+					nodeB: { p3: 'ct-B3' },
+				},
+			};
+
+			mockCipher.decryptV2.mockImplementation(async (ct: string) => `pt(${ct})`);
+
+			const result = await service.decryptExecutionContext(context);
+
+			expect(result.secureArtifacts).toEqual({
+				nodeA: { p1: 'pt(ct-A1)', p2: 'pt(ct-A2)' },
+				nodeB: { p3: 'pt(ct-B3)' },
+			});
+			expect(mockCipher.decryptV2).toHaveBeenCalledTimes(3);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('ct-A1');
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('ct-A2');
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('ct-B3');
+		});
+
+		it('should handle empty inner records in secureArtifacts', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				secureArtifacts: { nodeA: {} },
+			};
+
+			const result = await service.decryptExecutionContext(context);
+
+			expect(result.secureArtifacts).toEqual({ nodeA: {} });
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('encryptExecutionContext()', () => {
@@ -136,6 +188,65 @@ describe('ExecutionContextService', () => {
 				...context,
 				credentials: encryptedCreds,
 			});
+		});
+
+		it('should leave secureArtifacts undefined when absent', async () => {
+			const context: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			};
+
+			const result = await service.encryptExecutionContext(context);
+
+			expect(result.secureArtifacts).toBeUndefined();
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('should encrypt secureArtifacts when present', async () => {
+			const context: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				secureArtifacts: {
+					nodeA: { p1: 'pt-A1', p2: 'pt-A2' },
+					nodeB: { p3: 'pt-B3' },
+				},
+			};
+
+			mockCipher.encryptV2.mockImplementation(async (pt) => `ct(${pt as string})`);
+
+			const result = await service.encryptExecutionContext(context);
+
+			expect(result.secureArtifacts).toEqual({
+				nodeA: { p1: 'ct(pt-A1)', p2: 'ct(pt-A2)' },
+				nodeB: { p3: 'ct(pt-B3)' },
+			});
+			expect(mockCipher.encryptV2).toHaveBeenCalledTimes(3);
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith('pt-A1');
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith('pt-A2');
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith('pt-B3');
+		});
+
+		it('should preserve secureArtifacts values across encrypt then decrypt', async () => {
+			const plaintext = {
+				nodeA: { p1: 'value-A1', p2: 'value-A2' },
+				nodeB: { p3: 'value-B3' },
+			};
+
+			mockCipher.encryptV2.mockImplementation(async (pt) => `enc:${pt as string}`);
+			mockCipher.decryptV2.mockImplementation(async (ct: string) => ct.replace(/^enc:/, ''));
+
+			const encrypted = await service.encryptExecutionContext({
+				version: 1,
+				establishedAt: 1,
+				source: 'webhook',
+				secureArtifacts: plaintext,
+			});
+
+			const decrypted = await service.decryptExecutionContext(encrypted);
+
+			expect(decrypted.secureArtifacts).toEqual(plaintext);
 		});
 	});
 
@@ -226,6 +337,54 @@ describe('ExecutionContextService', () => {
 			const result = service.mergeExecutionContexts(baseContext, {});
 
 			expect(result).toEqual(baseContext);
+		});
+
+		it('should merge secureArtifacts deeply', () => {
+			const baseContext: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'manual',
+				secureArtifacts: {
+					nodeA: { p1: 'x' },
+				},
+			};
+
+			const contextToMerge: Partial<PlaintextExecutionContext> = {
+				secureArtifacts: {
+					nodeA: { p2: 'y' },
+					nodeB: { p3: 'z' },
+				},
+			};
+
+			const result = service.mergeExecutionContexts(baseContext, contextToMerge);
+
+			expect(result.secureArtifacts).toEqual({
+				nodeA: { p1: 'x', p2: 'y' },
+				nodeB: { p3: 'z' },
+			});
+		});
+
+		it('should overwrite overlapping secureArtifacts leaves on merge', () => {
+			const baseContext: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'manual',
+				secureArtifacts: {
+					nodeA: { p1: 'old' },
+				},
+			};
+
+			const contextToMerge: Partial<PlaintextExecutionContext> = {
+				secureArtifacts: {
+					nodeA: { p1: 'new' },
+				},
+			};
+
+			const result = service.mergeExecutionContexts(baseContext, contextToMerge);
+
+			expect(result.secureArtifacts).toEqual({
+				nodeA: { p1: 'new' },
+			});
 		});
 	});
 

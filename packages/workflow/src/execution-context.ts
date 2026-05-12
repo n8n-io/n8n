@@ -101,6 +101,17 @@ const ExecutionContextSchemaV1 = z.object({
 	}),
 
 	/**
+	 * Per-execution secure artifacts produced by nodes.
+	 * Outer key: source node name. Inner key: artifact path.
+	 * Inner values are ciphertext when stored on IExecutionContext, plaintext on PlaintextExecutionContext.
+	 * Keys remain inspectable; only leaf values are encrypted.
+	 */
+	secureArtifacts: z.record(z.string(), z.record(z.string(), z.string())).optional().meta({
+		description:
+			'Per-execution secure artifacts produced by nodes. Outer key: source node name. Inner key: artifact path. Values are ciphertext when stored on IExecutionContext, plaintext on PlaintextExecutionContext.',
+	}),
+
+	/**
 	 * Redaction setting captured at execution time.
 	 * Persisted so the correct redaction policy is applied when reading execution data,
 	 * regardless of any subsequent changes to the workflow setting.
@@ -127,6 +138,10 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  *
  * This type is identical to IExecutionContext except the `credentials` field
  * contains the decrypted ICredentialContext object instead of an encrypted string.
+ *
+ * The `secureArtifacts` field keeps the same TypeScript shape on both forms
+ * (`Record<string, Record<string, string>>`); only the leaf string values
+ * switch between ciphertext (persisted) and plaintext (runtime).
  *
  * **Usage contexts:**
  * - Hook execution: Hooks work with plaintext context to extract/merge credential data
