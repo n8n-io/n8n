@@ -35,8 +35,7 @@ function createMockEventBus(): InstanceAiEventBus {
 
 function createMockContext(overrides?: Partial<OrchestrationContext>): OrchestrationContext {
 	const domainTools: ToolsInput = {
-		'web-search': { id: 'web-search' } as never,
-		'fetch-url': { id: 'fetch-url' } as never,
+		research: { id: 'research' } as never,
 		'list-workflows': { id: 'list-workflows' } as never,
 	};
 
@@ -53,7 +52,11 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		domainTools,
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as TaskStorage,
-		spawnBackgroundTask: jest.fn(),
+		spawnBackgroundTask: jest.fn(() => ({
+			status: 'started' as const,
+			taskId: 'spawn-task-id',
+			agentId: 'spawn-agent-id',
+		})),
 		cancelBackgroundTask: jest.fn(),
 		...overrides,
 	};
@@ -115,23 +118,23 @@ describe('research-with-agent tool', () => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					payload: expect.objectContaining({
 						role: 'web-researcher',
-						tools: ['web-search', 'fetch-url'],
+						tools: ['research'],
 					}),
 				}),
 			);
 		});
 
-		it('returns error when web-search tool is not available', async () => {
+		it('returns error when research tool is not available', async () => {
 			const context = createMockContext({
 				domainTools: {
-					'fetch-url': { id: 'fetch-url' } as never,
+					'list-workflows': { id: 'list-workflows' } as never,
 				},
 			});
 			const tool = createResearchWithAgentTool(context);
 
 			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
 
-			expect(result.result).toBe('Error: web-search tool not available.');
+			expect(result.result).toBe('Error: research tool not available.');
 			expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
 		});
 
@@ -144,6 +147,47 @@ describe('research-with-agent tool', () => {
 			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
 
 			expect(result.result).toBe('Error: background task support not available.');
+		});
+
+		it('does not publish agent-spawned when spawn returns duplicate', async () => {
+			// The single-flight dedupe path used to emit a phantom `agent-spawned`
+			// before checking the spawn outcome — leaving an orphan card in the UI.
+			const context = createMockContext({
+				spawnBackgroundTask: jest.fn(() => ({
+					status: 'duplicate' as const,
+					existing: {
+						taskId: 'task-existing',
+						agentId: 'agent-existing',
+						role: 'web-researcher',
+					},
+				})),
+			});
+			const tool = createResearchWithAgentTool(context);
+
+			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
+				result: string;
+				taskId: string;
+			};
+
+			expect(result.result).toContain('Research already in progress');
+			expect(result.taskId).toBe('task-existing');
+			expect(context.eventBus.publish).not.toHaveBeenCalled();
+		});
+
+		it('does not publish agent-spawned when spawn returns limit-reached', async () => {
+			const context = createMockContext({
+				spawnBackgroundTask: jest.fn(() => ({ status: 'limit-reached' as const })),
+			});
+			const tool = createResearchWithAgentTool(context);
+
+			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
+				result: string;
+				taskId: string;
+			};
+
+			expect(result.result).toContain('limit reached');
+			expect(result.taskId).toBe('');
+			expect(context.eventBus.publish).not.toHaveBeenCalled();
 		});
 	});
 });

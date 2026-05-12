@@ -10,6 +10,9 @@ import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { UrlService } from '@/services/url.service';
+
+const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 
 const BASE_URL = 'http://gateway.test';
 const INSTANCE_ID = 'test-instance-id';
@@ -34,6 +37,9 @@ function makeService({
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
 	userRepository = mock<UserRepository>({ findOneBy: jest.fn().mockResolvedValue(null) }),
+	urlService = mock<UrlService>({
+		getInstanceBaseUrl: jest.fn().mockReturnValue(INSTANCE_BASE_URL),
+	}),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -53,6 +59,7 @@ function makeService({
 		instanceSettings,
 		ownershipService,
 		userRepository,
+		urlService,
 	);
 }
 
@@ -189,9 +196,19 @@ describe('AiGatewayService', () => {
 						'x-n8n-version': N8N_VERSION,
 						'x-instance-id': INSTANCE_ID,
 					},
-					body: JSON.stringify({ licenseCert: LICENSE_CERT }),
+					body: JSON.stringify({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL }),
 				}),
 			);
+		});
+
+		it('includes instanceUrl in token body', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			expect(body.instanceUrl).toBe(INSTANCE_BASE_URL);
 		});
 
 		it('includes userEmail and userName in token body when user exists', async () => {
@@ -215,6 +232,7 @@ describe('AiGatewayService', () => {
 						licenseCert: LICENSE_CERT,
 						userEmail: 'alice@example.com',
 						userName: 'Alice Smith',
+						instanceUrl: INSTANCE_BASE_URL,
 					}),
 				}),
 			);
@@ -245,7 +263,7 @@ describe('AiGatewayService', () => {
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
 			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
-			expect(body).toEqual({ licenseCert: LICENSE_CERT });
+			expect(body).toEqual({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL });
 		});
 
 		it('caches config and token — second call makes no additional fetches', async () => {
@@ -357,6 +375,137 @@ describe('AiGatewayService', () => {
 			).rejects.toThrow('Failed to resolve user for AI Gateway attribution.');
 		});
 
+		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
+		it('uses standard gateway URL when executionId is absent', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/google`,
+			});
+		});
+
+		it('uses standard gateway URL when workflowId is absent', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/google`,
+			});
+		});
+
+		it('URL-encodes executionId and workflowId in the gateway URL', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: 'exec/with/slashes',
+				workflowId: 'wf with spaces',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/exec%2Fwith%2Fslashes/wf%20with%20spaces/google`,
+			});
+		});
+
+		it('uses standard gateway URL when gatewayPath does not start with the gateway prefix', async () => {
+			const customConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				providerConfig: {
+					googlePalmApi: {
+						...MOCK_GATEWAY_CONFIG.providerConfig.googlePalmApi,
+						gatewayPath: '/other/v1/gateway/google',
+					},
+				},
+			};
+			fetchMock
+				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+				});
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/other/v1/gateway/google`,
+			});
+		});
+
+		it('does not strip gateway prefix appearing mid-path when building exec URL', async () => {
+			// gatewayPath contains the prefix string but NOT at the start —
+			// the old .replace() would have corrupted the URL by stripping it from the middle.
+			const customConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				providerConfig: {
+					googlePalmApi: {
+						...MOCK_GATEWAY_CONFIG.providerConfig.googlePalmApi,
+						gatewayPath: '/proxy/v1/gateway/google',
+					},
+				},
+			};
+			fetchMock
+				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+				});
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			// Path does not start with prefix → falls back to standard URL, prefix untouched
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/proxy/v1/gateway/google`,
+			});
+		});
+
 		it('throws UserError when gateway token response is missing token field', async () => {
 			fetchMock
 				.mockResolvedValueOnce({
@@ -374,13 +523,13 @@ describe('AiGatewayService', () => {
 		});
 	});
 
-	describe('getCreditsRemaining()', () => {
+	describe('getWallet()', () => {
 		it('throws UserError when baseUrl is not configured', async () => {
 			const service = makeService({ baseUrl: null });
-			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
+			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
-		it('returns creditsQuota and creditsRemaining from gateway', async () => {
+		it('returns budget and balance from gateway wallet', async () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
@@ -388,13 +537,13 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
+					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
 				});
 			const service = makeService();
 
-			const result = await service.getCreditsRemaining(USER_ID);
+			const result = await service.getWallet(USER_ID);
 
-			expect(result).toEqual({ creditsQuota: 10, creditsRemaining: 7 });
+			expect(result).toEqual({ budget: 10, balance: 7 });
 		});
 
 		it('sends JWT Bearer token in Authorization header to credits endpoint', async () => {
@@ -405,27 +554,27 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
+					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
 				});
 			const service = makeService();
 
-			await service.getCreditsRemaining(USER_ID);
+			await service.getWallet(USER_ID);
 
 			expect(fetchMock).toHaveBeenNthCalledWith(
 				1,
 				`${BASE_URL}/v1/gateway/credentials`,
 				expect.objectContaining({
 					method: 'POST',
-					body: JSON.stringify({ licenseCert: LICENSE_CERT }),
+					body: JSON.stringify({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL }),
 				}),
 			);
-			expect(fetchMock).toHaveBeenNthCalledWith(2, `${BASE_URL}/v1/gateway/credits`, {
+			expect(fetchMock).toHaveBeenNthCalledWith(2, `${BASE_URL}/v1/gateway/wallet`, {
 				method: 'GET',
 				headers: { Authorization: 'Bearer mock-jwt' },
 			});
 		});
 
-		it('throws UserError when credits gateway returns non-ok status', async () => {
+		it('throws UserError when wallet gateway returns non-ok status', async () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
@@ -433,7 +582,7 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({ ok: false, status: 429 });
 			const service = makeService();
-			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
+			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
 		it('throws UserError when gateway returns invalid response shape', async () => {
@@ -444,18 +593,16 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ creditsQuota: 'not-a-number' }),
+					json: jest.fn().mockResolvedValue({ budget: 'not-a-number' }),
 				});
 			const service = makeService();
-			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
+			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 	});
 
 	describe('getUsage()', () => {
 		const MOCK_USAGE_RESPONSE = {
-			entries: [
-				{ provider: 'google', model: 'gemini-pro', timestamp: 1700000000, creditsDeducted: 2 },
-			],
+			entries: [{ provider: 'google', model: 'gemini-pro', timestamp: 1700000000, cost: 2 }],
 			total: 1,
 		};
 

@@ -3,6 +3,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -34,6 +35,12 @@ const outputSchema = {
 		.optional()
 		.describe('Validation warnings (if any)'),
 	errors: z.array(z.string()).optional().describe('Validation errors (if invalid)'),
+	hint: z
+		.string()
+		.optional()
+		.describe(
+			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -47,7 +54,7 @@ export const createValidateWorkflowCodeTool = (
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
 		description:
-			'Validate n8n Workflow SDK code. Parses the code into a workflow and checks for errors. Returns the workflow JSON if valid, or detailed error messages to fix. Always validate before creating a workflow.',
+			'Validate n8n Workflow SDK code. Required before creating or updating workflows from code. If you have not already read get_sdk_reference, call that first; guessing SDK syntax commonly creates invalid workflows.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -104,9 +111,12 @@ export const createValidateWorkflowCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const hint = getSdkReferenceHint(error);
+
 			const output = {
 				valid: false,
 				errors: [errorMessage],
+				...(hint ? { hint } : {}),
 			};
 
 			return {

@@ -464,6 +464,7 @@ export interface SubcategoryItemProps {
 		color?: string;
 	};
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -642,6 +643,9 @@ export interface NewCredentialsModal extends ModalState {
 	forceManualMode?: boolean;
 	projectId?: string;
 	suggestedName?: string;
+	nodeName?: string;
+	contextNode?: INodeUi;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

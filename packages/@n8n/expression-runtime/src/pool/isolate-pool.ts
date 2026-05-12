@@ -16,7 +16,16 @@ export class PoolExhaustedError extends IsolateError {
 	}
 }
 
-export class IsolatePool {
+/** Public contract shared by IsolatePool and IdleScalingPool. */
+export interface IPool {
+	initialize(): Promise<void>;
+	acquire(): RuntimeBridge;
+	release(bridge: RuntimeBridge): Promise<void>;
+	dispose(): Promise<void>;
+	waitForReplenishment(): Promise<void>;
+}
+
+export class IsolatePool implements IPool {
 	private bridges: RuntimeBridge[] = [];
 	private disposed = false;
 	/** Number of bridges currently being created. */

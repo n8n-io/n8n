@@ -23,7 +23,7 @@ export class OpenAiV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2, 2.3],
 			defaults: {
 				name: 'OpenAI',
 			},
@@ -47,7 +47,7 @@ export class OpenAiV2 implements INodeType {
 							name: 'Text',
 							value: 'text',
 							builderHint: {
-								message:
+								propertyHint:
 									'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model instead of this resource.',
 							},
 						},

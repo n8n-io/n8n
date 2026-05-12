@@ -189,6 +189,58 @@ test.describe(
 			await expect(n8n.projectSettings.getDeleteButton()).toBeVisible();
 		});
 
+		test('should allow owner to search and add a member to the project @auth:owner', async ({
+			n8n,
+			api,
+		}) => {
+			const member = await api.publicApi.createUser({
+				email: `member-${nanoid()}@test.com`.toLowerCase(),
+				firstName: 'Invited',
+				lastName: 'Member',
+			});
+
+			const projectName = `Invite Test ${nanoid(8)}`;
+			const { projectId } = await n8n.projectComposer.createProject(projectName);
+
+			await n8n.navigate.toProjectSettings(projectId);
+			await n8n.projectSettings.expectTableHasMemberCount(1);
+
+			await n8n.projectSettings.searchForMember('Invited');
+			await n8n.projectSettings.getVisiblePopoverOption(member.email).click();
+
+			await expect(n8n.projectSettings.getMembersTable()).toContainText(member.email);
+			await n8n.projectSettings.expectTableHasMemberCount(2);
+			await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		});
+
+		test('should allow project admin to search and add a member to the project @auth:owner', async ({
+			n8n,
+			api,
+		}) => {
+			const projectAdmin = await api.publicApi.createUser({
+				email: `proj-admin-${nanoid()}@test.com`.toLowerCase(),
+				firstName: 'Project',
+				lastName: 'Admin',
+			});
+			const invitee = await api.publicApi.createUser({
+				email: `invitee-${nanoid()}@test.com`.toLowerCase(),
+				firstName: 'New',
+				lastName: 'Invitee',
+			});
+
+			const project = await api.projects.createProject(`PA Invite ${nanoid(8)}`);
+			await api.projects.addUserToProject(project.id, projectAdmin.id, 'project:admin');
+
+			const adminN8n = await n8n.start.withUser(projectAdmin);
+			await adminN8n.navigate.toProjectSettings(project.id);
+
+			await adminN8n.projectSettings.searchForMember('Invitee');
+			await adminN8n.projectSettings.getVisiblePopoverOption(invitee.email).click();
+
+			await expect(adminN8n.projectSettings.getMembersTable()).toContainText(invitee.email);
+			await expect(adminN8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		});
+
 		test('should persist settings after page reload @auth:owner', async ({ n8n }) => {
 			// Create a new project
 			const projectName = `Persistence ${nanoid(8)}`;

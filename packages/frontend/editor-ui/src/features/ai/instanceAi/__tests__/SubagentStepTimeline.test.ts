@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import SubagentStepTimeline from '../components/SubagentStepTimeline.vue';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 
-const renderComponent = createComponentRenderer(SubagentStepTimeline, {
+const renderComponent = createThreadComponentRenderer(SubagentStepTimeline, {
 	global: {
 		stubs: {
 			// ToolCallStep is stubbed so we can verify which toolCall was passed
@@ -102,8 +102,10 @@ describe('SubagentStepTimeline', () => {
 		expect(queryByTestId('tool-call-step')).not.toBeInTheDocument();
 	});
 
-	it('should append done step when status is completed', () => {
-		const { getByText } = renderComponent({
+	it('does not render a "Done" badge when status is completed', () => {
+		// The done-step render branch was removed; parent AgentSection now
+		// conveys completion via its collapse/shimmer state.
+		const { queryByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
 					status: 'completed',
@@ -112,10 +114,10 @@ describe('SubagentStepTimeline', () => {
 			},
 		});
 
-		expect(getByText('Done')).toBeInTheDocument();
+		expect(queryByText('Done')).not.toBeInTheDocument();
 	});
 
-	it('should NOT append done step when status is active', () => {
+	it('does not render a "Done" badge when status is active', () => {
 		const { queryByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({

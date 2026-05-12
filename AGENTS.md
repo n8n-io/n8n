@@ -81,6 +81,7 @@ The monorepo is organized into these key packages:
 - **`packages/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
+- **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 
@@ -145,14 +146,11 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - Import from appropriate error classes in each package
 
 ### Frontend Development
+- Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- For style changes and design-system updates, follow
-  `.agents/design-system-style-rules.md`
-
-When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
-CSS variables and styling conventions.
+- Always use `design-system-rules` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests

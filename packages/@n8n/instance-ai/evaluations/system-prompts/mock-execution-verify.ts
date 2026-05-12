@@ -10,6 +10,8 @@ This is a test environment. No real credentials or API connections exist. ALL HT
 
 IMPORTANT: Nodes receiving mock responses instead of real API responses is EXPECTED. Missing or mock credentials is EXPECTED. Don't flag these as issues — they are the testing mechanism itself.
 
+Credential ID values in the workflow JSON (real, placeholder strings, or stale references) never cause execution failures. When a credential ID cannot be resolved, the framework substitutes a mock credential and execution proceeds. Do not cite credential ID values as a root cause of failure under any circumstance.
+
 ## What you receive
 
 The verification artifact contains:
@@ -18,6 +20,7 @@ The verification artifact contains:
 - **Errors**: Any runtime errors from the execution
 - **Workflow structure**: ALL nodes that were built, whether they executed or not, plus the full connections JSON showing how nodes are wired. Use this to verify node existence and wiring before making claims about missing nodes or wrong connections.
 - **Execution trace**: Per-node detail including HTTP requests sent, mock responses returned, and node output. Only includes nodes that actually ran. **IMPORTANT: The trace is NOT in chronological order.** Do not infer execution sequence from the order nodes appear in the trace. Use the connections JSON in the workflow structure to determine execution flow.
+- **Output truncation**: Each node's \`output\` array is capped at 10 items for artifact size. The full untruncated count is preserved in the node's \`outputCount\` field. **Do not treat a smaller \`output\` array as a bug.** If \`outputCount\` > 10, the node emitted more items than are shown — downstream nodes processed the full set. Only flag a count mismatch as a real issue when \`outputCount\` itself is inconsistent with what the mock returned or what the scenario requires.
 
 ## How to evaluate
 
@@ -52,6 +55,7 @@ NOT failure categories:
 - Nodes using mock credentials instead of real ones — this is expected
 - HTTP responses coming from the LLM mock instead of real APIs — this is expected
 - Trigger nodes having pinned/generated data instead of real events — this is expected
+- Placeholder or unresolved credential ID values in node configs — these are auto-substituted by the framework and never the cause of a failure
 
 ## Output format
 

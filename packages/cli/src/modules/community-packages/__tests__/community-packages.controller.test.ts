@@ -1,5 +1,6 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
@@ -9,6 +10,7 @@ import type { NodeRequest } from '@/requests';
 
 import type { CommunityNodeTypesService } from '../community-node-types.service';
 import { CommunityPackagesController } from '../community-packages.controller';
+import type { CommunityPackagesConfig } from '../community-packages.config';
 import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
 import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
@@ -21,6 +23,10 @@ describe('CommunityPackagesController', () => {
 	const communityNodeTypesService = mock<CommunityNodeTypesService>();
 	const instanceSettings = mock<InstanceSettings>();
 	(instanceSettings as any).nodesDownloadDir = '/tmp/n8n-nodes-download';
+	const communityPackagesConfig = mock<CommunityPackagesConfig>();
+	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
+		communityPackagesManagedByEnv: false,
+	});
 
 	const lifecycle = new CommunityPackagesLifecycleService(
 		logger,
@@ -29,6 +35,8 @@ describe('CommunityPackagesController', () => {
 		eventService,
 		communityNodeTypesService,
 		instanceSettings,
+		communityPackagesConfig,
+		instanceSettingsLoaderConfig,
 	);
 
 	const controller = new CommunityPackagesController(lifecycle);
@@ -43,7 +51,7 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(undefined);
+			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
 			await expect(controller.installPackage(request)).rejects.toThrow(
 				'Package n8n-nodes-test is not vetted for installation',
 			);
@@ -67,7 +75,7 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(
+			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
 					checksum: 'checksum',
 				}),

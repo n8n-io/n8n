@@ -9,7 +9,6 @@ export type {
 	ContentReasoning,
 	ContentFile,
 	ContentToolCall,
-	ContentToolResult,
 	ContentInvalidToolCall,
 	ContentProvider,
 	Message,
@@ -61,11 +60,26 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	ObservationCapableMemory,
+	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
+
+export type {
+	BuiltObservationStore,
+	CompactFn,
+	NewObservation,
+	Observation,
+	ObservationCursor,
+	ObservationLockHandle,
+	ObservationalMemoryConfig,
+	ObserveFn,
+	ScopeKind,
+} from './sdk/observation';
+export { OBSERVATION_SCHEMA_VERSION } from './sdk/observation';
 
 export type {
 	EvalInput,

@@ -122,7 +122,7 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 
 			await router.push({
 				name: VIEWS.WORKFLOW,
-				params: { name: createdWorkflow.id },
+				params: { workflowId: createdWorkflow.id },
 			});
 
 			return createdWorkflow;

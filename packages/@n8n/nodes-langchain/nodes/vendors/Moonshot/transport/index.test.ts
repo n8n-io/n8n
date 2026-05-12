@@ -1,12 +1,13 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
+
 import { apiRequest } from '.';
 
 describe('Moonshot transport', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should call httpRequestWithAuthentication with correct parameters', async () => {
@@ -16,7 +17,7 @@ describe('Moonshot transport', () => {
 
 		await apiRequest.call(executeFunctionsMock, 'POST', '/chat/completions', {
 			body: {
-				model: 'kimi-k2.5',
+				model: 'kimi-k2.6',
 				messages: [{ role: 'user', content: 'Hello' }],
 			},
 		});
@@ -28,7 +29,7 @@ describe('Moonshot transport', () => {
 				url: 'https://api.moonshot.ai/v1/chat/completions',
 				json: true,
 				body: {
-					model: 'kimi-k2.5',
+					model: 'kimi-k2.6',
 					messages: [{ role: 'user', content: 'Hello' }],
 				},
 				headers: {},

@@ -43,13 +43,14 @@ import {
 	type MockHints,
 } from './workflow-analysis';
 import { createLlmMockHandler } from './mock-handler';
+import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Maximum number of output items to include per node in the result */
-const MAX_OUTPUT_ITEMS_PER_NODE = 5;
+/** Max output items per node kept in the artifact. The full count lives in `outputCount`. */
+const MAX_OUTPUT_ITEMS_PER_NODE = 10;
 
 // ---------------------------------------------------------------------------
 // Service
@@ -211,6 +212,8 @@ export class EvalExecutionService {
 			workflowId: workflowEntity.id,
 			workflowSettings: workflowEntity.settings ?? {},
 		});
+		const credentialsHelper = new EvalMockedCredentialsHelper(additionalData.credentialsHelper);
+		additionalData.credentialsHelper = credentialsHelper;
 		additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
 		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
@@ -247,7 +250,7 @@ export class EvalExecutionService {
 
 		try {
 			const result = await this.runWorkflow(workflow, additionalData, executionData);
-			return this.buildResult(executionId, result, nodeResults, hints);
+			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
@@ -257,6 +260,7 @@ export class EvalExecutionService {
 				nodeResults,
 				errors: [`Execution failed: ${message}`],
 				hints,
+				mockedCredentials: credentialsHelper.mockedCredentials,
 			};
 		}
 	}
@@ -420,6 +424,7 @@ export class EvalExecutionService {
 		result: IRun,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 		hints: MockHints,
+		credentialsHelper: EvalMockedCredentialsHelper,
 	): InstanceAiEvalExecutionResult {
 		const errors: string[] = [];
 
@@ -438,10 +443,9 @@ export class EvalExecutionService {
 			}
 			if (lastRun?.data?.main) {
 				// Capture output from all branches (Switch/IF nodes have multiple outputs)
-				const allOutputs = lastRun.data.main
-					.flat()
-					.filter(Boolean)
-					.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
+				const flattened = lastRun.data.main.flat().filter(Boolean);
+				entry.outputCount = flattened.length;
+				const allOutputs = flattened.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
 				if (allOutputs.length > 0) {
 					entry.output = allOutputs;
 				}
@@ -462,6 +466,7 @@ export class EvalExecutionService {
 			nodeResults,
 			errors,
 			hints,
+			mockedCredentials: credentialsHelper.mockedCredentials,
 		};
 	}
 
@@ -478,6 +483,7 @@ export class EvalExecutionService {
 				warnings: [],
 				bypassPinData: {},
 			},
+			mockedCredentials: [],
 		};
 	}
 }

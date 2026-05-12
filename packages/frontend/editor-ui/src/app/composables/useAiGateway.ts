@@ -10,19 +10,22 @@ export function useAiGateway() {
 	const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 	const aiGatewayStore = useAiGatewayStore();
 
-	const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
-	const creditsQuota = computed(() => aiGatewayStore.creditsQuota);
+	const balance = computed(() => aiGatewayStore.balance);
+	const budget = computed(() => aiGatewayStore.budget);
 	const fetchError = computed(() => aiGatewayStore.fetchError);
 
 	const isEnabled = computed(() => settingsStore.isAiGatewayEnabled);
 
-	async function fetchCredits(): Promise<void> {
+	async function fetchWallet(): Promise<void> {
 		if (!isEnabled.value) return;
-		await aiGatewayStore.fetchCredits();
+		await aiGatewayStore.fetchWallet();
 	}
 
 	const isCredentialTypeSupported = (credentialType: string): boolean =>
 		aiGatewayStore.isCredentialTypeSupported(credentialType);
+
+	const isActionSupported = (nodeName: string, resource: string, operation: string): boolean =>
+		aiGatewayStore.isActionSupported(nodeName, resource, operation);
 
 	async function fetchConfig(): Promise<void> {
 		if (!isEnabled.value) return;
@@ -35,12 +38,13 @@ export function useAiGateway() {
 
 	return {
 		isEnabled,
-		creditsRemaining,
-		creditsQuota,
+		balance,
+		budget,
 		fetchError,
 		fetchConfig,
-		fetchCredits,
+		fetchWallet,
 		isCredentialTypeSupported,
+		isActionSupported,
 		saveAfterToggle,
 	};
 }
