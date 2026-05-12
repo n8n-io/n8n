@@ -117,6 +117,14 @@ export const mainProperties: INodeProperties[] = [
 				authentication: ['genericCredentialType'],
 			},
 		},
+		builderHint: {
+			propertyHint: `Pick by how the API authenticates, not by what the user calls it:
+- "Authorization: Bearer <token>" → httpBearerAuth (single token field, best UX). Use this for OpenAI, Anthropic, GitHub PATs, Stripe, Notion, and any service whose docs say "Bearer".
+- Custom header like X-API-Key, apikey, X-Auth-Token → httpHeaderAuth (user must enter the header name).
+- API key in the query string (?api_key=...) → httpQueryAuth.
+- username + password → httpBasicAuth.
+A user saying "API key" or "header auth" usually means Bearer if the docs use the Authorization header — prefer httpBearerAuth in that case. Only fall back to httpHeaderAuth when the header name is genuinely non-standard.`,
+		},
 	},
 	{
 		displayName: 'SSL Certificates',
