@@ -68,6 +68,7 @@ import Node from './elements/nodes/CanvasNode.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
 import { useCanvasNodeGroupsStore } from '../stores/canvasNodeGroups.store';
+import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -358,6 +359,20 @@ function onNodeGroupTitleFocused(groupId: string) {
 	}
 }
 
+const {
+	canGroup: canGroupSelection,
+	canUngroup: canUngroupSelection,
+	groupSelection,
+	ungroupSelection,
+} = useCanvasNodeGroupActions(selectedNodes, {
+	readOnly: () => props.readOnly || props.suppressInteraction,
+});
+
+function onKeyboardGroup() {
+	const group = groupSelection();
+	if (group) nodeGroupIdToAutofocusTitle.value = group.id;
+}
+
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
@@ -419,6 +434,20 @@ const keyMap = computed(() => {
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
 		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
 	};
+
+	if (isCanvasNodeGroupingEnabled.value) {
+		fullKeymap.ctrl_g = {
+			disabled: () => !canGroupSelection.value,
+			run: onKeyboardGroup,
+		};
+		fullKeymap.ctrl_shift_g = {
+			disabled: () => !canUngroupSelection.value,
+			run: () => {
+				ungroupSelection();
+			},
+		};
+	}
+
 	return fullKeymap;
 });
 

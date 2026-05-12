@@ -5,9 +5,8 @@ import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { getRectOfNodes } from '@vue-flow/core';
 import type { GraphNode } from '@vue-flow/core';
 
-import { useCanvasNodeGroupsStore } from '../../../stores/canvasNodeGroups.store';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
-import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 
 const TOOLBAR_OFFSET_PX = 12;
 
@@ -22,28 +21,14 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const groupsStore = useCanvasNodeGroupsStore();
-const { isSelectionGroupable, expandSelectionWithSubNodes } = useSelectionValidation();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
+const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
+	readOnly: () => props.readOnly,
+});
 
 const emit = defineEmits<{
 	'group-created': [id: string];
 }>();
-
-const expandedSelectionIds = computed(() => {
-	if (props.readOnly || props.selectedNodes.length < 2) return [];
-	return expandSelectionWithSubNodes(props.selectedNodes.map((n) => n.id));
-});
-
-const anyMemberGrouped = computed(() =>
-	expandedSelectionIds.value.some((id) => groupsStore.getGroupForNode(id) !== undefined),
-);
-
-const canGroup = computed(() => {
-	if (expandedSelectionIds.value.length < 2) return false;
-	if (anyMemberGrouped.value) return false;
-	return isSelectionGroupable(expandedSelectionIds.value).valid;
-});
 
 const position = computed(() => {
 	const rect = getRectOfNodes(props.selectedNodes);
@@ -54,9 +39,8 @@ const position = computed(() => {
 });
 
 function onGroupClick() {
-	const title = groupsStore.getNextDefaultTitle(i18n.baseText('canvas.nodeGroup.defaultTitle'));
-	const group = groupsStore.createGroup(expandedSelectionIds.value, title);
-	emit('group-created', group.id);
+	const group = groupSelection();
+	if (group) emit('group-created', group.id);
 }
 </script>
 
