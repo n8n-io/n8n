@@ -208,7 +208,7 @@ const setAtPointer = (
 	for (let i = 0; i < segments.length - 1; i++) {
 		const key = segments[i];
 		const next = cursor[key];
-		if (next === undefined || next === null) {
+		if (next === undefined) {
 			const child: Record<string, unknown> = {};
 			cursor[key] = child;
 			cursor = child;

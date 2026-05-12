@@ -249,6 +249,19 @@ describe('applyOperations', () => {
 			expect(result.error).toContain('cannot descend');
 		});
 
+		test('rejects descent through a null intermediate (does not silently overwrite)', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { options: null };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/options/mode', value: 'manual' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain('cannot descend');
+			expect(wf.nodes[1].parameters).toEqual({ options: null });
+		});
+
 		test('does not mutate input on success', () => {
 			const wf = baseWorkflow();
 			const before = JSON.stringify(wf);
