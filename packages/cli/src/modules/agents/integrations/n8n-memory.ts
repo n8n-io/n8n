@@ -23,6 +23,8 @@ import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeo
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { isUniqueConstraintError } from '@/response-helper';
+
 import type { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import type { AgentMemoryProfileEntity } from '../entities/agent-memory-profile.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
@@ -221,16 +223,6 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 		const saved: EpisodicMemoryEntry[] = [];
 
 		for (const entry of entries) {
-			const existing = await this.memoryEntryRepository.findOneBy({
-				agentId: entry.agentId,
-				resourceId: entry.resourceId,
-				contentHash: entry.contentHash,
-			});
-			if (existing) {
-				saved.push(this.toEpisodicMemoryEntry(existing));
-				continue;
-			}
-
 			const entity = this.memoryEntryRepository.create({
 				agentId: entry.agentId,
 				resourceId: entry.resourceId,
@@ -243,8 +235,20 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 				metadata: entry.metadata ?? null,
 				createdAt: entry.createdAt,
 			});
-			const persisted = await this.memoryEntryRepository.save(entity);
-			saved.push(this.toEpisodicMemoryEntry(persisted));
+			try {
+				const persisted = await this.memoryEntryRepository.save(entity);
+				saved.push(this.toEpisodicMemoryEntry(persisted));
+			} catch (error) {
+				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
+
+				const existing = await this.memoryEntryRepository.findOneBy({
+					agentId: entry.agentId,
+					resourceId: entry.resourceId,
+					contentHash: entry.contentHash,
+				});
+				if (!existing) throw error;
+				saved.push(this.toEpisodicMemoryEntry(existing));
+			}
 		}
 
 		return saved;

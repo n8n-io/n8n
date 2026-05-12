@@ -77,7 +77,7 @@ const globalStubs = {
 		template:
 			'<button :disabled="disabled" :data-checked="modelValue" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
-	AgentMiniEditor: {
+	LazyAgentMiniEditor: {
 		props: ['modelValue', 'language', 'readonly', 'minHeight', 'maxHeight'],
 		template: '<pre v-bind="$attrs">{{ modelValue }}</pre>',
 	},
@@ -124,12 +124,14 @@ function mountPanel(
 	return mount(AgentAdvancedPanel, {
 		props: {
 			config: makeConfig(),
-			projectId: 'project-1',
-			agentId: 'agent-1',
 			...props,
 		},
 		global: { stubs: globalStubs },
 	});
+}
+
+function mountPanelWithProfile(props: Parameters<typeof mountPanel>[0] = {}) {
+	return mountPanel({ projectId: 'project-1', agentId: 'agent-1', ...props });
 }
 
 describe('AgentAdvancedPanel', () => {
@@ -210,7 +212,7 @@ describe('AgentAdvancedPanel', () => {
 		getAgentMemoryProfilesMock.mockResolvedValue({
 			userProfile: 'The user prefers direct answers.',
 		});
-		const wrapper = mountPanel();
+		const wrapper = mountPanelWithProfile();
 
 		await flushPromises();
 
@@ -223,14 +225,14 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows empty and error profile states', async () => {
 		getAgentMemoryProfilesMock.mockResolvedValueOnce({ userProfile: null });
-		const emptyWrapper = mountPanel();
+		const emptyWrapper = mountPanelWithProfile();
 
 		await flushPromises();
 
 		expect(emptyWrapper.text()).toContain('No user profile has been saved yet.');
 
 		getAgentMemoryProfilesMock.mockRejectedValueOnce(new Error('failed'));
-		const errorWrapper = mountPanel();
+		const errorWrapper = mountPanelWithProfile();
 
 		await flushPromises();
 
@@ -239,7 +241,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows the loading profile state', async () => {
 		getAgentMemoryProfilesMock.mockImplementationOnce(() => new Promise(() => {}));
-		const wrapper = mountPanel();
+		const wrapper = mountPanelWithProfile();
 
 		await nextTick();
 
@@ -252,7 +254,7 @@ describe('AgentAdvancedPanel', () => {
 		getAgentMemoryProfilesMock
 			.mockReturnValueOnce(firstLoad.promise)
 			.mockReturnValueOnce(secondLoad.promise);
-		const wrapper = mountPanel();
+		const wrapper = mountPanelWithProfile();
 
 		await nextTick();
 		expect(getAgentMemoryProfilesMock).toHaveBeenCalledWith(restApiContext, 'project-1', 'agent-1');
@@ -283,7 +285,7 @@ describe('AgentAdvancedPanel', () => {
 		getAgentMemoryProfilesMock
 			.mockReturnValueOnce(firstLoad.promise)
 			.mockReturnValueOnce(secondLoad.promise);
-		const wrapper = mountPanel();
+		const wrapper = mountPanelWithProfile();
 
 		await nextTick();
 		await wrapper.setProps({ agentId: 'agent-2' });
@@ -317,7 +319,7 @@ describe('AgentAdvancedPanel', () => {
 	it('polls the user profile while the advanced section is expanded', async () => {
 		vi.useFakeTimers();
 		getAgentMemoryProfilesMock.mockResolvedValue({ userProfile: 'Profile content.' });
-		const wrapper = mountPanel();
+		mountPanelWithProfile();
 
 		await flushPromises();
 
@@ -332,7 +334,7 @@ describe('AgentAdvancedPanel', () => {
 	it('stops polling when the advanced section is collapsed', async () => {
 		vi.useFakeTimers();
 		getAgentMemoryProfilesMock.mockResolvedValue({ userProfile: 'Profile content.' });
-		const wrapper = mountPanel({ collapsible: true });
+		const wrapper = mountPanelWithProfile({ collapsible: true });
 
 		await wrapper.find('[data-testid="agent-behavior-panel"] button').trigger('click');
 		await flushPromises();
@@ -346,7 +348,7 @@ describe('AgentAdvancedPanel', () => {
 	it('stops polling when unmounted', async () => {
 		vi.useFakeTimers();
 		getAgentMemoryProfilesMock.mockResolvedValue({ userProfile: 'Profile content.' });
-		const wrapper = mountPanel();
+		const wrapper = mountPanelWithProfile();
 
 		await flushPromises();
 		wrapper.unmount();
@@ -357,7 +359,7 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it('does not load the user profile when the advanced panel is disabled', async () => {
-		const wrapper = mountPanel({ disabled: true });
+		const wrapper = mountPanelWithProfile({ disabled: true });
 
 		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
 			'No user profile has been saved yet.',
