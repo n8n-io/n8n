@@ -55,4 +55,12 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 			'={{ (() => { const out = []; for (const x of $json.arr) out.push(x); return out; })() }}';
 		expect(evaluate(expr, { arr: [10, 20, 30] })).toEqual([10, 20, 30]);
 	});
+
+	it('toString returns the canonical comma-joined string (matches native Array)', () => {
+		expect(evaluate('={{ $json.arr.toString() }}', { arr: [10, 20, 30] })).toBe('10,20,30');
+	});
+
+	it('implicit string coercion uses Array.prototype.toString', () => {
+		expect(evaluate('={{ "items: " + $json.arr }}', { arr: [1, 2, 3] })).toBe('items: 1,2,3');
+	});
 });

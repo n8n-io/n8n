@@ -238,18 +238,15 @@ export function createDeepLazyProxy(
 				return targetObj[prop];
 			}
 
-			// Handle common Object.prototype methods within isolate
-			// Don't fetch from parent to avoid native function transfer issues
-			if (prop === 'toString') {
-				return function () {
-					return isArray ? '' : '[object Object]';
-				};
-			}
-			if (prop === 'valueOf') {
-				return function () {
-					return targetObj;
-				};
-			}
+			// `toString` and `valueOf` aren't intercepted — they fall through to the
+			// target's prototype via the cache check below. That means `arr.toString()`
+			// returns the canonical comma-joined string (via `Array.prototype.toString`
+			// → `.join(',')`, paying one bridge call per element), and `obj.valueOf()`
+			// returns the proxy itself instead of the internal target. Pre-fix this
+			// trap shortcut to `''` / `targetObj` to avoid the O(n) cost, but the
+			// divergence from native was surprising in expressions like
+			// `={{ "items: " + $json.arr }}`. Users who care about the cost can call
+			// `$json.arr.length` and index explicitly.
 
 			// Array length is known at construction — no bridge call needed
 			if (isArray && prop === 'length') {
