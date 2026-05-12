@@ -748,6 +748,12 @@ function handleStop() {
 </template>
 
 <style lang="scss" module>
+@property --instance-ai-artifacts-layout-width {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0;
+}
+
 .threadArea {
 	--instance-ai-artifacts-panel-width: 280px;
 	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
@@ -839,6 +845,8 @@ function handleStop() {
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	transition: --instance-ai-artifacts-layout-width var(--instance-ai-panel-transition-duration)
+		var(--instance-ai-panel-transition-easing);
 }
 
 .artifactsPanelEdge {
@@ -891,10 +899,6 @@ function handleStop() {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
-	transition:
-		width var(--instance-ai-panel-transition-duration) var(--instance-ai-panel-transition-easing),
-		transform var(--instance-ai-panel-transition-duration)
-			var(--instance-ai-panel-transition-easing);
 }
 
 .contentAreaWithPinnedArtifacts {
@@ -902,6 +906,8 @@ function handleStop() {
 }
 
 .contentAreaWithoutLayoutTransitions {
+	transition: none;
+
 	.messageList,
 	.scrollButtonContainer,
 	.inputConstraint {
@@ -925,8 +931,6 @@ function handleStop() {
 	pointer-events: none;
 	z-index: 3;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
-	transition: transform var(--instance-ai-panel-transition-duration)
-		var(--instance-ai-panel-transition-easing);
 }
 
 .scrollToBottomButton {
@@ -961,13 +965,10 @@ function handleStop() {
 	max-width: 750px;
 	margin: 0 auto;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
-	transition:
-		width var(--instance-ai-panel-transition-duration) var(--instance-ai-panel-transition-easing),
-		transform var(--instance-ai-panel-transition-duration)
-			var(--instance-ai-panel-transition-easing);
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.contentArea,
 	.messageList,
 	.scrollButtonContainer,
 	.inputConstraint {
