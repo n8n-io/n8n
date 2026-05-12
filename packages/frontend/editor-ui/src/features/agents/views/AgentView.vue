@@ -1,4 +1,15 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useI18n } from '@n8n/i18n';
+import { onMounted } from 'vue';
+
+const documentTitle = useDocumentTitle();
+const locale = useI18n();
+
+onMounted(async () => {
+	documentTitle.set(locale.baseText('agents.heading'));
+});
+</script>
 
 <template>
 	<div :class="$style.agentView">

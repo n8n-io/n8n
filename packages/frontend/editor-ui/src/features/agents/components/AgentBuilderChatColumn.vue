@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -33,6 +33,7 @@ const props = defineProps<{
 	isBuildChatStreaming: boolean;
 	isPublished: boolean;
 	isFullWidth: boolean;
+	canEditAgent: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
 }>();
 
@@ -56,6 +57,7 @@ const sessionMenuMaxHeight = 'calc((var(--spacing--xl) * 5) + var(--spacing--xs)
 
 // `sessionOptions` already match `DropdownMenuItemProps`; alias for template clarity.
 const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => props.sessionOptions);
+
 const fullWidthToggleLabel = computed(() =>
 	i18n.baseText(
 		props.isFullWidth
@@ -63,6 +65,10 @@ const fullWidthToggleLabel = computed(() =>
 			: 'agents.builder.chat.fullWidth.expand.ariaLabel',
 	),
 );
+
+// Shared draft text across Build and Test inputs so switching modes preserves
+// what the user typed. The two AgentChatPanel instances bind to the same ref.
+const sharedInputDraft = ref('');
 </script>
 
 <template>
@@ -151,6 +157,7 @@ const fullWidthToggleLabel = computed(() =>
 				v-if="initialized && chatModeOpened.test && effectiveSessionId"
 				v-show="chatMode === 'test'"
 				:key="`test-${effectiveSessionId}`"
+				v-model:input-draft="sharedInputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
 				mode="inline"
@@ -178,6 +185,7 @@ const fullWidthToggleLabel = computed(() =>
 			<AgentChatPanel
 				v-if="initialized && chatModeOpened.build"
 				v-show="chatMode === 'build' && isBuilderConfigured"
+				v-model:input-draft="sharedInputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
 				mode="inline"
@@ -186,11 +194,12 @@ const fullWidthToggleLabel = computed(() =>
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
+				:can-edit-agent="canEditAgent"
 				:before-send="beforeBuildSend"
 				@config-updated="emit('config-updated')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
-				<template #above-input>
+				<template v-if="canEditAgent" #above-input>
 					<div :class="$style.quickActionsRow">
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"

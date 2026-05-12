@@ -138,9 +138,8 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
 	pinDataToExecutionData,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
@@ -192,9 +191,7 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -2314,11 +2311,12 @@ export function useCanvasOperations() {
 			} catch (error) {}
 		}
 
-		// Reset editable workflow state
-		workflowsStore.resetWorkflow();
+		// Reset editable workflow state. resetState() must run BEFORE resetWorkflow()
+		// — it reads ws.workflowId to target the per-workflow execution-state store, and
+		// resetWorkflow() empties that id.
 		workflowState.resetState();
+		workflowsStore.resetWorkflow();
 		workflowsStore.clearCurrentWorkflowExecutions();
-		workflowState.setActiveExecutionId(undefined);
 		workflowsStore.setLastSuccessfulExecution(null);
 
 		// Reset actions

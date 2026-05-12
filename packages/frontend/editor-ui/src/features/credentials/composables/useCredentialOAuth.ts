@@ -2,7 +2,13 @@ import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
-import { createResultError, createResultOk, type GenericValue, type Result } from 'n8n-workflow';
+import {
+	createResultError,
+	createResultOk,
+	type GenericValue,
+	type ICredentialType,
+	type Result,
+} from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -69,7 +75,7 @@ export function useCredentialOAuth() {
 	 * This indicates the credential can be used with quick connect (just OAuth flow, no manual config).
 	 * Reuses logic patterns from CredentialEdit.vue (credentialProperties + requiredPropertiesFilled).
 	 */
-	function hasManagedOAuthCredentials(credentialTypeName: string): boolean {
+	function canOAuthCredentialQuickConnect(credentialTypeName: string): boolean {
 		if (!isOAuthCredentialType(credentialTypeName)) {
 			return false;
 		}
@@ -84,20 +90,31 @@ export function useCredentialOAuth() {
 		}
 
 		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
+		const nonOverwrittenConfigurableProperties = getManuallyConfigurableProperties(
+			credentialType,
+		).filter((prop) => !overwrittenProperties.includes(prop.name));
+
+		if (nonOverwrittenConfigurableProperties.length === 0) {
+			return true;
+		}
+
 		if (overwrittenProperties.length === 0) {
 			return false;
 		}
 
-		const visibleProperties = credentialType.properties.filter(
-			(prop) =>
-				prop.type !== 'hidden' &&
-				prop.type !== 'notice' &&
-				!overwrittenProperties.includes(prop.name),
-		);
-
-		return visibleProperties.every(
+		return nonOverwrittenConfigurableProperties.every(
 			(prop) => prop.required !== true || (prop.type !== 'string' && prop.type !== 'number'),
 		);
+	}
+
+	function getManuallyConfigurableProperties(credentialType: ICredentialType) {
+		return credentialType.properties.filter(
+			(prop) => prop.type !== 'hidden' && prop.type !== 'notice',
+		);
+	}
+
+	function hasManualCredentialInputFields(credentialType: ICredentialType): boolean {
+		return getManuallyConfigurableProperties(credentialType).length > 0;
 	}
 
 	async function getOAuthAuthorizationUrl(
@@ -303,7 +320,8 @@ export function useCredentialOAuth() {
 		getParentTypes,
 		isOAuthCredentialType,
 		isGoogleOAuthType,
-		hasManagedOAuthCredentials,
+		canOAuthCredentialQuickConnect,
+		hasManualCredentialInputFields,
 		authorize,
 		createAndAuthorize,
 		cancelAuthorize,
