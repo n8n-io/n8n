@@ -221,7 +221,7 @@ watch(
 	{ immediate: true },
 );
 
-function reconnectThreadIfHydrationApplied(): void {
+function reconnectThreadAfterHydration(): void {
 	void thread.loadHistoricalMessages().then((hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		void thread.loadThreadStatus();
@@ -244,7 +244,7 @@ async function syncRouteToStore() {
 		return;
 	}
 	if (thread.sseState === 'disconnected') {
-		reconnectThreadIfHydrationApplied();
+		reconnectThreadAfterHydration();
 	}
 }
 

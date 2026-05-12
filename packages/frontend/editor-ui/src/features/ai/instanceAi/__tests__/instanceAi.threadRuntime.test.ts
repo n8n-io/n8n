@@ -891,13 +891,15 @@ describe('createThreadRuntime - feedback integration', () => {
 		expect(typeof activeRuntime(registry).submitFeedback).toBe('function');
 	});
 
-	test('feedbackByResponseId is cleared when creating a new thread', async () => {
-		activeRuntime(registry).submitFeedback('resp-1', { rating: 'up' });
-		expect(activeRuntime(registry).feedbackByResponseId['resp-1']).toBeDefined();
+	test('feedbackByResponseId is isolated per runtime', async () => {
+		const firstRuntime = activeRuntime(registry);
+		firstRuntime.submitFeedback('resp-1', { rating: 'up' });
+		expect(firstRuntime.feedbackByResponseId['resp-1']).toBeDefined();
 
 		activeThreadId = 'thread-feedback-new';
 
 		expect(Object.keys(activeRuntime(registry).feedbackByResponseId)).toHaveLength(0);
+		expect(firstRuntime.feedbackByResponseId['resp-1']).toBeDefined();
 	});
 });
 

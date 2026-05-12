@@ -119,6 +119,8 @@ function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -127,6 +129,8 @@ function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
