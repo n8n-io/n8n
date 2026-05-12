@@ -15,7 +15,7 @@ import {
 } from './node-description-transform';
 import type { McpRegistryService } from './registry/mcp-registry.service';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
-import { notionMockServer } from './registry/notion-mock-server';
+import { notionMockServer } from './registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
@@ -103,7 +103,7 @@ describe('McpRegistryNodeLoader', () => {
 	});
 
 	describe('loadAll', () => {
-		it('populates types, registers the synthetic node, and known.nodes for each supported server', async () => {
+		it('populates `types`, `known`, registers synthetic nodes and credentials for each supported server', async () => {
 			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
 			const service = createServiceWithServers([notionMockServer]);
 			const loader = new McpRegistryNodeLoader(service, loadNodesAndCredentials, logger);
@@ -115,14 +115,28 @@ describe('McpRegistryNodeLoader', () => {
 				name: 'notion',
 				displayName: 'Notion MCP',
 			});
+			expect(loader.types.credentials).toHaveLength(1);
+			expect(loader.types.credentials[0]).toMatchObject({
+				name: 'notionMcpOAuth2Api',
+				displayName: 'Notion MCP OAuth2',
+			});
 
-			const loaded = loader.getNode('notion');
-			expect(loaded).toBeDefined();
-			expect(loaded.sourcePath).toBe(sourcePath);
+			const loadedNode = loader.getNode('notion');
+			const loadedCredential = loader.getCredential('notionMcpOAuth2Api');
+			expect(loadedNode).toBeDefined();
+			expect(loadedNode.sourcePath).toBe(sourcePath);
+			expect(loadedCredential).toBeDefined();
+			expect(loadedCredential.sourcePath).toBe('');
 
 			expect(loader.known.nodes.notion).toEqual({
 				className: 'McpRegistryClientTool',
 				sourcePath,
+			});
+			expect(loader.known.credentials.notionMcpOAuth2Api).toEqual({
+				className: 'McpRegistryApi',
+				sourcePath: '',
+				extends: ['mcpOAuth2Api'],
+				supportedNodes: ['notion'],
 			});
 		});
 
@@ -154,7 +168,12 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('notion');
+			expect(loader.types.credentials).toHaveLength(1);
+			expect(loader.types.credentials[0].name).toBe('notionMcpOAuth2Api');
 			expect(() => loader.getNode('noRemotes')).toThrow(UnrecognizedNodeTypeError);
+			expect(() => loader.getCredential('noRemotesMcpOAuth2Api')).toThrow(
+				UnrecognizedCredentialTypeError,
+			);
 		});
 
 		it('no-ops when the langchain loader is missing', async () => {
@@ -167,6 +186,7 @@ describe('McpRegistryNodeLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.types.nodes).toHaveLength(0);
+			expect(loader.types.credentials).toHaveLength(0);
 		});
 
 		it('no-ops when the base node is not registered on the langchain loader', async () => {
@@ -179,6 +199,7 @@ describe('McpRegistryNodeLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.types.nodes).toHaveLength(0);
+			expect(loader.types.credentials).toHaveLength(0);
 		});
 
 		it('resets prior state before loading', async () => {
@@ -190,6 +211,7 @@ describe('McpRegistryNodeLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.credentials).toHaveLength(1);
 		});
 
 		it('requests deprecated servers from the registry so existing workflows keep loading', async () => {
@@ -226,12 +248,24 @@ describe('McpRegistryNodeLoader', () => {
 	});
 
 	describe('getCredential', () => {
-		it('always throws UnrecognizedCredentialTypeError', () => {
+		it('returns the credential for a known credential type', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const service = createServiceWithServers([notionMockServer]);
+			const loader = new McpRegistryNodeLoader(service, loadNodesAndCredentials, logger);
+
+			await loader.loadAll();
+
+			const result = loader.getCredential('notionMcpOAuth2Api');
+			expect(result.type).toBeDefined();
+			expect(result.type.name).toBe('notionMcpOAuth2Api');
+		});
+
+		it('throws UnrecognizedCredentialTypeError for an unknown credential type', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
 			const service = createServiceWithServers([]);
 			const loader = new McpRegistryNodeLoader(service, loadNodesAndCredentials, logger);
 
-			expect(() => loader.getCredential('anything')).toThrow(UnrecognizedCredentialTypeError);
+			expect(() => loader.getCredential('unknown')).toThrow(UnrecognizedCredentialTypeError);
 		});
 	});
 
@@ -245,8 +279,13 @@ describe('McpRegistryNodeLoader', () => {
 			loader.reset();
 
 			expect(loader.types.nodes).toEqual([]);
+			expect(loader.types.credentials).toEqual([]);
 			expect(loader.known.nodes).toEqual({});
+			expect(loader.known.credentials).toEqual({});
 			expect(() => loader.getNode('notion')).toThrow(UnrecognizedNodeTypeError);
+			expect(() => loader.getCredential('notionMcpOAuth2Api')).toThrow(
+				UnrecognizedCredentialTypeError,
+			);
 		});
 
 		it('releaseTypes only clears types', async () => {
@@ -258,7 +297,9 @@ describe('McpRegistryNodeLoader', () => {
 			loader.releaseTypes();
 
 			expect(loader.types.nodes).toEqual([]);
+			expect(loader.types.credentials).toEqual([]);
 			expect(loader.getNode('notion')).toBeDefined();
+			expect(loader.getCredential('notionMcpOAuth2Api')).toBeDefined();
 		});
 
 		it('ensureTypesLoaded calls loadAll only when types are empty', async () => {

@@ -9,6 +9,8 @@ export {
 	attemptResultSchema,
 	attemptRecordSchema,
 	triggerTypeSchema,
+	workflowVerificationReadinessSchema,
+	workflowSetupRequirementSchema,
 	workflowBuildOutcomeSchema,
 	verificationVerdictSchema,
 	verificationResultSchema,
@@ -25,6 +27,9 @@ export type {
 	AttemptResult,
 	AttemptRecord,
 	TriggerType,
+	WorkflowVerificationEvidence,
+	WorkflowVerificationReadiness,
+	WorkflowSetupRequirement,
 	WorkflowBuildOutcome,
 	VerificationVerdict,
 	VerificationResult,
@@ -47,3 +52,7 @@ export {
 	remainingPostSubmitRemediations,
 	terminalRemediationFromState,
 } from './remediation';
+export {
+	createTerminalRemediationGuard,
+	type TerminalRemediationGuard,
+} from './terminal-remediation-guard';

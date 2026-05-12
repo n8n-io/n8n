@@ -251,18 +251,6 @@ export const revertAgentToPublished = async (
 	);
 };
 
-export const listAgentCredentials = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<Array<{ id: string; name: string; type: string }>> => {
-	return await makeRestApiRequest<Array<{ id: string; name: string; type: string }>>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/credentials`,
-	);
-};
-
 export const getAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
