@@ -2,9 +2,8 @@ import { select, input } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 import * as nodePath from 'node:path';
 
-import type { GatewayConfig, PermissionMode, ToolGroup } from './config';
-import { PERMISSION_MODES, getSettingsFilePath, TOOL_GROUP_DEFINITIONS } from './config';
-import { getTemplate } from './config-templates';
+import type { PermissionMode, ToolGroup } from './config';
+import { PERMISSION_MODES, TOOL_GROUP_DEFINITIONS } from './config';
 
 // ---------------------------------------------------------------------------
 // Display helpers
@@ -73,37 +72,4 @@ export function isAllDeny(permissions: Record<ToolGroup, PermissionMode>): boole
 	return (Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]).every(
 		(g) => permissions[g] === 'deny',
 	);
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Silently creates the settings file with the default (Recommended) template
- * if it does not exist. Merges CLI/ENV overrides from config.permissions on top.
- * filesystemDir is left empty. Does NOT prompt. Safe to call on every startup.
- */
-export async function ensureSettingsFile(config: GatewayConfig): Promise<void> {
-	const filePath = getSettingsFilePath();
-
-	// Only create if truly absent — never overwrite an existing file.
-	try {
-		await fs.access(filePath);
-		return; // File exists — nothing to do.
-	} catch {
-		// File does not exist — proceed to create.
-	}
-
-	const template = getTemplate('default');
-	const permissions = { ...template.permissions, ...config.permissions };
-
-	const content = JSON.stringify(
-		{ permissions, filesystemDir: '', resourcePermissions: {} },
-		null,
-		2,
-	);
-
-	await fs.mkdir(nodePath.dirname(filePath), { recursive: true });
-	await fs.writeFile(filePath, content, { encoding: 'utf-8', mode: 0o600 });
 }
