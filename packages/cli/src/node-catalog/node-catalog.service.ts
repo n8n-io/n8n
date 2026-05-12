@@ -1,20 +1,14 @@
-import type { CodeBuilderSearchResult, NodeTypeParser } from '@n8n/ai-workflow-builder';
+import type {
+	CodeBuilderSearchResult,
+	NodeRequest,
+	NodeTypeParser,
+} from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-
-type NodeRequest =
-	| string
-	| {
-			nodeId: string;
-			version?: string;
-			resource?: string;
-			operation?: string;
-			mode?: string;
-	  };
 
 export type NodeFilter = (nodeId: string) => boolean;
 
@@ -60,8 +54,6 @@ export class NodeCatalogService {
 	 */
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
 
-	private getTool: InvokableTool<{ nodeIds: NodeRequest[] }> | undefined;
-
 	private suggestTool: InvokableTool<{ categories: string[] }> | undefined;
 
 	private readonly getCache = new Map<string, string>();
@@ -94,6 +86,12 @@ export class NodeCatalogService {
 	/**
 	 * Search the node catalog for node IDs matching `queries`.
 	 * Results are cached per `(filter, queries)` pair and invalidated on node-type refresh.
+	 *
+	 * Calls the plain `searchCodeBuilderNodes` helper from `@n8n/ai-workflow-builder`
+	 * rather than its LangChain `tool(...)` wrapper. When `LANGCHAIN_TRACING_V2` is on
+	 * (the agents SDK enables it for the OTel exporter), the wrapper would register a
+	 * separate LangSmith root run for every invocation — fragmenting traces. The plain
+	 * helper runs entirely inside the caller's OTel span.
 	 */
 	async searchNodes(
 		queries: string[],
@@ -134,11 +132,8 @@ export class NodeCatalogService {
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;
 
-		if (!this.getTool) {
-			const { createCodeBuilderGetTool } = await import('@n8n/ai-workflow-builder');
-			this.getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: this.nodeDefinitionDirs });
-		}
-		const result = await this.getTool.invoke({ nodeIds });
+		const { getNodeTypes } = await import('@n8n/ai-workflow-builder');
+		const result = getNodeTypes(nodeIds, { nodeDefinitionDirs: this.nodeDefinitionDirs });
 		this.getCache.set(cacheKey, result);
 		return result;
 	}
@@ -184,7 +179,6 @@ export class NodeCatalogService {
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
 
 		this.searchStates.clear();
-		this.getTool = undefined;
 		this.suggestTool = undefined;
 
 		this.getCache.clear();
