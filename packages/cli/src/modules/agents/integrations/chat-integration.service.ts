@@ -14,8 +14,8 @@ import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
@@ -356,24 +356,15 @@ export class ChatIntegrationService {
 			let connected = false;
 			for (const userId of userIds) {
 				try {
-					if (integration.settings) {
-						await this.connect(
-							agent.id,
-							integration.credentialId,
-							integration.type,
-							userId,
-							agent.projectId,
-							{ settings: integration.settings },
-						);
-					} else {
-						await this.connect(
-							agent.id,
-							integration.credentialId,
-							integration.type,
-							userId,
-							agent.projectId,
-						);
-					}
+					await this.connect(
+						agent.id,
+						integration.credentialId,
+						integration.type,
+						userId,
+						agent.projectId,
+						integration.settings ? { settings: integration.settings } : undefined,
+					);
+
 					connected = true;
 					break;
 				} catch (error) {
@@ -403,21 +394,18 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Return connection status and count for an agent. Settings are not
-	 * surfaced here — the controller is the single source of truth for them
-	 * via the persisted `agent.integrations`.
+	 * Return connection status and count for an agent.
 	 */
 	getStatus(agentId: string): AgentIntegrationStatusResponse & { connections: number } {
 		const integrations: AgentIntegrationStatusResponse['integrations'] = [];
 		for (const k of this.connections.keys()) {
-			if (!k.startsWith(`${agentId}:`)) continue;
-			// Key format: agentId:type:credentialId
-			const parts = k.split(':');
-			if (parts.length < 3) continue;
-			integrations.push({
-				type: parts[1],
-				credentialId: parts.slice(2).join(':'),
-			});
+			if (k.startsWith(`${agentId}:`)) {
+				// Key format: agentId:type:credentialId
+				const parts = k.split(':');
+				if (parts.length >= 3) {
+					integrations.push({ type: parts[1], credentialId: parts.slice(2).join(':') });
+				}
+			}
 		}
 		return {
 			status: integrations.length > 0 ? 'connected' : 'disconnected',
