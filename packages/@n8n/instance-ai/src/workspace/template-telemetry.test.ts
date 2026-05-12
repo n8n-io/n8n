@@ -1,5 +1,8 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
+
 import {
 	createTemplateTelemetrySession,
+	createTypedToolObserver,
 	extractGrepQuery,
 	type TelemetrySessionOptions,
 } from './template-telemetry';
@@ -150,5 +153,205 @@ describe('extractGrepQuery', () => {
 
 	it('returns empty string when no pattern found', () => {
 		expect(extractGrepQuery('grep')).toBe('');
+	});
+});
+
+describe('observeTypedRead / observeTypedSearch', () => {
+	it('observeTypedRead emits a read event with filename and bytes', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.observeTypedRead('slack-daily-summary.ts', 1234);
+
+		const read = calls.find((c) => c.name === 'Builder template read');
+		expect(read).toBeDefined();
+		expect(read!.props.template_filename).toBe('slack-daily-summary.ts');
+		expect(read!.props.bytes_read).toBe(1234);
+		expect(read!.props.run_id).toBe('run-42');
+		expect(read!.props.work_item_id).toBe('wi_abc12345');
+	});
+
+	it('observeTypedSearch emits a search event with query and result count', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.observeTypedSearch('slack', 5);
+
+		const search = calls.find((c) => c.name === 'Builder template search');
+		expect(search).toBeDefined();
+		expect(search!.props.query).toBe('slack');
+		expect(search!.props.result_count).toBe(5);
+	});
+
+	it('typed observations contribute to the session rollup', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.observeTypedSearch('slack', 3);
+		session.observeTypedRead('slack-daily-summary.ts', 100);
+		session.observeTypedRead('slack-daily-summary.ts', 50);
+		session.flush();
+
+		const rollup = calls.find((c) => c.name === 'Builder template session');
+		expect(rollup!.props.search_count).toBe(1);
+		expect(rollup!.props.read_count).toBe(2);
+		expect(rollup!.props.unique_templates_read).toBe(1);
+	});
+
+	it('typed methods are no-ops after flush', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.flush();
+		session.observeTypedRead('foo.ts', 10);
+		session.observeTypedSearch('foo', 1);
+		expect(calls.filter((c) => c.name === 'Builder template read')).toHaveLength(0);
+		expect(calls.filter((c) => c.name === 'Builder template search')).toHaveLength(0);
+	});
+
+	it('truncates typed search query to the query cap', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		session.observeTypedSearch('x'.repeat(300), 1);
+
+		const search = calls.find((c) => c.name === 'Builder template search');
+		expect(typeof search!.props.query).toBe('string');
+		expect((search!.props.query as string).length).toBe(200);
+	});
+});
+
+describe('createTypedToolObserver', () => {
+	function toolCall(
+		toolCallId: string,
+		toolName: string,
+		args: Record<string, unknown>,
+	): InstanceAiEvent {
+		return {
+			type: 'tool-call',
+			runId: 'run-42',
+			agentId: 'agent-1',
+			payload: { toolCallId, toolName, args },
+		};
+	}
+	function toolResult(toolCallId: string, result: unknown): InstanceAiEvent {
+		return {
+			type: 'tool-result',
+			runId: 'run-42',
+			agentId: 'agent-1',
+			payload: { toolCallId, result },
+		};
+	}
+	function toolError(toolCallId: string, error: string): InstanceAiEvent {
+		return {
+			type: 'tool-error',
+			runId: 'run-42',
+			agentId: 'agent-1',
+			payload: { toolCallId, error },
+		};
+	}
+
+	it('emits typed read for mastra_workspace_read_file targeting examples/<slug>.ts', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(
+			toolCall('tc-1', 'mastra_workspace_read_file', {
+				path: '/workspace/examples/slack-daily-summary.ts',
+			}),
+		);
+		observe(
+			toolResult(
+				'tc-1',
+				'/workspace/examples/slack-daily-summary.ts (200 bytes)\nfile content here\n',
+			),
+		);
+
+		const read = calls.find((c) => c.name === 'Builder template read');
+		expect(read).toBeDefined();
+		expect(read!.props.template_filename).toBe('slack-daily-summary.ts');
+		expect(read!.props.bytes_read).toBeGreaterThan(0);
+	});
+
+	it('emits typed search for mastra_workspace_grep targeting examples/', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(toolCall('tc-2', 'mastra_workspace_grep', { pattern: 'slack', path: 'examples/' }));
+		observe(toolResult('tc-2', 'examples/a.ts:1:1: slack\nexamples/b.ts:5:1: slack\n'));
+
+		const search = calls.find((c) => c.name === 'Builder template search');
+		expect(search).toBeDefined();
+		expect(search!.props.query).toBe('slack');
+		expect(search!.props.result_count).toBe(2);
+	});
+
+	it('emits typed search for grep targeting examples/index.txt', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(
+			toolCall('tc-3', 'mastra_workspace_grep', { pattern: 'slack', path: 'examples/index.txt' }),
+		);
+		observe(toolResult('tc-3', 'slack-daily.ts | Daily Slack\nslack-onboard.ts | Onboard\n'));
+
+		const search = calls.find((c) => c.name === 'Builder template search');
+		expect(search!.props.result_count).toBe(2);
+	});
+
+	it('ignores read_file outside examples/', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(toolCall('tc-x', 'mastra_workspace_read_file', { path: '/workspace/src/workflow.ts' }));
+		observe(toolResult('tc-x', 'content'));
+
+		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
+	});
+
+	it('ignores grep that does not target examples/', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(toolCall('tc-y', 'mastra_workspace_grep', { pattern: 'foo', path: 'src/' }));
+		observe(toolResult('tc-y', 'src/a.ts:1:1: foo\n'));
+
+		expect(calls.find((c) => c.name === 'Builder template search')).toBeUndefined();
+	});
+
+	it('ignores unrelated tools', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(
+			toolCall('tc-z', 'mastra_workspace_write_file', { path: 'examples/foo.ts', content: 'x' }),
+		);
+		observe(toolResult('tc-z', 'ok'));
+
+		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
+		expect(calls.find((c) => c.name === 'Builder template search')).toBeUndefined();
+	});
+
+	it('does not emit on tool-error and clears pending state', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(toolCall('tc-e', 'mastra_workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(toolError('tc-e', 'permission denied'));
+
+		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
+	});
+
+	it('handles non-string results gracefully (no emission)', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(toolCall('tc-n', 'mastra_workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(toolResult('tc-n', { not: 'a string' }));
+
+		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
 	});
 });

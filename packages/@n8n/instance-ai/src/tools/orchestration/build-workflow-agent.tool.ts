@@ -57,6 +57,7 @@ import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 import {
 	attachTemplateTelemetrySession,
 	createTemplateTelemetrySession,
+	createTypedToolObserver,
 	detachTemplateTelemetrySession,
 	type TemplateTelemetrySession,
 } from '../../workspace/template-telemetry';
@@ -1047,6 +1048,9 @@ export async function startBuildWorkflowAgentTask(
 							});
 							telemetryWorkspace = workspace;
 							attachTemplateTelemetrySession(workspace, telemetrySession);
+							// Captures typed `mastra_workspace_grep` / `mastra_workspace_read_file`
+							// calls that never reach `runInSandbox` (shell-channel only).
+							const templateToolObserver = createTypedToolObserver(telemetrySession);
 
 							prompt = createSandboxBuilderAgentPrompt(root);
 							if (!activeBuilderSession && builderWs) {
@@ -1214,6 +1218,7 @@ export async function startBuildWorkflowAgentTask(
 										llmStepTraceHooks,
 										maxSteps: MAX_STEPS.BUILDER,
 										resumeOptions,
+										onStreamEvent: templateToolObserver,
 									});
 								});
 

@@ -13,6 +13,7 @@
  * (a per-Workspace WeakMap binding). `runInSandbox` looks the session up and
  * calls `observe()` after each command — no caller-side threading required.
  */
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Workspace } from '@mastra/core/workspace';
 
 import type { OrchestrationContext } from '../types';
@@ -29,6 +30,10 @@ const READ_FILE_PATTERN = /\bexamples\/([a-zA-Z0-9._-]+\.ts)\b/;
 export interface TemplateTelemetrySession {
 	/** Inspect a command + its stdout; emits search/read events when patterns match. */
 	observe(command: string, stdout: string): void;
+	/** Emit a `Builder template read` event for a typed tool invocation. */
+	observeTypedRead(filename: string, bytesRead: number): void;
+	/** Emit a `Builder template search` event for a typed tool invocation. */
+	observeTypedSearch(query: string, resultCount: number): void;
 	/** Emit the session rollup event and clear state. Idempotent. */
 	flush(): void;
 	/** Return true when the session has not been flushed yet. */
@@ -60,6 +65,25 @@ export function createTemplateTelemetrySession(
 
 	function emit(name: string, extra: Record<string, unknown>) {
 		opts.context.trackTelemetry?.(name, { ...baseProps, ...extra });
+	}
+
+	function observeTypedRead(filename: string, bytesRead: number): void {
+		if (!open) return;
+		readCount++;
+		templatesRead.push(filename);
+		emit('Builder template read', {
+			template_filename: filename,
+			bytes_read: bytesRead,
+		});
+	}
+
+	function observeTypedSearch(query: string, resultCount: number): void {
+		if (!open) return;
+		searchCount++;
+		emit('Builder template search', {
+			query: truncate(query, MAX_QUERY_LENGTH),
+			result_count: resultCount,
+		});
 	}
 
 	function observe(command: string, stdout: string): void {
@@ -106,6 +130,8 @@ export function createTemplateTelemetrySession(
 
 	return {
 		observe,
+		observeTypedRead,
+		observeTypedSearch,
 		flush,
 		isOpen: () => open,
 	};
@@ -158,4 +184,79 @@ export function getTemplateTelemetrySession(
 	workspace: Workspace,
 ): TemplateTelemetrySession | undefined {
 	return SESSIONS.get(workspace);
+}
+
+// ---------------------------------------------------------------------------
+// Typed-tool observation (covers `mastra_workspace_grep` / `mastra_workspace_read_file`,
+// which never reach `runInSandbox` and so wouldn't otherwise be captured.)
+// ---------------------------------------------------------------------------
+
+const TYPED_READ_TOOL = 'mastra_workspace_read_file';
+const TYPED_GREP_TOOL = 'mastra_workspace_grep';
+
+// Path either is `examples` itself or sits under it: `examples`, `examples/`,
+// `examples/foo.ts`, `/abs/examples/`, etc. Rejects `someexamples`, `examples-x`.
+const EXAMPLES_PATH_PATTERN = /(?:^|\/)examples(?:$|\/)/;
+
+type PendingTypedCall = { kind: 'read'; filename: string } | { kind: 'search'; query: string };
+
+/**
+ * Pair `tool-call` + `tool-result` events for typed Mastra workspace tools and
+ * forward template accesses to the session. Returned function is meant to be
+ * fed every event from the agent's stream (e.g. via consume-with-hitl's
+ * `onStreamEvent` hook). Maintains pending state per `toolCallId`.
+ */
+export function createTypedToolObserver(
+	session: TemplateTelemetrySession,
+): (event: InstanceAiEvent) => void {
+	const pending = new Map<string, PendingTypedCall>();
+
+	return (event) => {
+		if (!session.isOpen()) return;
+
+		if (event.type === 'tool-call') {
+			const matched = matchTypedTemplateCall(event.payload.toolName, event.payload.args);
+			if (matched) pending.set(event.payload.toolCallId, matched);
+			return;
+		}
+
+		if (event.type === 'tool-result') {
+			const match = pending.get(event.payload.toolCallId);
+			if (!match) return;
+			pending.delete(event.payload.toolCallId);
+
+			const result = event.payload.result;
+			if (typeof result !== 'string') return;
+
+			if (match.kind === 'read') {
+				session.observeTypedRead(match.filename, result.length);
+			} else {
+				session.observeTypedSearch(match.query, countResultLines(result));
+			}
+			return;
+		}
+
+		if (event.type === 'tool-error') {
+			pending.delete(event.payload.toolCallId);
+		}
+	};
+}
+
+function matchTypedTemplateCall(
+	toolName: string,
+	args: Record<string, unknown>,
+): PendingTypedCall | undefined {
+	if (toolName === TYPED_READ_TOOL) {
+		const path = typeof args.path === 'string' ? args.path : '';
+		const match = path.match(READ_FILE_PATTERN);
+		if (!match) return undefined;
+		return { kind: 'read', filename: match[1] };
+	}
+	if (toolName === TYPED_GREP_TOOL) {
+		const path = typeof args.path === 'string' ? args.path : '';
+		if (!EXAMPLES_PATH_PATTERN.test(path)) return undefined;
+		const pattern = typeof args.pattern === 'string' ? args.pattern : '';
+		return { kind: 'search', query: pattern };
+	}
+	return undefined;
 }
