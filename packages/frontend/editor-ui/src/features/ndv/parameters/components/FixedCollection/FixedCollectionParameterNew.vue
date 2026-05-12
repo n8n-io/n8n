@@ -5,11 +5,11 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
-import type { N8nDropdownOption } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import {
 	N8nButton,
 	N8nCollapsiblePanel,
-	N8nDropdown,
+	N8nDropdownMenu,
 	N8nHeaderAction,
 	N8nSectionHeader,
 	N8nTooltip,
@@ -346,11 +346,11 @@ const addTooltipText = computed(() =>
 const dropdownOptions = computed(
 	() =>
 		parameterOptions.value.map((option) => ({
+			id: option.name,
 			label: locale
 				.nodeText(activeNode.value?.type)
 				.collectionOptionDisplayName(props.parameter, option, props.path),
-			value: option.name,
-		})) as Array<N8nDropdownOption<string>>,
+		})) as Array<DropdownMenuItemProps<string>>,
 );
 
 const shouldShowSectionHeader = computed(
@@ -567,13 +567,13 @@ const onHeaderAddClick = async () => {
 	}
 
 	if (hasSingleOption.value && dropdownOptions.value[0]) {
-		optionSelected(dropdownOptions.value[0].value);
+		optionSelected(dropdownOptions.value[0].id);
 	}
 };
 
 const onAddButtonClick = () => {
 	if (hasSingleOption.value && dropdownOptions.value[0]) {
-		optionSelected(dropdownOptions.value[0].value);
+		optionSelected(dropdownOptions.value[0].id);
 	}
 };
 </script>
@@ -590,9 +590,9 @@ const onAddButtonClick = () => {
 				<template v-if="shouldShowAddInHeader" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
-						<N8nDropdown
+						<N8nDropdownMenu
 							v-if="hasMultipleOptions"
-							:options="dropdownOptions"
+							:items="dropdownOptions"
 							:disabled="isAddDisabled"
 							data-test-id="fixed-collection-add-header"
 							@select="optionSelected"
@@ -600,7 +600,7 @@ const onAddButtonClick = () => {
 							<template #trigger>
 								<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 							</template>
-						</N8nDropdown>
+						</N8nDropdownMenu>
 						<N8nHeaderAction
 							v-else
 							icon="plus"
@@ -679,9 +679,9 @@ const onAddButtonClick = () => {
 					:disabled="isAddDisabled"
 					@click="onAddButtonClick"
 				/>
-				<N8nDropdown
+				<N8nDropdownMenu
 					v-else-if="hasMultipleOptions"
-					:options="dropdownOptions"
+					:items="dropdownOptions"
 					:class="$style.dropdown"
 					:data-test-id="`fixed-collection-add-top-level-dropdown`"
 					:disabled="isAddDisabled"
@@ -697,7 +697,7 @@ const onAddButtonClick = () => {
 							:disabled="isAddDisabled"
 						/>
 					</template>
-				</N8nDropdown>
+				</N8nDropdownMenu>
 			</div>
 		</template>
 
@@ -710,18 +710,18 @@ const onAddButtonClick = () => {
 			<template #actions>
 				<N8nTooltip v-if="shouldShowAddInCollapsibleActions" :show-after="TOOLTIP_DELAY_MS">
 					<template #content>{{ addTooltipText }}</template>
-					<N8nDropdown
+					<N8nDropdownMenu
 						v-if="hasMultipleOptions"
-						:options="dropdownOptions"
+						:items="dropdownOptions"
 						:disabled="isAddDisabled"
 						data-test-id="fixed-collection-add-header"
 						@select="optionSelected"
-						@update:open="isDropdownOpen = $event"
+						@update:model-value="isDropdownOpen = $event"
 					>
 						<template #trigger>
 							<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 						</template>
-					</N8nDropdown>
+					</N8nDropdownMenu>
 					<N8nHeaderAction
 						v-else
 						icon="plus"
@@ -780,9 +780,9 @@ const onAddButtonClick = () => {
 							:label="placeholder"
 							@click="onAddButtonClick"
 						/>
-						<N8nDropdown
+						<N8nDropdownMenu
 							v-else-if="hasMultipleOptions"
-							:options="dropdownOptions"
+							:items="dropdownOptions"
 							:class="$style.dropdown"
 							:data-test-id="`fixed-collection-add-nested-dropdown`"
 							@select="optionSelected"
@@ -796,7 +796,7 @@ const onAddButtonClick = () => {
 									:label="placeholder"
 								/>
 							</template>
-						</N8nDropdown>
+						</N8nDropdownMenu>
 					</div>
 				</template>
 

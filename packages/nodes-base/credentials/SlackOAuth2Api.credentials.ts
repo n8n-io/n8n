@@ -37,6 +37,15 @@ export class SlackOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Signature Secret',
+			name: 'signatureSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'The signing secret is used to verify the authenticity of requests sent by Slack.',
+		},
+		{
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'hidden',

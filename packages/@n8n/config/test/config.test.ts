@@ -544,6 +544,12 @@ describe('GlobalConfig', () => {
 			logStreamingDestinations: '',
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
+			communityPackagesManagedByEnv: false,
+			communityPackages: '',
+		},
+		agents: {
+			checkpointTtlSeconds: 345600,
+			modules: [],
 		},
 	} satisfies GlobalConfigShape;
 
