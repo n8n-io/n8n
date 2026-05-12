@@ -120,6 +120,7 @@ const previewPanelTransitionGate = useTransitionGate({
 });
 const isArtifactsPanelTransitionEnabled = artifactsPanelTransitionGate.isEnabled;
 const isPreviewPanelTransitionEnabled = previewPanelTransitionGate.isEnabled;
+const isPreviewPanelTransitioning = ref(false);
 const artifactsPreviewToggleLabel = computed(() =>
 	i18n.baseText(
 		preview.isPreviewVisible.value
@@ -128,7 +129,7 @@ const artifactsPreviewToggleLabel = computed(() =>
 	),
 );
 const artifactsPanelTransitionName = computed(() =>
-	preview.isPreviewVisible.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
+	isPreviewPanelTransitioning.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
 );
 
 function toggleArtifactsPreview() {
@@ -250,16 +251,29 @@ function handlePreviewResize({ width }: { width: number }) {
 	previewPanelWidth.value = width;
 }
 
+function handlePreviewPanelAfterEnter() {
+	isPreviewPanelTransitioning.value = false;
+}
+
 function handlePreviewPanelAfterLeave() {
+	isPreviewPanelTransitioning.value = false;
 	isPreviewExpanded.value = false;
 }
 
-watch(preview.isPreviewVisible, (visible) => {
-	if (visible) {
-		isArtifactsPanelRevealed.value = false;
-		previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
-	}
-});
+watch(
+	preview.isPreviewVisible,
+	(visible, wasVisible) => {
+		if (visible !== wasVisible) {
+			isPreviewPanelTransitioning.value = isPreviewPanelTransitionEnabled.value;
+		}
+
+		if (visible) {
+			isArtifactsPanelRevealed.value = false;
+			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+		}
+	},
+	{ flush: 'sync' },
+);
 
 // Late-initialize if the panel became visible before the ResizeObserver
 // reported the container size (otherwise the panel would render at 0px).
@@ -669,6 +683,7 @@ function handleStop() {
 		<Transition
 			name="preview-panel-slide"
 			:css="isPreviewPanelTransitionEnabled"
+			@after-enter="handlePreviewPanelAfterEnter"
 			@after-leave="handlePreviewPanelAfterLeave"
 		>
 			<div
@@ -1062,7 +1077,29 @@ function handleStop() {
 }
 
 .artifacts-panel-fade-enter-active,
-.artifacts-panel-fade-leave-active,
+.artifacts-panel-fade-leave-active {
+	--artifacts-panel-slide-enter-easing: var(--easing--ease-out);
+	--artifacts-panel-slide-exit-easing: var(--easing--ease-in);
+	--animation--fade-in-right--duration: var(
+		--instance-ai-panel-transition-duration,
+		var(--duration--snappy)
+	);
+	--animation--fade-in-right--easing: var(--artifacts-panel-slide-enter-easing);
+	--animation--fade-in-right--translate: 100%;
+	--animation--fade-out-right--duration: var(
+		--instance-ai-panel-transition-duration,
+		var(--duration--snappy)
+	);
+	--animation--fade-out-right--easing: var(--artifacts-panel-slide-exit-easing);
+	--animation--fade-out-right--translate: 100%;
+
+	will-change: opacity, transform;
+
+	@media (prefers-reduced-motion: reduce) {
+		will-change: auto;
+	}
+}
+
 .artifacts-panel-preview-enter-active,
 .artifacts-panel-preview-leave-active {
 	--artifacts-panel-fade-enter-easing: var(--easing--ease-out);
@@ -1085,15 +1122,11 @@ function handleStop() {
 }
 
 .artifacts-panel-fade-enter-active {
-	--animation--fade-in--easing: var(--artifacts-panel-fade-enter-easing);
-
-	@include motion.fade-in;
+	@include motion.fade-in-right;
 }
 
 .artifacts-panel-fade-leave-active {
-	--animation--fade-out--easing: var(--artifacts-panel-fade-exit-easing);
-
-	@include motion.fade-out;
+	@include motion.fade-out-right;
 	pointer-events: none;
 }
 
