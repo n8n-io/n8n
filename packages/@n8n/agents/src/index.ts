@@ -45,7 +45,6 @@ export type {
 	CompactFn,
 	NewObservation,
 	Observation,
-	ObservationCategory,
 	ObservationCursor,
 	ObservationGapContext,
 	ObservationLockHandle,
@@ -120,6 +119,11 @@ export {
 	DEFAULT_COMPACTOR_PROMPT,
 	DEFAULT_OBSERVER_PROMPT,
 } from './runtime/observational-cycle';
+export { PostgresMemory } from './storage/postgres-memory';
+export type {
+	PostgresConnectionOptions,
+	PostgresConstructorOptions,
+} from './storage/postgres-memory';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 

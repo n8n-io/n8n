@@ -33,6 +33,7 @@ const props = defineProps<{
 	isBuildChatStreaming: boolean;
 	isPublished: boolean;
 	isFullWidth: boolean;
+	canEditAgent: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
 }>();
 
@@ -193,11 +194,12 @@ const sharedInputDraft = ref('');
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
+				:can-edit-agent="canEditAgent"
 				:before-send="beforeBuildSend"
 				@config-updated="emit('config-updated')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
-				<template #above-input>
+				<template v-if="canEditAgent" #above-input>
 					<div :class="$style.quickActionsRow">
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"

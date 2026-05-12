@@ -1,0 +1,44 @@
+{
+	"name": "CU Eval — Sample Workflow",
+	"nodes": [
+		{
+			"parameters": {
+				"rule": { "interval": [{ "field": "hours", "hoursInterval": 1 }] }
+			},
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"url": "https://api.example.com/items",
+				"options": {}
+			},
+			"name": "Fetch Items",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [480, 300]
+		},
+		{
+			"parameters": {
+				"channel": "general",
+				"text": "={{ $json.message }}",
+				"otherOptions": {}
+			},
+			"name": "Notify Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.2,
+			"position": [720, 300]
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [[{ "node": "Fetch Items", "type": "main", "index": 0 }]]
+		},
+		"Fetch Items": {
+			"main": [[{ "node": "Notify Slack", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {}
+}
