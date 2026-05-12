@@ -1042,6 +1042,15 @@ function handleStop() {
 .artifacts-panel-preview-leave-active {
 	--artifacts-panel-fade-enter-easing: var(--easing--ease-out);
 	--artifacts-panel-fade-exit-easing: var(--easing--ease-in);
+	--animation--fade-in--duration: var(
+		--instance-ai-panel-transition-duration,
+		var(--duration--snappy)
+	);
+	--animation--fade-in--translate: 0;
+	--animation--fade-out--duration: var(
+		--instance-ai-panel-transition-duration,
+		var(--duration--snappy)
+	);
 
 	will-change: opacity;
 
@@ -1057,7 +1066,6 @@ function handleStop() {
 }
 
 .artifacts-panel-fade-leave-active {
-	--animation--fade-out--duration: calc(var(--duration--snappy) - 40ms);
 	--animation--fade-out--easing: var(--artifacts-panel-fade-exit-easing);
 
 	@include motion.fade-out;
@@ -1071,7 +1079,6 @@ function handleStop() {
 }
 
 .artifacts-panel-preview-leave-active {
-	--animation--fade-out--duration: calc(var(--duration--snappy) - 80ms);
 	--animation--fade-out--easing: var(--easing--ease-out);
 
 	@include motion.fade-out;
