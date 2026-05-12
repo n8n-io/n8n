@@ -204,7 +204,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--4xs);
+	padding: 0 var(--spacing--3xs) 0 var(--spacing--4xs);
 	border-bottom: var(--border);
 }
 
