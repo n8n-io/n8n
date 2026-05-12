@@ -1,28 +1,21 @@
 /**
- * Registry of known per-API mocking quirks the eval mock-handler injects
- * as additional guidance into the user prompt.
+ * Registry of per-API mocking quirks the eval mock-handler exposes via
+ * the `get_endpoint_quirks` tool. Entries are short decision rules — the
+ * response shape itself comes from the API docs in the user prompt.
  *
  * Bar for adding an entry:
- *   - An eval scenario reproducibly fails due to a specific API quirk
- *   - The quirk is a documented behavior of the API we can cite
- *
- * Each entry should be a short decision rule, not a field-by-field template —
- * the actual response shape comes from the inlined API docs.
+ *   - A scenario reproducibly fails due to a specific API quirk
+ *   - The quirk is documented behavior we can cite
  */
 
 export interface MockQuirk {
 	/** Matched against the service name extracted from the request URL. */
 	service: string;
-	/**
-	 * Optional `${METHOD} ${path}` pattern (path only — no query string, no host).
-	 * Omit to apply to any endpoint of `service`.
-	 */
+	/** `${METHOD} ${path}` pattern (no query, no host). Omit to apply service-wide. */
 	endpoint?: string;
-	/** Guidance appended to the user prompt for matching mocks. */
 	guidance: string;
-	/** Why this entry exists — audit trail for future reviewers. */
 	rationale: string;
-	/** ISO date the entry was added. */
+	/** ISO date (YYYY-MM-DD). */
 	addedAt: string;
 }
 
@@ -37,13 +30,7 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 	},
 ];
 
-/**
- * Whether a quirk applies to a given request. A quirk with no `endpoint`
- * applies to any endpoint of `service`; otherwise the match is exact on
- * `${METHOD} ${pathname}` (case-insensitive on method, no globs).
- *
- * Exported for testing — callers should use `findMockQuirks`.
- */
+/** Exact match on `${METHOD} ${pathname}` (case-insensitive), or any endpoint if `quirk.endpoint` is omitted. Exported for testing. */
 export function quirkMatches(
 	quirk: MockQuirk,
 	service: string,
@@ -56,11 +43,7 @@ export function quirkMatches(
 	return quirk.endpoint.toUpperCase() === key.toUpperCase();
 }
 
-/**
- * Returns the guidance lines that match a given request, or an empty array.
- * Multiple matching quirks compose — service-wide and endpoint-specific
- * guidance for the same request both fire.
- */
+/** Returns all matching guidance lines (composes service-wide + endpoint-specific). */
 export function findMockQuirks(service: string, method: string, pathname: string): string[] {
 	return MOCK_QUIRKS.filter((q) => quirkMatches(q, service, method, pathname)).map(
 		(q) => q.guidance,

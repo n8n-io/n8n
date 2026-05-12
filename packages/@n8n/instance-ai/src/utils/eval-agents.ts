@@ -1,9 +1,4 @@
-/**
- * Shared agent factory for eval LLM calls.
- *
- * Centralizes model config, API key resolution, and text extraction
- * for the 3 eval call sites (hint generation, mock responses, pin data).
- */
+/** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
 import { Agent, Tool, type GenerateResult } from '@n8n/agents';
 
