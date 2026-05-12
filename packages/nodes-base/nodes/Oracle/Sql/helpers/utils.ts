@@ -49,7 +49,7 @@ const n8nTypetoDBType: { [key: string]: oracledb.DbType } = {
 	blob: oracledb.BLOB,
 };
 
-const DEFAULT_STRING_OUT_BIND_MAX_SIZE = 4000;
+export const DEFAULT_STRING_OUT_BIND_MAX_SIZE = 4000;
 
 function isDateType(type: string) {
 	return /^(timestamp(\(\d+\))?( with(?: local)? time zone)?|date)$/i.test(type);
@@ -849,8 +849,10 @@ function isSerializedBuffer(val: unknown): val is { type: 'Buffer'; data: number
 export function getBindParameters(
 	query: string,
 	parameterList: ExecuteOpBindParam[],
+	options: Pick<OracleDBNodeOptions, 'stringOutBindMaxSize'> = {},
 ): { updatedQuery: string; bindParameters: QueryValue } {
 	const bindParameters: ObjectQueryValue = {};
+	const stringOutBindMaxSize = options.stringOutBindMaxSize ?? DEFAULT_STRING_OUT_BIND_MAX_SIZE;
 
 	for (const item of parameterList) {
 		const itemWithOptionalDatatype = item as RuntimeExecuteOpBindParam;
@@ -881,7 +883,7 @@ export function getBindParameters(
 				};
 
 				if (type === 'string') {
-					bindParameter.maxSize = DEFAULT_STRING_OUT_BIND_MAX_SIZE;
+					bindParameter.maxSize = stringOutBindMaxSize;
 				}
 
 				bindParameters[bindItem.name] = bindParameter;
@@ -1004,7 +1006,7 @@ export function getBindParameters(
 			};
 
 			if (bindItem.bindDirection === 'inout' && type === 'string') {
-				bindParameter.maxSize = DEFAULT_STRING_OUT_BIND_MAX_SIZE;
+				bindParameter.maxSize = stringOutBindMaxSize;
 			}
 
 			bindParameters[bindItem.name] = bindParameter;

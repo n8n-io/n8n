@@ -286,6 +286,45 @@ describe('Test getBindParameters ', () => {
 		});
 	});
 
+	it('should use a custom max size for string out bind parameters', () => {
+		const query = 'BEGIN demo(:out_string, :inout_string); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				datatype: 'string',
+				valueString: '',
+				parseInStatement: false,
+			},
+			{
+				name: 'inout_string',
+				bindDirection: 'inout',
+				datatype: 'string',
+				valueString: 'input',
+				parseInStatement: false,
+			},
+		] as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList, {
+			stringOutBindMaxSize: 1024,
+		});
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 1024,
+			},
+			inout_string: {
+				type: oracleDBTypes.STRING,
+				val: 'input',
+				dir: oracleDBTypes.BIND_INOUT,
+				maxSize: 1024,
+			},
+		});
+	});
+
 	it('should use the default string type for out bind parameters when the data type is missing', () => {
 		const query = 'BEGIN demo(:out_string); END;';
 		const paramList = [
