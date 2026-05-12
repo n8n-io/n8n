@@ -1,23 +1,20 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { type ApiKey, type AuthenticatedRequest, WorkflowEntity, User, Role } from '@n8n/db';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
+import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
-
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 const createReq = (
 	body: unknown,
@@ -83,26 +80,20 @@ describe('McpSettingsController', () => {
 	const moduleRegistry = mockDeep<ModuleRegistry>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
-	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowService = mock<WorkflowService>();
-	const collaborationService = mock<CollaborationService>();
+	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
 
 	let controller: McpSettingsController;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		instanceSettingsLoaderConfig.mcpManagedByEnv = false;
 		Container.set(Logger, logger);
 		Container.set(McpSettingsService, mcpSettingsService);
 		Container.set(ModuleRegistry, moduleRegistry);
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
-		Container.set(WorkflowFinderService, workflowFinderService);
 		Container.set(WorkflowService, workflowService);
-		Container.set(CollaborationService, collaborationService);
-		// Default resolved broadcast — the controller fires this without
-		// awaiting and attaches a `.catch(...)`, so the mock must return a
-		// real Promise. Tests that exercise the failure path override this
-		// with `mockRejectedValueOnce`.
-		collaborationService.broadcastWorkflowSettingsUpdated.mockResolvedValue(undefined);
+		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -156,6 +147,18 @@ describe('McpSettingsController', () => {
 				cause: 'Registry sync failed',
 			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
+		});
+
+		test('rejects updates when MCP settings are managed by env', async () => {
+			instanceSettingsLoaderConfig.mcpManagedByEnv = true;
+			const req = createReq({ mcpAccessEnabled: true });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+
+			await expect(controller.updateSettings(req, createRes(), dto)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
 
 		test('requires boolean mcpAccessEnabled value', () => {
@@ -315,222 +318,88 @@ describe('McpSettingsController', () => {
 		});
 	});
 
-	describe('toggleWorkflowMCPAccess', () => {
+	describe('toggleWorkflowsMCPAccess', () => {
 		const user = createUser();
-		const workflowId = 'workflow-1';
 
-		const createWebhookNode = (overrides: Partial<INode> = {}): INode => ({
-			id: 'node-1',
-			name: 'Webhook',
-			type: WEBHOOK_NODE_TYPE,
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-			...overrides,
-		});
-
-		test('throws when workflow cannot be accessed', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-			const req = createReq({}, { user });
-
-			await expect(
-				controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
-					availableInMCP: true,
-				}),
-			).rejects.toThrow(
-				new NotFoundError(
-					'Could not load the workflow - you can only access workflows available to you',
-				),
-			);
-			expect(workflowService.update).not.toHaveBeenCalled();
-		});
-
-		test('allows enabling MCP for inactive workflows', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({
-					activeVersionId: null,
-					nodes: [createWebhookNode({ disabled: false })],
-				}),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'client-version',
-			} as unknown as WorkflowEntity);
-
-			await controller.toggleWorkflowMCPAccess(
-				createReq({}, { user }),
-				mock<Response>(),
-				workflowId,
-				{
-					availableInMCP: true,
-				},
-			);
-
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-		});
-
-		test('allows disabling MCP for inactive workflows', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ activeVersionId: null }),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: false },
-				versionId: 'client-version',
-			} as unknown as WorkflowEntity);
-
-			const req = createReq({}, { user });
-
-			await controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
-				availableInMCP: false,
+		test('delegates to mcpSettingsService.bulkSetAvailableInMCP and returns its result', async () => {
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				workflowIds: ['wf-1', 'wf-2'],
 			});
-
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-		});
-
-		test('allows enabling MCP regardless of trigger node types', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({
-					activeVersionId: uuid(),
-					nodes: [
-						{
-							id: 'node-2',
-							name: 'HTTP Request',
-							type: HTTP_REQUEST_NODE_TYPE,
-							typeVersion: 1,
-							position: [10, 10],
-							parameters: {},
-						},
-					],
-				}),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'client-version',
-			} as unknown as WorkflowEntity);
-
-			await controller.toggleWorkflowMCPAccess(
-				createReq({}, { user }),
-				mock<Response>(),
-				workflowId,
-				{
-					availableInMCP: true,
-				},
-			);
-
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-		});
-
-		test('persists MCP availability when validation passes', async () => {
-			const workflow = createWorkflow({
-				activeVersionId: uuid(),
-				settings: { saveManualExecutions: true },
-				nodes: [
-					createWebhookNode({ disabled: false }),
+			const bulkResult = {
+				updatedCount: 2,
+				updatedIds: ['wf-1', 'wf-2'],
+				skippedCount: 0,
+				failedCount: 0,
+				changedWorkflows: [
 					{
-						id: 'node-2',
-						name: 'HTTP Request',
-						type: HTTP_REQUEST_NODE_TYPE,
-						typeVersion: 1,
-						position: [10, 10],
-						parameters: {},
+						workflowId: 'wf-1',
+						settings: { availableInMCP: true },
+						checksum: 'checksum-wf-1',
+					},
+					{
+						workflowId: 'wf-2',
+						settings: { availableInMCP: true },
+						checksum: 'checksum-wf-2',
 					},
 				],
-			});
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'updated-version-id',
-			} as unknown as WorkflowEntity);
+			};
+			mcpSettingsService.bulkSetAvailableInMCP.mockResolvedValue(bulkResult);
 
 			const req = createReq({}, { user });
-			const response = await controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
+			const result = await controller.toggleWorkflowsMCPAccess(req, mock<Response>(), dto);
+
+			expect(mcpSettingsService.bulkSetAvailableInMCP).toHaveBeenCalledTimes(1);
+			expect(mcpSettingsService.bulkSetAvailableInMCP).toHaveBeenCalledWith(user, dto);
+			expect(mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged).toHaveBeenCalledWith(
+				bulkResult.changedWorkflows,
+			);
+			expect(result).toEqual({
+				updatedCount: 2,
+				updatedIds: ['wf-1', 'wf-2'],
+				skippedCount: 0,
+				failedCount: 0,
+			});
+		});
+	});
+
+	describe('UpdateWorkflowsAvailabilityDto', () => {
+		test('requires availableInMCP to be a boolean', () => {
+			expect(() => new UpdateWorkflowsAvailabilityDto({} as never)).toThrow();
+			expect(
+				() => new UpdateWorkflowsAvailabilityDto({ availableInMCP: 'yes' } as never),
+			).toThrow();
+		});
+
+		test('accepts a valid workflowIds scope', () => {
+			const dto = new UpdateWorkflowsAvailabilityDto({
 				availableInMCP: true,
+				workflowIds: ['wf-1'],
 			});
-
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-			const updateArgs = workflowService.update.mock.calls[0];
-			expect(updateArgs[0]).toEqual(user);
-			expect(updateArgs[1]).toBeInstanceOf(WorkflowEntity);
-			expect(updateArgs[1].settings).toEqual({ saveManualExecutions: true, availableInMCP: true });
-			expect(updateArgs[1].versionId).toEqual('some-version-id');
-			expect(updateArgs[2]).toEqual(workflowId);
-
-			expect(response).toEqual({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'updated-version-id',
-			});
+			expect(dto.workflowIds).toEqual(['wf-1']);
+			expect(dto.projectId).toBeUndefined();
+			expect(dto.folderId).toBeUndefined();
 		});
 
-		test('broadcasts a settings update with a post-update checksum to open collaborators', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ activeVersionId: null }),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				name: 'wf',
-				nodes: [],
-				connections: {},
-				settings: { availableInMCP: true },
-				versionId: 'updated-version-id',
-			} as unknown as WorkflowEntity);
-
-			await controller.toggleWorkflowMCPAccess(
-				createReq({}, { user }),
-				mock<Response>(),
-				workflowId,
-				{
-					availableInMCP: true,
-				},
-			);
-
-			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledTimes(1);
-			const [broadcastWorkflowId, broadcastSettings, broadcastChecksum] =
-				collaborationService.broadcastWorkflowSettingsUpdated.mock.calls[0];
-			expect(broadcastWorkflowId).toBe(workflowId);
-			expect(broadcastSettings).toEqual({ availableInMCP: true });
-			expect(typeof broadcastChecksum).toBe('string');
-			expect(broadcastChecksum).toMatch(/^[a-f0-9]{64}$/);
+		test('rejects an empty workflowIds array', () => {
+			expect(
+				() =>
+					new UpdateWorkflowsAvailabilityDto({
+						availableInMCP: true,
+						workflowIds: [],
+					}),
+			).toThrow();
 		});
 
-		test('does not fail the request when the broadcast throws', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ activeVersionId: null }),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { availableInMCP: false },
-				versionId: 'updated-version-id',
-			} as unknown as WorkflowEntity);
-			collaborationService.broadcastWorkflowSettingsUpdated.mockRejectedValueOnce(
-				new Error('push down'),
-			);
-
-			await expect(
-				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
-					availableInMCP: false,
-				}),
-			).resolves.toEqual({
-				id: workflowId,
-				settings: { availableInMCP: false },
-				versionId: 'updated-version-id',
-			});
-		});
-
-		test('does not broadcast when the workflow cannot be accessed', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-
-			await expect(
-				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
-					availableInMCP: true,
-				}),
-			).rejects.toThrow(NotFoundError);
-
-			expect(collaborationService.broadcastWorkflowSettingsUpdated).not.toHaveBeenCalled();
+		test('rejects workflowIds arrays over the cap', () => {
+			const workflowIds = Array.from({ length: 101 }, (_, i) => `wf-${i}`);
+			expect(
+				() =>
+					new UpdateWorkflowsAvailabilityDto({
+						availableInMCP: true,
+						workflowIds,
+					}),
+			).toThrow();
 		});
 	});
 });

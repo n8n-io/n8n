@@ -42,7 +42,7 @@ export type ExecutionLifecycleHookHandlers = {
 		(
 			this: ExecutionLifecycleHooks,
 			workflow: Workflow,
-			data?: IRunExecutionData,
+			data: IRunExecutionData,
 		) => Promise<void> | void
 	>;
 

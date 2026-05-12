@@ -6,6 +6,7 @@ import type { InstanceAiToolCallState } from '@n8n/api-types';
 const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'plan', 'task-control']);
 
 export function getToolIcon(toolName: string): IconName {
+	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'data-tables') return 'table';
 	if (

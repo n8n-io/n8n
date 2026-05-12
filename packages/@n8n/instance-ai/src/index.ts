@@ -6,6 +6,8 @@ export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
+	appendGeneratedWorkflowIdToRootMetadata,
+	appendRootRunMetadata,
 	createInstanceAiTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
@@ -44,6 +46,7 @@ export {
 	MastraIterationLogStorage,
 	MastraTaskStorage,
 	PlannedTaskStorage,
+	TerminalOutcomeStorage,
 	patchThread,
 	WorkflowLoopStorage,
 } from './storage';
@@ -53,6 +56,7 @@ export type {
 	IterationLog,
 	PatchableThreadMemory,
 	ThreadPatch,
+	TerminalOutcome,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
 export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
@@ -79,6 +83,8 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
+export { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
+export type { BuilderSandboxSession } from './runtime/builder-sandbox-session-registry';
 export { RunStateRegistry } from './runtime/run-state-registry';
 export type {
 	ActiveRunState,
@@ -88,6 +94,12 @@ export type {
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export { InstanceAiTerminalResponseGuard } from './runtime/terminal-response-guard';
+export type {
+	TerminalResponseDecision,
+	TerminalResponseStatus,
+	TerminalVisibilitySource,
+} from './runtime/terminal-response-guard';
 export { executeResumableStream } from './runtime/resumable-stream-executor';
 export type {
 	AutoResumeControl,
@@ -98,7 +110,18 @@ export type {
 	ResumableStreamControl,
 	ResumableStreamSource,
 } from './runtime/resumable-stream-executor';
+export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
+export {
+	createInstanceAiLivenessPolicyConfig,
+	INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+	InstanceAiLivenessPolicy,
+	type InstanceAiLivenessDecision,
+	type InstanceAiLivenessInput,
+	type InstanceAiLivenessPolicyConfig,
+	type InstanceAiLivenessSurface,
+	type InstanceAiLivenessTimeoutReason,
+} from './runtime/liveness-policy';
 export type {
 	StreamableAgent,
 	StreamRunOptions,
@@ -125,7 +148,10 @@ export type {
 } from './workflow-loop';
 export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';
-export { applyPlannedTaskPermissions } from './planned-tasks/planned-task-permissions';
+export {
+	applyPlannedTaskPermissions,
+	PLANNED_TASK_PERMISSION_OVERRIDES,
+} from './planned-tasks/planned-task-permissions';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -152,6 +178,7 @@ export type {
 	PlannedTaskService,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
@@ -193,8 +220,20 @@ export {
 	classifyAttachments,
 	buildAttachmentManifest,
 	isStructuredAttachment,
+	isParseableAttachment,
 } from './parsers/structured-file-parser';
 export type {
 	ClassifiedAttachment,
 	ParseableFormat,
+	TabularFormat,
+	TextLikeFormat,
+	SupportedFormat,
 } from './parsers/structured-file-parser';
+export {
+	getParseableAttachmentMimeTypes,
+	getSupportedAttachmentMimeTypes,
+	isSupportedAttachmentMimeType,
+	validateAttachmentMimeTypes,
+	UnsupportedAttachmentError,
+} from './parsers/validate-attachments';
+export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';

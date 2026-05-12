@@ -12,6 +12,7 @@ import { DataTableColumn } from './data-table-column.entity';
 import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
+import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 
@@ -70,6 +71,14 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		// join order in @OneToMany relations.
 		columns.sort((a, b) => a.index - b.index);
 		return columns;
+	}
+
+	async getColumnByIdOrFail(dataTableId: string, columnId: string) {
+		const column = await this.findOneBy({ id: columnId, dataTableId });
+		if (!column) {
+			throw new DataTableColumnNotFoundError(dataTableId, columnId);
+		}
+		return column;
 	}
 
 	/**

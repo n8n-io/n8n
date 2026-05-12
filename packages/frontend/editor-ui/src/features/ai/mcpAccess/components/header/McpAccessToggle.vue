@@ -3,15 +3,19 @@ import { ElSwitch } from 'element-plus';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { computed } from 'vue';
+
 type Props = {
 	modelValue: boolean;
 	disabled?: boolean;
 	loading?: boolean;
+	managedByEnv?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	loading: false,
+	managedByEnv: false,
 });
 
 const emit = defineEmits<{
@@ -19,6 +23,12 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+const disabledTooltip = computed(() =>
+	props.managedByEnv
+		? i18n.baseText('settings.mcp.managedByEnv.tooltip')
+		: i18n.baseText('settings.mcp.toggle.disabled.tooltip'),
+);
 
 const onUpdateMCPEnabled = () => {
 	emit('disableMcpAccess');
@@ -37,11 +47,7 @@ const onUpdateMCPEnabled = () => {
 			</N8nText>
 		</div>
 		<div :class="$style['main-toggle']" data-test-id="mcp-toggle-container">
-			<N8nTooltip
-				:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-				:disabled="!props.disabled"
-				placement="top"
-			>
+			<N8nTooltip :content="disabledTooltip" :disabled="!props.disabled" placement="top">
 				<ElSwitch
 					size="large"
 					data-test-id="mcp-access-toggle"

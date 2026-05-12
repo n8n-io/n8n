@@ -25,7 +25,12 @@ export type {
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
-export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export {
+	InstanceAiConfirmRequestDto,
+	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmRequestKind,
+	type InstanceAiResourceDecision,
+} from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
@@ -187,15 +192,27 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export {
+	updateDataTableColumnSchema,
+	type UpdateDataTableColumnDto,
+} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
+
+export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
-export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+export {
+	ProvisioningConfigDto,
+	ProvisioningConfigPatchDto,
+	type ProvisioningMode,
+	type ProvisioningModeFlags,
+} from './provisioning/config.dto';
 
 export {
 	SecuritySettingsDto,
@@ -221,6 +238,24 @@ export {
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
+export { CreateAgentDto } from './agents/create-agent.dto';
+export { UpdateAgentDto } from './agents/update-agent.dto';
+export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
+export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
+export {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	CreateAgentSkillDto,
+	agentSkillSchema,
+} from './agents/create-agent-skill.dto';
+export { UpdateAgentSkillDto } from './agents/update-agent-skill.dto';
+export { AgentIntegrationDto } from './agents/agent-integration.dto';
+export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
+export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
+
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
-export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export {
+	ListEncryptionKeysQueryDto,
+	ENCRYPTION_KEYS_SORT_OPTIONS,
+	type EncryptionKeysSortOption,
+} from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

@@ -11,7 +11,7 @@ import type { InstanceAiContext, PlannedTaskKind } from '../types';
  * Destructive actions (delete-data-table), open-ended actions (fetch-url, read-file),
  * and credential deletion are intentionally excluded — they always require explicit approval.
  */
-const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<
+export const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<
 	Record<PlannedTaskKind, Partial<InstanceAiPermissions>>
 > = {
 	'manage-data-tables': {
@@ -20,8 +20,16 @@ const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<
 		mutateDataTableRows: 'always_allow',
 	},
 	'build-workflow': {
+		createWorkflow: 'always_allow',
+		updateWorkflow: 'always_allow',
 		runWorkflow: 'always_allow',
 		publishWorkflow: 'always_allow',
+	},
+	// Checkpoint tasks run inside an orchestrator follow-up run. Plan approval
+	// authorizes the verification step, so the orchestrator can call
+	// verify-built-workflow / executions(action="run") without a second prompt.
+	checkpoint: {
+		runWorkflow: 'always_allow',
 	},
 };
 
