@@ -16,6 +16,7 @@
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -54,6 +55,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const nodeHelpers = useNodeHelpers();
@@ -94,7 +96,7 @@ const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => {
 });
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(true, i18n.baseText.bind(i18n)).filter(
+	createCommonNodeSettings(true, i18n.baseText.bind(i18n), settingsStore.isOtelEnabled).filter(
 		(s) => s.name !== 'notes' && s.name !== 'notesInFlow',
 	),
 );

@@ -53,6 +53,7 @@ import {
 	createCommonNodeSettings,
 	getNodeSettingsInitialValues,
 	nameIsParameter,
+	setValue,
 } from '../../shared/ndv.utils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -158,7 +159,8 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
-const { isPreviewMode } = useSettingsStore();
+const settingsStore = useSettingsStore();
+const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(() =>
 	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
@@ -434,6 +436,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+	} else if (parameterData.name.includes('.')) {
+		// Nested update on a node setting (e.g. fixedCollection emits
+		// "customTelemetryTags.tag"). Write the deep path locally, then
+		// persist the entire top-level setting object to the node.
+		const topLevelKey = parameterData.name.split('.')[0];
+
+		setValue(nodeValues, parameterData.name, newValue);
+
+		workflowDocumentStore?.value?.setNodeValue({
+			name: _node.name,
+			key: topLevelKey,
+			value: get(nodeValues.value, topLevelKey) as NodeParameterValue,
+		});
 	} else {
 		// A property on the node itself changed
 
@@ -488,7 +503,11 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(
+		isToolNode.value || isModelNode.value,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelEnabled,
+	),
 );
 
 const iconSource = useNodeIconSource(nodeType, node);

@@ -595,6 +595,24 @@ describe('createCommonNodeSettings', () => {
 			expect(names).toContain('notesInFlow');
 		}
 	});
+
+	it('omits customTelemetryTags when isOtelEnabled is false', () => {
+		const names = createCommonNodeSettings(false, mockT, false).map((s) => s.name);
+		expect(names).not.toContain('customTelemetryTags');
+	});
+
+	it('includes customTelemetryTags when isOtelEnabled is true', () => {
+		const settings = createCommonNodeSettings(false, mockT, true);
+		const tags = settings.find((s) => s.name === 'customTelemetryTags');
+		expect(tags).toBeDefined();
+		expect(tags?.type).toBe('fixedCollection');
+		expect(tags?.isNodeSetting).toBe(true);
+	});
+
+	it('defaults isOtelEnabled to false so existing call sites stay unchanged', () => {
+		const names = createCommonNodeSettings(false, mockT).map((s) => s.name);
+		expect(names).not.toContain('customTelemetryTags');
+	});
 });
 
 describe('setValue', () => {
