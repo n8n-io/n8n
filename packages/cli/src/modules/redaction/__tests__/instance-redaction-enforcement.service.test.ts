@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
@@ -58,16 +58,6 @@ describe('InstanceRedactionEnforcementService', () => {
 		} else {
 			process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = originalFlag;
 		}
-	});
-
-	describe('isFeatureEnabled', () => {
-		it('reflects the env flag', () => {
-			disableFlag();
-			expect(service.isFeatureEnabled()).toBe(false);
-
-			enableFlag();
-			expect(service.isFeatureEnabled()).toBe(true);
-		});
 	});
 
 	describe('get', () => {
@@ -177,14 +167,18 @@ describe('InstanceRedactionEnforcementService', () => {
 				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(next));
 			});
 
-			it('rejects invalid input without writing to repository or cache', async () => {
+			it('rejects invalid input with a UserError and logs validation issues', async () => {
 				const invalid = { enforced: true, manual: 'yes', production: true } as unknown as {
 					enforced: boolean;
 					manual: boolean;
 					production: boolean;
 				};
 
-				await expect(service.set(invalid)).rejects.toThrow();
+				await expect(service.set(invalid)).rejects.toThrow(UserError);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Invalid redaction enforcement settings payload',
+					expect.objectContaining({ issues: expect.any(Array) }),
+				);
 				expect(upsert).not.toHaveBeenCalled();
 				expect(cacheService.set).not.toHaveBeenCalled();
 			});

@@ -11,5 +11,5 @@ export type RedactionEnforcementSettings = z.infer<typeof redactionEnforcementSe
 export const REDACTION_ENFORCEMENT_DEFAULTS: RedactionEnforcementSettings = {
 	enforced: false,
 	manual: false,
-	production: true,
+	production: false,
 };
