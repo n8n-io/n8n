@@ -18,7 +18,6 @@ import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
-	AiBuilderTemporaryWorkflow,
 	TagEntity,
 	WorkflowEntity,
 	WorkflowTagMapping,
@@ -30,6 +29,7 @@ import type {
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
+import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
@@ -883,23 +883,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
-		this.applyAiBuilderTemporaryFilter(qb);
-	}
-
-	/**
-	 * Hide workflows the AI builder created and has not yet promoted to the
-	 * main deliverable. The orchestrator clears the marker on the main at
-	 * build-time and reaps the rest at run-finish, but in the window between
-	 * create and reap, marked rows must not surface in the workflows list.
-	 */
-	private applyAiBuilderTemporaryFilter(qb: SelectQueryBuilder<WorkflowEntity>): void {
-		const markerSubquery = qb
-			.subQuery()
-			.select('1')
-			.from(AiBuilderTemporaryWorkflow, 'aitw')
-			.where('aitw."workflowId" = workflow.id')
-			.getQuery();
-		qb.andWhere(`NOT EXISTS ${markerSubquery}`);
 	}
 
 	private applyAvailableInMCPFilter(
@@ -907,33 +890,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (typeof filter?.availableInMCP === 'boolean') {
-			const dbType = this.globalConfig.database.type;
-
-			if (filter.availableInMCP) {
-				// When filtering for true, only match explicit true values
-				if (dbType === 'postgresdb') {
-					qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
-						availableInMCP: 'true',
-					});
-				} else if (dbType === 'sqlite') {
-					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-						availableInMCP: 1, // SQLite stores booleans as 0/1
-					});
-				}
-			} else {
-				// When filtering for false, match explicit false OR null/undefined (field not set)
-				if (dbType === 'postgresdb') {
-					qb.andWhere(
-						"(workflow.settings ->> 'availableInMCP' = :availableInMCP OR workflow.settings ->> 'availableInMCP' IS NULL)",
-						{ availableInMCP: 'false' },
-					);
-				} else if (dbType === 'sqlite') {
-					qb.andWhere(
-						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL)",
-						{ availableInMCP: 0 }, // SQLite stores booleans as 0/1
-					);
-				}
-			}
+			applyWorkflowBooleanSettingFilter(
+				qb,
+				this.globalConfig,
+				'availableInMCP',
+				filter.availableInMCP,
+				{
+					includeNullOnFalse: true,
+				},
+			);
 		}
 	}
 

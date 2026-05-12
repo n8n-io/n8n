@@ -10,17 +10,23 @@ import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { resolveCredentials, type CredentialMap } from './resolve-credentials';
+import { resolveCredentials, type CredentialEntry } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
-import type { InstanceAiContext } from '../../types';
+import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
+import { appendGeneratedWorkflowIdToRootMetadata } from '../../tracing/langsmith-tracing';
+import type { InstanceAiContext, InstanceAiTraceRun } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
+import { createRemediation } from '../../workflow-loop/remediation';
+import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+
+export { getReferencedWorkflowIds, isTriggerNodeType };
 
 export interface SubmitWorkflowAttempt {
 	filePath: string;
@@ -43,8 +49,13 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification?: boolean;
+	/** Workflow IDs referenced by Execute Workflow nodes in this submitted workflow. */
+	referencedWorkflowIds?: string[];
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders?: boolean;
+	remediation?: RemediationMetadata;
 	errors?: string[];
 }
 
@@ -61,32 +72,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-/**
- * Node types the bypassPlan post-build verify flow can exercise without user
- * approval (verify-built-workflow injects sidecar pin data matching each
- * trigger's production output shape). Kept in sync with the per-trigger
- * inputData shape block in the orchestrator system prompt.
- */
-const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'n8n-nodes-base.scheduleTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
-]);
-
-/**
- * Whether a node's type should be surfaced in `SubmitWorkflowAttempt.triggerNodes`
- * so the orchestrator can decide if it can verify the build without user input.
- * Known-mockable types feed the post-build verify step directly; other `*Trigger`
- * suffix types are included for visibility but skipped by the verify step.
- * Exported for direct unit coverage.
- */
-export function isTriggerNodeType(nodeType: string | undefined): boolean {
-	if (!nodeType) return false;
-	if (KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType)) return true;
-	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
-}
 
 /**
  * Ensure webhook nodes have a webhookId so n8n registers clean URL paths.
@@ -160,9 +145,7 @@ function enhanceBuildErrors(errors: string[]): string[] {
 
 // Re-export from shared module for backward compatibility
 export {
-	buildCredentialMap,
 	resolveCredentials,
-	type CredentialMap,
 	type CredentialResolutionResult,
 } from './resolve-credentials';
 
@@ -191,6 +174,20 @@ export const submitWorkflowOutputSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/** Workflow IDs referenced by Execute Workflow nodes in this submitted workflow. */
+	referencedWorkflowIds: z.array(z.string()).optional(),
+	remediation: z
+		.object({
+			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
+			shouldEdit: z.boolean(),
+			guidance: z.string(),
+			reason: z.string().optional(),
+			remainingSubmitFixes: z.number().int().min(0).optional(),
+			attemptCount: z.number().int().min(0).optional(),
+		})
+		.optional(),
 	errors: z.array(z.string()).optional(),
 	warnings: z.array(z.string()).optional(),
 });
@@ -218,18 +215,65 @@ export function resolveSandboxWorkflowFilePath(
 	return rawFilePath;
 }
 
+export function classifySubmitFailure(
+	errors: string[],
+	reason = 'submit_failed',
+): RemediationMetadata {
+	const text = errors.join('\n').toLowerCase();
+	if (isCredentialSaveFailure(text)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission failed because a credential is missing or inaccessible. Stop editing and route the user to credential setup.',
+		});
+	}
+
+	if (reason === 'workflow_save_failed') {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission failed due to an internal or service error. Stop editing and ask the user to retry or check instance health.',
+		});
+	}
+
+	if (
+		text.includes('blocked by admin') ||
+		text.includes('read-only') ||
+		text.includes('not accessible') ||
+		text.includes('permission')
+	) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission is blocked by permissions or instance configuration. Stop editing and explain the blocker to the user.',
+		});
+	}
+
+	return createRemediation({
+		category: 'code_fixable',
+		shouldEdit: true,
+		reason,
+		guidance: 'Fix the workflow code in one batched edit, then call submit-workflow again.',
+	});
+}
+
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
-	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
+	availableCredentials?: CredentialEntry[],
+	tracingRoot?: InstanceAiTraceRun,
 ) {
 	return createTool({
 		id: 'submit-workflow',
 		description:
-			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
-			'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
+			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, and saves it to n8n as a draft.',
 		inputSchema: submitWorkflowInputSchema,
 		outputSchema: submitWorkflowOutputSchema,
 		execute: async ({
@@ -255,8 +299,9 @@ export function createSubmitWorkflowTool(
 			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
 				const errors = ['Action blocked by admin'];
-				await reportAttempt({ success: false, errors });
-				return { success: false, errors };
+				const remediation = classifySubmitFailure(errors, 'permission_blocked');
+				await reportAttempt({ success: false, errors, remediation });
+				return { success: false, errors, remediation };
 			}
 
 			// Execute the TS file in the sandbox via tsx to produce WorkflowJSON.
@@ -285,19 +330,23 @@ export function createSubmitWorkflowTool(
 					`Failed to execute workflow file in sandbox (exit code ${buildResult.exitCode}).`,
 					buildResult.stderr?.trim() || buildResult.stdout?.trim() || 'No output',
 				];
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'sandbox_execution_failed');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 
 			if (!buildOutput.success || !buildOutput.workflow) {
 				const errors = enhanceBuildErrors(buildOutput.errors ?? ['Unknown build error']);
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'build_failed');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 
@@ -329,10 +378,12 @@ export function createSubmitWorkflowTool(
 				const formattedErrors = enhanceValidationErrors(
 					errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
 				);
-				await reportAttempt({ success: false, errors: formattedErrors });
+				const remediation = classifySubmitFailure(formattedErrors, 'validation_failed');
+				await reportAttempt({ success: false, errors: formattedErrors, remediation });
 				return {
 					success: false,
 					errors: formattedErrors,
+					remediation,
 					warnings:
 						informational.length > 0
 							? informational.map((w) => `[${w.code}]: ${w.message}`)
@@ -340,29 +391,28 @@ export function createSubmitWorkflowTool(
 				};
 			}
 
-			// Apply Dagre layout to produce positions matching the FE's tidy-up.
-			// Temporary: until the SDK is published with toJSON({ tidyUp: true }) support,
-			// the sandbox's SDK doesn't have Dagre layout, so we apply it server-side.
-			const json = layoutWorkflowJSON(buildOutput.workflow);
+			const json = buildOutput.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {
 				const errors = [
 					'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 				];
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'missing_workflow_name');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined in toJSON().
 			// For updates: restore from the existing workflow's resolved credentials.
-			// For new nodes: look up credentials by name from the credential service.
-			// Unresolved credentials are mocked via pinned data when available.
-			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
+			// For new nodes: preserve explicit valid credentials; unresolved credentials
+			// are mocked with sidecar pin data for verification.
+			const mockResult = await resolveCredentials(json, workflowId, context, availableCredentials);
 
 			// Strip credential entries that are no longer valid for the current
 			// parameters. Resolution above (and the LLM itself) can re-emit stale
@@ -397,10 +447,12 @@ export function createSubmitWorkflowTool(
 				const errors = [
 					`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				];
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'workflow_save_failed');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 
@@ -424,6 +476,7 @@ export function createSubmitWorkflowTool(
 
 			// Scan node parameters for unresolved placeholder values
 			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+			const referencedWorkflowIds = getReferencedWorkflowIds(json);
 
 			await reportAttempt({
 				success: true,
@@ -438,8 +491,14 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				usesWorkflowPinDataForVerification:
+					hasMockedCredentials && mockResult.usesWorkflowPinDataForVerification ? true : undefined,
+				referencedWorkflowIds: referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
+			if (tracingRoot) {
+				appendGeneratedWorkflowIdToRootMetadata(tracingRoot, savedId);
+			}
 			return {
 				success: true,
 				workflowId: savedId,
@@ -453,6 +512,9 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				usesWorkflowPinDataForVerification:
+					hasMockedCredentials && mockResult.usesWorkflowPinDataForVerification ? true : undefined,
+				referencedWorkflowIds: referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 				warnings:
 					informational.length > 0
 						? informational.map((w) => `[${w.code}]: ${w.message}`)
@@ -460,4 +522,19 @@ export function createSubmitWorkflowTool(
 			};
 		},
 	});
+}
+
+function isCredentialSaveFailure(text: string): boolean {
+	if (!text.includes('credential')) return false;
+
+	return (
+		text.includes('not found') ||
+		text.includes('missing') ||
+		text.includes('not accessible') ||
+		text.includes('no access') ||
+		text.includes('do not have access') ||
+		text.includes("don't have access") ||
+		text.includes('not shared') ||
+		text.includes('permission')
+	);
 }

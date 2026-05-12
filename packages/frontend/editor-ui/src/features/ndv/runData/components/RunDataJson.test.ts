@@ -6,8 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useElementSize } from '@vueuse/core'; // Import the composable to mock
 
 vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
+	const originalModule = await vi.importActual('@vueuse/core');
 
 	return {
 		...originalModule, // Keep all original exports

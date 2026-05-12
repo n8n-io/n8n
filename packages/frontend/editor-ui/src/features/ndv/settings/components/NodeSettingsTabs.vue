@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -39,7 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const externalHooks = useExternalHooks();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();

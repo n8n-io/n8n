@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.12.1",
+  "version": "0.14.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -25,10 +25,6 @@
     "./prompts/node-guidance/parameter-guides": {
       "types": "./dist/prompts/node-guidance/parameter-guides/index.d.ts",
       "default": "./dist/prompts/node-guidance/parameter-guides/index.js"
-    },
-    "./prompts/node-guidance/node-tips": {
-      "types": "./dist/prompts/node-guidance/node-tips/index.d.ts",
-      "default": "./dist/prompts/node-guidance/node-tips/index.js"
     },
     "./prompts/node-guidance/node-recommendations": {
       "types": "./dist/prompts/node-guidance/node-recommendations/index.d.ts",
@@ -75,9 +71,6 @@
       "prompts/node-guidance/parameter-guides": [
         "./dist/prompts/node-guidance/parameter-guides/index.d.ts"
       ],
-      "prompts/node-guidance/node-tips": [
-        "./dist/prompts/node-guidance/node-tips/index.d.ts"
-      ],
       "prompts/node-guidance/node-recommendations": [
         "./dist/prompts/node-guidance/node-recommendations/index.d.ts"
       ],
@@ -93,6 +86,7 @@
     "dist/**/*"
   ],
   "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/adm-zip": "^0.5.7",
     "@types/estree": "^1.0.8",

@@ -44,9 +44,10 @@ export function isValidPathComponent(component: string): boolean {
 export function validatePathWithinBase(filePath: string, baseDir: string): boolean {
 	const resolvedPath = resolve(filePath);
 	const resolvedBase = resolve(baseDir);
+	const separator = process.platform === 'win32' ? '\\' : '/';
 
 	// Path must start with base directory (with trailing separator to prevent prefix attacks)
-	return resolvedPath.startsWith(resolvedBase + '/') || resolvedPath === resolvedBase;
+	return resolvedPath.startsWith(resolvedBase + separator) || resolvedPath === resolvedBase;
 }
 
 /**
@@ -64,24 +65,22 @@ function getGeneratedNodesPaths(nodeDefinitionDirs?: string[]): string[] {
 /**
  * Find the first nodes path that contains the given node directory.
  * Returns { nodesPath, nodeDir } or null if not found in any dir.
+ *
+ * Tool variants (e.g. "slackHitlTool", "httpRequestTool") have no on-disk type files;
+ * fall back to the base node by stripping the suffix. The regex tries "HitlTool" before
+ * "Tool" so "slackHitlTool" resolves to "slack", not "slackHitl".
  */
 function findNodeDir(
 	parsed: { packageName: string; nodeName: string },
 	nodesPaths: string[],
 ): { nodesPath: string; nodeDir: string } | null {
-	for (const nodesPath of nodesPaths) {
-		const nodeDir = join(nodesPath, parsed.packageName, parsed.nodeName);
-		if (existsSync(nodeDir)) {
-			return { nodesPath, nodeDir };
-		}
-	}
+	const candidates = [parsed.nodeName];
+	const baseName = parsed.nodeName.replace(/(?:HitlTool|Tool)$/, '');
+	if (baseName !== parsed.nodeName) candidates.push(baseName);
 
-	// Tool variant fallback: e.g. "httpRequestTool" -> "httpRequest"
-	// Tool variants share type definitions with their base node
-	if (parsed.nodeName.endsWith('Tool')) {
-		const baseName = parsed.nodeName.slice(0, -4);
+	for (const candidate of candidates) {
 		for (const nodesPath of nodesPaths) {
-			const nodeDir = join(nodesPath, parsed.packageName, baseName);
+			const nodeDir = join(nodesPath, parsed.packageName, candidate);
 			if (existsSync(nodeDir)) {
 				return { nodesPath, nodeDir };
 			}
@@ -355,10 +354,11 @@ function resolveModePath(
 }
 
 /**
- * Try to resolve file path for a specific node ID
- * This is the core resolution logic used by getNodeFilePath
+ * Get the file path for a node ID, optionally for a specific version and discriminators.
+ * If no version specified, returns the latest version. If the node uses split structure,
+ * discriminators are required. Tool-variant fallback is handled in findNodeDir.
  */
-function tryGetNodeFilePath(
+function getNodeFilePath(
 	nodeId: string,
 	version: string | undefined,
 	nodeDefinitionDirs: string[] | undefined,
@@ -456,35 +456,6 @@ function tryGetNodeFilePath(
 }
 
 /**
- * Get the file path for a node ID, optionally for a specific version and discriminators
- * If no version specified, returns the latest version
- * If node uses split structure, discriminators are required
- *
- * For tool variants (e.g., "googleCalendarTool"), falls back to the base node
- * (e.g., "googleCalendar") since tool variants don't have separate type files.
- */
-function getNodeFilePath(
-	nodeId: string,
-	version?: string,
-	nodeDefinitionDirs?: string[],
-	discriminators?: { resource?: string; operation?: string; mode?: string },
-): PathResolutionResult {
-	// Try exact node ID first
-	let result = tryGetNodeFilePath(nodeId, version, nodeDefinitionDirs, discriminators);
-
-	// If not found and node name ends with 'Tool', try base node as fallback
-	// (e.g., n8n-nodes-base.googleCalendarTool -> n8n-nodes-base.googleCalendar)
-	// Note: Some nodes legitimately end in Tool (agentTool, mcpClientTool) but those
-	// have their own type files, so this fallback only triggers when no file is found
-	if (result.error && nodeId.endsWith('Tool')) {
-		const baseNodeId = nodeId.slice(0, -4);
-		result = tryGetNodeFilePath(baseNodeId, version, nodeDefinitionDirs, discriminators);
-	}
-
-	return result;
-}
-
-/**
  * Get the type definition for a single node ID, optionally for a specific version and discriminators
  */
 function getNodeTypeDefinition(
@@ -552,7 +523,7 @@ function getNodeTypeDefinition(
 }
 
 /** Node request can be a simple string or an object with optional version and discriminators */
-type NodeRequest =
+export type NodeRequest =
 	| string
 	| {
 			nodeId: string;
@@ -574,91 +545,94 @@ export interface CodeBuilderGetToolOptions {
 }
 
 /**
+ * Plain (non-LangChain) implementation of node-type lookup. Callers that
+ * want their own tracing (e.g. OTel via `@n8n/agents`) can call this
+ * directly and skip the LangChain `tool(...)` wrapper, which would
+ * otherwise create its own LangSmith root run via the global LangChain tracer.
+ */
+export function getNodeTypes(
+	nodeIds: NodeRequest[],
+	options: CodeBuilderGetToolOptions = {},
+): string {
+	const { nodeDefinitionDirs } = options;
+	const results: string[] = [];
+	const errors: string[] = [];
+
+	for (const nodeRequest of nodeIds) {
+		// Support both string and object formats
+		const nodeId = typeof nodeRequest === 'string' ? nodeRequest : nodeRequest.nodeId;
+		const version = typeof nodeRequest === 'string' ? undefined : nodeRequest.version;
+
+		// Extract discriminators from object format
+		const discriminators =
+			typeof nodeRequest === 'string'
+				? undefined
+				: {
+						resource: nodeRequest.resource,
+						operation: nodeRequest.operation,
+						mode: nodeRequest.mode,
+					};
+
+		const result = getNodeTypeDefinition(nodeId, version, nodeDefinitionDirs, discriminators);
+		if (result.error) {
+			errors.push(result.error);
+		} else {
+			const versionLabel = result.version ? ` (${result.version})` : '';
+			results.push(`## ${nodeId}${versionLabel}\n\n\`\`\`typescript\n${result.content}\n\`\`\``);
+		}
+	}
+
+	let response = '';
+
+	if (results.length > 0) {
+		response += `# TypeScript Type Definitions\n\n${results.join('\n\n---\n\n')}`;
+	}
+
+	if (errors.length > 0) {
+		response += `\n\n# Errors\n\n${errors.join('\n')}`;
+	}
+
+	return response;
+}
+
+/**
  * Create the simplified node get tool for code builder
  * Accepts a list of node IDs (with optional versions) and returns all type definitions in a single call
  */
 export function createCodeBuilderGetTool(options: CodeBuilderGetToolOptions = {}) {
-	const { nodeDefinitionDirs } = options;
-
-	return tool(
-		async (input: { nodeIds: NodeRequest[] }) => {
-			const results: string[] = [];
-			const errors: string[] = [];
-
-			for (const nodeRequest of input.nodeIds) {
-				// Support both string and object formats
-				const nodeId = typeof nodeRequest === 'string' ? nodeRequest : nodeRequest.nodeId;
-				const version = typeof nodeRequest === 'string' ? undefined : nodeRequest.version;
-
-				// Extract discriminators from object format
-				const discriminators =
-					typeof nodeRequest === 'string'
-						? undefined
-						: {
-								resource: nodeRequest.resource,
-								operation: nodeRequest.operation,
-								mode: nodeRequest.mode,
-							};
-
-				const result = getNodeTypeDefinition(nodeId, version, nodeDefinitionDirs, discriminators);
-				if (result.error) {
-					errors.push(result.error);
-				} else {
-					const versionLabel = result.version ? ` (${result.version})` : '';
-					results.push(
-						`## ${nodeId}${versionLabel}\n\n\`\`\`typescript\n${result.content}\n\`\`\``,
-					);
-				}
-			}
-
-			let response = '';
-
-			if (results.length > 0) {
-				response += `# TypeScript Type Definitions\n\n${results.join('\n\n---\n\n')}`;
-			}
-
-			if (errors.length > 0) {
-				response += `\n\n# Errors\n\n${errors.join('\n')}`;
-			}
-
-			return response;
-		},
-		{
-			name: 'get_node_types',
-			description:
-				'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. By default returns the latest version. For nodes with resource/operation or mode discriminators, you MUST specify them. Use search_nodes first to discover available discriminators. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
-			schema: z.object({
-				nodeIds: z
-					.array(
-						z.union([
-							z.string(),
-							z.object({
-								nodeId: z.string().describe('The node ID (e.g., "n8n-nodes-base.httpRequest")'),
-								version: z
-									.string()
-									.optional()
-									.describe('Optional version (e.g., "34" for v34). Omit for latest version.'),
-								resource: z
-									.string()
-									.optional()
-									.describe(
-										'Resource discriminator for REST API nodes (e.g., "ticket", "contact")',
-									),
-								operation: z
-									.string()
-									.optional()
-									.describe('Operation discriminator (e.g., "get", "create", "update")'),
-								mode: z
-									.string()
-									.optional()
-									.describe('Mode discriminator for nodes like Code (e.g., "runOnceForAllItems")'),
-							}),
-						]),
-					)
-					.describe(
-						'Array of nodes to fetch. Can be simple strings for flat nodes (e.g., ["n8n-nodes-base.aggregate"]) or objects with discriminators for split nodes (e.g., [{ nodeId: "n8n-nodes-base.freshservice", resource: "ticket", operation: "get" }] or [{ nodeId: "n8n-nodes-base.code", mode: "runOnceForAllItems" }]). Use search_nodes to discover which nodes require discriminators.',
-					),
-			}),
-		},
-	);
+	return tool(async (input: { nodeIds: NodeRequest[] }) => getNodeTypes(input.nodeIds, options), {
+		name: 'get_node_types',
+		description:
+			'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. By default returns the latest version. For nodes with resource/operation or mode discriminators, you MUST specify them. Use search_nodes first to discover available discriminators. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
+		schema: z.object({
+			nodeIds: z
+				.array(
+					z.union([
+						z.string(),
+						z.object({
+							nodeId: z.string().describe('The node ID (e.g., "n8n-nodes-base.httpRequest")'),
+							version: z
+								.string()
+								.optional()
+								.describe('Optional version (e.g., "34" for v34). Omit for latest version.'),
+							resource: z
+								.string()
+								.optional()
+								.describe('Resource discriminator for REST API nodes (e.g., "ticket", "contact")'),
+							operation: z
+								.string()
+								.optional()
+								.describe('Operation discriminator (e.g., "get", "create", "update")'),
+							mode: z
+								.string()
+								.optional()
+								.describe('Mode discriminator for nodes like Code (e.g., "runOnceForAllItems")'),
+						}),
+					]),
+				)
+				.describe(
+					'Array of nodes to fetch. Can be simple strings for flat nodes (e.g., ["n8n-nodes-base.aggregate"]) or objects with discriminators for split nodes (e.g., [{ nodeId: "n8n-nodes-base.freshservice", resource: "ticket", operation: "get" }] or [{ nodeId: "n8n-nodes-base.code", mode: "runOnceForAllItems" }]). Use search_nodes to discover which nodes require discriminators.',
+				),
+		}),
+	});
 }

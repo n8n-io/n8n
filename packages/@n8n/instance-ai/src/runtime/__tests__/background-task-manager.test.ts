@@ -4,6 +4,7 @@ import type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from '../background-task-manager';
+import { InstanceAiLivenessPolicy } from '../liveness-policy';
 
 function makeSpawnOptions(
 	overrides: Partial<SpawnManagedBackgroundTaskOptions> = {},
@@ -24,6 +25,81 @@ describe('BackgroundTaskManager', () => {
 
 	beforeEach(() => {
 		manager = new BackgroundTaskManager(3);
+	});
+
+	describe('liveness timeouts', () => {
+		const policy = new InstanceAiLivenessPolicy({
+			confirmationTimeoutMs: 10_000,
+			backgroundTaskIdleTimeoutMs: 10_000,
+			backgroundTaskMaxLifetimeMs: 30_000,
+			activeRunIdleTimeoutMs: 10_000,
+			activeRunMaxLifetimeMs: 30_000,
+		});
+
+		it('fails and settles idle running tasks', async () => {
+			const onFailed = jest.fn((_task: ManagedBackgroundTask) => undefined);
+			const onSettled = jest.fn((_task: ManagedBackgroundTask) => undefined);
+			let signal: AbortSignal | undefined;
+
+			manager.spawn(
+				makeSpawnOptions({
+					run: async (abortSignal) => {
+						signal = abortSignal;
+						await new Promise(() => {});
+						return 'never';
+					},
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					onFailed,
+					onSettled,
+				}),
+			);
+
+			const task = manager.getRunningTasks('thread-1')[0];
+			task.startedAt = 0;
+			task.lastActivityAt = 0;
+
+			const timedOut = await manager.timeoutTimedOutTasks(policy, 10_000);
+
+			expect(timedOut).toHaveLength(1);
+			expect(signal?.aborted).toBe(true);
+			expect(onFailed).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'failed',
+					timeoutReason: 'idle_timeout',
+				}),
+			);
+			expect(onFailed.mock.calls[0]?.[0].error).toEqual(expect.stringContaining('timed out'));
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'failed', timeoutReason: 'idle_timeout' }),
+			);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
+
+			const next = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'task-2',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+				}),
+			);
+
+			expect(next.status).toBe('started');
+		});
+
+		it('keeps touched tasks alive until they exceed the idle timeout', async () => {
+			manager.spawn(
+				makeSpawnOptions({
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+			const task = manager.getRunningTasks('thread-1')[0];
+			task.startedAt = 0;
+			manager.touchTask('thread-1', 'task-1', 9_000);
+
+			const timedOut = await manager.timeoutTimedOutTasks(policy, 10_000);
+
+			expect(timedOut).toEqual([]);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
+		});
 	});
 
 	describe('spawn', () => {

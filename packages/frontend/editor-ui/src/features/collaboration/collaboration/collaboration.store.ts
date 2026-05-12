@@ -1,13 +1,15 @@
 /* eslint-disable import-x/extensions */
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 import type { IWorkflowDb } from '@/Interface';
 
 import { TIME } from '@/app/constants';
+import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
+import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -35,6 +37,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const builderStore = useBuilderStore();
+	const toast = useToast();
+	const i18n = useI18n();
 
 	const route = useRoute();
 	const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings, addBeforeUnloadHandler } =
@@ -60,6 +64,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	// Callback for refreshing the canvas after workflow updates
 	let refreshCanvasCallback: ((workflow: IWorkflowDb) => void) | null = null;
+	let pendingRemoteUpdateNotification: { close: () => void } | null = null;
 
 	// Computed properties for write-lock state
 	const isCurrentTabWriter = computed(() => {
@@ -285,9 +290,37 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		refreshCanvasCallback = fn;
 	}
 
+	function closePendingRemoteUpdateNotification() {
+		pendingRemoteUpdateNotification?.close();
+		pendingRemoteUpdateNotification = null;
+	}
+
+	function showPendingRemoteUpdateNotification() {
+		if (pendingRemoteUpdateNotification) {
+			return;
+		}
+
+		pendingRemoteUpdateNotification = toast.showMessage({
+			title: i18n.baseText('workflows.remoteUpdateBlocked.title'),
+			message: i18n.baseText('workflows.remoteUpdateBlocked.message'),
+			type: 'warning',
+			duration: 0,
+			onClose: () => {
+				pendingRemoteUpdateNotification = null;
+			},
+		});
+	}
+
 	async function handleWorkflowUpdate() {
 		if (isCurrentTabWriter.value || !collaboratingWorkflowId.value) {
 			return;
+		}
+
+		// Preserve local unsaved edits until the user explicitly resolves them
+		// (This state is possible when autosave is disabled)
+		if (uiStore.stateIsDirty) {
+			showPendingRemoteUpdateNotification();
+			return true;
 		}
 
 		try {
@@ -304,6 +337,16 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return false;
 		}
 	}
+
+	watch(
+		() => uiStore.stateIsDirty,
+		(isDirty) => {
+			if (!isDirty) {
+				closePendingRemoteUpdateNotification();
+			}
+		},
+		{ flush: 'sync' },
+	);
 
 	function handleWriteLockHolderLeft() {
 		if (!currentWriterLock.value) return;
@@ -413,6 +456,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		if (unloadTimeout.value) {
 			clearTimeout(unloadTimeout.value);
 		}
+		closePendingRemoteUpdateNotification();
 		collaboratingWorkflowId.value = null;
 		currentWriterLock.value = null;
 		collaborators.value = [];

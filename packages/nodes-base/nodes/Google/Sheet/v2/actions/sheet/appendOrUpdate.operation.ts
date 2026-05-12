@@ -8,6 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	cellFormat,
+	columnsResourceMapperBuilderHint,
 	handlingExtraData,
 	locationDefine,
 	useAppendOption,
@@ -171,6 +172,7 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
+		builderHint: columnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
@@ -206,6 +208,7 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
+		builderHint: columnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
