@@ -76,7 +76,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/node": "24.10.1",
+    "@types/node": "catalog:",
     "vitest": "catalog:"
   }
 }

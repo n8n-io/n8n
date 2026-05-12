@@ -117,16 +117,21 @@ describe('AgentBuilderHeader', () => {
 	});
 
 	it('renders breadcrumbs, publish and action dropdown', () => {
-		const wrapper = mountHeader();
+		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
 
 	it('uses the horizontal dots action menu icon', () => {
-		const wrapper = mountHeader();
+		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = wrapper.findComponent({ name: 'ActionDropdown' });
 		expect(action.props('activatorIcon')).toBe('ellipsis');
+	});
+
+	it('hides the action dropdown when no header actions are available', () => {
+		const wrapper = mountHeader({ headerActions: [] });
+		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
 	});
 
 	it('passes a single project breadcrumb (agent rendered as switcher button)', () => {

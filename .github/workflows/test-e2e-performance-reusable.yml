@@ -19,4 +19,5 @@ jobs:
       test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:performance
       currents-project-id: 'O9BJaN'
+      artifact-prefix: performance
     secrets: inherit

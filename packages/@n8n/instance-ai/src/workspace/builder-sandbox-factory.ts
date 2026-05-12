@@ -16,6 +16,7 @@ import { join as posixJoin } from 'node:path/posix';
 import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
+import { createGuardedFilesystem, type FilesystemMutationGuardSetter } from './guarded-filesystem';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import {
@@ -38,6 +39,7 @@ const NOOP_LOGGER: Logger = {
 export interface BuilderWorkspace {
 	workspace: Workspace;
 	cleanup: () => Promise<void>;
+	setFilesystemMutationGuard?: FilesystemMutationGuardSetter;
 }
 
 async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<void> {
@@ -248,9 +250,10 @@ export class BuilderSandboxFactory {
 				timeout: config.timeout ?? 300_000,
 			});
 
+			const guardedFilesystem = createGuardedFilesystem(new DaytonaFilesystem(daytonaSandbox));
 			const workspace = new Workspace({
 				sandbox: daytonaSandbox,
-				filesystem: new DaytonaFilesystem(daytonaSandbox),
+				filesystem: guardedFilesystem.filesystem,
 			});
 
 			await workspace.init();
@@ -267,6 +270,7 @@ export class BuilderSandboxFactory {
 
 			return {
 				workspace,
+				setFilesystemMutationGuard: guardedFilesystem.setMutationGuard,
 				cleanup: async () => {
 					await cleanupTrackedSandboxProcesses(workspace);
 					await deleteSandbox();
@@ -301,9 +305,10 @@ export class BuilderSandboxFactory {
 		};
 
 		try {
+			const guardedFilesystem = createGuardedFilesystem(new N8nSandboxFilesystem(sandbox));
 			const workspace = new Workspace({
 				sandbox,
-				filesystem: new N8nSandboxFilesystem(sandbox),
+				filesystem: guardedFilesystem.filesystem,
 			});
 
 			await workspace.init();
@@ -319,6 +324,7 @@ export class BuilderSandboxFactory {
 
 			return {
 				workspace,
+				setFilesystemMutationGuard: guardedFilesystem.setMutationGuard,
 				cleanup: async () => {
 					await cleanupTrackedSandboxProcesses(workspace);
 					await destroySandbox();
@@ -354,15 +360,17 @@ export class BuilderSandboxFactory {
 	): Promise<BuilderWorkspace> {
 		const dir = `./workspace-builders/${builderId}`;
 		const sandbox = new LocalSandbox({ workingDirectory: dir });
+		const guardedFilesystem = createGuardedFilesystem(new LocalFilesystem({ basePath: dir }));
 		const workspace = new Workspace({
 			sandbox,
-			filesystem: new LocalFilesystem({ basePath: dir }),
+			filesystem: guardedFilesystem.filesystem,
 		});
 		await workspace.init();
 		await setupSandboxWorkspace(workspace, context);
 
 		return {
 			workspace,
+			setFilesystemMutationGuard: guardedFilesystem.setMutationGuard,
 			cleanup: async () => {
 				await cleanupTrackedSandboxProcesses(workspace);
 				// Local cleanup keeps the directory for debugging.
