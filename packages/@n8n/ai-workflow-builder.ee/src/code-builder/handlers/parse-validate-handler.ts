@@ -124,6 +124,53 @@ export class ParseValidateHandler {
 	}
 
 	/**
+	 * Run the same graph + JSON validation passes that `parseAndValidate` runs,
+	 * but on a workflow that's already in JSON form (no parse step).
+	 *
+	 * Used by tools that mutate workflow JSON directly (e.g. partial update),
+	 * so the resulting state is checked against the same rules a code-rewrite
+	 * path would enforce. Does not throw — collects all issues into warnings.
+	 */
+	validateJSON(json: WorkflowJSON): ValidationWarning[] {
+		if (json.nodes.length === 0) {
+			return [];
+		}
+
+		const allWarnings: ValidationWarning[] = [];
+
+		const builder = workflow.fromJSON(json);
+		const graphValidation = builder.validate();
+		this.collectValidationIssues(
+			graphValidation.errors,
+			allWarnings,
+			'GRAPH VALIDATION ERRORS',
+			'warn',
+		);
+		this.collectValidationIssues(
+			graphValidation.warnings,
+			allWarnings,
+			'GRAPH VALIDATION WARNINGS',
+			'info',
+		);
+
+		const jsonValidation = validateWorkflow(json);
+		this.collectValidationIssues(
+			jsonValidation.errors,
+			allWarnings,
+			'JSON VALIDATION ERRORS',
+			'warn',
+		);
+		this.collectValidationIssues(
+			jsonValidation.warnings,
+			allWarnings,
+			'JSON VALIDATION WARNINGS',
+			'info',
+		);
+
+		return allWarnings;
+	}
+
+	/**
 	 * Parse TypeScript code to WorkflowJSON and validate.
 	 *
 	 * @param code - The TypeScript workflow code to parse

@@ -18,7 +18,7 @@ export const DATA_TABLE_RESOURCE_LOCATOR_BASE = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	builderHint: { message: "Default to mode: 'list' which is easier for users to set up" },
+	builderHint: { propertyHint: "Default to mode: 'list' which is easier for users to set up" },
 	modes: [
 		{
 			displayName: 'From List',

@@ -35,6 +35,20 @@ export class FacebookTrigger implements INodeType {
 			{
 				name: 'facebookGraphAppApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authType: ['accessToken'],
+					},
+				},
+			},
+			{
+				name: 'facebookGraphAppOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authType: ['oAuth2'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -52,6 +66,23 @@ export class FacebookTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authType',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The authentication method to use',
+			},
 			{
 				displayName: 'APP ID',
 				name: 'appId',
@@ -267,7 +298,10 @@ export class FacebookTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const credentials = await this.getCredentials('facebookGraphAppApi');
+		const authType = this.getNodeParameter('authType', 0) as string;
+		const credentials = await this.getCredentials(
+			authType === 'oAuth2' ? 'facebookGraphAppOAuth2Api' : 'facebookGraphAppApi',
+		);
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {

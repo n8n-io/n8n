@@ -250,6 +250,17 @@ export const workflowSetupNodeSchema = z.object({
 			'Whether this node still requires user intervention. ' +
 				'False when credentials are set and valid, parameters are resolved, etc.',
 		),
+	subnodeRootNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+			typeVersion: z.number(),
+			id: z.string(),
+		})
+		.optional()
+		.describe(
+			'Snapshot of the root node for this sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the group header even when the root node itself has no setup request.',
+		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 
@@ -640,7 +651,8 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
+	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });
@@ -990,7 +1002,6 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
-	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -1010,7 +1021,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
-	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -1093,12 +1103,19 @@ export interface InstanceAiEvalMockHints {
 	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
 }
 
+export interface InstanceAiEvalMockedCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
 	nodeResults: Record<string, InstanceAiEvalNodeResult>;
 	errors: string[];
 	hints: InstanceAiEvalMockHints;
+	mockedCredentials: InstanceAiEvalMockedCredential[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({

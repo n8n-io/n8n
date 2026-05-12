@@ -1,4 +1,4 @@
-import { UPDATE_WORKING_MEMORY_TOOL_NAME, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import type {
 	AgentPersistedMessageContentPart,
 	AgentSseEvent,
@@ -24,13 +24,6 @@ export interface ToolEventCallbacks {
 interface ChunkHandlerCtx {
 	send: (e: AgentSseEvent) => void;
 	onToolEvent?: ToolEventCallbacks;
-	/**
-	 * Tool-call ids belonging to the SDK-internal working-memory tool. The id
-	 * Set is needed because `tool-input-delta` chunks carry only the id, not
-	 * the tool name — we capture the id on `tool-input-start` / `tool-call`
-	 * and use it to drop the matching streamed memory content.
-	 */
-	workingMemoryToolCallIds: Set<string>;
 }
 
 /**
@@ -110,51 +103,6 @@ function emitTextLikeChunk(
  * SSE-emit a tool-* chunk and fire any matching builder side-effect callback.
  * Returns `{ suspended: true }` when the chunk was `tool-call-suspended`.
  */
-/**
- * Working memory is implemented as an SDK tool, but n8n surfaces it as a
- * distinct memory event in the chat UI rather than a regular tool step.
- * Returns `true` when the chunk was handled and should not flow through the
- * regular tool emission path.
- */
-function handleWorkingMemoryChunk(
-	chunk: Extract<
-		StreamChunk,
-		{
-			type:
-				| 'tool-input-start'
-				| 'tool-input-delta'
-				| 'tool-call'
-				| 'tool-execution-start'
-				| 'tool-result';
-		}
-	>,
-	ctx: ChunkHandlerCtx,
-): boolean {
-	const { send, workingMemoryToolCallIds } = ctx;
-	const isWmName = 'toolName' in chunk && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME;
-
-	if (chunk.type === 'tool-input-delta') {
-		return workingMemoryToolCallIds.has(chunk.toolCallId);
-	}
-	if (!isWmName) return false;
-
-	if (chunk.type === 'tool-input-start' || chunk.type === 'tool-call') {
-		workingMemoryToolCallIds.add(chunk.toolCallId);
-		return true;
-	}
-	if (chunk.type === 'tool-execution-start') return true;
-	if (chunk.type === 'tool-result') {
-		if (chunk.isError) {
-			const errMsg = chunk.output instanceof Error ? chunk.output.message : String(chunk.output);
-			send({ type: 'error', message: `Working memory update failed: ${errMsg}` });
-		} else {
-			send({ type: 'working-memory-update', toolName: chunk.toolName });
-		}
-		return true;
-	}
-	return false;
-}
-
 function emitToolChunk(
 	chunk: Extract<
 		StreamChunk,
@@ -171,10 +119,6 @@ function emitToolChunk(
 	ctx: ChunkHandlerCtx,
 ): { suspended: boolean } {
 	const { send, onToolEvent } = ctx;
-
-	if (chunk.type !== 'tool-call-suspended' && handleWorkingMemoryChunk(chunk, ctx)) {
-		return { suspended: false };
-	}
 
 	switch (chunk.type) {
 		case 'tool-input-start':
@@ -293,7 +237,6 @@ export async function pumpChunks(
 	const ctx: ChunkHandlerCtx = {
 		send,
 		onToolEvent,
-		workingMemoryToolCallIds: new Set<string>(),
 	};
 
 	for await (const chunk of chunks) {

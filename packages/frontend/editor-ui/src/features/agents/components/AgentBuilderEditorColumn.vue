@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { N8nCard, N8nHeading, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { computed } from 'vue';
+import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
@@ -7,13 +8,14 @@ import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentEvalsPanel from './AgentEvalsPanel.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
-defineProps<{
+const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
 	mainTabOptions: Array<{ label: string; value: AgentBuilderMainTab }>;
 	localConfig: AgentJsonConfig | null;
@@ -23,8 +25,11 @@ defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	isBuildChatStreaming: boolean;
+	canEditAgent: boolean;
 	executionsDescription: string;
 }>();
+
+const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -56,13 +61,22 @@ const i18n = useI18n();
 					<AgentIdentityHeader
 						v-if="activeMainTab === 'agent'"
 						:config="localConfig"
-						:disabled="isBuildChatStreaming"
+						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
 					<AgentPanelHeader
 						v-else-if="activeMainTab === 'executions'"
 						:title="i18n.baseText('agents.builder.header.tab.executions')"
 						:description="executionsDescription"
+					/>
+					<AgentPanelHeader
+						v-else-if="activeMainTab === 'evaluations'"
+						:title="i18n.baseText('agents.builder.header.tab.evaluations')"
+						:description="
+							i18n.baseText('agents.builder.evaluations.configuredInCode', {
+								interpolate: { count: '0' },
+							})
+						"
 					/>
 					<AgentPanelHeader
 						v-else-if="activeMainTab === 'raw'"
@@ -87,7 +101,7 @@ const i18n = useI18n();
 							:custom-tools="agent?.tools ?? {}"
 							:skills="appliedSkills"
 							:connected-triggers="connectedTriggers"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.publishedVersion)"
@@ -106,7 +120,7 @@ const i18n = useI18n();
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentInfoPanel
 							:config="localConfig"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>
@@ -115,7 +129,7 @@ const i18n = useI18n();
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentMemoryPanel
 							:config="localConfig"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>
@@ -124,7 +138,7 @@ const i18n = useI18n();
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentAdvancedPanel
 							:config="localConfig"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							collapsible
 							@update:config="emit('update:config', $event)"
 						/>
@@ -139,22 +153,13 @@ const i18n = useI18n();
 				<div v-else-if="activeMainTab === 'raw'" :class="$style.rawPanel">
 					<AgentJsonEditor
 						:value="localConfig"
-						:read-only="isBuildChatStreaming"
+						:read-only="childrenDisabled"
 						copy-button-test-id="agent-config-json-copy"
 						@update:value="emit('update:config', $event)"
 					/>
 				</div>
 
-				<div v-else data-testid="agent-evaluations-panel">
-					<div :class="$style.panel">
-						<N8nHeading size="medium">
-							{{ i18n.baseText('agents.builder.header.tab.evaluations') }}
-						</N8nHeading>
-						<N8nText color="text-light">
-							{{ i18n.baseText('agents.builder.evaluations.comingSoon') }}
-						</N8nText>
-					</div>
-				</div>
+				<AgentEvalsPanel v-else data-testid="agent-evaluations-panel" />
 			</div>
 		</div>
 	</section>
@@ -180,6 +185,8 @@ const i18n = useI18n();
 		var(--color--background--light-2)
 	);
 	overflow: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .panelAreaContainer {
@@ -215,6 +222,7 @@ const i18n = useI18n();
 	flex: 1;
 	min-height: 0;
 	width: 100%;
+	padding: var(--spacing--lg);
 }
 
 .agentCards {

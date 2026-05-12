@@ -44,7 +44,7 @@ export class Code implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
-			message:
+			searchHint:
 				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures.',
 			relatedNodes: [
 				{
@@ -95,6 +95,30 @@ export class Code implements INodeType {
 				{
 					nodeType: 'n8n-nodes-base.html',
 					relationHint: 'Use this instead for creating html pages',
+				},
+			],
+			extraTypeDefContent: [
+				{
+					content: `<patterns>
+<pattern title="runOnceForAllItems with $input.all()">
+const codeNode = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      jsCode: \`
+const items = $input.all();
+return items.map(item => ({
+  json: { ...item.json, processed: true }
+}));
+\`.trim()
+    }
+  }
+});
+</pattern>
+</patterns>`,
 				},
 			],
 		},
