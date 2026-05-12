@@ -21,6 +21,7 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import {
 	N8nActionToggle,
 	N8nBadge,
+	N8nButton,
 	N8nCard,
 	N8nIcon,
 	N8nText,
@@ -95,6 +96,13 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+
+const isPrivateNotConnected = computed(
+	() =>
+		isDynamicCredentialsEnabled.value &&
+		props.data.isResolvable === true &&
+		props.data.connectedByMe === false,
+);
 
 function onClick() {
 	emit('click', props.data.id);
@@ -198,7 +206,21 @@ function moveResource() {
 					source="credential_card"
 					data-test-id="credential-card-dependents"
 				/>
+				<template v-if="isPrivateNotConnected">
+					<N8nText size="small" color="text-light" data-test-id="credential-card-not-connected">
+						{{ locale.baseText('credentials.item.notConnectedYet') }}
+					</N8nText>
+					<N8nButton
+						size="small"
+						type="primary"
+						data-test-id="credential-card-connect"
+						@click.stop="onClick"
+					>
+						{{ locale.baseText('credentials.item.connect') }}
+					</N8nButton>
+				</template>
 				<ProjectCardBadge
+					v-else
 					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Credential"

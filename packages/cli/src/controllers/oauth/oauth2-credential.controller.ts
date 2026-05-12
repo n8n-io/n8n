@@ -9,6 +9,7 @@ import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
@@ -21,12 +22,32 @@ export class OAuth2CredentialController {
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.oauthService.getCredential(req);
+
+		// Private credentials: route through dynamic-credential origin so the
+		// callback writes per-user tokens into DynamicCredentialUserEntry instead
+		// of the credential's shared static data.
+		if (credential.isResolvable) {
+			const resolverId =
+				credential.resolverId ??
+				(await this.dynamicCredentialsProxy.getPrivateCredentialResolverId());
+			if (resolverId) {
+				return await this.oauthService.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'dynamic-credential',
+					userId: req.user.id,
+					authorizationHeader: `Bearer ${req.user.id}`,
+					authMetadata: { source: 'manual-execution' },
+					credentialResolverId: resolverId,
+				});
+			}
+		}
 
 		const uri = await this.oauthService.generateAOauth2AuthUri(credential, {
 			cid: credential.id,

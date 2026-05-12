@@ -312,6 +312,11 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	/**
+	 * For private (isResolvable) credentials: whether the current user has a
+	 * stored per-user connection. Undefined for static credentials.
+	 */
+	connectedByMe?: boolean;
 };
 
 // Base resource types that are always available

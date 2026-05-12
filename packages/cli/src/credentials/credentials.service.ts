@@ -63,6 +63,7 @@ import {
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
 import { CredentialsFinderService } from './credentials-finder.service';
+import { DynamicCredentialsProxy } from './dynamic-credentials-proxy';
 import {
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
@@ -109,7 +110,35 @@ export class CredentialsService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
+
+	/**
+	 * Stamps a `connectedByMe` flag on each private (isResolvable) credential
+	 * reflecting whether the given user already has a stored connection. No-op
+	 * for credentials that aren't private. Skipped entirely when the dynamic
+	 * credentials feature is off.
+	 */
+	private async stampConnectionStatusForUser<T extends { id: string; isResolvable?: boolean }>(
+		credentials: T[],
+		userId: string,
+	): Promise<void> {
+		const privateIds = credentials.filter((c) => c.isResolvable === true).map((c) => c.id);
+		if (privateIds.length === 0) return;
+
+		const connected = await this.dynamicCredentialsProxy.getConnectedCredentialIdsForUser(
+			userId,
+			privateIds,
+		);
+
+		for (const credential of credentials) {
+			if (credential.isResolvable === true) {
+				(credential as T & { connectedByMe?: boolean }).connectedByMe = connected.has(
+					credential.id,
+				);
+			}
+		}
+	}
 
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
@@ -223,7 +252,7 @@ export class CredentialsService {
 			});
 		}
 
-		return await this.enrichCredentials(
+		const enriched = await this.enrichCredentials(
 			credentials,
 			user,
 			isDefaultSelect,
@@ -232,6 +261,8 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
+		await this.stampConnectionStatusForUser(enriched, user.id);
+		return enriched;
 	}
 
 	private async getManyForAdminUser(
@@ -535,7 +566,7 @@ export class CredentialsService {
 			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
 		);
 
-		return intersection
+		const result = intersection
 			.map((c) => this.roleService.addScopes(c, user, projectRelations))
 			.map((c) => ({
 				id: c.id,
@@ -546,6 +577,8 @@ export class CredentialsService {
 				isGlobal: c.isGlobal,
 				isResolvable: c.isResolvable,
 			}));
+		await this.stampConnectionStatusForUser(result, user.id);
+		return result;
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
@@ -1108,15 +1141,36 @@ export class CredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		// For private (isResolvable) credentials, the "connected" signal is
+		// per-user storage in DynamicCredentialUserEntry — not the credential's
+		// shared static data. Override oauthTokenData accordingly and expose a
+		// dedicated connectedByMe flag for clearer UI logic.
+		let connectedByMe: boolean | undefined;
+		if (credential.isResolvable) {
+			const connectedIds = await this.dynamicCredentialsProxy.getConnectedCredentialIdsForUser(
+				user.id,
+				[credential.id],
+			);
+			connectedByMe = connectedIds.has(credential.id);
+		}
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				// Private: connection state lives per-user; static oauthTokenData is
+				// not meaningful for the current viewer.
+				if (connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...rest, connectedByMe };
 		}
-		return { ...rest };
+		return { ...rest, connectedByMe };
 	}
 
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {

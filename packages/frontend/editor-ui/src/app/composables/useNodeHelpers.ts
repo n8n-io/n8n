@@ -479,6 +479,24 @@ export function useNodeHelpers() {
 			return credential ? reportUnsetCredential(credential) : null;
 		}
 
+		// Scan every selected credential by id (covers nodes that declare credential
+		// types directly and generic-auth nodes like HTTP Request whose credential
+		// is picked dynamically via `predefinedCredentialType`). Flag any private
+		// credential the current user hasn't connected to themselves.
+		if (node.credentials) {
+			for (const [credentialTypeName, credentialRef] of Object.entries(node.credentials)) {
+				if (!credentialRef?.id) continue;
+				const cred = credentialsStore.getCredentialById(credentialRef.id);
+				if (cred?.isResolvable === true && cred.connectedByMe === false) {
+					foundIssues[credentialTypeName] = [
+						i18n.baseText('nodeIssues.credentials.notConnected', {
+							interpolate: { name: cred.name },
+						}),
+					];
+				}
+			}
+		}
+
 		for (const credentialTypeDescription of localNodeType.credentials) {
 			// Check if credentials should be displayed else ignore
 			if (!displayParameter(node.parameters, credentialTypeDescription, '', node)) {

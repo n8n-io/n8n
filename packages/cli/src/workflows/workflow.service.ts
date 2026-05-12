@@ -18,6 +18,7 @@ import {
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
+	CredentialsRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -64,6 +65,7 @@ import { getBase as getWorkflowExecutionData } from '@/workflow-execute-addition
 import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 @Service()
 export class WorkflowService {
@@ -92,7 +94,50 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
+
+	/**
+	 * When a workflow references any private credential and no
+	 * `credentialResolverId` is set on its (effective) settings, stamps the
+	 * system self-connect resolver id on the update payload so the workflow is
+	 * explicit about which resolver handles its dynamic credentials. EE
+	 * customers who already configured a custom resolver are never overridden.
+	 */
+	private async stampPrivateCredentialResolverIfNeeded(
+		workflowUpdateData: WorkflowEntity,
+		existingWorkflow: WorkflowEntity,
+	): Promise<void> {
+		const nodes = workflowUpdateData.nodes ?? existingWorkflow.nodes;
+		if (!nodes || nodes.length === 0) return;
+
+		const effectiveSettings = workflowUpdateData.settings ?? existingWorkflow.settings;
+		if (effectiveSettings?.credentialResolverId) return;
+
+		const credentialIds = new Set<string>();
+		for (const node of nodes) {
+			for (const ref of Object.values(node.credentials ?? {})) {
+				if (ref?.id) credentialIds.add(ref.id);
+			}
+		}
+		if (credentialIds.size === 0) return;
+
+		const credentials = await this.credentialsRepository.find({
+			where: { id: In([...credentialIds]) },
+			select: ['id', 'isResolvable'],
+		});
+		const hasPrivateCredential = credentials.some((c) => c.isResolvable);
+		if (!hasPrivateCredential) return;
+
+		const resolverId = await this.dynamicCredentialsProxy.getPrivateCredentialResolverId();
+		if (!resolverId) return;
+
+		workflowUpdateData.settings = {
+			...(workflowUpdateData.settings ?? existingWorkflow.settings ?? {}),
+			credentialResolverId: resolverId,
+		};
+	}
 
 	async getMany(
 		user: User,
@@ -408,6 +453,11 @@ export class WorkflowService {
 				...workflowUpdateData.settings,
 			};
 		}
+
+		// Auto-bind the system credential resolver when the workflow references
+		// any private credential and no resolver is explicitly configured. Lives
+		// after the settings merge so an existing resolverId is preserved.
+		await this.stampPrivateCredentialResolverIfNeeded(workflowUpdateData, workflow);
 
 		if (workflowUpdateData.settings) {
 			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(

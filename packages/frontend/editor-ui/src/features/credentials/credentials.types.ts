@@ -16,6 +16,12 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	/**
+	 * For private (isResolvable) credentials: true when the current user has a
+	 * stored per-user connection. Absent for static credentials; false when the
+	 * user still needs to connect.
+	 */
+	connectedByMe?: boolean;
 }
 
 export interface IUsedCredential {

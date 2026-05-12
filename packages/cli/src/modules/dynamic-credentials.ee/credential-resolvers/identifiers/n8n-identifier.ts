@@ -12,10 +12,21 @@ const ChatHubExtractorMetadataSchema = z.object({
 });
 
 /**
- * N8N JWT token identifier.
- * Validates n8n authentication tokens and resolves them to user IDs.
- * Used by the N8N credential resolver to authenticate users via n8n's
- * built-in JWT authentication and store credentials per user.
+ * Manual-execution metadata: identity is a plain n8n user id, set by the
+ * execution engine when a workflow is started from the editor. No JWT
+ * validation needed since the REST endpoint that kicked off the run already
+ * authenticated the user.
+ */
+const ManualExecutionMetadataSchema = z.object({
+	source: z.literal('manual-execution'),
+});
+
+/**
+ * N8N identity identifier. Two code paths:
+ *  - chat-hub HTTP request: validates the JWT carried in `context.identity`
+ *    and returns the resolved user id.
+ *  - editor-triggered manual execution: treats `context.identity` as the user
+ *    id directly.
  */
 @Service()
 export class N8NIdentifier implements ITokenIdentifier {
@@ -26,6 +37,16 @@ export class N8NIdentifier implements ITokenIdentifier {
 	}
 
 	async resolve(context: ICredentialContext, _: Record<string, unknown>): Promise<string> {
+		const manualResult = ManualExecutionMetadataSchema.safeParse(context.metadata);
+		if (manualResult.success) {
+			if (!context.identity) {
+				throw new CredentialResolverError(
+					'Manual execution context is missing the running user id',
+				);
+			}
+			return context.identity;
+		}
+
 		const metadataResult = ChatHubExtractorMetadataSchema.safeParse(context.metadata);
 		if (!metadataResult.success) {
 			throw new CredentialResolverError(

@@ -23,6 +23,22 @@ export class ExecutionContextService {
 		private readonly cipher: Cipher,
 	) {}
 
+	/**
+	 * Encrypts a credential context and returns a new execution context with it
+	 * attached. Used to seed manual executions with the running user's identity
+	 * so private credentials resolve per-user without an inbound HTTP request.
+	 */
+	async setEncryptedCredentialContext(
+		context: IExecutionContext,
+		identity: string,
+		metadata: Record<string, unknown>,
+	): Promise<IExecutionContext> {
+		return {
+			...context,
+			credentials: await this.cipher.encryptV2({ version: 1, identity, metadata }),
+		};
+	}
+
 	async decryptExecutionContext(context: IExecutionContext): Promise<PlaintextExecutionContext> {
 		let credentials = undefined;
 		if (context.credentials) {

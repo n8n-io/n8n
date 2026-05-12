@@ -39,4 +39,18 @@ export interface ICredentialResolutionProvider {
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
 	): Promise<CredentialResolutionResult>;
+
+	/**
+	 * Returns the id of the system-managed credential resolver used for "private"
+	 * (per-user self-connect) credentials. The resolver is lazily seeded on first
+	 * call so end-users never need an admin to wire one up.
+	 */
+	getPrivateCredentialResolverId(): Promise<string | null>;
+
+	/**
+	 * Returns the subset of credential ids for which the given user already has
+	 * a stored connection (i.e. an entry in DynamicCredentialUserEntry). Used to
+	 * compute the `connectedByMe` flag surfaced to the editor.
+	 */
+	getConnectedCredentialIdsForUser(userId: string, credentialIds: string[]): Promise<Set<string>>;
 }

@@ -122,6 +122,7 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const isResolvable = ref(false);
+const connectedByMe = ref<boolean | undefined>(undefined);
 const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
@@ -277,7 +278,14 @@ const managedOAuthAvailable = computed(() => {
 	);
 });
 
-const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
+const isOAuthConnected = computed(() => {
+	if (!isOAuthType.value) return false;
+	// Private credentials are stored per-user. The shared static oauthTokenData
+	// reflects whoever first connected, not the current viewer — fall back to
+	// connectedByMe instead.
+	if (isResolvable.value) return connectedByMe.value === true;
+	return !!credentialData.value.oauthTokenData;
+});
 const credentialProperties = computed(() => {
 	const type = credentialType.value;
 	if (!type) {
@@ -661,6 +669,10 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 			'isResolvable' in currentCredentials && typeof currentCredentials.isResolvable === 'boolean'
 				? currentCredentials.isResolvable
 				: false;
+		connectedByMe.value =
+			'connectedByMe' in currentCredentials && typeof currentCredentials.connectedByMe === 'boolean'
+				? currentCredentials.connectedByMe
+				: undefined;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -1254,7 +1266,7 @@ async function oAuthCredentialAuthorize() {
 	};
 
 	const oauthChannel = new BroadcastChannel('oauth-callback');
-	const receiveMessage = (event: MessageEvent) => {
+	const receiveMessage = async (event: MessageEvent) => {
 		const successfullyConnected = event.data === 'success';
 
 		const trackProperties: ITelemetryTrackProperties = {
@@ -1283,6 +1295,27 @@ async function oAuthCredentialAuthorize() {
 				...credentialData.value,
 				oauthTokenData: {} as CredentialInformation,
 			};
+
+			// Private credentials are stored per-user in DynamicCredentialUserEntry,
+			// not in the shared static data — flip connectedByMe so the green
+			// banner reflects the just-completed flow without a modal reopen.
+			// Re-fetch from the server as the source of truth, with a local fallback
+			// so reactivity fires even if the fetch fails.
+			if (isResolvable.value) {
+				connectedByMe.value = true;
+				if (credentialId.value) {
+					try {
+						const fresh = await credentialsStore.getCredentialData({
+							id: credentialId.value,
+						});
+						if (fresh && 'connectedByMe' in fresh && typeof fresh.connectedByMe === 'boolean') {
+							connectedByMe.value = fresh.connectedByMe;
+						}
+					} catch {
+						// Keep the optimistic local value
+					}
+				}
+			}
 
 			// Close the window
 			if (oauthPopup) {

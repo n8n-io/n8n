@@ -17,6 +17,7 @@ import { RoleService } from '@/services/role.service';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
+import { DynamicCredentialsProxy } from './dynamic-credentials-proxy';
 import { validateAccessToReferencedSecretProviders } from './validation';
 
 @Service()
@@ -31,6 +32,7 @@ export class EnterpriseCredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly licenseState: LicenseState,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	async shareWithProjects(
@@ -126,16 +128,33 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		// For private (isResolvable) credentials, "connected" reflects per-user
+		// storage rather than the shared static oauthTokenData.
+		let connectedByMe: boolean | undefined;
+		if (credential.isResolvable) {
+			const connectedIds = await this.dynamicCredentialsProxy.getConnectedCredentialIdsForUser(
+				user.id,
+				[credential.id],
+			);
+			connectedByMe = connectedIds.has(credential.id);
+		}
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				if (connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...rest, connectedByMe };
 		}
 
-		return { ...rest };
+		return { ...rest, connectedByMe };
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {

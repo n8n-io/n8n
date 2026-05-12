@@ -135,6 +135,18 @@ export const establishExecutionContext = async (
 		},
 	};
 
+	// Manual-execution credential context: editor-triggered runs don't carry an
+	// HTTP request, so the context-establishment hooks (which read trigger-node
+	// HTTP input) never fire. Seed the running user's id directly so private
+	// credentials can be resolved per-user during manual runs.
+	if (mode === 'manual' && additionalData?.userId) {
+		executionData.runtimeData = await Container.get(
+			ExecutionContextService,
+		).setEncryptedCredentialContext(executionData.runtimeData, additionalData.userId, {
+			source: 'manual-execution',
+		});
+	}
+
 	if (runExecutionData.parentExecution) {
 		// Create a new context by inheriting everything from the parent execution context,
 		// except for the establishedAt timestamp which we set to now and the source which we set to the current mode.

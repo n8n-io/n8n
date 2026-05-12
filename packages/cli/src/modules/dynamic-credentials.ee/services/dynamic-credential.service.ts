@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import { CredentialResolverError } from '@n8n/decorators';
+import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import type { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
@@ -22,12 +24,21 @@ import type {
 	ICredentialResolutionProvider,
 } from '../../../credentials/credential-resolution-provider.interface';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { DynamicCredentialUserEntryRepository } from '../database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
 import { AuthenticatedRequest } from '@n8n/db';
+
+/**
+ * Stable identifier for the system-managed resolver instance that powers
+ * "private" (per-user self-connect) credentials. The name is reserved and
+ * not user-facing.
+ */
+const PRIVATE_CREDENTIAL_RESOLVER_NAME = '__system_user_self_connect__';
+const PRIVATE_CREDENTIAL_RESOLVER_TYPE = 'credential-resolver.n8n-1.0';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -39,11 +50,60 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		private readonly dynamicCredentialConfig: DynamicCredentialsConfig,
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly resolverRepository: DynamicCredentialResolverRepository,
+		private readonly userEntryRepository: DynamicCredentialUserEntryRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly expressionService: ResolverConfigExpressionService,
 	) {}
+
+	/**
+	 * Returns the subset of credential ids that already have a stored connection
+	 * for the given user. Powers the per-user `connectedByMe` flag on credential
+	 * list responses.
+	 */
+	async getConnectedCredentialIdsForUser(
+		userId: string,
+		credentialIds: string[],
+	): Promise<Set<string>> {
+		if (credentialIds.length === 0) {
+			return new Set();
+		}
+
+		const entries = await this.userEntryRepository.find({
+			where: { userId, credentialId: In(credentialIds) },
+			select: ['credentialId'],
+		});
+
+		return new Set(entries.map((entry) => entry.credentialId));
+	}
+
+	/**
+	 * Returns the id of the system-managed n8n self-connect resolver, creating it
+	 * lazily on first call. End-users never need a workspace admin to wire one up
+	 * for the "private credential" flow.
+	 */
+	async getPrivateCredentialResolverId(): Promise<string | null> {
+		const existing = await this.resolverRepository.findOneBy({
+			name: PRIVATE_CREDENTIAL_RESOLVER_NAME,
+			type: PRIVATE_CREDENTIAL_RESOLVER_TYPE,
+		});
+		if (existing) {
+			return existing.id;
+		}
+
+		const encryptedEmptyConfig = await this.cipher.encryptV2({});
+		const created = this.resolverRepository.create({
+			name: PRIVATE_CREDENTIAL_RESOLVER_NAME,
+			type: PRIVATE_CREDENTIAL_RESOLVER_TYPE,
+			config: encryptedEmptyConfig,
+		});
+		const saved = await this.resolverRepository.save(created);
+		this.logger.debug('Seeded system resolver for private credentials', {
+			resolverId: saved.id,
+		});
+		return saved.id;
+	}
 
 	/**
 	 * Resolves credentials dynamically if configured, otherwise returns static data.
@@ -61,14 +121,17 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
 	): Promise<CredentialResolutionResult> {
-		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
-		const resolverId =
-			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
-
 		// Not resolvable - return static credentials
 		if (!credentialsResolveMetadata.isResolvable) {
 			return { data: staticData, isDynamic: false };
 		}
+
+		// Resolver precedence: explicit credential setting → workflow setting →
+		// system "user self-connect" resolver as default for private credentials.
+		const resolverId =
+			credentialsResolveMetadata.resolverId ??
+			workflowSettings?.credentialResolverId ??
+			(await this.getPrivateCredentialResolverId());
 
 		if (!resolverId) {
 			return this.handleResolverNotConfigured(credentialsResolveMetadata);
@@ -139,7 +202,12 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// Adds and override static data with dynamically resolved data
 			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
 		} catch (error) {
-			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId);
+			return this.handleResolutionError(
+				credentialsResolveMetadata,
+				error,
+				resolverId,
+				credentialContext.metadata,
+			);
 		}
 	}
 
@@ -174,6 +242,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		error: unknown,
 		resolverId: string,
+		credentialContextMetadata?: Record<string, unknown>,
 	): never {
 		this.logger.debug('Dynamic credential resolution failed', {
 			credentialId: credentialsResolveMetadata.id,
@@ -182,6 +251,20 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
 			error: error instanceof Error ? error.message : String(error),
 		});
+
+		// Manual editor runs: the identity is the running n8n user, so a missing
+		// entry means "they haven't connected yet". Surface an actionable message.
+		// Other contexts (chat-hub, OAuth introspection) have external identities
+		// where this phrasing wouldn't apply — fall through to the generic message.
+		if (
+			error instanceof CredentialResolverDataNotFoundError &&
+			credentialContextMetadata?.source === 'manual-execution'
+		) {
+			throw new CredentialResolutionError(
+				`You haven't connected the credential "${credentialsResolveMetadata.name}" yet. Open it and connect to run this workflow.`,
+				{ cause: error },
+			);
+		}
 
 		// Known errors from both the CLI and resolver SDK layers.
 		// User-facing, safe to propagate details.

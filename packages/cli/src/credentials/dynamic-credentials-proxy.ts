@@ -37,6 +37,23 @@ export class DynamicCredentialsProxy
 		this.resolvingProvider = provider;
 	}
 
+	async getPrivateCredentialResolverId(): Promise<string | null> {
+		if (!this.resolvingProvider) {
+			return null;
+		}
+		return await this.resolvingProvider.getPrivateCredentialResolverId();
+	}
+
+	async getConnectedCredentialIdsForUser(
+		userId: string,
+		credentialIds: string[],
+	): Promise<Set<string>> {
+		if (!this.resolvingProvider || credentialIds.length === 0) {
+			return new Set();
+		}
+		return await this.resolvingProvider.getConnectedCredentialIdsForUser(userId, credentialIds);
+	}
+
 	async resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,

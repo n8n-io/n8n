@@ -100,6 +100,7 @@ const allCredentials = computed<Resource[]>(() =>
 		needsSetup: needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 	})),
 );

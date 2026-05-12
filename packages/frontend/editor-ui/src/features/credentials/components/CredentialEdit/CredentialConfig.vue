@@ -406,18 +406,21 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="dynamic-credentials-section"
 				>
 					<div :class="$style.dynamicCredentialsRow">
+						<N8nText size="small" :bold="!isResolvable">
+							{{ i18n.baseText('credentialEdit.credentialConfig.visibility.static') }}
+						</N8nText>
 						<ElSwitch
 							:model-value="isResolvable"
 							data-test-id="dynamic-credentials-toggle"
 							@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
 						/>
-						<N8nText size="small">
-							{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
+						<N8nText size="small" :bold="isResolvable">
+							{{ i18n.baseText('credentialEdit.credentialConfig.visibility.private') }}
 						</N8nText>
 						<N8nTooltip placement="top">
 							<template #content>
 								<div>
-									{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip') }}
+									{{ i18n.baseText('credentialEdit.credentialConfig.visibility.infoTip') }}
 								</div>
 							</template>
 							<N8nIcon icon="circle-help" size="small" color="text-light" />
