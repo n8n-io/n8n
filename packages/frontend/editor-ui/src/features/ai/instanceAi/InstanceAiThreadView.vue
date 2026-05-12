@@ -10,7 +10,7 @@ import {
 	watch,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
@@ -25,7 +25,7 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useInstanceAiStore } from './instanceAi.store';
+import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
@@ -52,10 +52,10 @@ const props = defineProps<{
 }>();
 
 const store = useInstanceAiStore();
+const thread = provideThread(store);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
-const route = useRoute();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
@@ -63,12 +63,12 @@ const creditBanner = useCreditWarningBanner(isLowCredits);
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
 // it in its natural chronological slot.
-const builderAgents = computed(() => collectActiveBuilderAgents(store.messages));
+const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages));
 
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => store.messages.filter(messageHasVisibleContent));
+const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
@@ -78,11 +78,11 @@ const executionTracking = useExecutionPushEvents();
 // figuring out which thread to show. Rendering only on a defined value avoids
 // the "New conversation" → real title flash when resuming a recent thread.
 const currentThreadTitle = computed<string | undefined>(() => {
-	const thread = store.threads.find((t) => t.id === store.currentThreadId);
-	if (thread?.title && thread.title !== NEW_CONVERSATION_TITLE) {
-		return thread.title;
+	const threadSummary = store.threads.find((t) => t.id === store.currentThreadId);
+	if (threadSummary?.title && threadSummary.title !== NEW_CONVERSATION_TITLE) {
+		return threadSummary.title;
 	}
-	const firstUserMsg = store.messages.find((m) => m.role === 'user');
+	const firstUserMsg = thread.messages.find((m) => m.role === 'user');
 	if (firstUserMsg?.content) {
 		const text = firstUserMsg.content.trim();
 		return text.length > 60 ? text.slice(0, 60) + '…' : text;
@@ -92,8 +92,8 @@ const currentThreadTitle = computed<string | undefined>(() => {
 
 // --- Canvas / data table preview ---
 const preview = useCanvasPreview({
-	store,
-	route,
+	thread,
+	threadId: () => props.threadId,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
@@ -107,10 +107,10 @@ const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinne
 const isArtifactsPanelRevealed = ref(false);
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
-	isBlocked: () => store.isHydratingThread,
+	isBlocked: () => thread.isHydratingThread,
 });
 const previewPanelTransitionGate = useTransitionGate({
-	isBlocked: () => store.isHydratingThread,
+	isBlocked: () => thread.isHydratingThread,
 });
 const isArtifactsPanelTransitionEnabled = artifactsPanelTransitionGate.isEnabled;
 const isPreviewPanelTransitionEnabled = previewPanelTransitionGate.isEnabled;
@@ -190,7 +190,7 @@ const isArtifactsPanelEffectivelyPinned = computed(
 	() => isArtifactsPanelPinningAvailable.value && isArtifactsPanelPinned.value,
 );
 const canShowArtifactsPanel = computed(
-	() => store.hasMessages || (Boolean(props.threadId) && store.isHydratingThread),
+	() => thread.hasMessages || (Boolean(props.threadId) && thread.isHydratingThread),
 );
 const showArtifactsPanelEdge = computed(
 	() =>
@@ -265,7 +265,7 @@ watch(
 );
 
 watch(
-	() => store.isHydratingThread,
+	() => thread.isHydratingThread,
 	(isHydrating) => {
 		if (isHydrating) {
 			artifactsPanelTransitionGate.suppress();
@@ -372,10 +372,10 @@ watch(
 );
 
 function reconnectThreadIfHydrationApplied(threadId: string): void {
-	void store.loadHistoricalMessages(threadId).then((hydrationStatus) => {
+	void thread.loadHistoricalMessages(threadId).then((hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void store.loadThreadStatus(threadId);
-		store.connectSSE(threadId);
+		void thread.loadThreadStatus(threadId);
+		thread.connectSSE(threadId);
 	});
 }
 
@@ -388,7 +388,7 @@ function reconnectThreadIfHydrationApplied(threadId: string): void {
 async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
 	if (requestedThreadId === store.currentThreadId) {
-		if (store.sseState === 'disconnected') {
+		if (thread.sseState === 'disconnected') {
 			reconnectThreadIfHydrationApplied(requestedThreadId);
 		}
 		return;
@@ -449,11 +449,11 @@ const eventRelay = useEventRelay({
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-	void store.sendMessage(message, attachments, rootStore.pushRef);
+	void thread.sendMessage(message, attachments, rootStore.pushRef);
 }
 
 function handleStop() {
-	void store.cancelRun();
+	void thread.cancelRun();
 }
 </script>
 
@@ -467,7 +467,7 @@ function handleStop() {
 						{{ currentThreadTitle }}
 					</N8nHeading>
 					<N8nText
-						v-if="store.sseState === 'reconnecting'"
+						v-if="thread.sseState === 'reconnecting'"
 						size="small"
 						color="text-light"
 						:class="$style.reconnecting"
@@ -556,7 +556,7 @@ function handleStop() {
 					>
 						<Transition name="fade">
 							<N8nIconButton
-								v-if="userScrolledUp && store.hasMessages"
+								v-if="userScrolledUp && thread.hasMessages"
 								variant="outline"
 								icon="arrow-down"
 								:class="$style.scrollToBottomButton"
@@ -581,9 +581,16 @@ function handleStop() {
 							/>
 							<InstanceAiInput
 								ref="chatInputRef"
-								:is-streaming="store.isStreaming"
+								:is-streaming="thread.isStreaming"
+								:is-sending-message="thread.isSendingMessage"
+								:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+								:current-thread-id="thread.currentThreadId"
+								:amend-context="thread.amendContext"
+								:contextual-suggestion="thread.contextualSuggestion"
+								:research-mode="store.researchMode"
 								@submit="handleSubmit"
 								@stop="handleStop"
+								@toggle-research-mode="store.toggleResearchMode()"
 							/>
 						</div>
 					</div>

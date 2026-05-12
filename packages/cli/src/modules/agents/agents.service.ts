@@ -17,7 +17,7 @@ import {
 import * as agents from '@n8n/agents';
 import { extractFromAIParameters } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	CredentialsRepository,
@@ -258,8 +258,17 @@ export class AgentsService {
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly publisher: Publisher,
+		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	private isNodeToolsModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('node-tools-searcher');
+	}
+
+	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
+		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
+	}
 
 	/**
 	 * Return the list of registered chat platform integrations with their
@@ -684,7 +693,7 @@ export class AgentsService {
 	 * `fromSchema()`, so this method only handles host-side singletons.
 	 *
 	 * `nodeToolsEnabled` comes from the agent's `config.nodeTools.enabled` flag
-	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
+	 * (opt-in, defaults to false) — see {@link shouldAttachNodeTools}.
 	 */
 	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
@@ -866,11 +875,9 @@ export class AgentsService {
 
 		if (config.credential) {
 			try {
-				const credentialName = config.credential;
+				const credentialId = config.credential;
 				const creds = await credentialProvider.list();
-				const exists = creds.some(
-					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
-				);
+				const exists = creds.some((c) => c.id === credentialId);
 				if (!exists) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
@@ -1252,6 +1259,14 @@ export class AgentsService {
 		}
 
 		const config = parsed.data;
+
+		if (isNodeToolsEnabled(config.config) && !this.isNodeToolsModuleEnabled()) {
+			return {
+				valid: false,
+				error:
+					'config.nodeTools.enabled requires the node-tools-searcher agents module to be enabled.',
+			};
+		}
 
 		try {
 			this.validateNodeToolExpressions(config);
@@ -1715,7 +1730,7 @@ export class AgentsService {
 			agentId: agentEntity.id,
 			projectId: agentEntity.projectId,
 			credentialProvider,
-			nodeToolsEnabled: isNodeToolsEnabled(config.config),
+			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
 			integrationType,
 		});
 

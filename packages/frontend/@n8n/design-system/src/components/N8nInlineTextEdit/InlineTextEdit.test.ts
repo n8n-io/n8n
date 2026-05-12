@@ -72,6 +72,32 @@ describe('N8nInlineTextEdit', () => {
 		expect(preview).toHaveTextContent('New Value!');
 	});
 
+	it('should support CSS length values for maxWidth', () => {
+		const wrapper = renderComponent({
+			props: {
+				modelValue: 'Test Value',
+				maxWidth: '80%',
+			},
+		});
+
+		const editableArea = wrapper.getByTestId('inline-editable-area');
+		const preview = wrapper.getByTestId('inline-edit-preview');
+		const input = wrapper.getByTestId('inline-edit-input');
+
+		expect(editableArea).toHaveStyle({
+			width: 'clamp(64px, 1px, 80%)',
+			maxWidth: '80%',
+		});
+		expect(preview).toHaveStyle({
+			width: '100%',
+			maxWidth: '100%',
+		});
+		expect(input).toHaveStyle({
+			width: '100%',
+			maxWidth: '100%',
+		});
+	});
+
 	it('should not update on escape key press', async () => {
 		const wrapper = renderComponent({
 			props: {

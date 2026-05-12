@@ -8,7 +8,7 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<{ isPinned?: boolean; isPinningAvailable?
 const emit = defineEmits<{ togglePinned: [] }>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
@@ -45,7 +45,7 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 }
 
 // --- Tasks ---
-const tasks = computed(() => store.currentTasks);
+const tasks = computed(() => thread.currentTasks);
 const visibleTasks = computed(() => tasks.value?.tasks ?? []);
 const hasTasks = computed(() => visibleTasks.value.length > 0);
 
@@ -63,7 +63,7 @@ const statusIconMap: Record<
 // --- Artifacts ---
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
-	for (const entry of store.producedArtifacts.values()) {
+	for (const entry of thread.producedArtifacts.values()) {
 		if (entry.type === 'workflow' || entry.type === 'data-table') {
 			result.push(entry);
 		}

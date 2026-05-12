@@ -12,7 +12,7 @@ const storeState = reactive({
 });
 
 vi.mock('../instanceAi.store', () => ({
-	useInstanceAiStore: vi.fn(() => storeState),
+	useThread: vi.fn(() => storeState),
 }));
 
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
