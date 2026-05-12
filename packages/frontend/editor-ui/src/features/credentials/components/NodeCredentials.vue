@@ -224,7 +224,7 @@ watch(
 			if (aiGateway.isEnabled.value) {
 				for (const { type } of types) {
 					if (aiGateway.isCredentialTypeSupported(type.name)) {
-						onAiGatewaySelector(type.name, true);
+						onAiGatewaySelector(type.name, true, false);
 					}
 				}
 			}
@@ -542,7 +542,7 @@ function showAiGatewaySelector(credentialType: string): boolean {
 	return true;
 }
 
-function onAiGatewaySelector(credentialType: string, enable: boolean): void {
+function onAiGatewaySelector(credentialType: string, enable: boolean, isUserAction = true): void {
 	const credentials = { ...(props.node.credentials ?? {}) };
 
 	if (enable) {
@@ -562,6 +562,15 @@ function onAiGatewaySelector(credentialType: string, enable: boolean): void {
 		} else {
 			delete credentials[credentialType];
 		}
+	}
+
+	if (isUserAction) {
+		telemetry.track('User toggled n8n connect credential', {
+			credential_type: credentialType,
+			node_type: props.node.type,
+			mode: enable ? 'n8n_connect' : 'own',
+			workflow_id: props.standalone ? '' : workflowsStore.workflowId,
+		});
 	}
 
 	emit('credentialSelected', {

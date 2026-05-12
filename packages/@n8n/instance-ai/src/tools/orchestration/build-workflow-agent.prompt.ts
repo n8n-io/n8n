@@ -418,6 +418,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 8. **Submit**: When tsc passes cleanly, call \`submit-workflow\` to validate the workflow graph and save it to n8n.
 
 9. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. **Never end your turn on a file edit — always re-submit first.** The system compares file hashes: if the file changed since the last submit, all your work is discarded. End only on a successful re-submit or after you explicitly report the blocking error.
+   If remediation includes \`shouldEdit: false\`, stop immediately and report its guidance. Do not edit files, run commands, or call \`submit-workflow\` again.
 
 10. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 

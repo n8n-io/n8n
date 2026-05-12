@@ -454,6 +454,119 @@ describe('useConnection', () => {
 		});
 	});
 
+	describe('auto-connect', () => {
+		afterEach(() => {
+			window.history.replaceState({}, '', '/');
+		});
+
+		it('selects all tabs and connects when relay URL is localhost', async () => {
+			window.history.replaceState(
+				{},
+				'',
+				'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent('ws://127.0.0.1:9000/ext'),
+			);
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
+				if (msg.type === 'getRelayUrl') return null;
+				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+				if (msg.type === 'getTabs') return [makeTab(1), makeTab(2)];
+				if (msg.type === 'connect') return { success: true };
+				if (msg.type === 'clearRelayUrl') return { success: true };
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().isAutoConnect.value).toBe(true);
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'connect', selectedTabIds: [1, 2] }),
+			);
+
+			wrapper.unmount();
+		});
+
+		it('does not connect when relay URL is remote, even with autoConnect=1', async () => {
+			window.history.replaceState(
+				{},
+				'',
+				'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent('wss://attacker.example/relay'),
+			);
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
+				if (msg.type === 'getRelayUrl') return null;
+				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				if (msg.type === 'connect') return { success: true };
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().isAutoConnect.value).toBe(false);
+			expect(result().status.value).toBe('disconnected');
+			expect(chromeMock.runtime.sendMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'connect' }),
+			);
+
+			wrapper.unmount();
+		});
+
+		it('honors localhost variants (localhost, [::1])', async () => {
+			for (const host of ['localhost:9000', '[::1]:9000']) {
+				window.history.replaceState(
+					{},
+					'',
+					'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent(`ws://${host}/ext`),
+				);
+				chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+					if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
+					if (msg.type === 'getRelayUrl') return null;
+					if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+					if (msg.type === 'getTabs') return [makeTab(1)];
+					if (msg.type === 'connect') return { success: true };
+					if (msg.type === 'clearRelayUrl') return { success: true };
+					return await Promise.resolve({});
+				});
+
+				const { wrapper, result } = mountComposable();
+				await flush();
+
+				expect(result().isAutoConnect.value).toBe(true);
+
+				wrapper.unmount();
+				vi.clearAllMocks();
+			}
+		});
+
+		it('does not auto-connect without the autoConnect query param', async () => {
+			window.history.replaceState(
+				{},
+				'',
+				'/?mcpRelayUrl=' + encodeURIComponent('ws://127.0.0.1:9000/ext'),
+			);
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
+				if (msg.type === 'getRelayUrl') return null;
+				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				if (msg.type === 'connect') return { success: true };
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().isAutoConnect.value).toBe(false);
+			expect(chromeMock.runtime.sendMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'connect' }),
+			);
+
+			wrapper.unmount();
+		});
+	});
+
 	describe('tab selection (pre-connect)', () => {
 		it('toggles individual tab selection', async () => {
 			const { wrapper, result } = mountComposable();

@@ -117,9 +117,17 @@ export class PlaywrightAdapter {
 		const extensionEndpoint = this.relay.extensionEndpoint(port);
 
 		// Open the extension's connect page with the relay URL so it auto-connects.
+		// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` (set by the eval daemon spawn) appends
+		// `autoConnect=1` so the extension UI clicks Connect itself — keeps eval
+		// runs human-out-of-the-loop across reconnect cycles. The extension only
+		// honors `autoConnect=1` when the relay URL is localhost (which the relay
+		// always is — see `cdp-relay.ts`), so a crafted chrome-extension URL
+		// pointing at a remote relay can't trigger this path.
+		const autoConnect = process.env.N8N_EVAL_AUTO_BROWSER_CONNECT === '1';
 		const connectUrl =
 			`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
-			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
+			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}` +
+			(autoConnect ? '&autoConnect=1' : '');
 		const browserInfo = this.resolvedConfig.browsers.get(config.browser);
 		const chromePath = browserInfo?.executablePath;
 		if (!chromePath) {

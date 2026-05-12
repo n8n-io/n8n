@@ -73,6 +73,6 @@
     "vitest-mock-extended": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9"
+    "eslint": "catalog:"
   }
 }

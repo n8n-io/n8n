@@ -41,7 +41,7 @@ jest.mock('./tools/browser', () => ({
 }));
 
 import type { GatewayConfig } from './config';
-import { GatewayClient } from './gateway-client';
+import { GatewayAuthError, GatewayClient } from './gateway-client';
 import type { GatewaySession } from './gateway-session';
 import type { AffectedResource, ConfirmResourceAccess, ToolDefinition } from './tools/types';
 import { INSTANCE_RESOURCE_DECISION_KEYS } from './tools/types';
@@ -255,5 +255,67 @@ describe('GatewayClient.checkPermissions', () => {
 			expect(session.allowForSession).toHaveBeenCalledWith('shell', 'npm install');
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('GatewayClient.uploadCapabilities', () => {
+	const originalFetch = global.fetch;
+
+	beforeEach(() => {
+		global.fetch = jest.fn();
+	});
+
+	afterEach(() => {
+		global.fetch = originalFetch;
+	});
+
+	function makeMinimalClient(): GatewayClient {
+		const client = new GatewayClient({
+			url: 'http://localhost:5678',
+			apiKey: 'tok',
+			config: makeConfig(),
+			session: makeSession(),
+			confirmResourceAccess: jest.fn(),
+		});
+
+		// Bypass tool discovery — uploadCapabilities only needs definitions to exist.
+		// @ts-expect-error — accessing private field for testing
+		client.allDefinitions = [];
+		// @ts-expect-error — accessing private field for testing
+		client.activeToolCategories = [];
+
+		return client;
+	}
+
+	function mockFetchResponse(status: number, body = ''): void {
+		(global.fetch as jest.Mock).mockResolvedValueOnce({
+			ok: status >= 200 && status < 300,
+			status,
+			text: jest.fn().mockResolvedValue(body),
+			json: jest.fn().mockResolvedValue({ data: { ok: true } }),
+		});
+	}
+
+	it('throws GatewayAuthError on 401', async () => {
+		mockFetchResponse(401, 'invalid token');
+		const client = makeMinimalClient();
+
+		await expect(client['uploadCapabilities']()).rejects.toBeInstanceOf(GatewayAuthError);
+	});
+
+	it('throws GatewayAuthError on 403', async () => {
+		mockFetchResponse(403, 'forbidden');
+		const client = makeMinimalClient();
+
+		await expect(client['uploadCapabilities']()).rejects.toBeInstanceOf(GatewayAuthError);
+	});
+
+	it('throws plain Error on non-auth failure (500)', async () => {
+		mockFetchResponse(500, 'server exploded');
+		const client = makeMinimalClient();
+
+		const promise = client['uploadCapabilities']();
+		await expect(promise).rejects.not.toBeInstanceOf(GatewayAuthError);
+		await expect(promise).rejects.toThrow(/Failed to upload capabilities: 500/);
 	});
 });

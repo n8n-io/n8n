@@ -26,6 +26,12 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
+const trackMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
+
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
@@ -1287,6 +1293,76 @@ describe('NodeCredentials', () => {
 					.__aiGatewayManaged,
 			).toBeUndefined();
 			expect((payload.properties.credentials['googlePalmApi'] as { id: string }).id).toBe('cred-1');
+		});
+
+		describe('telemetry', () => {
+			const toggleOnStub = {
+				template: '<button data-test-id="ai-gateway-toggle-on" @click="$emit(\'toggle\', true)" />',
+				props: ['aiGatewayEnabled'],
+				emits: ['toggle'],
+			};
+
+			const toggleOffStub = {
+				template:
+					'<button data-test-id="ai-gateway-toggle-off" @click="$emit(\'toggle\', false)" />',
+				props: ['aiGatewayEnabled'],
+				emits: ['toggle'],
+			};
+
+			it('should track telemetry with mode "n8n_connect" when toggled ON by user', async () => {
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOnStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+
+				expect(trackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					mode: 'n8n_connect',
+					workflow_id: expect.any(String),
+				});
+			});
+
+			it('should track telemetry with mode "own" when toggled OFF by user', async () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOffStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-off'));
+
+				expect(trackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					mode: 'own',
+					workflow_id: expect.any(String),
+				});
+			});
+
+			it('should not track telemetry when toggled ON automatically on mount', () => {
+				// No credentials — auto-select path calls onAiGatewaySelector with isUserAction=false
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOnStub } },
+				});
+
+				expect(trackMock).not.toHaveBeenCalledWith(
+					'User toggled n8n connect credential',
+					expect.anything(),
+				);
+			});
 		});
 
 		it('should emit credentialSelected removing credentials when toggled OFF with no available credentials', async () => {
