@@ -529,7 +529,7 @@ export function appendRootRunMetadata(
 	const currentRun = getTraceParentRun();
 	const baseMetadata =
 		currentRun?.id === root.id
-			? mergeRunTreeMetadata(currentRun.metadata, root.metadata)
+			? mergeRunTreeMetadata(root.metadata, currentRun.metadata)
 			: root.metadata;
 	const merged = mergeRunTreeMetadata(baseMetadata, patch);
 	if (merged) {
@@ -547,7 +547,7 @@ export function appendGeneratedWorkflowIdToRootMetadata(
 	const currentRun = getTraceParentRun();
 	const metadata =
 		currentRun?.id === root.id
-			? mergeRunTreeMetadata(currentRun.metadata, root.metadata)
+			? mergeRunTreeMetadata(root.metadata, currentRun.metadata)
 			: root.metadata;
 	const generatedWorkflowIds = metadata?.generated_workflow_ids;
 	const existing = Array.isArray(generatedWorkflowIds)

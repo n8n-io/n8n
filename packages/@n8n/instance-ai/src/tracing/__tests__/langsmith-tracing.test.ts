@@ -264,6 +264,7 @@ const {
 	createDetachedSubAgentTraceContext,
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
+	mergeCurrentTraceMetadata,
 	mergeTraceRunInputs,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
@@ -982,7 +983,7 @@ describe('appendGeneratedWorkflowIdToRootMetadata', () => {
 		});
 	});
 
-	it('preserves ids appended while the root run tree is active', async () => {
+	it('preserves live RunTree metadata mutations when appending root metadata', async () => {
 		const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
 		const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
 		const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
@@ -1011,13 +1012,22 @@ describe('appendGeneratedWorkflowIdToRootMetadata', () => {
 				throw new Error('Expected tracing context');
 			}
 
+			expect(tracing.rootRun.metadata?.agent_role).toBe('workflow-builder');
+
 			await tracing.withRunTree(tracing.actorRun, async () => {
 				await Promise.resolve();
+				// Overwrite an existing root metadata key on the live RunTree so the
+				// two diverge on the same key with different values. The subsequent
+				// append must preserve the live value instead of rolling it back to
+				// the stale root state.
+				mergeCurrentTraceMetadata({ agent_role: 'planner' });
 				appendGeneratedWorkflowIdToRootMetadata(tracing.rootRun, 'wf-1');
 				expect(tracing.rootRun.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+				expect(tracing.rootRun.metadata?.agent_role).toBe('planner');
 			});
 
 			expect(tracing.rootRun.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+			expect(tracing.rootRun.metadata?.agent_role).toBe('planner');
 		} finally {
 			if (originalLangSmithApiKey === undefined) {
 				delete process.env.LANGSMITH_API_KEY;
