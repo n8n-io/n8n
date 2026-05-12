@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { CloudAgentConfig } from './configs/cloud-agent.config';
 import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
@@ -78,6 +79,7 @@ export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-comp
 export { ChatHubConfig } from './configs/chat-hub.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
+export { CloudAgentConfig } from './configs/cloud-agent.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
@@ -186,6 +188,9 @@ export class GlobalConfig {
 
 	@Nested
 	aiAssistant: AiAssistantConfig;
+
+	@Nested
+	cloudAgent: CloudAgentConfig;
 
 	@Nested
 	aiBuilder: AiBuilderConfig;

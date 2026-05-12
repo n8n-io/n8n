@@ -24,6 +24,7 @@ export const MODULE_NAMES = [
 	'redaction',
 	'instance-registry',
 	'instance-ai',
+	'agent',
 	'mcp-registry',
 	'otel',
 	'token-exchange',

@@ -143,6 +143,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'instanceAi:message',
 	'instanceAi:manage',
 	'instanceAi:gateway',
+	'cloudAgent:message',
+	'cloudAgent:manage',
 	'roleMappingRule:create',
 	'roleMappingRule:read',
 	'roleMappingRule:update',
@@ -181,6 +183,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'credentialResolver:list',
 	'instanceAi:message',
 	'instanceAi:gateway',
+	'cloudAgent:message',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

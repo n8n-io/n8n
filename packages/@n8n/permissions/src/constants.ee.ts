@@ -69,6 +69,7 @@ export const RESOURCES = {
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 	instanceAi: ['message', 'manage', 'gateway'] as const,
+	cloudAgent: ['message', 'manage'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
