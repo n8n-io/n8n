@@ -946,7 +946,7 @@
     "node-html-markdown": "1.2.0",
     "node-ssh": "13.2.0",
     "nodemailer": "catalog:",
-    "oracledb": "6.9.0",
+    "oracledb": "6.10.0",
     "otpauth": "9.1.1",
     "pdfjs-dist": "5.3.31",
     "pg": "catalog:",

@@ -3,40 +3,41 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type * as AiUtilitiesModule from '@n8n/ai-utilities';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type oracledb from 'oracledb';
+import { configureOracleDB } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/transport';
 
 import { EmbeddingsOracleDb } from '../EmbeddingsOracleDB/EmbeddingsOracleDb.node';
 
-const mockGetConnection = jest.fn();
-const mockEmbedQuery = jest.fn();
-const mockEmbedDocuments = jest.fn();
+const { mockGetConnection, mockEmbedQuery, mockEmbedDocuments } = vi.hoisted(() => ({
+	mockGetConnection: vi.fn(),
+	mockEmbedQuery: vi.fn(),
+	mockEmbedDocuments: vi.fn(),
+}));
 
 type MockConnection = oracledb.Connection & { close: jest.Mock };
 
-jest.mock('@n8n/ai-utilities', () => {
-	const actual = jest.requireActual<typeof AiUtilitiesModule>('@n8n/ai-utilities');
+vi.mock('@n8n/ai-utilities', async (importOriginal) => {
+	const actual = await importOriginal<typeof AiUtilitiesModule>();
 	const logWrapperMock: typeof actual.logWrapper = (instance) => instance;
 	return {
 		...actual,
-		logWrapper: jest.fn(logWrapperMock),
+		logWrapper: vi.fn(logWrapperMock),
 	};
 });
 
-jest.mock('@oracle/langchain-oracledb', () => ({
-	OracleEmbeddings: jest.fn().mockImplementation(() => ({
-		embedQuery: mockEmbedQuery,
-		embedDocuments: mockEmbedDocuments,
-	})),
+vi.mock('@oracle/langchain-oracledb', () => ({
+	OracleEmbeddings: vi.fn().mockImplementation(function OracleEmbeddingsMock() {
+		return {
+			embedQuery: mockEmbedQuery,
+			embedDocuments: mockEmbedDocuments,
+		};
+	}),
 }));
 
-jest.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
-	configureOracleDB: jest.fn(),
+vi.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
+	configureOracleDB: vi.fn(),
 }));
 
-const { configureOracleDB: mockConfigureOracleDB } = jest.requireMock(
-	'n8n-nodes-base/dist/nodes/Oracle/Sql/transport',
-) as {
-	configureOracleDB: jest.Mock;
-};
+const mockConfigureOracleDB = vi.mocked(configureOracleDB);
 
 describe('EmbeddingsOracleDb', () => {
 	let node: EmbeddingsOracleDb;

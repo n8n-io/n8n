@@ -1,14 +1,12 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { configureOracleDB } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/transport';
+import type oracledb from 'oracledb';
 
-jest.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
-	configureOracleDB: jest.fn(),
+vi.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
+	configureOracleDB: vi.fn(),
 }));
 
-const { configureOracleDB: mockConfigureOracleDB } = jest.requireMock(
-	'n8n-nodes-base/dist/nodes/Oracle/Sql/transport',
-) as {
-	configureOracleDB: jest.Mock;
-};
+const mockConfigureOracleDB = vi.mocked(configureOracleDB);
 
 import { searchModels } from './listModels';
 
@@ -34,7 +32,7 @@ describe('EmbeddingsOracleDB listModels', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockConfigureOracleDB.mockResolvedValue(pool);
+		mockConfigureOracleDB.mockResolvedValue(pool as unknown as oracledb.Pool);
 		pool.getConnection = jest.fn().mockResolvedValue(connection);
 		connection.execute = jest.fn().mockResolvedValue({
 			rows: [['MODEL_A'], ['MODEL_B']],

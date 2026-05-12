@@ -214,7 +214,7 @@ export class VectorStoreOracleDB extends createVectorStoreNode<ExtendedOracleDBV
 
 		config.distanceStrategy = context.getNodeParameter(
 			'options.distanceStrategy',
-			0,
+			itemIndex,
 			DistanceStrategy.COSINE,
 		) as DistanceStrategy;
 
