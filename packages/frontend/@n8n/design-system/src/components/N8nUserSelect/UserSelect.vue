@@ -69,11 +69,9 @@ const sortedUsers = computed(() =>
 			return a.firstName > b.firstName ? 1 : -1;
 		}
 
-		if (!a.email || !b.email) {
-			throw new Error('Expected all users to have email');
-		}
-
-		return a.email > b.email ? 1 : -1;
+		const emailA = a.email ?? '';
+		const emailB = b.email ?? '';
+		return emailA > emailB ? 1 : emailA < emailB ? -1 : 0;
 	}),
 );
 

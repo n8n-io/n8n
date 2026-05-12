@@ -270,7 +270,11 @@ export class UserRepository extends Repository<User> {
 						})
 						.orWhere('LOWER(user.email) like LOWER(:email)', {
 							email: fullTextFilter,
-						});
+						})
+						.orWhere(
+							"LOWER(COALESCE(user.firstName, '') || ' ' || COALESCE(user.lastName, '')) like LOWER(:fullName)",
+							{ fullName: fullTextFilter },
+						);
 				}),
 			);
 		}
@@ -316,9 +320,9 @@ export class UserRepository extends Repository<User> {
 				if (field === 'role') {
 					queryBuilder.addSelect(
 						"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
-						'userroleorder',
+						'userroleorder', // cspell:ignore userroleorder
 					);
-					queryBuilder.addOrderBy('userroleorder', order.toUpperCase() as 'ASC' | 'DESC');
+					queryBuilder.addOrderBy('userroleorder', order.toUpperCase() as 'ASC' | 'DESC'); // cspell:ignore userroleorder
 				} else {
 					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
 				}

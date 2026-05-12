@@ -14,6 +14,7 @@
 	"references": [
 		{ "path": "../../core/tsconfig.build.json" },
 		{ "path": "../../workflow/tsconfig.build.esm.json" },
+		{ "path": "../api-types/tsconfig.build.json" },
 		{ "path": "../config/tsconfig.build.json" },
 		{ "path": "../di/tsconfig.build.json" },
 		{ "path": "../permissions/tsconfig.build.json" }

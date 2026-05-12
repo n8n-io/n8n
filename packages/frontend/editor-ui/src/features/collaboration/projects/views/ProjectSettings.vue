@@ -432,6 +432,11 @@ watch(
 		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
 			projectIcon.value = projectsStore.currentProject.icon;
 		}
+		// Re-fetch the user list whenever the project loads or changes, in case the
+		// initial onBeforeMount ran before currentProject (and its scopes) were available.
+		if (canUpdateProject.value) {
+			await searchUsers(userSearchQuery.value);
+		}
 	},
 	{ immediate: true },
 );
@@ -502,7 +507,10 @@ const searchUsers = async (query: string) => {
 	isLoadingUsers.value = true;
 	try {
 		const projectId = projectsStore.currentProject?.id;
-		if (!projectId) {
+
+		// Non-admins need the projectId to filter by project membership.
+		// Admins fetch all users without a project filter, so projectId is not required.
+		if (!projectId && !shouldFetchAllUsers.value) {
 			userSearchResults.value = [];
 			return;
 		}
@@ -511,7 +519,7 @@ const searchUsers = async (query: string) => {
 		if (query.trim()) {
 			filter.fullText = query;
 		}
-		if (!shouldFetchAllUsers.value) {
+		if (!shouldFetchAllUsers.value && projectId) {
 			filter.projectId = projectId;
 		}
 
