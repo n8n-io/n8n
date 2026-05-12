@@ -686,8 +686,10 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 		}
 		case 'mastra_workspace_grep':
 			return trunc(`${str(a.pattern)}${a.path ? ` in ${str(a.path)}` : ''}`);
-		case 'mastra_workspace_lsp_inspect':
-			return trunc(`${str(a.path)}:${a.line ?? '?'} ${str(a.match)}`);
+		case 'mastra_workspace_lsp_inspect': {
+			const line = typeof a.line === 'number' ? String(a.line) : '?';
+			return trunc(`${str(a.path)}:${line} ${str(a.match)}`);
+		}
 		case 'mastra_workspace_mkdir':
 			return trunc(str(a.path));
 		case 'submit-workflow':

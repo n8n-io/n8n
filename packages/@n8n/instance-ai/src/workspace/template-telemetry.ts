@@ -13,8 +13,8 @@
  * (a per-Workspace WeakMap binding). `runInSandbox` looks the session up and
  * calls `observe()` after each command — no caller-side threading required.
  */
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Workspace } from '@mastra/core/workspace';
+import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { OrchestrationContext } from '../types';
 

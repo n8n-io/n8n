@@ -1,5 +1,5 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Agent } from '@mastra/core/agent';
+import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
 import type { Logger } from '../logger';
