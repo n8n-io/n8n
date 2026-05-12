@@ -82,7 +82,7 @@ export class McpRegistryService {
 		await this.loadFromSettings();
 		await this.refreshRegistryNodeTypes(true);
 		if (this.isMainInstance()) {
-			await this.notifyNodeDescriptionsUpdated();
+			this.notifyNodeDescriptionsUpdated();
 		}
 	}
 
@@ -148,7 +148,7 @@ export class McpRegistryService {
 			await this.writeStoredServers(nextServers);
 			this.replaceCache(nextServers);
 			await this.refreshRegistryNodeTypes(true);
-			await this.notifyNodeDescriptionsUpdated();
+			this.notifyNodeDescriptionsUpdated();
 			await this.publishReloadCommand();
 
 			this.logger.debug('MCP registry refreshed', {
@@ -277,7 +277,7 @@ export class McpRegistryService {
 		await this.publisher.publishCommand({ command: 'reload-mcp-registry' });
 	}
 
-	private async notifyNodeDescriptionsUpdated(): Promise<void> {
+	private notifyNodeDescriptionsUpdated() {
 		this.push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
 	}
 
