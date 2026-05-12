@@ -27,7 +27,7 @@ import {
 	type SubmitWorkflowInput,
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, InstanceAiTraceRun } from '../../types';
 import {
 	MAX_PRE_SAVE_SUBMIT_FAILURES,
 	createRemediation,
@@ -220,6 +220,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	currentRunId?: string;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
 	onGuardFired?: SubmitGuardOptions['onGuardFired'];
+	tracingRoot?: InstanceAiTraceRun;
 }) {
 	const budgetTracker = createPreSaveBudgetTracker();
 	const underlying = createSubmitWorkflowTool(
@@ -229,6 +230,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			await args.onAttempt(budgetTracker.recordAttempt(attempt));
 		},
 		args.availableCredentials,
+		args.tracingRoot,
 	);
 
 	const underlyingExecute = underlying.execute as SubmitExecute | undefined;

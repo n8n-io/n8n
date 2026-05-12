@@ -1063,6 +1063,7 @@ export async function startBuildWorkflowAgentTask(
 								availableCredentials,
 								root,
 								currentRunId: context.runId,
+								tracingRoot: traceContext?.rootRun,
 								getWorkflowLoopState: async () =>
 									await context.workflowTaskService?.getWorkflowLoopState(workItemId),
 								onGuardFired: (event) => {

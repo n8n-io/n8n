@@ -17,7 +17,8 @@ import { z } from 'zod';
 import { resolveCredentials, type CredentialEntry } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
-import type { InstanceAiContext } from '../../types';
+import { appendGeneratedWorkflowIdToRootMetadata } from '../../tracing/langsmith-tracing';
+import type { InstanceAiContext, InstanceAiTraceRun } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -267,6 +268,7 @@ export function createSubmitWorkflowTool(
 	workspace: Workspace,
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
 	availableCredentials?: CredentialEntry[],
+	tracingRoot?: InstanceAiTraceRun,
 ) {
 	return createTool({
 		id: 'submit-workflow',
@@ -494,6 +496,9 @@ export function createSubmitWorkflowTool(
 				referencedWorkflowIds: referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
+			if (tracingRoot) {
+				appendGeneratedWorkflowIdToRootMetadata(tracingRoot, savedId);
+			}
 			return {
 				success: true,
 				workflowId: savedId,
