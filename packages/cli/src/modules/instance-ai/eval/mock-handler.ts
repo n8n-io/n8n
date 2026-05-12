@@ -56,9 +56,9 @@ Node-config patterns to know:
   - "schema" array: each entry's "id" is the response field name (NOT "displayName"). e.g. {id:"timestamp",displayName:"Timestamp"} → response uses "timestamp"
   - Strings starting with "=" are expressions (ignore)
 
-Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. No pagination — always indicate end of results.
+**Time-relative fields.** The user prompt ends with a "## Date anchors" block listing today's date plus a handful of relative anchors (yesterday, 7 days ago, etc.). EVERY timestamp, date, hourly/daily entry, and time-relative field in your response MUST be derived from those anchors — never from training data or from the example dates in the API documentation. Workflows commonly filter mock responses by today's date; values outside the current window are silently discarded and the scenario fails.
 
-When the user prompt provides a Current date/time, use it for any timestamp, date, or time-relative field — never reach into training data for "today's date".
+Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. No pagination — always indicate end of results.
 
 For APIs that return empty responses on success (204/202), call submit_response with type="json" and body={}.`;
 
@@ -137,6 +137,8 @@ async function generateMockResponse(
 	const serviceName = extractServiceName(request.url);
 	const endpoint = extractEndpoint(request.url);
 
+	const dateAnchors = buildDateAnchors(new Date());
+
 	// Build user prompt with clearly separated sections
 	const sections: string[] = [
 		'## Request',
@@ -144,9 +146,6 @@ async function generateMockResponse(
 		`Node: "${node.name}" (${node.type})`,
 		(request.method ?? 'GET') + ' ' + endpoint,
 		'Generate the response for this EXACT endpoint and method.',
-		'',
-		`Current date/time: ${new Date().toISOString()}`,
-		'Use this for timestamps, dates, or relative time fields.',
 	];
 
 	if (request.body) {
@@ -197,6 +196,12 @@ async function generateMockResponse(
 			);
 		}
 	}
+
+	// Date anchors — placed last so they're the freshest context before the
+	// model generates. Framed as named data values (not an instruction): the
+	// API docs above contain training-era example dates, and presenting "today"
+	// as data the model integrates is more reliable than rule-following.
+	sections.push('', '## Date anchors', dateAnchors);
 
 	const userPrompt = sections.join('\n');
 
@@ -389,4 +394,32 @@ function extractEndpointPath(url: string): string {
 	} catch {
 		return url;
 	}
+}
+
+/**
+ * Renders a stable block of named date anchors for the user prompt. Each
+ * entry is a relative-time label → ISO date string. The model integrates
+ * these as data (similar to a node config value) rather than interpreting
+ * a "use today's date" rule, which it often misses when the surrounding
+ * API docs are full of training-era example dates.
+ */
+export function buildDateAnchors(now: Date): string {
+	const labels: Array<[string, number]> = [
+		['today', 0],
+		['yesterday', -1],
+		['7 days ago', -7],
+		['14 days ago', -14],
+		['30 days ago', -30],
+		['1 day from now', 1],
+		['7 days from now', 7],
+	];
+	const lines = labels.map(([label, dayOffset]) => {
+		const d = new Date(now);
+		d.setUTCDate(d.getUTCDate() + dayOffset);
+		const isoDate = d.toISOString().slice(0, 10);
+		return label === 'today'
+			? `- ${label}: ${isoDate} (full timestamp ${now.toISOString()})`
+			: `- ${label}: ${isoDate}`;
+	});
+	return lines.join('\n');
 }
