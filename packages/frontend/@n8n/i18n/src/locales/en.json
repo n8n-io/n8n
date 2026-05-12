@@ -4864,7 +4864,6 @@
 	"settings.personal.passkey.remove.button": "Remove passkey",
 	"settings.personal.method.status.notSetUp": "Not set up",
 	"settings.personal.method.button.setUp": "Set up",
-	"settings.personal.method.button.switchTo": "Switch to this",
 	"settings.personal.method.button.remove": "Remove",
 	"settings.personal.method.button.disable": "Disable",
 	"settings.personal.twoFactor.section.title": "Two-factor authentication (2FA)",

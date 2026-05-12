@@ -323,6 +323,10 @@ export class MFAController {
 			id: savedCredential.id,
 			credentialId: savedCredential.credentialId,
 			label: savedCredential.label,
+			// The OS picker may route a cross-platform request through a platform
+			// authenticator (e.g. iCloud Keychain), so the actual method is
+			// derived from the response — not the client's attachment hint.
+			method,
 		};
 	}
 

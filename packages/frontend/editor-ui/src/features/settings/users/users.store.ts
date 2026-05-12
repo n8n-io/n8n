@@ -444,7 +444,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		});
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = true;
-			currentUser.value.mfaMethod = attachment === 'platform' ? 'passkey' : 'security_key';
+			// Use the BE-classified method — the OS picker may route a
+			// cross-platform request through a platform authenticator.
+			currentUser.value.mfaMethod = result.method;
 		}
 		return result;
 	};

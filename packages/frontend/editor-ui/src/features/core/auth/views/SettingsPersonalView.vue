@@ -595,11 +595,7 @@ onBeforeUnmount(() => {
 								v-else
 								variant="subtle"
 								size="small"
-								:label="
-									has2fa
-										? i18n.baseText('settings.personal.method.button.switchTo')
-										: i18n.baseText('settings.personal.method.button.setUp')
-								"
+								:label="i18n.baseText('settings.personal.method.button.setUp')"
 								:data-test-id="`mfa-method-${option.method}-setup`"
 								@click="onTwoFactorMethodClick(option.method)"
 							/>

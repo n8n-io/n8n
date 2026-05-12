@@ -81,6 +81,13 @@ export class WebAuthnService {
 			authenticatorSelection,
 		});
 
+		// Hint the browser at the intended authenticator class. Chrome respects
+		// this and skips its platform-passkey dialog when `security-key` is
+		// hinted, going straight to the "insert your key" prompt. @simplewebauthn
+		// doesn't type the field yet, so attach it post-generation.
+		const hint = attachment === 'platform' ? 'client-device' : 'security-key';
+		(options as typeof options & { hints: string[] }).hints = [hint];
+
 		await this.cacheService.set(
 			`webauthn:challenge:reg:${userId}`,
 			options.challenge,
