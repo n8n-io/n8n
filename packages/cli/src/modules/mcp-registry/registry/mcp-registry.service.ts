@@ -2,10 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
@@ -42,6 +44,8 @@ export class McpRegistryService {
 		private readonly apiClient: McpRegistryApiClient,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly push: Push,
+		private readonly publisher: Publisher,
 	) {
 		this.logger = logger.scoped('mcp-registry');
 	}
@@ -232,7 +236,11 @@ export class McpRegistryService {
 
 	private async loadFromSettings(): Promise<void> {
 		const stored = await this.readStoredServers();
-		this.replaceCache(stored?.servers ?? []);
+		const servers = stored?.servers ?? [];
+		this.replaceCache(servers);
+		this.logger.debug('Loaded MCP servers from DB', {
+			serverCount: servers.length,
+		});
 	}
 
 	private replaceCache(servers: McpRegistryServer[]): void {
@@ -261,16 +269,16 @@ export class McpRegistryService {
 		if (releaseTypes) {
 			this.loadNodesAndCredentials.releaseTypes();
 		}
+
+		this.logger.debug('MCP registry loader done');
 	}
 
 	private async publishReloadCommand(): Promise<void> {
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-		await Container.get(Publisher).publishCommand({ command: 'reload-mcp-registry' });
+		await this.publisher.publishCommand({ command: 'reload-mcp-registry' });
 	}
 
 	private async notifyNodeDescriptionsUpdated(): Promise<void> {
-		const { Push } = await import('@/push');
-		Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+		this.push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
 	}
 
 	private isMainInstance(): boolean {
