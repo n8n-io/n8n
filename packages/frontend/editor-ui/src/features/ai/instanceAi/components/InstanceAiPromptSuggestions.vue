@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { onClickOutside } from '@vueuse/core';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { onClickOutside } from '@vueuse/core';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	isMenuSuggestion,
 	isPromptSuggestion,
@@ -84,15 +84,22 @@ onUnmounted(() => {
 
 onClickOutside(rootRef, closeQuickExamples);
 
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
 function handleSuggestionEnter(suggestion: InstanceAiEmptyStateSuggestion) {
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
 
-	setPreview(suggestion.promptKey);
+	hoverTimer = setTimeout(() => setPreview(suggestion.promptKey), 300);
 }
 
 function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
+	if (hoverTimer) {
+		clearTimeout(hoverTimer);
+		hoverTimer = null;
+	}
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
