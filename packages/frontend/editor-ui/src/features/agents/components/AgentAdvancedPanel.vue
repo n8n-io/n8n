@@ -164,7 +164,11 @@ async function loadProfile() {
 	profileError.value = false;
 
 	try {
-		const loadedProfile = await getAgentMemoryProfiles(rootStore.restApiContext, projectId, agentId);
+		const loadedProfile = await getAgentMemoryProfiles(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+		);
 		if (profileKey.value !== key) return;
 		profile.value = loadedProfile;
 		loadedProfileKey.value = key;
@@ -203,17 +207,14 @@ watch(isExpanded, (expanded) => {
 	startProfilePolling();
 });
 
-watch(
-	profileKey,
-	() => {
-		profile.value = null;
-		loadedProfileKey.value = null;
-		if (isExpanded.value) {
-			void loadProfile();
-			startProfilePolling();
-		}
-	},
-);
+watch(profileKey, () => {
+	profile.value = null;
+	loadedProfileKey.value = null;
+	if (isExpanded.value) {
+		void loadProfile();
+		startProfilePolling();
+	}
+});
 
 watch(canLoadProfile, (canLoad) => {
 	if (!canLoad) {
