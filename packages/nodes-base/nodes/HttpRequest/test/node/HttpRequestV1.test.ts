@@ -46,21 +46,6 @@ describe('HttpRequestV1', () => {
 				binaryToString: jest.fn((buffer: Buffer) => {
 					return buffer.toString();
 				}),
-			getInputData: jest.fn(() => [{ json: {} }]),
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => ({
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-			})),
-			getCredentials: jest.fn(),
-			helpers: {
-				request: jest.fn(),
-				requestOAuth1: jest.fn(),
-				requestOAuth2: jest.fn(),
-				assertBinaryData: jest.fn(),
-				getBinaryStream: jest.fn(),
-				getBinaryMetadata: jest.fn(),
-				binaryToString: jest.fn(),
 				prepareBinaryData: jest.fn(),
 			},
 			getContext: jest.fn(),
@@ -75,12 +60,12 @@ describe('HttpRequestV1', () => {
 			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
+					case 'responseFormat':
+						return 'json';
 					case 'requestMethod':
 						return 'GET';
 					case 'url':
 						return '   ';
-					case 'responseFormat':
-						return 'json';
 					case 'jsonParameters':
 						return false;
 					case 'options':
@@ -100,23 +85,12 @@ describe('HttpRequestV1', () => {
 			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
+					case 'responseFormat':
+						return 'json';
 					case 'requestMethod':
 						return 'GET';
 					case 'url':
 						return '  http://example.com  ';
-					case 'responseFormat':
-						return 'json';
-		it.each([
-			{ url: undefined, expectedType: 'undefined' },
-			{ url: null, expectedType: 'null' },
-			{ url: 42, expectedType: 'number' },
-		])('should throw error when URL is $expectedType', async ({ url, expectedType }) => {
-			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
-				switch (paramName) {
-					case 'responseFormat':
-						return 'json';
-					case 'requestMethod':
-						return 'GET';
 					case 'jsonParameters':
 						return false;
 					case 'options':
@@ -125,8 +99,6 @@ describe('HttpRequestV1', () => {
 					case 'headerParametersUi':
 					case 'queryParametersUi':
 						return { parameter: [] };
-					case 'url':
-						return url;
 					default:
 						return undefined;
 				}
@@ -142,6 +114,35 @@ describe('HttpRequestV1', () => {
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 			const requestArgs = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
 			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
+		});
+
+		it.each([
+			{ url: undefined, expectedType: 'undefined' },
+			{ url: null, expectedType: 'null' },
+			{ url: 42, expectedType: 'number' },
+		])('should throw error when URL is $expectedType', async ({ url, expectedType }) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'responseFormat':
+						return 'json';
+					case 'requestMethod':
+						return 'GET';
+					case 'url':
+						return url;
+					case 'jsonParameters':
+						return false;
+					case 'options':
+						return {};
+					case 'bodyParametersUi':
+					case 'headerParametersUi':
+					case 'queryParametersUi':
+						return { parameter: [] };
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as jest.Mock).mockRejectedValue(new Error('No credentials'));
 
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 				`URL parameter must be a string, got ${expectedType}`,

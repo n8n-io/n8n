@@ -166,26 +166,12 @@ describe('HttpRequestV2', () => {
 			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
-					case 'method':
-						return 'GET';
-					case 'url':
-						return '   ';
-					case 'authentication':
-						return 'none';
-		it.each([
-			{ url: undefined, expectedType: 'undefined' },
-			{ url: null, expectedType: 'null' },
-			{ url: 42, expectedType: 'number' },
-		])('should throw error when URL is $expectedType', async ({ url, expectedType }) => {
-			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
-				switch (paramName) {
 					case 'responseFormat':
 						return 'json';
 					case 'requestMethod':
 						return 'GET';
 					case 'url':
-						return url;
+						return '   ';
 					case 'authentication':
 						return 'none';
 					case 'jsonParameters':
@@ -206,12 +192,16 @@ describe('HttpRequestV2', () => {
 			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
-					case 'method':
+					case 'responseFormat':
+						return 'json';
+					case 'requestMethod':
 						return 'GET';
 					case 'url':
 						return '  http://example.com  ';
 					case 'authentication':
 						return 'none';
+					case 'jsonParameters':
+						return false;
 					case 'options':
 						return options;
 					case 'bodyParametersUi':
@@ -233,6 +223,37 @@ describe('HttpRequestV2', () => {
 			const requestArgs = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
 			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
 		});
+
+		it.each([
+			{ url: undefined, expectedType: 'undefined' },
+			{ url: null, expectedType: 'null' },
+			{ url: 42, expectedType: 'number' },
+		])('should throw error when URL is $expectedType', async ({ url, expectedType }) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'responseFormat':
+						return 'json';
+					case 'requestMethod':
+						return 'GET';
+					case 'url':
+						return url;
+					case 'authentication':
+						return 'none';
+					case 'jsonParameters':
+						return false;
+					case 'options':
+						return options;
+					case 'bodyParametersUi':
+					case 'headerParametersUi':
+					case 'queryParametersUi':
+						return { parameter: [] };
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 				`URL parameter must be a string, got ${expectedType}`,
 			);
 		});
