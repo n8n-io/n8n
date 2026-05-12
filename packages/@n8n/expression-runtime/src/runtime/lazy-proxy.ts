@@ -150,10 +150,13 @@ export function createDeepLazyProxy(
 		return idx;
 	}
 
-	function materializeChild(path: string[], value: unknown): unknown {
+	function materializeChild(basePath: string[], propOrIdx: string, value: unknown): unknown {
 		if (value === undefined || value === null) return value;
 		throwIfErrorSentinel(value);
+		// `path = [...basePath, propOrIdx]` is built only inside the three branches
+		// that actually use it, so non-metadata objects don't pay for the spread.
 		if (value && typeof value === 'object' && (value as { __isFunction?: unknown }).__isFunction) {
+			const path = [...basePath, propOrIdx];
 			return function (...args: any[]) {
 				const result = callFunctionAtPath.applySync(null, [path, ...args], {
 					arguments: { copy: true },
@@ -164,9 +167,11 @@ export function createDeepLazyProxy(
 			};
 		}
 		if (isArrayMetadata(value)) {
+			const path = [...basePath, propOrIdx];
 			return createDeepLazyProxy(path, { kind: 'array', length: value.__length }, callbacks);
 		}
 		if (isObjectMetadata(value)) {
+			const path = [...basePath, propOrIdx];
 			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
 		}
 		return value;
@@ -245,7 +250,6 @@ export function createDeepLazyProxy(
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
 				if (idx === undefined) return undefined;
-				const elementPath = [...basePath, String(idx)];
 				const element = getArrayElement.applySync(null, [basePath, idx], {
 					arguments: { copy: true },
 					result: { copy: true },
@@ -255,11 +259,12 @@ export function createDeepLazyProxy(
 					targetObj[prop] = element;
 					return element;
 				}
-				targetObj[prop] = materializeChild(elementPath, element);
+				targetObj[prop] = materializeChild(basePath, String(idx), element);
 				return targetObj[prop];
 			}
 
-			// Build path for this property
+			// Build path for this property — needed for the getValueAtPath call.
+			// materializeChild rebuilds it only inside metadata branches.
 			const path = [...basePath, prop];
 
 			// Call back to host to get metadata/value
@@ -269,7 +274,7 @@ export function createDeepLazyProxy(
 				result: { copy: true },
 			});
 
-			targetObj[prop] = materializeChild(path, value);
+			targetObj[prop] = materializeChild(basePath, prop, value);
 			return targetObj[prop];
 		},
 
