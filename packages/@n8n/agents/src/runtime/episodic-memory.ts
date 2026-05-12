@@ -644,15 +644,15 @@ function formatRelativeAge(createdAt: Date, now: Date): string {
 	const ageDays = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / MS_PER_DAY));
 	if (ageDays === 0) return 'today';
 	if (ageDays === 1) return '1 day ago';
-	if (ageDays < 14) return `${ageDays} days ago`;
+	if (ageDays < 7) return `${ageDays} days ago`;
 
 	const ageWeeks = Math.floor(ageDays / 7);
 	if (ageWeeks === 1) return '1 week ago';
-	if (ageDays < 60) return `${ageWeeks} weeks ago`;
+	if (ageDays < 30) return `${ageWeeks} weeks ago`;
 
 	const ageMonths = Math.floor(ageDays / 30);
 	if (ageMonths === 1) return '1 month ago';
-	if (ageDays < 730) return `${ageMonths} months ago`;
+	if (ageDays < 365) return `${ageMonths} months ago`;
 
 	const ageYears = Math.floor(ageDays / 365);
 	if (ageYears === 1) return '1 year ago';

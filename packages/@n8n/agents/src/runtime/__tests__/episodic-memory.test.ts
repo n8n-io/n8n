@@ -934,6 +934,24 @@ describe('episodic memory entries', () => {
 				contentHash: 'newer-hash',
 				createdAt: new Date('2026-05-07T12:00:00.000Z'),
 			}),
+			makeStoredEntry({
+				id: 'one-week',
+				content: 'The user has a one-week-old deployment note.',
+				contentHash: 'one-week-hash',
+				createdAt: new Date('2026-05-02T12:00:00.000Z'),
+			}),
+			makeStoredEntry({
+				id: 'one-month',
+				content: 'The user has a one-month-old deployment note.',
+				contentHash: 'one-month-hash',
+				createdAt: new Date('2026-04-09T12:00:00.000Z'),
+			}),
+			makeStoredEntry({
+				id: 'one-year',
+				content: 'The user has a one-year-old deployment note.',
+				contentHash: 'one-year-hash',
+				createdAt: new Date('2025-05-09T12:00:00.000Z'),
+			}),
 		]);
 
 		const injection = await loadEpisodicMemoryForInjection({
@@ -954,6 +972,9 @@ describe('episodic memory entries', () => {
 			rendered.indexOf('cross-thread memory'),
 		);
 		expect(rendered).toContain('- The user prefers concise responses. (2 days ago)');
+		expect(rendered).toContain('- The user has a one-week-old deployment note. (1 week ago)');
+		expect(rendered).toContain('- The user has a one-month-old deployment note. (1 month ago)');
+		expect(rendered).toContain('- The user has a one-year-old deployment note. (1 year ago)');
 		expect(rendered).toContain('- The user is working on cross-thread memory. (2 weeks ago)');
 	});
 
