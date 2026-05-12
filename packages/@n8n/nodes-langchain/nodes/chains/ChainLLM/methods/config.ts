@@ -12,7 +12,7 @@ import {
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 } from '@utils/descriptions';
-import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@n8n/ai-utilities';
 
 /**
  * Dynamic input configuration generation based on node parameters
@@ -131,8 +131,8 @@ export const nodeProperties: INodeProperties[] = [
 			rows: 2,
 		},
 		builderHint: {
-			message:
-				'Use expressions to include dynamic data from previous nodes (e.g., "={{ $json.input }}"). Static text prompts ignore incoming data.',
+			propertyHint:
+				"Use expressions to include dynamic data from previous nodes (e.g., expr('{{ $json.input }}')). Static text prompts ignore incoming data.",
 		},
 		displayOptions: {
 			show: {

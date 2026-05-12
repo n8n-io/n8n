@@ -25,7 +25,19 @@
         "file_path": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "last_commit_id": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "path": {
             "type": "string"
         },
         "ref": {
@@ -33,7 +45,10 @@
         },
         "size": {
             "type": "integer"
+        },
+        "type": {
+            "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

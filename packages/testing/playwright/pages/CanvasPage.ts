@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
@@ -13,6 +13,10 @@ import { StickyComponent } from './components/StickyComponent';
 import { TagsManagerModal } from './components/TagsManagerModal';
 
 export class CanvasPage extends BasePage {
+	async goto() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
+	}
+
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
@@ -43,6 +47,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`);
 	}
 
+	nodeOverflowButton(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('overflow-node-button');
+	}
+
 	nodeIssuesBadge(nodeName: string) {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
@@ -65,6 +73,10 @@ export class CanvasPage extends BasePage {
 
 	getCanvasNodes() {
 		return this.page.getByTestId('canvas-node');
+	}
+
+	getChoicePrompt(): Locator {
+		return this.page.getByTestId('canvas-choice-prompt');
 	}
 
 	async clickNodeCreatorPlusButton(): Promise<void> {
@@ -151,12 +163,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async waitForSaveWorkflowCompleted() {
+	/**
+	 * @param options - Configuration options for waiting for save workflow completion.
+	 * @param options.timeout - Timeout in milliseconds. Defaults to 2000ms to account for the 1500ms autosave debounce.
+	 */
+	async waitForSaveWorkflowCompleted({ timeout = 2000 }: { timeout?: number } = {}) {
 		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
 				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
-			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
+			{ timeout },
 		);
 	}
 
@@ -168,6 +184,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickExecuteWorkflowButton(triggerNodeName?: string): Promise<void> {
+		if (triggerNodeName) {
+			await this.nodeByName(triggerNodeName).hover();
+		}
 		await this.getExecuteWorkflowButton(triggerNodeName).click();
 	}
 
@@ -177,6 +196,10 @@ export class CanvasPage extends BasePage {
 
 	getRenamePrompt(): Locator {
 		return this.page.locator('.rename-prompt');
+	}
+
+	getRenameInput(): Locator {
+		return this.getRenamePrompt().locator('input');
 	}
 
 	/**
@@ -446,7 +469,7 @@ export class CanvasPage extends BasePage {
 
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
+		await this.clickContextMenuAction('duplicate');
 	}
 
 	nodeConnections(): Locator {
@@ -467,6 +490,10 @@ export class CanvasPage extends BasePage {
 
 	nodeCreatorNodeItems(): Locator {
 		return this.page.getByTestId('node-creator-item-name');
+	}
+
+	nodeCreatorNodeItem(name: string): Locator {
+		return this.nodeCreatorNodeItems().getByText(name, { exact: true });
 	}
 
 	nodeCreatorActionItems(): Locator {
@@ -522,6 +549,13 @@ export class CanvasPage extends BasePage {
 
 	// Actions
 
+	async waitForBlankCanvasReady(): Promise<void> {
+		await expect(this.canvasPane()).toBeVisible();
+		await expect(this.getNodeViewLoader()).toBeHidden();
+		await expect(this.getLoadingMask()).toBeHidden();
+		await expect(this.getChoicePrompt()).toBeVisible();
+	}
+
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
 		await this.clickCanvasPlusButton();
 		await this.fillNodeCreatorSearchBar(nodeName);
@@ -534,7 +568,9 @@ export class CanvasPage extends BasePage {
 
 	async executeNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).hover();
-		await this.nodeExecuteButton(nodeName).click();
+		const button = this.nodeExecuteButton(nodeName);
+		await expect(button).toBeVisible();
+		await button.click();
 	}
 
 	async selectAll(): Promise<void> {
@@ -666,8 +702,8 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId(`context-menu-item-${itemId}`);
 	}
 
-	async clickContextMenuAction(actionText: string): Promise<void> {
-		await this.page.getByTestId('context-menu').getByText(actionText).click();
+	async clickContextMenuAction(actionId: string): Promise<void> {
+		await this.getContextMenuItem(actionId).click();
 	}
 
 	async executeNodeFromContextMenu(nodeName: string): Promise<void> {
@@ -741,6 +777,18 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('workflow-chat-button').click();
 	}
 
+	getOpenChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Open chat' });
+	}
+
+	getHideChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Hide chat' });
+	}
+
+	getChatPanel(): Locator {
+		return this.page.getByTestId('canvas-chat');
+	}
+
 	// Input plus endpoints (to add supplemental nodes to parent inputs)
 	getInputPlusEndpointByType(nodeName: string, endpointType: string) {
 		return this.page
@@ -771,12 +819,18 @@ export class CanvasPage extends BasePage {
 			closeNDV = false,
 			exactMatch = false,
 			subcategory,
-		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
+			exactSubcategory = false,
+		}: {
+			closeNDV?: boolean;
+			exactMatch?: boolean;
+			subcategory?: string;
+			exactSubcategory?: boolean;
+		} = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
 
 		if (subcategory) {
-			await this.nodeCreator.navigateToSubcategory(subcategory);
+			await this.nodeCreator.navigateToSubcategory(subcategory, { exact: exactSubcategory });
 		}
 
 		if (exactMatch) {
@@ -928,7 +982,7 @@ export class CanvasPage extends BasePage {
 
 	async deleteNodeFromContextMenu(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByTestId('context-menu').getByText('Delete').click();
+		await this.clickContextMenuAction('delete');
 	}
 
 	async hitDeleteAllNodes(): Promise<void> {

@@ -2,14 +2,14 @@ import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
-	buildResponseMetadata,
 	createEngineRequests,
 	loadMemory,
 	processEventStream,
 	saveToMemory,
 	type RequestResponseMetadata,
 } from '@utils/agent-execution';
-import { getTracingConfig } from '@utils/tracing';
+import { buildResponseMetadata } from '@utils/agent-execution/buildResponseMetadata';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import type {
 	EngineRequest,
 	EngineResponse,
@@ -17,11 +17,13 @@ import type {
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
+import type { ItemContext } from './prepareItemContext';
+import { isExecuteFunctions } from '../../../utils';
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
-import type { ItemContext } from './prepareItemContext';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
+
 /**
  * Runs the agent for a single item, choosing between streaming or non-streaming execution.
  * Handles both regular execution and execution after tool calls.
@@ -41,6 +43,7 @@ export async function runAgent(
 	model: BaseChatModel,
 	memory: BaseChatMemory | undefined,
 	response?: EngineResponse<RequestResponseMetadata>,
+	memoryHits?: { loads: number; saves: number },
 ): Promise<RunAgentResult> {
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
@@ -53,6 +56,15 @@ export async function runAgent(
 			'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 	};
 	const executeOptions = { signal: ctx.getExecutionCancelSignal() };
+	const logger = 'logger' in ctx ? ctx.logger : undefined;
+	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, logger);
+	if (Object.keys(additionalMetadata).length > 0 && logger) {
+		ctx.logger.debug('Tracing metadata', { additionalMetadata });
+	}
+	const tracingConfig = isExecuteFunctions(ctx)
+		? getTracingConfig(ctx, { additionalMetadata })
+		: undefined;
+	const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
 
 	// Check if streaming is actually available
 	const isStreamingAvailable = 'isStreaming' in ctx ? ctx.isStreaming?.() : undefined;
@@ -64,7 +76,10 @@ export async function runAgent(
 		ctx.getNode().typeVersion >= 2.1
 	) {
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
-		const eventStream = executor.withConfig(getTracingConfig(ctx)).streamEvents(
+		if (memory && memoryHits) {
+			memoryHits.loads++;
+		}
+		const eventStream = executorWithTracing.streamEvents(
 			{
 				...invokeParams,
 				chat_history: chatHistory,
@@ -90,6 +105,9 @@ export async function runAgent(
 		if (memory && input && result?.output) {
 			const previousCount = response?.metadata?.previousRequests?.length;
 			await saveToMemory(input, result.output, memory, steps, previousCount);
+			if (memoryHits) {
+				memoryHits.saves++;
+			}
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -100,17 +118,26 @@ export async function runAgent(
 	} else {
 		// Handle regular execution
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
+		if (memory && memoryHits) {
+			memoryHits.loads++;
+		}
 
-		const modelResponse = await executor.withConfig(getTracingConfig(ctx)).invoke({
-			...invokeParams,
-			chat_history: chatHistory,
-		});
+		const modelResponse = await executorWithTracing.invoke(
+			{
+				...invokeParams,
+				chat_history: chatHistory,
+			},
+			executeOptions,
+		);
 
 		if ('returnValues' in modelResponse) {
 			// Save conversation to memory including any tool call context
 			if (memory && input && modelResponse.returnValues.output) {
 				const previousCount = response?.metadata?.previousRequests?.length;
 				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
+				if (memoryHits) {
+					memoryHits.saves++;
+				}
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };

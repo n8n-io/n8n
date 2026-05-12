@@ -1,5 +1,4 @@
 import { Memoized } from '@n8n/decorators';
-import { Container } from '@n8n/di';
 import callsites from 'callsites';
 import glob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
@@ -24,6 +23,7 @@ import path from 'node:path';
 
 import { ExecutionLifecycleHooks } from '../dist/execution-engine/execution-lifecycle-hooks';
 import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
+import { CredentialTypes } from './credential-types';
 import { CredentialsHelper } from './credentials-helper';
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { NodeTypes } from './node-types';
@@ -47,11 +47,16 @@ export class NodeTestHarness {
 
 	private readonly packagePaths: string[];
 
+	private nodesLoadedPromise: Promise<void> | undefined;
+
+	private loadNodesAndCredentials: LoadNodesAndCredentials | undefined;
+
 	constructor({ additionalPackagePaths }: TestHarnessOptions = {}) {
 		this.testDir = path.dirname(callsites()[1].getFileName()!);
 		this.packagePaths = additionalPackagePaths ?? [];
 		this.packagePaths.unshift(this.packageDir);
 
+		beforeAll(() => this.ensureNodesLoaded(), 30_000);
 		beforeEach(() => nock.disableNetConnect());
 	}
 
@@ -85,7 +90,7 @@ export class NodeTestHarness {
 			this.assertOutput(testData, result, nodeExecutionOrder);
 
 			if (options.customAssertions) options.customAssertions();
-		});
+		}, 20_000);
 	}
 
 	@Memoized
@@ -184,12 +189,21 @@ export class NodeTestHarness {
 		);
 	}
 
+	private async ensureNodesLoaded() {
+		if (!this.nodesLoadedPromise) {
+			this.nodesLoadedPromise = (async () => {
+				this.loadNodesAndCredentials = new LoadNodesAndCredentials(this.packagePaths);
+				await this.loadNodesAndCredentials.init();
+			})();
+		}
+		return this.nodesLoadedPromise;
+	}
+
 	private async executeWorkflow(testData: WorkflowTestData) {
-		const loadNodesAndCredentials = new LoadNodesAndCredentials(this.packagePaths);
-		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
-		await loadNodesAndCredentials.init();
-		const nodeTypes = Container.get(NodeTypes);
-		const credentialsHelper = Container.get(CredentialsHelper);
+		await this.ensureNodesLoaded();
+		const nodeTypes = new NodeTypes(this.loadNodesAndCredentials!);
+		const credentialTypes = new CredentialTypes(this.loadNodesAndCredentials!);
+		const credentialsHelper = new CredentialsHelper(credentialTypes);
 		credentialsHelper.setCredentials(testData.credentials ?? {});
 
 		const executionMode = testData.trigger?.mode ?? 'manual';
@@ -216,10 +230,12 @@ export class NodeTestHarness {
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
 			executionId: '1',
 			webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+			formWaitingBaseUrl: 'http://localhost/waiting-form',
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,
 			parentCallbackManager: undefined,
+			ssrfBridge: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 

@@ -5,6 +5,24 @@ properties:
     example: 1000
   data:
     type: object
+    additionalProperties: true
+    description: >
+      Detailed execution data. Only included when `includeData` is `true`.
+    properties:
+      redactionInfo:
+        type: object
+        nullable: true
+        description: Present when execution data has been redacted.
+        properties:
+          isRedacted:
+            type: boolean
+            description: Whether the execution data was redacted.
+          reason:
+            type: string
+            description: The reason for redaction.
+          canReveal:
+            type: boolean
+            description: Whether the current user has permission to reveal the redacted data.
   finished:
     type: boolean
     example: true

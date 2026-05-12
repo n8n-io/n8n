@@ -115,36 +115,38 @@ function executeWorkflow(workflowId: string): ExecutionResult {
 }
 
 // --- Test Suite ---
-test.describe('Workflow Tests', {
-	annotation: [
-		{ type: 'owner', description: 'Catalysts' },
-	],
-}, () => {
-	const workflows = loadWorkflows();
+test.describe(
+	'Workflow Tests',
+	{
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
+	},
+	() => {
+		const workflows = loadWorkflows();
 
-	for (const workflow of workflows) {
-		test(`${workflow.name} (ID: ${workflow.id})`, ({}, testInfo) => {
-			// Conditionally skip the test based on its status in the config file.
-			// This can be overridden by setting the IGNORE_SKIPLIST environment variable.
-			// eslint-disable-next-line playwright/no-skipped-test
-			test.skip(
-				workflow.status === 'SKIPPED' && !IGNORE_SKIPLIST,
-				'Workflow is marked as SKIPPED in workflowConfig.json',
-			);
-			// Standardize snapshot names to be consistent across different operating systems.
-			testInfo.snapshotSuffix = '';
-
-			const result = executeWorkflow(workflow.id);
-
-			expect(result.success, `Workflow execution failed: ${result.error}`).toBe(true);
-
-			// Optionally, validate the output against a JSON schema snapshot if enabled.
-			if (SCHEMA_MODE && result.data && workflow.enableSchemaValidation) {
-				const schema = generateSchema.json(result.data);
-				expect(JSON.stringify(schema, null, 2)).toMatchSnapshot(
-					`workflow-${workflow.id}-schema.snap`,
+		for (const workflow of workflows) {
+			test(`${workflow.name} (ID: ${workflow.id})`, ({}, testInfo) => {
+				// Conditionally skip the test based on its status in the config file.
+				// This can be overridden by setting the IGNORE_SKIPLIST environment variable.
+				// eslint-disable-next-line playwright/no-skipped-test
+				test.skip(
+					workflow.status === 'SKIPPED' && !IGNORE_SKIPLIST,
+					'Workflow is marked as SKIPPED in workflowConfig.json',
 				);
-			}
-		});
-	}
-});
+				// Standardize snapshot names to be consistent across different operating systems.
+				testInfo.snapshotSuffix = '';
+
+				const result = executeWorkflow(workflow.id);
+
+				expect(result.success, `Workflow execution failed: ${result.error}`).toBe(true);
+
+				// Optionally, validate the output against a JSON schema snapshot if enabled.
+				if (SCHEMA_MODE && result.data && workflow.enableSchemaValidation) {
+					const schema = generateSchema.json(result.data);
+					expect(JSON.stringify(schema, null, 2)).toMatchSnapshot(
+						`workflow-${workflow.id}-schema.snap`,
+					);
+				}
+			});
+		}
+	},
+);

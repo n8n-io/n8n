@@ -4,8 +4,8 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
+import { ASK_AI_SLIDE_IN_DURATION_MS, ASK_AI_SLIDE_OUT_DURATION_MS } from '@/app/constants';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 import AskModeCoachmark from './AskModeCoachmark.vue';
@@ -45,6 +45,8 @@ const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
 const chatWidth = computed(() => chatPanelStore.width);
+const slideInDuration = `${ASK_AI_SLIDE_IN_DURATION_MS}ms`;
+const slideOutDuration = `${ASK_AI_SLIDE_OUT_DURATION_MS}ms`;
 
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
@@ -72,11 +74,7 @@ async function toggleAssistantMode() {
 		chatPanelStore.switchMode(newMode);
 	} else {
 		// Opening from closed state - use full open logic
-		if (switchingToBuild) {
-			await chatPanelStore.open({ mode: 'builder' });
-		} else {
-			await chatPanelStore.open({ mode: 'assistant' });
-		}
+		await chatPanelStore.open({ mode: newMode });
 	}
 }
 
@@ -128,39 +126,67 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<SlideTransition @after-enter="onSlideEnterComplete">
-		<N8nResizeWrapper
+	<Transition
+		:enter-active-class="$style.slideEnterActive"
+		:enter-from-class="$style.slideFrom"
+		:leave-active-class="$style.slideLeaveActive"
+		:leave-to-class="$style.slideFrom"
+		@after-enter="onSlideEnterComplete"
+	>
+		<div
 			v-show="chatPanelStore.isOpen"
-			:supported-directions="['left']"
-			:width="chatWidth"
-			:min-width="chatPanelStore.MIN_CHAT_WIDTH"
-			:max-width="chatPanelStore.MAX_CHAT_WIDTH"
-			:class="$style.resizeWrapper"
-			data-test-id="ask-assistant-sidebar"
-			@resize="onResizeDebounced"
+			:class="$style.slideWrapper"
+			:style="{ width: `${chatWidth}px` }"
 		>
-			<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
-				<div :class="$style.assistantContent">
-					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
-						<template v-if="canToggleModes" #header>
-							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-						</template>
-					</AskAssistantBuild>
-					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
-						<!-- Header switcher is only visible when both modes are available in current view -->
-						<template v-if="canToggleModes" #header>
-							<AskModeCoachmark :visible="canShowCoachmark" @dismiss="onDismissCoachmark">
+			<N8nResizeWrapper
+				:supported-directions="['left']"
+				:width="chatWidth"
+				:min-width="chatPanelStore.MIN_CHAT_WIDTH"
+				:max-width="chatPanelStore.MAX_CHAT_WIDTH"
+				:class="$style.resizeWrapper"
+				data-test-id="ask-assistant-sidebar"
+				@resize="onResizeDebounced"
+			>
+				<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
+					<div :class="$style.assistantContent">
+						<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
+							<template v-if="canToggleModes" #header>
 								<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-							</AskModeCoachmark>
-						</template>
-					</AskAssistantChat>
+							</template>
+						</AskAssistantBuild>
+						<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
+							<!-- Header switcher is only visible when both modes are available in current view -->
+							<template v-if="canToggleModes" #header>
+								<AskModeCoachmark :visible="canShowCoachmark" @dismiss="onDismissCoachmark">
+									<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+								</AskModeCoachmark>
+							</template>
+						</AskAssistantChat>
+					</div>
 				</div>
-			</div>
-		</N8nResizeWrapper>
-	</SlideTransition>
+			</N8nResizeWrapper>
+		</div>
+	</Transition>
 </template>
 
 <style lang="scss" module>
+.slideWrapper {
+	overflow: hidden;
+	height: 100%;
+}
+
+.slideEnterActive {
+	transition: width v-bind(slideInDuration) ease-in-out;
+}
+
+.slideLeaveActive {
+	transition: width v-bind(slideOutDuration) ease-in-out;
+}
+
+.slideFrom {
+	width: 0 !important;
+}
+
 .resizeWrapper {
 	z-index: var(--ask-assistant-chat--z);
 }

@@ -24,12 +24,15 @@ const unnamedWorkflowHistoryDataFactory = (): WorkflowHistory => ({
 
 vi.stubGlobal(
 	'IntersectionObserver',
-	vi.fn(() => ({
-		disconnect: vi.fn(),
-		observe: vi.fn(),
-		takeRecords: vi.fn(),
-		unobserve: vi.fn(),
-	})),
+	class {
+		disconnect = vi.fn();
+
+		observe = vi.fn();
+
+		takeRecords = vi.fn();
+
+		unobserve = vi.fn();
+	},
 );
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
@@ -149,11 +152,17 @@ describe('WorkflowHistoryList', () => {
 
 		const listItem = getAllByTestId('workflow-history-list-item')[index];
 
-		await userEvent.click(within(listItem).getByTestId('action-toggle'));
-		const actionsDropdown = getAllByTestId('action-toggle-dropdown')[index];
+		const actionToggle = within(listItem).getByTestId('action-toggle');
+		const toggleButton = within(actionToggle).getByRole('button');
+		await userEvent.click(toggleButton);
+
+		const actionToggleId = toggleButton.getAttribute('aria-controls');
+		expect(actionToggleId).toBeTruthy();
+
+		const actionsDropdown = document.getElementById(actionToggleId as string);
 		expect(actionsDropdown).toBeInTheDocument();
 
-		await userEvent.click(within(actionsDropdown).getByTestId(`action-${action}`));
+		await userEvent.click(within(actionsDropdown as HTMLElement).getByTestId(`action-${action}`));
 		expect(emitted().action).toEqual([
 			[
 				{
@@ -172,7 +181,7 @@ describe('WorkflowHistoryList', () => {
 	it('should delegate compare event from item', async () => {
 		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
 		const index = 1;
-		const activeVersionId = items[0].versionId;
+		const publishedVersionId = items[0].versionId;
 		const { getAllByTestId, emitted } = renderComponent({
 			pinia,
 			props: {
@@ -182,7 +191,7 @@ describe('WorkflowHistoryList', () => {
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneTimeInHours: -1,
-				activeVersionId,
+				publishedVersionId,
 				isWorkflowDiffsEnabled: true,
 			},
 		});

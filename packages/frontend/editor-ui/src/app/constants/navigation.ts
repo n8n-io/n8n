@@ -37,6 +37,7 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
@@ -65,12 +66,12 @@ export const enum VIEWS {
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
 	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 	AI_SETTINGS = 'AISettingsView',
+	AI_GATEWAY_SETTINGS = 'AIGatewaySettingsView',
 	OAUTH_CONSENT = 'OAuthConsent',
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
 	RESOURCE_CENTER = 'ResourceCenter',
-	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -81,3 +82,6 @@ export const enum MAIN_HEADER_TABS {
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
 }
+
+/** Query parameter value used to deep-link to the publish timeline tab in workflow history */
+export const WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB = 'publishTimeline';

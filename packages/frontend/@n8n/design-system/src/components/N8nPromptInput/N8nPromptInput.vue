@@ -4,8 +4,6 @@ import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
-import N8nIcon from '../N8nIcon/Icon.vue';
-import N8nLink from '../N8nLink';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
@@ -96,50 +94,13 @@ const containerStyle = computed(() => {
 	return { minHeight: '80px' };
 });
 
-const showCredits = computed(() => {
+const hasNoCredits = computed(() => {
 	return (
 		props.creditsQuota !== undefined &&
 		props.creditsRemaining !== undefined &&
-		props.creditsQuota !== INFINITE_CREDITS
+		props.creditsQuota !== INFINITE_CREDITS &&
+		props.creditsRemaining === 0
 	);
-});
-
-const creditsInfo = computed(() => {
-	if (!showCredits.value || props.creditsRemaining === undefined) return '';
-	return t('promptInput.creditsInfo', {
-		remaining: props.creditsRemaining,
-		total: props.creditsQuota,
-	});
-});
-
-const getNextMonth = () => {
-	const now = new Date();
-	const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-	const options: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
-	return nextMonth.toLocaleDateString('en-US', options);
-};
-
-const creditsTooltipContent = computed(() => {
-	if (!showCredits.value) return '';
-
-	const nextMonthDate = getNextMonth();
-
-	const lines = [
-		t('promptInput.remainingCredits', {
-			count: props.creditsRemaining ?? 0,
-		}),
-		t('promptInput.monthlyCredits', {
-			count: props.creditsQuota ?? 0,
-		}),
-		t('promptInput.creditsRenew', { date: nextMonthDate }),
-		t('promptInput.creditsExpire', { date: nextMonthDate }),
-	];
-
-	return lines.join('<br />');
-});
-
-const hasNoCredits = computed(() => {
-	return showCredits.value && props.creditsRemaining === 0;
 });
 
 const textareaStyle = computed(() => ({
@@ -339,7 +300,6 @@ defineExpose({
 					{
 						[$style.focused]: isFocused,
 						[$style.disabled]: disabled || hasNoCredits,
-						[$style.withBottomBorder]: !!showCredits,
 					},
 				]"
 				:style="containerStyle"
@@ -401,32 +361,6 @@ defineExpose({
 					/>
 				</div>
 			</div>
-
-			<!-- Credits bar below input -->
-			<div v-if="showCredits" :class="$style.creditsBar">
-				<div :class="$style.creditsInfoWrapper">
-					<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
-					<N8nTooltip
-						:content="creditsTooltipContent"
-						:content-class="$style.infoContent"
-						:show-after="300"
-						placement="top"
-					>
-						<N8nIcon icon="info" size="small" />
-					</N8nTooltip>
-				</div>
-				<N8nTooltip
-					:disabled="!showAskOwnerTooltip"
-					:content="t('promptInput.askAdminToUpgrade')"
-					placement="top"
-					:show-after="300"
-					:enterable="false"
-				>
-					<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
-						{{ t('promptInput.getMore') }}
-					</N8nLink>
-				</N8nTooltip>
-			</div>
 		</div>
 	</N8nTooltip>
 </template>
@@ -451,11 +385,6 @@ defineExpose({
 		box-shadow 0.2s ease;
 	padding: var(--spacing--2xs);
 	box-sizing: border-box;
-
-	// if credit bar is showing
-	&.withBottomBorder {
-		border-bottom: var(--border);
-	}
 
 	&.focused {
 		box-shadow: 0 0 0 1px var(--color--secondary);
@@ -526,40 +455,6 @@ defineExpose({
 	gap: var(--spacing--4xs);
 	padding: 0 var(--spacing--3xs);
 	padding-bottom: var(--spacing--4xs);
-}
-
-// Credits bar below input
-.creditsBar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: none;
-}
-
-.creditsInfoWrapper {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-
-	b {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
-.infoContent {
-	min-width: 200px;
-	line-height: 18px;
-
-	b {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
-.noCredits {
-	color: var(--color--danger);
 }
 
 // Common styles

@@ -79,7 +79,10 @@ function mergeSingleValue(sanitizedRemoteValue: unknown, localValue: unknown): u
 			return localValue;
 		}
 
-		return undefined;
+		// The remote field exists as an empty string (key is part of the schema)
+		// but local has no value for it. Preserve the empty string so the field
+		// is not silently dropped from the merged credential.
+		return '';
 	}
 
 	if (typeof sanitizedRemoteValue === 'number' || typeof sanitizedRemoteValue === 'boolean') {
@@ -126,8 +129,6 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 }): ICredentialDataDecryptedObject {
 	const merged: ICredentialDataDecryptedObject = {};
 
-	// This is a safe guard, in principle remote data should already be sanitized
-	// This prevents importing invalid data that should have not been synched in the first place
 	const sanitizedRemote = sanitizeCredentialData(remote);
 
 	for (const [key, sanitizedRemoteValue] of Object.entries(sanitizedRemote)) {
@@ -137,6 +138,13 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 		if (mergedValue !== undefined) {
 			merged[key] = mergedValue as CredentialInformation;
 		}
+	}
+
+	// Because oauthTokenData is explicitly stripped from the remote data during sanitization,
+	// it will never exist in the sanitizedRemote object. Therefore, it is skipped in the loop above.
+	// We manually merge it back from local to prevent OAuth credentials being wiped out on pull.
+	if (local.oauthTokenData) {
+		merged.oauthTokenData = local.oauthTokenData;
 	}
 
 	return merged;

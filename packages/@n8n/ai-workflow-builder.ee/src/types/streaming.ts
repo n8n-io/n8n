@@ -106,6 +106,14 @@ export interface AgentSuggestionChunk {
 	suggestionId?: string;
 }
 
+export interface WebFetchApprovalChunk {
+	role: 'assistant';
+	type: 'web_fetch_approval';
+	requestId: string;
+	url: string;
+	domain: string;
+}
+
 /**
  * Union type for all stream chunks
  */
@@ -120,7 +128,8 @@ export type StreamChunk =
 	| CodeDiffChunk
 	| MessagesCompactedChunk
 	| SummaryChunk
-	| AgentSuggestionChunk;
+	| AgentSuggestionChunk
+	| WebFetchApprovalChunk;
 
 /**
  * Stream output containing messages

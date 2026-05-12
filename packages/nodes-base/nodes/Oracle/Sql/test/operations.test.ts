@@ -1447,6 +1447,45 @@ VALUES (
 				}
 			},
 		);
+
+		const limitSanitizationCases = [
+			{ label: 'non-numeric string', limit: '5abc', expectedLimit: 0 },
+			{ label: 'string with special characters', limit: '5 or 6;', expectedLimit: 0 },
+			{ label: 'NaN string', limit: 'NaN', expectedLimit: 0 },
+			{ label: 'empty string', limit: '', expectedLimit: 0 },
+			{ label: 'float', limit: 5.9, expectedLimit: 5 },
+			{ label: 'negative float', limit: -3.7, expectedLimit: -3 },
+			{ label: 'valid integer string', limit: '10', expectedLimit: 10 },
+		];
+
+		it.each(limitSanitizationCases)(
+			'should sanitize limit value: $label',
+			async ({ limit, expectedLimit }) => {
+				const nodeParameters: IDataObject = {
+					operation: 'select',
+					schema: { __rl: true, mode: 'list', value: CONFIG.user },
+					table: { __rl: true, value: table, mode: 'list', cachedResultName: table },
+					limit,
+					options: {},
+				};
+				const mockThis = createMockExecuteFunction(nodeParameters);
+				const runQueries = getRunQueriesFn(mockThis, pool);
+				const nodeOptions = nodeParameters.options as IDataObject;
+
+				await select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+				expect(runQueries).toHaveBeenCalledWith(
+					[
+						{
+							query: `SELECT * FROM "${CONFIG.user}"."${table}" FETCH FIRST ${expectedLimit} ROWS ONLY`,
+							values: [],
+						},
+					],
+					items,
+					nodeOptions,
+				);
+			},
+		);
 	});
 
 	describe('Test insert operation', () => {

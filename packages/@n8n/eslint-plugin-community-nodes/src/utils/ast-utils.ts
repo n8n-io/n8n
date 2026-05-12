@@ -130,7 +130,11 @@ export function hasArrayLiteralValue(
 export function getTopLevelObjectInJson(
 	node: TSESTree.ObjectExpression,
 ): TSESTree.ObjectExpression | null {
-	if (node.parent?.type === AST_NODE_TYPES.Property) {
+	// In a JSON file parsed as JS, the root object is the sole expression of
+	// the program, so its parent is an ExpressionStatement. Anything else
+	// (Property, ArrayExpression, etc.) is nested and must not be treated as
+	// the package root.
+	if (node.parent?.type !== AST_NODE_TYPES.ExpressionStatement) {
 		return null;
 	}
 	return node;
@@ -195,6 +199,36 @@ export function extractCredentialNameFromArray(
 ): { name: string; node: TSESTree.Node } | null {
 	const info = extractCredentialInfoFromArray(element);
 	return info ? { name: info.name, node: info.node } : null;
+}
+
+/** Matches the `this.helpers` MemberExpression (the object part of `this.helpers.foo`). */
+export function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
+	return (
+		node.object?.type === AST_NODE_TYPES.MemberExpression &&
+		node.object.object?.type === AST_NODE_TYPES.ThisExpression &&
+		node.object.property?.type === AST_NODE_TYPES.Identifier &&
+		node.object.property.name === 'helpers'
+	);
+}
+
+/** Matches a call expression of the form `this.methodName(...)`. */
+export function isThisMethodCall(node: TSESTree.CallExpression, method: string): boolean {
+	return (
+		node.callee.type === AST_NODE_TYPES.MemberExpression &&
+		node.callee.object.type === AST_NODE_TYPES.ThisExpression &&
+		node.callee.property.type === AST_NODE_TYPES.Identifier &&
+		node.callee.property.name === method
+	);
+}
+
+/** Matches a call expression of the form `this.helpers.methodName(...)`. */
+export function isThisHelpersMethodCall(node: TSESTree.CallExpression, method: string): boolean {
+	return (
+		node.callee.type === AST_NODE_TYPES.MemberExpression &&
+		node.callee.property.type === AST_NODE_TYPES.Identifier &&
+		node.callee.property.name === method &&
+		isThisHelpersAccess(node.callee)
+	);
 }
 
 export function findSimilarStrings(

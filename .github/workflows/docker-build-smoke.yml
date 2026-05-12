@@ -1,0 +1,64 @@
+name: 'Docker Build Smoke Test'
+
+# Verifies the full Docker build chain works without any caching.
+# Catches native module compilation failures (e.g., isolated-vm, sqlite3)
+# that layer caching can mask in the regular E2E pipeline.
+#
+# Full chain: pnpm install → pnpm build (no Turbo cache) →
+#             build base image (no Docker cache) →
+#             build n8n + runners images (no Docker cache)
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # 3:00 AM UTC, after the nightly Docker build at midnight
+  pull_request:
+    paths:
+      - 'docker/images/n8n/**'
+      - 'docker/images/n8n-base/**'
+      - 'docker/images/runners/**'
+      - 'scripts/build-n8n.mjs'
+      - 'scripts/dockerize-n8n.mjs'
+  workflow_dispatch:
+
+jobs:
+  docker-smoke-test:
+    name: 'Docker Build (no cache)'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Login to DHI Registry (for base image)
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dhi: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build full chain (no cache)
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build:docker:clean'
+          enable-docker-cache: true
+
+      - name: Verify n8n image starts
+        run: |
+          docker run --rm -d --name n8n-smoke-test n8nio/n8n:local
+          sleep 5
+          docker logs n8n-smoke-test 2>&1 | tail -20
+          docker stop n8n-smoke-test
+
+  notify-on-failure:
+    name: Notify on nightly smoke test failure
+    runs-on: ubuntu-slim
+    needs: [docker-smoke-test]
+    if: needs.docker-smoke-test.result == 'failure' && github.event_name == 'schedule'
+    steps:
+      - uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.QBOT_SLACK_TOKEN }}
+          payload: |
+            channel: C0A9RLY8Y20
+            text: "🚨 Nightly Docker smoke test failed (no-cache build) - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

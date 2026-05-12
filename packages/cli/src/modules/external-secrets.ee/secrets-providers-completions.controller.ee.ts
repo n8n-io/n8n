@@ -4,11 +4,11 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ExternalSecretsConfig } from './external-secrets.config';
-import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
-
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
+
+import { ExternalSecretsConfig } from './external-secrets.config';
+import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
 @RestController('/secret-providers/completions')
 export class SecretProvidersCompletionsController {
@@ -52,15 +52,34 @@ export class SecretProvidersCompletionsController {
 
 	@Get('/secrets/global')
 	@GlobalScope('externalSecret:list')
-	@ProjectScope('externalSecret:list')
 	async listGlobalSecrets(): Promise<SecretCompletionsResponse> {
 		this.logger.debug('Listing global secrets');
 		const connections = await this.connectionsService.getGlobalCompletions();
 		return this.connectionsService.toSecretCompletionsResponse(connections);
 	}
 
+	/**
+	 * Global secrets are always used in the context of working with a credential,
+	 * which themself are are always in the context of a project.
+	 * Passing the project id help us check that the user wanting to access the global secrets
+	 * has the permission to use secrets.
+	 *
+	 * On the system role the externalSecret:list scope is compatible with the credential create and edit scopes.
+	 * As a result any user who can create or edit a project credential can use the global secrets.
+	 */
+	@Get('/secrets/global/:projectId')
+	@ProjectScope('externalSecret:list')
+	async listGlobalSecretsForProject(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	): Promise<SecretCompletionsResponse> {
+		this.logger.debug('Listing global secrets for project', { projectId });
+		const connections = await this.connectionsService.getGlobalCompletions();
+		return this.connectionsService.toSecretCompletionsResponse(connections);
+	}
+
 	@Get('/secrets/project/:projectId')
-	@GlobalScope('externalSecret:list')
 	@ProjectScope('externalSecret:list')
 	async listProjectSecrets(
 		_req: AuthenticatedRequest,

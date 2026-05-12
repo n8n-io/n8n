@@ -5,8 +5,8 @@ import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import type { ButtonVariant } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
@@ -53,10 +53,10 @@ defineOptions({
 });
 
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
-const ndvStore = useNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const ndvStore = injectNDVStore();
 
-const node = computed(() => workflowsStore.getNodeByName(props.nodeName));
+const node = computed(() => workflowDocumentStore?.value?.getNodeByName(props.nodeName) ?? null);
 
 const {
 	isExecuting,

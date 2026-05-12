@@ -66,11 +66,22 @@ export class DynamicCredentialApiHelper {
 		return result.data ?? result;
 	}
 
-	async deleteResolver(id: string): Promise<void> {
-		const response = await this.api.request.delete(`/rest/credential-resolvers/${id}`);
+	async deleteResolver(resolverId: string): Promise<void> {
+		const response = await this.api.request.delete(`/rest/credential-resolvers/${resolverId}`);
 		if (!response.ok()) {
 			throw new TestError(`Failed to delete credential resolver: ${await response.text()}`);
 		}
+	}
+
+	async getAffectedWorkflows(resolverId: string): Promise<Array<{ id: string; name: string }>> {
+		const response = await this.api.request.get(
+			`/rest/credential-resolvers/${resolverId}/workflows`,
+		);
+		if (!response.ok()) {
+			throw new TestError(`Failed to get affected workflows: ${await response.text()}`);
+		}
+		const result = await response.json();
+		return result.data ?? result;
 	}
 
 	// ===== Execution status =====
@@ -193,32 +204,4 @@ export class DynamicCredentialApiHelper {
 	}
 
 	// ===== Revoke =====
-
-	/**
-	 * DELETE /rest/credentials/:credentialId/revoke?resolverId=:resolverId
-	 *
-	 * Revokes stored credential data for the current user identity.
-	 */
-	async revokeCredential(
-		credentialId: string,
-		resolverId: string,
-		options?: { bearerToken?: string; endpointToken?: string },
-	): Promise<void> {
-		const headers: Record<string, string> = {};
-		if (options?.bearerToken) {
-			headers['Authorization'] = `Bearer ${options.bearerToken}`;
-		}
-		if (options?.endpointToken) {
-			headers['X-Authorization'] = options.endpointToken;
-		}
-
-		const response = await this.api.request.delete(
-			`/rest/credentials/${credentialId}/revoke?resolverId=${encodeURIComponent(resolverId)}`,
-			{ headers },
-		);
-
-		if (response.status() !== 204 && !response.ok()) {
-			throw new TestError(`Failed to revoke credential: ${await response.text()}`);
-		}
-	}
 }
