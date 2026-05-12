@@ -94,6 +94,33 @@ describe('TaskRunnerProcess', () => {
 			);
 		});
 
+		it('should pass NODE_OPTIONS env if maxOldSpaceSizePercentage is configured', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.maxOldSpaceSizePercentage = 75;
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).toEqual(
+				expect.objectContaining({
+					NODE_OPTIONS: '--max-old-space-size-percentage=75',
+				}),
+			);
+		});
+
+		it('should not pass NODE_OPTIONS env if maxOldSpaceSizePercentage is not configured', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.maxOldSpaceSizePercentage = null;
+			runnerConfig.maxOldSpaceSize = '';
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
+		});
+
 		it('should pass NODE_OPTIONS env if maxOldSpaceSize is configured', async () => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 			runnerConfig.maxOldSpaceSize = '1024';
@@ -118,6 +145,22 @@ describe('TaskRunnerProcess', () => {
 			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
+		});
+
+		it('should not pass maxOldSpaceSize in NODE_OPTIONS env if maxOldSpaceSize & maxOldSpaceSizePercentage are both configured', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.maxOldSpaceSize = '1024';
+			runnerConfig.maxOldSpaceSizePercentage = 75;
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).toEqual(
+				expect.objectContaining({
+					NODE_OPTIONS: '--max-old-space-size-percentage=75',
+				}),
+			);
 		});
 
 		it('should pass N8N_RUNNERS_TASK_TIMEOUT if set', async () => {

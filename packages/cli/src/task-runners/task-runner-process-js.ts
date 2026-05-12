@@ -80,7 +80,9 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 			N8N_RUNNERS_INSECURE_MODE: process.env.N8N_RUNNERS_INSECURE_MODE,
 		};
 
-		if (this.runnerConfig.maxOldSpaceSize) {
+		if (this.runnerConfig.maxOldSpaceSizePercentage) {
+			envVars.NODE_OPTIONS = `--max-old-space-size-percentage=${this.runnerConfig.maxOldSpaceSizePercentage}`;
+		} else if (this.runnerConfig.maxOldSpaceSize) {
 			envVars.NODE_OPTIONS = `--max-old-space-size=${this.runnerConfig.maxOldSpaceSize}`;
 		}
 
