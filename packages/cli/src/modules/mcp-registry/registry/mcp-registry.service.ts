@@ -54,7 +54,7 @@ export class McpRegistryService {
 		await this.loadFromSettings();
 		await this.refreshRegistryNodeTypes(false);
 		if (this.instanceSettings.isLeader) {
-			// don't want to wait for API calls to complete on init
+			// don't want to wait for API calls to block on init
 			void this.refreshFromApi('startup');
 			this.startPeriodicRefresh();
 		}
