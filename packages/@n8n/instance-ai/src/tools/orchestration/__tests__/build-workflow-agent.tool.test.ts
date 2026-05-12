@@ -26,6 +26,7 @@ import type {
 const {
 	recordSuccessfulWorkflowBuilds,
 	resultFromPostStreamError,
+	resultFromTerminalRemediation,
 	resultFromLaterFailedMainSubmit,
 	attemptFromAutoResubmit,
 	withTerminalLoopState,
@@ -558,6 +559,51 @@ describe('resultFromPostStreamError', () => {
 				category: 'needs_setup',
 				shouldEdit: false,
 				reason: 'mocked_credentials_or_placeholders',
+			},
+		});
+	});
+});
+
+describe('resultFromTerminalRemediation', () => {
+	it('returns terminal remediation without requiring a final auto-resubmit', () => {
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+			guidance: 'Stop editing.',
+		});
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['Workflow save failed.'],
+				remediation,
+			},
+		];
+
+		const result = resultFromTerminalRemediation({
+			remediation,
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toMatchObject({
+			text: 'Stop editing.',
+			outcome: {
+				submitted: true,
+				workflowId: 'WF_123',
+				blockingReason: 'Stop editing.',
+				remediation,
 			},
 		});
 	});
