@@ -7,22 +7,13 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type { IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
-import { createRunExecutionData, deepCopy } from 'n8n-workflow';
 import type { ExecutionSummary, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
-import { flushPromises } from '@vue/test-utils';
-import { mock } from 'vitest-mock-extended';
 import * as apiUtils from '@n8n/rest-api-client';
-import {
-	createTestNode,
-	createTestTaskData,
-	createTestWorkflow,
-	createTestWorkflowExecutionResponse,
-} from '@/__tests__/mocks';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
 
@@ -1417,23 +1408,3 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 });
-
-function getMockEditFieldsNode(): Partial<INodeTypeDescription> {
-	return {
-		displayName: 'Edit Fields (Set)',
-		name: 'n8n-nodes-base.set',
-		icon: 'fa:pen',
-		group: ['input'],
-		description: 'Modify, add, or remove item fields',
-		defaultVersion: 3.4,
-		iconColor: 'blue',
-		version: [3, 3.1, 3.2, 3.3, 3.4],
-		subtitle: '={{$parameter["mode"]}}',
-		defaults: {
-			name: 'Edit Fields',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		properties: [],
-	};
-}

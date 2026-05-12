@@ -6,9 +6,6 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
-import { mock } from 'vitest-mock-extended';
-import type { Mocked } from 'vitest';
 import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
@@ -16,7 +13,6 @@ import {
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('executionStarted', () => {
-	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
@@ -37,15 +33,11 @@ describe('executionStarted', () => {
 		workflowDocumentStore.setName('My Workflow');
 
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-123'));
-
-		mockOptions = {
-			workflowState: mock<WorkflowState>(),
-		};
 	});
 
 	it('should skip when activeExecutionId is undefined', async () => {
 		// activeExecutionId defaults to undefined, no need to set it
-		await executionStarted(makeEvent(), mockOptions);
+		await executionStarted(makeEvent());
 
 		// stateStore.activeExecutionId should remain undefined
 		expect(stateStore.activeExecutionId).toBeUndefined();
@@ -58,7 +50,7 @@ describe('executionStarted', () => {
 	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
 		stateStore.setActiveExecutionId(null);
 
-		await executionStarted(makeEvent('exec-1'), mockOptions);
+		await executionStarted(makeEvent('exec-1'));
 
 		expect(stateStore.activeExecutionId).toBe('exec-1');
 
@@ -87,7 +79,7 @@ describe('executionStarted', () => {
 
 		const executionBefore = executionDataStore.execution;
 
-		await executionStarted(makeEvent('exec-1'), mockOptions);
+		await executionStarted(makeEvent('exec-1'));
 
 		// stateStore.activeExecutionId should remain 'exec-1' without change
 		expect(stateStore.activeExecutionId).toBe('exec-1');
@@ -120,7 +112,7 @@ describe('executionStarted', () => {
 
 		it('should accept execution when activeExecutionId is undefined in iframe (post-executionFinished)', async () => {
 			// activeExecutionId defaults to undefined; in iframe context this should still accept
-			await executionStarted(makeEvent('exec-2'), mockOptions);
+			await executionStarted(makeEvent('exec-2'));
 
 			expect(stateStore.activeExecutionId).toBe('exec-2');
 
@@ -148,7 +140,7 @@ describe('executionStarted', () => {
 				} as never,
 			});
 
-			await executionStarted(makeEvent('exec-2'), mockOptions);
+			await executionStarted(makeEvent('exec-2'));
 
 			expect(stateStore.activeExecutionId).toBe('exec-2');
 
@@ -174,7 +166,7 @@ describe('executionStarted', () => {
 				data: { resultData: { runData: {} } } as never,
 			});
 
-			await executionStarted(makeEvent('exec-1'), mockOptions);
+			await executionStarted(makeEvent('exec-1'));
 
 			// Should remain exec-1 without reinitializing
 			expect(stateStore.activeExecutionId).toBe('exec-1');
