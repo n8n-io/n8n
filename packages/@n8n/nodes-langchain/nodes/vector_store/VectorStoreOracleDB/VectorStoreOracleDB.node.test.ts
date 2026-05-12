@@ -41,6 +41,7 @@ type MockOraclePool = {
 	connectionsOpen: number;
 	getConnection: ReturnType<typeof vi.fn<() => Promise<MockOracleConnection>>>;
 };
+type ManagedPoolCache = Map<string, Pool>;
 type OracleVSStubInstance = VectorStore & {
 	filter?: OracleFilter;
 	client: unknown;
@@ -62,6 +63,7 @@ const {
 	poolCloseMocks,
 	createdPools,
 	connectionCloseMocks,
+	managedPoolCache,
 	mockCreatePool,
 	mockInitOracleClient,
 	initializeSpy,
@@ -73,6 +75,7 @@ const {
 	const poolCloseMocks: AsyncCloseMock[] = [];
 	const createdPools: Pool[] = [];
 	const connectionCloseMocks: AsyncCloseMock[] = [];
+	const managedPoolCache: ManagedPoolCache = new Map();
 	const mockCreatePool = vi.fn();
 	const mockInitOracleClient = vi.fn();
 	const initializeSpy = vi.fn<InitializeFn>((embeddings, args) => {
@@ -193,6 +196,7 @@ const {
 		poolCloseMocks,
 		createdPools,
 		connectionCloseMocks,
+		managedPoolCache,
 		mockCreatePool,
 		mockInitOracleClient,
 		initializeSpy,
@@ -215,9 +219,15 @@ vi.mock('oracledb', () => ({
 
 vi.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
 	configureOracleDB: vi.fn(async (credentials: Record<string, unknown>) => {
+		const cacheKey = JSON.stringify(credentials);
+		const cachedPool = managedPoolCache.get(cacheKey);
+		if (cachedPool) return cachedPool;
+
 		const { useThickMode, ...poolConfig } = credentials;
 		void useThickMode;
-		return await mockCreatePool(poolConfig);
+		const pool = (await mockCreatePool(poolConfig)) as Pool;
+		managedPoolCache.set(cacheKey, pool);
+		return pool;
 	}),
 }));
 
@@ -355,19 +365,26 @@ describe('VectorStoreOracleDB.node', () => {
 		createdPools.length = 0;
 		poolCloseMocks.length = 0;
 		connectionCloseMocks.length = 0;
+		managedPoolCache.clear();
 		capturedConfig = undefined;
 		capturedReleaseVectorStoreClient = undefined;
 
 		mockCreatePool.mockImplementation(async () => {
 			await Promise.resolve();
-			const connection = {
-				close: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+			const createConnection = () => {
+				const connection = {
+					close: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+				};
+				connectionCloseMocks.push(connection.close);
+				return connection;
 			};
-			connectionCloseMocks.push(connection.close);
 			const pool: MockOraclePool = {
 				close: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
 				connectionsOpen: 0,
-				getConnection: vi.fn<() => Promise<typeof connection>>().mockResolvedValue(connection),
+				getConnection: vi.fn<() => Promise<MockOracleConnection>>(async () => {
+					await Promise.resolve();
+					return createConnection();
+				}),
 			};
 			createdPools.push(pool as unknown as Pool);
 			poolCloseMocks.push(pool.close);
@@ -527,7 +544,7 @@ describe('VectorStoreOracleDB.node', () => {
 		});
 	});
 
-	it('closes connection pool through releaseVectorStoreClient', async () => {
+	it('returns borrowed connections while keeping the managed pool open', async () => {
 		const node = createNode();
 		await node.getVectorStoreClient(context, undefined, embeddings, 0);
 
@@ -559,5 +576,21 @@ describe('VectorStoreOracleDB.node', () => {
 		capturedReleaseVectorStoreClient(lastInstance);
 		expect(clientCloseSpy).toHaveBeenCalledTimes(2);
 		expect(poolClose).not.toHaveBeenCalled();
+	});
+
+	it('reuses the managed pool across vector store clients', async () => {
+		const node = createNode();
+
+		const firstVectorStore = await node.getVectorStoreClient(context, undefined, embeddings, 0);
+		const secondVectorStore = await node.getVectorStoreClient(context, undefined, embeddings, 0);
+
+		expect(mockCreatePool).toHaveBeenCalledTimes(1);
+		expect(createdPools).toHaveLength(1);
+		expect(firstVectorStore.client).not.toBe(createdPools[0]);
+		expect(secondVectorStore.client).not.toBe(createdPools[0]);
+		expect(connectionCloseMocks).toHaveLength(2);
+		expect(connectionCloseMocks[0]).toHaveBeenCalledTimes(1);
+		expect(connectionCloseMocks[1]).toHaveBeenCalledTimes(1);
+		expect(poolCloseMocks[0]).not.toHaveBeenCalled();
 	});
 });
