@@ -50,7 +50,7 @@ export function useTypescript(
 				id: toValue(id),
 				content: Comlink.proxy((toValue(view)?.state.doc ?? Text.empty).toJSON()),
 				allNodeNames: autocompletableNodeNames(
-					workflowDocumentStore.value,
+					workflowDocumentStore.value.documentId,
 					toValue(targetNodeParameterContext),
 				),
 				variables: useEnvironmentsStore().scopedVariables.map((v) => v.key),
@@ -102,7 +102,7 @@ export function useTypescript(
 		return [
 			typescriptWorkerFacet.of({ worker: worker.value }),
 			TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
-			WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value),
+			WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value.documentId),
 			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: typescriptCompletionSource }),
 			]),

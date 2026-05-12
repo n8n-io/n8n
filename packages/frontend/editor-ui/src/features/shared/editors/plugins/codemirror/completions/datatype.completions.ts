@@ -67,7 +67,7 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -76,7 +76,7 @@ export async function datatypeCompletions(
 	context: CompletionContext,
 ): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
-	const workflowDocumentStore = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
 	if (!word) return null;
@@ -105,7 +105,7 @@ export async function datatypeCompletions(
 		try {
 			resolved = await resolveAutocompleteExpression(
 				`={{ ${base} }}`,
-				workflowDocumentStore,
+				workflowDocumentId,
 				targetNodeParameterContext?.nodeName,
 			);
 		} catch (error) {
@@ -117,7 +117,7 @@ export async function datatypeCompletions(
 			try {
 				resolved = await resolveAutocompleteExpression(
 					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
-					workflowDocumentStore,
+					workflowDocumentId,
 					targetNodeParameterContext?.nodeName,
 				);
 			} catch {
@@ -128,7 +128,7 @@ export async function datatypeCompletions(
 		if (resolved === null) return null;
 
 		try {
-			options = (await datatypeOptions({ resolved, base, tail }, workflowDocumentStore)).map(
+			options = (await datatypeOptions({ resolved, base, tail }, workflowDocumentId)).map(
 				stripExcessParens(context),
 			);
 		} catch {
@@ -147,7 +147,7 @@ export async function datatypeCompletions(
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
 		options = await explicitDataTypeOptions(
 			word.text,
-			workflowDocumentStore,
+			workflowDocumentId,
 			targetNodeParameterContext,
 		);
 		from = word.to;
@@ -213,13 +213,13 @@ function filterOptions(options: AliasCompletion[], tail: string): AliasCompletio
 
 async function explicitDataTypeOptions(
 	expression: string,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ): Promise<AliasCompletion[]> {
 	try {
 		const resolved = await resolveAutocompleteExpression(
 			`={{ ${expression} }}`,
-			workflowDocumentStore,
+			workflowDocumentId,
 			targetNodeParameterContext?.nodeName,
 		);
 		return await datatypeOptions(
@@ -229,7 +229,7 @@ async function explicitDataTypeOptions(
 				tail: '',
 				transformLabel: (label) => '.' + label,
 			},
-			workflowDocumentStore,
+			workflowDocumentId,
 		);
 	} catch {
 		return [];
@@ -238,7 +238,7 @@ async function explicitDataTypeOptions(
 
 async function datatypeOptions(
 	input: AutocompleteInput,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 ): Promise<AliasCompletion[]> {
 	const { resolved } = input;
 
@@ -275,7 +275,7 @@ async function datatypeOptions(
 	}
 
 	if (typeof resolved === 'object') {
-		return await objectOptions(input as AutocompleteInput<IDataObject>, workflowDocumentStore);
+		return await objectOptions(input as AutocompleteInput<IDataObject>, workflowDocumentId);
 	}
 
 	return [];
@@ -420,7 +420,7 @@ const createCompletionOption = ({
 
 const customObjectOptions = async (
 	input: AutocompleteInput<IDataObject>,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 ): Promise<Completion[]> => {
 	const { base, resolved } = input;
 
@@ -433,11 +433,11 @@ const customObjectOptions = async (
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return await inputOptions(base, workflowDocumentStore);
+		return await inputOptions(base, workflowDocumentId);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return await nodeRefOptions(base, workflowDocumentStore);
+		return await nodeRefOptions(base, workflowDocumentId);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -451,12 +451,12 @@ const customObjectOptions = async (
 
 const objectOptions = async (
 	input: AutocompleteInput<IDataObject>,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 ): Promise<Completion[]> => {
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
-	if (isSplitInBatchesAbsent(workflowDocumentStore)) SKIP.add('context');
+	if (isSplitInBatchesAbsent(workflowDocumentId)) SKIP.add('context');
 
 	let rawKeys = Object.keys(resolved);
 
@@ -465,7 +465,7 @@ const objectOptions = async (
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = await customObjectOptions(input, workflowDocumentStore);
+	const customOptions = await customObjectOptions(input, workflowDocumentId);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
@@ -981,10 +981,7 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = async (
-	base: string,
-	workflowDocumentStore: WorkflowDocumentStore,
-) => {
+export const nodeRefOptions = async (base: string, workflowDocumentId: WorkflowDocumentId) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1073,7 +1070,7 @@ export const nodeRefOptions = async (
 		},
 	];
 
-	const noParams = await hasNoParams(base, workflowDocumentStore);
+	const noParams = await hasNoParams(base, workflowDocumentId);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))
@@ -1083,7 +1080,7 @@ export const nodeRefOptions = async (
 	});
 };
 
-export const inputOptions = async (base: string, workflowDocumentStore: WorkflowDocumentStore) => {
+export const inputOptions = async (base: string, workflowDocumentId: WorkflowDocumentId) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1146,7 +1143,7 @@ export const inputOptions = async (base: string, workflowDocumentStore: Workflow
 		},
 	];
 
-	const noParams = await hasNoParams(base, workflowDocumentStore);
+	const noParams = await hasNoParams(base, workflowDocumentId);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))

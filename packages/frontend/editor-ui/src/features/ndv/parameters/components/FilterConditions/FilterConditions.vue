@@ -118,7 +118,7 @@ watchEffect(async () => {
 			...DEFAULT_FILTER_OPTIONS,
 			...(await resolveParameter(
 				typeOptions as unknown as NodeParameterValue,
-				workflowDocumentStore.value,
+				workflowDocumentStore.value.documentId,
 			)),
 		};
 	} catch {

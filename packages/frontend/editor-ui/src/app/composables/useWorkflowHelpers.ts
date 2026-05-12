@@ -54,7 +54,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
-	type WorkflowDocumentStore,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
 export type ResolveParameterOptions = {
@@ -70,9 +70,10 @@ export type ResolveParameterOptions = {
 
 export async function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	opts_: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<T | null> {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const envVars = useEnvironmentsStore().variablesAsObject;
 	const ndvActiveNode =
 		'localResolve' in opts_ && opts_.localResolve
@@ -274,7 +275,7 @@ export async function resolveParameter<T = IDataObject>(
 export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
@@ -287,13 +288,13 @@ export async function resolveRequiredParameters(
 			if (required) {
 				return [
 					name,
-					await resolveParameter(parameter as NodeParameterValue, workflowDocumentStore, opts),
+					await resolveParameter(parameter as NodeParameterValue, workflowDocumentId, opts),
 				];
 			} else {
 				try {
 					return [
 						name,
-						await resolveParameter(parameter as NodeParameterValue, workflowDocumentStore, opts),
+						await resolveParameter(parameter as NodeParameterValue, workflowDocumentId, opts),
 					];
 				} catch (error) {
 					// ignore any expressions errors for non required parameters
@@ -635,7 +636,7 @@ export function useWorkflowHelpers() {
 		};
 		const returnData: IDataObject | null = await resolveParameter(
 			parameters,
-			workflowDocumentStore.value,
+			workflowDocumentStore.value.documentId,
 			opts,
 		);
 		if (!returnData) {

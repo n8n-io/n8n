@@ -4,7 +4,7 @@ import { withSectionHeader } from './utils';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { Facet } from '@codemirror/state';
 import type { TargetNodeParameterContext } from '@/Interface';
-import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 export const FIELDS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
@@ -467,6 +467,6 @@ export const TARGET_NODE_PARAMETER_FACET = Facet.define<
 	combine: (values) => values[0],
 });
 
-export const WORKFLOW_DOCUMENT_FACET = Facet.define<WorkflowDocumentStore, WorkflowDocumentStore>({
+export const WORKFLOW_DOCUMENT_FACET = Facet.define<WorkflowDocumentId, WorkflowDocumentId>({
 	combine: (values) => values[0],
 });

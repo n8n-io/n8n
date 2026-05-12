@@ -122,17 +122,17 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	}
 
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
-	const workflowDocumentStore = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 
-	if (!hasActiveNode(workflowDocumentStore, targetNodeParameterContext)) {
+	if (!hasActiveNode(workflowDocumentId, targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (await receivesNoBinaryData(workflowDocumentStore, targetNodeParameterContext?.nodeName))
+	if (await receivesNoBinaryData(workflowDocumentId, targetNodeParameterContext?.nodeName))
 		SKIP.add('$binary');
 
 	const previousNodesCompletions = autocompletableNodeNames(
-		workflowDocumentStore,
+		workflowDocumentId,
 		targetNodeParameterContext,
 	).map((nodeName) => {
 		const label = `$('${escapeMappingString(nodeName)}')`;

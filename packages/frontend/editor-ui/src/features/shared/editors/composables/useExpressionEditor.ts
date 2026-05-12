@@ -246,7 +246,7 @@ export const useExpressionEditor = ({
 						? { nodeName: expressionLocalResolveContext.value.nodeName, parameterPath: '' }
 						: toValue(targetNodeParameterContext),
 				),
-				WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value),
+				WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value.documentId),
 				customExtensions.value.of(toValue(extensions)),
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),

@@ -16,7 +16,10 @@ import type { SyntaxNode, Tree } from '@lezer/common';
 import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
-import { type WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -164,18 +167,13 @@ export const isValidJavascriptIdentifier = (str: string) => {
 // ----------------------------------
 
 export async function receivesNoBinaryData(
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
 ) {
 	try {
 		return (
-			(
-				await resolveAutocompleteExpression(
-					'={{ $binary }}',
-					workflowDocumentStore,
-					contextNodeName,
-				)
-			)?.data === undefined
+			(await resolveAutocompleteExpression('={{ $binary }}', workflowDocumentId, contextNodeName))
+				?.data === undefined
 		);
 	} catch {
 		return true;
@@ -184,7 +182,7 @@ export async function receivesNoBinaryData(
 
 export async function hasNoParams(
 	toResolve: string,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
 ) {
 	let params;
@@ -192,7 +190,7 @@ export async function hasNoParams(
 	try {
 		params = await resolveAutocompleteExpression(
 			`={{ ${toResolve}.params }}`,
-			workflowDocumentStore,
+			workflowDocumentId,
 			contextNodeName,
 		);
 	} catch {
@@ -208,7 +206,7 @@ export async function hasNoParams(
 
 export async function resolveAutocompleteExpression(
 	expression: string,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
 ) {
 	const ndvStore = useNDVStore();
@@ -221,7 +219,7 @@ export async function resolveAutocompleteExpression(
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
 			: {};
-	return await resolveParameter(expression, workflowDocumentStore, {
+	return await resolveParameter(expression, workflowDocumentId, {
 		...inputData,
 		contextNodeName,
 	});
@@ -249,7 +247,7 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 };
 
 export const hasActiveNode = (
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) => {
 	if (useNDVStore().activeNode?.name !== undefined) {
@@ -260,17 +258,20 @@ export const hasActiveNode = (
 		return false;
 	}
 
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	return workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName) !== null;
 };
 
-export const isSplitInBatchesAbsent = (workflowDocumentStore: WorkflowDocumentStore) => {
+export const isSplitInBatchesAbsent = (workflowDocumentId: WorkflowDocumentId) => {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	return !workflowDocumentStore.allNodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 };
 
 export function autocompletableNodeNames(
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const activeNode =
 		targetNodeParameterContext === undefined
 			? useNDVStore().activeNode
@@ -284,13 +285,14 @@ export function autocompletableNodeNames(
 
 	// This is a tool node, look for the nearest node with main connections
 	if (nonMainChildren.length > 0) {
-		return nonMainChildren.map((child) => getPreviousNodes(workflowDocumentStore, child)).flat();
+		return nonMainChildren.map((child) => getPreviousNodes(workflowDocumentId, child)).flat();
 	}
 
-	return getPreviousNodes(workflowDocumentStore, activeNodeName);
+	return getPreviousNodes(workflowDocumentId, activeNodeName);
 }
 
-export function getPreviousNodes(workflowDocumentStore: WorkflowDocumentStore, nodeName: string) {
+export function getPreviousNodes(workflowDocumentId: WorkflowDocumentId, nodeName: string) {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	return workflowDocumentStore
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)

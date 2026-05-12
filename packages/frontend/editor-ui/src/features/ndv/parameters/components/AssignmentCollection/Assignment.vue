@@ -143,7 +143,10 @@ const onValueDrop = async (droppedExpression: string) => {
 	}
 
 	const droppedValue = removeExpressionPrefix(droppedExpression);
-	assignment.value.type = await typeFromExpression(droppedValue, workflowDocumentStore.value);
+	assignment.value.type = await typeFromExpression(
+		droppedValue,
+		workflowDocumentStore.value.documentId,
+	);
 
 	if (!assignment.value.name) {
 		assignment.value.name = propertyNameFromExpression(droppedValue);

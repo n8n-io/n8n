@@ -10,14 +10,18 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
-import { type WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export type TextareaRowData = {
 	rows: string[];
 	linesToRowsMap: number[][];
 };
 
-export function getParentNodes(workflowDocumentStore: WorkflowDocumentStore) {
+export function getParentNodes(workflowDocumentId: WorkflowDocumentId) {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const activeNode = useNDVStore().activeNode;
 
 	if (!activeNode) return [];
@@ -31,8 +35,8 @@ export function getParentNodes(workflowDocumentStore: WorkflowDocumentStore) {
 		.filter((n) => n !== null);
 }
 
-export function getSchemas(workflowDocumentStore: WorkflowDocumentStore) {
-	const parentNodes = getParentNodes(workflowDocumentStore);
+export function getSchemas(workflowDocumentId: WorkflowDocumentId) {
+	const parentNodes = getParentNodes(workflowDocumentId);
 	const parentNodesNames = parentNodes.map((node) => node?.name);
 	const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 	const parentNodesSchemas: Array<{ nodeName: string; schema: Schema }> = parentNodes
@@ -182,10 +186,10 @@ export function reducePayloadSizeOrThrow(
 export async function generateCodeForAiTransform(
 	prompt: string,
 	path: string,
-	workflowDocumentStore: WorkflowDocumentStore,
+	workflowDocumentId: WorkflowDocumentId,
 	retries = 1,
 ) {
-	const schemas = getSchemas(workflowDocumentStore);
+	const schemas = getSchemas(workflowDocumentId);
 
 	const payload: AskAiRequest.RequestPayload = {
 		question: prompt,

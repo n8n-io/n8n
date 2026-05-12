@@ -109,7 +109,7 @@ async function onSubmit() {
 				const updateInformation = await generateCodeForAiTransform(
 					prompt.value,
 					getPath(target as string),
-					workflowDocumentStore.value,
+					workflowDocumentStore.value.documentId,
 					5,
 				);
 				if (!updateInformation) return;
@@ -162,7 +162,7 @@ function onPromptInput(inputValue: string) {
 }
 
 onMounted(() => {
-	parentNodes.value = getParentNodes(workflowDocumentStore.value);
+	parentNodes.value = getParentNodes(workflowDocumentStore.value.documentId);
 });
 
 function cleanTextareaRowsData() {

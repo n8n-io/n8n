@@ -336,7 +336,7 @@ const createRequestParams = async (methodName: string) => {
 		currentNodeParameters: (await resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
-			workflowDocumentStore.value,
+			workflowDocumentStore.value.documentId,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters,
 		path: props.path,

@@ -518,7 +518,7 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 	try {
 		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
 			currentNodeParameters,
-			workflowDocumentStore.value,
+			workflowDocumentStore.value.documentId,
 		);
 
 		const returnValues: string[] = [];

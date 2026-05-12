@@ -87,7 +87,7 @@ const conditionResult = computedAsync<ConditionResult>(
 		return await resolveCondition({
 			condition: currentCondition,
 			options: currentOptions,
-			workflowDocumentStore: workflowDocumentStore.value,
+			workflowDocumentId: workflowDocumentStore.value.documentId,
 		});
 	},
 	{ status: 'resolve_error' },

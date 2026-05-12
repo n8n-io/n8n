@@ -8,7 +8,6 @@ import * as utils from '@/features/shared/editors/plugins/codemirror/completions
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { completionStatus } from '@codemirror/autocomplete';
 import { WORKFLOW_DOCUMENT_FACET } from '@/features/shared/editors/plugins/codemirror/completions/constants';
-import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -162,20 +161,9 @@ async function hoverTooltip(docWithCursor: string) {
 
 	const doc = docWithCursor.slice(0, hoverPosition) + docWithCursor.slice(hoverPosition + 1);
 
-	const mockWorkflowDocumentStore = {
-		allNodes: [],
-		getNodeByName: vi.fn().mockReturnValue(null),
-		getChildNodes: vi.fn().mockReturnValue([]),
-		getParentNodesByDepth: vi.fn().mockReturnValue([]),
-	} as Partial<WorkflowDocumentStore> as WorkflowDocumentStore;
-
 	const state = EditorState.create({
 		doc,
-		extensions: [
-			n8nLang(),
-			infoBoxTooltips(),
-			WORKFLOW_DOCUMENT_FACET.of(mockWorkflowDocumentStore),
-		],
+		extensions: [n8nLang(), infoBoxTooltips(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 
 	const view = new EditorView({ state, parent: document.createElement('div') });

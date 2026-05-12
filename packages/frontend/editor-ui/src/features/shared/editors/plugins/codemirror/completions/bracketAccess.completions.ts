@@ -18,7 +18,7 @@ export async function bracketAccessCompletions(
 	context: CompletionContext,
 ): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
-	const workflowDocumentStore = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	const word = context.matchBefore(/\$[\S\s]*\[.*/);
 
 	if (!word) return null;
@@ -37,7 +37,7 @@ export async function bracketAccessCompletions(
 	try {
 		resolved = await resolveAutocompleteExpression(
 			`={{ ${base} }}`,
-			workflowDocumentStore,
+			workflowDocumentId,
 			targetNodeParameterContext?.nodeName,
 		);
 	} catch {

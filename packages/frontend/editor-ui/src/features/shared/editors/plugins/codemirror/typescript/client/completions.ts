@@ -30,7 +30,7 @@ export const matchText = (context: CompletionContext) => {
 export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
 	const targetNodeParameter = context.state.facet(TARGET_NODE_PARAMETER_FACET);
-	const workflowDocumentStore = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	const word = matchText(context);
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);
@@ -97,7 +97,7 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 				if (opt.label === '$()') {
 					return [
 						opt,
-						...autocompletableNodeNames(workflowDocumentStore, targetNodeParameter).map((name) => ({
+						...autocompletableNodeNames(workflowDocumentId, targetNodeParameter).map((name) => ({
 							...opt,
 							label: `$('${escapeMappingString(name)}')`,
 						})),

@@ -1193,7 +1193,7 @@ describe(resolveParameter, () => {
 					f0: '={{ 2 + 2 }}',
 					f2: '={{ String($exotic).toUpperCase() }}',
 				},
-				workflowDocumentStore,
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
 					additionalKeys: {
@@ -1220,7 +1220,7 @@ describe(resolveParameter, () => {
 					toolName: '={{ $tool.name }}',
 					toolParams: '={{ $tool.parameters }}',
 				},
-				workflowDocumentStore,
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
 					nodeName: 'toolNode',
@@ -1244,7 +1244,7 @@ describe(resolveParameter, () => {
 				{
 					toolCheck: '={{ $tool }}',
 				},
-				workflowDocumentStore,
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
 					nodeName: 'regularNode',
@@ -1269,7 +1269,7 @@ describe(resolveParameter, () => {
 				{
 					message: '={{ "The agent wants to call " + $tool.name }}',
 				},
-				workflowDocumentStore,
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
 					nodeName: 'hitlTool',
@@ -1294,7 +1294,7 @@ describe(resolveParameter, () => {
 				{
 					params: '={{ $tool.parameters }}',
 				},
-				workflowDocumentStore,
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
 					nodeName: 'someTool',

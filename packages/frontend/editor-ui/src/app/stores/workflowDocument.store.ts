@@ -369,6 +369,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		}
 
 		return {
+			documentId: id,
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
