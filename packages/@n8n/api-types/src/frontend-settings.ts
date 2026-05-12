@@ -330,6 +330,17 @@ export type FrontendModuleSettings = {
 		 */
 		modules: string[];
 	};
+
+	/**
+	 * Client settings for the OpenTelemetry module.
+	 */
+	otel?: {
+		/**
+		 * Whether OpenTelemetry tracing is enabled on the instance.
+		 * Controlled via `N8N_OTEL_ENABLED`.
+		 */
+		enabled: boolean;
+	};
 };
 
 export type N8nEnvFeatFlagValue = boolean | string | number | undefined;
