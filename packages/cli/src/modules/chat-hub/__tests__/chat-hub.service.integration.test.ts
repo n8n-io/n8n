@@ -2301,7 +2301,7 @@ describe('chatHub', () => {
 									workflow: capturedWorkflowData,
 									runData,
 									newStaticData: {},
-								mode: 'manual' as const,
+									mode: 'manual' as const,
 									executionId: capturedExecutionId,
 								});
 							});
