@@ -128,6 +128,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useCanvasNodeGroupOperations } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperations';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -204,6 +205,7 @@ export function useCanvasOperations() {
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
+	const { isConnectionChangeAllowedForNodeGroups } = useCanvasNodeGroupOperations();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -400,7 +402,10 @@ export function useCanvasOperations() {
 		await renameNode(currentName, previousName);
 	}
 
-	function connectAdjacentNodes(id: string, { trackHistory = false } = {}) {
+	function connectAdjacentNodes(
+		id: string,
+		{ trackHistory = false, validateNodeGroups = true } = {},
+	) {
 		const node = workflowDocumentStore.value.getNodeById(id);
 
 		if (!node) {
@@ -454,20 +459,23 @@ export function useCanvasOperations() {
 						);
 					}
 
-					createConnection({
-						source: incomingNodeId,
-						sourceHandle: createCanvasConnectionHandleString({
-							mode: CanvasConnectionMode.Output,
-							type,
-							index: incomingConnection.index,
-						}),
-						target: outgoingNodeId,
-						targetHandle: createCanvasConnectionHandleString({
-							mode: CanvasConnectionMode.Input,
-							type,
-							index: outgoingConnection.index,
-						}),
-					});
+					createConnection(
+						{
+							source: incomingNodeId,
+							sourceHandle: createCanvasConnectionHandleString({
+								mode: CanvasConnectionMode.Output,
+								type,
+								index: incomingConnection.index,
+							}),
+							target: outgoingNodeId,
+							targetHandle: createCanvasConnectionHandleString({
+								mode: CanvasConnectionMode.Input,
+								type,
+								index: outgoingConnection.index,
+							}),
+						},
+						{ validateNodeGroups },
+					);
 				}
 			}
 		}
@@ -487,7 +495,7 @@ export function useCanvasOperations() {
 			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
-		connectAdjacentNodes(id, { trackHistory });
+		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		workflowsStore.clearNodeExecutionData(node.name);
@@ -1914,27 +1922,14 @@ export function useCanvasOperations() {
 		}
 	}
 
-	/**
-	 * Connection operations
-	 */
-
 	function createConnection(
 		connection: Connection,
-		{ trackHistory = false, keepPristine = false } = {},
+		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		const targetNode = workflowDocumentStore.value.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
 			return;
-		}
-
-		if (trackHistory) {
-			historyStore.pushCommandToUndo(
-				new AddConnectionCommand(
-					mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection),
-					Date.now(),
-				),
-			);
 		}
 
 		const mappedConnection = mapCanvasConnectionToLegacyConnection(
@@ -1945,6 +1940,22 @@ export function useCanvasOperations() {
 
 		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[0], mappedConnection[1])) {
 			return;
+		}
+
+		if (
+			validateNodeGroups &&
+			!isConnectionChangeAllowedForNodeGroups({
+				nodeIds: [sourceNode.id, targetNode.id],
+				connection: mappedConnection,
+				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+				action: 'add',
+			})
+		) {
+			return;
+		}
+
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(new AddConnectionCommand(mappedConnection, Date.now()));
 		}
 
 		workflowDocumentStore.value.addConnection({
@@ -2025,7 +2036,7 @@ export function useCanvasOperations() {
 										index: connectionData.index,
 									}),
 								},
-								{ trackHistory, trackBulk: false },
+								{ trackHistory, trackBulk: false, validateNodeGroups: false },
 							);
 						}
 					}
@@ -2042,7 +2053,7 @@ export function useCanvasOperations() {
 
 	function deleteConnection(
 		connection: Connection,
-		{ trackHistory = false, trackBulk = true } = {},
+		{ trackHistory = false, trackBulk = true, validateNodeGroups = true } = {},
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		const targetNode = workflowDocumentStore.value.getNodeById(connection.target);
@@ -2055,6 +2066,18 @@ export function useCanvasOperations() {
 			targetNode,
 			connection,
 		);
+
+		if (
+			validateNodeGroups &&
+			!isConnectionChangeAllowedForNodeGroups({
+				nodeIds: [sourceNode.id, targetNode.id],
+				connection: mappedConnection,
+				connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+				action: 'remove',
+			})
+		) {
+			return;
+		}
 
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
@@ -2122,7 +2145,7 @@ export function useCanvasOperations() {
 						connection.data.target,
 					)
 				) {
-					void nextTick(() => deleteConnection(connection));
+					void nextTick(() => deleteConnection(connection, { validateNodeGroups: false }));
 				}
 			}
 		});

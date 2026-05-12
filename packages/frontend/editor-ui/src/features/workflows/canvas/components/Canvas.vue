@@ -8,7 +8,8 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey } from '@/app/constants';
+import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -64,6 +65,9 @@ import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
 import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
+import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
+import { useCanvasNodeGroupsStore } from '../stores/canvasNodeGroups.store';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -173,8 +177,14 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
+const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
+const posthogStore = usePostHog();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
+const isCanvasNodeGroupingEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
+);
 
 const vueFlow = useVueFlow(props.id);
 const {
@@ -216,6 +226,7 @@ const {
 const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
 
 const isPaneReady = ref(false);
+const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -335,6 +346,16 @@ function onToggleZoomMode() {
 		zoomTo,
 		setCenter,
 	});
+}
+
+function onNodeGroupCreated(groupId: string) {
+	nodeGroupIdToAutofocusTitle.value = groupId;
+}
+
+function onNodeGroupTitleFocused(groupId: string) {
+	if (nodeGroupIdToAutofocusTitle.value === groupId) {
+		nodeGroupIdToAutofocusTitle.value = null;
+	}
 }
 
 const keyMap = computed(() => {
@@ -1049,6 +1070,14 @@ watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
 );
 
+watch(
+	() => props.nodes.length,
+	(length, prev) => {
+		if (length >= prev) return;
+		canvasNodeGroupsStore.pruneNodes(new Set(props.nodes.map((n) => n.id)));
+	},
+);
+
 watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, toFocusName]) => {
 	const toFocusNode =
 		toFocusName &&
@@ -1183,6 +1212,21 @@ defineExpose({
 		<slot name="canvas-background" v-bind="{ viewport }">
 			<CanvasBackground :viewport="viewport" :striped="readOnly" />
 		</slot>
+
+		<CanvasNodeGroupsLayer
+			v-if="isCanvasNodeGroupingEnabled"
+			:read-only="readOnly || suppressInteraction"
+			:autofocus-group-id="nodeGroupIdToAutofocusTitle"
+			@title:focused="onNodeGroupTitleFocused"
+			@move-members="onUpdateNodesPosition"
+		/>
+
+		<CanvasSelectionToolbar
+			v-if="isCanvasNodeGroupingEnabled"
+			:selected-nodes="selectedNodes"
+			:read-only="readOnly || suppressInteraction"
+			@group-created="onNodeGroupCreated"
+		/>
 
 		<Transition name="minimap">
 			<MiniMap

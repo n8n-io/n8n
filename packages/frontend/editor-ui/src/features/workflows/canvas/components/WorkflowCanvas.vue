@@ -6,7 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
@@ -15,6 +15,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useCanvasNodeGroupsStore } from '../stores/canvasNodeGroups.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -44,8 +45,16 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowsStore = useWorkflowsStore();
+const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
+
+watch(
+	() => workflowsStore.workflowId,
+	() => {
+		canvasNodeGroupsStore.clear();
+	},
 );
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
