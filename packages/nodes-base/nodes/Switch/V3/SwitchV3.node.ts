@@ -59,6 +59,52 @@ export class SwitchV3 implements INodeType {
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: `={{(${configuredOutputs})($parameter)}}`,
+			builderHint: {
+				extraTypeDefContent: [
+					{
+						displayOptions: { show: { mode: ['rules'] } },
+						content: `<patterns>
+<pattern title="Switch with two cases plus a default branch">
+const routeByPriority = switchCase({
+  version: 3.2,
+  config: {
+    name: 'Route by Priority',
+    parameters: {
+      rules: {
+        values: [
+          {
+            outputKey: 'urgent',
+            conditions: {
+              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+              conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }],
+              combinator: 'and'
+            }
+          },
+          {
+            outputKey: 'normal',
+            conditions: {
+              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+              conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }],
+              combinator: 'and'
+            }
+          }
+        ]
+      }
+    }
+  }
+});
+
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(routeByPriority
+    .onCase('urgent', processUrgent.to(notifyTeam))
+    .onCase('normal', processNormal)
+    .onDefault(archive));
+</pattern>
+</patterns>`,
+					},
+				],
+			},
 			properties: [
 				{
 					displayName: 'Mode',
@@ -128,6 +174,10 @@ export class SwitchV3 implements INodeType {
 					name: 'rules',
 					placeholder: 'Add Routing Rule',
 					type: 'fixedCollection',
+					builderHint: {
+						propertyHint:
+							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF. Each `outputKey` you define must be wired via `.onCase('<outputKey>')` to the intended downstream node — unwired cases silently drop their items.",
+					},
 					typeOptions: {
 						multipleValues: true,
 						sortable: true,

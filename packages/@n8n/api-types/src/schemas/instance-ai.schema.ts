@@ -1103,12 +1103,19 @@ export interface InstanceAiEvalMockHints {
 	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
 }
 
+export interface InstanceAiEvalMockedCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
 	nodeResults: Record<string, InstanceAiEvalNodeResult>;
 	errors: string[];
 	hints: InstanceAiEvalMockHints;
+	mockedCredentials: InstanceAiEvalMockedCredential[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({

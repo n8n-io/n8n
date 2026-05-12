@@ -55,6 +55,7 @@ export class ModuleRegistry {
 		'instance-version-history',
 		'encryption-key-manager',
 		'oauth-jwe',
+		'inbound-secrets',
 	];
 
 	private readonly activeModules: string[] = [];
