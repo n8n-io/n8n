@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.setTelemetryTags",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Set custom telemetry tags on the current execution's tracing spans",
+
+	"categories": ["Core Nodes", "Development"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.setTelemetryTags/"
+			}
+		]
+	},
+	"alias": ["telemetry", "tags", "tracing", "otel", "observability"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}
