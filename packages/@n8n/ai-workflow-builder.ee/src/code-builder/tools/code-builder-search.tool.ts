@@ -576,9 +576,8 @@ export function createCodeBuilderSearchTool(
 	options?: CodeBuilderSearchToolOptions,
 ) {
 	return tool(
-		async (input: { queries: string[] }) => {
-			return searchCodeBuilderNodes(nodeTypeParser, input.queries, options).results;
-		},
+		async (input: { queries: string[] }) =>
+			searchCodeBuilderNodes(nodeTypeParser, input.queries, options).results,
 		{
 			name: 'search_nodes',
 			description:
