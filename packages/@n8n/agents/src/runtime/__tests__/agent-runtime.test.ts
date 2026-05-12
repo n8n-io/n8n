@@ -101,6 +101,14 @@ function makeErrorStream(error: Error) {
 	});
 }
 
+function makeExecutionCounter() {
+	return {
+		incrementMessageCount: jest.fn(),
+		incrementToolCallCount: jest.fn(),
+		incrementTokenCount: jest.fn(),
+	};
+}
+
 /** Collect all chunks from a ReadableStream. */
 async function collectChunks(stream: ReadableStream<unknown>): Promise<StreamChunk[]> {
 	const chunks: StreamChunk[] = [];
@@ -198,6 +206,90 @@ function makeInterruptibleTool(): BuiltTool {
 		},
 	};
 }
+
+// ---------------------------------------------------------------------------
+// execution counters
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — execution counters', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('counts one fresh generate turn and token usage', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const counter = makeExecutionCounter();
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi', { executionCounter: counter });
+
+		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('counts one fresh stream turn and streamed token usage', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+		const counter = makeExecutionCounter();
+
+		const { runtime } = createRuntime();
+		const result = await runtime.stream('hi', { executionCounter: counter });
+		await collectChunks(result.stream);
+
+		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('counts provider-executed tool calls when surfaced by the model', async () => {
+		generateText
+			.mockResolvedValueOnce({
+				...makeGenerateWithToolCall('tc-provider', 'openai.web_search', { query: 'n8n' }),
+				toolCalls: [
+					{
+						toolCallId: 'tc-provider',
+						toolName: 'openai.web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+				],
+			})
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const counter = makeExecutionCounter();
+
+		const { runtime } = createRuntime();
+		await runtime.generate('search', { executionCounter: counter });
+
+		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not count a resumed suspended tool call as a new tool invocation', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const counter = makeExecutionCounter();
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		const first = await runtime.generate('needs approval', { executionCounter: counter });
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId, executionCounter: counter },
+		);
+
+		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
+		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
+		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
+	});
+});
 
 // ---------------------------------------------------------------------------
 // generate() — graceful error contract
