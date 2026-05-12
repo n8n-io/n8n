@@ -78,6 +78,33 @@ describe('InstanceAiPromptSuggestions', () => {
 		]);
 	});
 
+	it('does not emit a delayed preview after clicking a prompt suggestion', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				suggestions,
+				disabled: false,
+			},
+		});
+
+		const suggestion = getByTestId('instance-ai-suggestion-build-workflow');
+		await userEvent.hover(suggestion);
+		await fireEvent.click(suggestion);
+
+		await new Promise((resolve) => setTimeout(resolve, 350));
+
+		expect(emitted()['submit-suggestion']).toEqual([
+			[
+				{
+					promptKey: 'instanceAi.emptyState.suggestions.buildWorkflow.prompt',
+					suggestionId: 'build-workflow',
+					suggestionKind: 'prompt',
+					position: 1,
+				},
+			],
+		]);
+		expect(emitted()['preview-change']).toEqual([[null]]);
+	});
+
 	it('closes quick examples when the menu button is toggled twice', async () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {

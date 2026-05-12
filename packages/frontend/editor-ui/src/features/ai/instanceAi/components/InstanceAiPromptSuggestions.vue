@@ -33,6 +33,16 @@ const quickExamplesSuggestion = computed(() => props.suggestions.find(isMenuSugg
 const activePreviewPromptKey = ref<BaseTextKey | null>(null);
 const isQuickExamplesOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearHoverTimer() {
+	if (!hoverTimer) {
+		return;
+	}
+
+	clearTimeout(hoverTimer);
+	hoverTimer = null;
+}
 
 function setPreview(promptKey: BaseTextKey | null) {
 	activePreviewPromptKey.value = promptKey;
@@ -40,6 +50,7 @@ function setPreview(promptKey: BaseTextKey | null) {
 }
 
 function closeQuickExamples() {
+	clearHoverTimer();
 	isQuickExamplesOpen.value = false;
 	setPreview(null);
 }
@@ -85,17 +96,6 @@ onUnmounted(() => {
 
 onClickOutside(rootRef, closeQuickExamples);
 
-let hoverTimer: ReturnType<typeof setTimeout> | null = null;
-
-function clearHoverTimer() {
-	if (!hoverTimer) {
-		return;
-	}
-
-	clearTimeout(hoverTimer);
-	hoverTimer = null;
-}
-
 function handleSuggestionEnter(suggestion: InstanceAiEmptyStateSuggestion) {
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
@@ -135,6 +135,8 @@ function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionClick(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (isPromptSuggestion(suggestion)) {
 		submitSuggestion({
 			promptKey: suggestion.promptKey,
