@@ -243,4 +243,29 @@ describe('AgentMemoryPanel', () => {
 
 		expect(wrapper.text()).toContain("Couldn't load user profile.");
 	});
+
+	it('reloads profile content when the agent id changes while expanded', async () => {
+		getAgentMemoryProfilesMock
+			.mockResolvedValueOnce({ userProfile: 'Profile for the first agent.' })
+			.mockResolvedValueOnce({ userProfile: 'Profile for the second agent.' });
+		const wrapper = mountPanel();
+
+		await wrapper.find('[data-testid="agent-memory-profiles-toggle"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
+			'Profile for the first agent.',
+		);
+
+		await wrapper.setProps({ agentId: 'agent-2' });
+		await flushPromises();
+
+		expect(getAgentMemoryProfilesMock).toHaveBeenLastCalledWith(
+			restApiContext,
+			'project-1',
+			'agent-2',
+		);
+		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
+			'Profile for the second agent.',
+		);
+	});
 });
