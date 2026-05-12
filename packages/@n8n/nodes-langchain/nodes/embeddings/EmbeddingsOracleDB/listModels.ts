@@ -13,7 +13,7 @@ export async function searchModels(
 	const connection = await pool.getConnection();
 
 	try {
-		const normalizedFilter = filter.trim().toUpperCase();
+		const normalizedFilter = filter?.trim().toUpperCase() ?? '';
 		const sql = `
 			SELECT model_name
 			FROM user_mining_models
