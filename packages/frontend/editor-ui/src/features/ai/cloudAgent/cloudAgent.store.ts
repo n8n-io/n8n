@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { postCancel, postChat, eventsUrl } from './cloudAgent.api';
+import { postCancel, postChat, postToolResult, eventsUrl } from './cloudAgent.api';
 import { applyEvent } from './cloudAgent.reducer';
 import type { CloudAgentEvent, CloudAgentMessage } from './cloudAgent.types';
 import { useCloudAgentEventSource } from './useCloudAgentEventSource';
@@ -68,6 +68,20 @@ export const useCloudAgentStore = defineStore(STORE_ID, () => {
 		await postCancel(rootStore.restApiContext, activeRunId.value);
 	}
 
+	/**
+	 * Answer an outstanding `ask_user` tool call. The cloud agent's pending
+	 * registry resolves on receipt and the agent loop continues with the
+	 * answer fed back as the tool result.
+	 */
+	async function answerQuestion(toolCallId: string, answer: string): Promise<void> {
+		if (!activeRunId.value) return;
+		await postToolResult(rootStore.restApiContext, activeRunId.value, {
+			toolCallId,
+			output: { answer },
+			isError: false,
+		});
+	}
+
 	function resetThread(): void {
 		eventSourceClose?.();
 		eventSourceClose = undefined;
@@ -85,6 +99,7 @@ export const useCloudAgentStore = defineStore(STORE_ID, () => {
 		connectionState,
 		sendMessage,
 		cancel,
+		answerQuestion,
 		resetThread,
 	};
 });

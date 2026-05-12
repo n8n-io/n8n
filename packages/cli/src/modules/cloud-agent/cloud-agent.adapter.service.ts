@@ -119,6 +119,30 @@ export class CloudAgentAdapter {
 				}
 			}
 
+			case 'update': {
+				if (!args.id) return this.argError('workflows.update requires id');
+				try {
+					const update = new WorkflowEntity();
+					if (args.name) update.name = args.name;
+					if (Array.isArray(args.nodes)) {
+						update.nodes = args.nodes as unknown as WorkflowEntity['nodes'];
+					}
+					if (args.connections !== undefined) {
+						update.connections = args.connections as unknown as WorkflowEntity['connections'];
+					}
+					if (args.settings !== undefined) {
+						update.settings = args.settings as unknown as WorkflowEntity['settings'];
+					}
+					const updated = await this.workflowService.update(user, update, args.id, {});
+					return {
+						output: { id: updated.id, name: updated.name, active: updated.active },
+						isError: false,
+					};
+				} catch (err) {
+					return this.toError(err);
+				}
+			}
+
 			default:
 				return this.argError(`Unknown workflows action: ${(args as { action: string }).action}`);
 		}
@@ -234,12 +258,13 @@ export interface DispatchResult {
 }
 
 interface WorkflowsArgs {
-	action: 'list' | 'get' | 'create' | 'deploy';
+	action: 'list' | 'get' | 'create' | 'deploy' | 'update';
 	id?: string;
 	active?: boolean;
 	name?: string;
 	nodes?: unknown;
 	connections?: unknown;
+	settings?: unknown;
 }
 
 interface CredentialsArgs {
