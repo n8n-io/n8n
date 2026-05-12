@@ -82,8 +82,8 @@ jest.mock('../workflows/build-workflow.tool', () => ({
 }));
 
 jest.mock('../workflows.tool', () => ({
-	createWorkflowsTool: jest.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `workflows-${scope}` : 'workflows',
+	createWorkflowsTool: jest.fn((_context: unknown, options?: unknown) => ({
+		id: options ? 'workflows-filtered' : 'workflows',
 	})),
 }));
 
@@ -135,7 +135,7 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(orchestratorTools).toMatchObject({
-			workflows: { id: 'workflows-orchestrator' },
+			workflows: { id: 'workflows-filtered' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables-orchestrator' },
@@ -144,6 +144,29 @@ describe('domain tool construction', () => {
 			nodes: { id: 'nodes-orchestrator' },
 			'ask-user': { id: 'ask-user' },
 		});
+
+		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, {
+			allowedActions: [
+				'list',
+				'get',
+				'delete',
+				'unarchive',
+				'setup',
+				'publish',
+				'unpublish',
+				'list-versions',
+				'get-version',
+				'restore-version',
+				'update-version',
+			],
+		});
+		expect(createWorkflowsTool).toHaveBeenCalledWith(
+			context,
+			expect.objectContaining({
+				allowedActions: expect.not.arrayContaining(['get-as-code']),
+			}),
+		);
 	});
 
 	it('includes local MCP server tools in orchestrator domain tools', () => {

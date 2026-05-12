@@ -1,7 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
+import {
+	WorkflowHistory,
+	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -21,6 +25,7 @@ export class WorkflowHistoryService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 	) {}
@@ -231,5 +236,34 @@ export class WorkflowHistoryService {
 		});
 
 		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
+	}
+
+	async getPublishTimeline(user: User, workflowId: string) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		const events = await this.workflowPublishHistoryRepository
+			.createQueryBuilder('wph')
+			.leftJoinAndSelect('wph.user', 'user')
+			.leftJoin('wph.workflowHistory', 'wh')
+			.addSelect('wh.name')
+			.where('wph.workflowId = :workflowId', { workflowId: workflow.id })
+			.orderBy('wph.createdAt', 'ASC')
+			.getMany();
+
+		return events.map((e) => ({
+			id: e.id,
+			workflowId: e.workflowId,
+			versionId: e.versionId,
+			event: e.event,
+			createdAt: e.createdAt,
+			user: e.user,
+			versionName: e.workflowHistory?.name ?? null,
+		}));
 	}
 }

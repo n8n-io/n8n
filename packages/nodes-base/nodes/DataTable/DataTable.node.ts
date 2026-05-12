@@ -27,6 +27,40 @@ export class DataTable implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			extraTypeDefContent: [
+				{
+					displayOptions: { show: { resource: ['row'], operation: ['insert'] } },
+					content: `<patterns>
+<pattern title="Insert with explicit schema">
+const storeData = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Store Data',
+    parameters: {
+      resource: 'row',
+      operation: 'insert',
+      dataTableId: { __rl: true, mode: 'name', value: 'my-table' },
+      columns: {
+        mappingMode: 'defineBelow',
+        value: {
+          name: expr('{{ $json.name }}'),
+          email: expr('{{ $json.email }}')
+        },
+        schema: [
+          { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
+          { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
+        ]
+      }
+    }
+  }
+});
+</pattern>
+</patterns>`,
+				},
+			],
+		},
 		hints: [
 			{
 				message: 'The selected data table has no columns.',

@@ -1143,6 +1143,30 @@ describe('OauthService', () => {
 			);
 		});
 
+		it.each(['facebookGraphApiOAuth2Api', 'facebookGraphAppOAuth2Api'])(
+			'should not delete scope for %s credentials',
+			async (credentialType) => {
+				const credential = mock<CredentialsEntity>({ id: '1', type: credentialType });
+				const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+				const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+				const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+				jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+				credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+				credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+				await service.getOAuthCredentials(credential);
+
+				expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+					mockAdditionalData,
+					{ clientId: 'client-id', scope: 'custom-scope' },
+					credentialType,
+					'internal',
+					undefined,
+					undefined,
+				);
+			},
+		);
 		it('should not delete scope for wordpressOAuth2Api credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
@@ -2057,6 +2081,80 @@ describe('OauthService', () => {
 			);
 		});
 
+		it('should fall back to origin-only discovery when path-aware variants fail (Atlassian MCP)', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://mcp.atlassian.com/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://mcp.atlassian.com/v1/mcp',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404')) // protected resource path-specific
+				.mockRejectedValueOnce(new Error('404')) // protected resource root
+				.mockRejectedValueOnce(new Error('404')) // RFC 8414 path insertion
+				.mockRejectedValueOnce(new Error('404')) // OpenID Connect path insertion
+				.mockRejectedValueOnce(new Error('401')) // OpenID Connect path appending
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://mcp.atlassian.com/authorize',
+						token_endpoint: 'https://mcp.atlassian.com/token',
+						registration_endpoint: 'https://mcp.atlassian.com/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any); // origin-only fallback succeeds
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(axios.get).toHaveBeenCalledTimes(6);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				3,
+				'https://mcp.atlassian.com/.well-known/oauth-authorization-server/v1/mcp',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				4,
+				'https://mcp.atlassian.com/.well-known/openid-configuration/v1/mcp',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				5,
+				'https://mcp.atlassian.com/v1/mcp/.well-known/openid-configuration',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				6,
+				'https://mcp.atlassian.com/.well-known/oauth-authorization-server',
+				expect.any(Object),
+			);
+		});
+
 		it('should throw error when all discovery endpoints fail', async () => {
 			const axios = require('axios');
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
@@ -2086,8 +2184,8 @@ describe('OauthService', () => {
 				}),
 			).rejects.toThrow('Failed to discover OAuth2 authorization server metadata');
 
-			// Should have tried all endpoints (2 protected resource + 3 auth server per invocation)
-			expect(axios.get).toHaveBeenCalledTimes(10); // 5 calls per invocation × 2 invocations
+			// Should have tried all endpoints (2 protected resource + 4 auth server per invocation)
+			expect(axios.get).toHaveBeenCalledTimes(12); // 6 calls per invocation × 2 invocations
 		});
 
 		it('should discover authorization server via protected resource metadata (MCP flow)', async () => {
