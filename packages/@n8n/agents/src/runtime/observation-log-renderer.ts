@@ -69,10 +69,12 @@ export function renderObservationLog(
 			const children = childrenByParent.get(entry.parentId) ?? [];
 			children.push(entry);
 			childrenByParent.set(entry.parentId, children);
-		} else {
+		} else if (!entry.parentId) {
 			roots.push(entry);
 		}
 	}
+
+	if (roots.length === 0) return null;
 
 	const lines: string[] = ['<observations>', '## Memory', '', MEMORY_INTRO, ''];
 	for (const root of roots) {

@@ -133,6 +133,7 @@ export {
 	runObservationLogObserver,
 } from './runtime/observation-log-observer';
 export {
+	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
 	runObservationLogReflector,

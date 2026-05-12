@@ -97,6 +97,66 @@ export function renderObservationLogForReflection(entries: ObservationLogEntry[]
 	return lines.join('\n');
 }
 
+export function normalizeObservationLogReflection(
+	activeObservationLog: ObservationLogEntry[],
+	reflection: ObservationLogReflection,
+): ObservationLogReflection {
+	const activeEntries = activeObservationLog.filter((entry) => entry.status === 'active');
+	const activeById = new Map(activeEntries.map((entry) => [entry.id, entry]));
+	const childrenByParent = new Map<string, ObservationLogEntry[]>();
+	for (const entry of activeEntries) {
+		if (!entry.parentId) continue;
+		const children = childrenByParent.get(entry.parentId) ?? [];
+		children.push(entry);
+		childrenByParent.set(entry.parentId, children);
+	}
+
+	const dropSeeds = new Set(reflection.drop.filter((id) => activeById.has(id)));
+	const allMergeSeeds = new Set(
+		reflection.merge.flatMap((merge) => merge.supersedes).filter((id) => activeById.has(id)),
+	);
+	const claimedMergeIds = new Set<string>();
+	const merge = reflection.merge
+		.map((entry) => {
+			const ownSeeds = new Set(entry.supersedes.filter((id) => activeById.has(id)));
+			const supersedes = uniqueObservationIds(
+				entry.supersedes
+					.filter((id) => activeById.has(id))
+					.filter((id) => !isChildOnlyRemoval(id, ownSeeds, allMergeSeeds, dropSeeds, activeById))
+					.flatMap((id) => [id, ...descendantIds(id, childrenByParent)]),
+			).filter((id) => !claimedMergeIds.has(id));
+
+			for (const id of supersedes) claimedMergeIds.add(id);
+			if (supersedes.length === 0) return null;
+
+			return {
+				...entry,
+				supersedes,
+			};
+		})
+		.filter((entry): entry is ObservationLogMerge => entry !== null);
+
+	const droppedIds = new Set<string>();
+	for (const id of reflection.drop) {
+		if (!activeById.has(id) || claimedMergeIds.has(id)) continue;
+		if (hasAncestorIn(id, dropSeeds, activeById)) continue;
+		if (isChildOnlyRemoval(id, dropSeeds, dropSeeds, claimedMergeIds, activeById)) continue;
+
+		for (const candidateId of [id, ...descendantIds(id, childrenByParent)]) {
+			if (!claimedMergeIds.has(candidateId)) droppedIds.add(candidateId);
+		}
+	}
+
+	const removedIds = new Set([...droppedIds, ...claimedMergeIds]);
+	return {
+		drop: [...droppedIds],
+		merge: merge.map((entry) => ({
+			...entry,
+			parentId: normalizeReplacementParentId(entry.parentId, activeById, removedIds),
+		})),
+	};
+}
+
 export async function runObservationLogReflector(
 	opts: RunObservationLogReflectorOpts,
 ): Promise<RunObservationLogReflectorResult> {
@@ -123,7 +183,10 @@ export async function runObservationLogReflector(
 		tokenCount,
 		tokenBudget: reflectorThresholdTokens,
 	});
-	const reflection = withCreatedAt(parseObservationLogReflectionJson(output), now);
+	const reflection = normalizeObservationLogReflection(
+		activeObservationLog,
+		withCreatedAt(parseObservationLogReflectionJson(output), now),
+	);
 	const result = await memory.applyObservationLogReflection({ scopeKind, scopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(
@@ -149,6 +212,65 @@ export async function runObservationLogReflector(
 		reflection,
 		result,
 	};
+}
+
+function uniqueObservationIds(ids: string[]): string[] {
+	const seen = new Set<string>();
+	const unique: string[] = [];
+	for (const id of ids) {
+		if (seen.has(id)) continue;
+		seen.add(id);
+		unique.push(id);
+	}
+	return unique;
+}
+
+function descendantIds(id: string, childrenByParent: Map<string, ObservationLogEntry[]>): string[] {
+	const descendants: string[] = [];
+	const visit = (parentId: string) => {
+		for (const child of childrenByParent.get(parentId) ?? []) {
+			descendants.push(child.id);
+			visit(child.id);
+		}
+	};
+	visit(id);
+	return descendants;
+}
+
+function hasAncestorIn(
+	id: string,
+	ids: Set<string>,
+	activeById: Map<string, ObservationLogEntry>,
+): boolean {
+	let parentId = activeById.get(id)?.parentId ?? null;
+	while (parentId) {
+		if (ids.has(parentId)) return true;
+		parentId = activeById.get(parentId)?.parentId ?? null;
+	}
+	return false;
+}
+
+function isChildOnlyRemoval(
+	id: string,
+	ownActionIds: Set<string>,
+	allSameKindActionIds: Set<string>,
+	otherRemovalIds: Set<string>,
+	activeById: Map<string, ObservationLogEntry>,
+): boolean {
+	const parentId = activeById.get(id)?.parentId;
+	if (!parentId) return false;
+	if (hasAncestorIn(id, ownActionIds, activeById)) return false;
+	if (hasAncestorIn(id, allSameKindActionIds, activeById)) return true;
+	return !hasAncestorIn(id, otherRemovalIds, activeById);
+}
+
+function normalizeReplacementParentId(
+	parentId: string | null | undefined,
+	activeById: Map<string, ObservationLogEntry>,
+	removedIds: Set<string>,
+): string | null | undefined {
+	if (parentId === undefined || parentId === null) return parentId;
+	return activeById.has(parentId) && !removedIds.has(parentId) ? parentId : null;
 }
 
 function extractJsonObject(output: string): string {

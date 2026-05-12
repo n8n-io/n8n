@@ -29,6 +29,7 @@ describe('N8nMemory', () => {
 	let transactionDelete: jest.Mock;
 	let observationRunInTransaction: jest.Mock;
 	let transactionObservationCreate: jest.Mock;
+	let transactionObservationFind: jest.Mock;
 	let transactionObservationSave: jest.Mock;
 	let transactionObservationUpdate: jest.Mock;
 
@@ -52,6 +53,7 @@ describe('N8nMemory', () => {
 		});
 
 		transactionObservationCreate = jest.fn((input) => ({ ...input }) as AgentObservationEntity);
+		transactionObservationFind = jest.fn().mockResolvedValue([]);
 		transactionObservationSave = jest.fn(async (input: AgentObservationEntity[]) =>
 			input.map((entity, index) => ({
 				...entity,
@@ -66,6 +68,7 @@ describe('N8nMemory', () => {
 				await callback({
 					getRepository: jest.fn().mockReturnValue({
 						create: transactionObservationCreate,
+						find: transactionObservationFind,
 						save: transactionObservationSave,
 						update: transactionObservationUpdate,
 					}),
@@ -401,6 +404,25 @@ describe('N8nMemory', () => {
 		};
 	}
 
+	function makeObservationEntity(
+		overrides: Partial<AgentObservationEntity> = {},
+	): AgentObservationEntity {
+		return {
+			id: 'obs-1',
+			scopeKind: 'thread',
+			scopeId: 't-1',
+			marker: 'important',
+			text: 'Observation',
+			parentId: null,
+			tokenCount: 1,
+			status: 'active',
+			supersededBy: null,
+			createdAt: new Date('2026-05-05T00:00:00Z'),
+			updatedAt: new Date('2026-05-05T00:00:00Z'),
+			...overrides,
+		} as AgentObservationEntity;
+	}
+
 	describe('appendObservationLogEntries', () => {
 		beforeEach(() => {
 			observationRepository.create.mockImplementation(
@@ -540,6 +562,12 @@ describe('N8nMemory', () => {
 
 	describe('applyObservationLogReflection', () => {
 		it('inserts merged replacements and updates old rows in one transaction', async () => {
+			transactionObservationFind.mockResolvedValue([
+				makeObservationEntity({ id: 'drop-1', marker: 'info', text: 'Drop me' }),
+				makeObservationEntity({ id: 'old-1', text: 'Old one' }),
+				makeObservationEntity({ id: 'old-2', text: 'Old two' }),
+			]);
+
 			const result = await memory.applyObservationLogReflection(
 				{ scopeKind: 'thread', scopeId: 't-1' },
 				{
@@ -555,6 +583,10 @@ describe('N8nMemory', () => {
 			);
 
 			expect(observationRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionObservationFind).toHaveBeenCalledWith({
+				where: { scopeKind: 'thread', scopeId: 't-1', status: 'active' },
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
 			expect(transactionObservationCreate).toHaveBeenCalledWith(
 				expect.objectContaining({
 					scopeKind: 'thread',
@@ -581,6 +613,36 @@ describe('N8nMemory', () => {
 				droppedIds: ['drop-1'],
 				supersededIds: ['old-1', 'old-2'],
 				inserted: [{ id: 'merged-1', status: 'active' }],
+			});
+		});
+
+		it('expands parent merges to active children inside the transaction', async () => {
+			transactionObservationFind.mockResolvedValue([
+				makeObservationEntity({ id: 'parent', text: 'Open case' }),
+				makeObservationEntity({
+					id: 'child',
+					marker: 'completion',
+					text: 'Case closed',
+					parentId: 'parent',
+				}),
+			]);
+
+			const result = await memory.applyObservationLogReflection(
+				{ scopeKind: 'thread', scopeId: 't-1' },
+				{
+					drop: ['child'],
+					merge: [{ supersedes: ['parent'], marker: 'important', text: 'Case resolved' }],
+				},
+			);
+
+			expect(transactionObservationUpdate).toHaveBeenCalledTimes(1);
+			expect(transactionObservationUpdate).toHaveBeenCalledWith(
+				{ scopeKind: 'thread', scopeId: 't-1', id: In(['parent', 'child']) },
+				{ status: 'superseded', supersededBy: 'merged-1' },
+			);
+			expect(result).toMatchObject({
+				droppedIds: [],
+				supersededIds: ['parent', 'child'],
 			});
 		});
 	});

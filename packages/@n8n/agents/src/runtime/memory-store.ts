@@ -15,6 +15,7 @@ import type {
 	ObservationLogTaskLockHandle,
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
+import { normalizeObservationLogReflection } from './observation-log-reflector';
 
 interface StoredMessage {
 	message: AgentDbMessage;
@@ -253,8 +254,12 @@ export class InMemoryMemory
 		scope: ObservationLogScope,
 		reflection: ObservationLogReflection,
 	): Promise<ObservationLogReflectionResult> {
+		const normalized = normalizeObservationLogReflection(
+			await this.getActiveObservationLog(scope),
+			reflection,
+		);
 		const inserted = await this.appendObservationLogEntries(
-			reflection.merge.map((entry) => ({
+			normalized.merge.map((entry) => ({
 				scopeKind: scope.scopeKind,
 				scopeId: scope.scopeId,
 				marker: entry.marker,
@@ -265,8 +270,8 @@ export class InMemoryMemory
 			})),
 		);
 
-		await this.dropObservationLogEntries(reflection.drop);
-		for (const [index, merge] of reflection.merge.entries()) {
+		await this.dropObservationLogEntries(normalized.drop);
+		for (const [index, merge] of normalized.merge.entries()) {
 			const replacement = inserted[index];
 			if (replacement) {
 				await this.supersedeObservationLogEntries(merge.supersedes, replacement.id);
@@ -274,8 +279,8 @@ export class InMemoryMemory
 		}
 
 		return {
-			droppedIds: [...reflection.drop],
-			supersededIds: reflection.merge.flatMap((entry) => entry.supersedes),
+			droppedIds: [...normalized.drop],
+			supersededIds: normalized.merge.flatMap((entry) => entry.supersedes),
 			inserted,
 		};
 	}

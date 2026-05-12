@@ -1,9 +1,26 @@
 import { InMemoryMemory } from '../memory-store';
 import {
+	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
 	runObservationLogReflector,
 } from '../observation-log-reflector';
+import type { ObservationLogEntry } from '../../types/sdk/observation-log';
+
+function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntry {
+	return {
+		id: overrides.id ?? crypto.randomUUID(),
+		scopeKind: overrides.scopeKind ?? 'thread',
+		scopeId: overrides.scopeId ?? 'thread-1',
+		marker: overrides.marker ?? 'important',
+		text: overrides.text ?? 'Observation',
+		parentId: overrides.parentId ?? null,
+		tokenCount: overrides.tokenCount ?? 1,
+		status: overrides.status ?? 'active',
+		supersededBy: overrides.supersededBy ?? null,
+		createdAt: overrides.createdAt ?? new Date('2026-05-12T14:30:00.000Z'),
+	};
+}
 
 describe('parseObservationLogReflectionJson', () => {
 	it('parses reflector JSON with marker symbols into storage markers', () => {
@@ -64,6 +81,83 @@ describe('renderObservationLogForReflection', () => {
 
 		expect(rendered).toContain('* [parent] 🔴 2026-05-12T14:30:00.000Z User chose');
 		expect(rendered).toContain('  * [child] ✅ 2026-05-12T14:31:00.000Z Plan 7');
+	});
+});
+
+describe('normalizeObservationLogReflection', () => {
+	it('ignores child-only removal while the parent remains active', () => {
+		const parent = observation({ id: 'parent' });
+		const child = observation({ id: 'child', parentId: parent.id, marker: 'completion' });
+
+		expect(
+			normalizeObservationLogReflection([parent, child], {
+				drop: [child.id],
+				merge: [
+					{
+						supersedes: [child.id],
+						marker: 'important',
+						text: 'Child-only replacement',
+					},
+				],
+			}),
+		).toEqual({ drop: [], merge: [] });
+	});
+
+	it('expands parent drops to active descendants and lets merge win conflicting drops', () => {
+		const parent = observation({ id: 'parent' });
+		const child = observation({ id: 'child', parentId: parent.id, marker: 'completion' });
+		const merged = observation({ id: 'merged' });
+
+		expect(
+			normalizeObservationLogReflection([parent, child, merged], {
+				drop: [parent.id, merged.id],
+				merge: [
+					{
+						supersedes: [merged.id],
+						marker: 'important',
+						text: 'Merged replacement',
+					},
+				],
+			}),
+		).toEqual({
+			drop: [parent.id, child.id],
+			merge: [
+				{
+					supersedes: [merged.id],
+					marker: 'important',
+					text: 'Merged replacement',
+				},
+			],
+		});
+	});
+
+	it('expands parent merges to active descendants and clears inactive replacement parents', () => {
+		const parent = observation({ id: 'parent' });
+		const child = observation({ id: 'child', parentId: parent.id, marker: 'completion' });
+
+		expect(
+			normalizeObservationLogReflection([parent, child], {
+				drop: [],
+				merge: [
+					{
+						supersedes: [parent.id],
+						marker: 'important',
+						text: 'Merged parent and child',
+						parentId: parent.id,
+					},
+				],
+			}),
+		).toEqual({
+			drop: [],
+			merge: [
+				{
+					supersedes: [parent.id, child.id],
+					marker: 'important',
+					text: 'Merged parent and child',
+					parentId: null,
+				},
+			],
+		});
 	});
 });
 

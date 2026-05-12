@@ -1,18 +1,19 @@
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	BuiltMemory,
-	BuiltObservationLogStore,
-	MemoryDescriptor,
-	NewObservationLogEntry,
-	ObservationCursor,
-	ObservationLogEntry,
-	ObservationLogReadOptions,
-	ObservationLogReflection,
-	ObservationLogReflectionResult,
-	ObservationLogScope,
-	ObservationLogScopeKind,
-	Thread,
+import {
+	normalizeObservationLogReflection,
+	type AgentDbMessage,
+	type AgentMessage,
+	type BuiltMemory,
+	type BuiltObservationLogStore,
+	type MemoryDescriptor,
+	type NewObservationLogEntry,
+	type ObservationCursor,
+	type ObservationLogEntry,
+	type ObservationLogReadOptions,
+	type ObservationLogReflection,
+	type ObservationLogReflectionResult,
+	type ObservationLogScope,
+	type ObservationLogScopeKind,
+	type Thread,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
@@ -296,9 +297,21 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	): Promise<ObservationLogReflectionResult> {
 		return await this.observationRepository.manager.transaction(async (trx) => {
 			const repo = trx.getRepository(AgentObservationEntity);
-			const inserted = reflection.merge.length
+			const activeEntries = await repo.find({
+				where: {
+					scopeKind: scope.scopeKind,
+					scopeId: scope.scopeId,
+					status: 'active',
+				},
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
+			const normalized = normalizeObservationLogReflection(
+				activeEntries.map((entry) => this.toObservationLogEntry(entry)),
+				reflection,
+			);
+			const inserted = normalized.merge.length
 				? await repo.save(
-						reflection.merge.map((entry) =>
+						normalized.merge.map((entry) =>
 							repo.create({
 								scopeKind: scope.scopeKind,
 								scopeId: scope.scopeId,
@@ -314,14 +327,14 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 					)
 				: [];
 
-			if (reflection.drop.length > 0) {
+			if (normalized.drop.length > 0) {
 				await repo.update(
-					{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(reflection.drop) },
+					{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(normalized.drop) },
 					{ status: 'dropped', supersededBy: null },
 				);
 			}
 
-			for (const [index, merge] of reflection.merge.entries()) {
+			for (const [index, merge] of normalized.merge.entries()) {
 				const replacement = inserted[index];
 				if (replacement && merge.supersedes.length > 0) {
 					await repo.update(
@@ -332,8 +345,8 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			}
 
 			return {
-				droppedIds: [...reflection.drop],
-				supersededIds: reflection.merge.flatMap((entry) => entry.supersedes),
+				droppedIds: [...normalized.drop],
+				supersededIds: normalized.merge.flatMap((entry) => entry.supersedes),
 				inserted: inserted.map((entry) => this.toObservationLogEntry(entry)),
 			};
 		});

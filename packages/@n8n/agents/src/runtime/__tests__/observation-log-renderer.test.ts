@@ -77,4 +77,17 @@ describe('renderObservationLog', () => {
 	it('returns null when no active observations fit', () => {
 		expect(renderObservationLog([entry({ tokenCount: 2 })], { renderTokenBudget: 1 })).toBeNull();
 	});
+
+	it('does not render a child as a root when its parent is outside the budget', () => {
+		const parent = entry({ id: 'parent', tokenCount: 3 });
+		const child = entry({
+			id: 'child',
+			parentId: parent.id,
+			text: 'This child would fit alone.',
+			tokenCount: 1,
+			createdAt: new Date(2026, 4, 12, 14, 31),
+		});
+
+		expect(renderObservationLog([parent, child], { renderTokenBudget: 1 })).toBeNull();
+	});
 });

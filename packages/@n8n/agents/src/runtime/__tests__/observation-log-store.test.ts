@@ -86,4 +86,73 @@ describe('observation log store', () => {
 			store.getActiveObservationLog({ scopeKind: 'resource', scopeId: 'user-1' }),
 		).resolves.toEqual(result.inserted);
 	});
+
+	it('ignores child-only drops while the parent remains active', async () => {
+		const store = new InMemoryMemory();
+		const [parent] = await store.appendObservationLogEntries([
+			{ scopeKind: 'thread', scopeId: 'thread-1', marker: 'important', text: 'Open case' },
+		]);
+		const [child] = await store.appendObservationLogEntries([
+			{
+				scopeKind: 'thread',
+				scopeId: 'thread-1',
+				marker: 'completion',
+				text: 'Case closed',
+				parentId: parent.id,
+			},
+		]);
+
+		const result = await store.applyObservationLogReflection(
+			{ scopeKind: 'thread', scopeId: 'thread-1' },
+			{ drop: [child.id], merge: [] },
+		);
+
+		expect(result.droppedIds).toEqual([]);
+		const active = await store.getActiveObservationLog({
+			scopeKind: 'thread',
+			scopeId: 'thread-1',
+		});
+		expect(active).toHaveLength(2);
+		expect(active).toEqual(expect.arrayContaining([parent, child]));
+	});
+
+	it('supersedes children when their parent is merged', async () => {
+		const store = new InMemoryMemory();
+		const [parent] = await store.appendObservationLogEntries([
+			{ scopeKind: 'thread', scopeId: 'thread-1', marker: 'important', text: 'Open case' },
+		]);
+		const [child] = await store.appendObservationLogEntries([
+			{
+				scopeKind: 'thread',
+				scopeId: 'thread-1',
+				marker: 'completion',
+				text: 'Case closed',
+				parentId: parent.id,
+			},
+		]);
+
+		const result = await store.applyObservationLogReflection(
+			{ scopeKind: 'thread', scopeId: 'thread-1' },
+			{
+				drop: [],
+				merge: [
+					{
+						supersedes: [parent.id],
+						marker: 'important',
+						text: 'Case resolved.',
+					},
+				],
+			},
+		);
+
+		expect(result.supersededIds).toEqual([parent.id, child.id]);
+		await expect(
+			store.getObservationLog({ scopeKind: 'thread', scopeId: 'thread-1', status: 'superseded' }),
+		).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: parent.id, status: 'superseded' }),
+				expect.objectContaining({ id: child.id, status: 'superseded' }),
+			]),
+		);
+	});
 });
