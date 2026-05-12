@@ -119,3 +119,33 @@ describe('TelegramIntegration.requiresLeader', () => {
 		expect(integration.requiresLeader()).toBe(false);
 	});
 });
+
+describe('TelegramIntegration.isUserAllowed', () => {
+	const integration = new TelegramIntegration(
+		mock<Logger>(),
+		mock<UrlService>(),
+		mock<AgentRepository>(),
+	);
+
+	it('allows everyone in public mode', () => {
+		expect(integration.isUserAllowed('999', { accessMode: 'public', allowedUserIds: [] })).toBe(
+			true,
+		);
+	});
+
+	it('allows everyone for legacy connections without saved settings', () => {
+		expect(integration.isUserAllowed('999', undefined)).toBe(true);
+	});
+
+	it('accepts a whitelisted user in private mode', () => {
+		expect(
+			integration.isUserAllowed('123', { accessMode: 'private', allowedUserIds: ['123', '456'] }),
+		).toBe(true);
+	});
+
+	it('rejects a non-whitelisted user in private mode', () => {
+		expect(
+			integration.isUserAllowed('999', { accessMode: 'private', allowedUserIds: ['123', '456'] }),
+		).toBe(false);
+	});
+});

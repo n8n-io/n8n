@@ -1,3 +1,4 @@
+import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Thread } from 'chat';
 
@@ -125,6 +126,15 @@ export abstract class AgentChatIntegration {
 		fromSdk: (thread: Thread<unknown, unknown>) => string;
 		toSdk: (threadId: string) => string;
 	};
+
+	/**
+	 * Optional per-user authorisation check called on every inbound mention,
+	 * subscribed message, and action before the bridge subscribes / executes.
+	 * Default (no implementation): allow. Telegram uses this to enforce the
+	 * Private-mode allowlist; webhook-only platforms (Slack, Linear) have their
+	 * own authentication at the transport layer and don't need this hook.
+	 */
+	isUserAllowed?(userId: string, settings: AgentTelegramIntegrationSettings | undefined): boolean;
 }
 
 /**

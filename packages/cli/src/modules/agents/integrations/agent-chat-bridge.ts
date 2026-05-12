@@ -78,9 +78,6 @@ export class AgentChatBridge {
 	 */
 	private readonly richInteractionInputs = new Map<string, unknown>();
 
-	/** Cached `Set` of the allowlist for O(1) per-message lookup. */
-	private readonly allowedUserIdSet: Set<string> | undefined;
-
 	constructor(
 		private readonly chat: Chat,
 		private readonly agentId: string,
@@ -96,7 +93,6 @@ export class AgentChatBridge {
 			this.callbackStore = new CallbackStore();
 		}
 		this.disableStreaming = this.integration?.disableStreaming ?? false;
-		this.allowedUserIdSet = integrationSettings && new Set(integrationSettings.allowedUserIds);
 		this.registerHandlers();
 	}
 
@@ -180,10 +176,7 @@ export class AgentChatBridge {
 	}
 
 	private canUserAccess(userId: string): boolean {
-		if (this.integrationType !== 'telegram') return true;
-		const settings = this.integrationSettings;
-		if (!settings || settings.accessMode === 'public') return true;
-		return this.allowedUserIdSet?.has(userId) ?? false;
+		return this.integration?.isUserAllowed?.(userId, this.integrationSettings) ?? true;
 	}
 
 	// ---------------------------------------------------------------------------

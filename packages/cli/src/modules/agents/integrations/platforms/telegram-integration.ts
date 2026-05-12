@@ -1,3 +1,4 @@
+import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Thread } from 'chat';
@@ -116,6 +117,16 @@ export class TelegramIntegration extends AgentChatIntegration {
 			throw new Error(`Failed to register Telegram webhook: ${await resp.text()}`);
 		}
 		this.logger.info(`[TelegramIntegration] Webhook registered: ${webhookUrl}`);
+	}
+
+	/**
+	 * Enforce the Private-mode allowlist. Public mode (or legacy connections
+	 * without saved settings) accepts every Telegram user; Private mode only
+	 * accepts senders whose ID appears in `allowedUserIds`.
+	 */
+	isUserAllowed(userId: string, settings: AgentTelegramIntegrationSettings | undefined): boolean {
+		if (!settings || settings.accessMode === 'public') return true;
+		return settings.allowedUserIds.includes(userId);
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {

@@ -1,3 +1,4 @@
+import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -98,6 +99,10 @@ class TelegramTestIntegration extends AgentChatIntegration {
 	readonly displayIcon = 'telegram';
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
+	}
+	isUserAllowed(userId: string, settings: AgentTelegramIntegrationSettings | undefined): boolean {
+		if (!settings || settings.accessMode === 'public') return true;
+		return settings.allowedUserIds.includes(userId);
 	}
 }
 
