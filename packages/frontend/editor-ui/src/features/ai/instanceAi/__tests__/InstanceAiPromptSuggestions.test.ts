@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPromptSuggestions from '../components/InstanceAiPromptSuggestions.vue';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions } from '../emptyStateSuggestions';
@@ -17,6 +17,11 @@ describe('InstanceAiPromptSuggestions', () => {
 		});
 
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
+		await waitFor(() => {
+			expect(emitted()['preview-change']).toEqual([
+				['instanceAi.emptyState.suggestions.buildWorkflow.prompt'],
+			]);
+		});
 		await userEvent.unhover(getByTestId('instance-ai-suggestion-build-workflow'));
 
 		await userEvent.click(getByTestId('instance-ai-suggestion-quick-examples'));
