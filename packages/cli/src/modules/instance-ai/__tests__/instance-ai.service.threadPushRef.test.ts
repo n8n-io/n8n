@@ -77,6 +77,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			backgroundTasks: { cancelThread: jest.Mock };
 			creditedThreads: Map<string, unknown>;
 			schedulerLocks: Map<string, unknown>;
+			liveness: { clearThreadState: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			eventBus: { clearThread: jest.Mock };
 			finalizeRemainingMessageTraceRoots: jest.Mock;
@@ -95,6 +96,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.backgroundTasks = { cancelThread: jest.fn(() => []) };
 		service.creditedThreads = new Map();
 		service.schedulerLocks = new Map();
+		service.liveness = { clearThreadState: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clearThread: jest.fn() };
 		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});

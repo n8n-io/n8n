@@ -191,8 +191,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const executionTracking = useExecutionPushEvents();
 
 	const preview = useCanvasPreview({
-		store: store as unknown as ReturnType<typeof useInstanceAiStore>,
-		route: route as Parameters<typeof useCanvasPreview>[0]['route'],
+		thread: store as unknown as ReturnType<typeof useInstanceAiStore>,
+		threadId: () => route.params.threadId,
 	});
 
 	const relayedEvents: PushMessage[] = [];

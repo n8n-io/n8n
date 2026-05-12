@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
@@ -14,7 +14,7 @@ vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiMarkdown);
+const renderComponent = createThreadComponentRenderer(InstanceAiMarkdown);
 
 function makeRegistry(
 	entries: Array<{ type: string; id: string; name: string; projectId?: string }>,

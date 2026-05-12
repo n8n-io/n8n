@@ -222,6 +222,7 @@ const i18n = useI18n();
 	flex: 1;
 	min-height: 0;
 	width: 100%;
+	padding: var(--spacing--lg);
 }
 
 .agentCards {

@@ -1,7 +1,7 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
-import { createCredentialsTool } from '../credentials.tool';
+import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,9 +46,97 @@ function resumeCtx(resumeData: {
 	return { agent: { resumeData, suspend: jest.fn() } } as never;
 }
 
+function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
+	return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
+		.inputSchema;
+}
+
+function getDescription(tool: unknown): string {
+	return (tool as { description: string }).description;
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('credentials tool', () => {
+	describe('action filtering', () => {
+		const builderCredentialActions = [
+			'list',
+			'get',
+			'search-types',
+			'test',
+		] as const satisfies readonly CredentialAction[];
+
+		it('should support setup by default', () => {
+			const tool = createCredentialsTool(createMockContext());
+			const schema = getInputSchema(tool);
+
+			expect(
+				schema.safeParse({
+					action: 'setup',
+					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+				}).success,
+			).toBe(true);
+			expect(getDescription(tool)).toContain('set up new credentials');
+		});
+
+		it('should describe only explicitly allowed actions', () => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+				descriptionPrefix: 'Inspect credentials during build',
+				descriptionSuffix: 'Setup is handled after workflow verification.',
+			});
+
+			expect(getDescription(tool)).toContain('Inspect credentials during build');
+			expect(getDescription(tool)).not.toContain('delete');
+			expect(getDescription(tool)).not.toContain('set up new credentials');
+		});
+
+		it.each([
+			[{ action: 'list' }],
+			[{ action: 'get', credentialId: 'cred-1' }],
+			[{ action: 'search-types', query: 'slack' }],
+			[{ action: 'test', credentialId: 'cred-1' }],
+		])('should support explicitly allowed action %p', (input) => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(true);
+		});
+
+		it.each([
+			[
+				{
+					action: 'setup',
+					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+				},
+			],
+			[{ action: 'delete', credentialId: 'cred-1' }],
+		])('should reject action %p when it is not explicitly allowed', (input) => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(false);
+		});
+
+		it('should reject builder-disallowed setup at the schema boundary', () => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(
+				schema.safeParse({
+					action: 'setup',
+					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+				}).success,
+			).toBe(false);
+		});
+	});
+
 	// ── list ────────────────────────────────────────────────────────────────
 
 	describe('list action', () => {
@@ -560,6 +648,42 @@ describe('credentials tool', () => {
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
 			expect(suspendFn.mock.calls[0][0]).toEqual(expect.objectContaining({ projectId: 'proj-1' }));
+		});
+
+		it('should scope credential lookup to projectId when provided', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const tool = createCredentialsTool(context);
+			await tool.execute!(
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+					projectId: 'proj-1',
+				},
+				suspendCtx(jest.fn()),
+			);
+
+			expect(context.credentialService.list).toHaveBeenCalledWith({
+				type: 'slackApi',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('should omit projectId from credential lookup when not provided', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const tool = createCredentialsTool(context);
+			await tool.execute!(
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				suspendCtx(jest.fn()),
+			);
+
+			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
 		});
 
 		it('should include credentialFlow in suspend payload for finalize stage', async () => {
