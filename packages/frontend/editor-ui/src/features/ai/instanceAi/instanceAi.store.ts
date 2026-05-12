@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed, inject, provide, type InjectionKey } from 'vue';
+import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
@@ -34,7 +34,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const creditsClaimed = ref<number | undefined>(undefined);
 
 	// --- Thread runtimes ---
-	const runtimes = new Map<string, ThreadRuntime>();
+	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
 	const runtimeHooks = {
 		getResearchMode: () => researchMode.value,
 		onTitleUpdated: (threadId, title) => {
