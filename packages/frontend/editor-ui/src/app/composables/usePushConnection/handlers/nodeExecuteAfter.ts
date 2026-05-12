@@ -65,6 +65,10 @@ export async function nodeExecuteAfter(
 		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionStatus(
 			pushDataWithPlaceholderOutputData,
 		);
+
+		if (pushDataWithPlaceholderOutputData.data.executionStatus !== 'waiting') {
+			void trackNodeExecution(pushDataWithPlaceholderOutputData, workflowsStore.workflowId);
+		}
 	}
 
 	workflowState.executingNode.removeExecutingNode(pushData.nodeName);

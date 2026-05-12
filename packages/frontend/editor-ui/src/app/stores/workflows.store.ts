@@ -58,7 +58,6 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
-import { trackNodeExecution } from '@/app/composables/usePushConnection/handlers/trackNodeExecution';
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
@@ -536,8 +535,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { data } = pushData;
 		if (data.executionStatus === 'waiting' && data.metadata?.resumeFormUrl) {
 			openFormPopupWindow(data.metadata.resumeFormUrl);
-		} else if (data.executionStatus !== 'waiting') {
-			void trackNodeExecution(pushData, workflowId.value);
 		}
 	}
 

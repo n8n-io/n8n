@@ -12,15 +12,11 @@ import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/execu
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IRunExecutionData } from 'n8n-workflow';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
  */
-export async function executionStarted(
-	{ data }: ExecutionStarted,
-	_options: { workflowState: WorkflowState },
-) {
+export async function executionStarted({ data }: ExecutionStarted) {
 	const workflowsStore = useWorkflowsStore();
 	const stateStore = useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(workflowsStore.workflowId),
