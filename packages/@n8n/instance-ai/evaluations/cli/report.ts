@@ -34,6 +34,11 @@ interface SummaryJson {
 		buildFailures: Record<string, number>;
 		primaryPassRate: number;
 		avgDiagnostic: number;
+		submitCallsTotal?: number;
+		avgSubmitCalls?: number;
+		toolCallsTotal?: number;
+		toolCallErrors?: number;
+		toolCallErrorRate?: number;
 	};
 	interactivity: {
 		askUserCount: number;
@@ -166,6 +171,36 @@ function escapeHtml(input: string): string {
 
 function escapeAttr(input: string): string {
 	return input.replace(/&/g, '&amp;').replace(/'/g, '&apos;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Whether a tool call should count toward the "tool error rate" metric.
+ * Mirrors `isErroredToolCall` in `pairwise.ts` — kept in sync by hand
+ * because the report walks pre-saved `results.jsonl` files written by
+ * older runs of the eval too.
+ */
+function isErroredToolCall(trace: ToolCallTrace): boolean {
+	if (trace.error !== undefined) return true;
+	const r = trace.result;
+	if (r === null || r === undefined) return false;
+	if (typeof r === 'object' && !Array.isArray(r)) {
+		const obj = r as Record<string, unknown>;
+		if (obj.success === false) return true;
+		if (typeof obj.error === 'string' && obj.error.length > 0) return true;
+		if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+	}
+	if (typeof r === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(r)) return true;
+	return false;
+}
+
+function countSubmitCalls(traces: ToolCallTrace[] | undefined): number {
+	if (!traces) return 0;
+	return traces.filter((t) => t.toolName === 'submit-workflow').length;
+}
+
+function countToolCallErrors(traces: ToolCallTrace[] | undefined): number {
+	if (!traces) return 0;
+	return traces.filter(isErroredToolCall).length;
 }
 
 function findScore(feedback: FeedbackEntry[], metric: string): number | undefined {
@@ -333,6 +368,15 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
 	if (interact.mockedCredentialTypes.length > 0)
 		interactBits.push(`mocked creds: ${interact.mockedCredentialTypes.join(', ')}`);
 
+	// Per-record build-path stats. Surfaced inline in the summary line so a
+	// reviewer can scan retries / errors without expanding each row. Numbers
+	// match the columns added to `results.csv`.
+	const submitCalls = countSubmitCalls(record.toolCalls);
+	const toolErrors = countToolCallErrors(record.toolCalls);
+	const buildStatBits: string[] = [];
+	if (submitCalls > 0) buildStatBits.push(`submit ×${submitCalls}`);
+	if (toolErrors > 0) buildStatBits.push(`err ×${toolErrors}`);
+
 	const errorBlock = record.build.errorMessage
 		? `<div class="error">${escapeHtml(record.build.errorMessage)}</div>`
 		: '';
@@ -349,6 +393,7 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
     </div>
     <span class="iteration">#${record.iteration}</span>
     <span class="duration">${record.build.durationMs}ms</span>
+    ${buildStatBits.length > 0 ? `<span class="build-stats">${buildStatBits.map(escapeHtml).join(' · ')}</span>` : ''}
     <span class="badges">${renderFeedbackBadges(record.feedback)}</span>
   </summary>
   <div class="body">
@@ -412,6 +457,16 @@ function renderRun(run: Run, index: number): string {
       <span class="total ${totalFailures > 0 ? 'fail' : ''}"><strong>Build fail:</strong> ${totalFailures}${failureDetail ? ` (${escapeHtml(failureDetail)})` : ''}</span>
       <span class="total"><strong>Primary pass rate:</strong> ${pct(s.totals.primaryPassRate)}</span>
       <span class="total"><strong>Avg diagnostic:</strong> ${s.totals.avgDiagnostic.toFixed(2)}</span>
+      ${
+				s.totals.toolCallErrorRate !== undefined
+					? `<span class="total ${s.totals.toolCallErrorRate > 0.1 ? 'fail' : ''}"><strong>Tool error rate:</strong> ${pct(s.totals.toolCallErrorRate)}${s.totals.toolCallErrors !== undefined && s.totals.toolCallsTotal !== undefined ? ` (${s.totals.toolCallErrors}/${s.totals.toolCallsTotal})` : ''}</span>`
+					: ''
+			}
+      ${
+				s.totals.avgSubmitCalls !== undefined
+					? `<span class="total"><strong>Submit calls:</strong> ${s.totals.submitCallsTotal ?? 0} total, ${s.totals.avgSubmitCalls.toFixed(2)} avg/build</span>`
+					: ''
+			}
     </div>
     ${
 			s.interactivity.askUserCount > 0 ||
@@ -504,6 +559,7 @@ export function renderDocument(runs: Run[]): string {
   details.example > summary .example-id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   details.example > summary .iteration { color: var(--muted); font-size: 11px; }
   details.example > summary .duration { color: var(--muted); font-size: 11px; text-align: right; }
+  details.example > summary .build-stats { color: var(--muted); font-size: 11px; text-align: right; white-space: nowrap; }
   details.example > summary .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
   .badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(139,148,158,0.18); color: var(--fg); }
   .badge.badge-pass { background: rgba(63,185,80,0.2); color: var(--pass); }

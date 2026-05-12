@@ -1,8 +1,19 @@
 import type { JSONSchema7 } from 'json-schema';
+import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
+
+const BuilderPromptMemoryConfigSchema = z.object({
+	enabled: z.boolean(),
+	storage: z.literal('n8n'),
+	lastMessages: z.number().int().min(1).max(200).optional(),
+});
+
+const BuilderPromptAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+	memory: BuilderPromptMemoryConfigSchema.optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Context sections — dynamic, injected at runtime
@@ -150,8 +161,11 @@ When: the user must choose a model/credential because the request is ambiguous,
 resolve_llm returned an ambiguous/missing credential result, or the user asks
 to pick/change/use a different model. Call AT MOST ONCE per build turn unless
 the user changes their mind.
+Never ask the user in plain text to choose, confirm, configure, or change the
+agent main LLM, provider, model, or main LLM credential. If the user needs to
+make that choice, call ask_llm so the picker card is shown.
 Returns: { provider, model, credentialId, credentialName }.
-After: set \`model = "{provider}/{model}"\` and \`credential = credentialName\`
+After: set \`model = "{provider}/{model}"\` and \`credential = credentialId\`
 via write_config or patch_config.
 
 ### ask_credential
@@ -172,8 +186,9 @@ When: you would otherwise ask a clarifying question whose answer is one (or
 more) of a known list. Examples: pick a Slack channel from a list,
 read-only vs read-write, which workflow to wrap.
 Inputs: \`question\`, \`options[{label,value,description?}]\`, \`allowMultiple?\`.
-Returns: { values: string[] }. Do NOT call ask_question for free-text input;
-ask in prose for that.
+Returns: { values: string[] }. Values are selected option values unless the
+user types into the card's Other field, in which case the freeform text appears
+in \`values\`.
 
 ### Rules
 - Never call two interactive tools in parallel. The run suspends on the first.
@@ -202,7 +217,7 @@ Inputs: optional \`provider\`, optional \`model\`.
   \`"anthropic/claude-sonnet-4.6"\`.
 
 On \`{ ok: true, provider, model, credentialId, credentialName }\`: set
-\`model = "{provider}/{model}"\` and \`credential = credentialName\`. The
+\`model = "{provider}/{model}"\` and \`credential = credentialId\`. The
 returned \`model\` is the canonical id resolved against the provider's live
 list, so use it as-is — do not transform or "correct" it.
 
@@ -223,6 +238,8 @@ list_credentials. Pick the action by reason:
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.
 - User asks to pick/change/use a different model → ask_llm.
+- User needs to choose/confirm/configure a model or main LLM credential →
+  ask_llm, never a plain-text question.
 - No provider specified and resolve_llm reports ambiguity → ask_llm.`;
 
 export const N8N_EXPRESSIONS_SECTION = `\
@@ -273,6 +290,10 @@ something cool"), or asked a question — reply conversationally. Ask what they
 want the agent to do, what systems it needs to touch, what triggers it. Only
 start building once you have a real goal.
 
+If the user tries to test, run, chat with, or interact with the newly built
+agent in this Build chat, reply exactly: "Please click the Test toggle next to
+Build below to chat with your new agent."
+
 Never call \`write_config\` with empty, placeholder, or guessed \`instructions\`.
 An agent without real instructions is broken and can't chat. If you don't have
 enough detail to write meaningful instructions, ask the user first.`;
@@ -294,13 +315,20 @@ Don't search for things you already know (n8n internals, common JS/TS
 patterns, widely-known public APIs you've configured many times).`;
 
 export const MEMORY_PRESETS_SECTION = `\
-## Memory presets
+## Memory
 
-| Storage  | Description                                          |
-|----------|------------------------------------------------------|
-| n8n      | Default. Persists in n8n database. No config needed. |
-| sqlite   | Local SQLite file. Needs connection.path             |
-| postgres | PostgreSQL. Needs connection.credential              |`;
+Use n8n session-scoped memory only. It keeps recent conversation context and
+thread-scoped working memory for the current chat session.
+
+Shape:
+\`\`\`json
+{ "enabled": true, "storage": "n8n", "lastMessages": 50 }
+\`\`\`
+
+Rules:
+- Set \`storage\` to "n8n".
+- \`lastMessages\` default: 50.
+- Keep memory to these fields: \`enabled\`, \`storage\`, and \`lastMessages\`.`;
 
 export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)
@@ -341,7 +369,7 @@ configuration as a JSON string and the \`baseConfigHash\` from that same
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"My Anthropic Key\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
+  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"<credentialId>\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
 }
 \`\`\`
 
@@ -425,6 +453,8 @@ export const WORKFLOW_SECTION = `\
    resolve_llm reports ambiguity, or the user asks to choose/change/use a
    different model, call ask_llm. Then call read_config and write_config
    with the chosen \`model\` and \`credential\` plus a draft \`instructions\`.
+   Never ask for the main LLM/model/credential in plain text; call ask_llm so
+   the picker card is shown.
 2. Use ask_question whenever you have a clarifying question with discrete
    options (e.g. "Which Slack channel?" → list channels, "Read-only or
    read-write?"). Never put the question in plain text if options are known.
@@ -460,12 +490,12 @@ export const FEW_SHOT_FLOWS_SECTION = `\
        model: "anthropic/claude-sonnet-4.6",
        credentialId: "or1", credentialName: "OpenRouter" }
 2. read_config() → { configHash: "hash1", config: { ... } }
-3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"OpenRouter\\", and the requested instructions... }" })
+3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"or1\\", and the requested instructions... }" })
 
 ### User says "Use a different OpenRouter model"
 1. ask_llm({ purpose: "Choose a different OpenRouter model" })
 2. read_config() → { configHash: "hash1", config: { ... } }
-3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialName>\\" }]" }\`.
+3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialId>\\" }]" }\`.
 
 ### Adding a new node tool to an existing agent
 1. (skip ask_llm — already set)
@@ -516,7 +546,7 @@ export const IMPORTANT_SECTION = `\
   choice from a small set, use ask_question instead of asking in prose.
 - Use search_nodes + get_node_types to discover nodes before adding node tools
 - Prefer workflow tools and node tools over custom tools for real-world interactions
-- Memory with storage "n8n" is the default -- always enable it unless told otherwise
+- n8n session-scoped memory is the default -- always enable it unless told otherwise
 - \`build_custom_tool\` generates an opaque custom tool id, then compiles and stores the tool code. Register the returned id in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
 - \`create_skill\` stores the skill body only. It is not active until you add a \`{ type: "skill", id }\` entry to \`skills\` via read_config and patch_config/write_config.`;
 
@@ -543,16 +573,16 @@ export function getConfigRulesSection(builderModel: string): string {
 ## Agent config rules
 
 - \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
-- \`credential\` must be the \`credentialName\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
-- \`memory.storage\` is a preset: "n8n" (recommended, persists in n8n DB), "sqlite", or "postgres"
+- \`credential\` must be the \`credentialId\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
+- \`memory.storage\` must be "n8n"
 - \`memory.lastMessages\` default: 50
-- Use "n8n" as the default memory storage for all agents
+- Use n8n session-scoped memory for all agents
 - If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
 }
 
 export function getSchemaReferenceSection(): string {
 	const jsonSchemaText = jsonSchemaToCompactText(
-		zodToJsonSchema(AgentJsonConfigSchema) as JSONSchema7,
+		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
 	);
 	return `\
 ## Config schema reference

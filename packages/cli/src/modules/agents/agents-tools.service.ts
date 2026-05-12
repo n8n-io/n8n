@@ -142,7 +142,7 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
-				const results = await this.nodeCatalogService.searchNodes(queries, {
+				const { results } = await this.nodeCatalogService.searchNodes(queries, {
 					nodeFilter: isAgentToolNodeType,
 				});
 				return { results };

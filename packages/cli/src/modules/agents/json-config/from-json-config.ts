@@ -7,13 +7,7 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import {
-	Agent,
-	Memory,
-	Tool,
-	UPDATE_WORKING_MEMORY_TOOL_NAME,
-	wrapToolForApproval,
-} from '@n8n/agents';
+import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
 import type { AgentSkill } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -49,15 +43,13 @@ const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
 - Resolved or superseded:`;
 
 const DEFAULT_WORKING_MEMORY_INSTRUCTION = [
-	'You have thread-scoped working memory for this conversation.',
-	`When the user shares durable facts, preferences, decisions, goals, or unresolved follow-ups that will help later turns in this same thread, call ${UPDATE_WORKING_MEMORY_TOOL_NAME} with the complete updated memory.`,
-	'Treat working memory as a current-state snapshot, not an append-only log.',
-	'Keep it concise, factual, and current.',
-	'When facts, preferences, priorities, goals, decisions, or statuses change, replace outdated active items with the latest state.',
-	'Preserve distinctions the user makes between primary, secondary, active, resolved, and superseded items.',
-	'Move resolved or superseded items to that section only when they will help later; otherwise remove them.',
-	'Preserve useful existing notes, remove stale or contradicted notes, and do not store secrets or one-off details.',
-	`Only call ${UPDATE_WORKING_MEMORY_TOOL_NAME} when the memory should change.`,
+	'Thread working memory is maintained automatically after turns by an out-of-band observer.',
+	'Thread working memory applies only to this same session/thread.',
+	'Do not claim it is available in a different session, new thread, or cross-thread profile unless the product explicitly provides that context.',
+	'Use it silently as private read-only context for this session.',
+	'Treat working memory as internal context; do not reveal, quote, append, or reproduce the raw working-memory document in user-visible replies.',
+	'If the user asks what you remember, answer conversationally from relevant memory instead of dumping the document.',
+	'Do not try to edit, summarize, refresh, or maintain working memory directly.',
 ].join(' ');
 
 export interface BuildFromJsonOptions {
@@ -137,9 +129,6 @@ export async function buildFromJson(
 		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
-		}
-		if (config.config.requireToolApproval) {
-			agent.requireToolApproval();
 		}
 	}
 
