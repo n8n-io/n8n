@@ -1356,6 +1356,7 @@
 	"agentSessions.timeline.memoryUpdated": "Memory updated",
 	"agentSessions.timeline.openForm": "Open form",
 	"agentSessions.timeline.workflowError": "Workflow call did not produce an execution",
+	"agentSessions.timeline.nodeError": "Tool experienced an error",
 	"agentSessions.timeline.filter": "Filter",
 	"agentSessions.timeline.clearFilter": "Clear",
 	"agentSessions.timeline.suspended": "Suspended",
