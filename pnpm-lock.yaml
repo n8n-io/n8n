@@ -261,6 +261,9 @@ catalogs:
     vite:
       specifier: ^8.0.2
       version: 8.0.2
+    vite-plugin-dts:
+      specifier: ^4.5.4
+      version: 4.5.4
     vitest:
       specifier: ^4.1.1
       version: 4.1.1
@@ -1453,7 +1456,7 @@ importers:
   packages/@n8n/eslint-config:
     dependencies:
       eslint:
-        specifier: '>= 9'
+        specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
     devDependencies:
       '@eslint/js':
@@ -1526,7 +1529,7 @@ importers:
         specifier: ^8.35.0
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       eslint:
-        specifier: '>= 9'
+        specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
       fastest-levenshtein:
         specifier: 'catalog:'
@@ -2282,7 +2285,7 @@ importers:
         specifier: 3.25.67
         version: 3.25.67
       zod-to-json-schema:
-        specifier: 3.23.3
+        specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
     devDependencies:
       '@n8n/eslint-plugin-community-nodes':
@@ -3357,8 +3360,8 @@ importers:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-plugin-dts:
-        specifier: ^4.5.3
-        version: 4.5.3(@types/node@20.19.21)(rollup@4.52.4)(typescript@6.0.2)(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        specifier: 'catalog:'
+        version: 4.5.4(@types/node@20.19.21)(rollup@4.52.4)(typescript@6.0.2)(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -20803,8 +20806,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vite-plugin-dts@4.5.3:
-    resolution: {integrity: sha512-P64VnD00dR+e8S26ESoFELqc17+w7pKkwlBpgXteOljFyT0zDwD8hH4zXp49M/kciy//7ZbVXIwQCekBJjfWzA==}
+  vite-plugin-dts@4.5.4:
+    resolution: {integrity: sha512-d4sOM8M/8z7vRXHHq/ebbblfaxENjogAAekcfcDCCwAyvGqnPrc7f4NZbvItS+g4WTgerW0xDwSz5qz11JT3vg==}
     peerDependencies:
       typescript: 6.0.2
       vite: '*'
@@ -41731,7 +41734,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plugin-dts@4.5.3(@types/node@20.19.21)(rollup@4.52.4)(typescript@6.0.2)(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
+  vite-plugin-dts@4.5.4(@types/node@20.19.21)(rollup@4.52.4)(typescript@6.0.2)(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
       '@microsoft/api-extractor': 7.52.1(@types/node@20.19.21)
       '@rollup/pluginutils': 5.3.0(rollup@4.52.4)
