@@ -123,13 +123,11 @@ export interface InstanceAiHarness {
 	// Reactive state from composables (for assertions)
 	activeTabId: Ref<string | undefined>;
 	activeWorkflowId: ReturnType<typeof useCanvasPreview>['activeWorkflowId'];
-	activeExecutionId: Ref<string | null>;
 	activeDataTableId: ReturnType<typeof useCanvasPreview>['activeDataTableId'];
 	isPreviewVisible: ReturnType<typeof useCanvasPreview>['isPreviewVisible'];
 	allArtifactTabs: ReturnType<typeof useCanvasPreview>['allArtifactTabs'];
 	workflowRefreshKey: Ref<number>;
 	dataTableRefreshKey: Ref<number>;
-	userSentMessage: Ref<boolean>;
 
 	// Relay tracking
 	relayedEvents: PushMessage[];
@@ -140,9 +138,9 @@ export interface InstanceAiHarness {
 	removeResource: (key: string) => void;
 	simulatePushEvent: (event: PushMessage) => void;
 	simulateIframeReady: () => Promise<void>;
+	simulateWorkflowLoaded: (wfId: string) => Promise<void>;
 	selectTab: (tabId: string) => void;
 	closePreview: () => void;
-	markUserSentMessage: () => void;
 	switchThread: (threadId: string) => Promise<void>;
 	addMessage: (msg: InstanceAiMessage) => void;
 	addBuildResult: (workflowId: string, toolCallId?: string) => void;
@@ -163,21 +161,17 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Mock store ---
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
+	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
-
-	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	const store = reactive({
 		messages,
 		isStreaming,
+		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
 		currentThreadId: 'thread-1',
-		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
-		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
-			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
-		},
 	});
 
 	// --- Mock route ---
@@ -197,9 +191,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const executionTracking = useExecutionPushEvents();
 
 	const preview = useCanvasPreview({
-		store: store as unknown as ReturnType<typeof useInstanceAiStore>,
-		route: route as Parameters<typeof useCanvasPreview>[0]['route'],
-		workflowExecutions: executionTracking.workflowExecutions,
+		thread: store as unknown as ReturnType<typeof useInstanceAiStore>,
+		threadId: () => route.params.threadId,
 	});
 
 	const relayedEvents: PushMessage[] = [];
@@ -252,6 +245,11 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 
 	async function simulateIframeReady() {
 		eventRelay.handleIframeReady();
+		await nextTick();
+	}
+
+	async function simulateWorkflowLoaded(wfId: string) {
+		eventRelay.handleWorkflowLoaded(wfId);
 		await nextTick();
 	}
 
@@ -375,13 +373,11 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		// State
 		activeTabId: preview.activeTabId,
 		activeWorkflowId: preview.activeWorkflowId,
-		activeExecutionId: preview.activeExecutionId,
 		activeDataTableId: preview.activeDataTableId,
 		isPreviewVisible: preview.isPreviewVisible,
 		allArtifactTabs: preview.allArtifactTabs,
 		workflowRefreshKey: preview.workflowRefreshKey,
 		dataTableRefreshKey: preview.dataTableRefreshKey,
-		userSentMessage: preview.userSentMessage,
 		relayedEvents,
 
 		// Actions
@@ -390,9 +386,9 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		removeResource,
 		simulatePushEvent,
 		simulateIframeReady,
+		simulateWorkflowLoaded,
 		selectTab: preview.selectTab,
 		closePreview: preview.closePreview,
-		markUserSentMessage: preview.markUserSentMessage,
 		switchThread,
 		addMessage,
 		addBuildResult,

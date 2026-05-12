@@ -5,7 +5,7 @@ import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	getParentNodes,
 	generateCodeForAiTransform,
@@ -31,7 +31,7 @@ export type Props = {
 };
 const props = defineProps<Props>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const activeNode = computed(() => ndvStore.activeNode);
 
 const i18n = useI18n();
@@ -41,7 +41,7 @@ const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
 const textareaRowsData = ref<TextareaRowData | null>(null);
 
-const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
+const hasExecutionData = computed(() => (ndvStore.ndvInputData || []).length > 0);
 const hasInputField = computed(() => props.parameter.typeOptions?.buttonConfig?.hasInputField);
 const inputFieldMaxLength = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.inputFieldMaxLength,

@@ -26,6 +26,12 @@ const browserSnapshotSchema = z
 		scope: elementTargetSchema
 			.optional()
 			.describe('Optionally scope to a subtree rooted at this element'),
+		interactive: z
+			.boolean()
+			.optional()
+			.describe(
+				'When true, annotate interactive elements with @eN refs for use in click/type/etc. tools. Default: true.',
+			),
 		pageId: pageIdField,
 	})
 	.describe('Get ref-annotated accessibility tree of the page');
@@ -41,7 +47,7 @@ function browserSnapshot(connection: BrowserConnection): ToolDefinition {
 		'Use this tool as your primary way to observe the page. Returns a ref-annotated accessibility tree — a compact text representation of all visible elements. Each interactive element gets a numeric ref for use in subsequent tool calls (browser_click, browser_type, etc.). Snapshots are small and fast. Prefer this over browser_screenshot unless you specifically need visual/layout information.',
 		browserSnapshotSchema,
 		async (state, input, pageId) => {
-			const result = await state.adapter.snapshot(pageId, input.scope);
+			const result = await state.adapter.snapshot(pageId, input.scope, input.interactive);
 			return formatCallToolResult({ snapshot: result.tree });
 		},
 		browserSnapshotOutputSchema,

@@ -1,4 +1,4 @@
-import { ref, nextTick } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 import { createTestNode } from '@/__tests__/mocks';
@@ -47,6 +47,7 @@ const mockWorkflowDocumentStore: Writable<Partial<ReturnType<typeof useWorkflowD
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
 	connectionsBySourceNode: {},
 	connectionsByDestinationNode: {},
+	workflowTriggerNodes: [],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -54,6 +55,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	return {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+		injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 	};
 });

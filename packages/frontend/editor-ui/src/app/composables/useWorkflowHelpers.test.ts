@@ -17,7 +17,9 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 	mockLoadedNodeType,
+	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
@@ -1066,6 +1068,123 @@ describe('useWorkflowHelpers', () => {
 
 			expect(result.data).toEqual({});
 			expect(result.source).toBeNull();
+		});
+	});
+
+	describe('getNodeTypes() - getByNameAndVersion', () => {
+		let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+
+		beforeEach(() => {
+			nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getAllNodeTypes = vi.fn().mockImplementation(() => ({
+				nodeTypes: {},
+				init: async () => {},
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const nodeTypeDescription =
+						nodeTypesStore.getNodeType(nodeType, version) ??
+						nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
+						null;
+					if (nodeTypeDescription === null) {
+						return undefined;
+					}
+					return { description: nodeTypeDescription };
+				},
+			}));
+		});
+
+		it('should return node type for core nodes', () => {
+			const mockNodeType = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType);
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.httpRequest', 1);
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-base.httpRequest');
+		});
+
+		it('should fallback to community node type when core node not found', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-test.test',
+				displayName: 'Test Node',
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+				name: 'n8n-nodes-test.test',
+				packageName: 'n8n-nodes-test',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 0,
+				numberOfDownloads: 0,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Test Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: false,
+			});
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-test.test');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-test.test');
+		});
+
+		it('should return undefined when node type is not found', () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue(undefined);
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('non-existent-node');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should use community node description when available and core node is null', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.customNode',
+				displayName: 'Custom Community Node',
+				inputs: ['main'],
+				outputs: ['main'],
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+				name: 'n8n-nodes-community.customNode',
+				packageName: 'n8n-nodes-community',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 10,
+				numberOfDownloads: 100,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Custom Community Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: true,
+			});
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.customNode');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-community.customNode');
+			expect(result?.description.displayName).toBe('Custom Community Node');
 		});
 	});
 });

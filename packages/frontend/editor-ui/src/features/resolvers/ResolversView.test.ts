@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import ResolversView from './ResolversView.vue';
@@ -11,6 +11,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import * as restApiClient from '@n8n/rest-api-client';
 import type { CredentialResolver, CredentialResolverType } from '@n8n/api-types';
+
+const clickActionToggle = async (actionToggle: Element) => {
+	await userEvent.click(within(actionToggle as HTMLElement).getByRole('button'));
+};
 
 const mockConfirm = vi.fn();
 const mockShowError = vi.fn();
@@ -240,7 +244,7 @@ describe('ResolversView', () => {
 			// Find and click the action toggle button
 			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
 			expect(actionToggle).toBeInTheDocument();
-			await userEvent.click(actionToggle!);
+			await clickActionToggle(actionToggle!);
 
 			// Wait for dropdown to appear and click delete
 			await waitFor(() => {
@@ -265,7 +269,7 @@ describe('ResolversView', () => {
 
 			// Find and click the action toggle button
 			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
-			await userEvent.click(actionToggle!);
+			await clickActionToggle(actionToggle!);
 
 			await waitFor(() => {
 				expect(getByText('Delete')).toBeInTheDocument();
@@ -297,7 +301,7 @@ describe('ResolversView', () => {
 
 			// Find and click the action toggle button
 			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
-			await userEvent.click(actionToggle!);
+			await clickActionToggle(actionToggle!);
 
 			await waitFor(() => {
 				expect(getByText('Delete')).toBeInTheDocument();
@@ -327,7 +331,7 @@ describe('ResolversView', () => {
 
 			// Find and click the action toggle button
 			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
-			await userEvent.click(actionToggle!);
+			await clickActionToggle(actionToggle!);
 
 			await waitFor(() => {
 				expect(getByText('Delete')).toBeInTheDocument();

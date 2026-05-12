@@ -1,8 +1,8 @@
 import { createTool } from '@mastra/core/tools';
-import { generateWorkflowCode, layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
+import { buildCredentialSnapshot, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
@@ -149,9 +149,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			// Apply Dagre layout to produce positions matching the FE's tidy-up.
-			// Temporary: remove once the SDK is published with toJSON({ tidyUp: true }).
-			const json = layoutWorkflowJSON(result.workflow);
+			const json = result.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {
@@ -165,8 +163,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
-			const credentialMap = await buildCredentialMap(context.credentialService);
-			await resolveCredentials(json, workflowId, context, credentialMap);
+			const credentialSnapshot = await buildCredentialSnapshot(context.credentialService);
+			await resolveCredentials(json, workflowId, context, credentialSnapshot.list);
 
 			// Strip credential entries that are no longer valid for the current
 			// parameters. Resolution above (and the LLM itself) can re-emit stale

@@ -42,6 +42,7 @@ const DEFAULT_IMAGES = {
 	mysql: 'mysql:9.6.0',
 	localstack: 'localstack/localstack:4.13.1',
 	postgresExporter: 'prometheuscommunity/postgres-exporter:v0.17.1',
+	cadvisor: 'gcr.io/cadvisor/cadvisor:v0.49.1',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -119,4 +120,5 @@ export const TEST_CONTAINER_IMAGES = {
 	ngrok: getImage('ngrok'),
 	localstack: getImage('localstack'),
 	postgresExporter: getImage('postgresExporter'),
+	cadvisor: getImage('cadvisor'),
 } as const;

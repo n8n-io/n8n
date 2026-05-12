@@ -82,6 +82,13 @@ const showPreview = computed(() => {
 	);
 });
 
+let lastSentWorkflow: typeof props.workflow | undefined;
+let lastSentExecutionId: string | undefined;
+
+const sendResetWorkflow = () => {
+	iframeRef.value?.contentWindow?.postMessage?.(JSON.stringify({ command: 'resetWorkflow' }), '*');
+};
+
 const loadWorkflow = () => {
 	try {
 		if (!props.workflow) {
@@ -90,6 +97,10 @@ const loadWorkflow = () => {
 		if (!props.workflow.nodes || !Array.isArray(props.workflow.nodes)) {
 			throw new Error(i18n.baseText('workflowPreview.showError.arrayEmpty'));
 		}
+		if (props.workflow === lastSentWorkflow) {
+			return;
+		}
+		lastSentWorkflow = props.workflow;
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openWorkflow',
@@ -114,6 +125,10 @@ const loadExecution = () => {
 		if (!props.executionId) {
 			throw new Error(i18n.baseText('workflowPreview.showError.missingExecution'));
 		}
+		if (props.executionId === lastSentExecutionId) {
+			return;
+		}
+		lastSentExecutionId = props.executionId;
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openExecution',
@@ -228,6 +243,12 @@ watch(
 watch(
 	() => props.mode,
 	() => {
+		// Mode change swaps what the iframe is rendering, so neither dedup
+		// cache is accurate anymore — clear both so the load* call below
+		// fires its postMessage even when the workflow / executionId ref
+		// hasn't changed.
+		lastSentWorkflow = undefined;
+		lastSentExecutionId = undefined;
 		if (showPreview.value) {
 			if (props.mode === 'workflow') {
 				loadWorkflow();
@@ -238,10 +259,14 @@ watch(
 	},
 );
 
+// Gate on `ready.value`: if we send before the iframe signals n8nReady the
+// postMessage is silently lost but `lastSent*` gets updated, and the dedup then
+// blocks the showPreview-triggered retry. The showPreview watcher above
+// handles the not-yet-ready case once n8nReady arrives.
 watch(
 	() => props.executionId,
 	() => {
-		if (props.mode === 'execution' && props.executionId) {
+		if (props.mode === 'execution' && props.executionId && ready.value) {
 			loadExecution();
 		}
 	},
@@ -249,14 +274,23 @@ watch(
 
 watch(
 	() => props.workflow,
-	() => {
+	(newWorkflow, oldWorkflow) => {
+		if (!ready.value) return;
+		if (oldWorkflow && oldWorkflow !== newWorkflow) {
+			sendResetWorkflow();
+		}
 		if (props.mode === 'workflow' && props.workflow) {
 			loadWorkflow();
 		}
 	},
 );
 
-defineExpose({ iframeRef, reloadExecution: loadExecution });
+const reloadExecution = () => {
+	lastSentExecutionId = undefined;
+	loadExecution();
+};
+
+defineExpose({ iframeRef, reloadExecution });
 </script>
 
 <template>

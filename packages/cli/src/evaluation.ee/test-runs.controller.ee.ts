@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
+import { type Scope } from '@n8n/permissions';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -45,10 +46,12 @@ export class TestRunsController {
 		}
 	}
 
-	private async assertUserHasAccessToWorkflow(workflowId: string, user: User) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-		]);
+	private async assertUserHasAccessToWorkflow(
+		workflowId: string,
+		user: User,
+		scopes: Scope[] = ['workflow:read'],
+	) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, scopes);
 
 		if (!workflow) {
 			throw new NotFoundError('Workflow not found');
@@ -56,13 +59,26 @@ export class TestRunsController {
 	}
 
 	/**
-	 * Get the test run (or just check that it exists and the user has access to it)
+	 * Get the test run (or just check that it exists and the user has access to it).
+	 *
+	 * The lookup is scoped to the route's `workflowId` so a user with access
+	 * to one workflow cannot reach another workflow's run by guessing IDs —
+	 * absent or cross-workflow runs return the same 404.
+	 *
+	 * `scopes` defaults to `workflow:read`. Mutating endpoints should pass a
+	 * stronger scope (e.g. `workflow:execute`) so a read-only user cannot
+	 * trigger state changes through this controller.
 	 */
-	private async getTestRun(testRunId: string, workflowId: string, user: User) {
-		await this.assertUserHasAccessToWorkflow(workflowId, user);
+	private async getTestRun(
+		testRunId: string,
+		workflowId: string,
+		user: User,
+		scopes: Scope[] = ['workflow:read'],
+	) {
+		await this.assertUserHasAccessToWorkflow(workflowId, user, scopes);
 
 		const testRun = await this.testRunRepository.findOne({
-			where: { id: testRunId },
+			where: { id: testRunId, workflow: { id: workflowId } },
 		});
 
 		if (!testRun) throw new NotFoundError('Test run not found');
@@ -132,6 +148,34 @@ export class TestRunsController {
 		res.status(202).json({ success: true });
 	}
 
+	@Post('/:workflowId/test-runs/:id/test-cases/:caseId/cancel')
+	async cancelCase(req: TestRunsRequest.CancelCase) {
+		const { caseId } = req.params;
+
+		// Confirm the run exists + access first; this also surfaces 404 for an
+		// invalid runId before we touch the case row. Requires
+		// `workflow:execute` (not just `workflow:read`) because cancelling a
+		// pending case mutates execution state — a read-only user must not be
+		// able to reach this path. Cross-workflow / no-access lookups still
+		// return 404 (same response shape as missing runs) so existence isn't
+		// leaked.
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
+
+		const cancelled = await this.testCaseExecutionRepository.cancelIfNew(req.params.id, caseId);
+		if (!cancelled) {
+			throw new ConflictError(
+				`Test case "${caseId}" cannot be cancelled — it is not in a pending state`,
+			);
+		}
+
+		this.telemetry.track('User cancelled a test case', {
+			run_id: req.params.id,
+			case_id: caseId,
+		});
+
+		return { success: true };
+	}
+
 	@Post('/:workflowId/test-runs/new')
 	async create(
 		req: TestRunsRequest.Create,
@@ -152,9 +196,19 @@ export class TestRunsController {
 		const requestedConcurrency = payload.concurrency ?? 1;
 		const concurrency = flagEnabledForUser ? requestedConcurrency : 1;
 
-		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, workflowId, concurrency, flagEnabledForUser);
+		// Await the synchronous setup (workflow find + test-run row insert) so
+		// the response carries the new `testRunId` and the FE can route to the
+		// detail view without polling. The actual case-by-case execution is
+		// detached inside `startTestRun` and exposed as `finished`, which we
+		// intentionally discard here — fire-and-forget for the long-running
+		// part is preserved.
+		const { testRun } = await this.testRunnerService.startTestRun(
+			req.user,
+			workflowId,
+			concurrency,
+			flagEnabledForUser,
+		);
 
-		res.status(202).json({ success: true });
+		res.status(202).json({ success: true, testRunId: testRun.id });
 	}
 }

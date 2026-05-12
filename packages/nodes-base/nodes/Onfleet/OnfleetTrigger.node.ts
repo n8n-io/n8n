@@ -11,6 +11,7 @@ import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workf
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 import { onfleetApiRequest } from './GenericFunctions';
+import { verifySignature } from './OnfleetTriggerHelpers';
 import { webhookMapping } from './WebhookMapping';
 
 export class OnfleetTrigger implements INodeType {
@@ -139,6 +140,13 @@ export class OnfleetTrigger implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			const res = this.getResponseObject();
 			res.status(200).type('text/plain').send(req.query.check);
+			return { noWebhookResponse: true };
+		}
+
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 
