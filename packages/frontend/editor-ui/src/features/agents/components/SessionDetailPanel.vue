@@ -325,9 +325,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
 							:input="item.toolInput"
 							:output="item.toolOutput"
-							:node-type="item.nodeType"
-							:node-type-version="item.nodeTypeVersion"
 							:node-parameters="item.nodeParameters"
+							:success="item.toolSuccess"
 						/>
 					</template>
 
