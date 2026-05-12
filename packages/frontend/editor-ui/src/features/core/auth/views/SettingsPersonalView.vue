@@ -567,7 +567,7 @@ onBeforeUnmount(() => {
 						</N8nText>
 					</div>
 					<div
-						:class="[$style.methodCard, !hasPasskey && $style.methodCardMuted]"
+						:class="[$style.methodCard]"
 						:data-test-id="`passkey-card-${hasPasskey ? 'enabled' : 'disabled'}`"
 					>
 						<div :class="[$style.activeMethodIcon, $style.tone_passkey]">
@@ -624,7 +624,10 @@ onBeforeUnmount(() => {
 						<div
 							v-for="option in twoFactorMethods"
 							:key="option.method"
-							:class="[$style.methodCard, !isMethodActive(option.method) && $style.methodCardMuted]"
+							:class="[
+								$style.methodCard,
+								has2fa && !isMethodActive(option.method) && $style.methodCardMuted,
+							]"
 							:data-test-id="`mfa-method-${option.method}`"
 						>
 							<div :class="[$style.activeMethodIcon, $style[`tone_${option.tone}`]]">
@@ -792,13 +795,14 @@ onBeforeUnmount(() => {
 	display: flex;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
+	background: var(--color--background--light-3);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--md);
 	align-items: center;
 }
 
 .methodCardMuted {
-	opacity: 0.65;
+	opacity: 0.85;
 }
 
 .methodCardContent {
