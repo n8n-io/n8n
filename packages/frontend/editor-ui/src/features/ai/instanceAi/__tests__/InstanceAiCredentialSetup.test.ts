@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
@@ -74,11 +74,13 @@ function makeCredentialRequestsWithExisting(count: number): InstanceAiCredential
 
 describe('InstanceAiCredentialSetup', () => {
 	let store: ReturnType<typeof useInstanceAiStore>;
+	let thread: ThreadRuntime;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiStore();
+		thread = store.getOrCreateRuntime('thread-1');
 
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
@@ -232,8 +234,8 @@ describe('InstanceAiCredentialSetup', () => {
 	describe('submit actions', () => {
 		it('calls confirmAction with credential map on continue', async () => {
 			const requests = makeCredentialRequestsWithExisting(2);
-			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -263,8 +265,8 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('calls confirmAction with false on defer', async () => {
 			const requests = makeCredentialRequests(1);
-			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 
 			const { getByText } = renderComponent({
 				props: {
@@ -283,7 +285,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('auto-continues when single credential is selected', async () => {
 			const requests = makeCredentialRequestsWithExisting(1);
-			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId, getByText } = renderComponent({
 				props: {
@@ -305,7 +307,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('shows deferred state after skip', async () => {
 			const requests = makeCredentialRequests(1);
-			vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByText } = renderComponent({
 				props: {
@@ -322,8 +324,8 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('rolls back UI state when defer API call fails', async () => {
 			const requests = makeCredentialRequests(1);
-			vi.spyOn(store, 'confirmAction').mockResolvedValue(false);
-			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 
 			const { getByText } = renderComponent({
 				props: {
@@ -359,7 +361,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('shows finalize applied state after submit', async () => {
 			const requests = makeCredentialRequestsWithExisting(1);
-			vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId, getByText } = renderComponent({
 				props: {

@@ -54,7 +54,7 @@ const props = defineProps<{
 }>();
 
 const store = useInstanceAiStore();
-const thread = provideThread(store);
+const thread = provideThread(props.threadId);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -83,7 +83,7 @@ const executionTracking = useExecutionPushEvents();
 // figuring out which thread to show. Rendering only on a defined value avoids
 // the "New conversation" → real title flash when resuming a recent thread.
 const currentThreadTitle = computed<string | undefined>(() => {
-	const threadSummary = store.threads.find((t) => t.id === store.currentThreadId);
+	const threadSummary = store.threads.find((t) => t.id === props.threadId);
 	if (threadSummary?.title && threadSummary.title !== NEW_CONVERSATION_TITLE) {
 		return threadSummary.title;
 	}
@@ -338,18 +338,6 @@ watch(
 	},
 );
 
-// Reset scroll state when switching threads so new content auto-scrolls
-watch(
-	() => store.currentThreadId,
-	() => {
-		userScrolledUp.value = false;
-		suppressPanelTransitionsUntilStableRender();
-		void nextTick(() => {
-			chatInputRef.value?.focus();
-		});
-	},
-);
-
 function scrollToBottom(smooth = false) {
 	const container = scrollContainerRef.value;
 	if (container) {
@@ -390,6 +378,19 @@ watch(chatInputRef, (el) => {
 	}
 });
 
+// Reset scroll state when switching threads so new content auto-scrolls.
+watch(
+	() => props.threadId,
+	(threadId, previousThreadId) => {
+		if (threadId !== previousThreadId) {
+			userScrolledUp.value = false;
+			void nextTick(() => {
+				chatInputRef.value?.focus();
+			});
+		}
+	},
+);
+
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
 const inputAreaHeight = ref(120);
@@ -411,39 +412,19 @@ watch(
 	{ immediate: true },
 );
 
-function reconnectThreadIfHydrationApplied(threadId: string): void {
-	void thread.loadHistoricalMessages(threadId).then((hydrationStatus) => {
+function reconnectThreadAfterHydration(): void {
+	void thread.loadHistoricalMessages().then((hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void thread.loadThreadStatus(threadId);
-		thread.connectSSE(threadId);
+		void thread.loadThreadStatus();
+		thread.connectSSE();
 	});
 }
 
-// Sync the route's :threadId into the store. Three cases:
-// 1. We're already on this thread (e.g. arriving from EmptyView after the
-//    first sendMessage updated the URL): keep the in-flight stream and only
-//    reconnect SSE if it was torn down between mounts.
-// 2. We know this thread (loaded in sidebar): switch.
-// 3. We don't know it yet — wait for loadThreads to populate, then validate.
+// Validate the route's :threadId against the loaded thread list, then connect
+// this route-scoped runtime. Route changes remount this component, so no
+// store-level "active thread" state is needed here.
 async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
-	if (requestedThreadId === store.currentThreadId) {
-		if (thread.sseState === 'disconnected') {
-			reconnectThreadIfHydrationApplied(requestedThreadId);
-		}
-		return;
-	}
-
-	// Different thread — clear execution tracking from previous one.
-	executionTracking.clearAll();
-
-	if (store.threads.some((t) => t.id === requestedThreadId)) {
-		store.switchThread(requestedThreadId);
-		return;
-	}
-
-	// Threads not loaded yet (or this id is unknown) — wait for the parent
-	// layout's loadThreads to complete, then re-validate.
 	if (!store.threads.length) {
 		await store.loadThreads();
 	}
@@ -453,21 +434,19 @@ async function syncRouteToStore() {
 		void router.replace({ name: INSTANCE_AI_VIEW });
 		return;
 	}
-	store.switchThread(requestedThreadId);
+	if (thread.sseState === 'disconnected') {
+		reconnectThreadAfterHydration();
+	}
 }
-
-watch(
-	() => props.threadId,
-	() => void syncRouteToStore(),
-	{ immediate: true },
-);
 
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
+	void syncRouteToStore();
 	void nextTick(() => chatInputRef.value?.focus());
 });
 
 onUnmounted(() => {
+	thread.closeSSE();
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
@@ -624,9 +603,9 @@ function handleStop() {
 							<InstanceAiInput
 								ref="chatInputRef"
 								:is-streaming="thread.isStreaming"
-								:is-sending-message="thread.isSendingMessage"
+								:is-submitting="thread.isSendingMessage"
 								:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-								:current-thread-id="thread.currentThreadId"
+								:current-thread-id="thread.id"
 								:amend-context="thread.amendContext"
 								:contextual-suggestion="thread.contextualSuggestion"
 								:research-mode="store.researchMode"

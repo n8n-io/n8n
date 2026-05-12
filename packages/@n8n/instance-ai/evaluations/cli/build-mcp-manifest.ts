@@ -273,20 +273,8 @@ function sanitizeServerName(name: string): string {
 	return name.replace(/[^a-zA-Z0-9-]/g, '_');
 }
 
-const INSTANCE_MCP_TOOLS = [
-	'get_sdk_reference',
-	'search_nodes',
-	'get_suggested_nodes',
-	'get_node_types',
-	'validate_workflow',
-	'create_workflow_from_code',
-	'archive_workflow',
-	'update_workflow',
-] as const;
-
 function buildAllowedTools(serverName: string): readonly string[] {
-	const prefix = `mcp__${sanitizeServerName(serverName)}__`;
-	return INSTANCE_MCP_TOOLS.map((t) => `${prefix}${t}`);
+	return [`mcp__${sanitizeServerName(serverName)}`];
 }
 
 // ---------------------------------------------------------------------------
