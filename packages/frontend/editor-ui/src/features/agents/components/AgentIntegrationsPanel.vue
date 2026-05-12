@@ -120,6 +120,7 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+
 // Bound via a callback ref because the form is rendered inside a v-for and
 // Vue would otherwise collect it into an array; only the telegram card matches
 // its v-if, so a single ref to that one instance is what we want.
