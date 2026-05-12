@@ -1,0 +1,1513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>n8n hub — live walkthrough</title>
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-2: #11141c;
+    --bg-3: #161a23;
+    --surface: #181c25;
+    --surface-2: #1e2330;
+    --surface-3: #252b3a;
+    --border: #262d3d;
+    --border-soft: #1c2230;
+    --text: #e8eaef;
+    --text-dim: #9098ad;
+    --text-faint: #5e667c;
+    --brand: #ff6d5a;
+    --brand-2: #ff9072;
+    --green: #5dd49e;
+    --yellow: #f5c84b;
+    --red: #ff7068;
+    --blue: #6ba8ff;
+    --purple: #b07cff;
+    --cyan: #5be0e0;
+    --mono: ui-monospace, "SF Mono", "Menlo", "JetBrains Mono", "Fira Code", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background:
+      radial-gradient(900px 500px at 90% -5%, rgba(255,109,90,0.05), transparent 60%),
+      radial-gradient(700px 400px at -5% 30%, rgba(107,168,255,0.04), transparent 60%),
+      var(--bg);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 48px 28px 96px; }
+
+  /* Hero */
+  header.top { margin-bottom: 56px; }
+  .kicker { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); display: flex; align-items: center; gap: 10px; }
+  .kicker .dot { width: 7px; height: 7px; border-radius: 2px; background: var(--brand); box-shadow: 0 0 14px var(--brand); }
+  h1 { font-size: 44px; line-height: 1.08; margin: 14px 0 12px; letter-spacing: -0.02em; font-weight: 650; max-width: 820px; }
+  h1 .accent { background: linear-gradient(135deg, var(--brand), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 17px; color: var(--text-dim); max-width: 720px; margin: 0; }
+  .meta-line { color: var(--text-faint); font-size: 13px; margin-top: 18px; }
+
+  /* Sections */
+  section { margin: 56px 0; }
+  h2 { font-size: 24px; margin: 0 0 8px; font-weight: 650; letter-spacing: -0.01em; }
+  h2 .num { color: var(--text-faint); font-weight: 400; margin-right: 12px; font-size: 19px; }
+  h3 { font-size: 16px; margin: 28px 0 10px; font-weight: 600; }
+  h4 { font-size: 13px; margin: 18px 0 8px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  p { margin: 0 0 14px; color: var(--text); }
+  p.dim { color: var(--text-dim); }
+  ul { margin: 0 0 14px; padding-left: 20px; color: var(--text); }
+  ul li { margin-bottom: 6px; }
+  ul li::marker { color: var(--text-faint); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 56px 0; }
+  code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; color: var(--text); }
+  pre { font-family: var(--mono); font-size: 12.5px; background: var(--bg-2); border: 1px solid var(--border-soft); border-radius: 10px; padding: 14px 16px; overflow-x: auto; line-height: 1.55; margin: 0 0 16px; }
+
+  /* --- CURRENT CAPABILITIES --- */
+  .caps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 18px 0 8px; }
+  .cap-group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .cap-group .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .cap-group h4 { margin: 0; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--text); font-weight: 600; }
+  .cap-group .cnt { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+  .cap-group ul { margin: 0; padding: 0; list-style: none; }
+  .cap-group li { font-family: var(--mono); font-size: 12px; padding: 4px 0; color: var(--text-dim); border-top: 1px solid var(--border-soft); display: flex; justify-content: space-between; gap: 12px; }
+  .cap-group li:first-child { border-top: none; padding-top: 0; }
+  .cap-group li .nm { color: var(--text); }
+  .cap-group li .ds { color: var(--text-faint); font-size: 11px; flex-shrink: 0; max-width: 60%; text-align: right; font-family: -apple-system, system-ui, sans-serif; }
+  .cap-summary { background: linear-gradient(180deg, rgba(255,109,90,0.06), rgba(255,109,90,0.02)); border: 1px solid rgba(255,109,90,0.18); border-radius: 10px; padding: 16px 18px; margin: 14px 0; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+  .cap-summary .stat { display: flex; flex-direction: column; }
+  .cap-summary .stat .v { font-size: 22px; font-weight: 700; color: var(--brand-2); font-family: var(--mono); letter-spacing: -0.02em; }
+  .cap-summary .stat .l { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* --- LIVE DEMO --- */
+  .demo {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin: 24px 0;
+    box-shadow: 0 28px 60px -28px rgba(0,0,0,0.6);
+  }
+  .demo-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px;
+    background: linear-gradient(180deg, var(--bg-3), var(--surface));
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap; gap: 14px;
+  }
+  .demo-header .ttl { font-weight: 600; font-size: 15px; }
+  .demo-header .ttl small { display: block; color: var(--text-faint); font-weight: 400; font-size: 12px; margin-top: 2px; }
+  .surface-tabs { display: flex; gap: 4px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; }
+  .surface-tabs button {
+    background: transparent; border: 0; color: var(--text-dim);
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 12.5px; font-weight: 500; font-family: inherit;
+    transition: all 0.15s ease;
+  }
+  .surface-tabs button:hover { color: var(--text); }
+  .surface-tabs button.active { background: var(--surface-3); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+
+  .demo-controls {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap; gap: 14px;
+  }
+  .step-info { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
+  .step-info .step-num {
+    font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+    background: var(--surface); padding: 4px 9px; border-radius: 6px;
+    border: 1px solid var(--border-soft); white-space: nowrap;
+  }
+  .step-info .step-label { font-size: 13.5px; color: var(--text); font-weight: 500; }
+  .step-buttons { display: flex; gap: 6px; }
+  .step-buttons button {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 12px; border-radius: 7px; cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.12s ease;
+  }
+  .step-buttons button:hover:not(:disabled) { background: var(--surface-2); border-color: var(--text-faint); }
+  .step-buttons button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .step-buttons button.primary { background: var(--brand); border-color: var(--brand); color: #1a0a08; }
+  .step-buttons button.primary:hover:not(:disabled) { background: var(--brand-2); }
+
+  .progress-track { height: 3px; background: var(--bg-2); }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    width: 0; transition: width 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  .panes {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1fr;
+    min-height: 540px;
+    background: var(--bg-2);
+  }
+  .pane {
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+    position: relative;
+  }
+  .pane:last-child { border-right: none; }
+  .pane-head {
+    padding: 11px 16px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-faint); border-bottom: 1px solid var(--border-soft);
+    background: var(--bg-3); display: flex; align-items: center; gap: 8px;
+    font-weight: 600;
+  }
+  .pane-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+  .pane-head .dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .pane-body { flex: 1; overflow-y: auto; padding: 16px; scroll-behavior: smooth; }
+  .pane-body::-webkit-scrollbar { width: 8px; }
+  .pane-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Pane: agent / chat */
+  .chat-msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 10px; line-height: 1.55; font-size: 13.5px; animation: fadeUp 0.4s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .chat-user { background: rgba(107,168,255,0.06); border: 1px solid rgba(107,168,255,0.15); }
+  .chat-user .who { font-size: 10px; color: var(--blue); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; }
+  .chat-claude { background: var(--bg-3); border: 1px solid var(--border-soft); }
+  .chat-claude .who { font-size: 10px; color: var(--brand-2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; }
+  .chat-claude .who .typing { display: inline-block; margin-left: 8px; }
+  .chat-claude .who .typing span { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--brand-2); margin: 0 1px; animation: typing 1.2s infinite; }
+  .chat-claude .who .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .chat-claude .who .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes typing { 0%,60%,100% { opacity: 0.3; } 30% { opacity: 1; } }
+  .chat-tool {
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--bg); border-left: 2px solid var(--brand); border-radius: 0 6px 6px 0;
+    padding: 7px 11px; margin: 6px 0; color: var(--text-dim);
+    line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+  }
+
+  /* Pane: code editor (SDK) */
+  .editor { font-family: var(--mono); font-size: 12.5px; line-height: 1.65; padding: 8px 0; }
+  .editor .ln { display: flex; padding: 0 14px; }
+  .editor .ln .num { color: var(--text-faint); width: 28px; text-align: right; padding-right: 14px; user-select: none; flex-shrink: 0; }
+  .editor .ln .code { white-space: pre; flex: 1; color: var(--text-dim); }
+  .editor .ln.exec { background: rgba(255,144,114,0.08); border-left: 2px solid var(--brand); padding-left: 12px; }
+  .editor .ln.exec .code { color: var(--text); }
+  .editor .ln.done .code { color: var(--text); }
+  .editor .ln.done .code::after { content: ' ✓'; color: var(--green); }
+  .editor .console { margin: 14px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border-soft); border-radius: 6px; font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); }
+  .editor .console .out { color: var(--green); }
+  .editor .console .err { color: var(--red); }
+  .editor .kw { color: var(--purple); }
+  .editor .str { color: var(--green); }
+  .editor .fn { color: var(--blue); }
+  .editor .com { color: var(--text-faint); font-style: italic; }
+
+  /* Pane: terminal (CLI) */
+  .term { font-family: var(--mono); font-size: 12.5px; line-height: 1.65; }
+  .term .line { padding: 1px 0; white-space: pre-wrap; word-break: break-all; animation: fadeUp 0.3s ease; }
+  .term .prompt { color: var(--cyan); }
+  .term .cmd { color: var(--text); }
+  .term .out { color: var(--text-dim); }
+  .term .ok { color: var(--green); }
+  .term .warn { color: var(--yellow); }
+  .term .err { color: var(--red); }
+  .term .dim { color: var(--text-faint); }
+  .term .info { color: var(--blue); }
+  .term .cursor { display: inline-block; width: 7px; height: 14px; background: var(--text); margin-left: 2px; vertical-align: text-top; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Pane: wire (HTTP requests/responses) */
+  .wire { font-family: var(--mono); font-size: 11.5px; }
+  .wire-call { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; animation: slideIn 0.4s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+  .wire-call .req-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed var(--border-soft); }
+  .wire-call .method { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em; }
+  .wire-call .method.POST { background: rgba(245,200,75,0.15); color: var(--yellow); border: 1px solid rgba(245,200,75,0.3); }
+  .wire-call .method.GET { background: rgba(107,168,255,0.15); color: var(--blue); border: 1px solid rgba(107,168,255,0.3); }
+  .wire-call .endpoint { color: var(--text); font-size: 11.5px; flex: 1; word-break: break-all; }
+  .wire-call .lat { color: var(--text-faint); font-size: 10.5px; white-space: nowrap; }
+  .wire-call pre { background: transparent; border: 0; padding: 0; margin: 0; font-size: 11px; color: var(--text-dim); white-space: pre-wrap; word-break: break-word; }
+  .wire-call .resp { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-soft); }
+  .wire-call .resp .status { font-size: 10px; color: var(--green); font-weight: 700; }
+  .wire-call .key { color: var(--blue); }
+  .wire-call .str { color: var(--green); }
+  .wire-call .num-v { color: var(--purple); }
+
+  /* Pane: n8n */
+  .n8n-app { display: flex; flex-direction: column; height: 100%; background: var(--bg); }
+  .n8n-topbar { display: flex; align-items: center; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border-soft); gap: 10px; font-size: 11px; color: var(--text-dim); }
+  .n8n-topbar .logo { width: 18px; height: 18px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #1a0a08; }
+  .n8n-topbar .crumbs { font-size: 11.5px; color: var(--text-faint); }
+  .n8n-topbar .crumbs strong { color: var(--text); font-weight: 500; }
+  .n8n-content { flex: 1; overflow-y: auto; padding: 12px; }
+  .n8n-filters { display: flex; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border-soft); flex-wrap: wrap; font-size: 11px; }
+  .n8n-filter { padding: 4px 10px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 5px; color: var(--text-dim); }
+  .n8n-filter strong { color: var(--text); margin-left: 5px; font-weight: 500; }
+  .exec-row {
+    padding: 10px 12px; background: var(--surface); border: 1px solid var(--border-soft);
+    border-radius: 8px; margin-bottom: 8px; font-size: 12px;
+    display: flex; align-items: center; gap: 10px; transition: all 0.2s;
+    animation: slideIn 0.4s ease;
+  }
+  .exec-row.new { border-color: var(--brand); box-shadow: 0 0 0 1px rgba(255,109,90,0.2); }
+  .exec-row .stat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .exec-row .stat-dot.running { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); animation: pulse 1s ease-in-out infinite; }
+  .exec-row .stat-dot.success { background: var(--green); }
+  .exec-row .stat-dot.error { background: var(--red); }
+  .exec-row .info { flex: 1; min-width: 0; }
+  .exec-row .info .id { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+  .exec-row .info .name { font-weight: 500; color: var(--text); margin-left: 6px; font-family: var(--mono); font-size: 11.5px; }
+  .exec-row .info .meta { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+  .exec-row .info .meta .pill { display: inline-block; padding: 1px 6px; border-radius: 4px; background: rgba(176,124,255,0.12); color: var(--purple); font-size: 10px; margin-right: 6px; border: 1px solid rgba(176,124,255,0.25); }
+  .exec-row .latency { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+  .empty-msg { color: var(--text-faint); font-size: 12px; padding: 30px 12px; text-align: center; }
+
+  /* Auth flow specific */
+  .auth-browser { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .auth-browser .urlbar { padding: 8px 12px; background: var(--bg-2); border-bottom: 1px solid var(--border-soft); font-family: var(--mono); font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+  .auth-browser .urlbar .lock { color: var(--green); font-size: 10px; }
+  .auth-browser .urlbar .url { word-break: break-all; }
+  .auth-browser .body { padding: 18px; min-height: 240px; }
+  .consent-screen { font-size: 13px; }
+  .consent-screen .app-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .consent-screen .app-icon { width: 38px; height: 38px; background: linear-gradient(135deg, #ff9072, var(--brand)); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; }
+  .consent-screen .perm { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12.5px; color: var(--text-dim); }
+  .consent-screen .perm.yes::before { content: '✓'; color: var(--green); font-weight: 700; }
+  .consent-screen .perm.no::before { content: '✗'; color: var(--red); font-weight: 700; }
+  .consent-screen .creds-list { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 6px; padding: 8px 12px; margin: 10px 0; font-size: 12px; }
+  .consent-screen .creds-list .check { display: flex; align-items: center; gap: 8px; padding: 3px 0; color: var(--text-dim); }
+  .consent-screen .creds-list .check.on { color: var(--text); }
+  .consent-screen .creds-list .check.on::before { content: '☑'; color: var(--green); }
+  .consent-screen .creds-list .check.off::before { content: '☐'; color: var(--text-faint); }
+  .consent-screen .actions { display: flex; gap: 8px; margin-top: 14px; }
+  .consent-screen .btn { padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); }
+  .consent-screen .btn.primary { background: var(--brand); border-color: var(--brand); color: #1a0a08; }
+  .consent-screen .btn.flash { animation: btnFlash 0.6s ease; }
+  @keyframes btnFlash { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.96); box-shadow: 0 0 0 4px rgba(255,109,90,0.3); } }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--border-soft); }
+  th { font-size: 11px; font-weight: 600; color: var(--text-faint); letter-spacing: 0.05em; text-transform: uppercase; }
+  td.dim { color: var(--text-dim); }
+  td.mono { font-family: var(--mono); font-size: 12.5px; }
+
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; }
+  .b-new { background: rgba(176,124,255,0.14); color: var(--purple); border: 1px solid rgba(176,124,255,0.3); }
+  .b-exists { background: rgba(93,212,158,0.14); color: var(--green); border: 1px solid rgba(93,212,158,0.3); }
+  .b-partial { background: rgba(245,200,75,0.14); color: var(--yellow); border: 1px solid rgba(245,200,75,0.3); }
+
+  .effort-row { display: grid; grid-template-columns: 1fr 90px 90px; gap: 16px; padding: 12px 0; border-top: 1px solid var(--border-soft); align-items: baseline; }
+  .effort-row:first-of-type { border-top: none; }
+  .effort-row .work { font-weight: 500; }
+  .effort-row .work small { color: var(--text-faint); display: block; font-size: 12px; margin-top: 2px; font-weight: 400; }
+  .effort-row .num { font-family: var(--mono); font-size: 13px; text-align: right; color: var(--text-dim); }
+  .effort-row .num.prod { color: var(--brand-2); font-weight: 600; }
+  .effort-total { display: grid; grid-template-columns: 1fr 90px 90px; gap: 16px; padding: 14px 0 0; margin-top: 14px; border-top: 2px solid var(--border); align-items: baseline; }
+  .effort-total .work { font-weight: 600; }
+  .effort-total .num { font-family: var(--mono); font-size: 14px; text-align: right; }
+  .effort-total .num.prod { color: var(--brand-2); font-weight: 700; }
+  .effort-head { display: grid; grid-template-columns: 1fr 90px 90px; gap: 16px; padding: 0 0 8px; font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .effort-head .num { text-align: right; }
+
+  .callout { padding: 14px 18px; background: var(--surface); border-left: 3px solid var(--brand); border-radius: 0 10px 10px 0; margin: 18px 0; }
+  .callout strong { color: var(--brand-2); display: block; margin-bottom: 4px; }
+
+  .risk { padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; }
+  .risk h4 { color: var(--text); margin: 0 0 6px; text-transform: none; letter-spacing: 0; font-size: 14.5px; }
+  .risk h4 .lvl { display: inline-block; font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; padding: 2px 7px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+  .risk h4 .lvl.high { background: rgba(255,112,104,0.14); color: var(--red); border: 1px solid rgba(255,112,104,0.3); }
+  .risk h4 .lvl.med { background: rgba(245,200,75,0.14); color: var(--yellow); border: 1px solid rgba(245,200,75,0.3); }
+  .risk p { color: var(--text-dim); font-size: 13.5px; margin: 0; }
+  .risk p strong { color: var(--text); }
+
+  .qa { padding: 12px 0; border-top: 1px solid var(--border-soft); }
+  .qa:first-of-type { border-top: none; }
+  .qa .q { font-weight: 600; margin-bottom: 4px; }
+  .qa .a { color: var(--text-dim); font-size: 13.5px; }
+
+  footer { margin-top: 80px; padding-top: 28px; border-top: 1px solid var(--border-soft); color: var(--text-faint); font-size: 12px; }
+
+  .keyhint { display: inline-block; padding: 1px 5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); margin: 0 2px; }
+
+  @media (max-width: 1080px) {
+    .panes { grid-template-columns: 1fr; min-height: auto; }
+    .pane { border-right: none; border-bottom: 1px solid var(--border); min-height: 300px; }
+    .pane:last-child { border-bottom: none; }
+    .caps-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    h1 { font-size: 32px; }
+    .wrap { padding: 32px 16px 64px; }
+    .effort-row, .effort-total, .effort-head { grid-template-columns: 1fr 70px; }
+    .effort-row .num:first-of-type, .effort-total .num:first-of-type, .effort-head .num:first-of-type { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ───────────────────────── HEADER ───────────────────────── -->
+<header class="top">
+  <div class="kicker"><span class="dot"></span> n8n hub · live walkthrough</div>
+  <h1>Make every n8n node <span class="accent">callable</span> from outside a workflow.</h1>
+  <p class="lede">A hackathon design for an HTTP API, an MCP server, and a TypeScript SDK that share one primitive — execute one node with a credential. This page walks through the full interaction live, from prompt to execution to UI.</p>
+  <p class="meta-line">Filipe Tavares · 2026-05-10 · Status: hackathon scoped, not started</p>
+</header>
+
+<!-- ───────────────────────── 01: WHERE WE START ───────────────────────── -->
+<section>
+  <h2><span class="num">01</span>Where we're starting from</h2>
+  <p>n8n already has a working MCP server. <strong>27 tools registered</strong>, all workflow-management — there's nothing for "execute a single node." The hub builds on top of this server, adds three new meta-tools, and reuses the same auth.</p>
+
+  <div class="cap-summary">
+    <div class="stat"><span class="v">27</span><span class="l">total tools today</span></div>
+    <div class="stat"><span class="v">16</span><span class="l">always-on</span></div>
+    <div class="stat"><span class="v">11</span><span class="l">behind builder flag</span></div>
+    <div class="stat"><span class="v">0</span><span class="l">single-node execution</span></div>
+    <div style="margin-left:auto; color: var(--text-dim); font-size: 12.5px;">
+      Source: <code style="font-size:11px;">packages/cli/src/modules/mcp/mcp.service.ts</code>
+    </div>
+  </div>
+
+  <div class="caps-grid">
+    <div class="cap-group">
+      <div class="head"><h4>Workflow operations</h4><span class="cnt">6 tools</span></div>
+      <ul>
+        <li><span class="nm">search_workflows</span><span class="ds">find by name, description, project</span></li>
+        <li><span class="nm">get_workflow_details</span><span class="ds">metadata, triggers, credentials</span></li>
+        <li><span class="nm">execute_workflow</span><span class="ds">manual or production trigger</span></li>
+        <li><span class="nm">test_workflow</span><span class="ds">run with pin data</span></li>
+        <li><span class="nm">publish_workflow</span><span class="ds">activate for production</span></li>
+        <li><span class="nm">unpublish_workflow</span><span class="ds">deactivate</span></li>
+      </ul>
+    </div>
+    <div class="cap-group">
+      <div class="head"><h4>Executions</h4><span class="cnt">2 tools</span></div>
+      <ul>
+        <li><span class="nm">get_execution</span><span class="ds">details + data, optionally truncated</span></li>
+        <li><span class="nm">search_executions</span><span class="ds">by status, date range, paginated</span></li>
+      </ul>
+      <h4 style="margin-top:14px;">Credentials</h4>
+      <ul>
+        <li><span class="nm">list_credentials</span><span class="ds">filter by type, project, sharing</span></li>
+      </ul>
+    </div>
+    <div class="cap-group">
+      <div class="head"><h4>Data tables</h4><span class="cnt">7 tools</span></div>
+      <ul>
+        <li><span class="nm">search_data_tables</span><span class="ds">find tables</span></li>
+        <li><span class="nm">create_data_table</span><span class="ds">new table with columns</span></li>
+        <li><span class="nm">rename_data_table</span><span class="ds">rename</span></li>
+        <li><span class="nm">add_data_table_column</span><span class="ds">extend schema</span></li>
+        <li><span class="nm">delete_data_table_column</span><span class="ds">remove column</span></li>
+        <li><span class="nm">rename_data_table_column</span><span class="ds">rename column</span></li>
+        <li><span class="nm">add_data_table_rows</span><span class="ds">bulk insert (max 1000)</span></li>
+      </ul>
+    </div>
+    <div class="cap-group">
+      <div class="head"><h4>Workflow builder <span class="badge b-partial" style="margin-left:6px;">flag</span></h4><span class="cnt">11 tools</span></div>
+      <ul>
+        <li><span class="nm">search_workflow_nodes</span><span class="ds">discover nodes by keyword</span></li>
+        <li><span class="nm">get_workflow_node_types</span><span class="ds">TS defs for node configuration</span></li>
+        <li><span class="nm">get_suggested_workflow_nodes</span><span class="ds">curated recommendations</span></li>
+        <li><span class="nm">validate_workflow_code</span><span class="ds">check before creating</span></li>
+        <li><span class="nm">create_workflow_from_code</span><span class="ds">provision from SDK code</span></li>
+        <li><span class="nm">update_workflow</span><span class="ds">modify code/metadata</span></li>
+        <li><span class="nm">archive_workflow</span><span class="ds">archive existing</span></li>
+        <li><span class="nm">search_projects</span><span class="ds">find projects</span></li>
+        <li><span class="nm">search_folders</span><span class="ds">find folders</span></li>
+        <li><span class="nm">get_workflow_sdk_reference</span><span class="ds">SDK docs lookup</span></li>
+        <li><span class="nm">prepare_test_pin_data</span><span class="ds">generate test schemas</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="dim" style="margin-top: 18px;">
+    <strong>Auth today:</strong> Bearer API key (audience <code>mcp-server-api</code>). OAuth 2.1 provider flow already exists for the MCP server but currently issues a fixed scope set of <code>tool:listWorkflows</code>, <code>tool:getWorkflowDetails</code>. <strong>Transport:</strong> HTTP streamable (SSE) on <code>/mcp-server/http</code>, rate limited per IP.
+  </p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 02: NEW META-TOOLS ───────────────────────── -->
+<section>
+  <h2><span class="num">02</span>What we add: three meta-tools</h2>
+  <p>If we naively exposed every (node × resource × operation) tuple we'd register thousands of tools — Anthropic's guidance is to keep it under ~30 active tools per session. So we don't expose the catalog directly. We expose three tools that <em>search</em> it.</p>
+
+  <table>
+    <thead><tr><th>Tool</th><th>Purpose</th><th>Returns</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="mono"><strong>n8n_search_tools</strong></td>
+        <td class="dim">Find tools by intent. Filterable by category, by credential availability, by node name. <strong>Backed by the existing <code>NodeCatalogService</code></strong> — semantic search across every loaded node.</td>
+        <td class="dim">Ranked list of (toolId, name, description, inputSchema, userCredentials)</td>
+      </tr>
+      <tr>
+        <td class="mono"><strong>n8n_execute_tool</strong></td>
+        <td class="dim">Run a tool. Validates params against schema, dispatches to <code>POST /executions/node</code>. Supports <code>dryRun: true</code> for risky operations.</td>
+        <td class="dim">{ executionId, status, output } — or { status: 'dry_run', wouldExecute }</td>
+      </tr>
+      <tr>
+        <td class="mono"><strong>n8n_list_credentials</strong></td>
+        <td class="dim">List the user's connected credentials, optionally filtered by node type. Available for the disambiguation case — common path skips this since search returns credentials inline.</td>
+        <td class="dim">[{ id, name, type }] — never includes secret material</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>The credential model</strong>
+    The MCP server never returns secret material. Clients pass <code>credentialId</code>; n8n resolves the credential server-side at execution time. A leaked token can call nodes — it cannot extract the underlying Slack/Postgres/Gmail token.
+  </div>
+
+  <h3 style="margin-top:28px;">Dry-run mode</h3>
+  <p class="dim">For high-impact actions, an agent can verify what <em>would</em> happen before committing. Cheap insurance, pairs with HITL approval later.</p>
+<pre><code>// Request
+{
+  "id": "slack.message.send",
+  "credentialId": "cred_3a8f",
+  "dryRun": true,
+  "params": { "channel": "#all-company", "text": "Wide announcement" }
+}
+
+// Response
+{
+  "status": "dry_run",
+  "wouldExecute": {
+    "endpoint": "POST https://slack.com/api/chat.postMessage",
+    "resolvedParams": { "channel": "C012345", "text": "Wide announcement" }
+  }
+}</code></pre>
+  <p class="dim" style="font-size:13.5px;">Day-one API affordance even if the approval UI lands later. Phase 2: configure per credential — "Postgres-production always requires approval between dry-run and execute."</p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 03: LIVE DEMO ───────────────────────── -->
+<section>
+  <h2><span class="num">03</span>Live walkthrough — 1:1 prep</h2>
+  <p>The user wants to prep for their weekly with Sarah. They have GitHub, Linear, and Slack connected to n8n. Watch the same task run from three surfaces — pick a tab, step through with <span class="keyhint">→</span> or click play.</p>
+
+  <div class="demo">
+    <div class="demo-header">
+      <div class="ttl">Prep for 1:1 with Sarah <small>3 integrations · 1 prompt · ~900ms total</small></div>
+      <div class="surface-tabs" id="surface-tabs">
+        <button data-surface="agent" class="active">Agent · Claude Desktop</button>
+        <button data-surface="sdk">SDK · Node script</button>
+        <button data-surface="cli">CLI · Terminal</button>
+      </div>
+    </div>
+    <div class="demo-controls">
+      <div class="step-info">
+        <span class="step-num" id="stepNum">Step 0 / 0</span>
+        <span class="step-label" id="stepLabel">Ready</span>
+      </div>
+      <div class="step-buttons">
+        <button id="btnReset" title="Reset (R)">⟲ Reset</button>
+        <button id="btnPrev" title="Previous (←)">◀ Prev</button>
+        <button id="btnPlay" class="primary" title="Play (Space)">▶ Play</button>
+        <button id="btnNext" title="Next (→)">Next ▶</button>
+      </div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="panes">
+      <div class="pane">
+        <div class="pane-head"><span class="dot" id="leftDot"></span><span id="leftHead">Surface</span></div>
+        <div class="pane-body" id="leftPane"></div>
+      </div>
+      <div class="pane">
+        <div class="pane-head"><span class="dot" id="wireDot"></span>HTTP wire — n8n MCP / API</div>
+        <div class="pane-body" id="wirePane"></div>
+      </div>
+      <div class="pane">
+        <div class="pane-head"><span class="dot live"></span>n8n · executions view</div>
+        <div class="pane-body" id="n8nPane">
+          <div class="n8n-app">
+            <div class="n8n-topbar">
+              <div class="logo">n</div>
+              <div class="crumbs">filipe@company / <strong>Executions</strong></div>
+            </div>
+            <div class="n8n-content">
+              <div class="n8n-filters">
+                <div class="n8n-filter">Source <strong>All</strong></div>
+                <div class="n8n-filter">Status <strong>All</strong></div>
+                <div class="n8n-filter">Caller <strong>All</strong></div>
+              </div>
+              <div id="execList">
+                <div class="empty-msg">No single-node executions yet. Press <span class="keyhint">→</span> to start.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="dim" style="margin-top:14px; font-size: 13px;">
+    Keyboard: <span class="keyhint">←</span> <span class="keyhint">→</span> step · <span class="keyhint">Space</span> play/pause · <span class="keyhint">R</span> reset
+  </p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 04: AUTH ───────────────────────── -->
+<section>
+  <h2><span class="num">04</span>Auth: extend the existing OAuth flow</h2>
+  <p>n8n's MCP server <strong>is already an OAuth 2.1 provider</strong>: <code>/mcp-oauth/register</code> (DCR), <code>/authorize</code>, <code>/token</code>, <code>/revoke</code>, <code>.well-known/oauth-authorization-server</code>. Today's scopes: <code>tool:listWorkflows</code>, <code>tool:getWorkflowDetails</code>.</p>
+  <p>For hackathon we add three scopes and reuse everything else:</p>
+  <ul>
+    <li><code>node:execute</code> — call <code>POST /executions/node</code></li>
+    <li><code>credential:read</code> — list credentials by type/id (no secret material)</li>
+    <li><code>tool:search</code> — call the three new MCP meta-tools</li>
+  </ul>
+  <p>The existing consent screen stays. We update its scope-display strings and pre-register an <code>n8n-cli</code> OAuth client. Day-one "Connect to n8n" works for Claude Desktop and the CLI.</p>
+  <p class="dim">Out of scope for hackathon: polished Connected Apps page, per-token credential restriction UI, fancy revocation. The OAuth scaffolding handles revocation already.</p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 05: CLI ───────────────────────── -->
+<section>
+  <h2><span class="num">05</span>CLI: extend the existing <code>n8n</code> command</h2>
+  <p>n8n's CLI lives at <code>packages/cli/src/commands/</code> using <code>@Command(...)</code> decorators from <code>@n8n/decorators</code>. Existing commands (<code>start</code>, <code>worker</code>, <code>execute</code>) inherit <code>BaseCommand</code>, which boots the whole server. Too heavy for client commands talking to a remote instance — we add a lighter base.</p>
+
+<pre><code>packages/cli/src/
+├── cli-client/                          # new
+│   ├── config.ts                        # ~/.n8n/config.json read/write
+│   ├── http-client.ts                   # axios wrapper, injects token
+│   └── oauth-flow.ts                    # code-grant with localhost callback
+└── commands/
+    ├── remote-base-command.ts           # new — no DB init
+    ├── auth/
+    │   ├── login.ts                     # n8n auth login --instance &lt;url&gt;
+    │   └── logout.ts                    # n8n auth logout
+    ├── tools/
+    │   └── search.ts                    # n8n tools search "&lt;query&gt;"
+    └── exec/
+        ├── run.ts                       # n8n exec &lt;toolId&gt; --cred &lt;id&gt; ...
+        └── inspect.ts                   # n8n exec inspect &lt;executionId&gt;</code></pre>
+
+  <h3>Login flow (standard CLI OAuth pattern, like <code>gh auth login</code>)</h3>
+  <ol>
+    <li><code>n8n auth login --instance https://n8n.company.io</code></li>
+    <li>CLI starts a localhost listener on a random port.</li>
+    <li>CLI opens the browser to <code>/mcp-oauth/authorize?client_id=n8n-cli&amp;redirect_uri=http://127.0.0.1:&lt;port&gt;&amp;scope=node:execute+credential:read+tool:search</code>.</li>
+    <li>User clicks Authorize.</li>
+    <li>n8n redirects to the localhost listener with <code>?code=...</code>.</li>
+    <li>CLI exchanges the code at <code>/mcp-oauth/token</code>.</li>
+    <li>CLI saves <code>{ instanceUrl, accessToken, refreshToken, expiresAt }</code> to <code>~/.n8n/config.json</code> (mode 0600).</li>
+  </ol>
+  <p>Subsequent commands read that file and pass <code>Authorization: Bearer &lt;token&gt;</code>. Refresh handled transparently.</p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 06: SDK ───────────────────────── -->
+<section>
+  <h2><span class="num">06</span>SDK: greenfield <code>@n8n/sdk</code> with node types built-in</h2>
+  <p>No existing external SDK. <code>@n8n/workflow-sdk</code> exists internally but is the wrong shape — it builds workflow JSON for the engine to execute later, not runtime method calls. Greenfield, reusing only the type-generation utilities.</p>
+
+<pre><code>packages/@n8n/sdk/
+├── src/
+│   ├── client.ts               # createClient({ baseUrl, token })
+│   ├── proxy.ts                # n8n.slack.sendMessage(...) → POST /executions/node
+│   ├── auth.ts                 # token storage + refresh
+│   ├── pull.ts                 # CLI: refresh types from a specific instance
+│   └── types/
+│       ├── index.d.ts          # generated, ships with the package
+│       └── nodes/              # one .d.ts per (node, version)
+├── scripts/
+│   └── generate-types.ts       # build-time codegen from nodes-base
+└── package.json</code></pre>
+
+  <h3>Types built-in</h3>
+  <p>At SDK build time, a script reads <code>packages/nodes-base/dist/types/nodes.json</code> (the existing catalog the editor and AI assistant already use) and emits per-node <code>.d.ts</code> files. They ship in the published npm package. After <code>npm install @n8n/sdk</code>, IDE autocomplete works for every action node in the standard catalog.</p>
+
+<pre><code>import { createClient } from '@n8n/sdk';
+
+const n8n = createClient({
+  baseUrl: 'https://n8n.company.io',
+  token: process.env.N8N_TOKEN,  // OAuth access token from the CLI flow
+});
+
+// Full IDE autocomplete; types generated from the standard nodes-base catalog
+await n8n.slack.sendMessage({
+  credentialId: 'cred_3a8f',
+  channel: '#engineering',
+  text: 'Build is green',
+});</code></pre>
+
+  <h3>Custom nodes via <code>npx @n8n/sdk pull</code></h3>
+  <p>Users with custom nodes run <code>npx @n8n/sdk pull --instance https://n8n.company.io</code>. The CLI fetches <code>/types/nodes.json</code> from that instance and writes overrides into <code>node_modules/@n8n/sdk/.overrides/</code>. Optional — most users don't need it.</p>
+
+  <h3>Runtime is a thin Proxy</h3>
+  <p>No client-side schema validation in v1; the server owns truth. The SDK assembles <code>{ nodeType, operation, credentialId, parameters }</code> and dispatches to <code>POST /executions/node</code>. Errors surface as typed exceptions (<code>N8nValidationError</code>, <code>N8nCredentialError</code>, <code>N8nExecutionError</code>).</p>
+
+  <h3>Edge cases (90/10)</h3>
+  <ul>
+    <li><strong><code>resourceLocator</code></strong> — accept ID strings only at hackathon.</li>
+    <li><strong><code>loadOptions</code></strong> (Slack channels, Notion DBs) — companion list operations.</li>
+    <li><strong><code>resourceMapper</code></strong> — typed as <code>Record&lt;string, unknown&gt;</code>; runtime validates.</li>
+  </ul>
+  <p>For operations we don't model, the <strong>HTTP Request node</strong> is in the catalog and accepts a <code>credentialId</code> — escape hatch for custom API calls without exposing secrets.</p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 07: WHAT WE CHANGE ───────────────────────── -->
+<section>
+  <h2><span class="num">07</span>What we change in the codebase</h2>
+  <table>
+    <thead><tr><th>Change</th><th>Status</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>POST /executions/node (with <code>dryRun</code>)</strong><br/><span class="dim">synthesizes a 1-node workflow, calls existing <code>ManualExecutionService.runManually()</code>. <code>dryRun: true</code> resolves the call and returns what would have been sent without invoking the node — cheap insurance for risky actions.</span></td>
+        <td><span class="badge b-new">new</span></td>
+        <td class="mono">3 days</td>
+      </tr>
+      <tr>
+        <td><strong>ExecutionEntity.mode = 'single-node'</strong><br/><span class="dim">field is already extensible; lifecycle hooks reused</span></td>
+        <td><span class="badge b-exists">extend</span></td>
+        <td class="mono">half day</td>
+      </tr>
+      <tr>
+        <td><strong>3 meta-tools in the MCP server, powered by <code>NodeCatalogService</code></strong><br/><span class="dim">existing server has 27 tools; we register search, execute, list-credentials. Search reuses <code>packages/cli/src/node-catalog/node-catalog.service.ts</code> (wraps <code>@n8n/ai-workflow-builder</code>'s <code>NodeTypeParser</code>) — production semantic search, no new index needed. Add <code>getMatchingCredentials(userId, nodeType)</code> to enrich results.</span></td>
+        <td><span class="badge b-exists">reuse + extend</span></td>
+        <td class="mono">~3-4 days</td>
+      </tr>
+      <tr>
+        <td><strong>OAuth scope expansion</strong><br/><span class="dim">add <code>node:execute</code>, <code>credential:read</code>, <code>tool:search</code> to existing <code>/mcp-oauth/*</code>. Update consent strings. Pre-register <code>n8n-cli</code> client.</span></td>
+        <td><span class="badge b-partial">extend</span></td>
+        <td class="mono">2-3 days</td>
+      </tr>
+      <tr>
+        <td><strong>CLI extensions</strong><br/><span class="dim"><code>cli-client/</code> utilities (config, http, oauth-flow) + <code>RemoteBaseCommand</code> + four new commands: <code>auth/login</code>, <code>auth/logout</code>, <code>tools/search</code>, <code>exec/run</code>, <code>exec/inspect</code>.</span></td>
+        <td><span class="badge b-partial">extend</span></td>
+        <td class="mono">~3-4 days</td>
+      </tr>
+      <tr>
+        <td><strong><code>@n8n/sdk</code> — new package</strong><br/><span class="dim">build-time type generation from <code>nodes-base</code>, runtime Proxy, <code>pull</code> command for custom-node overrides. Greenfield (workflow-sdk wrong shape).</span></td>
+        <td><span class="badge b-new">new</span></td>
+        <td class="mono">~10 days</td>
+      </tr>
+      <tr>
+        <td><strong>Executions UI — show single-node calls</strong><br/><span class="dim">caller attribution (OAuth client name) in the existing executions list. Filter polish parked.</span></td>
+        <td><span class="badge b-partial">extend</span></td>
+        <td class="mono">2-3 days</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 06: NOT IN SCOPE ───────────────────────── -->
+<section>
+  <h2><span class="num">08</span>Not in hackathon scope</h2>
+  <ul>
+    <li>Per-token credential scoping, audit trail UI.</li>
+    <li>Connected Apps page, dedicated API Tokens settings UI.</li>
+    <li>Polished consent screen redesign (we update strings, not the layout).</li>
+    <li>Trigger-node exposure.</li>
+    <li>Multi-tenant team admin, marketplace.</li>
+  </ul>
+  <p class="dim">If the hackathon lands, we revisit.</p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 07: OPEN QUESTIONS ───────────────────────── -->
+<section>
+  <h2><span class="num">09</span>What we don't know yet</h2>
+  <div class="qa">
+    <div class="q"><code>displayOptions</code> strategy</div>
+    <div class="a">Every node has conditional field visibility. Two paths: encode rules in JSON Schema (complex), or expose all fields and document constraints in the tool description (simple, leaks complexity to the LLM). Prototype both, measure.</div>
+  </div>
+  <div class="qa">
+    <div class="q">Utility nodes</div>
+    <div class="a">Set, Code, IF, Function, Merge — they're transformations, not service actions. Default: exclude.</div>
+  </div>
+  <div class="qa">
+    <div class="q">MCP server process model</div>
+    <div class="a"><code>NodeCatalogService</code> lives in the CLI. If MCP server stays in-process, direct call. If they ever split, we expose the search via a backend endpoint. Not blocking — decide at implementation time.</div>
+  </div>
+  <p class="dim" style="margin-top:14px; font-size:13px;"><strong>Resolved by research:</strong> <code>@n8n/workflow-sdk</code> reusability — wrong shape, SDK greenfield.</p>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 08: RISKS ───────────────────────── -->
+<section>
+  <h2><span class="num">10</span>Risks (hackathon-relevant)</h2>
+  <div class="risk">
+    <h4>Tool-count problem <span class="lvl med">ux</span></h4>
+    <p>Naive registration of all node operations breaks LLM tool selection. <strong>Mitigated by the search-based meta-tool pattern (see live demo above).</strong></p>
+  </div>
+  <div class="risk">
+    <h4>Edge-case node properties <span class="lvl med">technical</span></h4>
+    <p><code>resourceLocator</code>, <code>loadOptions</code>, <code>resourceMapper</code> don't map cleanly to JSON Schema or static TS. <strong>Mitigated by ID-only inputs at hackathon + the HTTP Request escape hatch in the SDK.</strong></p>
+  </div>
+</section>
+
+<hr/>
+
+<!-- ───────────────────────── 09: NEXT STEPS ───────────────────────── -->
+<section>
+  <h2><span class="num">11</span>Next steps</h2>
+  <ol>
+    <li>Server: <code>POST /executions/node</code> (with <code>dryRun</code>), three MCP meta-tools (reusing <code>NodeCatalogService</code>), three new OAuth scopes.</li>
+    <li>CLI: <code>auth login</code>/<code>logout</code>, <code>tools search</code>, <code>exec</code>, <code>exec inspect</code>.</li>
+    <li>SDK: <code>@n8n/sdk</code> package with build-time types from <code>nodes-base</code> + runtime Proxy.</li>
+    <li>Demo: 1:1 prep flow on all three surfaces.</li>
+    <li>Decide what to take to production.</li>
+  </ol>
+</section>
+
+<footer>
+  Companion spec: <code>docs/superpowers/specs/2026-05-10-n8n-hub-design.md</code>. Scroll up for the live demo. Source for current MCP tool list: <code>packages/cli/src/modules/mcp/mcp.service.ts</code>.
+</footer>
+
+</div>
+
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<!-- ──────────────────── INTERACTIVE WALKTHROUGH JS ────────────────── -->
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ───── Demo data ─────
+
+const SCRIPTS = {
+  agent: {
+    surfaceLabel: 'Claude Desktop',
+    steps: [
+      {
+        label: 'User types prompt',
+        left: { type: 'chat-user', who: 'User', text: "Help me prep for my 1:1 with Sarah today. Pull her recent activity — Linear tickets she's worked on this week, PRs she's opened, anything she's flagged in #engineering — and give me three talking points." },
+      },
+      {
+        label: 'Claude searches the n8n hub — credentials returned inline',
+        left: { type: 'chat-claude-thinking', who: 'Claude', text: "I'll pull Sarah's activity from Linear, GitHub, and Slack." },
+        wire: {
+          method: 'POST', endpoint: '/mcp-server/http · n8n_search_tools', latency: '38ms',
+          req: { query: 'linear github slack user activity', filters: { hasCredential: true } },
+          res: { results: [
+            { id: 'linear.issue.list', userCredentials: [{ id: 'cred_l1', name: 'Linear — work' }] },
+            { id: 'github.pullRequest.list', userCredentials: [{ id: 'cred_g1', name: 'GitHub — work' }] },
+            { id: 'slack.search.messages', userCredentials: [{ id: 'cred_s1', name: 'Slack — engineering' }] },
+            { id: 'linear.comment.list', userCredentials: [{ id: 'cred_l1', name: 'Linear — work' }] },
+            { id: 'github.commit.list', userCredentials: [{ id: 'cred_g1', name: 'GitHub — work' }] },
+            { id: 'slack.message.list', userCredentials: [{ id: 'cred_s1', name: 'Slack — engineering' }] },
+            { id: 'linear.user.get', userCredentials: [{ id: 'cred_l1', name: 'Linear — work' }] },
+          ]},
+        },
+      },
+      {
+        label: 'Claude executes linear.issue.list',
+        left: { type: 'chat-claude', who: 'Claude', text: 'Looking up Sarah\'s Linear activity since last week...' },
+        wire: {
+          method: 'POST', endpoint: '/mcp-server/http · n8n_execute_tool', latency: '195ms',
+          req: { id: 'linear.issue.list', credentialId: 'cred_l1', params: { assignee: 'sarah@company.io', updatedAfter: '2026-05-03' } },
+          res: { executionId: 'exec_8d2a', status: 'success', output: { issues: '[6 tickets]' } },
+        },
+        n8n: { id: 'exec_8d2a', tool: 'linear.issue.list', cred: 'cred_l1 (Linear — work)', latency: '195ms' },
+      },
+      {
+        label: 'Claude executes github.pullRequest.list',
+        wire: {
+          method: 'POST', endpoint: '/mcp-server/http · n8n_execute_tool', latency: '280ms',
+          req: { id: 'github.pullRequest.list', credentialId: 'cred_g1', params: { author: 'sarahcodes', state: 'all', since: '2026-05-03' } },
+          res: { executionId: 'exec_8d2b', status: 'success', output: { prs: '[3 PRs]' } },
+        },
+        n8n: { id: 'exec_8d2b', tool: 'github.pullRequest.list', cred: 'cred_g1 (GitHub — work)', latency: '280ms' },
+      },
+      {
+        label: 'Claude executes slack.search.messages',
+        wire: {
+          method: 'POST', endpoint: '/mcp-server/http · n8n_execute_tool', latency: '412ms',
+          req: { id: 'slack.search.messages', credentialId: 'cred_s1', params: { query: 'from:@sarah in:#engineering', count: 20 } },
+          res: { executionId: 'exec_8d2c', status: 'success', output: { messages: '[12 messages]' } },
+        },
+        n8n: { id: 'exec_8d2c', tool: 'slack.search.messages', cred: 'cred_s1 (Slack — engineering)', latency: '412ms' },
+      },
+      {
+        label: 'Claude returns three talking points',
+        left: { type: 'chat-claude', who: 'Claude', text: "Three talking points for your 1:1 with Sarah:\n\n1. Migration project momentum. Sarah merged the schema-change PR (#4421) Tuesday and shipped two follow-ups. In Slack she flagged that the data backfill is taking longer than estimated — worth asking if she needs more hands.\n\n2. Blocked on review. Two PRs (#4438, #4441) have been open for 4+ days waiting on review. Both touch the auth module. You could review them yourself or flag a reviewer.\n\n3. Linear health. 6 active tickets, 3 closed this week. ENG-2104 has been \"in progress\" for 11 days — worth a check on whether it's actually blocked." },
+      },
+    ],
+  },
+
+  sdk: {
+    surfaceLabel: 'sarah-prep.ts',
+    steps: [
+      { label: 'Init SDK client', execLine: 5 },
+      { label: 'Compute "since" timestamp', execLine: 10 },
+      { label: 'Fetch Sarah\'s Linear tickets',
+        execLine: 13,
+        wire: { method: 'POST', endpoint: '/executions/node · linear.issue.list', latency: '195ms',
+          req: { nodeType: 'linear', operation: 'list', credentialId: 'cred_l1', parameters: { assignee: 'sarah@company.io', updatedAfter: '2026-05-03T08:00:00Z' } },
+          res: { executionId: 'exec_8d2a', status: 'success', output: '[6 tickets]' } },
+        n8n: { id: 'exec_8d2a', tool: 'linear.issue.list', cred: 'cred_l1 (Linear — work)', latency: '195ms', via: 'sarah-prep.ts (cron)' },
+        consoleOut: '✓ tickets: 6',
+      },
+      { label: 'Fetch Sarah\'s GitHub PRs',
+        execLine: 18,
+        wire: { method: 'POST', endpoint: '/executions/node · github.pullRequest.list', latency: '280ms',
+          req: { nodeType: 'github', operation: 'list', credentialId: 'cred_g1', parameters: { author: 'sarahcodes', state: 'all', since: '2026-05-03T08:00:00Z' } },
+          res: { executionId: 'exec_8d2b', status: 'success', output: '[3 PRs]' } },
+        n8n: { id: 'exec_8d2b', tool: 'github.pullRequest.list', cred: 'cred_g1 (GitHub — work)', latency: '280ms', via: 'sarah-prep.ts (cron)' },
+        consoleOut: '✓ prs: 3',
+      },
+      { label: 'Fetch Sarah\'s Slack messages',
+        execLine: 23,
+        wire: { method: 'POST', endpoint: '/executions/node · slack.search.messages', latency: '412ms',
+          req: { nodeType: 'slack', operation: 'searchMessages', credentialId: 'cred_s1', parameters: { query: 'from:@sarah in:#engineering', count: 20 } },
+          res: { executionId: 'exec_8d2c', status: 'success', output: '[12 messages]' } },
+        n8n: { id: 'exec_8d2c', tool: 'slack.search.messages', cred: 'cred_s1 (Slack — engineering)', latency: '412ms', via: 'sarah-prep.ts (cron)' },
+        consoleOut: '✓ messages: 12',
+      },
+      { label: 'Summarize and post to Notion', execLine: 28, consoleOut: '✓ posted to Notion: "1:1 prep — Sarah, May 10"' },
+    ],
+    code: [
+      '// sarah-prep.ts — runs every Monday at 8am',
+      'import { createClient } from \'@n8n/sdk\';',
+      '',
+      'const n8n = createClient({',
+      '  baseUrl: \'https://n8n.company.io\',',
+      '  token: process.env.N8N_TOKEN,',
+      '});',
+      '',
+      'const since = new Date(',
+      '  Date.now() - 7 * 86_400_000,',
+      ').toISOString();',
+      '',
+      'const tickets = await n8n.linear.listIssues({',
+      '  credentialId: \'cred_l1\',',
+      '  assignee: \'sarah@company.io\',',
+      '  updatedAfter: since,',
+      '});',
+      '',
+      'const prs = await n8n.github.listPullRequests({',
+      '  credentialId: \'cred_g1\',',
+      '  author: \'sarahcodes\',',
+      '  since,',
+      '});',
+      '',
+      'const messages = await n8n.slack.searchMessages({',
+      '  credentialId: \'cred_s1\',',
+      '  query: \'from:@sarah in:#engineering\',',
+      '  count: 20,',
+      '});',
+      '',
+      'await summarizeAndPostToNotion({ tickets, prs, messages });',
+    ],
+  },
+
+  cli: {
+    surfaceLabel: 'Terminal',
+    steps: [
+      {
+        label: 'Authenticate',
+        term: [
+          { c: 'cmd', t: '$ n8n auth login --instance https://n8n.company.io' },
+          { c: 'info', t: 'Opening browser for OAuth...' },
+          { c: 'dim', t: '  → https://n8n.company.io/mcp-oauth/authorize?client_id=cli&...' },
+          { c: 'ok', t: '✓ Authorized as filipe@company.io' },
+          { c: 'dim', t: '  Token saved to ~/.n8n/credentials' },
+        ],
+      },
+      {
+        label: 'Search for tools',
+        term: [
+          { c: 'cmd', t: '$ n8n tools search "linear sarah"' },
+          { c: 'out', t: 'NAME                          DESCRIPTION                          CREDS' },
+          { c: 'out', t: 'linear.issue.list             List issues with filters             cred_l1' },
+          { c: 'out', t: 'linear.issue.get              Get a single issue                   cred_l1' },
+          { c: 'out', t: 'linear.comment.list           List comments on an issue            cred_l1' },
+          { c: 'out', t: 'linear.user.get               Get a user by email                  cred_l1' },
+        ],
+        wire: { method: 'GET', endpoint: '/api/tools/search?q=linear+sarah', latency: '38ms',
+          req: null, res: { count: 4 } },
+      },
+      {
+        label: 'Execute linear.issue.list',
+        term: [
+          { c: 'cmd', t: '$ n8n exec linear.issue.list \\\n    --cred cred_l1 \\\n    --params \'{"assignee":"sarah@company.io","updatedAfter":"2026-05-03"}\'' },
+          { c: 'info', t: '→ POST /executions/node' },
+          { c: 'ok', t: '✓ exec_8d2a · success · 195ms' },
+          { c: 'out', t: '  6 issues returned' },
+        ],
+        wire: { method: 'POST', endpoint: '/executions/node · linear.issue.list', latency: '195ms',
+          req: { nodeType: 'linear', operation: 'list', credentialId: 'cred_l1', parameters: { assignee: 'sarah@company.io', updatedAfter: '2026-05-03' } },
+          res: { executionId: 'exec_8d2a', status: 'success', output: '[6 tickets]' } },
+        n8n: { id: 'exec_8d2a', tool: 'linear.issue.list', cred: 'cred_l1 (Linear — work)', latency: '195ms', via: 'CLI' },
+      },
+      {
+        label: 'Execute github.pullRequest.list',
+        term: [
+          { c: 'cmd', t: '$ n8n exec github.pullRequest.list \\\n    --cred cred_g1 \\\n    --params \'{"author":"sarahcodes","since":"2026-05-03"}\'' },
+          { c: 'ok', t: '✓ exec_8d2b · success · 280ms' },
+          { c: 'out', t: '  3 PRs returned' },
+        ],
+        wire: { method: 'POST', endpoint: '/executions/node · github.pullRequest.list', latency: '280ms',
+          req: { nodeType: 'github', operation: 'list', credentialId: 'cred_g1', parameters: { author: 'sarahcodes', since: '2026-05-03' } },
+          res: { executionId: 'exec_8d2b', status: 'success', output: '[3 PRs]' } },
+        n8n: { id: 'exec_8d2b', tool: 'github.pullRequest.list', cred: 'cred_g1 (GitHub — work)', latency: '280ms', via: 'CLI' },
+      },
+      {
+        label: 'Execute slack.search.messages',
+        term: [
+          { c: 'cmd', t: '$ n8n exec slack.search.messages \\\n    --cred cred_s1 \\\n    --params \'{"query":"from:@sarah","count":20}\'' },
+          { c: 'ok', t: '✓ exec_8d2c · success · 412ms' },
+          { c: 'out', t: '  12 messages returned' },
+        ],
+        wire: { method: 'POST', endpoint: '/executions/node · slack.search.messages', latency: '412ms',
+          req: { nodeType: 'slack', operation: 'searchMessages', credentialId: 'cred_s1', parameters: { query: 'from:@sarah in:#engineering', count: 20 } },
+          res: { executionId: 'exec_8d2c', status: 'success', output: '[12 messages]' } },
+        n8n: { id: 'exec_8d2c', tool: 'slack.search.messages', cred: 'cred_s1 (Slack — engineering)', latency: '412ms', via: 'CLI' },
+      },
+      {
+        label: 'Inspect an execution',
+        term: [
+          { c: 'cmd', t: '$ n8n exec inspect exec_8d2a' },
+          { c: 'out', t: 'Execution      exec_8d2a' },
+          { c: 'out', t: 'Tool           linear.issue.list' },
+          { c: 'out', t: 'Credential     cred_l1 (Linear — work)' },
+          { c: 'out', t: 'Status         ✓ success' },
+          { c: 'out', t: 'Latency        195ms' },
+          { c: 'out', t: 'Caller         CLI · token tk_abc12' },
+          { c: 'dim', t: 'Mode           single-node' },
+        ],
+      },
+    ],
+  },
+};
+
+// ───── Auth flow demo ─────
+
+const AUTH_STEPS = [
+  {
+    label: 'User clicks "Connect to n8n" in Claude Desktop',
+    claude: { type: 'click', text: 'Settings → MCP Servers → Connect to n8n' },
+    browser: null,
+    n8n: null,
+  },
+  {
+    label: 'Browser opens to /mcp-oauth/authorize',
+    claude: { type: 'pending', text: 'Waiting for browser authorization...' },
+    browser: { url: 'https://n8n.company.io/mcp-oauth/authorize?client_id=claude_desktop&redirect_uri=https://claude.ai/cb&scope=node:execute+credential:read', body: 'redirect' },
+    n8n: { type: 'log', text: '→ Authorization request received\n  client_id: claude_desktop\n  scopes: node:execute, credential:read' },
+  },
+  {
+    label: 'n8n shows consent screen',
+    claude: { type: 'pending', text: 'Waiting for user...' },
+    browser: { url: 'https://n8n.company.io/mcp-oauth/consent', body: 'consent' },
+    n8n: { type: 'log', text: '✓ User filipe@company is signed in\n→ Rendering consent screen' },
+  },
+  {
+    label: 'User clicks Authorize',
+    claude: { type: 'pending', text: 'Receiving authorization code...' },
+    browser: { url: 'https://claude.ai/cb?code=auth_xyz789...', body: 'redirect-back' },
+    n8n: { type: 'log', text: '✓ Consent recorded\n  scopes: node:execute, credential:read\n→ Issuing authorization code (10-minute expiry)' },
+  },
+  {
+    label: 'Claude exchanges code for token',
+    claude: { type: 'pending', text: 'Exchanging code for access token...' },
+    browser: null,
+    n8n: { type: 'log', text: '→ POST /mcp-oauth/token\n  grant_type: authorization_code\n  code: auth_xyz789\n✓ Token issued (expires in 1h, refresh token included)' },
+  },
+  {
+    label: 'Connection established · ready to use',
+    claude: { type: 'success', text: 'Connected to n8n.company.io ✓\n12 credentials available.\nTry: "Help me prep for my 1:1 with Sarah"' },
+    browser: { url: 'https://claude.ai', body: 'success' },
+    n8n: { type: 'app', text: 'Claude Desktop now appears in Settings → Connected Apps' },
+  },
+];
+
+// ───── State ─────
+
+let mainState = { surface: 'agent', step: -1, playing: false, playTimer: null };
+let authState = { step: -1, playing: false, playTimer: null };
+
+// ───── Rendering helpers ─────
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function jsonHTML(obj, indent = 0) {
+  if (obj === null) return '<span style="color:var(--text-faint)">null</span>';
+  if (obj === undefined) return '';
+  const pad = '  '.repeat(indent);
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return '[]';
+    const inner = obj.map(v => pad + '  ' + jsonHTML(v, indent + 1)).join(',\n');
+    return '[\n' + inner + '\n' + pad + ']';
+  }
+  if (typeof obj === 'object') {
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return '{}';
+    const inner = keys.map(k => pad + '  <span class="key">"' + escapeHTML(k) + '"</span>: ' + jsonHTML(obj[k], indent + 1)).join(',\n');
+    return '{\n' + inner + '\n' + pad + '}';
+  }
+  if (typeof obj === 'string') return '<span class="str">"' + escapeHTML(obj) + '"</span>';
+  if (typeof obj === 'number') return '<span class="num-v">' + obj + '</span>';
+  if (typeof obj === 'boolean') return '<span class="num-v">' + obj + '</span>';
+  return escapeHTML(String(obj));
+}
+
+// ───── Main demo render ─────
+
+function renderMain() {
+  const script = SCRIPTS[mainState.surface];
+  const total = script.steps.length;
+  const step = mainState.step;
+
+  // Header
+  document.getElementById('leftHead').textContent = script.surfaceLabel;
+  document.getElementById('leftDot').className = 'dot' + (step >= 0 ? ' live' : '');
+  document.getElementById('wireDot').className = 'dot' + (step >= 0 ? ' live' : '');
+
+  // Step info
+  const num = step < 0 ? 'Step 0 / ' + total : 'Step ' + (step + 1) + ' / ' + total;
+  document.getElementById('stepNum').textContent = num;
+  document.getElementById('stepLabel').textContent = step < 0 ? 'Ready — press Play or →' : (script.steps[step].label || '');
+
+  // Progress
+  const pct = step < 0 ? 0 : ((step + 1) / total) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  // Buttons
+  document.getElementById('btnPrev').disabled = step <= 0;
+  document.getElementById('btnNext').disabled = step >= total - 1;
+  document.getElementById('btnPlay').textContent = mainState.playing ? '❚❚ Pause' : '▶ Play';
+
+  // Render each pane based on accumulated steps up to current
+  renderLeftPane(script);
+  renderWirePane(script);
+  renderN8nPane(script);
+}
+
+function renderLeftPane(script) {
+  const pane = document.getElementById('leftPane');
+  pane.innerHTML = '';
+
+  if (mainState.surface === 'agent') {
+    for (let i = 0; i <= mainState.step; i++) {
+      const s = script.steps[i];
+      if (!s.left) continue;
+      pane.appendChild(renderChatMsg(s.left, i === mainState.step));
+    }
+  } else if (mainState.surface === 'sdk') {
+    pane.appendChild(renderSdkEditor(script));
+  } else if (mainState.surface === 'cli') {
+    const term = document.createElement('div');
+    term.className = 'term';
+    for (let i = 0; i <= mainState.step; i++) {
+      const s = script.steps[i];
+      if (!s.term) continue;
+      s.term.forEach(line => {
+        const div = document.createElement('div');
+        div.className = 'line ' + (line.c || '');
+        if (line.c === 'cmd' || line.c === 'prompt') {
+          // prefix prompt with $
+          div.innerHTML = line.t.split('\n').map(seg => {
+            return seg;
+          }).join('\n');
+        } else {
+          div.textContent = line.t;
+        }
+        term.appendChild(div);
+      });
+    }
+    if (mainState.step === script.steps.length - 1) {
+      const cur = document.createElement('span');
+      cur.className = 'cursor';
+      term.appendChild(cur);
+    }
+    pane.appendChild(term);
+  }
+
+  // auto-scroll to bottom
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function renderChatMsg(left, isLatest) {
+  const div = document.createElement('div');
+  if (left.type === 'chat-user') {
+    div.className = 'chat-msg chat-user';
+    div.innerHTML = '<div class="who">' + escapeHTML(left.who) + '</div>' + escapeHTML(left.text);
+  } else if (left.type === 'chat-claude-thinking') {
+    div.className = 'chat-msg chat-claude';
+    div.innerHTML = '<div class="who">' + escapeHTML(left.who) +
+      (isLatest ? '<span class="typing"><span></span><span></span><span></span></span>' : '') +
+      '</div>' + escapeHTML(left.text);
+  } else if (left.type === 'chat-claude') {
+    div.className = 'chat-msg chat-claude';
+    div.innerHTML = '<div class="who">' + escapeHTML(left.who) + '</div>' + formatClaudeText(left.text);
+  }
+  return div;
+}
+
+function formatClaudeText(text) {
+  return escapeHTML(text)
+    .replace(/^(\d+\. .+?)$/gm, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function renderSdkEditor(script) {
+  const wrap = document.createElement('div');
+  wrap.className = 'editor';
+  const lines = script.code;
+  const currentExec = mainState.step >= 0 ? script.steps[mainState.step].execLine : null;
+
+  // Determine which lines are "done" (already executed) and which is "current"
+  const execLines = script.steps.slice(0, mainState.step + 1).map(s => s.execLine).filter(Boolean);
+  const lastExecLine = execLines[execLines.length - 1];
+
+  lines.forEach((line, idx) => {
+    const lineNum = idx + 1;
+    const div = document.createElement('div');
+    div.className = 'ln';
+    if (lineNum === lastExecLine) div.className += ' exec';
+    else if (execLines.includes(lineNum)) div.className += ' done';
+    div.innerHTML = '<span class="num">' + lineNum + '</span><span class="code">' + colorizeCode(line) + '</span>';
+    wrap.appendChild(div);
+  });
+
+  // Console
+  const out = script.steps.slice(0, mainState.step + 1).map(s => s.consoleOut).filter(Boolean);
+  if (out.length) {
+    const cons = document.createElement('div');
+    cons.className = 'console';
+    cons.innerHTML = '<div style="color:var(--text-faint); margin-bottom:6px;">$ ts-node sarah-prep.ts</div>' +
+      out.map(o => '<div class="out">' + escapeHTML(o) + '</div>').join('');
+    wrap.appendChild(cons);
+  }
+
+  return wrap;
+}
+
+function colorizeCode(line) {
+  let s = escapeHTML(line);
+  s = s.replace(/\/\/.*$/g, '<span class="com">$&</span>');
+  s = s.replace(/\b(import|from|const|await|new|return|async)\b/g, '<span class="kw">$1</span>');
+  s = s.replace(/'[^']*'/g, '<span class="str">$&</span>');
+  s = s.replace(/\b(createClient|listIssues|listPullRequests|searchMessages|summarizeAndPostToNotion|toISOString)\b/g, '<span class="fn">$1</span>');
+  return s;
+}
+
+function renderWirePane(script) {
+  const pane = document.getElementById('wirePane');
+  pane.innerHTML = '';
+  const wire = document.createElement('div');
+  wire.className = 'wire';
+  let any = false;
+  for (let i = 0; i <= mainState.step; i++) {
+    const s = script.steps[i];
+    if (!s.wire) continue;
+    any = true;
+    wire.appendChild(renderWireCall(s.wire));
+  }
+  if (!any) {
+    pane.innerHTML = '<div class="empty-msg">No HTTP traffic yet.</div>';
+    return;
+  }
+  pane.appendChild(wire);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function renderWireCall(w) {
+  const div = document.createElement('div');
+  div.className = 'wire-call';
+  let html = '<div class="req-head">' +
+    '<span class="method ' + w.method + '">' + w.method + '</span>' +
+    '<span class="endpoint">' + escapeHTML(w.endpoint) + '</span>' +
+    '<span class="lat">' + escapeHTML(w.latency) + '</span>' +
+    '</div>';
+  if (w.req) html += '<pre>' + jsonHTML(w.req) + '</pre>';
+  if (w.res) {
+    html += '<div class="resp"><span class="status">200 OK</span></div>' +
+      '<pre style="margin-top:4px;">' + jsonHTML(w.res) + '</pre>';
+  }
+  div.innerHTML = html;
+  return div;
+}
+
+function renderN8nPane(script) {
+  const list = document.getElementById('execList');
+  list.innerHTML = '';
+  let any = false;
+  // Render in reverse chronological (newest first)
+  const execs = [];
+  for (let i = 0; i <= mainState.step; i++) {
+    const s = script.steps[i];
+    if (s.n8n) {
+      execs.push({ ...s.n8n, isLatest: i === mainState.step });
+    }
+  }
+  execs.reverse().forEach((e, idx) => {
+    any = true;
+    const row = document.createElement('div');
+    row.className = 'exec-row' + (idx === 0 && e.isLatest ? ' new' : '');
+    const via = e.via || (mainState.surface === 'agent' ? 'Claude Desktop' : mainState.surface === 'sdk' ? 'sarah-prep.ts' : 'CLI');
+    row.innerHTML =
+      '<div class="stat-dot success"></div>' +
+      '<div class="info">' +
+        '<div><span class="id">' + escapeHTML(e.id) + '</span><span class="name">' + escapeHTML(e.tool) + '</span></div>' +
+        '<div class="meta"><span class="pill">single-node</span>via ' + escapeHTML(via) + ' · ' + escapeHTML(e.cred) + '</div>' +
+      '</div>' +
+      '<div class="latency">✓ ' + escapeHTML(e.latency) + '</div>';
+    list.appendChild(row);
+  });
+  // Pre-existing workflow execution example (always shown)
+  const wf = document.createElement('div');
+  wf.className = 'exec-row';
+  wf.innerHTML =
+    '<div class="stat-dot success"></div>' +
+    '<div class="info">' +
+      '<div><span class="id">exec_8d29</span><span class="name">workflow_4421 (Daily digest)</span></div>' +
+      '<div class="meta">scheduled · 6 hours ago</div>' +
+    '</div>' +
+    '<div class="latency">✓ 4.2s</div>';
+  list.appendChild(wf);
+
+  if (!any) {
+    list.insertAdjacentHTML('afterbegin', '<div class="empty-msg">No single-node executions yet. Press <span class="keyhint">→</span> to start.</div>');
+  }
+}
+
+// ───── Main demo controls ─────
+
+function mainSetStep(s) {
+  const script = SCRIPTS[mainState.surface];
+  mainState.step = Math.max(-1, Math.min(s, script.steps.length - 1));
+  renderMain();
+}
+function mainNext() { mainSetStep(mainState.step + 1); }
+function mainPrev() { mainSetStep(mainState.step - 1); }
+function mainReset() {
+  mainStop();
+  mainSetStep(-1);
+}
+function mainPlay() {
+  if (mainState.playing) { mainStop(); return; }
+  if (mainState.step >= SCRIPTS[mainState.surface].steps.length - 1) mainSetStep(-1);
+  mainState.playing = true;
+  renderMain();
+  const tick = () => {
+    if (!mainState.playing) return;
+    if (mainState.step >= SCRIPTS[mainState.surface].steps.length - 1) {
+      mainStop();
+      return;
+    }
+    mainNext();
+    mainState.playTimer = setTimeout(tick, 3500);
+  };
+  mainNext();
+  mainState.playTimer = setTimeout(tick, 3500);
+}
+function mainStop() {
+  mainState.playing = false;
+  clearTimeout(mainState.playTimer);
+  renderMain();
+}
+
+document.getElementById('btnNext').addEventListener('click', mainNext);
+document.getElementById('btnPrev').addEventListener('click', mainPrev);
+document.getElementById('btnReset').addEventListener('click', mainReset);
+document.getElementById('btnPlay').addEventListener('click', mainPlay);
+document.querySelectorAll('#surface-tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#surface-tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mainStop();
+    mainState.surface = btn.dataset.surface;
+    mainState.step = -1;
+    renderMain();
+  });
+});
+
+// Keyboard controls (only when over the main demo)
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); mainNext(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); mainPrev(); }
+  else if (e.key === ' ') { e.preventDefault(); mainPlay(); }
+  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); mainReset(); }
+});
+
+// ───── Auth flow render ─────
+
+function renderAuth() {
+  const total = AUTH_STEPS.length;
+  const step = authState.step;
+
+  document.getElementById('authStepNum').textContent =
+    step < 0 ? 'Step 0 / ' + total : 'Step ' + (step + 1) + ' / ' + total;
+  document.getElementById('authStepLabel').textContent =
+    step < 0 ? 'Ready — press Play or Next' : AUTH_STEPS[step].label;
+  document.getElementById('authProgress').style.width =
+    (step < 0 ? 0 : ((step + 1) / total) * 100) + '%';
+
+  document.getElementById('authPrev').disabled = step <= 0;
+  document.getElementById('authNext').disabled = step >= total - 1;
+  document.getElementById('authPlay').textContent = authState.playing ? '❚❚ Pause' : '▶ Play';
+
+  // Claude pane
+  const claudePane = document.getElementById('authClaudePane');
+  claudePane.innerHTML = '';
+  if (step >= 0) {
+    const states = [];
+    for (let i = 0; i <= step; i++) if (AUTH_STEPS[i].claude) states.push({ ...AUTH_STEPS[i].claude, idx: i });
+    states.forEach((c, idx) => {
+      const div = document.createElement('div');
+      div.className = 'chat-msg ' + (c.type === 'success' ? 'chat-claude' : 'chat-user');
+      let text = c.text;
+      if (c.type === 'success') text = '✓ ' + text;
+      div.innerHTML = '<div class="who">' + (c.type === 'success' ? 'Claude Desktop' : 'Claude Desktop') + '</div>' + escapeHTML(text).replace(/\n/g, '<br>');
+      if (c.type === 'pending' && idx === states.length - 1 && step !== AUTH_STEPS.length - 1) {
+        div.style.opacity = 0.7;
+      }
+      claudePane.appendChild(div);
+    });
+  } else {
+    claudePane.innerHTML = '<div class="empty-msg">User flow starts when you press Play.</div>';
+  }
+
+  // Browser pane
+  const browserPane = document.getElementById('authBrowserPane');
+  browserPane.innerHTML = '';
+  const browserState = step >= 0 ? AUTH_STEPS[step].browser : null;
+  if (browserState) {
+    const wrap = document.createElement('div');
+    wrap.className = 'auth-browser';
+    wrap.innerHTML = '<div class="urlbar"><span class="lock">🔒</span><span class="url">' + escapeHTML(browserState.url) + '</span></div>' +
+      '<div class="body" id="browserBody"></div>';
+    browserPane.appendChild(wrap);
+    renderBrowserBody(browserState.body, document.getElementById('browserBody'));
+  } else if (step < 0) {
+    browserPane.innerHTML = '<div class="empty-msg">Browser is closed.</div>';
+  } else {
+    browserPane.innerHTML = '<div class="empty-msg">No browser activity at this step.</div>';
+  }
+
+  // n8n pane
+  const n8nPane = document.getElementById('authN8nPane');
+  n8nPane.innerHTML = '';
+  if (step < 0) {
+    n8nPane.innerHTML = '<div class="empty-msg">n8n waiting for OAuth requests.</div>';
+  } else {
+    const term = document.createElement('div');
+    term.className = 'term';
+    for (let i = 0; i <= step; i++) {
+      const s = AUTH_STEPS[i];
+      if (!s.n8n) continue;
+      if (s.n8n.type === 'log') {
+        s.n8n.text.split('\n').forEach(line => {
+          const div = document.createElement('div');
+          div.className = 'line ' + (line.startsWith('✓') ? 'ok' : line.startsWith('→') ? 'info' : 'dim');
+          div.textContent = line;
+          term.appendChild(div);
+        });
+      } else if (s.n8n.type === 'app') {
+        const div = document.createElement('div');
+        div.className = 'line ok';
+        div.textContent = '✓ ' + s.n8n.text;
+        term.appendChild(div);
+        // Show Connected Apps page
+        const apps = document.createElement('div');
+        apps.style.marginTop = '12px';
+        apps.innerHTML = `
+          <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Settings → Connected Apps</div>
+          <div class="exec-row" style="border-color:var(--brand);">
+            <div class="stat-dot success"></div>
+            <div class="info">
+              <div><span class="name" style="color:var(--brand-2)">Claude Desktop</span></div>
+              <div class="meta">Connected just now · scopes: node:execute, credential:read</div>
+              <div class="meta" style="margin-top:4px;color:var(--text-faint);">All activity logged · revoke anytime</div>
+            </div>
+          </div>
+        `;
+        term.appendChild(apps);
+      }
+    }
+    n8nPane.appendChild(term);
+  }
+}
+
+function renderBrowserBody(kind, target) {
+  if (kind === 'redirect') {
+    target.innerHTML = '<div style="color:var(--text-faint); font-size:13px;">Redirecting to n8n...</div>';
+  } else if (kind === 'consent') {
+    target.innerHTML = `
+      <div class="consent-screen">
+        <div class="app-row">
+          <div class="app-icon">Cl</div>
+          <div>
+            <div style="font-weight:600;">Claude Desktop wants access to your n8n</div>
+            <div style="color:var(--text-faint);font-size:11.5px;">Signed in as filipe@company</div>
+          </div>
+        </div>
+        <div style="font-size:12px; color:var(--text-dim); margin-bottom:6px;">This app will be able to:</div>
+        <div class="perm yes">&nbsp;Execute nodes on your behalf</div>
+        <div class="perm yes">&nbsp;Use your connected credentials (cannot read secrets)</div>
+        <div class="perm no">&nbsp;Cannot create or modify workflows</div>
+        <div class="perm no">&nbsp;Cannot access your account settings</div>
+        <div style="margin-top:14px; padding:10px 12px; background:var(--bg); border:1px solid var(--border-soft); border-radius:6px; font-size:11.5px; color:var(--text-faint); line-height:1.5;">
+          You can review and revoke this access anytime from <strong style="color:var(--text-dim);">Settings → Connected Apps</strong>. Every call this app makes is logged with the credential it used.
+        </div>
+        <div class="actions">
+          <button class="btn">Cancel</button>
+          <button class="btn primary flash">Authorize</button>
+        </div>
+      </div>
+    `;
+  } else if (kind === 'redirect-back') {
+    target.innerHTML = '<div style="color:var(--text-faint);font-size:13px;">Redirecting back to Claude Desktop...</div>';
+  } else if (kind === 'success') {
+    target.innerHTML = '<div style="color:var(--green);font-size:13px;font-weight:600;">✓ Connection complete. You can close this tab.</div>';
+  }
+}
+
+function authNext() { authState.step = Math.min(authState.step + 1, AUTH_STEPS.length - 1); renderAuth(); }
+function authPrev() { authState.step = Math.max(authState.step - 1, -1); renderAuth(); }
+function authReset() { authStop(); authState.step = -1; renderAuth(); }
+function authPlay() {
+  if (authState.playing) { authStop(); return; }
+  if (authState.step >= AUTH_STEPS.length - 1) authState.step = -1;
+  authState.playing = true;
+  renderAuth();
+  const tick = () => {
+    if (!authState.playing) return;
+    if (authState.step >= AUTH_STEPS.length - 1) { authStop(); return; }
+    authNext();
+    authState.playTimer = setTimeout(tick, 4000);
+  };
+  authNext();
+  authState.playTimer = setTimeout(tick, 4000);
+}
+function authStop() { authState.playing = false; clearTimeout(authState.playTimer); renderAuth(); }
+
+// Auth flow demo wiring parked — the HTML section was removed for hackathon focus.
+// Kept JS state for easy reactivation if/when the OAuth flow returns.
+const _authNextEl = document.getElementById('authNext');
+if (_authNextEl) {
+  _authNextEl.addEventListener('click', authNext);
+  document.getElementById('authPrev').addEventListener('click', authPrev);
+  document.getElementById('authReset').addEventListener('click', authReset);
+  document.getElementById('authPlay').addEventListener('click', authPlay);
+}
+
+// ───── Initial render ─────
+renderMain();
+if (document.getElementById('authStepNum')) renderAuth();
+</script>
+
+</body>
+</html>

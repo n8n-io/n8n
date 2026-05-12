@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>n8n hub — kanban</title>
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-2: #11141c;
+    --bg-3: #161a23;
+    --surface: #181c25;
+    --surface-2: #1e2330;
+    --surface-3: #252b3a;
+    --border: #262d3d;
+    --border-soft: #1c2230;
+    --text: #e8eaef;
+    --text-dim: #9098ad;
+    --text-faint: #5e667c;
+    --brand: #ff6d5a;
+    --brand-2: #ff9072;
+    --green: #5dd49e;
+    --yellow: #f5c84b;
+    --red: #ff7068;
+    --blue: #6ba8ff;
+    --purple: #b07cff;
+    --cyan: #5be0e0;
+    --mono: ui-monospace, "SF Mono", "Menlo", "JetBrains Mono", "Fira Code", monospace;
+    --p0: #b07cff;
+    --p1: #ff6d5a;
+    --p2: #5dd49e;
+    --p3: #6ba8ff;
+    --p4: #f5c84b;
+    --p5: #5be0e0;
+    --p6: #ff9072;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background:
+      radial-gradient(900px 500px at 90% -5%, rgba(255,109,90,0.04), transparent 60%),
+      radial-gradient(700px 400px at -5% 30%, rgba(107,168,255,0.03), transparent 60%),
+      var(--bg);
+    min-height: 100vh;
+  }
+
+  /* Sticky header */
+  header.top {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(10,12,17,0.94);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 14px 28px;
+  }
+  header.top .row1 { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .title { display: flex; align-items: center; gap: 11px; }
+  .title .logo { width: 8px; height: 8px; border-radius: 2px; background: var(--brand); box-shadow: 0 0 14px var(--brand); }
+  .title h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+  .title small { display: block; color: var(--text-faint); font-size: 11px; margin-top: 1px; }
+  .stat-cluster { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--text-dim); }
+  .stat-cluster .pct { font-family: var(--mono); font-size: 14px; color: var(--text); font-weight: 700; }
+  .stat-cluster .bar { width: 160px; height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .stat-cluster .bar .fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--brand-2)); border-radius: 999px; width: 0%; transition: width 0.4s ease; }
+  .actions button {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 11px; border-radius: 6px; cursor: pointer; font-family: inherit;
+    font-size: 11px; font-weight: 500; margin-left: 4px;
+    transition: all 0.12s ease;
+  }
+  .actions button:hover { background: var(--surface-2); border-color: var(--text-faint); }
+
+  .tabs { display: flex; gap: 4px; margin-top: 12px; }
+  .tab-btn {
+    background: transparent; border: 0; color: var(--text-dim);
+    padding: 8px 14px; border-radius: 7px; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 500; position: relative;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); background: var(--surface-2); }
+  .tab-btn .count { font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); margin-left: 6px; }
+  .tab-btn.active .count { color: var(--brand-2); }
+
+  main { padding: 24px 28px 80px; max-width: 1480px; margin: 0 auto; }
+
+  /* === KANBAN BOARD === */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  .col {
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    min-height: 400px;
+    display: flex; flex-direction: column;
+  }
+  .col-head {
+    padding: 12px 14px; border-bottom: 1px solid var(--border-soft);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-3); border-radius: 12px 12px 0 0;
+  }
+  .col-head h3 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+  .col-head h3::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+  .col[data-status="todo"] .col-head h3::before { background: var(--text-faint); }
+  .col[data-status="wip"] .col-head h3::before { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+  .col[data-status="done"] .col-head h3::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .col-count { font-family: var(--mono); font-size: 11px; color: var(--text-faint); background: var(--surface); padding: 2px 7px; border-radius: 999px; }
+  .col-body { padding: 10px; flex: 1; min-height: 0; overflow-y: auto; }
+  .col-body::-webkit-scrollbar { width: 6px; }
+  .col-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .col-empty { color: var(--text-faint); font-size: 12px; text-align: center; padding: 28px 14px; font-style: italic; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 13px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+  .card:hover { border-color: var(--text-faint); transform: translateY(-1px); }
+  .card.expanded { border-color: var(--brand); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-phase {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 4px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border-soft);
+    color: var(--text-dim); white-space: nowrap;
+  }
+  .card[data-phase="p0"] .card-phase { color: var(--p0); border-color: rgba(176,124,255,0.3); background: rgba(176,124,255,0.08); }
+  .card[data-phase="p1"] .card-phase { color: var(--p1); border-color: rgba(255,109,90,0.3); background: rgba(255,109,90,0.08); }
+  .card[data-phase="p2"] .card-phase { color: var(--p2); border-color: rgba(93,212,158,0.3); background: rgba(93,212,158,0.08); }
+  .card[data-phase="p3"] .card-phase { color: var(--p3); border-color: rgba(107,168,255,0.3); background: rgba(107,168,255,0.08); }
+  .card[data-phase="p4"] .card-phase { color: var(--p4); border-color: rgba(245,200,75,0.3); background: rgba(245,200,75,0.08); }
+  .card[data-phase="p5"] .card-phase { color: var(--p5); border-color: rgba(91,224,224,0.3); background: rgba(91,224,224,0.08); }
+  .card[data-phase="p6"] .card-phase { color: var(--p6); border-color: rgba(255,144,114,0.3); background: rgba(255,144,114,0.08); }
+  .card-id { font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); }
+  .card-title { font-size: 13px; font-weight: 500; margin-top: 5px; color: var(--text); line-height: 1.4; }
+  .card-meta { display: flex; gap: 8px; margin-top: 7px; font-size: 10.5px; color: var(--text-faint); flex-wrap: wrap; align-items: center; }
+  .card-meta .tag { font-family: var(--mono); padding: 1px 5px; border-radius: 3px; background: var(--bg-2); }
+  .card-meta .tag.eff { color: var(--yellow); }
+  .card-meta .tag.risk-low { color: var(--green); }
+  .card-meta .tag.risk-medium { color: var(--yellow); }
+  .card-meta .tag.risk-high { color: var(--red); }
+
+  /* Card status controls */
+  .card-status {
+    display: flex; gap: 3px; margin-top: 9px;
+    padding-top: 9px; border-top: 1px solid var(--border-soft);
+  }
+  .card-status button {
+    flex: 1; background: var(--bg-2); border: 1px solid var(--border-soft);
+    color: var(--text-faint); padding: 4px 6px; border-radius: 4px;
+    cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    transition: all 0.12s ease;
+  }
+  .card-status button:hover { color: var(--text); border-color: var(--text-faint); }
+  .card-status button.active { background: var(--surface-3); color: var(--text); }
+  .card-status button[data-set="todo"].active { color: var(--text-dim); }
+  .card-status button[data-set="wip"].active { color: var(--yellow); border-color: rgba(245,200,75,0.4); background: rgba(245,200,75,0.08); }
+  .card-status button[data-set="done"].active { color: var(--green); border-color: rgba(93,212,158,0.4); background: rgba(93,212,158,0.08); }
+
+  /* Card expansion */
+  .card-detail {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-soft);
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .card.expanded .card-detail { display: block; }
+  .card-detail .what { color: var(--text); margin: 0 0 8px; line-height: 1.55; }
+  .card-detail .what strong { color: var(--brand-2); }
+  .card-detail .files { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+  .card-detail .file {
+    font-family: var(--mono); font-size: 10.5px; padding: 2px 7px;
+    background: var(--bg-2); border: 1px solid var(--border-soft); border-radius: 4px; color: var(--text);
+  }
+  .card-detail .file.new::before { content: "+ "; color: var(--purple); }
+  .card-detail .file.modify::before { content: "~ "; color: var(--yellow); }
+  .card-detail pre {
+    background: var(--bg-2); border: 1px solid var(--border-soft);
+    border-radius: 6px; padding: 9px 11px; margin: 8px 0;
+    font-family: var(--mono); font-size: 11.5px; color: var(--text);
+    line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+    overflow-x: auto;
+  }
+  .card-detail .accept {
+    font-size: 12px; padding: 7px 10px;
+    background: rgba(93,212,158,0.06); border-left: 2px solid var(--green);
+    border-radius: 0 5px 5px 0; margin: 8px 0; color: var(--text-dim);
+  }
+  .card-detail .accept strong { color: var(--green); }
+  .card-detail .tests { margin-top: 10px; }
+  .test-block {
+    background: var(--bg-2); border: 1px solid var(--border-soft);
+    border-radius: 6px; padding: 9px 11px; margin-top: 6px; position: relative;
+  }
+  .test-block .lab {
+    font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--green); margin-bottom: 4px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .test-block.first {
+    background: linear-gradient(180deg, rgba(255,109,90,0.06), rgba(255,109,90,0.02));
+    border-color: rgba(255,109,90,0.25);
+  }
+  .test-block.first .lab { color: var(--brand); }
+  .test-block.first .lab span::before { content: "🔴 "; }
+  .test-block .lab span::before { content: "▸ "; }
+  .test-block .copy {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-faint); padding: 2px 7px; border-radius: 4px;
+    font-family: inherit; font-size: 9.5px; cursor: pointer;
+  }
+  .test-block .copy:hover { color: var(--text); border-color: var(--text-faint); }
+  .test-block .copy.copied { color: var(--green); border-color: var(--green); }
+  .test-block pre { margin: 0; padding: 0; background: transparent; border: none; font-size: 11px; color: var(--text); }
+
+  /* Phase filter */
+  .phase-filter {
+    display: flex; gap: 6px; margin-bottom: 18px;
+    overflow-x: auto; padding-bottom: 4px;
+  }
+  .phase-filter::-webkit-scrollbar { height: 4px; }
+  .phase-filter button {
+    background: var(--surface); border: 1px solid var(--border-soft);
+    color: var(--text-dim); padding: 5px 11px; border-radius: 6px;
+    font-family: inherit; font-size: 11.5px; cursor: pointer; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.12s ease;
+  }
+  .phase-filter button:hover { color: var(--text); }
+  .phase-filter button.active { background: var(--surface-3); color: var(--text); border-color: var(--text-faint); }
+  .phase-filter button .pdot { width: 6px; height: 6px; border-radius: 50%; }
+  .phase-filter button[data-phase="all"] .pdot { background: var(--text-dim); }
+  .phase-filter button[data-phase="p0"] .pdot { background: var(--p0); }
+  .phase-filter button[data-phase="p1"] .pdot { background: var(--p1); }
+  .phase-filter button[data-phase="p2"] .pdot { background: var(--p2); }
+  .phase-filter button[data-phase="p3"] .pdot { background: var(--p3); }
+  .phase-filter button[data-phase="p4"] .pdot { background: var(--p4); }
+  .phase-filter button[data-phase="p5"] .pdot { background: var(--p5); }
+  .phase-filter button[data-phase="p6"] .pdot { background: var(--p6); }
+
+  /* === TESTS TAB === */
+  .tests-grid { display: grid; gap: 18px; max-width: 980px; }
+  .tests-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+  .tests-section h2 { margin: 0 0 6px; font-size: 17px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .tests-section h2 .num { font-family: var(--mono); font-size: 13px; color: var(--text-faint); }
+  .tests-section .sub { color: var(--text-dim); font-size: 13px; margin: 0 0 14px; }
+  .tests-section h3 {
+    font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-faint); margin: 16px 0 6px; font-weight: 600;
+  }
+  .tests-section h3:first-child { margin-top: 0; }
+  .tests-section .test-block { margin-top: 6px; }
+  .tests-section pre { white-space: pre-wrap; word-break: break-word; }
+
+  /* Risks / shortcuts panels */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 22px; margin-bottom: 16px;
+  }
+  .panel h2 { margin: 0 0 10px; font-size: 16px; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+  .panel.risks { border-top: 3px solid var(--red); }
+  .panel.cuts { border-top: 3px solid var(--yellow); }
+  .panel.findings { border-top: 3px solid var(--blue); }
+  .panel.shortcuts { border-top: 3px solid var(--brand); }
+  .panel.demo { border-top: 3px solid var(--green); }
+
+  .panel summary { cursor: pointer; padding: 4px 0; }
+  .panel details[open] summary { margin-bottom: 10px; }
+
+  .risk-item { padding: 10px 0; border-top: 1px solid var(--border-soft); font-size: 13px; }
+  .risk-item:first-of-type { border-top: none; padding-top: 0; }
+  .risk-item .h { font-weight: 600; margin-bottom: 3px; }
+  .risk-item .h .rank { font-family: var(--mono); color: var(--text-faint); margin-right: 8px; font-size: 11.5px; }
+  .risk-item .b { color: var(--text-dim); }
+  .risk-item .b strong { color: var(--text); }
+
+  table.short { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 0; }
+  table.short thead th { font-size: 10.5px; color: var(--text-faint); letter-spacing: 0.05em; text-transform: uppercase; text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  table.short td { padding: 8px 10px; border-bottom: 1px solid var(--border-soft); vertical-align: top; color: var(--text-dim); }
+  table.short td strong { color: var(--text); }
+  table.short td.eff { font-family: var(--mono); white-space: nowrap; color: var(--brand-2); }
+  table.short h4 { margin: 18px 0 6px; font-size: 11.5px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .cut-list { counter-reset: cut; padding: 0; list-style: none; margin: 0; }
+  .cut-list li { padding: 7px 0; border-top: 1px solid var(--border-soft); font-size: 12.5px; counter-increment: cut; display: flex; gap: 12px; align-items: baseline; }
+  .cut-list li:first-child { border-top: none; padding-top: 0; }
+  .cut-list li::before { content: counter(cut); font-family: var(--mono); color: var(--text-faint); font-size: 11px; min-width: 14px; }
+  .keep { background: rgba(93,212,158,0.08); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 9px 13px; margin-top: 12px; font-size: 12.5px; color: var(--green); }
+  .keep strong { color: var(--text); margin-right: 6px; }
+
+  code { font-family: var(--mono); font-size: 12px; background: var(--bg-2); padding: 1px 5px; border-radius: 3px; color: var(--text); }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 980px) {
+    .board { grid-template-columns: 1fr; }
+    main { padding: 18px 16px 60px; }
+    header.top { padding: 12px 16px; }
+    .stat-cluster .bar { width: 100px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="row1">
+    <div class="title">
+      <span class="logo"></span>
+      <div>
+        <h1>n8n hub — implementation kanban</h1>
+        <small>hackathon · peer-reviewed plan · <span id="totalLabel">— tasks</span></small>
+      </div>
+    </div>
+    <div class="stat-cluster">
+      <span class="pct" id="progPct">0%</span>
+      <div class="bar"><div class="fill" id="progFill"></div></div>
+      <span class="actions">
+        <button id="resetBtn">Reset</button>
+      </span>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="board">Board <span class="count" id="boardCount"></span></button>
+    <button class="tab-btn" data-tab="tests">Tests &amp; setup</button>
+    <button class="tab-btn" data-tab="risks">Risks &amp; shortcuts</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================== BOARD TAB ============================== -->
+<section id="tab-board">
+
+  <div class="panel" style="border-top: 3px solid var(--green); margin-bottom: 18px;">
+    <h2 style="margin: 0 0 8px; display: flex; align-items: center; gap: 8px;">🔴 → 🟢 TDD discipline</h2>
+    <p style="color: var(--text-dim); font-size: 13.5px; margin: 0 0 10px;">Every implementation task in this kanban follows the same loop:</p>
+    <ol style="margin: 0 0 10px; padding-left: 20px; color: var(--text); font-size: 13.5px; line-height: 1.7;">
+      <li><strong>Write the failing test first.</strong> The test file path is named in each card.</li>
+      <li><strong>Run it. Confirm it fails for the right reason</strong> ("Cannot find module" means you haven't even imported correctly — write more test first).</li>
+      <li><strong>Implement minimal code</strong> to make the test pass. Don't over-build.</li>
+      <li><strong>Run again. Confirm green.</strong></li>
+      <li><strong>Refactor if needed</strong> — keep tests green throughout.</li>
+    </ol>
+    <p style="color: var(--text-faint); font-size: 12.5px; margin: 0;">Backend tests: Jest (<code>pnpm --filter n8n test path/to/file.test.ts</code>). CLI tests: Jest with <code>nock</code> for HTTP mocks (<code>pnpm --filter @n8n/cli test</code>). SDK tests: Jest with <code>nock</code> (<code>pnpm --filter @n8n/sdk test</code>). Frontend: vitest.</p>
+  </div>
+
+  <div class="phase-filter" id="phaseFilter"></div>
+
+  <div class="board">
+    <div class="col" data-status="todo">
+      <div class="col-head">
+        <h3>To do</h3>
+        <span class="col-count" id="countTodo">0</span>
+      </div>
+      <div class="col-body" id="colTodo"></div>
+    </div>
+    <div class="col" data-status="wip">
+      <div class="col-head">
+        <h3>In progress</h3>
+        <span class="col-count" id="countWip">0</span>
+      </div>
+      <div class="col-body" id="colWip"></div>
+    </div>
+    <div class="col" data-status="done">
+      <div class="col-head">
+        <h3>Done</h3>
+        <span class="col-count" id="countDone">0</span>
+      </div>
+      <div class="col-body" id="colDone"></div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ============================== TESTS TAB ============================== -->
+<section id="tab-tests" class="hidden">
+
+  <div class="tests-grid">
+
+    <div class="tests-section">
+      <h2><span class="num">A</span>Dev environment — watch mode</h2>
+      <p class="sub">Three terminals, hot reload on every save. Run these before touching any task.</p>
+
+      <h3>Terminal A · n8n server + frontend (watch)</h3>
+      <div class="test-block">
+        <div class="lab"><span>once</span><button class="copy" data-copy="cd /Users/filipetavares/git/n8n
+pnpm install
+pnpm dev">Copy</button></div>
+        <pre>cd /Users/filipetavares/git/n8n
+pnpm install                      # first time only
+pnpm dev                          # turbo dev across the workspace</pre>
+      </div>
+      <p style="color:var(--text-faint); font-size:11.5px; margin:6px 0 0;">Opens <code>http://localhost:5678</code>. Filter noisy logs: <code>pnpm dev 2&gt;&amp;1 | grep -v '^\[nodes-base\]'</code></p>
+
+      <h3>Terminal B · SDK in watch mode</h3>
+      <div class="test-block">
+        <div class="lab"><span>after Phase 0.4</span><button class="copy" data-copy="pnpm --filter @n8n/sdk dev">Copy</button></div>
+        <pre>pnpm --filter @n8n/sdk dev        # tsc --watch (add script in 0.4)</pre>
+      </div>
+      <p style="color:var(--text-faint); font-size:11.5px; margin:6px 0 0;">Consume from a test project: <code>cd packages/@n8n/sdk &amp;&amp; pnpm build &amp;&amp; pnpm link --global</code>, then <code>pnpm link --global @n8n/sdk</code> in the test app.</p>
+
+      <h3>Terminal C · testing</h3>
+      <p style="color:var(--text-dim); font-size:12.5px; margin:4px 0 0;">Run all the curl/CLI/tsx commands from the sections below.</p>
+    </div>
+
+    <div class="tests-section">
+      <h2><span class="num">B</span>Auth flow</h2>
+      <p class="sub">First login uses dynamic OAuth client registration; subsequent logins reuse the stored <code>clientId</code>.</p>
+      <div class="test-block">
+        <div class="lab"><span>login + verify</span><button class="copy" data-copy="./packages/cli/bin/n8n auth:login --url=http://localhost:5678
+cat ~/.n8n/config.json">Copy</button></div>
+        <pre>./packages/cli/bin/n8n auth:login --url=http://localhost:5678
+# CLI prints loopback URL, opens browser
+# Approve → redirect to localhost
+# Expect: "Logged in as &lt;email&gt;"
+cat ~/.n8n/config.json   # verify access token saved</pre>
+      </div>
+      <p style="color:var(--text-faint); font-size:11.5px; margin:6px 0 0;"><strong>Failure modes:</strong> browser doesn't open → copy URL from CLI, paste manually. Loopback rejected (firewall) → <code>--pat=&lt;token&gt;</code> fallback. Hit <code>mcpMaxRegisteredClients</code> cap from repeated logins → bump in env or wait for DCR cleanup tool.</p>
+    </div>
+
+    <div class="tests-section">
+      <h2><span class="num">C</span>CLI end-to-end</h2>
+      <p class="sub">Full discover → inspect → execute → audit loop.</p>
+      <div class="test-block">
+        <div class="lab"><span>full sequence (replace &lt;cred-id&gt;, &lt;channel-id&gt;)</span><button class="copy" data-copy="./packages/cli/bin/n8n tools:search 'post slack'
+./packages/cli/bin/n8n tools:get slack.message.send
+./packages/cli/bin/n8n credentials:list --node-type=slack
+./packages/cli/bin/n8n exec:run slack.message.send \
+  --credential &lt;cred-id&gt; --param channel='&lt;channel-id&gt;' --param text='hello' --dry-run
+./packages/cli/bin/n8n exec:run slack.message.send \
+  --credential &lt;cred-id&gt; --param channel='&lt;channel-id&gt;' --param text='hello'
+./packages/cli/bin/n8n executions:get &lt;executionId&gt;">Copy</button></div>
+        <pre>./packages/cli/bin/n8n tools:search "post slack"
+./packages/cli/bin/n8n tools:get slack.message.send
+./packages/cli/bin/n8n credentials:list --node-type=slack
+
+# dry run (no actual send)
+./packages/cli/bin/n8n exec:run slack.message.send \
+  --credential &lt;cred-id&gt; --param channel='&lt;channel-id&gt;' --param text='hello' --dry-run
+# expect: status=dry_run, wouldExecute populated
+
+# real send
+./packages/cli/bin/n8n exec:run slack.message.send \
+  --credential &lt;cred-id&gt; --param channel='&lt;channel-id&gt;' --param text='hello'
+# expect: executionId, message arrives in Slack
+
+./packages/cli/bin/n8n executions:get &lt;executionId&gt;</pre>
+      </div>
+      <p style="color:var(--text-faint); font-size:11.5px; margin:6px 0 0;"><strong>Gotcha:</strong> Slack <code>channel</code> is a <code>resourceLocator</code>. Pass <strong>channel ID</strong> (e.g. <code>C0123ABC</code>), not name. Pre-flight lists IDs.</p>
+    </div>
+
+    <div class="tests-section">
+      <h2><span class="num">D</span>SDK smoke test</h2>
+      <p class="sub">Smallest possible test — confirms the proxy dispatches to <code>POST /executions/node</code> end-to-end.</p>
+      <div class="test-block">
+        <div class="lab"><span>smoke test</span><button class="copy" data-copy="cat > /tmp/test-sdk.ts <<'EOF'
+import { createClient } from '@n8n/sdk';
+const n8n = createClient({ baseUrl: 'http://localhost:5678', token: process.env.N8N_TOKEN! });
+const result = await n8n.set.execute({ values: { string: [{ name: 'hello', value: 'world' }] } });
+console.log(result);
+EOF
+N8N_TOKEN=&lt;token&gt; pnpm tsx /tmp/test-sdk.ts">Copy</button></div>
+        <pre>cat &gt; /tmp/test-sdk.ts &lt;&lt;'EOF'
+import { createClient } from '@n8n/sdk';
+const n8n = createClient({ baseUrl: 'http://localhost:5678', token: process.env.N8N_TOKEN! });
+const result = await n8n.set.execute({ values: { string: [{ name: 'hello', value: 'world' }] } });
+console.log(result);
+EOF
+N8N_TOKEN=&lt;token&gt; pnpm tsx /tmp/test-sdk.ts
+# expect: { hello: 'world' }</pre>
+      </div>
+    </div>
+
+    <div class="tests-section">
+      <h2><span class="num">E</span>MCP via Claude Desktop</h2>
+      <p class="sub">Add the local n8n MCP server to Claude Desktop config, restart, and prompt.</p>
+      <div class="test-block">
+        <div class="lab"><span>claude_desktop_config.json</span><button class="copy" data-copy='{
+  "mcpServers": {
+    "n8n-local": { "url": "http://localhost:5678/mcp-server/http", "type": "http" }
+  }
+}'>Copy</button></div>
+        <pre>~/Library/Application Support/Claude/claude_desktop_config.json:
+
+{
+  "mcpServers": {
+    "n8n-local": { "url": "http://localhost:5678/mcp-server/http", "type": "http" }
+  }
+}
+
+# Restart Claude Desktop. The MCP icon shows the connection.
+# Prompt: "Search n8n for Slack tools"
+# Expect: agent calls n8n_search_tools</pre>
+      </div>
+
+      <h3>MCP Inspector (alternative)</h3>
+      <div class="test-block">
+        <div class="lab"><span>list registered tools</span><button class="copy" data-copy="npx @modelcontextprotocol/inspector http://localhost:5678/mcp-server/http">Copy</button></div>
+        <pre>npx @modelcontextprotocol/inspector http://localhost:5678/mcp-server/http
+# expect 30 tools (27 existing + 3 new meta-tools after Phase 2)</pre>
+      </div>
+    </div>
+
+    <div class="tests-section">
+      <h2><span class="num">F</span>Verify OAuth scopes</h2>
+      <p class="sub">Confirm the three new scopes are advertised by the well-known endpoint.</p>
+      <div class="test-block">
+        <div class="lab"><span>well-known OAuth metadata</span><button class="copy" data-copy="curl -s http://localhost:5678/.well-known/oauth-authorization-server | jq .scopes_supported">Copy</button></div>
+        <pre>curl -s http://localhost:5678/.well-known/oauth-authorization-server | jq .scopes_supported
+# expect: ["tool:listWorkflows", "tool:getWorkflowDetails",
+#          "node:execute", "credential:read", "tool:search"]</pre>
+      </div>
+    </div>
+
+    <div class="tests-section">
+      <h2><span class="num">G</span>Observability — execution like a workflow</h2>
+      <p class="sub">After a single-node call, verify the executions UI treats it as a first-class citizen.</p>
+      <div class="test-block">
+        <div class="lab"><span>full observability check</span><button class="copy" data-copy="# 1. Fire a single-node execution
+./packages/cli/bin/n8n exec:run slack.message.send \
+  --credential <cred-id> --param channel='<channel-id>' --param text='observability test'
+# Note the executionId + URL in output
+
+# 2. Open the URL from CLI output
+open 'http://localhost:5678/executions/<executionId>'
+
+# 3. Verify in the detail view:
+#    [ ] Header: 'Node call: slack.message.send · via n8n-cli@<host>'
+#    [ ] NO 'Edit workflow' button
+#    [ ] Input JSON visible (channel, text)
+#    [ ] Output JSON visible (ok, ts, message URL)
+#    [ ] Timing: startedAt + duration shown
+#    [ ] Status: success (green)
+#    [ ] Back nav goes to executions list, not a workflow
+
+# 4. Back in the list (/executions):
+#    [ ] Single-node row shows 'slack.message.send' as headline (not workflow name)
+#    [ ] Sub-line shows 'via n8n-cli@<host>' or 'via Claude Desktop'
+#    [ ] Same status dot / timing as workflow rows">Copy</button></div>
+        <pre># 1. Fire a single-node execution
+./packages/cli/bin/n8n exec:run slack.message.send \
+  --credential &lt;cred-id&gt; --param channel='&lt;channel-id&gt;' --param text='observability test'
+# Note the executionId + URL in output
+
+# 2. Open the URL from CLI output
+open 'http://localhost:5678/executions/&lt;executionId&gt;'
+
+# 3. Verify in the detail view:
+#    [ ] Header: 'Node call: slack.message.send · via n8n-cli@&lt;host&gt;'
+#    [ ] NO 'Edit workflow' button
+#    [ ] Input JSON visible (channel, text)
+#    [ ] Output JSON visible (ok, ts, message URL)
+#    [ ] Timing: startedAt + duration shown
+#    [ ] Status: success (green)
+#    [ ] Back nav goes to executions list, not a workflow
+
+# 4. Back in the list (/executions):
+#    [ ] Single-node row shows 'slack.message.send' as headline (not workflow name)
+#    [ ] Sub-line shows 'via n8n-cli@&lt;host&gt;' or 'via Claude Desktop'
+#    [ ] Same status dot / timing as workflow rows</pre>
+      </div>
+      <p style="color:var(--text-faint); font-size:11.5px; margin:8px 0 0;"><strong>This is the load-bearing test for Phase 5.</strong> If input/output isn't visible, or the detail view 500s, Phase 5.3 isn't done.</p>
+    </div>
+
+    <div class="tests-section">
+      <h2><span class="num">H</span>Demo script (Phase 6.2)</h2>
+      <p class="sub">Pre-flight, then three beats. Browser at <code>http://localhost:5678/executions</code> filtered single-node.</p>
+
+      <h3>Beat 1 — Claude Desktop (hero moment)</h3>
+      <div class="test-block">
+        <div class="lab"><span>prompt</span><button class="copy" data-copy="I have my 1:1 with Sarah at 3pm. Pull her open Linear issues and any PRs she opened or reviewed in the last week, then post a prep summary to my #1on1-sarah channel.">Copy</button></div>
+        <pre>I have my 1:1 with Sarah at 3pm. Pull her open Linear issues
+and any PRs she opened or reviewed in the last week, then
+post a prep summary to my #1on1-sarah channel.</pre>
+      </div>
+      <p style="color:var(--text-faint); font-size:11.5px; margin:6px 0 14px;">Expected flow: <code>n8n_search_tools</code> → <code>n8n_list_credentials</code> ×3 → <code>n8n_execute_tool</code> ×3. Refresh executions tab.</p>
+
+      <h3>Beat 2 — SDK script</h3>
+      <div class="test-block">
+        <div class="lab"><span>run example</span><button class="copy" data-copy="N8N_URL=http://localhost:5678 N8N_TOKEN=$N8N_PAT \
+  node packages/@n8n/sdk/examples/oneonone-prep.ts">Copy</button></div>
+        <pre>N8N_URL=http://localhost:5678 N8N_TOKEN=$N8N_PAT \
+  node packages/@n8n/sdk/examples/oneonone-prep.ts</pre>
+      </div>
+
+      <h3>Beat 3 — CLI</h3>
+      <div class="test-block">
+        <div class="lab"><span>cli demo</span><button class="copy" data-copy="n8n tools:search 'post slack message'
+n8n exec:run slack.postMessage \
+  --credential $SLACK_CRED \
+  --param channel='#engineering' --param text='Demo complete'">Copy</button></div>
+        <pre>n8n tools:search "post slack message"
+n8n exec:run slack.postMessage \
+  --credential $SLACK_CRED \
+  --param channel='#engineering' --param text='Demo complete'</pre>
+      </div>
+      <p style="color:var(--text-faint); font-size:12px; margin:8px 0 0;"><strong>Closing line:</strong> "One auth, one credential store, three surfaces. Same execution row in the same audit log."</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================== RISKS / SHORTCUTS TAB ============================== -->
+<section id="tab-risks" class="hidden">
+
+  <div class="panel findings">
+    <h2>🔍 Peer-review findings — applied to plan</h2>
+    <p style="color:var(--text-dim); font-size:13px; margin:0 0 12px;">Codex CLI was unavailable; validation ran via senior-engineer agent reading the actual codebase. Six material findings, all applied.</p>
+    <div class="risk-item"><div class="h"><span class="rank">1</span>Phase 1.1: do NOT copy <code>test-workflow.tool.ts</code> verbatim</div><div class="b">That file seeds from a trigger node and throws when none exists. Use <code>WorkflowRunner.run</code> with pre-seeded <code>nodeExecutionStack[0]</code>. Recipe inline in 1.1.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">2</span>Phase 0.3: drop <code>RemoteBaseCommand</code></div><div class="b"><code>@Command()</code> decorator unconditionally calls <code>Service()(target)</code>. Solution: plain <code>@Command</code> classes that don't override <code>init</code>.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">3</span>Phase 4.3 codegen: cut on day 1</div><div class="b">Hand-roll <code>.d.ts</code> for the 8 demo nodes — that IS the path.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">4</span>Phase 1.4 consent UI doesn't render scopes today</div><div class="b">6h frontend+backend, not "strings." Skip for hackathon. Deferred to production.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">5</span><code>@GlobalScope</code> decorator required</div><div class="b">Every authenticated route gates with <code>@ProjectScope</code>/<code>@GlobalScope</code>. May need to add <code>node:execute</code> to <code>@n8n/permissions</code>.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">6</span>Scope enforcement in MCP middleware</div><div class="b">Adding to <code>SUPPORTED_SCOPES</code> ≠ enforced. Deferred to production must-fix.</div></div>
+  </div>
+
+  <div class="panel risks">
+    <h2>Risks ranked</h2>
+    <div class="risk-item"><div class="h"><span class="rank">1</span><code>additionalData</code> wiring in 1.1 doesn't decrypt credentials</div><div class="b">Most likely blocker. <strong>Mitigation:</strong> use the recipe in 1.1 — pre-seeded <code>nodeExecutionStack</code>, route via <code>processRunExecutionData</code>.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">2</span>Tool-search ranking is mediocre</div><div class="b">Keyword match on short queries is noisy. <strong>Mitigation:</strong> rank-boost connected credentials; limit to top 8.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">3</span>OAuth loopback fails behind VPN</div><div class="b"><strong>Mitigation:</strong> PAT fallback for CLI + SDK.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">4</span>Claude Desktop transport hiccups during the demo</div><div class="b"><strong>Mitigation:</strong> Loom backup pre-recorded; curl fallback in a second terminal.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">5</span>Mode value breaks an unexpected consumer</div><div class="b"><strong>Mitigation:</strong> full <code>pnpm typecheck</code> immediately after Phase 0; alias to 'manual' everywhere except telemetry.</div></div>
+    <div class="risk-item"><div class="h"><span class="rank">6</span>Slack channel resourceLocator</div><div class="b">Hero demo fails with channel name. Pre-flight prints real IDs.</div></div>
+  </div>
+
+  <div class="panel shortcuts">
+    <h2>🪚 Hackathon shortcuts — production handoff</h2>
+    <p style="color:var(--text-dim); font-size:13px; margin:0 0 12px;">Every corner we cut. Production team works from this list.</p>
+
+    <h4 style="margin-top:0;">Auth &amp; security</h4>
+    <table class="short">
+      <thead><tr><th>Shortcut</th><th>Hackathon</th><th>Production fix</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><strong>No scope enforcement at MCP tool layer</strong></td><td>Any authenticated client gets new tools regardless of scopes</td><td>Middleware <code>authInfo.scopes.includes(...)</code> per tool</td><td class="eff">~2h</td></tr>
+        <tr><td><strong>No per-scope consent UI</strong></td><td>Existing allow/deny prompt; new scopes in talk track only</td><td>Plumb scopes through OAuthSessionPayload + Vue + i18n</td><td class="eff">~6h</td></tr>
+        <tr><td><strong>CLI tokens unencrypted</strong></td><td><code>~/.n8n/config.json</code> mode 0600</td><td>OS keychain via <code>keytar</code></td><td class="eff">~4h</td></tr>
+        <tr><td><strong>No OAuth retry/backoff</strong></td><td>First failure shows error, exits</td><td>Backoff + recovery prompts</td><td class="eff">~2h</td></tr>
+        <tr><td><strong>No per-token credential scoping</strong></td><td>Tokens get all user's credentials</td><td><code>allowedCredentialIds</code> column + middleware + UI</td><td class="eff">1-2 wks</td></tr>
+        <tr><td><strong>No rate limiting on <code>/executions/node</code></strong></td><td>Endpoint accepts any rate</td><td>Per-token/per-credential limits via existing <code>Throttle</code></td><td class="eff">~1d</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Engine</h4>
+    <table class="short">
+      <thead><tr><th>Shortcut</th><th>Hackathon</th><th>Production fix</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><strong><code>single-node</code> aliases <code>manual</code></strong></td><td>Identical execution behavior; telemetry differs</td><td>Audit distinct quotas, retry policies, rate-limit buckets</td><td class="eff">~1d audit</td></tr>
+        <tr><td><strong>2-node synthetic workflow per call</strong></td><td>Each single-node execution adds a no-op Manual Trigger ahead of the action node. Adds one trivial node-execution row. UI hides the trigger from single-node detail view.</td><td>Replace with pure 1-node execution via pre-seeded <code>nodeExecutionStack</code>; route through <code>WorkflowExecute.processRunExecutionData</code> directly</td><td class="eff">~3-4h</td></tr>
+        <tr><td><strong>No streaming response</strong></td><td>Full payload buffered + returned</td><td>SSE or chunked transfer for long-running nodes</td><td class="eff">~1 wk</td></tr>
+        <tr><td><strong>No payload size limits</strong></td><td>Return full output regardless</td><td>Cap + <code>outputUrl</code> for full download</td><td class="eff">~3h</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Catalog &amp; search</h4>
+    <table class="short">
+      <thead><tr><th>Shortcut</th><th>Hackathon</th><th>Production fix</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Drop <code>categories</code>/<code>score</code></strong></td><td>v1 returns nodeId/displayName/description only</td><td>Join via <code>parser.getNodeType()</code> for categories; expose score</td><td class="eff">~2h</td></tr>
+        <tr><td><strong>Keyword + tag ranking</strong></td><td>No semantic ranking</td><td>Embedding-based reranking via existing AI infra</td><td class="eff">~1 wk</td></tr>
+        <tr><td><strong><code>displayOptions</code> ignored</strong></td><td>Agents see all fields; descriptions guide</td><td>Encode in JSON Schema <code>allOf</code>/<code>if</code>/<code>then</code></td><td class="eff">~1 wk</td></tr>
+        <tr><td><strong><code>loadOptions</code> not exposed</strong></td><td>Agents pass raw IDs</td><td>Per-node <code>list_&lt;resource&gt;</code> companion tools</td><td class="eff">~1 wk</td></tr>
+        <tr><td><strong><code>resourceLocator</code> ID-only</strong></td><td>Always pass IDs; pre-flight verifies</td><td>Union type with byName/byId/byUrl helpers</td><td class="eff">~3d</td></tr>
+        <tr><td><strong><code>resourceMapper</code> typed loosely</strong></td><td><code>Record&lt;string, unknown&gt;</code>; runtime validates</td><td>Fetch schema at SDK call time + validate before dispatch</td><td class="eff">~1 wk</td></tr>
+      </tbody>
+    </table>
+
+    <h4>SDK</h4>
+    <table class="short">
+      <thead><tr><th>Shortcut</th><th>Hackathon</th><th>Production fix</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Codegen emits loose types for resourceMapper / loadOptions nodes</strong></td><td>~20% of catalog falls back to <code>string</code> / <code>Record&lt;string, unknown&gt;</code> for those specific properties</td><td>Encode <code>displayOptions</code> conditional shapes; runtime-fetch <code>resourceMapper</code> fields</td><td class="eff">~1 wk</td></tr>
+        <tr><td><strong>No client-side validation</strong></td><td>Server validates; errors as exceptions</td><td>Optional client-side Zod for fast failure</td><td class="eff">~3d</td></tr>
+        <tr><td><strong>No <code>pull</code> command</strong></td><td>Users with custom nodes use untyped fallback</td><td><code>npx @n8n/sdk pull --instance &lt;url&gt;</code></td><td class="eff">~3d</td></tr>
+        <tr><td><strong>Methods pinned to node versions</strong></td><td>Whatever's in <code>nodes.json</code> at SDK build time</td><td>Version negotiation + multiple overloads</td><td class="eff">~3d</td></tr>
+      </tbody>
+    </table>
+
+    <h4>CLI &amp; UI</h4>
+    <table class="short">
+      <thead><tr><th>Shortcut</th><th>Hackathon</th><th>Production fix</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cross-platform browser-open quirks</strong></td><td>Manual URL copy if open fails</td><td>Detect + prompt per OS</td><td class="eff">~2h</td></tr>
+        <tr><td><strong>No DCR cleanup</strong></td><td>Repeated logins accumulate clients</td><td><code>n8n admin:oauth:clean --older-than=30d</code></td><td class="eff">~3h</td></tr>
+        <tr><td><strong>No mode-filter chip</strong></td><td>Caller column only</td><td>Filter chip in <code>ExecutionsFilter.vue</code></td><td class="eff">~4h</td></tr>
+        <tr><td><strong>No Connected Apps page</strong></td><td>Tokens managed via CLI only</td><td>Dedicated page with revoke</td><td class="eff">~1 wk</td></tr>
+        <tr><td><strong>No audit trail UI</strong></td><td>Metadata in DB; no dedicated viewer</td><td>Execution detail panel for caller/params/output</td><td class="eff">~3d</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Tests &amp; quality</h4>
+    <table class="short">
+      <thead><tr><th>Shortcut</th><th>Hackathon</th><th>Production fix</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Unit tests for new endpoint only</strong></td><td>Smoke tests on hot path</td><td>Full unit + integration suites</td><td class="eff">~1 wk</td></tr>
+        <tr><td><strong>No load tests</strong></td><td>Single-user demo</td><td>Concurrent SDK calls + MCP sessions</td><td class="eff">~3d</td></tr>
+      </tbody>
+    </table>
+
+    <p style="color:var(--text-faint); font-size:12px; margin-top:14px;"><strong>Total production hardening:</strong> ~4-6 engineer-weeks on top of the hackathon week.</p>
+  </div>
+
+  <div class="panel cuts">
+    <h2>What to cut if we lose a day</h2>
+    <ol class="cut-list">
+      <li>Phase 4.4 SDK <code>pull</code> against live instance — bundled types only.</li>
+      <li>Phase 5 mode filter chip — caller column is the load-bearing UI.</li>
+      <li>Phase 4.3 fallback: if codegen drags, ship clean types for the 8 hero demo nodes and <code>Record&lt;string, unknown&gt;</code> for the rest. (Not preferred — try the full catalog first.)</li>
+      <li>Phase 3.5 table formatting — JSON output is fine.</li>
+      <li>Phase 1.4 consent screen polish — existing strings will read OK.</li>
+    </ol>
+    <div class="keep"><strong>Do not cut:</strong> Phase 1.1 · Phase 2 · Phase 6.2 demo run-through.</div>
+  </div>
+
+</section>
+
+</main>
+
+<script>
+'use strict';
+
+const PHASES = [
+  {
+    id: 'p0', num: '00', name: 'Foundation', risk: 'low',
+    tasks: [
+      { id: '0.1', name: 'Add single-node to WorkflowExecuteModeList + audit 19 mode-discriminator sites', effort: '2-4h', risk: 'low',
+        files: [{ p: 'packages/workflow/src/execution-context.ts', t: 'modify' }, { p: 'packages/workflow/src/utils/execution-modes.ts', t: 'new' }, { p: 'packages/workflow/src/__tests__/execution-modes.test.ts', t: 'new' }],
+        what: 'Append <code>single-node</code> to the tuple. Add <code>isInteractiveExecution(mode)</code> helper. <strong>Alias to manual</strong> everywhere except telemetry. Audit each <code>=== \'manual\'</code> site.',
+        testFirst: { cmd: '// packages/workflow/src/__tests__/execution-modes.test.ts\nimport { isInteractiveExecution } from \'../utils/execution-modes\';\ndescribe(\'isInteractiveExecution\', () => {\n  it.each([\n    [\'manual\', true],\n    [\'single-node\', true],\n    [\'trigger\', false],\n    [\'webhook\', false],\n  ])(\'%s → %s\', (mode, expected) => {\n    expect(isInteractiveExecution(mode as WorkflowExecuteMode)).toBe(expected);\n  });\n});', run: 'pnpm --filter n8n-workflow test execution-modes.test.ts' },
+        accept: 'Test green. pnpm typecheck passes monorepo-wide.',
+        tests: [{ lab: 'after mass-edit, verify propagation', cmd: 'pnpm --filter n8n-workflow build\npnpm --filter @n8n/db build\npnpm --filter n8n typecheck' }] },
+      { id: '0.2', name: 'Scaffold cli-client/', effort: '30min', risk: 'low',
+        files: [{ p: 'packages/cli/src/cli-client/config.ts', t: 'new' }, { p: 'packages/cli/src/cli-client/http-client.ts', t: 'new' }, { p: 'packages/cli/src/cli-client/oauth-flow.ts', t: 'new' }],
+        what: 'Signatures + TODO bodies. Just enough to import.',
+        accept: '<code>import { loadConfig } from \'@/cli-client\'</code> resolves.' },
+      { id: '0.4', name: 'Scaffold @n8n/sdk package', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/sdk/package.json', t: 'new' }, { p: 'packages/@n8n/sdk/src/{client,proxy,auth,pull}.ts', t: 'new' }],
+        what: 'Empty stubs. pnpm-workspace.yaml already globs <code>packages/@n8n/*</code>.',
+        accept: '<code>pnpm --filter @n8n/sdk build</code> succeeds.' },
+      { id: '0.5', name: 'Decision: dynamic OAuth client registration', effort: '0', risk: 'low',
+        what: 'CLI does dynamic registration on first <code>auth login</code>. Per-machine client_id in <code>~/.n8n/config.json</code>. No migration.' }
+    ]
+  },
+  {
+    id: 'p1', num: '01', name: 'Server: /executions/node + scopes', risk: 'high',
+    tasks: [
+      { id: '1.1', name: 'Build ExecuteNodeService (2-node workflow shortcut)', effort: '3h', risk: 'low',
+        testFirst: { cmd: '// packages/cli/src/executions/__tests__/execute-node.service.test.ts\nit(\'runs a Set node via Manual Trigger and returns its output\', async () => {\n  const result = await service.execute({\n    user: mockUser,\n    nodeType: \'n8n-nodes-base.set\',\n    parameters: { values: { string: [{ name: \'hello\', value: \'world\' }] } },\n  });\n  expect(result.status).toBe(\'success\');\n  expect(result.output[0].json).toEqual({ hello: \'world\' });\n});\n\nit(\'returns dry_run without invoking\', async () => {\n  const result = await service.execute({ ...args, dryRun: true });\n  expect(result.status).toBe(\'dry_run\');\n});\n\nit(\'rejects credential of wrong type\', async () => {\n  await expect(service.execute({ ...args, credentialId: \'wrong\' })).rejects.toThrow(/credential type/i);\n});', run: 'pnpm --filter n8n test execute-node.service.test.ts' },
+        files: [{ p: 'packages/cli/src/executions/execute-node.service.ts', t: 'new' }],
+        what: '<strong>Hackathon shortcut:</strong> synthesize a 2-node workflow — Manual Trigger → action node — and call <code>manualExecutionService.runManually({ workflowData, executionMode: \'single-node\' })</code> exactly as written today. Engine demands a trigger; we give it a no-op. Workflow is in-memory only (stored inline on the execution row, like all manual runs). Validator\'s "no trigger" trap sidestepped entirely. Production cleanup task: replace with pure 1-node execution via pre-seeded <code>nodeExecutionStack</code> (~3-4h, no behavior change).',
+        code: 'const workflowData = {\n  nodes: [\n    { name: \'Trigger\', type: \'n8n-nodes-base.manualTrigger\', ... },\n    { name: \'Action\', type: nodeType, parameters,\n      credentials: { [credType]: { id: credentialId, name } } },\n  ],\n  connections: { Trigger: { main: [[{ node: \'Action\', ... }]] } },\n};\nreturn manualExecutionService.runManually({\n  workflowData, userId, executionMode: \'single-node\'\n});',
+        accept: 'Pre-kickoff smoke (30min): verify <code>runManually</code> accepts in-memory workflow and Set node executes via Manual Trigger. Then real test with Slack node + credential.',
+        tests: [{ lab: 'smoke before building service', cmd: '# Pre-kickoff smoke in a unit test\nconst wf = { nodes: [\n  { name: \'T\', type: \'n8n-nodes-base.manualTrigger\', typeVersion: 1, parameters: {}, position: [0,0] },\n  { name: \'A\', type: \'n8n-nodes-base.set\', typeVersion: 1,\n    parameters: { values: { string: [{ name: \'hello\', value: \'world\' }] } }, position: [200,0] }\n], connections: { T: { main: [[{ node: \'A\', type: \'main\', index: 0 }]] } } };\nconst id = await manualExecutionService.runManually({ workflowData: wf, userId, executionMode: \'manual\' });\n// expect: resultData.runData[\'A\'][0].data.main[0][0].json.hello === \'world\'' }] },
+      { id: '1.2', name: 'Controller route + @GlobalScope', effort: '2h', risk: 'low',
+        testFirst: { cmd: '// packages/cli/src/executions/__tests__/executions.controller.api.test.ts\nit(\'POST /executions/node returns 200 + executionId\', async () => {\n  const res = await api.post(\'/rest/executions/node\')\n    .set(\'Authorization\', `Bearer ${userToken}`)\n    .send({ nodeType: \'n8n-nodes-base.set\', parameters: { ... } });\n  expect(res.status).toBe(200);\n  expect(res.body.executionId).toMatch(/.+/);\n});\n\nit(\'returns 401 without auth\', async () => { ... });\nit(\'returns 403 without node:execute scope\', async () => { ... });\nit(\'returns 400 on malformed body\', async () => { ... });', run: 'pnpm --filter n8n test executions.controller.api.test.ts' },
+        files: [{ p: 'packages/cli/src/executions/executions.controller.ts', t: 'modify' }, { p: 'packages/cli/src/executions/dto/execute-node-request.dto.ts', t: 'new' }, { p: 'packages/@n8n/permissions/...', t: 'modify' }],
+        what: '<code>@Post(\'/node\')</code> with <code>@GlobalScope(\'node:execute\')</code>. Add <code>node:execute</code> to <code>@n8n/permissions</code> if missing.',
+        tests: [{ lab: 'end-to-end via curl', cmd: 'curl -X POST http://localhost:5678/rest/executions/node \\\n  -H "X-N8N-API-KEY: <pat>" -H "Content-Type: application/json" \\\n  -d \'{"nodeType":"n8n-nodes-base.set","parameters":{"values":{"string":[{"name":"hello","value":"world"}]}}}\'' }] },
+      { id: '1.3', name: 'Expand OAuth scopes', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/cli/src/modules/mcp/mcp-oauth-service.ts', t: 'modify' }],
+        what: '<code>SUPPORTED_SCOPES = [...existing, \'node:execute\', \'credential:read\', \'tool:search\']</code>. Update 3 test files.',
+        tests: [{ lab: 'verify well-known endpoint', cmd: 'curl -s http://localhost:5678/.well-known/oauth-authorization-server | jq .scopes_supported' }] },
+      { id: '1.4', name: 'Consent strings only (UI rendering parked)', effort: '30min', risk: 'low',
+        what: '<strong>Hackathon shortcut:</strong> existing single allow/deny prompt stays. Per-scope rendering moves to production (6h work).' },
+      { id: '1.5', name: 'REST parity endpoints', effort: '2h', risk: 'low',
+        files: [{ p: 'packages/cli/src/controllers/tools.controller.ts', t: 'new' }],
+        what: '<code>GET /rest/nodes/search</code> + <code>GET /rest/nodes/:id</code>. Wraps <code>searchNodesStructured</code>.' }
+    ]
+  },
+  {
+    id: 'p2', num: '02', name: 'MCP meta-tools', risk: 'medium',
+    tasks: [
+      { id: '2.1', name: 'Add searchNodesStructured to NodeCatalogService', effort: '2h', risk: 'medium',
+        files: [{ p: 'packages/cli/src/node-catalog/node-catalog.service.ts', t: 'modify' }, { p: 'packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts', t: 'modify' }],
+        what: 'Call <code>NodeTypeParser.searchNodeTypes()</code> directly. Returns <code>Array&lt;{ nodeId, displayName, description }&gt;</code>. <strong>Drop categories/score from v1.</strong>',
+        testFirst: { cmd: 'it(\'searchNodesStructured returns structured results, not a string blob\', async () => {\n  const results = await service.searchNodesStructured([\'slack\']);\n  expect(Array.isArray(results)).toBe(true);\n  expect(results[0]).toMatchObject({\n    nodeId: expect.stringMatching(/slack/i),\n    displayName: expect.any(String),\n  });\n});', run: 'pnpm --filter n8n test node-catalog.service.test.ts' } },
+      { id: '2.2', name: 'Build n8n_search_tools', effort: '2h', risk: 'medium',
+        files: [{ p: 'packages/cli/src/modules/mcp/tools/n8n-search-tools.tool.ts', t: 'new' }],
+        what: 'Enrich each result with <code>userCredentials</code> by querying <code>credentialsService.getMany(user, { filter: { type } })</code>. <code>inputSchema</code> v1 skips displayOptions/loadOptions/resourceLocator/resourceMapper complexity.',
+        testFirst: { cmd: 'it(\'returns inline user credentials matching the node type\', async () => {\n  const result = await tool.execute({ query: \'slack\', filters: { hasCredential: true } });\n  expect(result.results[0].userCredentials).toContainEqual({ id: expect.any(String), name: expect.stringMatching(/slack/i) });\n});\n\nit(\'inputSchema is JSON Schema, not a TS code string\', async () => {\n  const result = await tool.execute({ query: \'slack\' });\n  expect(result.results[0].inputSchema.type).toBe(\'object\');\n});', run: 'pnpm --filter n8n test n8n-search-tools.tool.test.ts' } },
+      { id: '2.3', name: 'Build n8n_execute_tool', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/cli/src/modules/mcp/tools/n8n-execute-tool.tool.ts', t: 'new' }],
+        what: 'Parse <code>id</code> into <code>{ nodeType, operation }</code>, merge into <code>parameters</code>, call <code>ExecuteNodeService.execute</code>.',
+        testFirst: { cmd: 'it(\'parses id into nodeType + operation, calls ExecuteNodeService\', async () => {\n  const spy = jest.spyOn(executeNodeService, \'execute\');\n  await tool.execute({ id: \'slack.message.send\', credentialId: \'c1\', params: {} });\n  expect(spy).toHaveBeenCalledWith(expect.objectContaining({\n    nodeType: expect.stringContaining(\'slack\'),\n    parameters: expect.objectContaining({ resource: \'message\', operation: \'send\' }),\n  }));\n});', run: 'pnpm --filter n8n test n8n-execute-tool.tool.test.ts' } },
+      { id: '2.4', name: 'Build n8n_list_credentials', effort: '30min', risk: 'low',
+        files: [{ p: 'packages/cli/src/modules/mcp/tools/n8n-list-credentials.tool.ts', t: 'new' }],
+        what: 'Wraps existing helper. Adds <code>nodeType</code> filter. Different name from existing <code>list_credentials</code>.',
+        testFirst: { cmd: 'it(\'filters by nodeType resolved to credential type\', async () => {\n  const result = await tool.execute({ nodeType: \'slack\' });\n  result.credentials.forEach(c => expect(c.type).toMatch(/slack/i));\n});\n\nit(\'never returns secret material\', async () => {\n  const result = await tool.execute({});\n  result.credentials.forEach(c => {\n    expect(c).not.toHaveProperty(\'data\');\n    expect(c).not.toHaveProperty(\'apiKey\');\n  });\n});', run: 'pnpm --filter n8n test n8n-list-credentials.tool.test.ts' } },
+      { id: '2.5', name: 'Register tools + telemetry', effort: '30min', risk: 'low',
+        files: [{ p: 'packages/cli/src/modules/mcp/mcp.service.ts', t: 'modify' }],
+        what: 'Top of registration list. Emit <code>USER_CALLED_MCP_TOOL_EVENT</code> for each new tool.',
+        tests: [{ lab: 'verify count via inspector', cmd: 'npx @modelcontextprotocol/inspector http://localhost:5678/mcp-server/http\n# expect 30 tools (27 existing + 3 new)' }] }
+    ]
+  },
+  {
+    id: 'p3', num: '03', name: 'CLI: auth + commands', risk: 'medium',
+    tasks: [
+      { id: '3.0', name: 'Scaffold @n8n/cli package (tiny, standalone)', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/package.json', t: 'new' }, { p: 'packages/@n8n/cli/bin/n8n', t: 'new' }, { p: 'packages/@n8n/cli/src/index.ts', t: 'new' }],
+        what: 'Standalone package, <strong>NOT inside packages/cli</strong> (that\'s the 500MB server). Deps: <code>axios</code>, <code>open</code>, arg parser. Bin: <code>n8n</code>. Users run <code>npx @n8n/cli auth login ...</code> — installs in seconds.' },
+      { id: '3.1', name: 'cli-client/config.ts', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/config.ts', t: 'new' }, { p: 'packages/@n8n/cli/src/__tests__/config.test.ts', t: 'new' }],
+        what: 'Read/write <code>~/.n8n/config.json</code> mode 0o600. Fields: <code>baseUrl, clientId?, accessToken?, refreshToken?, tokenExpiresAt?</code>.',
+        testFirst: { cmd: 'it(\'saveConfig writes to ~/.n8n/config.json with mode 0600\', async () => {\n  await saveConfig({ baseUrl: \'http://x\', accessToken: \'abc\' });\n  const stat = await fs.stat(`${os.homedir()}/.n8n/config.json`);\n  expect(stat.mode & 0o777).toBe(0o600);\n  expect(await loadConfig()).toMatchObject({ baseUrl: \'http://x\', accessToken: \'abc\' });\n});\n\nit(\'loadConfig returns null when file is missing\', async () => {\n  await clearConfig();\n  expect(await loadConfig()).toBeNull();\n});', run: 'pnpm --filter @n8n/cli test config.test.ts' } },
+      { id: '3.2', name: 'cli-client/http-client.ts', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/http-client.ts', t: 'new' }],
+        what: 'Axios + Bearer interceptor. On 401 refresh once, retry, else <code>AuthExpiredError</code>.',
+        testFirst: { cmd: 'it(\'adds Authorization: Bearer <token> to every request\', async () => {\n  nock(\'http://x\').get(\'/anything\').matchHeader(\'authorization\', \'Bearer abc\').reply(200, {});\n  const c = createHttpClient({ baseUrl: \'http://x\', token: \'abc\' });\n  await c.get(\'/anything\');\n});\n\nit(\'refreshes once on 401 and retries\', async () => {\n  nock(\'http://x\').get(\'/anything\').reply(401);\n  nock(\'http://x\').post(\'/mcp-oauth/token\').reply(200, { access_token: \'new\' });\n  nock(\'http://x\').get(\'/anything\').matchHeader(\'authorization\', \'Bearer new\').reply(200, {});\n  const c = createHttpClient({ baseUrl: \'http://x\', token: \'old\', refreshToken: \'r\' });\n  await c.get(\'/anything\');\n});', run: 'pnpm --filter @n8n/cli test http-client.test.ts' } },
+      { id: '3.3', name: 'cli-client/oauth-flow.ts (PKCE loopback)', effort: '3h', risk: 'high',
+        files: [{ p: 'packages/@n8n/cli/src/oauth-flow.ts', t: 'new' }],
+        what: 'Loopback auth code grant with PKCE. <code>http.createServer</code> port 0. DCR on first run. Open browser to <code>/mcp-oauth/authorize</code>. Exchange code at <code>/mcp-oauth/token</code>. <strong>Hardest:</strong> cross-platform browser open (use <code>open</code> npm pkg).',
+        testFirst: { cmd: '// Mock all OAuth endpoints; simulate the loopback callback by hitting it directly\nit(\'completes the loopback PKCE flow end-to-end\', async () => {\n  nock(\'http://x\').post(\'/mcp-oauth/register\').reply(200, { client_id: \'cli-1\' });\n  nock(\'http://x\').post(\'/mcp-oauth/token\').reply(200, { access_token: \'a\', refresh_token: \'r\' });\n  // browser-open mocked → instead, fetch the loopback URL with the code\n  const tokens = await runLoopbackAuthCodeFlow({ baseUrl: \'http://x\', scopes: [\'node:execute\'] });\n  expect(tokens.access_token).toBe(\'a\');\n});', run: 'pnpm --filter @n8n/cli test oauth-flow.test.ts' } },
+      { id: '3.4', name: 'commands/auth/{login,logout}.ts', effort: '1.5h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/commands/auth/login.ts', t: 'new' }, { p: 'packages/@n8n/cli/src/commands/auth/logout.ts', t: 'new' }],
+        what: 'Plain functions (no decorators). Login: calls oauth-flow, saves config. Logout: clearConfig + revoke.',
+        testFirst: { cmd: 'it(\'writes tokens to config and prints "Logged in to <url>"\', async () => {\n  jest.spyOn(oauthFlow, \'runLoopbackAuthCodeFlow\').mockResolvedValue({ access_token: \'a\', refresh_token: \'r\' });\n  await runLogin({ url: \'http://x\' });\n  expect((await loadConfig())?.accessToken).toBe(\'a\');\n  expect(stdout).toContain(\'Logged in to http://x\');\n});', run: 'pnpm --filter @n8n/cli test login.test.ts' },
+        tests: [{ lab: 'manual login + logout cycle', cmd: './packages/@n8n/cli/bin/n8n auth login --url=http://localhost:5678\ncat ~/.n8n/config.json\n./packages/@n8n/cli/bin/n8n auth logout' }] },
+      { id: '3.5', name: 'commands/node/search.ts', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/commands/node/search.ts', t: 'new' }],
+        what: 'Calls <code>GET /rest/nodes/search</code>. Pretty-prints as table.',
+        testFirst: { cmd: 'it(\'hits GET /rest/nodes/search and prints a table\', async () => {\n  nock(\'http://x\').get(\'/rest/nodes/search\').query({ q: \'slack\' })\n    .reply(200, { results: [{ id: \'slack.message.send\', displayName: \'Send Slack\' }] });\n  await runToolsSearch({ query: \'slack\' });\n  expect(stdout).toContain(\'slack.message.send\');\n});', run: 'pnpm --filter @n8n/cli test search.test.ts' } },
+      { id: '3.6', name: 'commands/exec.ts', effort: '1.5h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/commands/exec.ts', t: 'new' }],
+        what: '<code>n8n exec&lt;toolId&gt; --param k=v --credential &lt;id&gt; [--dry-run] [--input @file.json]</code> → POST <code>/rest/executions/node</code>.',
+        testFirst: { cmd: 'it(\'POSTs to /rest/executions/node with parsed params\', async () => {\n  nock(\'http://x\').post(\'/rest/executions/node\', {\n    nodeType: \'slack\', operation: \'message.send\', credentialId: \'c1\',\n    parameters: { channel: \'#test\', text: \'hi\' },\n  }).reply(200, { executionId: \'e1\', status: \'success\' });\n  await runExec({ toolId: \'slack.message.send\', params: [\'channel=#test\',\'text=hi\'], credential: \'c1\' });\n  expect(stdout).toMatch(/executionId: e1/);\n});', run: 'pnpm --filter @n8n/cli test run.test.ts' } },
+      { id: '3.7', name: 'commands/node/get.ts', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/commands/node/get.ts', t: 'new' }],
+        what: '<code>n8n node get &lt;toolId&gt;</code> — fetches <code>/rest/nodes/:id</code>, prints schema.' },
+      { id: '3.8', name: 'commands/credentials/list.ts', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/commands/credentials/list.ts', t: 'new' }],
+        what: '<code>n8n credentials list [--node-type=&lt;type&gt;]</code> — table output of name, type, sharing.',
+        testFirst: { cmd: 'it(\'lists credentials, optionally filtered by node-type\', async () => {\n  nock(\'http://x\').get(\'/rest/credentials\').query({ type: \'slackOAuth2Api\' })\n    .reply(200, [{ id: \'c1\', name: \'Slack\', type: \'slackOAuth2Api\' }]);\n  await runCredentialsList({ nodeType: \'slack\' });\n  expect(stdout).toContain(\'Slack\');\n});', run: 'pnpm --filter @n8n/cli test list.test.ts' } },
+      { id: '3.9', name: 'commands/executions/get.ts', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/cli/src/commands/executions/get.ts', t: 'new' }],
+        what: '<code>n8n executions get &lt;id&gt;</code> — fetches <code>/rest/executions/:id</code>, pretty-prints tool, credential, status, latency, caller, mode, output.' }
+    ]
+  },
+  {
+    id: 'p4', num: '04', name: 'SDK package', risk: 'medium',
+    tasks: [
+      { id: '4.1', name: 'SDK auth + base client', effort: '1.5h', risk: 'low',
+        files: [{ p: 'packages/@n8n/sdk/src/auth.ts', t: 'modify' }, { p: 'packages/@n8n/sdk/src/client.ts', t: 'modify' }],
+        what: '<code>createClient({ baseUrl, token })</code> returns typed Proxy.' },
+      { id: '4.2', name: 'Proxy-based runtime', effort: '4h', risk: 'medium',
+        files: [{ p: 'packages/@n8n/sdk/src/proxy.ts', t: 'modify' }, { p: 'packages/@n8n/sdk/src/__tests__/proxy.test.ts', t: 'new' }],
+        what: 'Two-level JS Proxy. L1 (<code>n8n.slack</code>) → namespace. L2 (<code>n8n.slack.message.send</code>) → dispatches to <code>POST /executions/node</code>. <strong>Output normalization:</strong> unwrap <code>Array&lt;{ json, ... }&gt;</code> to plain <code>json</code>.',
+        testFirst: { cmd: 'it(\'n8n.slack.message.send dispatches to POST /executions/node with correct body\', async () => {\n  nock(\'http://x\').post(\'/rest/executions/node\', {\n    nodeType: \'n8n-nodes-base.slack\',\n    parameters: { resource: \'message\', operation: \'send\', channel: \'#x\', text: \'hi\' },\n    credentialId: \'c1\',\n  }).reply(200, { executionId: \'e1\', status: \'success\', output: [{ json: { ok: true } }] });\n\n  const n8n = createClient({ baseUrl: \'http://x\', token: \'t\' });\n  const result = await n8n.slack.message.send({ credentialId: \'c1\', channel: \'#x\', text: \'hi\' });\n  expect(result.ok).toBe(true); // output normalized\n});', run: 'pnpm --filter @n8n/sdk test proxy.test.ts' } },
+      { id: '4.3', name: 'Full-catalog codegen — generate .d.ts for ~480 nodes', effort: '2d', risk: 'medium',
+        testFirst: { cmd: 'it(\'emits a registry entry for every (node, resource, operation) tuple\', async () => {\n  await generateTypes({ source: \'fixtures/nodes.json\', out: \'/tmp/sdk-out\' });\n  const reg = JSON.parse(await fs.readFile(\'/tmp/sdk-out/registry.json\', \'utf8\'));\n  expect(reg[\'slack.message.send\']).toEqual({\n    nodeType: \'n8n-nodes-base.slack\', resource: \'message\', operation: \'send\',\n  });\n});\n\nit(\'emits .d.ts with method signatures\', async () => {\n  await generateTypes(...);\n  const dts = await fs.readFile(\'/tmp/sdk-out/types/slack.d.ts\', \'utf8\');\n  expect(dts).toContain(\'namespace message\');\n  expect(dts).toContain(\'function send(params:\');\n});', run: 'pnpm --filter @n8n/sdk test generate-types.test.ts' },
+        files: [{ p: 'packages/@n8n/sdk/scripts/generate-types.ts', t: 'new' }, { p: 'packages/@n8n/sdk/src/types/<node>.d.ts (generated)', t: 'new' }, { p: 'packages/@n8n/sdk/src/runtime/registry.ts (generated)', t: 'new' }],
+        what: 'Reuse <code>@n8n/workflow-sdk</code>\'s property-to-TS converters + <code>nodes.json</code> reader. Emit method-per-operation signatures: <code>n8n.&lt;node&gt;.&lt;resource&gt;.&lt;operation&gt;(params)</code>. Plus a runtime registry mapping namespace paths → <code>{ nodeType, resource, operation }</code>. ~80% of nodes get clean autocomplete; the rest fall back to <code>string</code>/<code>Record&lt;string, unknown&gt;</code> for the problematic properties only.',
+        accept: '<code>n8n.slack.message.send</code> autocompletes. <code>n8n.linear.issue.list</code> autocompletes. <code>n8n.postgres.executeQuery</code> autocompletes. Tab completion works for ~80% of catalog.',
+        tests: [{ lab: 'spot-check autocomplete', cmd: 'pnpm --filter @n8n/sdk codegen\n# inspect: packages/@n8n/sdk/src/types/slack.d.ts\n# IDE: n8n.<TAB> shows all nodes; n8n.slack.<TAB> shows resources' }] },
+      { id: '4.5', name: 'Demo script', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/@n8n/sdk/examples/oneonone-prep.ts', t: 'new' }],
+        what: 'The 15-line script for Beat 2 of the demo.',
+        tests: [{ lab: 'run end-to-end', cmd: 'pnpm --filter @n8n/sdk build\nN8N_URL=http://localhost:5678 N8N_TOKEN=<pat> \\\n  pnpm --filter @n8n/sdk node dist/examples/oneonone-prep.js' }] }
+    ]
+  },
+  {
+    id: 'p5', num: '05', name: 'Observability — executions first-class', risk: 'medium',
+    tasks: [
+      { id: '5.1', name: 'Surface caller metadata in DTO', effort: '4h', risk: 'medium',
+        files: [{ p: 'packages/@n8n/db/src/repositories/execution.repository.ts', t: 'modify' }, { p: 'packages/@n8n/api-types/src/schemas/...', t: 'modify' }, { p: 'packages/cli/src/executions/execution.service.ts', t: 'modify' }],
+        what: '4-layer plumbing: repo projection → API DTO → caller field on both summary + detail. <code>caller?: { kind, name, clientId? }</code>.',
+        testFirst: { cmd: 'it(\'populates caller field for single-node executions\', async () => {\n  // seed an execution with mode=\'single-node\' and metadata rows\n  const dto = await service.getExecution(executionId, user);\n  expect(dto.caller).toEqual({ kind: \'cli\', name: \'n8n@host\', clientId: expect.any(String) });\n});\n\nit(\'omits caller field for workflow executions\', async () => {\n  const dto = await service.getExecution(workflowExecutionId, user);\n  expect(dto.caller).toBeUndefined();\n});', run: 'pnpm --filter n8n test execution.service.test.ts' },
+        accept: '<code>curl /rest/executions/&lt;id&gt;</code> returns <code>caller</code> for single-node; null for workflow.' },
+      { id: '5.2', name: 'List view: node identity replaces workflow name', effort: '2h', risk: 'low',
+        files: [{ p: 'packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.vue', t: 'modify' }],
+        what: 'Single-node rows show <code>slack.message.send</code> as headline (not "Daily digest"). Sub-line: timestamp + duration + "via &lt;caller&gt;".',
+        accept: 'Open <code>/executions</code> — single-node rows have node identity, workflow rows unchanged.' },
+      { id: '5.3', name: 'Detail view works for single-node (HARDEST)', effort: '4h', risk: 'medium',
+        files: [{ p: 'packages/frontend/editor-ui/src/features/execution/views/ExecutionPreview.vue', t: 'modify' }, { p: 'packages/cli/src/executions/executions.controller.ts', t: 'modify' }],
+        what: 'Existing detail view assumes <code>workflowId</code>. Fix: load gracefully without one. Header shows "Node call: &lt;tool&gt; · via &lt;caller&gt;" instead of "Workflow: &lt;name&gt;". No "Edit workflow" button. Single-node tab collapses to header. Reuse existing input/output renderer — input JSON, output JSON, timing all come for free.',
+        accept: 'Open <code>/executions/&lt;single-node-id&gt;</code> → see input, output, timing, caller. No 500s, no broken nav.' },
+      { id: '5.4', name: 'Direct-link URLs from CLI and SDK', effort: '1h', risk: 'low',
+        files: [{ p: 'packages/cli/src/commands/exec.ts', t: 'modify' }, { p: 'packages/cli/src/commands/executions/get.ts', t: 'modify' }, { p: 'packages/@n8n/sdk/src/client.ts', t: 'modify' }],
+        what: 'Every node call returns <code>executionUrl: &lt;baseUrl&gt;/executions/&lt;id&gt;</code>. CLI prints it after success. SDK exposes it on the returned object.',
+        accept: 'Run <code>n8n exec:run ...</code> → output has clickable URL → opens detail page.' },
+      { id: '5.5', name: 'Source/caller filter chips (stretch — cut first)', effort: '3h', risk: 'low',
+        files: [{ p: 'packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue', t: 'modify' }],
+        what: 'Filter chips: "Single-node calls", "Workflow runs". Caller dropdown (Claude Desktop / CLI / SDK).' }
+    ]
+  },
+  {
+    id: 'p6', num: '06', name: 'Demo polish', risk: 'medium',
+    tasks: [
+      { id: '6.1', name: 'Pre-flight checklist + resourceLocator ID lookup', effort: '1h', risk: 'low',
+        what: 'Verify hero-node parameter shapes (especially Slack channel ID, Linear team/project IDs, GitHub repo string, Notion database ID). Pre-flight script prints real IDs.' },
+      { id: '6.2', name: 'Run the three beats end-to-end (twice)', effort: '2h', risk: 'medium',
+        what: 'See "Demo script" in Tests &amp; setup tab. Run twice. Tighten transitions.' },
+      { id: '6.3', name: 'Pre-record Loom backup', effort: '1h', risk: 'low',
+        what: 'Failure-mode prep. Second terminal with raw curl fallbacks. Pre-warm credentials.' }
+    ]
+  }
+];
+
+const STORAGE_KEY = 'n8n-hub-kanban-v2';
+const TAB_KEY = 'n8n-hub-tab-v1';
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveState(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+let state = loadState();
+let currentPhaseFilter = 'all';
+let currentTab = localStorage.getItem(TAB_KEY) || 'board';
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function taskStatus(id) {
+  const s = state[id];
+  if (s === 'done') return 'done';
+  if (s === 'wip') return 'wip';
+  return 'todo';
+}
+function setTaskStatus(id, status) {
+  if (status === 'todo') delete state[id];
+  else state[id] = status;
+  saveState(state);
+  renderBoard();
+}
+
+function buildCardHTML(phase, task) {
+  const status = taskStatus(task.id);
+  const filesHtml = (task.files || []).map(f =>
+    `<span class="file ${f.t}">${escapeHTML(f.p)}</span>`).join('');
+  const codeHtml = task.code ? `<pre>${escapeHTML(task.code)}</pre>` : '';
+  const acceptHtml = task.accept ? `<div class="accept"><strong>Accept:</strong> ${task.accept}</div>` : '';
+  const testFirstHtml = task.testFirst ? `
+    <div class="test-block first">
+      <div class="lab"><span>Test first — red before green</span><button class="copy" data-copy="${escapeHTML(task.testFirst.cmd)}">Copy</button></div>
+      <pre>${escapeHTML(task.testFirst.cmd)}</pre>
+      ${task.testFirst.run ? `<div style="margin-top:6px; font-size: 11px; color: var(--text-faint);">Run: <code>${escapeHTML(task.testFirst.run)}</code></div>` : ''}
+    </div>` : '';
+  const testsHtml = (task.tests || []).map(t => `
+    <div class="test-block">
+      <div class="lab"><span>${escapeHTML(t.lab)}</span><button class="copy" data-copy="${escapeHTML(t.cmd)}">Copy</button></div>
+      <pre>${escapeHTML(t.cmd)}</pre>
+    </div>`).join('');
+
+  return `
+    <div class="card" data-id="${task.id}" data-phase="${phase.id}">
+      <div class="card-head">
+        <span class="card-phase">P${phase.num.replace('0', '')}${phase.num.startsWith('0') && phase.num !== '00' ? '' : ''}</span>
+        <span class="card-id">${escapeHTML(task.id)}</span>
+      </div>
+      <div class="card-title">${escapeHTML(task.name)}</div>
+      <div class="card-meta">
+        ${task.effort ? `<span class="tag eff">${escapeHTML(task.effort)}</span>` : ''}
+        ${task.risk ? `<span class="tag risk-${task.risk}">${escapeHTML(task.risk)}</span>` : ''}
+      </div>
+      <div class="card-status">
+        <button data-set="todo" class="${status==='todo'?'active':''}">To do</button>
+        <button data-set="wip" class="${status==='wip'?'active':''}">Doing</button>
+        <button data-set="done" class="${status==='done'?'active':''}">Done</button>
+      </div>
+      <div class="card-detail">
+        ${filesHtml ? `<div class="files">${filesHtml}</div>` : ''}
+        ${task.what ? `<div class="what">${task.what}</div>` : ''}
+        ${codeHtml}
+        ${testFirstHtml}
+        ${acceptHtml}
+        ${testsHtml}
+      </div>
+    </div>`;
+}
+
+function renderBoard() {
+  const cols = { todo: [], wip: [], done: [] };
+  let total = 0, done = 0;
+
+  PHASES.forEach(phase => {
+    if (currentPhaseFilter !== 'all' && currentPhaseFilter !== phase.id) return;
+    phase.tasks.forEach(task => {
+      total++;
+      const s = taskStatus(task.id);
+      if (s === 'done') done++;
+      cols[s].push(buildCardHTML(phase, task));
+    });
+  });
+
+  document.getElementById('colTodo').innerHTML = cols.todo.length ? cols.todo.join('') : '<div class="col-empty">Nothing in To Do.</div>';
+  document.getElementById('colWip').innerHTML = cols.wip.length ? cols.wip.join('') : '<div class="col-empty">Nothing in progress.</div>';
+  document.getElementById('colDone').innerHTML = cols.done.length ? cols.done.join('') : '<div class="col-empty">Nothing done yet.</div>';
+
+  document.getElementById('countTodo').textContent = cols.todo.length;
+  document.getElementById('countWip').textContent = cols.wip.length;
+  document.getElementById('countDone').textContent = cols.done.length;
+
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progPct').textContent = pct + '%';
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('totalLabel').textContent = `${done}/${total} tasks`;
+  document.getElementById('boardCount').textContent = `(${done}/${total})`;
+}
+
+function renderPhaseFilter() {
+  const filter = document.getElementById('phaseFilter');
+  const totals = { all: 0 };
+  PHASES.forEach(p => { totals[p.id] = p.tasks.length; totals.all += p.tasks.length; });
+
+  filter.innerHTML = `
+    <button data-phase="all" class="${currentPhaseFilter==='all'?'active':''}">
+      <span class="pdot"></span>All <span style="color:var(--text-faint); margin-left:4px; font-family:var(--mono); font-size:10px;">${totals.all}</span>
+    </button>
+    ${PHASES.map(p => `
+      <button data-phase="${p.id}" class="${currentPhaseFilter===p.id?'active':''}">
+        <span class="pdot"></span>P${p.num} ${escapeHTML(p.name)}
+        <span style="color:var(--text-faint); margin-left:4px; font-family:var(--mono); font-size:10px;">${totals[p.id]}</span>
+      </button>
+    `).join('')}
+  `;
+}
+
+function setTab(tab) {
+  currentTab = tab;
+  localStorage.setItem(TAB_KEY, tab);
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tab-board').classList.toggle('hidden', tab !== 'board');
+  document.getElementById('tab-tests').classList.toggle('hidden', tab !== 'tests');
+  document.getElementById('tab-risks').classList.toggle('hidden', tab !== 'risks');
+}
+
+// Wire up
+document.addEventListener('click', e => {
+  // Tab switch
+  if (e.target.matches('.tab-btn')) {
+    setTab(e.target.dataset.tab);
+    return;
+  }
+  // Phase filter
+  if (e.target.matches('#phaseFilter button') || e.target.closest('#phaseFilter button')) {
+    const btn = e.target.closest('button');
+    currentPhaseFilter = btn.dataset.phase;
+    renderPhaseFilter();
+    renderBoard();
+    return;
+  }
+  // Copy button
+  if (e.target.matches('button.copy')) {
+    const text = e.target.dataset.copy || '';
+    navigator.clipboard.writeText(text);
+    e.target.classList.add('copied');
+    const original = e.target.textContent;
+    e.target.textContent = '✓ Copied';
+    setTimeout(() => {
+      e.target.classList.remove('copied');
+      e.target.textContent = 'Copy';
+    }, 1500);
+    e.stopPropagation();
+    return;
+  }
+  // Card status set
+  if (e.target.matches('.card-status button')) {
+    const card = e.target.closest('.card');
+    setTaskStatus(card.dataset.id, e.target.dataset.set);
+    e.stopPropagation();
+    return;
+  }
+  // Card expand
+  const card = e.target.closest('.card');
+  if (card && !e.target.matches('button')) {
+    card.classList.toggle('expanded');
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset all task statuses?')) {
+    state = {};
+    saveState(state);
+    renderBoard();
+  }
+});
+
+renderPhaseFilter();
+renderBoard();
+setTab(currentTab);
+</script>
+
+</body>
+</html>
