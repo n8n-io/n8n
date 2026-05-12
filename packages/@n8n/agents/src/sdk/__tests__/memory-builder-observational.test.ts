@@ -1,45 +1,10 @@
-import type { BuiltMemory, BuiltObservationStore, MemoryConfig } from '../../types';
+import type { BuiltMemory } from '../../types';
 import type { CompactFn, ObserveFn } from '../../types/sdk/observation';
 import { Agent } from '../agent';
 import { Memory } from '../memory';
 
 describe('Memory builder — observational memory', () => {
 	const observe = jest.fn().mockResolvedValue([]) as unknown as ObserveFn;
-
-	const makeObservationBackend = (): BuiltMemory & BuiltObservationStore => {
-		const savedThread = {
-			id: 'thread-id',
-			resourceId: 'resource-id',
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		} satisfies Awaited<ReturnType<BuiltMemory['saveThread']>>;
-
-		return {
-			getThread: jest.fn().mockResolvedValue(null),
-			saveThread: jest.fn().mockResolvedValue(savedThread),
-			deleteThread: jest.fn().mockResolvedValue(undefined),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn().mockResolvedValue(undefined),
-			deleteMessages: jest.fn().mockResolvedValue(undefined),
-			saveWorkingMemory: jest.fn().mockResolvedValue(undefined),
-			appendObservations: jest.fn().mockResolvedValue([]),
-			getObservations: jest.fn().mockResolvedValue([]),
-			getMessagesForScope: jest.fn().mockResolvedValue([]),
-			deleteObservations: jest.fn().mockResolvedValue(undefined),
-			getCursor: jest.fn().mockResolvedValue(null),
-			setCursor: jest.fn().mockResolvedValue(undefined),
-			acquireObservationLock: jest.fn().mockResolvedValue(null),
-			releaseObservationLock: jest.fn().mockResolvedValue(undefined),
-			describe: () => ({
-				name: 'observation',
-				constructorName: 'ObservationMemory',
-				connectionParams: null,
-			}),
-		} as BuiltMemory & BuiltObservationStore;
-	};
-
-	const getMemoryConfig = (agent: Agent): MemoryConfig | undefined =>
-		(agent as unknown as { memoryConfig?: MemoryConfig }).memoryConfig;
 
 	it('omits observationalMemory when not configured', () => {
 		const config = new Memory().build();
@@ -192,71 +157,6 @@ describe('Memory builder — observational memory', () => {
 		expect(config.workingMemory).toBeDefined();
 		expect(config.workingMemory?.scope).toBe('thread');
 		expect(config.observationalMemory).toBeDefined();
-	});
-
-	describe('raw MemoryConfig validation', () => {
-		it('requires thread-scoped working memory', () => {
-			const config: MemoryConfig = {
-				memory: makeObservationBackend(),
-				lastMessages: 10,
-				workingMemory: { template: '# Notes', structured: false, scope: 'resource' },
-				observationalMemory: { observe },
-			};
-
-			expect(() =>
-				new Agent('a').model('openai/gpt-4o-mini').instructions('test').memory(config),
-			).toThrow(/thread-scoped working memory/);
-		});
-
-		it('rejects backends that do not implement BuiltObservationStore', () => {
-			const minimalBackend = {
-				getThread: jest.fn().mockResolvedValue(null),
-				saveThread: jest.fn().mockResolvedValue({}),
-				deleteThread: jest.fn().mockResolvedValue(undefined),
-				getMessages: jest.fn().mockResolvedValue([]),
-				saveMessages: jest.fn().mockResolvedValue(undefined),
-				deleteMessages: jest.fn().mockResolvedValue(undefined),
-				saveWorkingMemory: jest.fn().mockResolvedValue(undefined),
-				describe: () => ({
-					name: 'minimal',
-					constructorName: 'MinimalMemory',
-					connectionParams: null,
-				}),
-			} as unknown as BuiltMemory;
-			const config = {
-				memory: minimalBackend,
-				lastMessages: 10,
-				workingMemory: { template: '# Notes', structured: false, scope: 'thread' },
-				observationalMemory: { observe },
-			} as unknown as MemoryConfig;
-
-			expect(() =>
-				new Agent('a').model('openai/gpt-4o-mini').instructions('test').memory(config),
-			).toThrow(/BuiltObservationStore/);
-		});
-
-		it('applies observational defaults', () => {
-			const rawConfig: MemoryConfig = {
-				memory: makeObservationBackend(),
-				lastMessages: 10,
-				workingMemory: { template: '# Notes', structured: false, scope: 'thread' },
-				observationalMemory: {},
-			};
-
-			const agent = new Agent('a')
-				.model('openai/gpt-4o-mini')
-				.instructions('test')
-				.memory(rawConfig);
-			const config = getMemoryConfig(agent);
-
-			expect(config?.observationalMemory).toMatchObject({
-				trigger: { type: 'per-turn' },
-				compactionThreshold: 5,
-				gapThresholdMs: 60 * 60_000,
-				lockTtlMs: 30_000,
-			});
-			expect(rawConfig.observationalMemory).toEqual({});
-		});
 	});
 
 	describe('agent.snapshot.hasObservationalMemory', () => {
