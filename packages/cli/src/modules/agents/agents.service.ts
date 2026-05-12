@@ -875,11 +875,9 @@ export class AgentsService {
 
 		if (config.credential) {
 			try {
-				const credentialName = config.credential;
+				const credentialId = config.credential;
 				const creds = await credentialProvider.list();
-				const exists = creds.some(
-					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
-				);
+				const exists = creds.some((c) => c.id === credentialId);
 				if (!exists) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —

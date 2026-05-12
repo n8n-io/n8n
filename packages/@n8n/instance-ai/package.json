@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -16,6 +16,7 @@
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
+    "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
     "prompts:print": "tsx scripts/print-prompts.ts"
   },
   "main": "dist/index.js",
@@ -39,7 +40,9 @@
   },
   "typesVersions": {
     "*": {
-      "parsers": ["dist/parsers/index.d.ts"]
+      "parsers": [
+        "dist/parsers/index.d.ts"
+      ]
     }
   },
   "dependencies": {
@@ -57,6 +60,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "linkedom": "^0.18.9",
     "luxon": "catalog:",
+    "fast-glob": "catalog:",
     "csv-parse": "6.2.1",
     "mammoth": "1.12.0",
     "nanoid": "catalog:",
