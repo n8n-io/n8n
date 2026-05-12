@@ -195,6 +195,7 @@ export class ImportService {
 					workflowId: workflow.id,
 					nodes: workflow.nodes,
 					connections: workflow.connections,
+					nodeGroups: workflow.nodeGroups ?? [],
 					authors: 'import',
 					name: versionMetadata?.name ?? null,
 					description: versionMetadata?.description ?? null,
