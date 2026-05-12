@@ -198,6 +198,23 @@ describe('N8nMemory', () => {
 		});
 	});
 
+	describe('getMessages — persisted JSON hydration', () => {
+		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
+			const createdAt = new Date('2026-01-01T00:00:02.000Z');
+			const entity = makeMessageEntity('m2', createdAt, 'middle');
+			entity.content = {
+				...entity.content,
+				createdAt: createdAt.toISOString(),
+			};
+			messageRepository.find.mockResolvedValue([entity]);
+
+			const [result] = await memory.getMessages('thread-1');
+
+			expect(result.createdAt).toBeInstanceOf(Date);
+			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
+		});
+	});
+
 	describe('getMessagesForScope', () => {
 		it('queries thread-scoped messages by thread id', async () => {
 			const createdAt = new Date('2026-01-01T00:00:02.000Z');
@@ -237,6 +254,21 @@ describe('N8nMemory', () => {
 				/not supported/,
 			);
 			expect(messageRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
+			const createdAt = new Date('2026-01-01T00:00:02.000Z');
+			const entity = makeMessageEntity('m2', createdAt, 'middle');
+			entity.content = {
+				...entity.content,
+				createdAt: createdAt.toISOString(),
+			};
+			messageRepository.find.mockResolvedValue([entity]);
+
+			const [result] = await memory.getMessagesForScope('thread', 'thread-1');
+
+			expect(result.createdAt).toBeInstanceOf(Date);
+			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
 		});
 	});
 
@@ -653,7 +685,7 @@ describe('N8nMemory', () => {
 				} as AgentObservationLockEntity,
 			});
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'A',
 			});
@@ -667,7 +699,7 @@ describe('N8nMemory', () => {
 		it('attempts a conditional write before reading the lock row', async () => {
 			mockLockWrite({ updateAffected: 1 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'A',
 			});
@@ -693,7 +725,7 @@ describe('N8nMemory', () => {
 		it('refuses a different holder while the lock is live', async () => {
 			mockLockWrite({ updateAffected: 0 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'B',
 			});
@@ -704,7 +736,7 @@ describe('N8nMemory', () => {
 		it('reclaims the lock for a new holder once the prior one has expired', async () => {
 			const { updateQueryBuilder } = mockLockWrite({ updateAffected: 1 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'B',
 			});
@@ -722,7 +754,7 @@ describe('N8nMemory', () => {
 		it('lets the same holder refresh the TTL while still held', async () => {
 			mockLockWrite({ updateAffected: 1 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'A',
 			});
@@ -731,9 +763,10 @@ describe('N8nMemory', () => {
 		});
 
 		it('release deletes only the matching holder', async () => {
-			await memory.releaseObservationLock({
+			await memory.releaseObservationLogTaskLock({
 				scopeKind: 'resource',
 				scopeId: 't-1',
+				taskKind: 'observer',
 				holderId: 'A',
 				heldUntil: new Date(),
 			});

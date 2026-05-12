@@ -4,12 +4,12 @@ import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
-import type { BuiltMemory } from '../../types/sdk/memory';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
 import { AgentEventBus } from '../event-bus';
+import { InMemoryMemory } from '../memory-store';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -464,73 +464,6 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		const { stream: readableStream } = await runtime.stream('hello');
 
 		await expect(collectChunks(readableStream)).resolves.toBeDefined();
-	});
-});
-
-// ---------------------------------------------------------------------------
-// stream() — legacy working memory
-// ---------------------------------------------------------------------------
-
-describe('AgentRuntime.stream() — legacy working memory', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-	});
-
-	function makeMemory(savedWorkingMemory: string[]): BuiltMemory {
-		return {
-			getThread: jest.fn().mockResolvedValue(null),
-			saveThread: jest.fn(async (thread) => {
-				await Promise.resolve();
-				return {
-					...thread,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				};
-			}),
-			deleteThread: jest.fn(),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn(),
-			deleteMessages: jest.fn(),
-			getWorkingMemory: jest.fn().mockResolvedValue(null),
-			saveWorkingMemory: jest.fn(async (_params, content: string) => {
-				await Promise.resolve();
-				savedWorkingMemory.push(content);
-			}),
-			describe: jest
-				.fn()
-				.mockReturnValue({ name: 'test', constructorName: 'TestMemory', connectionParams: {} }),
-		};
-	}
-
-	it('does not expose a working-memory write tool to the main agent', async () => {
-		const savedWorkingMemory: string[] = [];
-		const memory = makeMemory(savedWorkingMemory);
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'You are a test assistant.',
-			memory,
-			lastMessages: 5,
-			workingMemory: {
-				template: '# Thread memory\n- User facts:',
-				structured: false,
-				scope: 'thread',
-			},
-		});
-
-		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
-
-		const { stream } = await runtime.stream('remember this', {
-			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
-		});
-		await collectChunks(stream);
-
-		const calls = streamText.mock.calls as Array<[Record<string, unknown>]>;
-		const callArgs = calls[0]?.[0] ?? {};
-		expect(callArgs.tools ?? {}).not.toHaveProperty('update_working_memory');
-		expect(memory.getWorkingMemory).not.toHaveBeenCalled();
-		expect(memory.saveWorkingMemory).not.toHaveBeenCalled();
-		expect(savedWorkingMemory).toEqual([]);
 	});
 });
 
@@ -2292,6 +2225,125 @@ describe('instruction providerOptions', () => {
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral' } },
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observation log background jobs
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — observation log jobs', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('schedules observation after a persisted stream turn', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Remembered response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* 🔴 (14:30) User needs observation memory wired.'),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		const result = await runtime.stream('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await collectChunks(result.stream);
+		await runtime.dispose();
+
+		const observations = await memory.getActiveObservationLog({
+			scopeKind: 'thread',
+			scopeId: 'thread-1',
+		});
+		expect(observations).toMatchObject([
+			{
+				marker: 'critical',
+				text: 'User needs observation memory wired.',
+				parentId: null,
+			},
+		]);
+		const cursor = await memory.getCursor('thread', 'thread-1');
+		expect(typeof cursor?.lastObservedMessageId).toBe('string');
+	});
+
+	it('schedules observation after a persisted generate turn', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* 🟡 (14:30) User asked for generate observation memory.'),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		const observations = await memory.getActiveObservationLog({
+			scopeKind: 'thread',
+			scopeId: 'thread-1',
+		});
+		expect(observations).toMatchObject([
+			{
+				marker: 'important',
+				text: 'User asked for generate observation memory.',
+			},
+		]);
+	});
+
+	it('does not schedule observation jobs without policy callbacks', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const runtime = new AgentRuntime({
+			name: 'plain-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+			},
+		});
+
+		await runtime.generate('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(
+			await memory.getActiveObservationLog({
+				scopeKind: 'thread',
+				scopeId: 'thread-1',
+			}),
+		).toEqual([]);
+		expect(await memory.getCursor('thread', 'thread-1')).toBeNull();
 	});
 });
 

@@ -42,17 +42,8 @@ export type {
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
-	BuiltObservationStore,
-	CompactFn,
-	NewObservation,
-	Observation,
-	ObservationCategory,
 	ObservationCursor,
-	ObservationGapContext,
-	ObservationLockHandle,
 	ObservationalMemoryConfig,
-	ObservationalMemoryTrigger,
-	ObserveFn,
 	ScopeKind,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -73,11 +64,6 @@ export type {
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
-export {
-	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
-	OBSERVATION_CATEGORIES,
-	OBSERVATION_SCHEMA_VERSION,
-} from './types';
 export {
 	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
@@ -136,18 +122,6 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
-export { WORKING_MEMORY_DEFAULT_INSTRUCTION } from './runtime/working-memory';
-export {
-	DEFAULT_COMPACTOR_PROMPT,
-	DEFAULT_OBSERVER_PROMPT,
-} from './runtime/observational-cycle';
-export type { SqliteMemoryConfig } from './storage/sqlite-memory';
-export { PostgresMemory } from './storage/postgres-memory';
-export type {
-	PostgresConnectionOptions,
-	PostgresConstructorOptions,
-} from './storage/postgres-memory';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 

@@ -12,7 +12,6 @@ import type {
 	ObservationLogReflectionResult,
 	ObservationLogScope,
 	ObservationLogScopeKind,
-	ObservationLockHandle,
 	Thread,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
@@ -195,29 +194,6 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		});
 	}
 
-	// ── Working memory ───────────────────────────────────────────────────
-
-	async getWorkingMemory(params: {
-		threadId: string;
-		resourceId: string;
-		scope: 'resource' | 'thread';
-	}): Promise<string | null> {
-		void params;
-		// Legacy `workingMemory` metadata is intentionally ignored. The new
-		// observation-log pipeline will own memory state.
-		return null;
-	}
-
-	async saveWorkingMemory(
-		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
-		content: string,
-	): Promise<void> {
-		void params;
-		void content;
-		// Legacy `workingMemory` metadata is intentionally ignored. The new
-		// observation-log pipeline will own memory state.
-	}
-
 	// ── Observation log ──────────────────────────────────────────────────
 
 	async appendObservationLogEntries(
@@ -395,22 +371,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		);
 	}
 
-	// ── Observational memory: locks ──────────────────────────────────────
-
-	async acquireObservationLock(
-		scopeKind: ObservationLogScopeKind,
-		scopeId: string,
-		opts: { ttlMs: number; holderId: string },
-	): Promise<ObservationLockHandle | null> {
-		const handle = await this.acquireObservationLogTaskLock(scopeKind, scopeId, 'observer', opts);
-		if (!handle) return null;
-		return {
-			scopeKind: handle.scopeKind,
-			scopeId: handle.scopeId,
-			holderId: handle.holderId,
-			heldUntil: handle.heldUntil,
-		};
-	}
+	// ── Observation log: locks ───────────────────────────────────────────
 
 	async acquireObservationLogTaskLock(
 		scopeKind: ObservationLogScopeKind,
@@ -453,19 +414,11 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		return { scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil };
 	}
 
-	async releaseObservationLock(
-		handle: ObservationLockHandle & { scopeKind: ObservationLogScopeKind },
-	): Promise<void> {
-		await this.releaseScopeLock(handle);
-	}
-
 	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		await this.releaseScopeLock(handle);
 	}
 
-	private async releaseScopeLock(
-		handle: ObservationLockHandle & { scopeKind: ObservationLogScopeKind },
-	): Promise<void> {
+	private async releaseScopeLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		await this.observationLockRepository.delete({
 			scopeKind: handle.scopeKind,
 			scopeId: handle.scopeId,

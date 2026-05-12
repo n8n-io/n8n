@@ -39,9 +39,13 @@ import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
+import {
+	runObservationLogObserver,
+	type ObservationLogObserverMemory,
+} from './observation-log-observer';
+import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
-import { hasObservationLogStore } from './observation-log-store';
-import { runObservationalCycle, type RunObservationalCycleOpts } from './observational-cycle';
+import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
 import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
@@ -50,6 +54,7 @@ import {
 	makeErrorStream,
 	normalizeInput,
 } from './runtime-helpers';
+import { ScopedMemoryTaskRunner } from './scoped-memory-task-runner';
 import { convertChunk } from './stream';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { generateThreadTitle } from './title-generation';
@@ -167,14 +172,8 @@ export interface AgentRuntimeConfig {
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
 	lastMessages?: number;
-	workingMemory?: {
-		template: string;
-		structured: boolean;
-		schema?: z.ZodObject<z.ZodRawShape>;
-		scope?: 'resource' | 'thread';
-		instruction?: string;
-	};
 	observationLog?: ObservationLogMemoryConfig;
+	observationalMemory?: ObservationalMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
@@ -183,7 +182,6 @@ export interface AgentRuntimeConfig {
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;
 	titleGeneration?: TitleGenerationConfig;
-	observationalMemory?: ObservationalMemoryConfig;
 	telemetry?: BuiltTelemetry;
 }
 
@@ -195,6 +193,24 @@ const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	inputIds: [],
 	responseIds: [],
 };
+
+function hasFunctionProperty<K extends PropertyKey>(
+	value: object,
+	property: K,
+): value is Record<K, (...args: never[]) => unknown> {
+	return property in value && typeof Reflect.get(value, property) === 'function';
+}
+
+function hasObservationLogObserverMemory(
+	memory: BuiltMemory,
+): memory is ObservationLogObserverMemory {
+	return (
+		hasObservationLogStore(memory) &&
+		hasFunctionProperty(memory, 'getMessagesForScope') &&
+		hasFunctionProperty(memory, 'getCursor') &&
+		hasFunctionProperty(memory, 'setCursor')
+	);
+}
 
 /** Pending tool calls from a suspended run, passed into the loop to execute before the first LLM call. */
 interface PendingResume {
@@ -308,6 +324,8 @@ export class AgentRuntime {
 
 	private backgroundTasks = new BackgroundTaskTracker();
 
+	private memoryTasks: ScopedMemoryTaskRunner | undefined;
+
 	/** Resolved telemetry for the current run (own config or inherited from parent). */
 
 	constructor(config: AgentRuntimeConfig) {
@@ -328,24 +346,6 @@ export class AgentRuntime {
 	 */
 	async dispose(): Promise<void> {
 		await this.backgroundTasks.flush();
-	}
-
-	/**
-	 * Schedule an observational-memory cycle to run via the background-task
-	 * tracker. Returns immediately; callers do not await. Errors inside the
-	 * cycle are caught by `runObservationalCycle` and emitted via
-	 * `AgentEvent.Error` with `source: 'observer' | 'compactor'`.
-	 *
-	 * Used by `Agent.reflectInBackground(...)` so consumers (e.g. the cli's
-	 * post-stream trigger) can fire-and-forget without blocking the response.
-	 */
-	scheduleBackgroundCycle(opts: RunObservationalCycleOpts): void {
-		this.backgroundTasks.track(
-			runObservationalCycle(opts).then(
-				() => undefined,
-				() => undefined,
-			),
-		);
 	}
 
 	/** Return the latest state snapshot. */
@@ -1378,6 +1378,63 @@ export class AgentRuntime {
 				delta,
 			);
 		}
+
+		this.scheduleObservationLogJobs(options.persistence);
+	}
+
+	private scheduleObservationLogJobs(persistence: AgentPersistenceOptions): void {
+		const { memory, observationalMemory } = this.config;
+		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
+
+		const scope = { scopeKind: 'thread' as const, scopeId: persistence.threadId };
+		const runner = this.getMemoryTaskRunner(memory, observationalMemory);
+		const observe = observationalMemory.observe;
+		const observerThresholdTokens = observationalMemory.observerThresholdTokens;
+
+		if (
+			observe &&
+			observerThresholdTokens !== undefined &&
+			hasObservationLogObserverMemory(memory)
+		) {
+			runner.schedule(
+				{ ...scope, taskKind: 'observer' },
+				async () =>
+					await runObservationLogObserver({
+						memory,
+						...scope,
+						observerThresholdTokens,
+						observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
+						observe,
+					}),
+			);
+		}
+
+		const reflect = observationalMemory.reflect;
+		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
+		if (reflect && reflectorThresholdTokens !== undefined) {
+			runner.schedule(
+				{ ...scope, taskKind: 'reflector' },
+				async () =>
+					await runObservationLogReflector({
+						memory,
+						...scope,
+						reflectorThresholdTokens,
+						reflect,
+					}),
+			);
+		}
+	}
+
+	private getMemoryTaskRunner(
+		memory: BuiltMemory,
+		observationalMemory: ObservationalMemoryConfig,
+	): ScopedMemoryTaskRunner {
+		this.memoryTasks ??= new ScopedMemoryTaskRunner({
+			tracker: this.backgroundTasks,
+			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
+			lockTtlMs: observationalMemory.lockTtlMs,
+		});
+		return this.memoryTasks;
 	}
 
 	private async saveEmbeddingsForMessages(

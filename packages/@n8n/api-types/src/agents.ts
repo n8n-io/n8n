@@ -166,14 +166,21 @@ export interface AgentJsonConfig {
 	instructions: string;
 	memory?: {
 		enabled: boolean;
-		storage: 'n8n' | 'sqlite' | 'postgres';
-		connection?: Record<string, unknown>;
+		storage: 'n8n';
 		lastMessages?: number;
 		semanticRecall?: {
 			topK: number;
 			scope?: 'thread' | 'resource';
 			messageRange?: { before: number; after: number };
 			embedder?: string;
+		};
+		observationalMemory?: {
+			enabled?: boolean;
+			observerThresholdTokens?: number;
+			reflectorThresholdTokens?: number;
+			renderTokenBudget?: number;
+			observationLogTailLimit?: number;
+			lockTtlMs?: number;
 		};
 	};
 	tools?: AgentJsonToolRef[];
@@ -245,6 +252,7 @@ export interface AgentPersistedMessageDto {
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
 }
+
 // ─── Agent builder admin settings ─────────────────────────────────────────
 // The agent builder uses a model picked by the instance admin. By default it
 // runs through the n8n AI assistant proxy; admins can switch to a custom

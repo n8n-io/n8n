@@ -90,3 +90,90 @@ describe('isNodeToolsEnabled', () => {
 		expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
 	});
 });
+
+describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
+	const memoryBase = { enabled: true, storage: 'n8n' as const };
+
+	it('accepts a memory config without observationalMemory', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({ ...baseConfig, memory: memoryBase });
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects unsupported memory storage presets', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: { enabled: true, storage: 'sqlite' },
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('accepts observationalMemory: { enabled: true } alone', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: { ...memoryBase, observationalMemory: { enabled: true } },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts observationalMemory with observation-log thresholds set', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: {
+					enabled: true,
+					observerThresholdTokens: 8_000,
+					reflectorThresholdTokens: 24_000,
+					renderTokenBudget: 8_000,
+					observationLogTailLimit: 20,
+					lockTtlMs: 30_000,
+				},
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects observer thresholds below one', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { enabled: true, observerThresholdTokens: 0 },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects reflector thresholds below one', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { enabled: true, reflectorThresholdTokens: 0 },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects render token budgets below one', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { enabled: true, renderTokenBudget: 0 },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('accepts observationalMemory without enabled because the writer defaults on', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { observationLogTailLimit: 20 },
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+});

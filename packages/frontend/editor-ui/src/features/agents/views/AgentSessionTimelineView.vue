@@ -75,10 +75,6 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
-		case 'working-memory-updated':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspension');
 		case 'suspension-waiting':
@@ -257,7 +253,7 @@ function onKeyUp(event: KeyboardEvent) {
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
-	selectedIndex.value = highlightedIndex.value;
+	selectTimelineItem(highlightedIndex.value);
 }
 
 useEventListener(document, 'keyup', onKeyUp);

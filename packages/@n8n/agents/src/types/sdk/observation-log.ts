@@ -1,3 +1,5 @@
+import type { AgentDbMessage } from './message';
+
 export const OBSERVATION_LOG_MARKERS = ['critical', 'important', 'info', 'completion'] as const;
 
 export type ObservationLogMarker = (typeof OBSERVATION_LOG_MARKERS)[number];
@@ -70,6 +72,31 @@ export interface ObservationLogReflectionResult {
 export type TokenCounter = (text: string) => number;
 
 export const estimateObservationTokens: TokenCounter = (text) => Math.ceil(text.length / 4);
+
+export interface ObservationLogObserverInput {
+	scopeKind: ObservationLogScopeKind;
+	scopeId: string;
+	now: Date;
+	deltaMessages: AgentDbMessage[];
+	transcript: string;
+	transcriptTokenCount: number;
+	observationLogTail: ObservationLogEntry[];
+	renderedObservationLogTail: string | null;
+}
+
+export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
+
+export interface ObservationLogReflectorInput {
+	scopeKind: ObservationLogScopeKind;
+	scopeId: string;
+	now: Date;
+	activeObservationLog: ObservationLogEntry[];
+	renderedObservationLog: string;
+	tokenCount: number;
+	tokenBudget: number;
+}
+
+export type ObservationLogReflectFn = (input: ObservationLogReflectorInput) => Promise<string>;
 
 export interface BuiltObservationLogStore {
 	appendObservationLogEntries(rows: NewObservationLogEntry[]): Promise<ObservationLogEntry[]>;

@@ -647,9 +647,6 @@ importers:
       '@ai-sdk/xai':
         specifier: ^3.0.67
         version: 3.0.73(zod@3.25.67)
-      '@libsql/client':
-        specifier: ^0.17.0
-        version: 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
@@ -677,9 +674,6 @@ importers:
       langsmith:
         specifier: 0.5.19
         version: 0.5.19(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      pg:
-        specifier: 'catalog:'
-        version: 8.17.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -690,12 +684,6 @@ importers:
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
-      '@types/pg':
-        specifier: ^8.15.6
-        version: 8.15.6
-      testcontainers:
-        specifier: 'catalog:'
-        version: 11.13.0
 
   packages/@n8n/ai-node-sdk:
     dependencies:

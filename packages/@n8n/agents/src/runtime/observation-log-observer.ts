@@ -6,10 +6,14 @@ import type {
 	BuiltObservationLogStore,
 	ObservationLogEntry,
 	ObservationLogMarker,
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
 	ObservationLogScopeKind,
 	TokenCounter,
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
+
+export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
 const MARKER_BY_SYMBOL: Record<string, ObservationLogMarker> = {
 	'🔴': 'critical',
@@ -41,19 +45,6 @@ export interface RenderObserverTranscriptOptions {
 	maxArrayItems?: number;
 	maxObjectKeys?: number;
 }
-
-export interface ObservationLogObserverInput {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
-	now: Date;
-	deltaMessages: AgentDbMessage[];
-	transcript: string;
-	transcriptTokenCount: number;
-	observationLogTail: ObservationLogEntry[];
-	renderedObservationLogTail: string | null;
-}
-
-export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
 
 export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservationLogStore {
 	getMessagesForScope(

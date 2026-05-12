@@ -74,13 +74,14 @@ export function renderObservationLog(
 		}
 	}
 
-	const lines: string[] = ['## Memory', '', MEMORY_INTRO, ''];
+	const lines: string[] = ['<observations>', '## Memory', '', MEMORY_INTRO, ''];
 	for (const root of roots) {
 		lines.push(renderBullet(root));
 		for (const child of childrenByParent.get(root.id) ?? []) {
 			lines.push(renderBullet(child, '  '));
 		}
 	}
+	lines.push('</observations>');
 
 	return lines.join('\n');
 }

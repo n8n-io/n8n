@@ -1,13 +1,6 @@
 import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
 import type { AgentDbMessage } from '../types/sdk/message';
-import type {
-	BuiltObservationStore,
-	NewObservation,
-	Observation,
-	ObservationCursor,
-	ObservationLockHandle,
-	ScopeKind,
-} from '../types/sdk/observation';
+import type { ObservationCursor } from '../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -29,7 +22,7 @@ interface StoredMessage {
 	resourceId: string;
 }
 
-function scopeKey(scopeKind: ScopeKind, scopeId: string): string {
+function scopeKey(scopeKind: ObservationLogScopeKind, scopeId: string): string {
 	return `${scopeKind}:${scopeId}`;
 }
 
@@ -55,58 +48,24 @@ function compareKeyset(
 }
 
 /**
- * In-memory implementation of BuiltMemory and BuiltObservationStore.
+ * In-memory implementation of BuiltMemory and BuiltObservationLogStore.
  * All data is lost on process restart — suitable for development and testing.
  *
  * Thread context for `saveMessages` is established by calling `saveThread` first.
  * The most recently saved thread is used when `saveMessages` is called.
  */
 export class InMemoryMemory
-	implements
-		BuiltMemory,
-		BuiltObservationStore,
-		BuiltObservationLogStore,
-		BuiltObservationLogTaskLockStore
+	implements BuiltMemory, BuiltObservationLogStore, BuiltObservationLogTaskLockStore
 {
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
 
-	private workingMemoryByKey = new Map<string, string>();
-
-	private observationsByScope = new Map<string, Observation[]>();
-
 	private observationLogByScope = new Map<string, ObservationLogEntry[]>();
 
 	private cursorsByScope = new Map<string, ObservationCursor>();
 
-	private locksByScope = new Map<string, ObservationLockHandle>();
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async getWorkingMemory(params: {
-		threadId: string;
-		resourceId?: string;
-		scope: 'resource' | 'thread';
-	}): Promise<string | null> {
-		return this.workingMemoryByKey.get(this.workingMemoryKey(params)) ?? null;
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async saveWorkingMemory(
-		params: { threadId: string; resourceId?: string; scope: 'resource' | 'thread' },
-		content: string,
-	): Promise<void> {
-		this.workingMemoryByKey.set(this.workingMemoryKey(params), content);
-	}
-
-	private workingMemoryKey(params: {
-		threadId: string;
-		resourceId?: string;
-		scope: 'resource' | 'thread';
-	}): string {
-		const id = params.scope === 'thread' ? params.threadId : (params.resourceId ?? params.threadId);
-		return `${params.scope}:${id}`;
-	}
+	private locksByScope = new Map<string, ObservationLogTaskLockHandle>();
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getThread(threadId: string): Promise<Thread | null> {
@@ -133,7 +92,6 @@ export class InMemoryMemory
 		this.threads.delete(threadId);
 		this.messagesByThread.delete(threadId);
 		const key = scopeKey('thread', threadId);
-		this.observationsByScope.delete(key);
 		this.observationLogByScope.delete(key);
 		this.cursorsByScope.delete(key);
 		this.locksByScope.delete(key);
@@ -145,23 +103,12 @@ export class InMemoryMemory
 		opts?: {
 			limit?: number;
 			before?: Date;
-			since?: { sinceCreatedAt: Date; sinceMessageId: string };
 		},
 	): Promise<AgentDbMessage[]> {
 		let stored = this.messagesByThread.get(threadId) ?? [];
 		if (opts?.before) {
 			const cutoff = opts.before.getTime();
 			stored = stored.filter((s) => s.createdAt.getTime() < cutoff);
-		}
-		if (opts?.since) {
-			const { sinceCreatedAt, sinceMessageId } = opts.since;
-			stored = stored.filter(
-				(s) =>
-					compareKeyset(
-						{ createdAt: s.createdAt, id: s.message.id },
-						{ createdAt: sinceCreatedAt, id: sinceMessageId },
-					) > 0,
-			);
 		}
 		stored = [...stored].sort((a, b) =>
 			compareKeyset(
@@ -334,62 +281,8 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async appendObservations(rows: NewObservation[]): Promise<Observation[]> {
-		const persisted: Observation[] = [];
-		for (const row of rows) {
-			const key = scopeKey(row.scopeKind, row.scopeId);
-			const bucket = this.observationsByScope.get(key) ?? [];
-			const obs: Observation = {
-				...row,
-				id: crypto.randomUUID(),
-			};
-			bucket.push(obs);
-			this.observationsByScope.set(key, bucket);
-			persisted.push(obs);
-		}
-		return persisted;
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async getObservations(opts: {
-		scopeKind: ScopeKind;
-		scopeId: string;
-		since?: { sinceCreatedAt: Date; sinceObservationId: string };
-		kindIs?: string;
-		limit?: number;
-		schemaVersionAtMost?: number;
-	}): Promise<Observation[]> {
-		const bucket = this.observationsByScope.get(scopeKey(opts.scopeKind, opts.scopeId)) ?? [];
-		let rows = [...bucket].sort((a, b) =>
-			compareKeyset({ createdAt: a.createdAt, id: a.id }, { createdAt: b.createdAt, id: b.id }),
-		);
-		if (opts.since) {
-			const { sinceCreatedAt, sinceObservationId } = opts.since;
-			rows = rows.filter(
-				(r) =>
-					compareKeyset(
-						{ createdAt: r.createdAt, id: r.id },
-						{ createdAt: sinceCreatedAt, id: sinceObservationId },
-					) > 0,
-			);
-		}
-		if (opts.kindIs !== undefined) {
-			const kind = opts.kindIs;
-			rows = rows.filter((r) => r.kind === kind);
-		}
-		if (opts.schemaVersionAtMost !== undefined) {
-			const max = opts.schemaVersionAtMost;
-			rows = rows.filter((r) => r.schemaVersion <= max);
-		}
-		if (opts.limit !== undefined) {
-			rows = rows.slice(0, opts.limit);
-		}
-		return rows.map((r) => ({ ...r }));
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async getMessagesForScope(
-		scopeKind: ScopeKind,
+		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
 		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
 	): Promise<AgentDbMessage[]> {
@@ -417,19 +310,10 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async deleteObservations(ids: string[]): Promise<void> {
-		if (ids.length === 0) return;
-		const idSet = new Set(ids);
-		for (const [key, bucket] of this.observationsByScope.entries()) {
-			this.observationsByScope.set(
-				key,
-				bucket.filter((row) => !idSet.has(row.id)),
-			);
-		}
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async getCursor(scopeKind: ScopeKind, scopeId: string): Promise<ObservationCursor | null> {
+	async getCursor(
+		scopeKind: ObservationLogScopeKind,
+		scopeId: string,
+	): Promise<ObservationCursor | null> {
 		const cursor = this.cursorsByScope.get(scopeKey(scopeKind, scopeId));
 		return cursor ? cloneCursor(cursor) : null;
 	}
@@ -438,15 +322,6 @@ export class InMemoryMemory
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		const key = scopeKey(cursor.scopeKind, cursor.scopeId);
 		this.cursorsByScope.set(key, cloneCursor(cursor));
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async acquireObservationLock(
-		scopeKind: ScopeKind,
-		scopeId: string,
-		opts: { ttlMs: number; holderId: string },
-	): Promise<ObservationLockHandle | null> {
-		return await this.acquireScopeLock(scopeKind, scopeId, opts);
 	}
 
 	async acquireObservationLogTaskLock(
@@ -462,31 +337,26 @@ export class InMemoryMemory
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async acquireScopeLock(
-		scopeKind: ScopeKind,
+		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
 		opts: { ttlMs: number; holderId: string },
-		taskKind?: ObservationLogTaskKind,
-	): Promise<(ObservationLockHandle & { taskKind?: ObservationLogTaskKind }) | null> {
+		taskKind: ObservationLogTaskKind,
+	): Promise<ObservationLogTaskLockHandle | null> {
 		const key = scopeKey(scopeKind, scopeId);
 		const existing = this.locksByScope.get(key);
 		const now = Date.now();
 		if (existing && existing.holderId !== opts.holderId && existing.heldUntil.getTime() > now) {
 			return null;
 		}
-		const handle: ObservationLockHandle & { taskKind?: ObservationLogTaskKind } = {
+		const handle: ObservationLogTaskLockHandle = {
 			scopeKind,
 			scopeId,
+			taskKind,
 			holderId: opts.holderId,
 			heldUntil: new Date(now + opts.ttlMs),
-			...(taskKind !== undefined && { taskKind }),
 		};
 		this.locksByScope.set(key, handle);
 		return { ...handle };
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async releaseObservationLock(handle: ObservationLockHandle): Promise<void> {
-		await this.releaseScopeLock(handle);
 	}
 
 	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
@@ -494,7 +364,7 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	private async releaseScopeLock(handle: ObservationLockHandle): Promise<void> {
+	private async releaseScopeLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		const key = scopeKey(handle.scopeKind, handle.scopeId);
 		const current = this.locksByScope.get(key);
 		if (current && current.holderId === handle.holderId) {

@@ -40,12 +40,14 @@ describe('renderObservationLog', () => {
 
 		expect(renderObservationLog([child, dropped, parent])).toBe(
 			[
+				'<observations>',
 				'## Memory',
 				'',
 				'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.',
 				'',
 				'* 🟡 (14:30) User is rebuilding observational memory.',
 				'  * ✅ (14:31) Plan 4 was completed.',
+				'</observations>',
 			].join('\n'),
 		);
 	});
@@ -66,6 +68,8 @@ describe('renderObservationLog', () => {
 
 		const rendered = renderObservationLog([kept, skipped], { renderTokenBudget: 3 });
 
+		expect(rendered).toContain('<observations>');
+		expect(rendered).toContain('</observations>');
 		expect(rendered).toContain('* 🔴 (14:30) User wants the SDK to stay unopinionated.');
 		expect(rendered).not.toContain('This entry no longer fits.');
 	});

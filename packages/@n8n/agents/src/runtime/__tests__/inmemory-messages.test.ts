@@ -52,7 +52,7 @@ describe('InMemoryMemory — message keyset reads', () => {
 		expect(textOf(all[0])).toBe('edited');
 	});
 
-	it('filters by since (createdAt, id) keyset', async () => {
+	it('filters observation-scope messages by since (createdAt, id) keyset', async () => {
 		const mem = new InMemoryMemory();
 		const t = Date.now();
 		await mem.saveMessages({
@@ -67,18 +67,18 @@ describe('InMemoryMemory — message keyset reads', () => {
 
 		const all = await mem.getMessages('t-1');
 
-		const tail = await mem.getMessages('t-1', {
+		const tail = await mem.getMessagesForScope('thread', 't-1', {
 			since: { sinceCreatedAt: all[0].createdAt, sinceMessageId: all[0].id },
 		});
 		expect(tail.map(textOf)).toEqual(['b', 'c']);
 
-		const empty = await mem.getMessages('t-1', {
+		const empty = await mem.getMessagesForScope('thread', 't-1', {
 			since: { sinceCreatedAt: all[2].createdAt, sinceMessageId: all[2].id },
 		});
 		expect(empty).toEqual([]);
 	});
 
-	it('keyset since includes rows sharing createdAt with the anchor when id is greater', async () => {
+	it('observation-scope keyset since includes rows sharing createdAt with greater ids', async () => {
 		const mem = new InMemoryMemory();
 		const at = new Date();
 		const m1 = makeMsg('user', 'a', at);
@@ -86,7 +86,7 @@ describe('InMemoryMemory — message keyset reads', () => {
 		await mem.saveMessages({ threadId: 't-1', resourceId: 'u-1', messages: [m1, m2] });
 
 		const [low, high] = [m1, m2].sort((a, b) => (a.id < b.id ? -1 : 1));
-		const tail = await mem.getMessages('t-1', {
+		const tail = await mem.getMessagesForScope('thread', 't-1', {
 			since: { sinceCreatedAt: low.createdAt, sinceMessageId: low.id },
 		});
 		expect(tail).toHaveLength(1);

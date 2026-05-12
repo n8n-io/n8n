@@ -65,28 +65,14 @@ export type {
 	SemanticRecallConfig,
 	MemoryConfig,
 	ObservationLogMemoryConfig,
+	ObservationalMemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
 
 export type {
-	BuiltObservationStore,
-	CompactFn,
-	NewObservation,
-	Observation,
-	ObservationCategory,
 	ObservationCursor,
-	ObservationGapContext,
-	ObservationLockHandle,
-	ObservationalMemoryConfig,
-	ObservationalMemoryTrigger,
-	ObserveFn,
 	ScopeKind,
-} from './sdk/observation';
-export {
-	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
-	OBSERVATION_CATEGORIES,
-	OBSERVATION_SCHEMA_VERSION,
 } from './sdk/observation';
 
 export type {
@@ -96,7 +82,11 @@ export type {
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
 	ObservationLogReadOptions,
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
