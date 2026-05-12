@@ -529,22 +529,24 @@ function handleStop() {
 						"
 					/>
 					<N8nTooltip
-						v-if="!preview.isPreviewVisible.value"
 						:content="artifactsPreviewToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
 					>
-						<N8nIconButton
-							icon="panel-right"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							data-test-id="instance-ai-artifacts-preview-toggle"
-							:aria-label="artifactsPreviewToggleLabel"
-							:aria-pressed="preview.isPreviewVisible.value"
-							:disabled="!hasPreviewTabs"
-							@click="toggleArtifactsPreview"
-						/>
+						<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+							<N8nIconButton
+								v-if="!preview.isPreviewVisible.value"
+								icon="panel-right"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								data-test-id="instance-ai-artifacts-preview-toggle"
+								:aria-label="artifactsPreviewToggleLabel"
+								:aria-pressed="preview.isPreviewVisible.value"
+								:disabled="!hasPreviewTabs"
+								@click="toggleArtifactsPreview"
+							/>
+						</Transition>
 					</N8nTooltip>
 				</template>
 			</InstanceAiViewHeader>
@@ -1068,6 +1070,26 @@ function handleStop() {
 	width: 0 !important;
 	min-width: 0 !important;
 	opacity: 0;
+}
+
+.preview-toggle-opacity-enter-active,
+.preview-toggle-opacity-leave-active {
+	transition: opacity var(--instance-ai-panel-transition-duration, var(--duration--snappy)) linear;
+	will-change: opacity;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
+}
+
+.preview-toggle-opacity-enter-from,
+.preview-toggle-opacity-leave-to {
+	opacity: 0;
+}
+
+.preview-toggle-opacity-leave-active {
+	pointer-events: none;
 }
 
 .artifacts-panel-fade-enter-active,
