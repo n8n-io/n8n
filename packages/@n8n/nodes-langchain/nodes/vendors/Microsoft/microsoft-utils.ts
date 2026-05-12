@@ -459,28 +459,6 @@ export function configureAdapterProcessCallback(
 			);
 			agent.onActivity(ActivityTypes.Message, onActivity, ['agentic']);
 
-			agent.onActivity(
-				ActivityTypes.Event,
-				async (eventTurnContext: TurnContext) => {
-					const activity = eventTurnContext.activity;
-					if (
-						activity.name === 'agentLifecycle' &&
-						activity.valueType === 'AgenticUserWorkloadOnboardingUpdated' &&
-						(activity.value as { workloadOnboardingState?: string })?.workloadOnboardingState ===
-							'succeeded'
-					) {
-						const welcomeMessage = nodeContext.getNodeParameter(
-							'options.welcomeMessage',
-							'',
-						) as string;
-						if (welcomeMessage) {
-							await eventTurnContext.sendActivity(welcomeMessage);
-						}
-					}
-				},
-				['agentic'],
-			);
-
 			await agent.run(turnContext);
 		} catch (error) {
 			throw new NodeOperationError(nodeContext.getNode(), error);
