@@ -27,9 +27,9 @@ describe('BinaryData/utils', () => {
 		it('should throw on invalid compressed Readable streams', async () => {
 			const gunzip = createGunzip();
 			const body = Readable.from(Buffer.from('0001f8b080000000000000000', 'hex')).pipe(gunzip);
-			await expect(binaryToBuffer(body)).rejects.toThrow(
-				new UnexpectedError('Failed to decompress response'),
-			);
+			const promise = binaryToBuffer(body);
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow('Failed to decompress response');
 		});
 	});
 });

@@ -281,6 +281,61 @@ describe('GoogleSheet', () => {
 
 			expect(apiRequest.call).toHaveBeenCalled();
 		});
+
+		it('should use columnNamesHint instead of calling getData for column names', async () => {
+			const inputData = [{ name: 'John', age: '30' }];
+			(apiRequest.call as jest.Mock).mockResolvedValue({ values: [['John', '30']] });
+
+			googleSheet.setColumnNamesHint(['name', 'age']);
+
+			await googleSheet.appendSheetData({
+				inputData,
+				range: 'Sheet1!A:B',
+				keyRowIndex: 1,
+				valueInputMode: 'USER_ENTERED',
+				lastRow: 3,
+			});
+
+			// Only the PUT for the data row — no GET for column names
+			expect(apiRequest.call).toHaveBeenCalledTimes(1);
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'PUT',
+				expect.stringContaining('/values/'),
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('should clear columnNamesHint after use and fall back to getData on next call', async () => {
+			const inputData = [{ name: 'John', age: '30' }];
+			(apiRequest.call as jest.Mock)
+				.mockResolvedValueOnce({ values: [['John', '30']] }) // first PUT
+				.mockResolvedValueOnce({ values: [['name', 'age']] }) // second call: GET column names
+				.mockResolvedValueOnce({ values: [['John', '30']] }); // second PUT
+
+			googleSheet.setColumnNamesHint(['name', 'age']);
+
+			await googleSheet.appendSheetData({
+				inputData,
+				range: 'Sheet1!A:B',
+				keyRowIndex: 1,
+				valueInputMode: 'USER_ENTERED',
+				lastRow: 3,
+			});
+			expect(apiRequest.call).toHaveBeenCalledTimes(1);
+
+			// Second call — hint was cleared, must fetch column names via getData
+			await googleSheet.appendSheetData({
+				inputData,
+				range: 'Sheet1!A:B',
+				keyRowIndex: 1,
+				valueInputMode: 'USER_ENTERED',
+				lastRow: 3,
+			});
+			// GET for column names + PUT = 2 more calls
+			expect(apiRequest.call).toHaveBeenCalledTimes(3);
+		});
 	});
 
 	describe('appendEmptyRowsOrColumns', () => {

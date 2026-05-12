@@ -88,6 +88,9 @@ jobs:
         run: node .github/scripts/claude-task/prepare-claude-prompt.mjs
 
       - name: Create MCP config
+        env:
+          MCP_LINEAR_API_KEY: ${{ secrets.MCP_LINEAR_API_KEY }}
+          MCP_NOTION_TOKEN: ${{ secrets.MCP_NOTION_TOKEN }}
         run: |
           cat > /tmp/mcp-config.json << 'MCPEOF'
           {
@@ -115,8 +118,8 @@ jobs:
             }
           }
           MCPEOF
-          sed -i "s|MCP_LINEAR_API_KEY_PLACEHOLDER|${{ secrets.MCP_LINEAR_API_KEY }}|g" /tmp/mcp-config.json
-          sed -i "s|MCP_NOTION_TOKEN_PLACEHOLDER|${{ secrets.MCP_NOTION_TOKEN }}|g" /tmp/mcp-config.json
+          sed -i "s|MCP_LINEAR_API_KEY_PLACEHOLDER|${MCP_LINEAR_API_KEY}|g" /tmp/mcp-config.json
+          sed -i "s|MCP_NOTION_TOKEN_PLACEHOLDER|${MCP_NOTION_TOKEN}|g" /tmp/mcp-config.json
 
       - name: Run Claude
         id: claude
@@ -128,6 +131,8 @@ jobs:
           prompt: ${{ env.CLAUDE_PROMPT }}
           show_full_output: ${{ inputs.suppress_output != true }}
           display_report: false
+          plugin_marketplaces: "./.claude/plugins/n8n"
+          plugins: "n8n@n8n"
           settings: |
             {
               "permissions": {
@@ -146,6 +151,17 @@ jobs:
                   "mcp__linear__*",
                   "mcp__notion__*"
                 ]
+              },
+              "extraKnownMarketplaces": {
+                "n8n": {
+                  "source": {
+                    "source": "directory",
+                    "path": "./.claude/plugins/n8n"
+                  }
+                }
+              },
+              "enabledPlugins": {
+                "n8n@n8n": true
               }
             }
           claude_args: |
@@ -153,8 +169,10 @@ jobs:
 
       - name: Push branch
         if: always()
+        env:
+          REF: ${{ inputs.ref }}
         run: |
-          if ! git diff --quiet "${{ inputs.ref }}" 2>/dev/null; then
+          if ! git diff --quiet "$REF" 2>/dev/null; then
             git push -u origin "$BRANCH_NAME"
             echo "::notice::Changes pushed to branch $BRANCH_NAME"
           else

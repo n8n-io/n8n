@@ -464,6 +464,7 @@ export interface SubcategoryItemProps {
 		color?: string;
 	};
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -640,6 +641,11 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	projectId?: string;
+	suggestedName?: string;
+	nodeName?: string;
+	contextNode?: INodeUi;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -872,7 +878,9 @@ export type CloudUpdateLinkSourceType =
 	| 'custom-roles-list'
 	| 'main-sidebar'
 	| 'chat-hub'
-	| 'empty-state-builder-prompt';
+	| 'empty-state-builder-prompt'
+	| 'instance-ai'
+	| 'workflow-settings';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -900,7 +908,9 @@ export type UTMCampaign =
 	| 'upgrade-builder'
 	| 'upgrade-custom-roles'
 	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar';
+	| 'upgrade-main-sidebar'
+	| 'upgrade-instance-ai'
+	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;
@@ -949,7 +959,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'NamedVersions'
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
-	| 'CustomRoles';
+	| 'CustomRoles'
+	| 'DataRedaction';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

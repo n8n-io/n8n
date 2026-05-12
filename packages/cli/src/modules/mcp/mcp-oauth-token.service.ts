@@ -35,6 +35,10 @@ export class McpOAuthTokenService {
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 	) {}
 
+	getAccessTokenExpirySeconds(): number {
+		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
+	}
+
 	generateTokenPair(
 		userId: string,
 		clientId: string,

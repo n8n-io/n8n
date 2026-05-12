@@ -270,14 +270,13 @@ export class Wait extends Webhook {
 	description: INodeTypeDescription = {
 		displayName: 'Wait',
 		name: 'wait',
-		icon: 'fa:pause-circle',
+		icon: 'node:wait',
 		iconColor: 'crimson',
 		group: ['organization'],
 		version: [1, 1.1],
 		description: 'Wait before continue with execution',
 		defaults: {
 			name: 'Wait',
-			color: '#804050',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -316,7 +315,7 @@ export class Wait extends Webhook {
 				name: 'resume',
 				type: 'options',
 				builderHint: {
-					message:
+					propertyHint:
 						'For user approval workflows, consider using nodes with operation: "sendAndWait" (e.g., email, Slack) instead of Wait node. If using "webhook", the URL will be generated at runtime and can be referenced with {{ $execution.resumeUrl }}.',
 				},
 				options: [

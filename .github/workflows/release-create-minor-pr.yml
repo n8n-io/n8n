@@ -3,7 +3,7 @@ name: 'Release: Create Minor Release PR'
 on:
   workflow_dispatch:
   schedule:
-    - cron: 0 13 * * 1 # 2pm CET (UTC+1), Monday
+    - cron: 0 8 * * 2 # 9am CET (UTC+1), Tuesday
 
 jobs:
   create-release-pr:

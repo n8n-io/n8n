@@ -176,8 +176,10 @@ function useJsonFieldCompletions() {
 		try {
 			const activeNode = ndvStore.activeNode;
 			if (activeNode) {
-				const input = workflowsStore.connectionsByDestinationNode[activeNode.name];
-				return input.main[0] ? input.main[0][0].node : null;
+				const input = (workflowDocumentStore?.value?.connectionsByDestinationNode ?? {})[
+					activeNode.name
+				];
+				return input?.main[0]?.[0]?.node ?? null;
 			}
 		} catch (e) {
 			console.error(e);

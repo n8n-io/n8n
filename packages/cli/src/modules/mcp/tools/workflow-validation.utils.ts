@@ -4,6 +4,34 @@ import type { Scope } from '@n8n/permissions';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowAccessError } from '../mcp.errors';
+import {
+	CODE_BUILDER_VALIDATE_TOOL,
+	MCP_GET_SDK_REFERENCE_TOOL,
+} from './workflow-builder/constants';
+
+type SdkReferenceHintOptions = {
+	afterReference?: string;
+};
+
+/**
+ * Returns a hint nudging MCP clients to consult the SDK reference,
+ * but only when the error is a workflow code parse error.
+ */
+export function getSdkReferenceHint(
+	error: unknown,
+	options: SdkReferenceHintOptions = {},
+): string | undefined {
+	const isParseError =
+		error instanceof Error &&
+		(error.name === 'WorkflowCodeParseError' || error instanceof SyntaxError);
+	if (!isParseError) return undefined;
+
+	const afterReference =
+		options.afterReference ??
+		`Rewrite the code using the documented patterns, then call ${CODE_BUILDER_VALIDATE_TOOL.toolName} again before creating or updating a workflow.`;
+
+	return `The code failed to parse as n8n Workflow SDK code. This usually means it does not follow the required SDK patterns. Before retrying, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} to read the Workflow SDK reference. Use workflow(), trigger()/node(), .add()/.to(), expr(), and newCredential() exactly as documented. ${afterReference}`;
+}
 
 export type FoundWorkflow = NonNullable<
 	Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>

@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -567,7 +567,9 @@ export function renderForm({
 		authToken,
 	});
 
-	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+	if (!isFormHtmlSandboxingDisabled()) {
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	}
 	res.render('form-trigger', data);
 }
 
@@ -627,6 +629,16 @@ export async function formWebhook(
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+
+	for (const field of formFields) {
+		if (field.fieldType === 'html') {
+			let html = field.html ?? '';
+			for (const resolvable of getResolvables(html)) {
+				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+			}
+			field.html = html;
+		}
+	}
 
 	const method = context.getRequestObject().method;
 
