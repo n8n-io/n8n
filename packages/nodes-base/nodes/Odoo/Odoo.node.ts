@@ -222,6 +222,36 @@ export class Odoo implements INodeType {
 
 				return options.sort((a, b) => a.name?.localeCompare(b.name) || 0) as INodePropertyOptions[];
 			},
+			async getSupportedLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials('odooApi');
+				const url = credentials.url as string;
+				const username = credentials.username as string;
+				const password = credentials.password as string;
+				const db = odooGetDBName(credentials.db as string, url);
+				const userID = await odooGetUserID.call(this, db, username, password, url);
+
+				const body = {
+					jsonrpc: '2.0',
+					method: 'call',
+					params: {
+						service: 'object',
+						method: 'execute',
+						args: [db, userID, password, 'res.lang', 'search_read', [], ['code', 'name']],
+					},
+					id: randomInt(100),
+				};
+
+				const response = (await odooJSONRPCRequest.call(this, body, url)) as IDataObject[];
+
+				const options = Object.values(response).map(lang => ({
+					name: lang.name as string,
+					value: lang.code as string
+				}));
+
+				return options.sort((a, b) => 
+					a.name?.localeCompare(b.name) || 0
+				) as INodePropertyOptions[];
+			}
 		},
 		credentialTest: {
 			async odooApiTest(
@@ -325,6 +355,10 @@ export class Odoo implements INodeType {
 							name,
 							...additionalFields,
 						};
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooCreate.call(
 							this,
 							db,
@@ -334,11 +368,16 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							fields,
+							context,
 						);
 					}
 
 					if (operation === 'delete') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -348,6 +387,7 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							contactId,
+							context,
 						);
 					}
 
@@ -355,6 +395,9 @@ export class Odoo implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -365,6 +408,7 @@ export class Odoo implements INodeType {
 							url,
 							contactId,
 							fields,
+							context,
 						);
 					}
 
@@ -372,6 +416,9 @@ export class Odoo implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -383,6 +430,8 @@ export class Odoo implements INodeType {
 								url,
 								undefined,
 								fields,
+								undefined,
+								context,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
@@ -397,6 +446,7 @@ export class Odoo implements INodeType {
 								undefined, // filters, only for custom resource
 								fields,
 								limit,
+								context,
 							);
 						}
 					}
@@ -416,6 +466,10 @@ export class Odoo implements INodeType {
 							delete updateFields.address;
 						}
 
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooUpdate.call(
 							this,
 							db,
@@ -426,6 +480,7 @@ export class Odoo implements INodeType {
 							url,
 							contactId,
 							updateFields,
+							context,
 						);
 					}
 				}
@@ -434,6 +489,10 @@ export class Odoo implements INodeType {
 					const customResource = this.getNodeParameter('customResource', i) as string;
 					if (operation === 'create') {
 						const fields = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooCreate.call(
 							this,
 							db,
@@ -443,11 +502,16 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							processNameValueFields(fields),
+							context,
 						);
 					}
 
 					if (operation === 'delete') {
 						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -457,6 +521,7 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							customResourceId,
+							context,
 						);
 					}
 
@@ -464,6 +529,9 @@ export class Odoo implements INodeType {
 						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -474,14 +542,18 @@ export class Odoo implements INodeType {
 							url,
 							customResourceId,
 							fields,
+							context,
 						);
 					}
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
-						const fields = (options.fieldsList as IDataObject[]) || [];
 						const filter = this.getNodeParameter('filterRequest', i) as IOdooFilterOperations;
+						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -493,6 +565,8 @@ export class Odoo implements INodeType {
 								url,
 								filter,
 								fields,
+								undefined,
+								context,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
@@ -507,6 +581,7 @@ export class Odoo implements INodeType {
 								filter,
 								fields,
 								limit,
+								context,
 							);
 						}
 					}
@@ -514,6 +589,10 @@ export class Odoo implements INodeType {
 					if (operation === 'update') {
 						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
 						const fields = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooUpdate.call(
 							this,
 							db,
@@ -524,6 +603,7 @@ export class Odoo implements INodeType {
 							url,
 							customResourceId,
 							processNameValueFields(fields),
+							context,
 						);
 					}
 				}
@@ -535,7 +615,11 @@ export class Odoo implements INodeType {
 						const fields: IDataObject = {
 							memo,
 							// ...additionalFields,
-						};
+						};						
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooCreate.call(
 							this,
 							db,
@@ -545,11 +629,16 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							fields,
+							context,
 						);
 					}
 
 					if (operation === 'delete') {
 						const noteId = this.getNodeParameter('noteId', i) as string;
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -559,6 +648,7 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							noteId,
+							context,
 						);
 					}
 
@@ -566,6 +656,9 @@ export class Odoo implements INodeType {
 						const noteId = this.getNodeParameter('noteId', i) as string;
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -576,6 +669,7 @@ export class Odoo implements INodeType {
 							url,
 							noteId,
 							fields,
+							context,
 						);
 					}
 
@@ -583,6 +677,9 @@ export class Odoo implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -594,6 +691,8 @@ export class Odoo implements INodeType {
 								url,
 								undefined,
 								fields,
+								undefined,
+								context,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
@@ -608,6 +707,7 @@ export class Odoo implements INodeType {
 								undefined, // filters, only for custom resource
 								fields,
 								limit,
+								context,
 							);
 						}
 					}
@@ -618,6 +718,10 @@ export class Odoo implements INodeType {
 						const fields: IDataObject = {
 							memo,
 						};
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooUpdate.call(
 							this,
 							db,
@@ -628,6 +732,7 @@ export class Odoo implements INodeType {
 							url,
 							noteId,
 							fields,
+							context,
 						);
 					}
 				}
@@ -640,6 +745,9 @@ export class Odoo implements INodeType {
 							name,
 							...additionalFields,
 						};
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
 
 						responseData = await odooCreate.call(
 							this,
@@ -650,11 +758,16 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							fields,
+							context,
 						);
 					}
 
 					if (operation === 'delete') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooDelete.call(
 							this,
 							db,
@@ -664,6 +777,7 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							opportunityId,
+							context,
 						);
 					}
 
@@ -671,6 +785,9 @@ export class Odoo implements INodeType {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -681,6 +798,7 @@ export class Odoo implements INodeType {
 							url,
 							opportunityId,
 							fields,
+							context,
 						);
 					}
 
@@ -688,6 +806,9 @@ export class Odoo implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -699,6 +820,8 @@ export class Odoo implements INodeType {
 								url,
 								undefined,
 								fields,
+								undefined,
+								context,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
@@ -713,6 +836,7 @@ export class Odoo implements INodeType {
 								undefined, // filters, only for custom resource
 								fields,
 								limit,
+								context,
 							);
 						}
 					}
@@ -720,6 +844,10 @@ export class Odoo implements INodeType {
 					if (operation === 'update') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
+						const options = this.getNodeParameter('options', i);
+						const language = options.language as string;
+						const context = language ? { lang: language } : {};
+
 						responseData = await odooUpdate.call(
 							this,
 							db,
@@ -730,6 +858,7 @@ export class Odoo implements INodeType {
 							url,
 							opportunityId,
 							updateFields,
+							context,
 						);
 					}
 				}
