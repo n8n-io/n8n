@@ -3,7 +3,12 @@
 exports[`InsightsSummary > should render the summary correctly 1`] = `
 "<div class="insightsWrapper">
   <div class="insights">
-    <ul data-test-id="insights-summary-tabs"></ul>
+    <ul data-test-id="insights-summary-tabs">
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
+    </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
 `;
@@ -35,6 +40,10 @@ exports[`InsightsSummary > should render the summary correctly 2`] = `
       <li data-test-id="insights-summary-tab-averageRunTime"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Run time (avg.)</span>
         <!--v-if--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> 0.5s</span>
         <!--v-if--></small></span></a></span>
+        <!--v-if-->
+      </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
         <!--v-if-->
       </li>
     </ul>
@@ -71,6 +80,10 @@ exports[`InsightsSummary > should render the summary correctly 3`] = `
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
@@ -105,6 +118,10 @@ exports[`InsightsSummary > should render the summary correctly 4`] = `
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
@@ -132,6 +149,10 @@ exports[`InsightsSummary > should render the summary correctly 5`] = `
       </li>
       <li data-test-id="insights-summary-tab-averageRunTime"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Run time (avg.)</span>
         <!--v-if--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><!--v-if--></span></a></span>
+        <!--v-if-->
+      </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
         <!--v-if-->
       </li>
     </ul>
@@ -168,6 +189,10 @@ exports[`InsightsSummary > should render the summary correctly 6`] = `
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
@@ -200,6 +225,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'cust
       <li data-test-id="insights-summary-tab-averageRunTime"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Run time (avg.)</span>
         <!--v-if--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> 0.5s</span>
         <!--v-if--></small></span></a></span>
+        <!--v-if-->
+      </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
         <!--v-if-->
       </li>
     </ul>
@@ -236,6 +265,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
@@ -268,6 +301,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
       <li data-test-id="insights-summary-tab-averageRunTime"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Run time (avg.)</span>
         <!--v-if--></strong><small class="days">Last 14 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> 0.5s</span>
         <!--v-if--></small></span></a></span>
+        <!--v-if-->
+      </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 14 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
         <!--v-if-->
       </li>
     </ul>
@@ -304,6 +341,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 24 hours</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
@@ -336,6 +377,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
       <li data-test-id="insights-summary-tab-averageRunTime"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Run time (avg.)</span>
         <!--v-if--></strong><small class="days">Last 30 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> 0.5s</span>
         <!--v-if--></small></span></a></span>
+        <!--v-if-->
+      </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 30 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
         <!--v-if-->
       </li>
     </ul>
@@ -372,6 +417,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">Last 90 days</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
@@ -406,6 +455,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">6 months</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
+        <!--v-if-->
+      </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
 </div>"
@@ -438,6 +491,10 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
       <li data-test-id="insights-summary-tab-averageRunTime"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Run time (avg.)</span>
         <!--v-if--></strong><small class="days">One year</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> 0.5s</span>
         <!--v-if--></small></span></a></span>
+        <!--v-if-->
+      </li>
+      <li data-test-id="insights-summary-tab-schedule"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""> Schedule</span>
+        <!--v-if--></strong><small class="days">One year</small><span class="scheduleSummary"><em>Control panel</em><small class="neutral">Workflow cadence</small></span></a></span>
         <!--v-if-->
       </li>
     </ul>

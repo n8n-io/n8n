@@ -5,6 +5,7 @@ import type { InsightsSummaryDisplay } from '@/features/execution/insights/insig
 import { createTestingPinia } from '@pinia/testing';
 import { defaultSettings } from '@/__tests__/defaults';
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date';
+import { screen } from '@testing-library/vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -45,6 +46,19 @@ describe('InsightsSummary', () => {
 				},
 			}),
 		).not.toThrow();
+	});
+
+	it('should render a schedule tab alongside the summary metrics', () => {
+		renderComponent({
+			props: {
+				summary: [],
+				startDate,
+				endDate,
+			},
+		});
+
+		expect(screen.getByTestId('insights-summary-tab-schedule')).toBeInTheDocument();
+		expect(screen.getByText('Schedule')).toBeInTheDocument();
 	});
 
 	test.each<InsightsSummaryDisplay[]>([

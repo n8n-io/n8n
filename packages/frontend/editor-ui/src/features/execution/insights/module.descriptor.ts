@@ -1,6 +1,10 @@
 import { RouterView } from 'vue-router';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import {
+	INSIGHT_TYPES,
+	isInsightsViewType,
+} from '@/features/execution/insights/insights.constants';
 import { VIEWS } from '@/app/constants';
 
 const InsightsDashboard = async () =>
@@ -32,8 +36,19 @@ export const InsightsModule: FrontendModuleDescription = {
 					path: ':insightType?',
 					name: VIEWS.INSIGHTS,
 					beforeEnter(to) {
-						if (to.params.insightType) return true;
-						return Object.assign(to, { params: { ...to.params, insightType: 'total' } });
+						const insightType = Array.isArray(to.params.insightType)
+							? to.params.insightType[0]
+							: to.params.insightType;
+
+						if (isInsightsViewType(insightType)) return true;
+
+						return {
+							name: VIEWS.INSIGHTS,
+							params: { ...to.params, insightType: INSIGHT_TYPES.TOTAL },
+							query: to.query,
+							hash: to.hash,
+							replace: true,
+						};
 					},
 					component: InsightsDashboard,
 					props: true,
