@@ -24,10 +24,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -103,9 +100,7 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 	const workflowState = injectWorkflowState();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();

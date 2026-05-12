@@ -31,4 +31,6 @@ jobs:
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Ensure release-candidate branches
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: node ./.github/scripts/ensure-release-candidate-branches.mjs
