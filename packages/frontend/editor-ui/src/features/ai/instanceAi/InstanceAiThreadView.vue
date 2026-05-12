@@ -833,6 +833,8 @@ function handleStop() {
 }
 
 .contentArea {
+	--instance-ai-artifacts-layout-width: 0;
+
 	display: flex;
 	flex: 1;
 	min-height: 0;
@@ -881,33 +883,22 @@ function handleStop() {
 }
 
 .messageList {
+	width: calc(100% - var(--instance-ai-artifacts-layout-width));
 	max-width: 800px;
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 	transition:
-		max-width var(--instance-ai-panel-transition-duration)
-			var(--instance-ai-panel-transition-easing),
+		width var(--instance-ai-panel-transition-duration) var(--instance-ai-panel-transition-easing),
 		transform var(--instance-ai-panel-transition-duration)
 			var(--instance-ai-panel-transition-easing);
 }
 
 .contentAreaWithPinnedArtifacts {
-	.messageList {
-		max-width: min(800px, calc(100% - var(--instance-ai-artifacts-panel-width)));
-	}
-
-	.messageList,
-	.scrollButtonContainer {
-		transform: translateX(calc(var(--instance-ai-artifacts-panel-width) / -2));
-	}
-
-	.inputConstraint {
-		max-width: min(750px, calc(100% - var(--instance-ai-artifacts-panel-width)));
-		transform: translateX(calc(var(--instance-ai-artifacts-panel-width) / -2));
-	}
+	--instance-ai-artifacts-layout-width: var(--instance-ai-artifacts-panel-width);
 }
 
 .contentAreaWithoutLayoutTransitions {
@@ -933,6 +924,7 @@ function handleStop() {
 	justify-content: center;
 	pointer-events: none;
 	z-index: 3;
+	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 	transition: transform var(--instance-ai-panel-transition-duration)
 		var(--instance-ai-panel-transition-easing);
 }
@@ -965,11 +957,12 @@ function handleStop() {
 }
 
 .inputConstraint {
+	width: calc(100% - var(--instance-ai-artifacts-layout-width));
 	max-width: 750px;
 	margin: 0 auto;
+	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 	transition:
-		max-width var(--instance-ai-panel-transition-duration)
-			var(--instance-ai-panel-transition-easing),
+		width var(--instance-ai-panel-transition-duration) var(--instance-ai-panel-transition-easing),
 		transform var(--instance-ai-panel-transition-duration)
 			var(--instance-ai-panel-transition-easing);
 }
