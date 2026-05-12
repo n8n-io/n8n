@@ -78,8 +78,6 @@ export class WorkflowCreationService {
 		// Ensure workflow is created as inactive
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
-		newWorkflow.nodeGroups ??= [];
-
 		await validateEntity(newWorkflow);
 
 		if (tagIds?.length && !this.globalConfig.tags.disabled) {

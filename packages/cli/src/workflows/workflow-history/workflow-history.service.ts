@@ -131,7 +131,7 @@ export class WorkflowHistoryService {
 				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
-				nodeGroups: workflow.nodeGroups ?? [],
+				nodeGroups: workflow.nodeGroups,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved,

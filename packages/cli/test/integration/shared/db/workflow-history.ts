@@ -26,7 +26,6 @@ export async function createWorkflowHistoryItem(
 			workflowPublishHistory: [],
 			autosaved: false,
 			...(data ?? {}),
-			nodeGroups: data?.nodeGroups ?? [],
 			workflowId,
 		}),
 	);
