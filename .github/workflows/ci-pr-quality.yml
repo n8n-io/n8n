@@ -47,11 +47,14 @@ jobs:
     name: Ownership Acknowledgement
     # Checks that the author has acknowledged the ownership of their code
     # by checking the checkbox in the PR summary.
+    # Skipped for bot-authored PRs (Dependabot, Renovate, github-actions, Aikido, etc.).
+    # The required aggregator `required-pr-quality-checks` treats skipped as success.
     if: |
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
-      !contains(github.event.pull_request.title, '(backport to')
+      !contains(github.event.pull_request.title, '(backport to') &&
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -75,12 +78,15 @@ jobs:
   check-pr-size:
     name: PR Size Limit
     # Checks that the PR size doesn't exceed the limit (currently 1000 lines)
-    # Allows for override via '/size-limit-override' comment
+    # Allows for override via '/size-limit-override' comment.
+    # Skipped for bot-authored PRs — dep bumps from Dependabot/Renovate/Aikido
+    # routinely exceed the size limit and shouldn't be gated on it.
     if: |
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
-      !contains(github.event.pull_request.title, '(backport to')
+      !contains(github.event.pull_request.title, '(backport to') &&
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

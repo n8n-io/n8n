@@ -300,6 +300,6 @@
     "vm2": "catalog:",
     "weaviate-client": "3.9.0",
     "zod": "catalog:",
-    "zod-to-json-schema": "3.23.3"
+    "zod-to-json-schema": "catalog:"
   }
 }
