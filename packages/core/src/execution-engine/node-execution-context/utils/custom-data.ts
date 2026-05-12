@@ -1,4 +1,5 @@
 import {
+	isInteractiveExecution,
 	LoggerProxy,
 	type IRunExecutionData,
 	type IWorkflowExecutionCustomData,
@@ -24,7 +25,7 @@ export function createExecutionCustomData({
 			try {
 				setWorkflowExecutionMetadata(runExecutionData, key, value);
 			} catch (e) {
-				if (mode === 'manual') {
+				if (isInteractiveExecution(mode)) {
 					throw e;
 				}
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
@@ -35,7 +36,7 @@ export function createExecutionCustomData({
 			try {
 				setAllWorkflowExecutionMetadata(runExecutionData, obj);
 			} catch (e) {
-				if (mode === 'manual') {
+				if (isInteractiveExecution(mode)) {
 					throw e;
 				}
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument

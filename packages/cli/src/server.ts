@@ -39,6 +39,7 @@ import '@/controllers/dynamic-templates.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
+import '@/controllers/nodes.controller';
 import '@/controllers/oauth/oauth1-credential.controller';
 import '@/controllers/oauth/oauth2-credential.controller';
 import '@/controllers/orchestration.controller';

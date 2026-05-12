@@ -17,6 +17,7 @@ describe('ExecutionsController', () => {
 		mock(),
 		workflowSharingService,
 		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {

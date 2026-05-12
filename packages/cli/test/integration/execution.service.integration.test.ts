@@ -47,6 +47,7 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			mock(),
+			Container.get(ExecutionMetadataRepository),
 		);
 
 		owner = await createOwner();

@@ -27,6 +27,7 @@ import type {
 import {
 	createRunExecutionData,
 	ExecutionCancelledError,
+	isInteractiveExecution,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
@@ -291,7 +292,7 @@ export class WorkflowRunner {
 		if (
 			this.executionsConfig.mode !== 'queue' ||
 			this.instanceSettings.instanceType === 'worker' ||
-			data.executionMode === 'manual' ||
+			isInteractiveExecution(data.executionMode) ||
 			data.executionMode === 'chat'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);

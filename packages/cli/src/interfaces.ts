@@ -1,3 +1,4 @@
+import type { ExecutionCaller } from '@n8n/api-types';
 import type {
 	ICredentialsBase,
 	IExecutionBase,
@@ -104,6 +105,12 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	id: string;
 	retryOf?: string;
+	/**
+	 * Who initiated this execution (n8n Hub Task 20 / Phase 5.1). Populated for
+	 * single-node executions invoked from MCP / SDK / CLI; undefined for regular
+	 * workflow executions.
+	 */
+	caller?: ExecutionCaller;
 }
 
 export interface IExecutionsListResponse {

@@ -823,6 +823,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
+		// Exclude n8n Hub placeholder workflows (single-node execution backers) from
+		// every list query. They're internal infrastructure rows, not user-authored
+		// workflows; filtering here (instead of post-query in the service) keeps
+		// pagination and count consistent.
+		qb.andWhere('workflow.name NOT LIKE :hubActionPrefix', { hubActionPrefix: '__n8n-hub-%' });
 		this.applyPagination(qb, options);
 
 		return qb;
@@ -855,6 +860,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
+		// Exclude n8n Hub placeholder workflows (single-node execution backers) from
+		// every list query. They're internal infrastructure rows, not user-authored
+		// workflows; filtering here (instead of post-query in the service) keeps
+		// pagination and count consistent.
+		qb.andWhere('workflow.name NOT LIKE :hubActionPrefix', { hubActionPrefix: '__n8n-hub-%' });
 		this.applySorting(qb, options.sortBy);
 		this.applyPagination(qb, options);
 

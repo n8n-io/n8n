@@ -1,4 +1,9 @@
-import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
+import type { ExecutionCaller } from '@n8n/api-types';
+import {
+	EXECUTION_CALLER_METADATA_KEYS,
+	ExecutionRedactionQueryDtoSchema,
+	extractExecutionCaller,
+} from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -11,6 +16,7 @@ import type {
 import {
 	AnnotationTagMappingRepository,
 	ExecutionAnnotationRepository,
+	ExecutionMetadataRepository,
 	ExecutionRepository,
 	In,
 	WorkflowHistoryRepository,
@@ -23,6 +29,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	ExecutionSummary,
 	INode,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -127,6 +134,7 @@ export class ExecutionService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly executionMetadataRepository: ExecutionMetadataRepository,
 	) {}
 
 	/**
@@ -183,9 +191,28 @@ export class ExecutionService {
 			},
 		);
 
+		const caller =
+			execution.mode === 'single-node' ? extractExecutionCaller(execution.customData) : undefined;
+		const nodeType =
+			execution.mode === 'single-node'
+				? execution.customData?.[EXECUTION_CALLER_METADATA_KEYS.nodeType]
+				: undefined;
+		const actionId =
+			execution.mode === 'single-node'
+				? execution.customData?.[EXECUTION_CALLER_METADATA_KEYS.actionId]
+				: undefined;
+		const actionDisplayName =
+			execution.mode === 'single-node'
+				? execution.customData?.[EXECUTION_CALLER_METADATA_KEYS.actionDisplayName]
+				: undefined;
+
 		return {
 			...execution,
 			data: stringify(processedExecution.data),
+			...(caller ? { caller } : {}),
+			...(nodeType ? { nodeType } : {}),
+			...(actionId ? { actionId } : {}),
+			...(actionDisplayName ? { actionDisplayName } : {}),
 		};
 	}
 
@@ -461,7 +488,68 @@ export class ExecutionService {
 
 		const executionCount = await this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' });
 
+		await this.attachCallerToSummaries(results);
+
 		return { results, ...executionCount };
+	}
+
+	/**
+	 * Enrich summaries with `caller` derived from ExecutionMetadata. Only loads
+	 * metadata for executions whose mode is `'single-node'`; regular workflow
+	 * executions are skipped so we don't pay the lookup cost for them.
+	 *
+	 * For hackathon (Task 20 / Phase 5.1) this does a single batched fetch keyed
+	 * by execution id. If the list view becomes a hotspot we can move this to a
+	 * SQL JOIN inside `findManyByRangeQuery`.
+	 */
+	private async attachCallerToSummaries(
+		summaries: Array<
+			ExecutionSummary & {
+				caller?: ExecutionCaller;
+				nodeType?: string;
+				actionId?: string;
+				actionDisplayName?: string;
+			}
+		>,
+	): Promise<void> {
+		const singleNodeIds = summaries.filter((s) => s.mode === 'single-node').map((s) => s.id);
+
+		if (singleNodeIds.length === 0) return;
+
+		try {
+			// Use a query builder to bypass any column-transformer mismatch that
+			// `findBy({executionId: In(...)})` can run into when `execution_entity.id`
+			// is an INT with an `idStringifier` transformer but `execution_metadata.executionId`
+			// is stored as text. A raw IN-list comparison handles both.
+			const rows = await this.executionMetadataRepository
+				.createQueryBuilder('m')
+				.where('m.executionId IN (:...ids)', { ids: singleNodeIds })
+				.getMany();
+
+			const byExecution = new Map<string, Record<string, string>>();
+			for (const row of rows) {
+				const execId = String(row.executionId);
+				const bucket = byExecution.get(execId) ?? {};
+				bucket[row.key] = row.value;
+				byExecution.set(execId, bucket);
+			}
+
+			for (const summary of summaries) {
+				if (summary.mode !== 'single-node') continue;
+				const metadata = byExecution.get(summary.id);
+				const caller = extractExecutionCaller(metadata);
+				if (caller) summary.caller = caller;
+				const nodeType = metadata?.[EXECUTION_CALLER_METADATA_KEYS.nodeType];
+				if (nodeType) summary.nodeType = nodeType;
+				const actionId = metadata?.[EXECUTION_CALLER_METADATA_KEYS.actionId];
+				if (actionId) summary.actionId = actionId;
+				const actionDisplayName = metadata?.[EXECUTION_CALLER_METADATA_KEYS.actionDisplayName];
+				if (actionDisplayName) summary.actionDisplayName = actionDisplayName;
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.warn(`Failed to enrich executions with caller metadata: ${message}`);
+		}
 	}
 
 	/**
@@ -498,8 +586,11 @@ export class ExecutionService {
 			this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' }),
 		]);
 
+		const results = current.concat(completed);
+		await this.attachCallerToSummaries(results);
+
 		return {
-			results: current.concat(completed),
+			results,
 			count: completedCount.count, // exclude current from count for pagination
 			estimated: completedCount.estimated,
 		};

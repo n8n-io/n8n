@@ -14,8 +14,11 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
+import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
+
+const API_KEY_HEADER = 'x-n8n-api-key';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -70,6 +73,7 @@ export class AuthService {
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
+		private readonly apiKeyAuthStrategy: ApiKeyAuthStrategy,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
@@ -104,9 +108,25 @@ export class AuthService {
 		allowUnauthenticated,
 	}: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			// Allow X-N8N-API-KEY header on /rest/ endpoints so external clients
+			// (CLI, SDK, MCP-OAuth-token-via-header) can call REST routes the same
+			// way they call the public API. Public-API endpoints register their
+			// own auth chain; this only kicks in when the request reaches the
+			// browser-session middleware (i.e. /rest/* and similar).
+			const apiKeyHeader = req.headers[API_KEY_HEADER];
+			if (!req.user && typeof apiKeyHeader === 'string' && apiKeyHeader.length > 0) {
+				const result = await this.apiKeyAuthStrategy.authenticate(req);
+				if (result === false) {
+					res.status(401).json({ status: 'error', message: 'Unauthorized' });
+					return;
+				}
+				// `result === null` means the header wasn't an api key shape — fall
+				// through to the cookie path. `true` populates req.user.
+			}
+
 			const token = req.cookies[AUTH_COOKIE_NAME];
 
-			if (token) {
+			if (!req.user && token) {
 				try {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');

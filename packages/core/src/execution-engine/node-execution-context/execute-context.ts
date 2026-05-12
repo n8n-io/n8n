@@ -22,6 +22,7 @@ import type {
 import {
 	ApplicationError,
 	createDeferredPromise,
+	isInteractiveExecution,
 	jsonParse,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
@@ -211,7 +212,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	logNodeOutput(...args: unknown[]): void {
-		if (this.mode === 'manual') {
+		if (isInteractiveExecution(this.mode)) {
 			const parsedLogArgs = args.map((arg) =>
 				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
 			);

@@ -22,6 +22,8 @@ export const RESOURCES = {
 	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
+	tool: ['search'] as const,
+	node: ['execute'] as const,
 	user: [
 		'resetPassword',
 		'changeRole',

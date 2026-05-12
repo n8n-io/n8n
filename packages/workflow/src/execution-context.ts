@@ -42,6 +42,7 @@ export const WorkflowExecuteModeList = [
 	'evaluation',
 	'chat',
 	'agent',
+	'single-node',
 ] as const;
 
 const WorkflowExecuteModeSchema = z.enum(WorkflowExecuteModeList);

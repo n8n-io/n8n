@@ -19,7 +19,12 @@ import type {
 	ISourceData,
 	NodeExecutionHint,
 } from 'n8n-workflow';
-import { createDeferredPromise, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	isInteractiveExecution,
+	jsonParse,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -365,7 +370,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	}
 
 	logNodeOutput(...args: unknown[]): void {
-		if (this.mode === 'manual') {
+		if (isInteractiveExecution(this.mode)) {
 			const parsedLogArgs = args.map((arg) =>
 				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
 			);

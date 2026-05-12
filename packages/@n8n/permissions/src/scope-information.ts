@@ -88,4 +88,13 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
 	},
+	'tool:search': {
+		displayName: 'Search Node Catalog',
+		description: 'Allows searching the node catalog and reading node schemas.',
+	},
+	'node:execute': {
+		displayName: 'Execute Node',
+		description:
+			'Allows running a single node directly via the HTTP API (used by MCP, SDK, and CLI tooling).',
+	},
 };

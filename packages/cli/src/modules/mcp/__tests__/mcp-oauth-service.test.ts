@@ -45,6 +45,18 @@ describe('McpOAuthService', () => {
 		jest.clearAllMocks();
 	});
 
+	describe('SUPPORTED_SCOPES', () => {
+		it('should expose the supported MCP OAuth scopes in the documented order', () => {
+			expect(SUPPORTED_SCOPES).toEqual([
+				'tool:listWorkflows',
+				'tool:getWorkflowDetails',
+				'node:execute',
+				'credential:read',
+				'tool:search',
+			]);
+		});
+	});
+
 	describe('clientsStore', () => {
 		describe('getClient', () => {
 			it('should return client information when client exists', async () => {

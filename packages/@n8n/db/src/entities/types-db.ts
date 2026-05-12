@@ -1,3 +1,4 @@
+import type { ExecutionCaller } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { FindOperator } from '@n8n/typeorm';
 import type express from 'express';
@@ -112,6 +113,12 @@ export interface IExecutionResponse extends IExecutionBase {
 	annotation: {
 		tags: ITagBase[];
 	};
+	/**
+	 * Who initiated this execution (n8n Hub Task 20 / Phase 5.1). Populated for
+	 * single-node executions invoked from MCP / SDK / CLI; undefined for
+	 * regular workflow executions.
+	 */
+	caller?: ExecutionCaller;
 }
 
 export interface PublicUser {
@@ -241,7 +248,15 @@ export namespace ExecutionSummaries {
 		};
 	};
 
-	export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+	export type ExecutionSummaryWithScopes = ExecutionSummary & {
+		scopes: Scope[];
+		/**
+		 * Who initiated this execution (n8n Hub Task 20 / Phase 5.1). Populated
+		 * for single-node executions invoked from MCP / SDK / CLI; undefined for
+		 * regular workflow executions.
+		 */
+		caller?: ExecutionCaller;
+	};
 }
 
 export namespace ListQueryDb {

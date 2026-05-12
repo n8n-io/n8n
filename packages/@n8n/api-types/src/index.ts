@@ -240,6 +240,15 @@ export {
 	type WorkflowExecutionStatus,
 } from './schemas/workflow-execution-status.schema';
 
+export {
+	ExecutionCallerSchema,
+	ExecutionCallerKindSchema,
+	EXECUTION_CALLER_METADATA_KEYS,
+	extractExecutionCaller,
+	type ExecutionCaller,
+	type ExecutionCallerKind,
+} from './schemas/executions.schema';
+
 export type { UsageState } from './schemas/usage.schema';
 
 export type {

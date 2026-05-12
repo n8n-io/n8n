@@ -1,6 +1,8 @@
+import type { ExecutionCaller } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
+	ExecutionMetadataRepository,
 	IExecutionDb,
 	IExecutionResponse,
 	ExecutionRepository,
@@ -10,7 +12,7 @@ import type {
 import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { IRun, IRunExecutionData } from 'n8n-workflow';
+import type { ExecutionSummary, IRun, IRunExecutionData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -35,6 +37,8 @@ describe('ExecutionService', () => {
 	const globalConfig = Container.get(GlobalConfig);
 	const executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 
+	const executionMetadataRepository = mock<ExecutionMetadataRepository>();
+
 	const executionService = new ExecutionService(
 		globalConfig,
 		mock(),
@@ -55,6 +59,7 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		executionRedactionServiceProxy,
+		executionMetadataRepository,
 	);
 
 	beforeEach(() => {
@@ -116,6 +121,165 @@ describe('ExecutionService', () => {
 				expect.objectContaining({ redactExecutionData: undefined }),
 			);
 		});
+
+		it('populates caller field for single-node executions', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: 'exec-1',
+				mode: 'single-node',
+				data: { resultData: {} },
+				customData: {
+					'caller.kind': 'cli',
+					'caller.name': 'n8n-cli@host',
+					'caller.clientId': 'client-123',
+					nodeType: 'n8n-nodes-base.set',
+				},
+			});
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: 'exec-1' },
+				query: {},
+			});
+
+			const result = await executionService.findOne(req, ['workflow-1']);
+
+			expect(result?.caller).toEqual({
+				kind: 'cli',
+				name: 'n8n-cli@host',
+				clientId: 'client-123',
+			});
+		});
+
+		it('omits caller field for workflow executions', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: 'exec-2',
+				mode: 'manual',
+				data: { resultData: {} },
+				customData: {},
+			});
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: 'exec-2' },
+				query: {},
+			});
+
+			const result = await executionService.findOne(req, ['workflow-1']);
+
+			expect(result?.caller).toBeUndefined();
+		});
+
+		it('omits caller field when single-node has no caller metadata', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: 'exec-3',
+				mode: 'single-node',
+				data: { resultData: {} },
+				customData: { nodeType: 'n8n-nodes-base.set' },
+			});
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: 'exec-3' },
+				query: {},
+			});
+
+			const result = await executionService.findOne(req, ['workflow-1']);
+
+			expect(result?.caller).toBeUndefined();
+		});
+	});
+
+	describe('findRangeWithCount caller enrichment', () => {
+		it('attaches caller to single-node summaries and skips workflow ones', async () => {
+			const summaries = [
+				{ id: 'exec-1', mode: 'single-node', workflowId: 'w-1' },
+				{ id: 'exec-2', mode: 'manual', workflowId: 'w-2' },
+				{ id: 'exec-3', mode: 'single-node', workflowId: 'w-3' },
+			] as unknown as ExecutionSummary[];
+
+			executionRepository.findManyByRangeQuery.mockResolvedValue(summaries);
+			executionRepository.fetchCount.mockResolvedValue(3);
+
+			// The service now uses a query builder (createQueryBuilder().where(...).getMany())
+			// to bypass column-transformer mismatches in `findBy({executionId: In(...)})`.
+			// Mock the chainable surface.
+			const qbWhere = jest.fn().mockReturnThis();
+			const qbGetMany = jest.fn().mockResolvedValue([
+				{ id: 1, executionId: 'exec-1', key: 'caller.kind', value: 'cli' },
+				{ id: 2, executionId: 'exec-1', key: 'caller.name', value: 'n8n-cli@host' },
+				{ id: 3, executionId: 'exec-3', key: 'caller.kind', value: 'mcp' },
+				{ id: 4, executionId: 'exec-3', key: 'caller.name', value: 'mcp-server' },
+				{ id: 5, executionId: 'exec-3', key: 'caller.clientId', value: 'client-123' },
+			]);
+			executionMetadataRepository.createQueryBuilder.mockReturnValue({
+				where: qbWhere,
+				getMany: qbGetMany,
+			} as never);
+
+			const { results } = await executionService.findRangeWithCount({
+				kind: 'range',
+				range: { limit: 10 },
+			} as never);
+
+			expect(executionMetadataRepository.createQueryBuilder).toHaveBeenCalled();
+			expect(qbWhere).toHaveBeenCalledWith(
+				expect.stringContaining('executionId IN'),
+				expect.objectContaining({ ids: expect.arrayContaining(['exec-1', 'exec-3']) }),
+			);
+			expect((results[0] as ExecutionSummary & { caller?: ExecutionCaller }).caller).toEqual({
+				kind: 'cli',
+				name: 'n8n-cli@host',
+			});
+			expect(
+				(results[1] as ExecutionSummary & { caller?: ExecutionCaller }).caller,
+			).toBeUndefined();
+			expect((results[2] as ExecutionSummary & { caller?: ExecutionCaller }).caller).toEqual({
+				kind: 'mcp',
+				name: 'mcp-server',
+				clientId: 'client-123',
+			});
+		});
+
+		it('does not call metadata repository when there are no single-node summaries', async () => {
+			const summaries = [
+				{ id: 'exec-99', mode: 'manual', workflowId: 'w-9' },
+			] as unknown as ExecutionSummary[];
+
+			executionRepository.findManyByRangeQuery.mockResolvedValue(summaries);
+			executionRepository.fetchCount.mockResolvedValue(1);
+
+			await executionService.findRangeWithCount({
+				kind: 'range',
+				range: { limit: 10 },
+			} as never);
+
+			expect(executionMetadataRepository.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('swallows metadata fetch failures and returns summaries without caller', async () => {
+			const summaries = [
+				{ id: 'exec-1', mode: 'single-node', workflowId: 'w-1' },
+			] as unknown as ExecutionSummary[];
+
+			executionRepository.findManyByRangeQuery.mockResolvedValue(summaries);
+			executionRepository.fetchCount.mockResolvedValue(1);
+			executionMetadataRepository.createQueryBuilder.mockReturnValue({
+				where: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockRejectedValue(new Error('db is down')),
+			} as never);
+
+			const { results } = await executionService.findRangeWithCount({
+				kind: 'range',
+				range: { limit: 10 },
+			} as never);
+
+			expect(
+				(results[0] as ExecutionSummary & { caller?: ExecutionCaller }).caller,
+			).toBeUndefined();
+		});
 	});
 
 	describe('retry', () => {
@@ -165,6 +329,7 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				localExecutionRedactionProxy,
+				mock(),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });

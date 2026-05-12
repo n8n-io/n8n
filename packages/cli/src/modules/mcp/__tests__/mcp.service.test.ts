@@ -18,6 +18,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecuteNodeService } from '@/executions/execute-node.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
@@ -73,6 +74,7 @@ describe('McpService', () => {
 			mockInstance(ExecutionService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
+			mockInstance(ExecuteNodeService),
 		);
 	});
 
@@ -113,6 +115,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(ExecuteNodeService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -284,6 +287,21 @@ describe('McpService', () => {
 			expect(typeof server.registerTool).toBe('function');
 		});
 
+		it('should register the n8n Hub tools (search, list credentials, execute)', async () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+
+			const server = await mcpService.getServer(user);
+
+			// Access the SDK's internal tool registry. Typed as a record of
+			// known tool names so we avoid `any` while keeping the assertion focused.
+			const registeredTools = (server as unknown as { _registeredTools: Record<string, unknown> })
+				._registeredTools;
+
+			expect(registeredTools).toHaveProperty('n8n_search_tools');
+			expect(registeredTools).toHaveProperty('n8n_list_credentials');
+			expect(registeredTools).toHaveProperty('n8n_execute_tool');
+		});
+
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
@@ -318,12 +336,15 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(ExecuteNodeService),
 			);
 
 			const server = await service.getServer(user);
 			expect(server).toBeDefined();
-			// Builder tools service should NOT have been initialized
-			expect(nodeCatalogService.initialize).not.toHaveBeenCalled();
+			// Node catalog is still initialized for the always-on n8n Hub tools
+			// (n8n_search_tools, n8n_execute_tool, n8n_list_credentials), but the
+			// builder-specific tools must not have been registered.
+			expect(nodeCatalogService.initialize).toHaveBeenCalledTimes(1);
 		});
 
 		it('should register builder tools when mcpBuilderEnabled is true', async () => {
@@ -360,6 +381,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(ExecuteNodeService),
 			);
 
 			const server = await service.getServer(user);

@@ -31,6 +31,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
+	isInteractiveExecution,
 	NodeHelpers,
 	Workflow,
 	UnexpectedError,
@@ -396,7 +397,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// missing credentials will surface an error rather than silently falling back to
 		// static data.
 		const effectiveMode = additionalData.rootExecutionMode ?? mode;
-		const skipDynamicResolution = effectiveMode === 'manual' || effectiveMode === 'internal';
+		const skipDynamicResolution =
+			isInteractiveExecution(effectiveMode) || effectiveMode === 'internal';
 		if (additionalData.executionContext?.credentials !== undefined || !skipDynamicResolution) {
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(

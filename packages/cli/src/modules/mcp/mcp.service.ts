@@ -28,6 +28,9 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createN8nExecuteToolTool } from './tools/n8n-execute-tool.tool';
+import { createN8nListCredentialsTool } from './tools/n8n-list-credentials.tool';
+import { createN8nSearchToolsTool } from './tools/n8n-search-tools.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
@@ -51,6 +54,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecuteNodeService } from '@/executions/execute-node.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
@@ -106,6 +110,7 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly executeNodeService: ExecuteNodeService,
 	) {}
 
 	async getServer(user: User) {
@@ -120,6 +125,61 @@ export class McpService {
 				instructions: getMcpInstructions(builderEnabled),
 			},
 		);
+
+		// n8n Hub tools — node catalog driven. These need the catalog initialized
+		// so search/execute can resolve node-type ids. `initialize()` is idempotent.
+		// Wrap in try/catch so a catalog-init failure doesn't take down the whole
+		// MCP server (we still want existing tools to be reachable in that case).
+		try {
+			await this.nodeCatalogService.initialize();
+
+			const n8nSearchToolsTool = createN8nSearchToolsTool(
+				user,
+				this.credentialsService,
+				this.nodeCatalogService,
+				this.telemetry,
+			);
+			server.registerTool(
+				n8nSearchToolsTool.name,
+				n8nSearchToolsTool.config,
+				n8nSearchToolsTool.handler,
+			);
+
+			const n8nListCredentialsTool = createN8nListCredentialsTool(
+				user,
+				this.credentialsService,
+				this.nodeCatalogService,
+				this.telemetry,
+			);
+			server.registerTool(
+				n8nListCredentialsTool.name,
+				n8nListCredentialsTool.config,
+				n8nListCredentialsTool.handler,
+			);
+
+			const n8nExecuteToolTool = createN8nExecuteToolTool(
+				user,
+				this.executeNodeService,
+				this.nodeCatalogService,
+				this.telemetry,
+			);
+			server.registerTool(
+				n8nExecuteToolTool.name,
+				n8nExecuteToolTool.config,
+				n8nExecuteToolTool.handler,
+			);
+
+			this.logger.info('[n8n Hub] Registered MCP tools', {
+				tools: ['n8n_search_tools', 'n8n_list_credentials', 'n8n_execute_tool'],
+			});
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			const stack = err instanceof Error ? err.stack : undefined;
+			this.logger.error(
+				`[n8n Hub] Failed to register MCP tools — they will be missing from /mcp-server/http: ${message}`,
+				{ stack },
+			);
+		}
 
 		// Existing tools
 		const workflowSearchTool = createSearchWorkflowsTool(

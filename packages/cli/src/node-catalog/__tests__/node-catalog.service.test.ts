@@ -6,7 +6,12 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { NodeCatalogService } from '../node-catalog.service';
 
-const MockNodeTypeParser = jest.fn();
+const mockSearchNodeTypes = jest.fn();
+const mockGetNodeType = jest.fn();
+const MockNodeTypeParser = jest.fn().mockImplementation(() => ({
+	searchNodeTypes: mockSearchNodeTypes,
+	getNodeType: mockGetNodeType,
+}));
 const mockSetSchemaBaseDirs = jest.fn();
 const mockSearchInvoke = jest.fn().mockResolvedValue('search-result');
 const mockGetInvoke = jest.fn().mockResolvedValue('get-result');
@@ -254,6 +259,321 @@ describe('NodeCatalogService', () => {
 			expect(result1).toBe('suggest-result');
 			expect(result2).toBe('suggest-result');
 			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('searchNodesStructured', () => {
+		test('returns array of {nodeId, displayName, description} — no string blob', async () => {
+			mockSearchNodeTypes.mockReturnValue([
+				{
+					id: 'n8n-nodes-base.slack',
+					displayName: 'Slack',
+					description: 'Send messages and interact with Slack',
+					version: 1,
+					isTrigger: false,
+				},
+			]);
+			await service.initialize();
+
+			const results = await service.searchNodesStructured(['slack']);
+
+			expect(Array.isArray(results)).toBe(true);
+			expect(results.length).toBeGreaterThan(0);
+			expect(results[0]).toMatchObject({
+				nodeId: expect.any(String),
+				displayName: expect.any(String),
+				description: expect.any(String),
+			});
+			// verify dropped fields
+			expect(results[0]).not.toHaveProperty('categories');
+			expect(results[0]).not.toHaveProperty('score');
+		});
+
+		test('returns empty array when queries is empty', async () => {
+			await service.initialize();
+
+			const results = await service.searchNodesStructured([]);
+
+			expect(results).toEqual([]);
+			expect(mockSearchNodeTypes).not.toHaveBeenCalled();
+		});
+
+		test('deduplicates results across multiple queries by nodeId', async () => {
+			mockSearchNodeTypes
+				.mockReturnValueOnce([
+					{
+						id: 'n8n-nodes-base.slack',
+						displayName: 'Slack',
+						description: 'Slack node',
+						version: 1,
+						isTrigger: false,
+					},
+				])
+				.mockReturnValueOnce([
+					{
+						id: 'n8n-nodes-base.slack',
+						displayName: 'Slack',
+						description: 'Slack node',
+						version: 1,
+						isTrigger: false,
+					},
+					{
+						id: 'n8n-nodes-base.gmail',
+						displayName: 'Gmail',
+						description: 'Gmail node',
+						version: 1,
+						isTrigger: false,
+					},
+				]);
+			await service.initialize();
+
+			const results = await service.searchNodesStructured(['slack', 'gmail']);
+
+			expect(results).toHaveLength(2);
+			expect(results.map((r) => r.nodeId)).toEqual([
+				'n8n-nodes-base.slack',
+				'n8n-nodes-base.gmail',
+			]);
+		});
+
+		test('filters by hasCredential when opt is true', async () => {
+			mockSearchNodeTypes.mockReturnValue([
+				{
+					id: 'n8n-nodes-base.slack',
+					displayName: 'Slack',
+					description: 'Slack node',
+					version: 1,
+					isTrigger: false,
+				},
+				{
+					id: 'n8n-nodes-base.set',
+					displayName: 'Set',
+					description: 'Set node',
+					version: 1,
+					isTrigger: false,
+				},
+			]);
+			mockGetNodeType.mockImplementation((nodeId: string) => {
+				if (nodeId === 'n8n-nodes-base.slack') {
+					return { credentials: [{ name: 'slackApi' }] };
+				}
+				return { credentials: [] };
+			});
+			await service.initialize();
+
+			const results = await service.searchNodesStructured(['anything'], { hasCredential: true });
+
+			expect(results).toHaveLength(1);
+			expect(results[0].nodeId).toBe('n8n-nodes-base.slack');
+		});
+
+		test('does not filter when hasCredential is false or unset', async () => {
+			mockSearchNodeTypes.mockReturnValue([
+				{
+					id: 'n8n-nodes-base.slack',
+					displayName: 'Slack',
+					description: 'Slack node',
+					version: 1,
+					isTrigger: false,
+				},
+				{
+					id: 'n8n-nodes-base.set',
+					displayName: 'Set',
+					description: 'Set node',
+					version: 1,
+					isTrigger: false,
+				},
+			]);
+			await service.initialize();
+
+			const results = await service.searchNodesStructured(['anything']);
+
+			expect(results).toHaveLength(2);
+		});
+
+		test('lazily initializes when called before explicit initialize', async () => {
+			// fresh service — no `await service.initialize()` here
+			mockSearchNodeTypes.mockReturnValue([
+				{ id: 'n8n-nodes-base.slack', displayName: 'Slack', description: 'Slack' },
+			]);
+			const results = await service.searchNodesStructured(['slack']);
+			expect(results).toEqual([expect.objectContaining({ nodeId: 'n8n-nodes-base.slack' })]);
+		});
+	});
+
+	describe('getNodeSchema', () => {
+		test('returns null for unknown nodeId', async () => {
+			mockGetNodeType.mockReturnValue(null);
+			await service.initialize();
+
+			const result = await service.getNodeSchema('n8n-nodes-base.unknown');
+
+			expect(result).toBeNull();
+		});
+
+		test('returns shape with nodeId/displayName/description/credentials/operations for nodes without resource/operation', async () => {
+			mockGetNodeType.mockReturnValue({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set',
+				description: 'Set workflow data',
+				version: 1,
+				properties: [{ name: 'values', type: 'fixedCollection', default: {} }],
+				credentials: [],
+			});
+			await service.initialize();
+
+			const result = await service.getNodeSchema('n8n-nodes-base.set');
+
+			expect(result).toEqual({
+				nodeId: 'n8n-nodes-base.set',
+				displayName: 'Set',
+				description: 'Set workflow data',
+				credentials: [],
+				operations: [
+					expect.objectContaining({
+						id: 'n8n-nodes-base.set',
+						displayName: 'Set',
+						inputSchema: expect.objectContaining({
+							type: 'object',
+							properties: expect.any(Object),
+						}),
+					}),
+				],
+			});
+		});
+
+		test('emits one entry per operation for nodes with an operation discriminator but no resource', async () => {
+			mockGetNodeType.mockReturnValue({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set',
+				description: 'Set workflow data',
+				version: 1,
+				properties: [
+					{
+						name: 'operation',
+						type: 'options',
+						default: 'json',
+						options: [
+							{ name: 'JSON', value: 'json' },
+							{ name: 'Manual', value: 'manual' },
+						],
+					},
+					{ name: 'values', type: 'fixedCollection', default: {} },
+				],
+				credentials: [],
+			});
+			await service.initialize();
+
+			const result = await service.getNodeSchema('n8n-nodes-base.set');
+
+			expect(result?.operations).toEqual([
+				expect.objectContaining({
+					id: 'n8n-nodes-base.set.json',
+					operation: 'json',
+				}),
+				expect.objectContaining({
+					id: 'n8n-nodes-base.set.manual',
+					operation: 'manual',
+				}),
+			]);
+			result?.operations.forEach((op) => {
+				expect(op.id).not.toContain('default');
+			});
+		});
+
+		test('extracts credentials list from the node type', async () => {
+			mockGetNodeType.mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				description: 'Slack node',
+				version: 1,
+				properties: [],
+				credentials: [{ name: 'slackApi', required: true }, { name: 'slackOAuth2Api' }],
+			});
+			await service.initialize();
+
+			const result = await service.getNodeSchema('n8n-nodes-base.slack');
+
+			expect(result?.credentials).toEqual([{ name: 'slackApi' }, { name: 'slackOAuth2Api' }]);
+		});
+
+		test('extracts resource/operation tuples when present', async () => {
+			mockGetNodeType.mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				description: 'Slack node',
+				version: 1,
+				credentials: [{ name: 'slackApi' }],
+				properties: [
+					{
+						name: 'resource',
+						type: 'options',
+						default: 'message',
+						options: [
+							{ name: 'Message', value: 'message' },
+							{ name: 'Channel', value: 'channel' },
+						],
+					},
+					{
+						name: 'operation',
+						type: 'options',
+						default: 'send',
+						displayOptions: { show: { resource: ['message'] } },
+						options: [
+							{ name: 'Send', value: 'send', description: 'Send a message' },
+							{ name: 'Update', value: 'update' },
+						],
+					},
+					{
+						name: 'operation',
+						type: 'options',
+						default: 'get',
+						displayOptions: { show: { resource: ['channel'] } },
+						options: [{ name: 'Get', value: 'get' }],
+					},
+				],
+			});
+			await service.initialize();
+
+			const result = await service.getNodeSchema('n8n-nodes-base.slack');
+
+			expect(result?.operations).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 'n8n-nodes-base.slack.message.send',
+						resource: 'message',
+						operation: 'send',
+						displayName: 'Send',
+						description: 'Send a message',
+						inputSchema: expect.objectContaining({ type: 'object' }),
+					}),
+					expect.objectContaining({
+						id: 'n8n-nodes-base.slack.message.update',
+						resource: 'message',
+						operation: 'update',
+					}),
+					expect.objectContaining({
+						id: 'n8n-nodes-base.slack.channel.get',
+						resource: 'channel',
+						operation: 'get',
+					}),
+				]),
+			);
+			expect(result?.operations).toHaveLength(3);
+		});
+
+		test('lazily initializes when called before explicit initialize', async () => {
+			// fresh service — no `await service.initialize()` here
+			mockGetNodeType.mockReturnValue({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set',
+				description: 'Set workflow data',
+				version: 1,
+				properties: [],
+				credentials: [],
+			});
+			const result = await service.getNodeSchema('n8n-nodes-base.set');
+			expect(result?.nodeId).toBe('n8n-nodes-base.set');
 		});
 	});
 

@@ -1,7 +1,11 @@
-import type { User, ExecutionSummaries } from '@n8n/db';
-import { Get, Patch, Post, RestController } from '@n8n/decorators';
+import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
+import { Body, Get, GlobalScope, Patch, Post, RestController } from '@n8n/decorators';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import { Response } from 'express';
+import type { INodeParameters } from 'n8n-workflow';
 
+import { ExecuteNodeRequestDto } from './dto/execute-node-request.dto';
+import { ExecuteNodeService } from './execute-node.service';
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
@@ -21,6 +25,7 @@ export class ExecutionsController {
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
+		private readonly executeNodeService: ExecuteNodeService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
@@ -166,5 +171,41 @@ export class ExecutionsController {
 		await this.executionService.annotate(req.params.id, validatedPayload, workflowIds);
 
 		return await this.executionService.findOne(req, workflowIds);
+	}
+
+	/**
+	 * Execute a single node directly, without authoring a full workflow.
+	 *
+	 * Used by n8n Hub callers (MCP server, SDK, CLI) to validate or run a
+	 * single node and stream the result back. Always runs synchronously and
+	 * persists as a normal execution (so the run shows up in the executions
+	 * list and can be inspected via the UI).
+	 */
+	@Post('/node')
+	@GlobalScope('node:execute')
+	async executeNode(req: AuthenticatedRequest, _res: Response, @Body body: ExecuteNodeRequestDto) {
+		const result = await this.executeNodeService.execute({
+			user: req.user,
+			nodeType: body.nodeType,
+			nodeVersion: body.nodeVersion,
+			parameters: body.parameters as INodeParameters,
+			credentialId: body.credentialId,
+			dryRun: body.dryRun,
+			caller: body.caller,
+		});
+
+		// Build an absolute URL so MCP/SDK callers can deep-link straight back
+		// into the n8n UI for this run. Dry-runs do not have an execution row,
+		// so we deliberately omit the URL there.
+		const host = req.get('host');
+		const executionUrl =
+			result.executionId && host
+				? `${req.protocol}://${host}/executions/${result.executionId}`
+				: undefined;
+
+		return {
+			...result,
+			...(executionUrl !== undefined ? { executionUrl } : {}),
+		};
 	}
 }

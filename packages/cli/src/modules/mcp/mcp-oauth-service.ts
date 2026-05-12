@@ -22,7 +22,13 @@ import { McpOAuthTokenService } from './mcp-oauth-token.service';
 import { McpClientLimitReachedError } from './mcp.errors';
 import { OAuthSessionService } from './oauth-session.service';
 
-export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+export const SUPPORTED_SCOPES = [
+	'tool:listWorkflows',
+	'tool:getWorkflowDetails',
+	'node:execute',
+	'credential:read',
+	'tool:search',
+];
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;

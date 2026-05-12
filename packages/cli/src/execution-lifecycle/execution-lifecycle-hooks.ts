@@ -11,6 +11,7 @@ import {
 	InstanceSettings,
 	ExecutionLifecycleHooks,
 } from 'n8n-core';
+import { isInteractiveExecution } from 'n8n-workflow';
 import type {
 	ExecutionStatus,
 	IRun,
@@ -533,7 +534,7 @@ function hookFunctionsSave(
 			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
 		}
 
-		const isManualMode = this.mode === 'manual';
+		const isManualMode = isInteractiveExecution(this.mode);
 
 		try {
 			if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
@@ -637,7 +638,7 @@ function hookFunctionsSaveWorker(
 			workflowId: this.workflowData.id,
 		});
 
-		const isManualMode = this.mode === 'manual';
+		const isManualMode = isInteractiveExecution(this.mode);
 
 		try {
 			if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
@@ -737,7 +738,7 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
 
-	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
+	if (isInteractiveExecution(executionMode) && Container.get(InstanceSettings).isWorker) {
 		hookFunctionsPush(hooks, optionalParameters, data.userId);
 	}
 
@@ -777,7 +778,7 @@ export function getLifecycleHooksForScalingMain(
 		const terminalStatuses: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
 		if (!terminalStatuses.includes(fullRunData.status) && !fullRunData.waitTill) return;
 
-		const isManualMode = this.mode === 'manual';
+		const isManualMode = isInteractiveExecution(this.mode);
 
 		if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 			/**

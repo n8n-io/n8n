@@ -48,6 +48,10 @@ const isModeRootExecution = {
 
 	manual: false,
 
+	// single-node executions (aliased to manual; see Phase 0.6 for isInteractiveExecution helper)
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'single-node': false,
+
 	// n8n Chat hub messages
 	chat: false,
 

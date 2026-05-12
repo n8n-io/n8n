@@ -797,4 +797,32 @@ describe('getMany()', () => {
 			expect(workflowIds).toEqual([teamWorkflow1.id, teamWorkflow2.id].sort());
 		});
 	});
+
+	describe('pagination with hub placeholder workflows', () => {
+		test('returns exactly `take` rows when placeholders exist among the first page', async () => {
+			const owner = await createOwner();
+
+			// 5 regular workflows + 3 hub placeholder workflows = 8 total rows in DB
+			await createWorkflow({ name: 'Wf 1' }, owner);
+			await createWorkflow({ name: '__n8n-hub-action::n8n-nodes-base.slack.message.post' }, owner);
+			await createWorkflow({ name: 'Wf 2' }, owner);
+			await createWorkflow({ name: '__n8n-hub-action::n8n-nodes-base.linear.issue.create' }, owner);
+			await createWorkflow({ name: 'Wf 3' }, owner);
+			await createWorkflow({ name: 'Wf 4' }, owner);
+			await createWorkflow({ name: '__n8n-hub-action::n8n-nodes-base.github.repo.list' }, owner);
+			await createWorkflow({ name: 'Wf 5' }, owner);
+
+			const { workflows, count } = await workflowService.getMany(owner, {
+				take: 5,
+				skip: 0,
+			});
+
+			// All returned workflows must be user-authored (no hub placeholders)
+			expect(workflows.every((wf) => !wf.name?.startsWith('__n8n-hub-'))).toBe(true);
+			// The page must be full — 5 regular workflows exist, pagination should return all 5
+			expect(workflows).toHaveLength(5);
+			// Count must reflect only the visible (non-placeholder) workflows
+			expect(count).toBe(5);
+		});
+	});
 });
