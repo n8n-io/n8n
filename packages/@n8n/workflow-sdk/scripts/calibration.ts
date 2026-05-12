@@ -100,7 +100,7 @@ async function scoreCalibration(
 	const byId = new Map(catalog.map((c) => [c.id, c]));
 	const out: ScoredCalibrationEntry[] = [];
 	for (const entry of calib.expert_tagged) {
-		if (!(entry.verdict in VERDICT_TO_RANK)) {
+		if (!Object.hasOwn(VERDICT_TO_RANK, entry.verdict)) {
 			console.warn(`  skipping ${entry.id}: verdict not yet labelled (got "${entry.verdict}")`);
 			continue;
 		}

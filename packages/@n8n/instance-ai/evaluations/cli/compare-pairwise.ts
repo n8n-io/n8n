@@ -17,6 +17,9 @@ import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { scrubSecretsInText } from '../../src/utils/scrub-secrets';
+import { redactSecrets } from '../harness/redact';
+
 // ---------------------------------------------------------------------------
 // Shared shape after normalization
 // ---------------------------------------------------------------------------
@@ -637,7 +640,7 @@ function renderBuilderColumn(label: string, record: BuilderRecord | undefined): 
 	}
 
 	const errorBlock = record.errorMessage
-		? `<div class="error">${escapeHtml(record.errorMessage)}</div>`
+		? `<div class="error">${escapeHtml(scrubSecretsInText(record.errorMessage))}</div>`
 		: '';
 
 	const idLine = record.exampleId
@@ -664,8 +667,12 @@ interface SideLabels {
 
 function summarizeToolCallArgs(toolName: string, args: unknown): string {
 	if (!args || typeof args !== 'object') return '';
-	const a = args as Record<string, unknown>;
-	const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+	// Redact secret-shaped keys (password / token / api_key / …) and scrub the
+	// extracted free-form strings for known credential patterns. The same
+	// summarized text is used as a data-attribute on the row, so any leaked
+	// secret would persist in the HTML and be searchable via filter input.
+	const a = redactSecrets(args) as Record<string, unknown>;
+	const str = (v: unknown): string => (typeof v === 'string' ? scrubSecretsInText(v) : '');
 	const trunc = (s: string, n = 160): string => (s.length > n ? s.slice(0, n) + '…' : s);
 	switch (toolName) {
 		case 'mastra_workspace_execute_command':
@@ -702,7 +709,7 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 		case 'workflows':
 			return trunc(str(a.action));
 		default:
-			return trunc(JSON.stringify(a), 120);
+			return trunc(scrubSecretsInText(JSON.stringify(a)), 120);
 	}
 }
 
@@ -714,7 +721,7 @@ function renderToolCallRows(traces: IAToolCallTrace[]): string {
 			const cls = errored ? 'tc-err' : '';
 			const argSummary = summarizeToolCallArgs(tc.toolName, tc.args);
 			const argCell = argSummary ? `<code class="tc-args">${escapeHtml(argSummary)}</code>` : '';
-			const detail = errored && tc.error ? escapeHtml(tc.error) : '';
+			const detail = errored && tc.error ? escapeHtml(scrubSecretsInText(tc.error)) : '';
 			return `<tr class="${cls}"><td>${tc.step}</td><td>${escapeHtml(tc.toolName)}</td><td>${argCell}</td><td>${elapsed}</td><td>${detail}</td></tr>`;
 		})
 		.join('');

@@ -129,6 +129,40 @@ describe('createTemplateTelemetrySession', () => {
 		const rollup = calls.find((c) => c.name === 'Builder template session');
 		expect(rollup!.props.user_request_excerpt).toBeNull();
 	});
+
+	it('redacts API keys and bearer tokens from user_request_excerpt', () => {
+		const { opts, calls } = makeOpts();
+		opts.userRequestExcerpt =
+			'call openai with sk-proj-abcdef0123456789 and slack xoxb-1234567890-abcdef';
+		const session = createTemplateTelemetrySession(opts);
+		session.flush();
+		const rollup = calls.find((c) => c.name === 'Builder template session');
+		const excerpt = rollup!.props.user_request_excerpt as string;
+		expect(excerpt).not.toContain('sk-proj-abcdef0123456789');
+		expect(excerpt).not.toContain('xoxb-1234567890-abcdef');
+		expect(excerpt).toContain('[REDACTED]');
+	});
+
+	it('redacts password=... assignments from user_request_excerpt', () => {
+		const { opts, calls } = makeOpts();
+		opts.userRequestExcerpt = 'connect to db with password=hunter2 and api_key=secret123';
+		const session = createTemplateTelemetrySession(opts);
+		session.flush();
+		const rollup = calls.find((c) => c.name === 'Builder template session');
+		const excerpt = rollup!.props.user_request_excerpt as string;
+		expect(excerpt).not.toContain('hunter2');
+		expect(excerpt).not.toContain('secret123');
+		expect(excerpt).toContain('[REDACTED]');
+	});
+
+	it('leaves normal English prompts unchanged', () => {
+		const { opts, calls } = makeOpts();
+		opts.userRequestExcerpt = 'summarise emails to slack daily';
+		const session = createTemplateTelemetrySession(opts);
+		session.flush();
+		const rollup = calls.find((c) => c.name === 'Builder template session');
+		expect(rollup!.props.user_request_excerpt).toBe('summarise emails to slack daily');
+	});
 });
 
 describe('extractGrepQuery', () => {

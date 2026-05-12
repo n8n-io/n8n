@@ -17,6 +17,7 @@ import type { Workspace } from '@mastra/core/workspace';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { OrchestrationContext } from '../types';
+import { scrubSecretsInText } from '../utils/scrub-secrets';
 
 const MAX_QUERY_LENGTH = 200;
 const MAX_USER_REQUEST_LENGTH = 120;
@@ -123,7 +124,7 @@ export function createTemplateTelemetrySession(
 			templates_read: templatesRead,
 			unique_templates_read: Array.from(new Set(templatesRead)).length,
 			user_request_excerpt: opts.userRequestExcerpt
-				? truncate(opts.userRequestExcerpt, MAX_USER_REQUEST_LENGTH)
+				? truncate(scrubSecretsInText(opts.userRequestExcerpt), MAX_USER_REQUEST_LENGTH)
 				: null,
 		});
 	}
