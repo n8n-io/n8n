@@ -5,7 +5,7 @@
  *   - test-fixtures/real-workflows/public_published_templates.zip → test-fixtures/real-workflows/
  *   - examples/templates.zip → examples/workflows/ (used by examples-roundtrip test)
  *
- * Runs automatically via `pretest` hook before running tests.
+ * Runs automatically via Jest's globalSetup (see scripts/jest-global-setup.ts).
  *
  * Usage:
  *   npx tsx scripts/extract-workflows.ts
@@ -56,9 +56,11 @@ function extractZip(zipPath: string, outputDir: string, label: string) {
 	console.log(`Extracted ${count} ${label} files`);
 }
 
-function main() {
+export function extractAllWorkflows() {
 	extractZip(FIXTURES_ZIP, FIXTURES_DIR, 'test-fixtures workflows');
 	extractZip(EXAMPLES_ZIP, EXAMPLES_WORKFLOWS_DIR, 'examples workflows');
 }
 
-main();
+if (require.main === module) {
+	extractAllWorkflows();
+}

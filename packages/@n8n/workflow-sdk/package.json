@@ -53,7 +53,6 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "pretest": "npx tsx scripts/extract-workflows.ts",
     "extract-workflows": "npx tsx scripts/extract-workflows.ts",
     "test": "jest",
     "test:unit": "jest",
