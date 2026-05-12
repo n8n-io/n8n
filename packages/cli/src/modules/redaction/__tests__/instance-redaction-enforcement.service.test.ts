@@ -1,3 +1,4 @@
+import { REDACTION_ENFORCEMENT_DEFAULTS } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -9,7 +10,6 @@ import { InstanceRedactionEnforcementService } from '../instance-redaction-enfor
 import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '../redaction-enforcement.feature-flag';
 
 const KEY = 'redaction.enforcement';
-const DEFAULTS = { enforced: false, manual: false, production: true };
 
 describe('InstanceRedactionEnforcementService', () => {
 	const originalFlag = process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
@@ -65,7 +65,7 @@ describe('InstanceRedactionEnforcementService', () => {
 			beforeEach(() => disableFlag());
 
 			it('returns defaults without touching cache or repository', async () => {
-				await expect(service.get()).resolves.toEqual(DEFAULTS);
+				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
 				expect(cacheService.get).not.toHaveBeenCalled();
 				expect(findByKey).not.toHaveBeenCalled();
 				expect(cacheService.set).not.toHaveBeenCalled();
@@ -104,14 +104,17 @@ describe('InstanceRedactionEnforcementService', () => {
 				simulateCacheMiss();
 				findByKey.mockResolvedValueOnce(null);
 
-				await expect(service.get()).resolves.toEqual(DEFAULTS);
-				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(DEFAULTS));
+				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
+				expect(cacheService.set).toHaveBeenCalledWith(
+					KEY,
+					JSON.stringify(REDACTION_ENFORCEMENT_DEFAULTS),
+				);
 			});
 
 			it('returns defaults when cache has invalid JSON, and logs a warning', async () => {
 				simulateCacheHit('not-json');
 
-				await expect(service.get()).resolves.toEqual(DEFAULTS);
+				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to parse redaction enforcement setting JSON',
 					expect.objectContaining({ source: 'cache' }),
@@ -129,12 +132,15 @@ describe('InstanceRedactionEnforcementService', () => {
 					}),
 				);
 
-				await expect(service.get()).resolves.toEqual(DEFAULTS);
+				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Redaction enforcement setting has an invalid shape',
 					expect.objectContaining({ source: 'database' }),
 				);
-				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(DEFAULTS));
+				expect(cacheService.set).toHaveBeenCalledWith(
+					KEY,
+					JSON.stringify(REDACTION_ENFORCEMENT_DEFAULTS),
+				);
 			});
 		});
 	});
