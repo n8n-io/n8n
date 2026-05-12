@@ -27,9 +27,10 @@ const mockRootStore = {
 	setVersionCli: vi.fn(),
 };
 
-const { getSettings, useRootStore } = vi.hoisted(() => ({
+const { getSettings, useRootStore, getModuleSettings } = vi.hoisted(() => ({
 	getSettings: vi.fn(),
 	useRootStore: vi.fn(() => mockRootStore),
+	getModuleSettings: vi.fn(),
 }));
 
 const { sessionStarted } = vi.hoisted(() => ({
@@ -38,6 +39,10 @@ const { sessionStarted } = vi.hoisted(() => ({
 
 vi.mock('@n8n/rest-api-client/api/settings', () => ({
 	getSettings,
+}));
+
+vi.mock('@n8n/rest-api-client/api/module-settings', () => ({
+	getModuleSettings,
 }));
 
 vi.mock('@n8n/rest-api-client/api/events', () => ({
@@ -236,6 +241,35 @@ describe('settings.store', () => {
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('isOtelEnabled', () => {
+		it('returns true when otel module settings report enabled', async () => {
+			getModuleSettings.mockResolvedValueOnce({ otel: { enabled: true } });
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getModuleSettings();
+
+			expect(settingsStore.isOtelEnabled).toBe(true);
+		});
+
+		it('returns false when otel module settings report disabled', async () => {
+			getModuleSettings.mockResolvedValueOnce({ otel: { enabled: false } });
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getModuleSettings();
+
+			expect(settingsStore.isOtelEnabled).toBe(false);
+		});
+
+		it('returns false when otel module settings are absent', async () => {
+			getModuleSettings.mockResolvedValueOnce({});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getModuleSettings();
+
+			expect(settingsStore.isOtelEnabled).toBe(false);
 		});
 	});
 });

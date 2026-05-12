@@ -128,6 +128,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		);
 	};
 
+	const isOtelEnabled = computed(() => moduleSettings.value.otel?.enabled ?? false);
+
 	const isAiCreditsEnabled = computed(
 		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
 	);
@@ -467,6 +469,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isAgentModuleActive,
+		isOtelEnabled,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isAgentsNodeToolsFeatureEnabled,
