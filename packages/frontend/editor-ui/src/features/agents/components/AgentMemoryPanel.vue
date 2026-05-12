@@ -30,10 +30,11 @@ const profilesKey = computed(() =>
 );
 const profilesExpanded = ref(false);
 const loadedProfilesKey = ref<string | null>(null);
-const profilesLoading = ref(false);
+const loadingProfilesKey = ref<string | null>(null);
 const profilesError = ref(false);
 const profiles = ref<AgentMemoryProfilesResponse | null>(null);
 const profilesLoaded = computed(() => loadedProfilesKey.value === profilesKey.value);
+const profilesLoading = computed(() => loadingProfilesKey.value === profilesKey.value);
 
 function onEnableMemory() {
 	const existingMemory = props.config?.memory;
@@ -64,8 +65,9 @@ function onMemoryToggle(enabled: boolean) {
 async function loadProfiles() {
 	const key = profilesKey.value;
 	if (!canLoadProfiles.value || !props.projectId || !props.agentId || !key) return;
+	if (loadingProfilesKey.value === key) return;
 
-	profilesLoading.value = true;
+	loadingProfilesKey.value = key;
 	profilesError.value = false;
 
 	try {
@@ -81,7 +83,7 @@ async function loadProfiles() {
 		if (profilesKey.value !== key) return;
 		profilesError.value = true;
 	} finally {
-		if (profilesKey.value === key) profilesLoading.value = false;
+		if (loadingProfilesKey.value === key) loadingProfilesKey.value = null;
 	}
 }
 
@@ -96,7 +98,7 @@ watch(profilesKey, () => {
 	profiles.value = null;
 	loadedProfilesKey.value = null;
 	profilesError.value = false;
-	if (profilesExpanded.value && canLoadProfiles.value && !profilesLoading.value) {
+	if (profilesExpanded.value && canLoadProfiles.value) {
 		void loadProfiles();
 	}
 });
