@@ -6,16 +6,38 @@ const getScheduleIntegrationMock = vi.fn();
 const updateScheduleIntegrationMock = vi.fn();
 const activateScheduleIntegrationMock = vi.fn();
 const deactivateScheduleIntegrationMock = vi.fn();
+const cronTimeMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: {},
+		timezone: 'Europe/Berlin',
 	}),
 }));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			if (key === 'agents.schedule.nextOccurrence') {
+				return `Next occurrence: ${options?.interpolate?.occurrence ?? ''}`;
+			}
+
+			return key;
+		},
+	}),
+}));
+
+vi.mock('cron', () => ({
+	CronTime: cronTimeMock.mockImplementation((expression: string) => {
+		if (expression === 'not-a-cron') {
+			throw new Error('Invalid cron expression');
+		}
+
+		return {
+			sendAt: () => ({
+				toJSDate: () => new Date('2026-05-12T09:00:00.000Z'),
+			}),
+		};
 	}),
 }));
 
@@ -48,9 +70,25 @@ const STUBS = {
 	},
 	N8nInput: {
 		template:
-			'<textarea v-if="type === \'textarea\'" :value="modelValue" :data-testid="$attrs[\'data-testid\']" @input="$emit(\'update:modelValue\', $event.target.value)" /><input v-else :value="modelValue" :data-testid="$attrs[\'data-testid\']" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<textarea v-if="type === \'textarea\'" :value="modelValue" :data-testid="$attrs[\'data-testid\']" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\', $event)" /><input v-else :value="modelValue" :data-testid="$attrs[\'data-testid\']" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\', $event)" />',
 		props: ['modelValue', 'type', 'rows', 'disabled', 'placeholder'],
+		emits: ['update:modelValue', 'blur'],
+	},
+	N8nRadioButtons: {
+		template:
+			'<div :data-testid="$attrs[\'data-testid\']"><button v-for="option in options" :key="option.value" :data-testid="`schedule-cron-mode-${option.value}`" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></div>',
+		props: ['modelValue', 'options', 'disabled', 'size'],
 		emits: ['update:modelValue'],
+	},
+	N8nSelect: {
+		template:
+			'<select :value="modelValue" :data-testid="$attrs[\'data-testid\']" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+		props: ['modelValue', 'disabled', 'size'],
+		emits: ['update:modelValue'],
+	},
+	N8nOption: {
+		template: '<option :value="value">{{ label }}</option>',
+		props: ['value', 'label'],
 	},
 	N8nSwitch2: {
 		template:
@@ -100,6 +138,7 @@ describe('AgentScheduleTriggerCard', () => {
 			},
 			global: {
 				stubs: STUBS,
+				components: STUBS,
 			},
 		});
 		await flushPromises();
@@ -120,6 +159,19 @@ describe('AgentScheduleTriggerCard', () => {
 			(wrapper.find('[data-testid="schedule-cron-input"]').element as HTMLInputElement).value,
 		).toBe('*/5 * * * *');
 		expect(wrapper.emitted('status-change')?.[0]).toEqual([true]);
+	});
+
+	it('renders matching cron expressions as presets', async () => {
+		getScheduleIntegrationMock.mockResolvedValue({
+			active: true,
+			cronExpression: '0 9 * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
+		});
+
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-testid="schedule-preset-select"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="schedule-cron-input"]').exists()).toBe(false);
 	});
 
 	it('activates the schedule after saving the current config and emits trigger-added', async () => {
@@ -201,6 +253,18 @@ describe('AgentScheduleTriggerCard', () => {
 		).toBeUndefined();
 	});
 
+	it('resets local changes and emits canceled when Cancel is clicked', async () => {
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-testid="schedule-cron-input"]').setValue('*/10 * * * *');
+		await wrapper.find('[data-testid="schedule-cancel-button"]').trigger('click');
+
+		expect(wrapper.emitted('canceled')).toBeTruthy();
+		expect(
+			(wrapper.find('[data-testid="schedule-cron-input"]').element as HTMLInputElement).value,
+		).toBe('* * * * *');
+	});
+
 	it('shows invalid cron errors below the cron input and clears them on cron edit', async () => {
 		const wrapper = await renderComponent();
 		updateScheduleIntegrationMock.mockRejectedValueOnce(new Error('Invalid cron expression'));
@@ -221,6 +285,16 @@ describe('AgentScheduleTriggerCard', () => {
 		await wrapper.find('[data-testid="schedule-cron-input"]').setValue('*/15 * * * *');
 
 		expect(wrapper.find('[data-testid="schedule-cron-error"]').exists()).toBe(false);
+	});
+
+	it('updates custom next occurrence on cron input blur', async () => {
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-testid="schedule-cron-input"]').setValue('0 0 * * FRI');
+
+		await wrapper.find('[data-testid="schedule-cron-input"]').trigger('blur');
+
+		expect(cronTimeMock).toHaveBeenCalledWith('0 0 * * FRI', 'Europe/Berlin');
 	});
 
 	it('disables activation when the agent is not published', async () => {
