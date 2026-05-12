@@ -3,7 +3,7 @@ import { N8nButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
@@ -29,7 +29,7 @@ interface WebSearchProps {
 const props = defineProps<DomainProps | WebSearchProps>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const resolved = ref(false);
 
 const isWebSearch = computed(() => props.query !== undefined);
@@ -63,8 +63,8 @@ const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() => [
 
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
-	store.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(
+	thread.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(
 		props.requestId,
 		approved && domainAccessAction
 			? { kind: 'domainAccessApprove', domainAccessAction }

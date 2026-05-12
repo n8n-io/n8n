@@ -26,6 +26,12 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
+const trackMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
+
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
@@ -254,7 +260,8 @@ describe('NodeCredentials', () => {
 			false,
 			undefined,
 			undefined,
-			undefined,
+			httpNode.name,
+			httpNode,
 			{ hideAskAssistant: false },
 		);
 	});
@@ -619,6 +626,60 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Slack')).toBeInTheDocument();
 		});
 
+		it('should remove MCP from derived service name in quick connect CTA', () => {
+			setupQuickConnectStores();
+
+			const linearMcpOAuth2ApiType: ICredentialType = {
+				name: 'linearMcpOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'Linear MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'hidden',
+						default: true,
+					},
+					{
+						displayName: 'Server URL',
+						name: 'serverUrl',
+						type: 'hidden',
+						default: 'https://mcp.linear.app/mcp',
+					},
+				],
+			};
+
+			const linearMcpNode: INodeUi = {
+				parameters: {},
+				type: 'n8n-nodes-base.linearMcp',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'linear-mcp-node-id',
+				name: 'Linear MCP',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				linearMcpOAuth2Api: linearMcpOAuth2ApiType,
+			};
+
+			ndvStore.activeNode = linearMcpNode;
+
+			renderComponent(
+				{
+					props: {
+						node: linearMcpNode,
+						overrideCredType: 'linearMcpOAuth2Api',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getByText('Connect to Linear')).toBeInTheDocument();
+			expect(screen.queryByText('Connect to Linear MCP')).not.toBeInTheDocument();
+		});
+
 		it('should show node-credentials-empty-state for non-OAuth type with no credentials', () => {
 			setupQuickConnectStores();
 
@@ -656,6 +717,53 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('setup-manually-link')).toBeInTheDocument();
 		});
 
+		it('should hide "setup manually" link when credential has no manual fields', () => {
+			setupQuickConnectStores();
+
+			const mcpOAuth2ApiType: ICredentialType = {
+				name: 'mcpOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'hidden',
+						default: true,
+					},
+				],
+			};
+
+			const mcpNode: INodeUi = {
+				parameters: {},
+				type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'mcp-node-id',
+				name: 'Notion MCP',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				mcpOAuth2Api: mcpOAuth2ApiType,
+			};
+
+			ndvStore.activeNode = mcpNode;
+
+			renderComponent(
+				{
+					props: {
+						node: mcpNode,
+						overrideCredType: 'mcpOAuth2Api',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('setup-manually-link')).not.toBeInTheDocument();
+		});
+
 		it('should open credential modal when "setup manually" is clicked', async () => {
 			setupQuickConnectStores();
 
@@ -673,7 +781,7 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('setup-manually-link'));
 
-			// createNewCredential calls openNewCredential with (type, showAuthOptions, forceManualMode, projectId)
+			// createNewCredential calls openNewCredential with context for auth-option resolution
 			// "setup manually" passes forceManualMode=true
 			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
 				'slackOAuth2Api',
@@ -681,7 +789,12 @@ describe('NodeCredentials', () => {
 				true,
 				undefined,
 				undefined,
-				undefined,
+				slackNode.name,
+				expect.objectContaining({
+					id: slackNode.id,
+					name: slackNode.name,
+					type: slackNode.type,
+				}),
 				{ hideAskAssistant: false },
 			);
 		});
@@ -1180,6 +1293,76 @@ describe('NodeCredentials', () => {
 					.__aiGatewayManaged,
 			).toBeUndefined();
 			expect((payload.properties.credentials['googlePalmApi'] as { id: string }).id).toBe('cred-1');
+		});
+
+		describe('telemetry', () => {
+			const toggleOnStub = {
+				template: '<button data-test-id="ai-gateway-toggle-on" @click="$emit(\'toggle\', true)" />',
+				props: ['aiGatewayEnabled'],
+				emits: ['toggle'],
+			};
+
+			const toggleOffStub = {
+				template:
+					'<button data-test-id="ai-gateway-toggle-off" @click="$emit(\'toggle\', false)" />',
+				props: ['aiGatewayEnabled'],
+				emits: ['toggle'],
+			};
+
+			it('should track telemetry with mode "n8n_connect" when toggled ON by user', async () => {
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOnStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+
+				expect(trackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					mode: 'n8n_connect',
+					workflow_id: expect.any(String),
+				});
+			});
+
+			it('should track telemetry with mode "own" when toggled OFF by user', async () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOffStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-off'));
+
+				expect(trackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					mode: 'own',
+					workflow_id: expect.any(String),
+				});
+			});
+
+			it('should not track telemetry when toggled ON automatically on mount', () => {
+				// No credentials — auto-select path calls onAiGatewaySelector with isUserAction=false
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOnStub } },
+				});
+
+				expect(trackMock).not.toHaveBeenCalledWith(
+					'User toggled n8n connect credential',
+					expect.anything(),
+				);
+			});
 		});
 
 		it('should emit credentialSelected removing credentials when toggled OFF with no available credentials', async () => {

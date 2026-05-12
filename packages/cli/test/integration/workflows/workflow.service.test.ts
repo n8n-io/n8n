@@ -84,6 +84,7 @@ beforeAll(async () => {
 		webhookServiceMock,
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
+		mock(), // redactionEnforcementService
 	);
 });
 

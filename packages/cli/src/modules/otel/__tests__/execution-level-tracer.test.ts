@@ -265,6 +265,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
 			expect(nodeSpan.events).toHaveLength(1);
 			expect(nodeSpan.events[0].name).toBe('exception');
+			// `recordException` receives the `Error` from `toRecordableException` (not `getErrorType`).
 			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe('connection refused');
 			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('TypeError');
 		});
@@ -338,6 +339,48 @@ describe('ExecutionLevelTracer', () => {
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
+		});
+
+		it('should preserve agent tracing custom attributes on node.execute when the node errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-agent-meta-err',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			const agentNode = { id: 'n-agent', name: 'Agent', type: 'test', typeVersion: 1 };
+			tracer.startNode({
+				executionId: 'exec-agent-meta-err',
+				node: agentNode,
+			});
+			tracer.endNode({
+				executionId: 'exec-agent-meta-err',
+				node: agentNode,
+				inputItemCount: 1,
+				outputItemCount: 0,
+				customAttributes: {
+					'ai.agent.version': 'v3',
+					'ai.agent.failure.type': 'NodeOperationError',
+				},
+				error: {
+					message: 'agent failed',
+					constructor: { name: 'NodeOperationError' },
+					stack: 'stack trace here',
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-agent-meta-err',
+				status: 'error',
+				mode: 'manual',
+				error: new Error('workflow failed'),
+				isRetry: false,
+			});
+
+			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.version']).toBe('v3');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.failure.type']).toBe(
+				'NodeOperationError',
+			);
 		});
 	});
 

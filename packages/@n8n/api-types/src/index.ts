@@ -34,6 +34,7 @@ export {
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
 export * from './instance-registry-types';
+export * from './redaction-enforcement';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -415,6 +416,7 @@ export type {
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
+	InstanceAiEvalMockedCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,

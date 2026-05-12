@@ -5,7 +5,7 @@ import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
+import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -13,11 +13,11 @@ import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
-import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
+import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
-const store = useInstanceAiStore();
+const thread = useThread();
 const i18n = useI18n();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
@@ -48,7 +48,7 @@ function trackInputCompleted(
 	extra?: Record<string, unknown>,
 ): void {
 	const eventProps = {
-		thread_id: store.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: conf.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: getConfirmationType(conf),
@@ -108,7 +108,7 @@ const chunks = computed((): ConfirmationChunk[] => {
 	const result: ConfirmationChunk[] = [];
 	const wrappedByAgent = new Map<string, ApprovalWrappedGroup>();
 
-	for (const item of store.pendingConfirmations) {
+	for (const item of thread.pendingConfirmations) {
 		if (isApprovalWrapped(item)) {
 			const key = item.agentNode.agentId;
 			let group = wrappedByAgent.get(key);
@@ -134,7 +134,7 @@ const textInputValues = ref<Record<string, string>>({});
 
 function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 	const conf = item.toolCall.confirmation;
-	if (store.resolvedConfirmationIds.has(conf.requestId)) return;
+	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
 	trackInputCompleted(
 		conf,
 		[
@@ -146,21 +146,21 @@ function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		],
 		[],
 	);
-	store.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(conf.requestId, { kind: 'approval', approved });
+	thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(conf.requestId, { kind: 'approval', approved });
 }
 
 function handleApproveAll(items: PendingConfirmationItem[]) {
 	for (const item of items) {
 		const conf = item.toolCall.confirmation;
-		if (store.resolvedConfirmationIds.has(conf.requestId)) continue;
+		if (thread.resolvedConfirmationIds.has(conf.requestId)) continue;
 		trackInputCompleted(
 			conf,
 			[{ label: conf.message, options: ['approve', 'deny'], option_chosen: 'approve' }],
 			[],
 		);
-		store.resolveConfirmation(conf.requestId, 'approved');
-		void store.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+		thread.resolveConfirmation(conf.requestId, 'approved');
+		void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 	}
 }
 
@@ -180,8 +180,8 @@ function handleTextSubmit(conf: InstanceAiConfirmation) {
 		],
 		[],
 	);
-	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(conf.requestId, { kind: 'approval', approved: true, userInput: value });
+	thread.resolveConfirmation(conf.requestId, 'approved');
+	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true, userInput: value });
 }
 
 function handleTextSkip(conf: InstanceAiConfirmation) {
@@ -190,19 +190,19 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 		[],
 		[{ label: conf.message, question: conf.message, input_type: 'text', options: [] }],
 	);
-	store.resolveConfirmation(conf.requestId, 'deferred');
-	void store.confirmAction(conf.requestId, { kind: 'approval', approved: false });
+	thread.resolveConfirmation(conf.requestId, 'deferred');
+	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
 
 function handleContinue(conf: InstanceAiConfirmation) {
-	if (store.resolvedConfirmationIds.has(conf.requestId)) return;
+	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
 	trackInputCompleted(
 		conf,
 		[{ label: conf.message, options: ['continue'], option_chosen: 'continue' }],
 		[],
 	);
-	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+	thread.resolveConfirmation(conf.requestId, 'approved');
+	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
@@ -243,8 +243,8 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 		}
 	}
 	trackInputCompleted(conf, provided, skipped, { num_tasks: answers.length });
-	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(conf.requestId, { kind: 'questions', answers });
+	thread.resolveConfirmation(conf.requestId, 'approved');
+	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
@@ -254,8 +254,8 @@ function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 		[],
 		{ num_tasks: numTasks },
 	);
-	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+	thread.resolveConfirmation(conf.requestId, 'approved');
+	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handlePlanRequestChanges(
@@ -269,8 +269,8 @@ function handlePlanRequestChanges(
 		[],
 		{ num_tasks: numTasks, feedback },
 	);
-	store.resolveConfirmation(conf.requestId, 'denied');
-	void store.confirmAction(conf.requestId, {
+	thread.resolveConfirmation(conf.requestId, 'denied');
+	void thread.confirmAction(conf.requestId, {
 		kind: 'approval',
 		approved: false,
 		userInput: feedback,
@@ -304,10 +304,9 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:workflow-id="chunk.item.toolCall.confirmation.workflowId ?? ''"
-					:message="chunk.item.toolCall.confirmation.message"
 					:project-id="chunk.item.toolCall.confirmation.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
+					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
 
 				<!-- Credential setup -->

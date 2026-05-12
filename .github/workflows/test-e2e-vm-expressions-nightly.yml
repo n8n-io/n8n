@@ -29,6 +29,7 @@ jobs:
       workers: '1'
       pre-generated-matrix: '[{"shard":1},{"shard":2},{"shard":3},{"shard":4},{"shard":5},{"shard":6},{"shard":7},{"shard":8},{"shard":9},{"shard":10},{"shard":11},{"shard":12},{"shard":13},{"shard":14},{"shard":15},{"shard":16}]'
       n8n-env: '{"N8N_EXPRESSION_ENGINE":"vm"}'
+      artifact-prefix: vm-expressions
     secrets: inherit
 
   notify-on-failure:

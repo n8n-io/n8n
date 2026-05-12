@@ -30,6 +30,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-credentials-empty-state');
 	}
 
+	getNodeCredentialsQuickConnectEmptyState() {
+		return this.container.getByTestId('quick-connect-empty-state');
+	}
+
 	credentialDropdownCreateNewCredential() {
 		return this.page.getByText('Create new credential');
 	}
