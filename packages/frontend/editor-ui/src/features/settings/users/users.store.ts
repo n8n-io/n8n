@@ -470,6 +470,21 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return assertionResponse;
 	};
 
+	const signinWithPasskey = async (
+		options: { useBrowserAutofill?: boolean } = {},
+	): Promise<boolean> => {
+		const { startAuthentication } = await import('@simplewebauthn/browser');
+		const optionsJSON = await webauthnApi.getPasswordlessAuthOptions(rootStore.restApiContext);
+		const assertion = await startAuthentication({
+			optionsJSON: optionsJSON as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+			useBrowserAutofill: options.useBrowserAutofill,
+		});
+		const user = await webauthnApi.verifyPasswordlessAuth(rootStore.restApiContext, assertion);
+		if (!user) return false;
+		await setCurrentUser(user);
+		return true;
+	};
+
 	const sendConfirmationEmail = async () => {
 		await cloudApi.sendConfirmationEmail(rootStore.restApiContext);
 	};
@@ -564,6 +579,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		deleteWebAuthnCredential,
 		updateWebAuthnCredentialLabel,
 		verifyWebAuthnAuthentication,
+		signinWithPasskey,
 		sendConfirmationEmail,
 		updateGlobalRole,
 		setEasyAIWorkflowOnboardingDone,

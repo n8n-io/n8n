@@ -208,6 +208,12 @@ export interface FrontendSettings {
 	mfa: {
 		enabled: boolean;
 		enforced: boolean;
+		/**
+		 * True when at least one user on the instance has a discoverable
+		 * passkey registered. Drives the visibility of the "Sign in with
+		 * passkey" shortcut on the signin page.
+		 */
+		passkeysAvailable: boolean;
 	};
 	folders: {
 		enabled: boolean;

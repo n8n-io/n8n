@@ -1,4 +1,8 @@
-import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import {
+	LoginRequestDto,
+	PasswordlessVerifyRequestDto,
+	ResolveSignupTokenQueryDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
@@ -190,6 +194,45 @@ export class AuthController {
 		if (!isMfaCodeOrMfaRecoveryCodeValid) {
 			throw new AuthError('Invalid mfa token or recovery code');
 		}
+	}
+
+	/** Generate WebAuthn authentication options for passwordless signin. */
+	@Post('/login/webauthn/options', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+	})
+	async getPasswordlessAuthOptions() {
+		return await this.mfaService.webauthn.generatePasswordlessAuthenticationOptions();
+	}
+
+	/** Verify a WebAuthn assertion and sign the user in passwordlessly. */
+	@Post('/login/webauthn/verify', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+	})
+	async verifyPasswordlessAuth(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: PasswordlessVerifyRequestDto,
+	): Promise<PublicUser> {
+		const user = await this.mfaService.webauthn.verifyPasswordlessAuthentication(payload.response);
+
+		this.validateSsoRestrictions(user, user.email);
+
+		// WebAuthn UV (biometric/PIN) satisfies the second factor, so the session
+		// is issued with `usedMfa: true` and bypasses the MFA-enforced gate.
+		this.authService.issueCookie(res, user, true, req.browserId);
+
+		this.eventService.emit('user-logged-in', {
+			user,
+			authenticationMethod: 'email',
+		});
+
+		return await this.userService.toPublic(user, {
+			posthog: this.postHog,
+			withScopes: true,
+			mfaAuthenticated: true,
+		});
 	}
 
 	/** Check if the user is already logged in */

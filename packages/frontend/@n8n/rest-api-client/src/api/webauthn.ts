@@ -2,6 +2,7 @@ import type { WebAuthnCredentialResponse } from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
+import type { CurrentUserResponse } from './users';
 
 export type WebAuthnAttachment = 'platform' | 'cross-platform';
 
@@ -49,4 +50,15 @@ export async function updateCredential(
 	data: { label: string },
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', `/mfa/webauthn/credentials/${id}`, data);
+}
+
+export async function getPasswordlessAuthOptions(context: IRestApiContext) {
+	return await makeRestApiRequest(context, 'POST', '/login/webauthn/options');
+}
+
+export async function verifyPasswordlessAuth(
+	context: IRestApiContext,
+	response: unknown,
+): Promise<CurrentUserResponse> {
+	return await makeRestApiRequest(context, 'POST', '/login/webauthn/verify', { response });
 }

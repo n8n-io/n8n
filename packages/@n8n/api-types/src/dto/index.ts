@@ -38,6 +38,7 @@ export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
+export { PasswordlessVerifyRequestDto } from './auth/passwordless-verify-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
 export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';

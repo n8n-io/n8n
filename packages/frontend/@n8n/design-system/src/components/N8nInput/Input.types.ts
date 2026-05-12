@@ -8,7 +8,8 @@ export type InputAutocomplete =
 	| 'given-name'
 	| 'family-name'
 	| 'one-time-code'
-	| 'email';
+	| 'email'
+	| 'username webauthn';
 
 export interface InputProps {
 	modelValue?: string | number | null;

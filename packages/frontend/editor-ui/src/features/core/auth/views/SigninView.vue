@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
+import { N8nButton } from '@n8n/design-system';
 
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
@@ -67,7 +69,7 @@ const formConfig: IFormBoxConfig = reactive({
 				...(!isLdapLoginEnabled.value && { validationRules: [{ name: 'VALID_EMAIL' }] }),
 				showRequiredAsterisk: false,
 				validateOnBlur: false,
-				autocomplete: 'email',
+				autocomplete: 'username webauthn',
 				capitalize: true,
 				focusInitially: true,
 			},
@@ -208,6 +210,81 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 	emailOrLdapLoginId.value = form.emailOrLdapLoginId;
 	password.value = form.password;
 };
+
+// Shown when at least one user on the instance has a registered passkey
+// (signal comes from `frontendSettings.mfa.passkeysAvailable`). The Web
+// platform doesn't expose per-device passkey presence, so the per-instance
+// flag is the most reliable surface: if nobody has a passkey, the button is
+// useless; if someone does, the user might be them and we should offer it.
+const showPasskeyButton = computed(() => settingsStore.isPasskeyAvailable);
+const passkeyLoading = ref(false);
+
+const onSigninWithPasskeyComplete = async () => {
+	await settingsStore.getSettings();
+	toast.clearAllStickyNotifications();
+	telemetry.track('User attempted to login', { result: 'passkey_success' });
+
+	if (isRedirectSafe()) {
+		const redirect = getRedirectQueryParameter();
+		if (redirect.startsWith('http')) {
+			window.location.href = redirect;
+			return;
+		}
+		void router.push(redirect);
+		return;
+	}
+	await router.push({ name: VIEWS.HOMEPAGE });
+};
+
+// `@simplewebauthn/browser` wraps the underlying DOMException in a custom
+// `WebAuthnError` that carries a stable `code`, so checking `instanceof
+// DOMException` doesn't match. We treat user-dismissed and aborted ceremonies
+// (e.g. autofill cancelled by the explicit button) as benign — silent.
+// Anything else is a real server rejection: the credentialId isn't on file.
+const isBenignPasskeyError = (e: unknown): boolean => {
+	if (!e || typeof e !== 'object') return false;
+	const candidate = e as { name?: string; code?: string; cause?: { name?: string } };
+	if (candidate.name === 'NotAllowedError' || candidate.name === 'AbortError') return true;
+	if (candidate.code === 'ERROR_CEREMONY_ABORTED') return true;
+	if (candidate.code === 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY') return true;
+	const causeName = candidate.cause?.name;
+	return causeName === 'NotAllowedError' || causeName === 'AbortError';
+};
+
+const handlePasskeySignInError = (e: unknown) => {
+	if (isBenignPasskeyError(e)) return;
+	toast.showError(e, locale.baseText('auth.signin.passkey.error'));
+};
+
+const onSigninWithPasskeyClick = async () => {
+	passkeyLoading.value = true;
+	try {
+		const signedIn = await usersStore.signinWithPasskey();
+		if (!signedIn) return;
+		await onSigninWithPasskeyComplete();
+	} catch (e) {
+		handlePasskeySignInError(e);
+	} finally {
+		passkeyLoading.value = false;
+	}
+};
+
+// Conditional UI: while the signin page is mounted, ask the browser to surface
+// any saved discoverable passkey for this origin via its native autofill UI.
+// Tapping the suggestion runs the WebAuthn ceremony and posts the assertion to
+// the passwordless verify endpoint.
+onMounted(async () => {
+	try {
+		const { browserSupportsWebAuthnAutofill } = await import('@simplewebauthn/browser');
+		if (!(await browserSupportsWebAuthnAutofill())) return;
+
+		const signedIn = await usersStore.signinWithPasskey({ useBrowserAutofill: true });
+		if (!signedIn) return;
+		await onSigninWithPasskeyComplete();
+	} catch (e) {
+		handlePasskeySignInError(e);
+	}
+});
 </script>
 
 <template>
@@ -219,7 +296,25 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 			:with-sso="true"
 			data-test-id="signin-form"
 			@submit="onEmailPasswordSubmitted"
-		/>
+		>
+			<template v-if="showPasskeyButton" #header>
+				<div :class="$style.passkeyHeader">
+					<N8nButton
+						variant="outline"
+						size="large"
+						icon="user-round"
+						:label="locale.baseText('auth.signin.passkey.button')"
+						:loading="passkeyLoading"
+						:class="$style.passkeyButton"
+						data-test-id="signin-with-passkey-button"
+						@click="onSigninWithPasskeyClick"
+					/>
+					<div :class="$style.passkeyDivider">
+						<span>{{ locale.baseText('auth.signin.passkey.divider') }}</span>
+					</div>
+				</div>
+			</template>
+		</AuthView>
 		<MfaView
 			v-if="showMfaView"
 			:report-error="reportError"
@@ -232,3 +327,33 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 		/>
 	</div>
 </template>
+
+<style lang="scss" module>
+.passkeyHeader {
+	margin-bottom: var(--spacing--xl);
+}
+
+.passkeyButton {
+	width: 100%;
+}
+
+.passkeyDivider {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-top: var(--spacing--lg);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+	color: var(--color--text--tint-2);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+
+	&::before,
+	&::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background-color: var(--color--background--shade-1);
+	}
+}
+</style>

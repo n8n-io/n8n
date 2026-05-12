@@ -98,10 +98,7 @@ export type PublicFrontendSettings = {
 	/** Used to fetch community nodes on preview instance */
 	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
 
-	mfa?: {
-		enabled: boolean;
-		enforced: boolean;
-	};
+	mfa: FrontendSettings['mfa'];
 };
 
 @Service()
@@ -348,6 +345,7 @@ export class FrontendService {
 			mfa: {
 				enabled: false,
 				enforced: false,
+				passkeysAvailable: false,
 			},
 			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
@@ -559,6 +557,7 @@ export class FrontendService {
 
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
+		this.settings.mfa.passkeysAvailable = await this.mfaService.webauthn.hasAnyCredential();
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
@@ -581,7 +580,7 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
+	async getPublicSettings(): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
@@ -593,6 +592,9 @@ export class FrontendService {
 			mfa,
 			communityNodesEnabled,
 		} = await this.getSettings();
+		// `mfa` fields are instance-level, not user-specific. Always expose them
+		// so the signin page can decide whether to show the "Sign in with
+		// passkey" shortcut without waiting for a partial-auth session.
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
@@ -616,10 +618,8 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			communityNodesEnabled,
+			mfa,
 		};
-		if (includeMfaSettings) {
-			publicSettings.mfa = mfa;
-		}
 		return publicSettings;
 	}
 

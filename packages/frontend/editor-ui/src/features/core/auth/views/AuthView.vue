@@ -57,6 +57,9 @@ const {
 				@submit="onSubmit"
 				@update="onUpdate"
 			>
+				<template #header>
+					<slot name="header" />
+				</template>
 				<SSOLogin v-if="withSso" />
 			</N8nFormBox>
 		</div>

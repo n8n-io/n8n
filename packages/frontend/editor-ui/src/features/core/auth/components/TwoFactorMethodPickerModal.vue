@@ -10,7 +10,7 @@ import { twoFactorPickerBus, type TwoFactorMethod } from '../auth.eventBus';
 import MfaWizardSteps from './MfaWizardSteps.vue';
 
 const props = defineProps<{
-	data?: { current?: TwoFactorMethod | null };
+	data?: { current?: TwoFactorMethod | null; excludeMethods?: TwoFactorMethod[] };
 }>();
 
 const i18n = useI18n();
@@ -43,7 +43,7 @@ interface MethodOption {
 	descriptionKey: string;
 }
 
-const methods: MethodOption[] = [
+const allMethods: MethodOption[] = [
 	{
 		method: 'totp',
 		icon: 'shield',
@@ -66,6 +66,11 @@ const methods: MethodOption[] = [
 		descriptionKey: 'settings.personal.twoFactor.picker.security_key.description',
 	},
 ];
+
+const excludeMethods = computed(() => props.data?.excludeMethods ?? []);
+const methods = computed(() =>
+	allMethods.filter((option) => !excludeMethods.value.includes(option.method)),
+);
 </script>
 
 <template>

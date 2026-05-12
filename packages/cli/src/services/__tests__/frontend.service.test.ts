@@ -268,38 +268,8 @@ describe('FrontendService', () => {
 	});
 
 	describe('getPublicSettings', () => {
-		it('should return public settings', async () => {
+		it('should return public settings (mfa always included)', async () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
-				settingsMode: 'public',
-				defaultLocale: 'en',
-				userManagement: {
-					smtpSetup: false,
-					showSetupOnFirstLoad: true,
-					authenticationMethod: 'email',
-					passwordMinLength: 8,
-				},
-				sso: {
-					saml: { loginEnabled: false },
-					ldap: { loginEnabled: false, loginLabel: '' },
-					oidc: {
-						loginEnabled: false,
-						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
-					},
-				},
-				authCookie: { secure: false },
-				communityNodesEnabled: false,
-				previewMode: false,
-				enterprise: { saml: false, ldap: false, oidc: false },
-			};
-
-			const { service } = createMockService();
-			const settings = await service.getPublicSettings(false);
-
-			expect(settings).toEqual(expectedPublicSettings);
-		});
-
-		it('should return public settings with mfa', async () => {
-			const expectedPublicSettings = {
 				settingsMode: 'public',
 				defaultLocale: 'en',
 				userManagement: {
@@ -323,11 +293,12 @@ describe('FrontendService', () => {
 				mfa: {
 					enabled: false,
 					enforced: false,
+					passkeysAvailable: false,
 				},
 			};
 
 			const { service } = createMockService();
-			const settings = await service.getPublicSettings(true);
+			const settings = await service.getPublicSettings();
 
 			expect(settings).toEqual(expectedPublicSettings);
 		});
@@ -340,7 +311,7 @@ describe('FrontendService', () => {
 
 			expect(settings.userManagement.passwordMinLength).toBe(12);
 
-			const publicSettings = await service.getPublicSettings(false);
+			const publicSettings = await service.getPublicSettings();
 			expect(publicSettings.userManagement.passwordMinLength).toBe(12);
 
 			// Restore default
@@ -351,7 +322,7 @@ describe('FrontendService', () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 
 			const { service } = createMockService();
-			const publicSettings = await service.getPublicSettings(false);
+			const publicSettings = await service.getPublicSettings();
 
 			expect(publicSettings.previewMode).toBe(true);
 			expect(publicSettings.userManagement.showSetupOnFirstLoad).toBe(false);

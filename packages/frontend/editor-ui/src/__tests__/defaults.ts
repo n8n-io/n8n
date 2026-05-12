@@ -147,6 +147,7 @@ export const defaultSettings: FrontendSettings = {
 	mfa: {
 		enabled: false,
 		enforced: false,
+		passkeysAvailable: false,
 	},
 	askAi: {
 		enabled: false,

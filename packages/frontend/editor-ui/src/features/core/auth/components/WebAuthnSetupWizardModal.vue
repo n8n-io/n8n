@@ -22,6 +22,8 @@ const props = defineProps<{
 	data?: {
 		method: 'passkey' | 'security_key';
 		replacing?: 'totp' | 'passkey' | 'security_key' | null;
+		/** When true, the back button closes the wizard without reopening the picker. */
+		standalone?: boolean;
 	};
 }>();
 
@@ -83,7 +85,9 @@ const replaceWarning = computed(() => {
 });
 
 const onBack = () => {
-	twoFactorWizardBus.emit('back');
+	if (!props.data?.standalone) {
+		twoFactorWizardBus.emit('back');
+	}
 	uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
 };
 

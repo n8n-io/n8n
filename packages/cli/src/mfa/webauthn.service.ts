@@ -1,7 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
-import { WebauthnCredentialRepository } from '@n8n/db';
+import { UserRepository, WebauthnCredentialRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { AuthError } from '@/errors/response-errors/auth.error';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
@@ -9,6 +11,7 @@ import { UrlService } from '@/services/url.service';
 export class WebAuthnService {
 	constructor(
 		private readonly webauthnCredentialRepository: WebauthnCredentialRepository,
+		private readonly userRepository: UserRepository,
 		private readonly cacheService: CacheService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly urlService: UrlService,
@@ -65,11 +68,15 @@ export class WebAuthnService {
 		// replace-on-register flow already enforces a single credential per user.
 		// `userDisplayName` must not be empty: Firefox/macOS hangs the security
 		// key dialog when the field is an empty string.
+		// `userID` is our internal user UUID so that passwordless assertions
+		// echo it back as `userHandle`, letting us identify the user without
+		// a password.
 		const options = await generateRegistrationOptions({
 			rpName: this.getRpName(),
 			rpID: this.getRpId(),
 			userName: email,
 			userDisplayName: displayName || email,
+			userID: new TextEncoder().encode(userId),
 			attestationType: 'none',
 			authenticatorSelection,
 		});
@@ -224,6 +231,83 @@ export class WebAuthnService {
 		return verification.verified;
 	}
 
+	async generatePasswordlessAuthenticationOptions() {
+		const { generateAuthenticationOptions } = await import('@simplewebauthn/server');
+
+		const options = await generateAuthenticationOptions({
+			rpID: this.getRpId(),
+			allowCredentials: [],
+			userVerification: 'required',
+		});
+
+		// `hints: ['client-device']` asks the browser to narrow the OS picker to
+		// platform passkeys on this device (incl. iCloud Keychain / Google
+		// Password Manager). Without it, Chrome also offers "Use a phone or
+		// tablet" (hybrid) and "USB security key", which aren't part of the
+		// passwordless UX. @simplewebauthn doesn't type the field yet, so we
+		// attach it directly to the JSON. Browsers that don't recognise the
+		// hint fall back to the full picker — best-effort, not a security
+		// boundary.
+		(options as typeof options & { hints: string[] }).hints = ['client-device'];
+
+		await this.cacheService.set(
+			'webauthn:challenge:passwordless',
+			options.challenge,
+			this.getChallengeTtlMs(),
+		);
+
+		return options;
+	}
+
+	async verifyPasswordlessAuthentication(response: unknown): Promise<User> {
+		const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
+
+		const challenge = await this.cacheService.get('webauthn:challenge:passwordless');
+		if (!challenge) throw new AuthError('Unauthorized');
+
+		const authResponse = response as Parameters<typeof verifyAuthenticationResponse>[0]['response'];
+		const credentialId = authResponse.id;
+
+		// Identify the user from the credential row — the signature verification
+		// below proves possession of the matching private key, so the credential
+		// row's `userId` is the authoritative identity.
+		const credential = await this.webauthnCredentialRepository.findOne({
+			where: { credentialId },
+		});
+		if (!credential) throw new AuthError('Unauthorized');
+
+		const verification = await verifyAuthenticationResponse({
+			response: authResponse,
+			expectedChallenge: challenge as string,
+			expectedOrigin: this.getOrigin(),
+			expectedRPID: this.getRpId(),
+			requireUserVerification: true,
+			credential: {
+				id: credential.credentialId,
+				publicKey: new Uint8Array(credential.publicKey),
+				counter: credential.counter,
+				transports: (credential.transports ?? undefined) as
+					| Parameters<typeof verifyAuthenticationResponse>[0]['credential']['transports']
+					| undefined,
+			},
+		});
+		if (!verification.verified || !verification.authenticationInfo) {
+			throw new AuthError('Unauthorized');
+		}
+
+		await this.webauthnCredentialRepository.update(credential.id, {
+			counter: verification.authenticationInfo.newCounter,
+		});
+		await this.cacheService.delete('webauthn:challenge:passwordless');
+
+		const user = await this.userRepository.findOne({
+			where: { id: credential.userId },
+			relations: ['role'],
+		});
+		if (!user || user.disabled) throw new AuthError('Unauthorized');
+		return user;
+	}
+
 	async getUserCredentials(userId: string) {
 		return await this.webauthnCredentialRepository.find({
 			where: { userId },
@@ -246,6 +330,16 @@ export class WebAuthnService {
 
 	async hasCredentials(userId: string): Promise<boolean> {
 		const count = await this.webauthnCredentialRepository.count({ where: { userId } });
+		return count > 0;
+	}
+
+	/**
+	 * True when at least one user on the instance has any webauthn credential
+	 * registered. Drives the "Sign in with passkey" shortcut on the signin
+	 * page — when there are no credentials we hide the button entirely.
+	 */
+	async hasAnyCredential(): Promise<boolean> {
+		const count = await this.webauthnCredentialRepository.count({ take: 1 });
 		return count > 0;
 	}
 }

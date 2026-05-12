@@ -47,6 +47,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const saveManualExecutions = ref(false);
 	const saveDataProgressExecution = ref(false);
 	const isMFAEnforced = ref(false);
+	const isPasskeyAvailable = ref(false);
 
 	const isDocker = computed(() => settings.value?.isDocker ?? false);
 
@@ -291,6 +292,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		// Set MFA enforced state even for public settings mode
 		// as it is needed to determine if the MFA setup page should be shown
 		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+		isPasskeyAvailable.value = settings.value.mfa?.passkeysAvailable ?? false;
 
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
@@ -464,6 +466,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		updateAiDataSharingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
+		isPasskeyAvailable,
 		activeModules,
 		isModuleActive,
 		isAgentModuleActive,
