@@ -298,6 +298,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the cloud-agent module that proxies to ai-assistant-service.
+	 */
+	'cloud-agent'?: {
+		enabled: boolean;
+		baseUrl: string;
+	};
+
+	/**
 	 * Quick connect settings
 	 */
 	'quick-connect'?: {
