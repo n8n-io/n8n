@@ -1,0 +1,114 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*\\[\\{\"type\":\"text\",\"text\":\"You are the n8n Instance Agent — an AI assistant embedde[\\s\\S]*\"type\"\\s*:\\s*\"tool_use\"[\\s\\S]{0,300}\"name\"\\s*:\\s*\"workflows\"[\\s\\S]{0,500}\"action\"\\s*:\\s*\"setup\"[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "548"
+      ],
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-340449296f28b7cf8f7b28aa541ead84-856a38490e225c64-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=qJ40.0IYJgApNzkFNcX1Th_KO6WDlt9rDXBZzKnjNRo-1777974589.805697-1.0.1.1-pFuChQkcpNyd32HFvD_x2uIPRM36whOSiEHE4xyRJOw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "server-timing": [
+        "x-originResponse;dur=550"
+      ],
+      "request-id": [
+        "req_011CajDLRtp4hXn9pdq1SovS"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-05-05T09:49:49Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26867000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-05-05T09:49:49Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-05-05T09:49:49Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4499000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-05-05T09:49:50Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22368000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Tue, 05 May 2026 09:49:50 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "9f6ed6624abf313f-SOF"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "qJ40.0IYJgApNzkFNcX1Th_KO6WDlt9rDXBZzKnjNRo-1777974589.805697-1.0.1.1-pFuChQkcpNyd32HFvD_x2uIPRM36whOSiEHE4xyRJOw"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01FmHVp6GsMixU5cfUybPk35\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1241,\"cache_creation_input_tokens\":349,\"cache_read_input_tokens\":13705,\"cache_creation\":{\"ephemeral_5m_input_tokens\":349,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":3,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}       }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"The workflow was\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" found and setup was attempted, but 4 nodes still need valid credentials configured\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\". Here's the status:\\n\\n| Node | Credential | Issue |\\n|---|---|---|\\n| **Open\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"AI Chat Model** | B3 Grouping OpenAI | Credential test failed (API key issue) |\\n| **Get an issue in Linear** | B3 Grouping Linear\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" | Invalid security token |\\n| **Update an issue in Linear** | B3 Grouping Linear | Invalid security token |\\n| **Send a text message** | B3 Grouping Telegram | Resource not found (\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"bot token issue) |\\n\\nThe workflow uses credentials named **B3 Grouping OpenAI**,\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" **B3 Grouping Linear**, and **B3 Grouping Telegram**, but all three are failing their connection tests. You'll need to update\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" each credential with valid API keys/tokens:\\n\\n1. **OpenAI** — update\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the API key in the \\\"B3 Grouping OpenAI\\\" credential\\n2. **Linear** — update the API token in the \\\"B3 \"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Grouping Linear\\\" credential\\n3. **Telegram** — update the bot token in the \\\"B3 Grouping Telegram\\\" credential\\n\\nYou can edit these credentials directly in the\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" n8n **Credentials** section. Once updated, the workflow should be ready to use.\"}       }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0             }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1241,\"cache_creation_input_tokens\":349,\"cache_read_input_tokens\":13705,\"output_tokens\":307}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"           }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxRm1IVnA2R3NNaXhVNWNmVXliUGszNSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEyNDEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MzQ5LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTM3MDUsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjM0OSwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjMsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn19CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IlRoZSB3b3JrZmxvdyB3YXMifSAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiIgZm91bmQgYW5kIHNldHVwIHdhcyBhdHRlbXB0ZWQsIGJ1dCA0IG5vZGVzIHN0aWxsIG5lZWQgdmFsaWQgY3JlZGVudGlhbHMgY29uZmlndXJlZCJ9ICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6Ii4gSGVyZSdzIHRoZSBzdGF0dXM6XG5cbnwgTm9kZSB8IENyZWRlbnRpYWwgfCBJc3N1ZSB8XG58LS0tfC0tLXwtLS18XG58ICoqT3BlbiJ9ICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IkFJIENoYXQgTW9kZWwqKiB8IEIzIEdyb3VwaW5nIE9wZW5BSSB8IENyZWRlbnRpYWwgdGVzdCBmYWlsZWQgKEFQSSBrZXkgaXNzdWUpIHxcbnwgKipHZXQgYW4gaXNzdWUgaW4gTGluZWFyKiogfCBCMyBHcm91cGluZyBMaW5lYXIifSAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB8IEludmFsaWQgc2VjdXJpdHkgdG9rZW4gfFxufCAqKlVwZGF0ZSBhbiBpc3N1ZSBpbiBMaW5lYXIqKiB8IEIzIEdyb3VwaW5nIExpbmVhciB8IEludmFsaWQgc2VjdXJpdHkgdG9rZW4gfFxufCAqKlNlbmQgYSB0ZXh0IG1lc3NhZ2UqKiB8IEIzIEdyb3VwaW5nIFRlbGVncmFtIHwgUmVzb3VyY2Ugbm90IGZvdW5kICgifSAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6ImJvdCB0b2tlbiBpc3N1ZSkgfFxuXG5UaGUgd29ya2Zsb3cgdXNlcyBjcmVkZW50aWFscyBuYW1lZCAqKkIzIEdyb3VwaW5nIE9wZW5BSSoqLCJ9ICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiIgKipCMyBHcm91cGluZyBMaW5lYXIqKiwgYW5kICoqQjMgR3JvdXBpbmcgVGVsZWdyYW0qKiwgYnV0IGFsbCB0aHJlZSBhcmUgZmFpbGluZyB0aGVpciBjb25uZWN0aW9uIHRlc3RzLiBZb3UnbGwgbmVlZCB0byB1cGRhdGUifSAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiBlYWNoIGNyZWRlbnRpYWwgd2l0aCB2YWxpZCBBUEkga2V5cy90b2tlbnM6XG5cbjEuICoqT3BlbkFJKiog4oCUIHVwZGF0ZSJ9ICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB0aGUgQVBJIGtleSBpbiB0aGUgXCJCMyBHcm91cGluZyBPcGVuQUlcIiBjcmVkZW50aWFsXG4yLiAqKkxpbmVhcioqIOKAlCB1cGRhdGUgdGhlIEFQSSB0b2tlbiBpbiB0aGUgXCJCMyAifSAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiR3JvdXBpbmcgTGluZWFyXCIgY3JlZGVudGlhbFxuMy4gKipUZWxlZ3JhbSoqIOKAlCB1cGRhdGUgdGhlIGJvdCB0b2tlbiBpbiB0aGUgXCJCMyBHcm91cGluZyBUZWxlZ3JhbVwiIGNyZWRlbnRpYWxcblxuWW91IGNhbiBlZGl0IHRoZXNlIGNyZWRlbnRpYWxzIGRpcmVjdGx5IGluIHRoZSJ9ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiBuOG4gKipDcmVkZW50aWFscyoqIHNlY3Rpb24uIE9uY2UgdXBkYXRlZCwgdGhlIHdvcmtmbG93IHNob3VsZCBiZSByZWFkeSB0byB1c2UuIn0gICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgICAgICAgICAgICB9CgpldmVudDogbWVzc2FnZV9kZWx0YQpkYXRhOiB7InR5cGUiOiJtZXNzYWdlX2RlbHRhIiwiZGVsdGEiOnsic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTI0MSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjozNDksImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxMzcwNSwib3V0cHV0X3Rva2VucyI6MzA3fX0KCmV2ZW50OiBtZXNzYWdlX3N0b3AKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdG9wIiAgICAgICAgICAgfQoK",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0006-1777974595356-unknown-host-POST-_v1_messages-97aea00c.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

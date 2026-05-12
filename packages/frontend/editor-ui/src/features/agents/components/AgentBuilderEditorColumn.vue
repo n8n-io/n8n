@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -14,7 +15,7 @@ import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
-defineProps<{
+const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
 	mainTabOptions: Array<{ label: string; value: AgentBuilderMainTab }>;
 	localConfig: AgentJsonConfig | null;
@@ -24,8 +25,11 @@ defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	isBuildChatStreaming: boolean;
+	canEditAgent: boolean;
 	executionsDescription: string;
 }>();
+
+const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -57,7 +61,7 @@ const i18n = useI18n();
 					<AgentIdentityHeader
 						v-if="activeMainTab === 'agent'"
 						:config="localConfig"
-						:disabled="isBuildChatStreaming"
+						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
 					<AgentPanelHeader
@@ -97,7 +101,7 @@ const i18n = useI18n();
 							:custom-tools="agent?.tools ?? {}"
 							:skills="appliedSkills"
 							:connected-triggers="connectedTriggers"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.publishedVersion)"
@@ -116,7 +120,7 @@ const i18n = useI18n();
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentInfoPanel
 							:config="localConfig"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>
@@ -125,7 +129,7 @@ const i18n = useI18n();
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentMemoryPanel
 							:config="localConfig"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>
@@ -134,7 +138,7 @@ const i18n = useI18n();
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentAdvancedPanel
 							:config="localConfig"
-							:disabled="isBuildChatStreaming"
+							:disabled="childrenDisabled"
 							collapsible
 							@update:config="emit('update:config', $event)"
 						/>
@@ -149,7 +153,7 @@ const i18n = useI18n();
 				<div v-else-if="activeMainTab === 'raw'" :class="$style.rawPanel">
 					<AgentJsonEditor
 						:value="localConfig"
-						:read-only="isBuildChatStreaming"
+						:read-only="childrenDisabled"
 						copy-button-test-id="agent-config-json-copy"
 						@update:value="emit('update:config', $event)"
 					/>
@@ -218,6 +222,7 @@ const i18n = useI18n();
 	flex: 1;
 	min-height: 0;
 	width: 100%;
+	padding: var(--spacing--lg);
 }
 
 .agentCards {

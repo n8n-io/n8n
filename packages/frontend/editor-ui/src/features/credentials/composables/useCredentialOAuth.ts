@@ -2,7 +2,13 @@ import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
-import { createResultError, createResultOk, type GenericValue, type Result } from 'n8n-workflow';
+import {
+	createResultError,
+	createResultOk,
+	type GenericValue,
+	type ICredentialType,
+	type Result,
+} from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -84,14 +90,11 @@ export function useCredentialOAuth() {
 		}
 
 		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
-		const visibleProperties = credentialType.properties.filter(
-			(prop) =>
-				prop.type !== 'hidden' &&
-				prop.type !== 'notice' &&
-				!overwrittenProperties.includes(prop.name),
-		);
+		const nonOverwrittenConfigurableProperties = getManuallyConfigurableProperties(
+			credentialType,
+		).filter((prop) => !overwrittenProperties.includes(prop.name));
 
-		if (visibleProperties.length === 0) {
+		if (nonOverwrittenConfigurableProperties.length === 0) {
 			return true;
 		}
 
@@ -99,9 +102,19 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
-		return visibleProperties.every(
+		return nonOverwrittenConfigurableProperties.every(
 			(prop) => prop.required !== true || (prop.type !== 'string' && prop.type !== 'number'),
 		);
+	}
+
+	function getManuallyConfigurableProperties(credentialType: ICredentialType) {
+		return credentialType.properties.filter(
+			(prop) => prop.type !== 'hidden' && prop.type !== 'notice',
+		);
+	}
+
+	function hasManualCredentialInputFields(credentialType: ICredentialType): boolean {
+		return getManuallyConfigurableProperties(credentialType).length > 0;
 	}
 
 	async function getOAuthAuthorizationUrl(
@@ -308,6 +321,7 @@ export function useCredentialOAuth() {
 		isOAuthCredentialType,
 		isGoogleOAuthType,
 		canOAuthCredentialQuickConnect,
+		hasManualCredentialInputFields,
 		authorize,
 		createAndAuthorize,
 		cancelAuthorize,

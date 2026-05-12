@@ -414,22 +414,6 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.toolCallConcurrency).toBe(5);
 	});
 
-	it('sets requireToolApproval', async () => {
-		const config = makeConfig({ config: { requireToolApproval: true } });
-
-		const agent = await buildFromJson(
-			config,
-			{},
-			{
-				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: makeMockMemoryFactory(),
-			},
-		);
-
-		expect(agent.snapshot.requireToolApproval).toBe(true);
-	});
-
 	it('configures memory when enabled', async () => {
 		const mockMemory = {
 			getThread: jest.fn(),
@@ -471,10 +455,17 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Current goal/task');
 		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Key active items');
 		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Resolved or superseded');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('thread-scoped');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('current-state snapshot');
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
-			'primary, secondary, active, resolved, and superseded',
+			'only to this same session/thread',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('different session');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('new thread');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('cross-thread profile');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
+			'Treat working memory as internal context',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
+			'update_working_memory',
 		);
 	});
 

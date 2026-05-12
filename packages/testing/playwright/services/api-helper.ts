@@ -30,6 +30,11 @@ export interface LoginResponseData {
 	[key: string]: unknown;
 }
 
+export interface InstanceAiBackgroundTimeoutSimulation {
+	threadId: string;
+	timeoutAt: number;
+}
+
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
 export type TestState = 'fresh' | 'reset' | 'signin-only';
 
@@ -299,6 +304,34 @@ export class ApiHelpers {
 
 		const body = (await response.json()) as { data?: { events?: unknown[] } };
 		return body.data?.events ?? [];
+	}
+
+	async startInstanceAiBackgroundTimeoutSimulation(
+		userId: string,
+		threadId?: string,
+	): Promise<InstanceAiBackgroundTimeoutSimulation> {
+		const response = await this.request.post('/rest/instance-ai/test/background-timeout/start', {
+			data: { userId, ...(threadId ? { threadId } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/background-timeout/start failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiBackgroundTimeoutSimulation };
+		return body.data;
+	}
+
+	async runInstanceAiLivenessSweep(now?: number): Promise<void> {
+		const response = await this.request.post('/rest/instance-ai/test/liveness-sweep', {
+			data: { ...(now !== undefined ? { now } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/liveness-sweep failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
