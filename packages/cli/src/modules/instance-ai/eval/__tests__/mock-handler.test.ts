@@ -75,7 +75,7 @@ jest.mock('@n8n/di', () => ({
 
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { createLlmMockHandler } from '../mock-handler';
+import { buildDateAnchors, createLlmMockHandler } from '../mock-handler';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -314,14 +314,20 @@ describe('prompt construction', () => {
 		expect(prompt).toContain('channel=#general');
 	});
 
-	it('should include current date/time in prompt', async () => {
+	it('should include date anchors as the last section so they sit below API docs', async () => {
 		llmSubmits({ type: 'json', body: {} });
 		const handler = createLlmMockHandler();
 
 		await handler(baseRequest, baseNode);
 
 		const prompt = mockGenerate.mock.calls[0][0];
-		expect(prompt).toContain('Current date/time:');
+		expect(prompt).toContain('## Date anchors');
+		expect(prompt).toMatch(/- today: \d{4}-\d{2}-\d{2}/);
+		expect(prompt).toMatch(/- yesterday: \d{4}-\d{2}-\d{2}/);
+		expect(prompt).toMatch(/- 14 days ago: \d{4}-\d{2}-\d{2}/);
+		expect(prompt.lastIndexOf('## Date anchors')).toBeGreaterThan(
+			prompt.lastIndexOf('## API documentation'),
+		);
 	});
 
 	it('should add GraphQL format guidance for /graphql endpoints', async () => {
@@ -446,6 +452,34 @@ describe('endpoint extraction (via prompt)', () => {
 
 		const prompt = mockGenerate.mock.calls[0][0];
 		expect(prompt).toContain('GET not-a-url');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildDateAnchors — date math used to seed the user prompt
+// ---------------------------------------------------------------------------
+
+describe('buildDateAnchors', () => {
+	it('renders today plus the standard set of relative anchors', () => {
+		const fixed = new Date('2026-05-12T14:30:00.000Z');
+		const block = buildDateAnchors(fixed);
+
+		expect(block).toContain('- today: 2026-05-12');
+		expect(block).toContain('full timestamp 2026-05-12T14:30:00.000Z');
+		expect(block).toContain('- yesterday: 2026-05-11');
+		expect(block).toContain('- 7 days ago: 2026-05-05');
+		expect(block).toContain('- 14 days ago: 2026-04-28');
+		expect(block).toContain('- 30 days ago: 2026-04-12');
+		expect(block).toContain('- 1 day from now: 2026-05-13');
+		expect(block).toContain('- 7 days from now: 2026-05-19');
+	});
+
+	it('uses UTC for date math (avoids local-timezone drift around midnight)', () => {
+		// 23:59 UTC on the 12th — local time in many zones would tip to the 13th.
+		const fixed = new Date('2026-05-12T23:59:00.000Z');
+		const block = buildDateAnchors(fixed);
+		expect(block).toContain('- today: 2026-05-12');
+		expect(block).toContain('- yesterday: 2026-05-11');
 	});
 });
 
