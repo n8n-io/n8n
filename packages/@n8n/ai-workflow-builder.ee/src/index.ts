@@ -21,6 +21,8 @@ export {
 	searchCodeBuilderNodes,
 	type CodeBuilderSearchToolOptions,
 	createCodeBuilderGetTool,
+	getNodeTypes,
+	type NodeRequest,
 	createGetSuggestedNodesTool,
 	stripImportStatements,
 	SDK_IMPORT_STATEMENT,
