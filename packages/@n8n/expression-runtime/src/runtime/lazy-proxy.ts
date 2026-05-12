@@ -217,11 +217,16 @@ export function createDeepLazyProxy(
 			return undefined;
 		},
 		get(targetObj: any, prop: string | symbol): unknown {
-			// Handle Symbol properties - return undefined
-			// Symbols like Symbol.toStringTag are accessed internally
-			// We can't transfer Symbols via isolated-vm
+			// Symbol-keyed access falls through to the proxy target so that
+			// well-known symbols on the prototype chain are reachable. For array
+			// proxies this exposes `Array.prototype[Symbol.iterator]` etc., which
+			// `[...arr]`, `for…of`, and destructuring need. For object proxies the
+			// `{}` target has no own symbol-keyed entries; reads return undefined.
+			// Symbols themselves aren't transferred across the isolate boundary —
+			// only the values yielded by iteration, which already pay the proxy's
+			// indexed `[[Get]]` (primitives or sub-proxies).
 			if (typeof prop === 'symbol') {
-				return undefined;
+				return targetObj[prop];
 			}
 
 			// Handle common Object.prototype methods within isolate
@@ -282,7 +287,9 @@ export function createDeepLazyProxy(
 			// Implement 'in' operator support
 			// Example: '$json' in data
 
-			if (typeof prop === 'symbol') return false;
+			// Mirror the get trap: symbol-keyed lookups defer to the target so
+			// `Symbol.iterator in arr` reflects the prototype chain.
+			if (typeof prop === 'symbol') return prop in targetObj;
 
 			if (isArray) {
 				if (prop === 'length') return true;

@@ -45,4 +45,14 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 			evaluate('={{ Object.getOwnPropertyDescriptor($json.arr, "0") }}', { arr: [10, 20, 30] }),
 		).toBeUndefined();
 	});
+
+	it('spread syntax materialises the array via Symbol.iterator', () => {
+		expect(evaluate('={{ [...$json.arr] }}', { arr: [10, 20, 30] })).toEqual([10, 20, 30]);
+	});
+
+	it('for…of iterates the array elements', () => {
+		const expr =
+			'={{ (() => { const out = []; for (const x of $json.arr) out.push(x); return out; })() }}';
+		expect(evaluate(expr, { arr: [10, 20, 30] })).toEqual([10, 20, 30]);
+	});
 });
