@@ -13,24 +13,25 @@ export async function searchModels(
 	const connection = await pool.getConnection();
 
 	try {
-		const result = await connection.execute<MiningModelRow>(
-			'select model_name from user_mining_models',
-		);
+		const normalizedFilter = filter.trim().toUpperCase();
+		const sql = `
+			SELECT model_name
+			FROM user_mining_models
+			${normalizedFilter ? 'WHERE INSTR(UPPER(model_name), :modelNameFilter) > 0' : ''}
+			ORDER BY model_name
+		`;
+		const binds = normalizedFilter ? { modelNameFilter: normalizedFilter } : {};
+
+		const result = await connection.execute<MiningModelRow>(sql, binds);
 
 		const rows = (result.rows ?? []).filter(
 			(row): row is MiningModelRow => Array.isArray(row) && typeof row[0] === 'string',
 		);
 
-		const normalizedFilter = filter.trim().toLowerCase();
-
-		const models = rows
-			.filter(([modelName]) =>
-				normalizedFilter ? modelName.toLowerCase().includes(normalizedFilter) : true,
-			)
-			.map(([modelName]) => ({
-				name: modelName,
-				value: modelName,
-			}));
+		const models = rows.map(([modelName]) => ({
+			name: modelName,
+			value: modelName,
+		}));
 
 		return { results: models };
 	} finally {

@@ -10,6 +10,8 @@ const mockConfigureOracleDB = vi.mocked(configureOracleDB);
 
 import { searchModels } from './listModels';
 
+const normalizeSql = (sql: string) => sql.replace(/\s+/g, ' ').trim();
+
 describe('EmbeddingsOracleDB listModels', () => {
 	const connection = {
 		execute: jest.fn(),
@@ -46,13 +48,33 @@ describe('EmbeddingsOracleDB listModels', () => {
 
 		expect(mockConfigureOracleDB).toHaveBeenCalledWith({ user: 'user', password: 'pw' });
 		expect(pool.getConnection).toHaveBeenCalledTimes(1);
-		expect(connection.execute).toHaveBeenCalledWith('select model_name from user_mining_models');
+		const [sql, binds] = connection.execute.mock.calls[0] as [string, Record<string, string>];
+		expect(normalizeSql(sql)).toBe('SELECT model_name FROM user_mining_models ORDER BY model_name');
+		expect(binds).toEqual({});
 		expect(connection.close).toHaveBeenCalledTimes(1);
 		expect(result).toEqual({
 			results: [
 				{ name: 'MODEL_A', value: 'MODEL_A' },
 				{ name: 'MODEL_B', value: 'MODEL_B' },
 			],
+		});
+	});
+
+	it('filters models in the query using bind params', async () => {
+		connection.execute.mockResolvedValueOnce({
+			rows: [['MODEL_A']],
+		});
+
+		const result = await searchModels.call(context, String.raw`model_%\a`);
+
+		const [sql, binds] = connection.execute.mock.calls[0] as [string, Record<string, string>];
+		expect(normalizeSql(sql)).toBe(
+			'SELECT model_name FROM user_mining_models WHERE INSTR(UPPER(model_name), :modelNameFilter) > 0 ORDER BY model_name',
+		);
+		expect(binds).toEqual({ modelNameFilter: String.raw`MODEL_%\A` });
+		expect(connection.close).toHaveBeenCalledTimes(1);
+		expect(result).toEqual({
+			results: [{ name: 'MODEL_A', value: 'MODEL_A' }],
 		});
 	});
 
