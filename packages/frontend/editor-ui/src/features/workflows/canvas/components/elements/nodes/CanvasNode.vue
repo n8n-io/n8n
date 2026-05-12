@@ -22,6 +22,7 @@ import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '../handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/app/constants';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
@@ -79,11 +80,18 @@ const contextMenu = useContextMenu();
 
 const { connectingHandle, isExperimentalNdvActive } = useCanvas();
 
+const workflowDocumentStore = injectWorkflowDocumentStore();
+
 /*
   Toolbar slot classes
 */
 const nodeClasses = ref<string[]>([]);
-const inputs = computed(() => props.data.inputs);
+// Atomic per-field render data lookup. `renderData` is stable for a node's
+// lifetime (the underlying Map entry is set once on add, deleted on remove),
+// so the dependent computeds below only re-run when their specific Ref's
+// `.value` actually changes — not on unrelated workflow churn.
+const renderData = computed(() => workflowDocumentStore?.value?.render.nodes.get(props.id));
+const inputs = computed(() => renderData.value?.inputs.value ?? []);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
 const {

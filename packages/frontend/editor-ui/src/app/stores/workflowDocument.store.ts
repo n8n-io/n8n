@@ -29,6 +29,7 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
+import { useWorkflowDocumentRenderData } from './workflowDocument/useWorkflowDocumentRenderData';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -78,6 +79,7 @@ type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
+type RenderDataReturn = ReturnType<typeof useWorkflowDocumentRenderData>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -103,6 +105,15 @@ void (0 as unknown as [
 	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
 	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
 	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
+	AssertNoOverlap<RenderDataReturn, NodesReturn>,
+	AssertNoOverlap<RenderDataReturn, ConnectionsReturn>,
+	AssertNoOverlap<RenderDataReturn, GraphReturn>,
+	AssertNoOverlap<RenderDataReturn, ExpressionReturn>,
+	AssertNoOverlap<RenderDataReturn, MetaReturn>,
+	AssertNoOverlap<RenderDataReturn, PinDataReturn>,
+	AssertNoOverlap<RenderDataReturn, SettingsReturn>,
+	AssertNoOverlap<RenderDataReturn, NodeMetadataReturn>,
+	AssertNoOverlap<RenderDataReturn, NodesIssuesReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -187,6 +198,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+		});
+		const workflowDocumentRenderData = useWorkflowDocumentRenderData({
+			allNodes: workflowDocumentNodes.allNodes,
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
 		});
 
 		// --- Cross-cut orchestration ---
@@ -394,6 +409,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
+			...workflowDocumentRenderData,
 			removeAllNodes,
 			hydrate,
 			reset,

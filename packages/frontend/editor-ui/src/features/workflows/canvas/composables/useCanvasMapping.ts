@@ -201,6 +201,14 @@ export function useCanvasMapping({
 		}, {});
 	});
 
+	// Computed locally from the passed-in deps (rather than delegating to
+	// `workflowDocumentStore.render.nodes`) because this composable is also
+	// driven by callers that pass workflowObject/nodes directly, decoupled
+	// from the document store (e.g. workflow-diff views and the test suite).
+	// The `render.nodes` registry is the per-field-atomic version consumed by
+	// CanvasNode.vue directly. Once the remaining consumers of this aggregate
+	// (label sizing, getConnectionData, useCanvasLayout) migrate to the
+	// per-node store API, this local computation can be removed.
 	const nodeInputsById = computed(() =>
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
 			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
