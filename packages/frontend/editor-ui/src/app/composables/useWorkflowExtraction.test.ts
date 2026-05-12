@@ -41,8 +41,7 @@ vi.mock('@/app/stores/workflows.store', () => ({
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
-	createWorkflowDocumentId: vi.fn().mockReturnValue('parent-workflow-id@latest'),
+	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockWorkflowDocumentStore }),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
