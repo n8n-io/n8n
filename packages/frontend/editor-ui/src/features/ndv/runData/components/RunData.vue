@@ -14,7 +14,12 @@ import type {
 	NodeHint,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	isTerminalExecutionStatus,
+	parseErrorMetadata,
+	NodeConnectionTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type { INodeUi, IRunDataDisplayMode, ITab } from '@/Interface';
@@ -53,7 +58,8 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { storeToRefs } from 'pinia';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -65,7 +71,6 @@ import { searchInObject } from '@/app/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/app/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
-import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
@@ -227,7 +232,7 @@ const dataContainerRef = ref<HTMLDivElement>();
 
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
@@ -434,6 +439,10 @@ const dataCount = computed(() =>
 
 const isTrimmedManualExecutionDataItem = computed(() =>
 	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
+);
+
+const isExecutionInTerminalState = computed(() =>
+	isTerminalExecutionStatus(workflowsStore.getWorkflowExecution?.status ?? undefined),
 );
 
 const isExecutionRedacted = computed(
@@ -1749,8 +1758,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="isTrimmedManualExecutionDataItem"
+				v-else-if="isTrimmedManualExecutionDataItem && !isExecutionInTerminalState"
 				:class="[$style.center, $style.executingMessage]"
+				data-test-id="ndv-trimmed-loading"
 			>
 				<div v-if="!props.compact" :class="$style.spinner">
 					<N8nSpinner type="ring" />
@@ -1758,6 +1768,26 @@ defineExpose({ enterEditMode });
 				<N8nText>
 					{{ i18n.baseText('runData.trimmedData.loading') }}
 				</N8nText>
+			</div>
+
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem && isExecutionInTerminalState"
+				:class="[$style.center, $style.executingMessage]"
+				data-test-id="ndv-trimmed-corrupted"
+			>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.corrupted') }}
+				</N8nText>
+				<N8nButton
+					v-if="pinnedData.hasData.value"
+					class="mt-s"
+					type="secondary"
+					size="small"
+					data-test-id="ndv-trimmed-corrupted-unpin"
+					@click="onTogglePinData({ source: 'context-menu' })"
+				>
+					{{ i18n.baseText('runData.trimmedData.unpin') }}
+				</N8nButton>
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">

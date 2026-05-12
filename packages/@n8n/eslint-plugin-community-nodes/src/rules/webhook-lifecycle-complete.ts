@@ -56,6 +56,8 @@ export const WebhookLifecycleCompleteRule = createRule({
 		messages: {
 			missingWebhookMethods:
 				'Webhook trigger node is missing the `webhookMethods` property. Implement `checkExists`, `create`, and `delete` to register, verify, and clean up the webhook on the third-party service.',
+			emptyWebhookMethods:
+				'Webhook trigger node has an empty `webhookMethods` object. Define at least one lifecycle group with `checkExists`, `create`, and `delete` methods.',
 			missingLifecycleMethod:
 				'Webhook trigger lifecycle is incomplete. `webhookMethods.{{group}}` is missing: {{missing}}. All of `checkExists`, `create`, and `delete` must be implemented.',
 		},
@@ -88,6 +90,14 @@ export const WebhookLifecycleCompleteRule = createRule({
 				}
 
 				if (webhookMethodsProperty.value.type !== AST_NODE_TYPES.ObjectExpression) {
+					return;
+				}
+
+				if (webhookMethodsProperty.value.properties.length === 0) {
+					context.report({
+						node: webhookMethodsProperty.key,
+						messageId: 'emptyWebhookMethods',
+					});
 					return;
 				}
 

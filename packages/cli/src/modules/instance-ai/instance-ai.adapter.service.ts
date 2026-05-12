@@ -85,6 +85,7 @@ import {
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	type ExecutionError,
 	NodeHelpers,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -105,6 +106,7 @@ import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
@@ -113,6 +115,7 @@ import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -121,6 +124,40 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
+
+/**
+ * Fill in defaults for properties whose visibility depends on sibling values
+ * (e.g. OpenAI v2's per-resource `operation`). A naive single-pass loop picks
+ * the first variant of a duplicated property name, which leaves dependent
+ * properties (like `modelId` for `text`/`response`) out of view of the issue
+ * and credential checkers. `getNodeParameters` walks the dependency graph and
+ * fills only displayed properties.
+ */
+function resolveDisplayedDefaults(
+	nodeProperties: INodeProperties[],
+	parameters: Record<string, unknown>,
+	nodeType: string,
+	typeVersion: number,
+	desc: INodeTypeDescription,
+): INodeParameters {
+	const stubNode: INode = {
+		id: '',
+		name: '',
+		type: nodeType,
+		typeVersion,
+		parameters: parameters as INodeParameters,
+		position: [0, 0],
+	};
+	const resolved = NodeHelpers.getNodeParameters(
+		nodeProperties,
+		parameters as INodeParameters,
+		true,
+		false,
+		stubNode,
+		desc,
+	);
+	return resolved ?? (parameters as INodeParameters);
+}
 
 @Service()
 export class InstanceAiAdapterService {
@@ -170,6 +207,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -187,6 +225,7 @@ export class InstanceAiAdapterService {
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -212,6 +251,7 @@ export class InstanceAiAdapterService {
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
+			nodeTypesProvider: this.nodeTypes,
 		};
 	}
 
@@ -284,12 +324,14 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				const filter = {
+					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(options?.query ? { query: options.query } : {}),
+				};
+
 				const { workflows } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
-					filter: {
-						isArchived: false,
-						...(options?.query ? { query: options.query } : {}),
-					},
+					filter,
 				});
 
 				return workflows
@@ -300,6 +342,7 @@ export class InstanceAiAdapterService {
 							name: wf.name,
 							versionId: wf.versionId,
 							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
 							createdAt: wf.createdAt.toISOString(),
 							updatedAt: wf.updatedAt.toISOString(),
 						}),
@@ -320,12 +363,18 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.archive(user, workflowId, { skipArchived: true });
+				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
-			async delete(workflowId: string) {
+			async unarchive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.delete(user, workflowId);
+				const result = await workflowService.unarchive(user, workflowId);
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
 			async clearAiTemporary(workflowId: string) {
@@ -375,6 +424,7 @@ export class InstanceAiAdapterService {
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
 						thread_id: threadId,
+						workflow_id: workflowId,
 						executed_by: 'ai',
 					});
 				}
@@ -734,11 +784,24 @@ export class InstanceAiAdapterService {
 					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
 					: findTriggerNode(nodes);
 
+				// Force-save AI-initiated executions so that follow-up
+				// `executions(list/get/debug)` calls can read the result, regardless of
+				// instance-wide or per-workflow save settings. Manual mode is gated by
+				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
+				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode
 						? getExecutionModeForTrigger(triggerNode)
 						: ('manual' as WorkflowExecuteMode),
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+						},
+					},
 					userId: user.id,
 					pushRef,
 				};
@@ -788,6 +851,19 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+						status,
+					});
+				};
+
 				const executionId = await workflowRunner.run(runData);
 
 				// Wait for completion with timeout protection
@@ -819,30 +895,25 @@ export class InstanceAiAdapterService {
 							} catch {
 								// Execution may have completed between timeout and cancel
 							}
-							return {
+							const result = {
 								executionId,
 								status: 'error',
 								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 							} satisfies ExecutionResult;
+							trackBuilderExecutedWorkflow(result.status);
+							return result;
 						}
 						throw error;
 					}
 				}
 
-				if (threadId) {
-					telemetry.track('Builder executed workflow', {
-						thread_id: threadId,
-						executed_by: 'ai',
-						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
-						exec_type: runData.executionMode,
-					});
-				}
-
-				return await extractExecutionResult(
+				const result = await extractExecutionResult(
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
 				);
+				trackBuilderExecutedWorkflow(result.status);
+				return result;
 			},
 
 			async getStatus(executionId: string) {
@@ -926,6 +997,30 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				// Setup flows scope to a workflow or project so the candidates match what
+				// the save path will accept. `preventTampering` (workflow.service.ee.ts)
+				// uses `getCredentialsAUserCanUseInAWorkflow` for the same intersection,
+				// so the editor's credential picker and the AI's setup card stay aligned.
+				if (options?.workflowId || options?.projectId) {
+					const scoped = options.workflowId
+						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								workflowId: options.workflowId,
+							})
+						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								projectId: options.projectId!,
+							});
+
+					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;
+
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+						}),
+					);
+				}
+
 				const credentials = await credentialsService.getMany(user, {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,
@@ -1434,6 +1529,7 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
+		const ssrf = this.ssrfProtectionService;
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1492,6 +1588,7 @@ export class InstanceAiAdapterService {
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
 					authorizeUrl: options?.authorizeUrl,
+					ssrf,
 				});
 
 				// Attempt summarization (truncation fallback — no model injection yet)
@@ -1605,6 +1702,17 @@ export class InstanceAiAdapterService {
 			return nodes.find((n) => n.name === nodeType);
 		};
 
+		const normalizeNodeVersion = (version?: string): number | undefined => {
+			if (!version) return undefined;
+			const normalized = version.replace(/^v/i, '');
+			if (!/^\d+$/.test(normalized)) return Number(normalized);
+			// Supports v3 and compact decimals like v34 -> 3.4; assumes minor version < 10.
+			if (normalized.length === 2) {
+				return Number(`${normalized[0]}.${normalized[1]}`);
+			}
+			return Number(normalized);
+		};
+
 		return {
 			async listAvailable(options) {
 				const nodes = await getNodes();
@@ -1655,8 +1763,8 @@ export class InstanceAiAdapterService {
 					}
 					if (n.builderHint) {
 						result.builderHint = {};
-						if (n.builderHint.message) {
-							result.builderHint.message = n.builderHint.message;
+						if (n.builderHint.searchHint) {
+							result.builderHint.message = n.builderHint.searchHint;
 						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
@@ -1672,6 +1780,21 @@ export class InstanceAiAdapterService {
 								};
 							}
 							result.builderHint.inputs = inputs;
+						}
+						if (n.builderHint.outputs) {
+							const outputs: Record<
+								string,
+								{ required?: boolean; displayOptions?: Record<string, unknown> }
+							> = {};
+							for (const [key, config] of Object.entries(n.builderHint.outputs)) {
+								outputs[key] = {
+									...(config.required !== undefined ? { required: config.required } : {}),
+									...(config.displayOptions
+										? { displayOptions: config.displayOptions as Record<string, unknown> }
+										: {}),
+								};
+							}
+							result.builderHint.outputs = outputs;
 						}
 					}
 					return result;
@@ -1744,7 +1867,19 @@ export class InstanceAiAdapterService {
 					return { content: '', error: result.error };
 				}
 
-				return { content: result.content, version: result.version };
+				const nodes = await getNodes();
+				const nodeDesc = findNodeByVersion(
+					nodes,
+					nodeType,
+					normalizeNodeVersion(result.version ?? options?.version),
+				);
+				const builderHint = nodeDesc?.builderHint?.searchHint;
+
+				return {
+					content: result.content,
+					version: result.version,
+					...(builderHint ? { builderHint } : {}),
+				};
 			},
 
 			listDiscriminators: async (nodeType) => {
@@ -1757,21 +1892,20 @@ export class InstanceAiAdapterService {
 				if (!desc) return {};
 
 				const nodeProperties = desc.properties;
-
-				// Fill in default values for parameters not explicitly set
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of nodeProperties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					nodeProperties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
 
 				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
 
@@ -1803,7 +1937,7 @@ export class InstanceAiAdapterService {
 						if (
 							prop.displayOptions &&
 							!NodeHelpers.displayParameter(
-								paramsWithDefaults as INodeParameters,
+								paramsWithDefaults,
 								prop,
 								minimalNode,
 								desc as unknown as INodeTypeDescription,
@@ -1827,31 +1961,32 @@ export class InstanceAiAdapterService {
 
 				const credentialTypes = new Set<string>();
 
-				// 1. Displayable credentials from node type description
-				const nodeCredentials = desc.credentials ?? [];
-				// Fill defaults before evaluating display options
-				const paramsWithDefaultsForCreds: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaultsForCreds) && prop.default !== undefined) {
-						paramsWithDefaultsForCreds[prop.name] = prop.default;
-					}
-				}
-				const credCheckNode: INode = {
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					desc.properties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
+				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaultsForCreds as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
+
+				// 1. Displayable credentials from node type description
+				const nodeCredentials = desc.credentials ?? [];
 				for (const cred of nodeCredentials) {
 					// Check if credential is displayable given current parameters
 					if (cred.displayOptions) {
 						if (
 							!NodeHelpers.displayParameter(
-								paramsWithDefaultsForCreds as INodeParameters,
+								paramsWithDefaults,
 								cred,
-								credCheckNode,
+								minimalNode,
 								desc as unknown as INodeTypeDescription,
 							)
 						) {
@@ -1862,20 +1997,6 @@ export class InstanceAiAdapterService {
 				}
 
 				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
-				const minimalNode: INode = {
-					id: '',
-					name: '',
-					type: nodeType,
-					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
-					position: [0, 0],
-				};
 				const issues = NodeHelpers.getNodeParametersIssues(
 					desc.properties,
 					minimalNode,
@@ -2304,7 +2425,7 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.message` of the property that references a given
+ * Find the `builderHint.propertyHint` of the property that references a given
  * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
  * Returns undefined if no matching property is found.
  *
@@ -2347,8 +2468,8 @@ function findBuilderHintForMethod(
 				continue;
 			}
 			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.message) {
-				return item.builderHint.message;
+			if (referencesMethod(item) && item.builderHint?.propertyHint) {
+				return item.builderHint.propertyHint;
 			}
 			const nested = searchProps(item.options);
 			if (nested) return nested;
@@ -2450,7 +2571,8 @@ export async function extractExecutionResult(
 	}
 
 	// Extract error if present
-	const errorMessage = execution.data?.resultData?.error?.message;
+	const error = execution.data?.resultData?.error;
+	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
 
 	return {
 		executionId,
@@ -2463,6 +2585,48 @@ export async function extractExecutionResult(
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
 	};
+}
+
+/**
+ * NodeApiError.messages can hold large API response bodies; cap formatted
+ * errors so a single failure doesn't blow up the agent's context window.
+ */
+const MAX_ERROR_CHARS = 4_000;
+
+/**
+ * `.description` and `.messages[]` carry upstream API response content, so
+ * they're gated behind the AI privacy setting. `.message` stays — it's
+ * sanitized (STATUS_CODE_MESSAGES) and lets the LLM recognize the failure.
+ *
+ * Accesses fields structurally: persisted errors lose their prototype on
+ * `unflattenData`, so `instanceof Error` is false in production.
+ */
+export function formatExecutionError(
+	error: ExecutionError,
+	includeUpstreamDetails: boolean,
+): string {
+	const parts: string[] = [];
+	if (error.message) parts.push(error.message);
+
+	if (includeUpstreamDetails) {
+		if (error.description && error.description !== error.message) {
+			parts.push(error.description);
+		}
+		if ('messages' in error && error.messages.length > 0) {
+			parts.push(`Details: ${error.messages.join(' | ')}`);
+		}
+	} else {
+		const hasDescription = !!error.description && error.description !== error.message;
+		const hasMessages = 'messages' in error && error.messages.length > 0;
+		if (hasDescription || hasMessages) {
+			parts.push(
+				'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)',
+			);
+		}
+	}
+
+	const combined = parts.join(' — ') || 'Unknown error';
+	return combined.length > MAX_ERROR_CHARS ? `${combined.slice(0, MAX_ERROR_CHARS)}…` : combined;
 }
 
 /**
@@ -2771,13 +2935,12 @@ export async function extractExecutionDebugInfo(
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (!lastRun) continue;
 
-			const hasError = lastRun.error !== undefined;
 			const nodeType = nodeTypeMap.get(nodeName) ?? 'unknown';
 
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: hasError ? 'error' : 'success',
+				status: lastRun.error !== undefined ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:
@@ -2787,14 +2950,11 @@ export async function extractExecutionDebugInfo(
 			});
 
 			// Capture the first failed node with its error and input data
-			if (hasError && !failedNode) {
+			if (lastRun.error !== undefined && !failedNode) {
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
-					error:
-						lastRun.error instanceof Error
-							? lastRun.error.message
-							: String(lastRun.error ?? 'Unknown error'),
+					error: formatExecutionError(lastRun.error, includeOutputData),
 					inputData: includeOutputData
 						? (() => {
 								const inputItems = lastRun.data?.main
@@ -2874,6 +3034,7 @@ function toWorkflowDetail(
 		name: workflow.name,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId ?? null,
+		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(

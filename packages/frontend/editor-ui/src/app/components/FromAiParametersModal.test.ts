@@ -9,7 +9,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useRouter } from 'vue-router';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { nextTick } from 'vue';
+import { nextTick, shallowRef } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 
@@ -18,6 +18,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		getNodeByName: vi.fn(),
 		getChildNodes: vi.fn().mockReturnValue([]),
 		allNodes: [] as Array<{ id: string; name: string; type: string }>,
+		workflowTriggerNodes: [] as Array<{ id: string; name: string; type: string }>,
 		name: '',
 		settings: {},
 		getPinDataSnapshot: () => ({}),
@@ -26,6 +27,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -127,6 +129,7 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
+					workflowId: 'test-workflow',
 					workflowExecutionData: mockRunData,
 				},
 			},

@@ -18,6 +18,8 @@ import type { LogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { HTML_NODE_TYPE } from '@/app/constants';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 describe('LogDetailsPanel', () => {
@@ -65,7 +67,14 @@ describe('LogDetailsPanel', () => {
 				plugins: [
 					createRouter({
 						history: createWebHistory(),
-						routes: [{ path: '/', component: () => h('div') }],
+						routes: [
+							{ path: '/', component: () => h('div') },
+							{
+								name: AGENT_SESSION_DETAIL_VIEW,
+								path: '/projects/:projectId/agents/:agentId/sessions/:threadId',
+								component: () => h('div'),
+							},
+						],
 					}),
 					pinia,
 				],
@@ -196,6 +205,85 @@ describe('LogDetailsPanel', () => {
 				"No fields - item(s) exist, but they're empty",
 			),
 		).toBeInTheDocument();
+	});
+
+	describe('messageAnAgent View Session button', () => {
+		const messageAgentNode = createTestNode({
+			name: 'Message an Agent',
+			type: MESSAGE_AN_AGENT_NODE_TYPE,
+		});
+		const messageAgentRunData = createTestTaskData({
+			executionStatus: 'success',
+			data: {
+				main: [
+					[
+						{
+							json: {
+								response: 'hi',
+								session: {
+									agentId: 'agent-1',
+									projectId: 'project-1',
+									sessionId: 'thread-1',
+								},
+							},
+						},
+					],
+				],
+			},
+		});
+
+		const baseProps = {
+			isOpen: true,
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
+		};
+
+		it('renders a View Session button when run output carries a session block', () => {
+			const rendered = render({
+				...baseProps,
+				logEntry: createLogEntry({
+					node: messageAgentNode,
+					runIndex: 0,
+					runData: messageAgentRunData,
+					execution: createRunExecutionData({
+						resultData: { runData: { 'Message an Agent': [messageAgentRunData] } },
+					}),
+				}),
+			});
+
+			expect(rendered.queryByTestId('log-details-view-agent-session')).toBeInTheDocument();
+		});
+
+		it('does not render the button for nodes that are not messageAnAgent', () => {
+			const rendered = render({
+				...baseProps,
+				logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			});
+
+			expect(rendered.queryByTestId('log-details-view-agent-session')).not.toBeInTheDocument();
+		});
+
+		it('does not render the button when the session block is missing', () => {
+			const noSessionRunData = createTestTaskData({
+				executionStatus: 'success',
+				data: { main: [[{ json: { response: 'hi' } }]] },
+			});
+			const rendered = render({
+				...baseProps,
+				logEntry: createLogEntry({
+					node: messageAgentNode,
+					runIndex: 0,
+					runData: noSessionRunData,
+					execution: createRunExecutionData({
+						resultData: { runData: { 'Message an Agent': [noSessionRunData] } },
+					}),
+				}),
+			});
+
+			expect(rendered.queryByTestId('log-details-view-agent-session')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should render output data in HTML mode for HTML node', async () => {

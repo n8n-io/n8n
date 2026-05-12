@@ -163,12 +163,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async waitForSaveWorkflowCompleted() {
+	/**
+	 * @param options - Configuration options for waiting for save workflow completion.
+	 * @param options.timeout - Timeout in milliseconds. Defaults to 2000ms to account for the 1500ms autosave debounce.
+	 */
+	async waitForSaveWorkflowCompleted({ timeout = 2000 }: { timeout?: number } = {}) {
 		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
 				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
-			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
+			{ timeout },
 		);
 	}
 
@@ -465,7 +469,7 @@ export class CanvasPage extends BasePage {
 
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
+		await this.clickContextMenuAction('duplicate');
 	}
 
 	nodeConnections(): Locator {
@@ -698,8 +702,8 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId(`context-menu-item-${itemId}`);
 	}
 
-	async clickContextMenuAction(actionText: string): Promise<void> {
-		await this.page.getByTestId('context-menu').getByText(actionText).click();
+	async clickContextMenuAction(actionId: string): Promise<void> {
+		await this.getContextMenuItem(actionId).click();
 	}
 
 	async executeNodeFromContextMenu(nodeName: string): Promise<void> {
@@ -815,12 +819,18 @@ export class CanvasPage extends BasePage {
 			closeNDV = false,
 			exactMatch = false,
 			subcategory,
-		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
+			exactSubcategory = false,
+		}: {
+			closeNDV?: boolean;
+			exactMatch?: boolean;
+			subcategory?: string;
+			exactSubcategory?: boolean;
+		} = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
 
 		if (subcategory) {
-			await this.nodeCreator.navigateToSubcategory(subcategory);
+			await this.nodeCreator.navigateToSubcategory(subcategory, { exact: exactSubcategory });
 		}
 
 		if (exactMatch) {
@@ -972,7 +982,7 @@ export class CanvasPage extends BasePage {
 
 	async deleteNodeFromContextMenu(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByTestId('context-menu').getByText('Delete').click();
+		await this.clickContextMenuAction('delete');
 	}
 
 	async hitDeleteAllNodes(): Promise<void> {

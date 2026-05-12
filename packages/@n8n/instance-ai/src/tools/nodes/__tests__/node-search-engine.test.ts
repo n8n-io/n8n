@@ -50,6 +50,12 @@ const agentNode = makeNode({
 			ai_memory: { required: false },
 			ai_tool: { required: false, displayOptions: { show: { hasTools: [true] } } },
 		},
+		extraTypeDefContent: [
+			{
+				content:
+					'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
+			},
+		],
 	},
 });
 
@@ -169,6 +175,21 @@ describe('NodeSearchEngine', () => {
 			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
 			expect(agentResult).toBeDefined();
 			expect(agentResult?.builderHintMessage).toBe('Use an AI Agent for autonomous task execution');
+		});
+
+		it('should NOT surface builderHint.extraTypeDefContent in search results', () => {
+			const results = engine.searchByName('AI Agent');
+			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
+			expect(agentResult).toBeDefined();
+			// Result type has no extraTypeDefContent field; assert it never leaks in
+			// via untyped assignment either.
+			expect(agentResult).not.toHaveProperty('extraTypeDefContent');
+			expect(JSON.stringify(agentResult)).not.toContain('<patterns>');
+			expect(JSON.stringify(agentResult)).not.toContain('basic');
+			// The formatted XML the LLM actually sees must not contain the example.
+			const xml = engine.formatResult(agentResult!);
+			expect(xml).not.toContain('<patterns>');
+			expect(xml).not.toContain('const agent = node');
 		});
 
 		it('should include subnode requirements when present', () => {

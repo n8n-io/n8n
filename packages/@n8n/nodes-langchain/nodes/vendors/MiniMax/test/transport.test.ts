@@ -1,14 +1,14 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, pollVideoTask, getVideoDownloadUrl } from '../transport';
 
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const actual = await import('n8n-workflow');
 	return {
 		...actual,
-		sleep: jest.fn(),
+		sleep: vi.fn(),
 	};
 });
 
@@ -32,7 +32,7 @@ describe('MiniMax Transport', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('apiRequest', () => {

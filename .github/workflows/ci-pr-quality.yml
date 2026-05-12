@@ -1,6 +1,7 @@
 name: 'CI: PR Quality Checks'
 
 on:
+  merge_group:
   pull_request:
     types:
       - opened
@@ -46,11 +47,14 @@ jobs:
     name: Ownership Acknowledgement
     # Checks that the author has acknowledged the ownership of their code
     # by checking the checkbox in the PR summary.
+    # Skipped for bot-authored PRs (Dependabot, Renovate, github-actions, Aikido, etc.).
+    # The required aggregator `required-pr-quality-checks` treats skipped as success.
     if: |
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
-      !contains(github.event.pull_request.title, '(backport to')
+      !contains(github.event.pull_request.title, '(backport to') &&
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -74,12 +78,15 @@ jobs:
   check-pr-size:
     name: PR Size Limit
     # Checks that the PR size doesn't exceed the limit (currently 1000 lines)
-    # Allows for override via '/size-limit-override' comment
+    # Allows for override via '/size-limit-override' comment.
+    # Skipped for bot-authored PRs — dep bumps from Dependabot/Renovate/Aikido
+    # routinely exceed the size limit and shouldn't be gated on it.
     if: |
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
-      !contains(github.event.pull_request.title, '(backport to')
+      !contains(github.event.pull_request.title, '(backport to') &&
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -99,3 +106,76 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/quality/check-pr-size.mjs
+
+  changes:
+    name: Detect Changes
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      janitor: ${{ fromJSON(steps.filter.outputs.results).janitor == true }}
+      code-health: ${{ fromJSON(steps.filter.outputs.results)['code-health'] == true }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Detect changed paths
+        id: filter
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: filter
+          filters: |
+            janitor:
+              packages/testing/playwright/**
+              packages/testing/janitor/**
+            code-health:
+              **/package.json
+              pnpm-workspace.yaml
+              .code-health-baseline.json
+              packages/testing/code-health/**
+
+  check-static-analysis:
+    name: Static Analysis
+    needs: changes
+    if: |
+      github.event_name == 'merge_group' ||
+      needs.changes.outputs.code-health == 'true' ||
+      needs.changes.outputs.janitor == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/code-health --filter=@n8n/playwright-janitor
+
+      - name: Run code-health
+        if: github.event_name == 'merge_group' || needs.changes.outputs.code-health == 'true'
+        run: pnpm --filter=@n8n/code-health check
+
+      - name: Run janitor
+        if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.janitor == 'true') }}
+        run: pnpm --filter=n8n-playwright janitor
+
+  required-pr-quality-checks:
+    name: Required PR Quality Checks
+    needs: [check-ownership-checkbox, check-pr-size, check-static-analysis]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/actions/ci-filter
+          sparse-checkout-cone-mode: false
+      - name: Validate required checks
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: validate
+          job-results: ${{ toJSON(needs) }}
+
