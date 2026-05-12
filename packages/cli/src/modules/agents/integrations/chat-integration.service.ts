@@ -539,7 +539,7 @@ export class ChatIntegrationService {
 	async handleIntegrationChanged(
 		payload: PubSubCommandMap['agent-chat-integration-changed'],
 	): Promise<void> {
-		const { agentId, type, credentialId, action } = payload;
+		const { agentId, type, credentialId, action, settings: integrationSettings } = payload;
 
 		if (action === 'disconnect') {
 			await this.disconnect(agentId, type, credentialId);
@@ -574,8 +574,8 @@ export class ChatIntegrationService {
 				// Telegram setWebhook). We only need local state here — skipping
 				// the hooks also avoids racing the originator into Telegram's 1/sec
 				// rate limit.
-				const options: ConnectOptions = payload.settings
-					? { skipExternalHooks: true, settings: payload.settings }
+				const options: ConnectOptions = integrationSettings
+					? { skipExternalHooks: true, settings: integrationSettings }
 					: { skipExternalHooks: true };
 				await this.connect(agentId, credentialId, type, userId, agent.projectId, options);
 				return;

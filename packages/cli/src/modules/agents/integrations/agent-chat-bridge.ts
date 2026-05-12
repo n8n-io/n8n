@@ -1,5 +1,5 @@
-import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { ActionEvent, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
