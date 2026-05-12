@@ -17,6 +17,7 @@ import DataTableList from './commands/data-table/list';
 import DataTableRows from './commands/data-table/rows';
 import DataTableUpdateRows from './commands/data-table/update-rows';
 import DataTableUpsertRows from './commands/data-table/upsert-rows';
+import ExecRun from './commands/exec/run';
 import ExecutionDelete from './commands/execution/delete';
 import ExecutionGet from './commands/execution/get';
 import ExecutionList from './commands/execution/list';
@@ -24,6 +25,8 @@ import ExecutionRetry from './commands/execution/retry';
 import ExecutionStop from './commands/execution/stop';
 import Login from './commands/login';
 import Logout from './commands/logout';
+import NodeGet from './commands/node/get';
+import NodeSearch from './commands/node/search';
 import ProjectAddMember from './commands/project/add-member';
 import ProjectCreate from './commands/project/create';
 import ProjectDelete from './commands/project/delete';
@@ -77,6 +80,11 @@ export const commands = {
 	'execution:retry': ExecutionRetry,
 	'execution:stop': ExecutionStop,
 	'execution:delete': ExecutionDelete,
+
+	'node:search': NodeSearch,
+	'node:get': NodeGet,
+
+	'exec:run': ExecRun,
 
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,

@@ -20,8 +20,27 @@ export class ApiError extends Error {
 	}
 }
 
+/**
+ * `/rest/` endpoints wrap their JSON response in `{ data: ... }`. Unwrap that
+ * single layer so call-sites see the typed payload directly. If the response
+ * is not wrapped (older endpoints, error shapes), return it as-is.
+ */
+function unwrapRestResponse<T>(response: { data: T } | T): T {
+	if (
+		response !== null &&
+		typeof response === 'object' &&
+		'data' in (response as Record<string, unknown>) &&
+		Object.keys(response as Record<string, unknown>).length === 1
+	) {
+		return (response as { data: T }).data;
+	}
+	return response as T;
+}
+
 export class N8nClient {
 	private readonly baseUrl: string;
+
+	private readonly instanceUrl: string;
 
 	private readonly headers: Headers;
 
@@ -33,6 +52,7 @@ export class N8nClient {
 			url = `${url}/api/v1`;
 		}
 		this.baseUrl = url;
+		this.instanceUrl = url.replace(/\/api\/v1$/, '');
 		this.headers = new Headers({
 			'X-N8N-API-KEY': options.apiKey,
 			'Content-Type': 'application/json',
@@ -47,9 +67,10 @@ export class N8nClient {
 	private async request<T>(
 		method: string,
 		path: string,
-		options: { body?: unknown; query?: Record<string, string> } = {},
+		options: { body?: unknown; query?: Record<string, string>; basePath?: string } = {},
 	): Promise<T> {
-		const url = new URL(`${this.baseUrl}${path}`);
+		const base = options.basePath ?? this.baseUrl;
+		const url = new URL(`${base}${path}`);
 		if (options.query) {
 			for (const [k, v] of Object.entries(options.query)) {
 				if (v !== undefined && v !== '') url.searchParams.set(k, v);
@@ -401,5 +422,66 @@ export class N8nClient {
 			body.additionalOptions = { categories };
 		}
 		return await this.post<Record<string, unknown>>('/audit', body);
+	}
+
+	// ─── REST helpers (Hub endpoints under /rest) ──────────────────
+
+	/**
+	 * Build the base URL for the internal `/rest/...` API.
+	 * The internal API is authenticated by the same `X-N8N-API-KEY` header
+	 * as the public API (handled by `ApiKeyAuthStrategy`).
+	 */
+	private get restBaseUrl(): string {
+		return `${this.instanceUrl}/rest`;
+	}
+
+	async getRest<T>(path: string, query?: Record<string, string>): Promise<T> {
+		// `/rest/` endpoints wrap their response in `{ data: ... }` (vs. `/api/v1/`
+		// which returns the payload directly). Unwrap here so call-sites
+		// downstream see a clean typed shape.
+		const response = await this.request<{ data: T } | T>('GET', path, {
+			query,
+			basePath: this.restBaseUrl,
+		});
+		return unwrapRestResponse<T>(response);
+	}
+
+	async postRest<T>(path: string, body?: unknown): Promise<T> {
+		const response = await this.request<{ data: T } | T>('POST', path, {
+			body,
+			basePath: this.restBaseUrl,
+		});
+		return unwrapRestResponse<T>(response);
+	}
+
+	// ─── Node Catalog (/rest/nodes) ────────────────────────────────
+
+	async searchNodes(q: string, hasCredential?: boolean) {
+		const query: Record<string, string> = { q };
+		if (hasCredential !== undefined) {
+			query.hasCredential = hasCredential ? 'true' : 'false';
+		}
+		return await this.getRest<{
+			results: Array<{ nodeId: string; displayName: string; description: string }>;
+		}>('/nodes/search', query);
+	}
+
+	async getNode(id: string) {
+		// Encode the id segment so `@n8n/...` package prefixes survive in the URL.
+		const encoded = encodeURIComponent(id);
+		return await this.getRest<Record<string, unknown>>(`/nodes/${encoded}`);
+	}
+
+	// ─── Single-node Execution (/rest/executions/node) ─────────────
+
+	async executeNode(body: {
+		nodeType: string;
+		nodeVersion?: number;
+		parameters?: Record<string, unknown>;
+		credentialId?: string;
+		dryRun?: boolean;
+		caller?: { kind: 'mcp' | 'sdk' | 'cli'; name: string; clientId?: string };
+	}) {
+		return await this.postRest<Record<string, unknown>>('/executions/node', body);
 	}
 }

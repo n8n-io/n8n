@@ -44,6 +44,12 @@
       "credential": {
         "description": "Create, update, and manage credentials"
       },
+      "node": {
+        "description": "Search and inspect the node catalog"
+      },
+      "exec": {
+        "description": "Run a single node directly (without authoring a workflow)"
+      },
       "project": {
         "description": "Create and manage projects and team members"
       },
