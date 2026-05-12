@@ -4802,6 +4802,14 @@ describe('useCanvasOperations', () => {
 		);
 
 		it('should remap nodeGroups nodeIds when regenerating IDs', async () => {
+			// This mock is needed for addImportedNodesToWorkflow to work
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			} as unknown as Workflow);
+
 			const oldId1 = 'old-node-id-1';
 			const oldId2 = 'old-node-id-2';
 
