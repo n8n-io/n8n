@@ -126,7 +126,7 @@ onUnmounted(() => {
 	display: flex;
 	height: 100%;
 	width: 100%;
-	min-width: 900px;
+	min-width: 0;
 	overflow: hidden;
 	position: relative;
 	z-index: 0;
