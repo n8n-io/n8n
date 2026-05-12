@@ -1,10 +1,6 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { WorkflowValidationIssue } from '@/Interface';
 import {
 	extractPlaceholderLabels,
@@ -39,12 +35,9 @@ export interface TodosTrackingPayload {
  * used by the AI builder.
  */
 export function useBuilderTodos() {
-	const workflowsStore = useWorkflowsStore();
 	const locale = useI18n();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	/**
 	 * Checks if a node is disabled, either directly or through any ancestor node.
