@@ -461,6 +461,18 @@ export {
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
 
+export {
+	aiInsightsStatusSchema,
+	aiInsightsPayloadSchema,
+	aiInsightsResponseSchema,
+	type AiInsightsStatus,
+	type AiInsightsWinner,
+	type AiInsightsRegression,
+	type AiInsightsSuggestedNext,
+	type AiInsightsPayload,
+	type AiInsightsResponse,
+} from './schemas/eval-insights.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
