@@ -20,6 +20,14 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	}),
 }));
 
+vi.mock('@/features/execution/executions/executions.utils', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/features/execution/executions/executions.utils')>();
+	return { ...actual, openFormPopupWindow: vi.fn() };
+});
+
+import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
+
 describe('nodeExecuteAfter', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -27,6 +35,7 @@ describe('nodeExecuteAfter', () => {
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
+		vi.mocked(openFormPopupWindow).mockClear();
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
@@ -217,5 +226,51 @@ describe('nodeExecuteAfter', () => {
 			],
 		});
 		expect(runData?.['Test Node'][0].data?.invalid_connection).toBeUndefined();
+	});
+
+	it('should open form popup when execution status is waiting and resumeFormUrl is present', async () => {
+		const formUrl = 'http://localhost:5678/form-waiting/exec-1?signature=abc123';
+		const event: NodeExecuteAfter = {
+			type: 'nodeExecuteAfter',
+			data: {
+				executionId: 'exec-1',
+				nodeName: 'Wait',
+				itemCountByConnectionType: {},
+				data: {
+					executionTime: 0,
+					startTime: 1234567890,
+					executionIndex: 0,
+					source: [],
+					executionStatus: 'waiting',
+					metadata: { resumeFormUrl: formUrl },
+				},
+			},
+		};
+
+		await nodeExecuteAfter(event, mockOptions);
+
+		expect(openFormPopupWindow).toHaveBeenCalledWith(formUrl);
+	});
+
+	it('should not open form popup when resumeFormUrl is absent', async () => {
+		const event: NodeExecuteAfter = {
+			type: 'nodeExecuteAfter',
+			data: {
+				executionId: 'exec-1',
+				nodeName: 'Wait',
+				itemCountByConnectionType: {},
+				data: {
+					executionTime: 0,
+					startTime: 1234567890,
+					executionIndex: 0,
+					source: [],
+					executionStatus: 'waiting',
+				},
+			},
+		};
+
+		await nodeExecuteAfter(event, mockOptions);
+
+		expect(openFormPopupWindow).not.toHaveBeenCalled();
 	});
 });

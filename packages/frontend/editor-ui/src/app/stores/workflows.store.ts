@@ -30,16 +30,13 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
-import {
-	unflattenExecutionData,
-	openFormPopupWindow,
-} from '@/features/execution/executions/executions.utils';
+import { unflattenExecutionData } from '@/features/execution/executions/executions.utils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -526,27 +523,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		const activeExecutionId = resolveActiveExecId();
-		if (!activeExecutionId) return;
-		const executionDataStore = useExecutionDataStore(createExecutionDataId(activeExecutionId));
-		executionDataStore.updateNodeExecutionStatus(pushData);
-
-		const { data } = pushData;
-		if (data.executionStatus === 'waiting' && data.metadata?.resumeFormUrl) {
-			openFormPopupWindow(data.metadata.resumeFormUrl);
-		}
-	}
-
-	function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		const activeExecutionId = resolveActiveExecId();
-		if (activeExecutionId) {
-			useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionRunData(
-				pushData,
-			);
-		}
-	}
-
 	function clearNodeExecutionData(nodeName: string): void {
 		currentState.value.clearActiveNodeExecutionData(nodeName);
 	}
@@ -890,8 +866,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		clearCurrentWorkflowExecutions,
 		setCurrentWorkflowExecutions,
 		renameNodeSelectedAndExecution,
-		updateNodeExecutionRunData,
-		updateNodeExecutionStatus,
 		clearNodeExecutionData,
 		activeNode,
 		getPastExecutions,
