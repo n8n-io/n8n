@@ -1,23 +1,11 @@
 /**
- * LLM-powered HTTP mock handler for evaluation.
+ * LLM-powered HTTP mock handler for workflow evaluation.
  *
- * Generates realistic API responses on-the-fly based on the intercepted
- * request (URL, method, body) and optional scenario hints. Uses Claude Sonnet
- * with tool access to API documentation (Context7) and node configuration.
+ * Synthetic data only — request bodies are sanitized before reaching the
+ * LLM, but this handler must never be used with real user data.
  *
- * The LLM returns a structured **response spec** (json, binary, or error)
- * which the handler materializes into the correct runtime format. This lets
- * the LLM decide whether an endpoint returns JSON, a file download, or an
- * error — without us maintaining per-service detection rules.
- *
- * IMPORTANT: This handler is designed for use with synthetic/eval data only.
- * All request data (body, query params) is sanitized before being sent to
- * the LLM, but the handler should never be used with real user data in
- * production workflows.
- *
- * Used by:
- *   - Instance AI agent tools (self-validation during workflow building)
- *   - Eval CLI test suite (scenario-based testing via REST endpoint)
+ * Used by Instance AI tools (self-validation during builds) and the eval
+ * CLI test suite.
  */
 
 import { Logger } from '@n8n/backend-common';
@@ -67,19 +55,19 @@ For APIs that return empty responses on success (204/202), call submit_response 
 // ---------------------------------------------------------------------------
 
 const DEFAULT_MAX_RETRIES = 1;
+const ERROR_PREVIEW_MAX = 400;
+const ERROR_DETAIL_MAX = 300;
 
 interface MockHandlerOptions {
-	/** Optional scenario description — steers the LLM toward specific behavior (errors, edge cases) */
+	/** Steers the LLM toward specific behavior (errors, edge cases). */
 	scenarioHints?: string;
-	/** Pre-generated consistent data context from Phase 1 (generateMockHints) */
+	/** Workflow-level data context from Phase 1 (generateMockHints). */
 	globalContext?: string;
-	/** Per-node data hints from Phase 1, keyed by node name */
+	/** Per-node data hints from Phase 1, keyed by node name. */
 	nodeHints?: Record<string, string>;
-	/** Max retries on mock generation failure (default: 1) */
 	maxRetries?: number;
 }
 
-/** Structured response spec returned by the LLM */
 interface MockResponseSpec {
 	type: 'json' | 'binary' | 'error';
 	body?: unknown;
@@ -92,13 +80,6 @@ interface MockResponseSpec {
 // Handler factory
 // ---------------------------------------------------------------------------
 
-/**
- * Creates an LLM-powered mock handler that generates realistic API responses.
- *
- * The handler is called for each intercepted HTTP request during eval execution.
- * It uses the request URL + method + body + node type to generate an appropriate
- * response spec, then materializes it into the correct format (JSON, Buffer, error).
- */
 export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockHandler {
 	const nodeConfigCache = new Map<string, string>();
 
@@ -139,7 +120,6 @@ async function generateMockResponse(
 
 	const dateAnchors = buildDateAnchors(new Date());
 
-	// Build user prompt with clearly separated sections
 	const sections: string[] = [
 		'## Request',
 		`Service: ${serviceName}`,
@@ -158,7 +138,6 @@ async function generateMockResponse(
 		sections.push(`Query: ${JSON.stringify(sanitizedQs)}`);
 	}
 
-	// Detect GraphQL and add format constraint
 	const isGraphQL =
 		endpoint.includes('/graphql') ||
 		(typeof request.body === 'object' && request.body !== null && 'query' in request.body);
@@ -197,10 +176,8 @@ async function generateMockResponse(
 		}
 	}
 
-	// Date anchors — placed last so they're the freshest context before the
-	// model generates. Framed as named data values (not an instruction): the
-	// API docs above contain training-era example dates, and presenting "today"
-	// as data the model integrates is more reliable than rule-following.
+	// Anchors go last — the API docs above carry training-era dates, so these
+	// need to be the freshest context before generation.
 	sections.push('', '## Date anchors', dateAnchors);
 
 	const userPrompt = sections.join('\n');
@@ -239,9 +216,9 @@ async function generateMockResponse(
 	};
 }
 
-// Generic structural schema. Body is constrained to object/array/null so
-// the model can't smuggle malformed JSON inside a wrapped string. No
-// per-API field constraints — the API docs in the user prompt drive content.
+// Body is constrained to object/array/null so the model can't smuggle
+// malformed JSON inside a wrapped string. Content shape comes from the
+// API docs in the user prompt.
 const submitResponseSchema = z.object({
 	type: z
 		.enum(['json', 'binary', 'error'])
@@ -309,10 +286,15 @@ async function callLlm(
 
 	if (!capture.spec) {
 		const text = extractText(result);
-		const preview = text.length > 400 ? `${text.slice(0, 200)}…${text.slice(-200)}` : text;
-		const errPart = result.error
-			? ` error=${result.error instanceof Error ? result.error.message : JSON.stringify(result.error).slice(0, 300)}`
+		const edge = ERROR_PREVIEW_MAX / 2;
+		const preview =
+			text.length > ERROR_PREVIEW_MAX ? `${text.slice(0, edge)}…${text.slice(-edge)}` : text;
+		const errDetail = result.error
+			? result.error instanceof Error
+				? result.error.message
+				: JSON.stringify(result.error).slice(0, ERROR_DETAIL_MAX)
 			: '';
+		const errPart = errDetail ? ` error=${errDetail}` : '';
 		throw new Error(
 			`Agent did not call submit_response. finishReason=${result.finishReason ?? 'unknown'}${errPart} text="${preview.replace(/\s+/g, ' ').trim()}"`,
 		);
@@ -397,11 +379,8 @@ function extractEndpointPath(url: string): string {
 }
 
 /**
- * Renders a stable block of named date anchors for the user prompt. Each
- * entry is a relative-time label → ISO date string. The model integrates
- * these as data (similar to a node config value) rather than interpreting
- * a "use today's date" rule, which it often misses when the surrounding
- * API docs are full of training-era example dates.
+ * Renders a stable block of relative-time anchors (today, yesterday,
+ * 7 days ago, etc.) the model integrates as data rather than a rule.
  */
 export function buildDateAnchors(now: Date): string {
 	const labels: Array<[string, number]> = [
