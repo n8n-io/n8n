@@ -4,9 +4,11 @@ import {
 	IExecuteData,
 	IExecutionContext,
 	INodeExecutionData,
+	ISecureArtifacts,
 	PlaintextExecutionContext,
 	toCredentialContext,
 	toExecutionContextEstablishmentHookParameter,
+	toSecureArtifacts,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -29,22 +31,11 @@ export class ExecutionContextService {
 			const decrypted = await this.cipher.decryptV2(context.credentials);
 			credentials = toCredentialContext(decrypted);
 		}
-
-		let secureArtifacts: PlaintextExecutionContext['secureArtifacts'] = undefined;
+		let secureArtifacts: ISecureArtifacts | undefined = undefined;
 		if (context.secureArtifacts) {
-			const entries = await Promise.all(
-				Object.entries(context.secureArtifacts).map(async ([nodeName, paths]) => {
-					const decryptedPaths = await Promise.all(
-						Object.entries(paths).map(
-							async ([path, ct]) => [path, await this.cipher.decryptV2(ct)] as const,
-						),
-					);
-					return [nodeName, Object.fromEntries(decryptedPaths)] as const;
-				}),
-			);
-			secureArtifacts = Object.fromEntries(entries);
+			const decrypted = await this.cipher.decryptV2(context.secureArtifacts);
+			secureArtifacts = toSecureArtifacts(decrypted);
 		}
-
 		return {
 			...context,
 			credentials,
@@ -57,22 +48,10 @@ export class ExecutionContextService {
 		if (context.credentials) {
 			credentials = await this.cipher.encryptV2(context.credentials);
 		}
-
-		let secureArtifacts: IExecutionContext['secureArtifacts'] = undefined;
+		let secureArtifacts = undefined;
 		if (context.secureArtifacts) {
-			const entries = await Promise.all(
-				Object.entries(context.secureArtifacts).map(async ([nodeName, paths]) => {
-					const encryptedPaths = await Promise.all(
-						Object.entries(paths).map(
-							async ([path, pt]) => [path, await this.cipher.encryptV2(pt)] as const,
-						),
-					);
-					return [nodeName, Object.fromEntries(encryptedPaths)] as const;
-				}),
-			);
-			secureArtifacts = Object.fromEntries(entries);
+			secureArtifacts = await this.cipher.encryptV2(context.secureArtifacts);
 		}
-
 		return {
 			...context,
 			credentials,

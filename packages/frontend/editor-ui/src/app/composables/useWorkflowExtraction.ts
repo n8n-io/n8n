@@ -29,6 +29,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuidv4 } from 'uuid';
+import { sanitizeConnections } from '../utils/workflowUtils';
 
 const CANVAS_HISTORY_OPTIONS = {
 	trackBulk: false,
@@ -246,7 +247,7 @@ export function useWorkflowExtraction() {
 			parameters: triggerParameters,
 		};
 
-		return {
+		const result: WorkflowDataCreate = {
 			name: newWorkflowName,
 			nodes: [...nodes, ...returnNode, triggerNode],
 			connections: {
@@ -258,6 +259,11 @@ export function useWorkflowExtraction() {
 			projectId: workflowDocumentStore.value.homeProject?.id,
 			parentFolderId: workflowDocumentStore.value.parentFolder?.id ?? undefined,
 		};
+		result.connections = sanitizeConnections(
+			result.connections,
+			result.nodes?.map((x) => x.name),
+		);
+		return result;
 	}
 
 	function computeAveragePosition(nodes: INode[]): [number, number] {

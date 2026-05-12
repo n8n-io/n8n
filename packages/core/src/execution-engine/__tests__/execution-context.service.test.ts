@@ -6,6 +6,7 @@ import type {
 	IExecutionContext,
 	INode,
 	INodeExecutionData,
+	ISecureArtifacts,
 	PlaintextExecutionContext,
 	Workflow,
 } from 'n8n-workflow';
@@ -19,11 +20,32 @@ import { ExecutionContextService } from '../execution-context.service';
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
 	toCredentialContext: jest.fn((data: string) => JSON.parse(data)),
+	toSecureArtifacts: jest.fn((data: string) => JSON.parse(data)),
 	toExecutionContextEstablishmentHookParameter: jest.fn(),
 }));
 
-const { toCredentialContext, toExecutionContextEstablishmentHookParameter } =
+const { toCredentialContext, toSecureArtifacts, toExecutionContextEstablishmentHookParameter } =
 	jest.requireMock('n8n-workflow');
+
+const sampleArtifacts: ISecureArtifacts = {
+	version: 1,
+	artifacts: {
+		Webhook: [
+			{
+				'headers.authorization': 'Bearer A',
+				'body.count': 42,
+				'body.flag': true,
+				'body.maybe': null,
+			},
+			{
+				'headers.authorization': 'Bearer B',
+				'body.nested': { id: 'x', tags: ['a', 'b'] },
+			},
+		],
+		OtherTrigger: [{ 'a.b': ['v1', 'v2'] }],
+	},
+	metadata: { source: 'stripper' },
+};
 
 describe('ExecutionContextService', () => {
 	let service: ExecutionContextService;
@@ -98,7 +120,7 @@ describe('ExecutionContextService', () => {
 			});
 		});
 
-		it('should leave secureArtifacts undefined when absent', async () => {
+		it('should leave secureArtifacts undefined when not present', async () => {
 			const context: IExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
@@ -109,45 +131,66 @@ describe('ExecutionContextService', () => {
 
 			expect(result.secureArtifacts).toBeUndefined();
 			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+			expect(toSecureArtifacts).not.toHaveBeenCalled();
 		});
 
 		it('should decrypt secureArtifacts when present', async () => {
+			const encryptedArtifacts = 'encrypted_artifacts';
+			const decryptedArtifacts = JSON.stringify(sampleArtifacts);
+
 			const context: IExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
 				source: 'webhook',
-				secureArtifacts: {
-					nodeA: { p1: 'ct-A1', p2: 'ct-A2' },
-					nodeB: { p3: 'ct-B3' },
-				},
+				secureArtifacts: encryptedArtifacts,
 			};
 
-			mockCipher.decryptV2.mockImplementation(async (ct: string) => `pt(${ct})`);
+			mockCipher.decryptV2.mockResolvedValue(decryptedArtifacts);
+			toSecureArtifacts.mockReturnValue(sampleArtifacts);
 
 			const result = await service.decryptExecutionContext(context);
 
-			expect(result.secureArtifacts).toEqual({
-				nodeA: { p1: 'pt(ct-A1)', p2: 'pt(ct-A2)' },
-				nodeB: { p3: 'pt(ct-B3)' },
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(encryptedArtifacts);
+			expect(toSecureArtifacts).toHaveBeenCalledWith(decryptedArtifacts);
+			expect(result).toEqual({
+				...context,
+				credentials: undefined,
+				secureArtifacts: sampleArtifacts,
 			});
-			expect(mockCipher.decryptV2).toHaveBeenCalledTimes(3);
-			expect(mockCipher.decryptV2).toHaveBeenCalledWith('ct-A1');
-			expect(mockCipher.decryptV2).toHaveBeenCalledWith('ct-A2');
-			expect(mockCipher.decryptV2).toHaveBeenCalledWith('ct-B3');
 		});
 
-		it('should handle empty inner records in secureArtifacts', async () => {
+		it('should decrypt both credentials and secureArtifacts when both present', async () => {
+			const encryptedCreds = 'encrypted_creds';
+			const encryptedArtifacts = 'encrypted_artifacts';
+			const decryptedCreds = '{"version":1,"identity":"token"}';
+			const parsedCreds = { version: 1, identity: 'token' };
+			const decryptedArtifacts = JSON.stringify(sampleArtifacts);
+
 			const context: IExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
 				source: 'webhook',
-				secureArtifacts: { nodeA: {} },
+				credentials: encryptedCreds,
+				secureArtifacts: encryptedArtifacts,
 			};
+
+			mockCipher.decryptV2.mockImplementation(async (data: string) => {
+				if (data === encryptedCreds) return decryptedCreds;
+				if (data === encryptedArtifacts) return decryptedArtifacts;
+				throw new Error(`Unexpected ciphertext: ${data}`);
+			});
+			toCredentialContext.mockReturnValue(parsedCreds);
+			toSecureArtifacts.mockReturnValue(sampleArtifacts);
 
 			const result = await service.decryptExecutionContext(context);
 
-			expect(result.secureArtifacts).toEqual({ nodeA: {} });
-			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(encryptedCreds);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(encryptedArtifacts);
+			expect(result).toEqual({
+				...context,
+				credentials: parsedCreds,
+				secureArtifacts: sampleArtifacts,
+			});
 		});
 	});
 
@@ -190,7 +233,7 @@ describe('ExecutionContextService', () => {
 			});
 		});
 
-		it('should leave secureArtifacts undefined when absent', async () => {
+		it('should leave secureArtifacts undefined when not present', async () => {
 			const context: PlaintextExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
@@ -204,49 +247,79 @@ describe('ExecutionContextService', () => {
 		});
 
 		it('should encrypt secureArtifacts when present', async () => {
+			const encryptedArtifacts = 'encrypted_artifacts';
+
 			const context: PlaintextExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
 				source: 'webhook',
-				secureArtifacts: {
-					nodeA: { p1: 'pt-A1', p2: 'pt-A2' },
-					nodeB: { p3: 'pt-B3' },
-				},
+				secureArtifacts: sampleArtifacts,
 			};
 
-			mockCipher.encryptV2.mockImplementation(async (pt) => `ct(${pt as string})`);
+			mockCipher.encryptV2.mockResolvedValue(encryptedArtifacts);
 
 			const result = await service.encryptExecutionContext(context);
 
-			expect(result.secureArtifacts).toEqual({
-				nodeA: { p1: 'ct(pt-A1)', p2: 'ct(pt-A2)' },
-				nodeB: { p3: 'ct(pt-B3)' },
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith(sampleArtifacts);
+			expect(result).toEqual({
+				...context,
+				credentials: undefined,
+				secureArtifacts: encryptedArtifacts,
 			});
-			expect(mockCipher.encryptV2).toHaveBeenCalledTimes(3);
-			expect(mockCipher.encryptV2).toHaveBeenCalledWith('pt-A1');
-			expect(mockCipher.encryptV2).toHaveBeenCalledWith('pt-A2');
-			expect(mockCipher.encryptV2).toHaveBeenCalledWith('pt-B3');
 		});
 
-		it('should preserve secureArtifacts values across encrypt then decrypt', async () => {
-			const plaintext = {
-				nodeA: { p1: 'value-A1', p2: 'value-A2' },
-				nodeB: { p3: 'value-B3' },
+		it('should encrypt both credentials and secureArtifacts when both present', async () => {
+			const plaintextCreds = { version: 1 as const, identity: 'token' };
+			const encryptedCreds = 'encrypted_creds';
+			const encryptedArtifacts = 'encrypted_artifacts';
+
+			const context: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				credentials: plaintextCreds,
+				secureArtifacts: sampleArtifacts,
 			};
 
-			mockCipher.encryptV2.mockImplementation(async (pt) => `enc:${pt as string}`);
-			mockCipher.decryptV2.mockImplementation(async (ct: string) => ct.replace(/^enc:/, ''));
-
-			const encrypted = await service.encryptExecutionContext({
-				version: 1,
-				establishedAt: 1,
-				source: 'webhook',
-				secureArtifacts: plaintext,
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => {
+				if (data === plaintextCreds) return encryptedCreds;
+				if (data === sampleArtifacts) return encryptedArtifacts;
+				throw new Error('Unexpected encryption input');
 			});
 
-			const decrypted = await service.decryptExecutionContext(encrypted);
+			const result = await service.encryptExecutionContext(context);
 
-			expect(decrypted.secureArtifacts).toEqual(plaintext);
+			expect(result).toEqual({
+				...context,
+				credentials: encryptedCreds,
+				secureArtifacts: encryptedArtifacts,
+			});
+		});
+	});
+
+	describe('encrypt → decrypt round-trip', () => {
+		it('should preserve secureArtifacts through a full round-trip', async () => {
+			// JSON-stringify on encrypt, identity on decrypt — simulates a symmetric cipher
+			// on the JSON serialization that Cipher.encryptV2/decryptV2 perform around the payload.
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+
+			// Use the real toSecureArtifacts so the round-trip exercises actual schema parsing.
+			const realToSecureArtifacts = jest.requireActual('n8n-workflow').toSecureArtifacts;
+			toSecureArtifacts.mockImplementation(realToSecureArtifacts);
+
+			const plaintext: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: 12345,
+				source: 'webhook',
+				secureArtifacts: sampleArtifacts,
+			};
+
+			const encrypted = await service.encryptExecutionContext(plaintext);
+			expect(typeof encrypted.secureArtifacts).toBe('string');
+
+			const decrypted = await service.decryptExecutionContext(encrypted);
+			expect(decrypted.secureArtifacts).toEqual(sampleArtifacts);
 		});
 	});
 
@@ -337,54 +410,6 @@ describe('ExecutionContextService', () => {
 			const result = service.mergeExecutionContexts(baseContext, {});
 
 			expect(result).toEqual(baseContext);
-		});
-
-		it('should merge secureArtifacts deeply', () => {
-			const baseContext: PlaintextExecutionContext = {
-				version: 1,
-				establishedAt: 100,
-				source: 'manual',
-				secureArtifacts: {
-					nodeA: { p1: 'x' },
-				},
-			};
-
-			const contextToMerge: Partial<PlaintextExecutionContext> = {
-				secureArtifacts: {
-					nodeA: { p2: 'y' },
-					nodeB: { p3: 'z' },
-				},
-			};
-
-			const result = service.mergeExecutionContexts(baseContext, contextToMerge);
-
-			expect(result.secureArtifacts).toEqual({
-				nodeA: { p1: 'x', p2: 'y' },
-				nodeB: { p3: 'z' },
-			});
-		});
-
-		it('should overwrite overlapping secureArtifacts leaves on merge', () => {
-			const baseContext: PlaintextExecutionContext = {
-				version: 1,
-				establishedAt: 100,
-				source: 'manual',
-				secureArtifacts: {
-					nodeA: { p1: 'old' },
-				},
-			};
-
-			const contextToMerge: Partial<PlaintextExecutionContext> = {
-				secureArtifacts: {
-					nodeA: { p1: 'new' },
-				},
-			};
-
-			const result = service.mergeExecutionContexts(baseContext, contextToMerge);
-
-			expect(result.secureArtifacts).toEqual({
-				nodeA: { p1: 'new' },
-			});
 		});
 	});
 
