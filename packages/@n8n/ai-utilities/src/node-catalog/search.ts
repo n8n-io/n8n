@@ -9,16 +9,8 @@
 
 import { isTriggerNodeType, type IParameterBuilderHint, type IRelatedNode } from 'n8n-workflow';
 
-import {
-	extractResourceOperations,
-	type ResourceInfo,
-	type OperationInfo,
-} from './resource-operation-extractor';
-import {
-	extractModeDiscriminator,
-	extractOperationOnlyDiscriminator,
-	type ModeInfo,
-} from './discriminator-utils';
+import type { ResourceInfo, OperationInfo } from './resource-operation-extractor';
+import type { ModeInfo } from './discriminator-utils';
 import type { NodeTypeParser, ParsedNodeType } from './node-type-parser';
 
 /**
@@ -227,26 +219,25 @@ function formatModeForDisplay(mode: ModeInfo, showSdkMapping: boolean): string {
 }
 
 /**
- * Extract discriminator info from a node type
- * Returns resource/operation, mode, or none
+ * Read pre-computed discriminator info for a node at a given version.
+ * The extractors that produce this metadata are run once at index build
+ * time inside `toLeanNodeType`, so this is now a pure dictionary lookup —
+ * `properties` does not need to be retained on the lean node-type.
  */
 function getDiscriminatorInfo(
 	nodeTypeParser: NodeTypeParser,
 	nodeId: string,
 	version: number,
 ): DiscriminatorInfo {
-	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
-	if (!nodeType) {
+	const precomputed = nodeTypeParser.getVersionDiscriminators(nodeId, version);
+	if (!precomputed) {
 		return { type: 'none' };
 	}
 
-	// Check for resource/operation pattern
-	// Include description and builderHint for code-builder's detailed output
-	const resourceOps = extractResourceOperations(nodeType, version, undefined, {
-		fields: { description: true, builderHint: true },
-	});
-	if (resourceOps && resourceOps.resources.length > 0) {
-		const resources: DiscriminatorResourceInfo[] = resourceOps.resources
+	const { resourceOperations, operationDiscriminator, modeDiscriminator } = precomputed;
+
+	if (resourceOperations && resourceOperations.resources.length > 0) {
+		const resources: DiscriminatorResourceInfo[] = resourceOperations.resources
 			.filter((r: ResourceInfo) => r.value !== '__CUSTOM_API_CALL__')
 			.map((r: ResourceInfo) => ({
 				value: r.value,
@@ -266,10 +257,8 @@ function getDiscriminatorInfo(
 		}
 	}
 
-	// Check for operation-only pattern (operation without resource)
-	const operationOnly = extractOperationOnlyDiscriminator(nodeType, version);
-	if (operationOnly && operationOnly.operations.length > 0) {
-		const operations: DiscriminatorOperationInfo[] = operationOnly.operations
+	if (operationDiscriminator && operationDiscriminator.operations.length > 0) {
+		const operations: DiscriminatorOperationInfo[] = operationDiscriminator.operations
 			.filter((op) => op.value !== '__CUSTOM_API_CALL__')
 			.map((op) => ({
 				value: op.value,
@@ -282,10 +271,8 @@ function getDiscriminatorInfo(
 		}
 	}
 
-	// Check for mode pattern
-	const modeInfo = extractModeDiscriminator(nodeType, version);
-	if (modeInfo && modeInfo.modes.length > 0) {
-		return { type: 'mode', modes: modeInfo.modes };
+	if (modeDiscriminator && modeDiscriminator.modes.length > 0) {
+		return { type: 'mode', modes: modeDiscriminator.modes };
 	}
 
 	return { type: 'none' };

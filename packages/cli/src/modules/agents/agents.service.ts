@@ -15,7 +15,7 @@ import {
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
-import { extractFromAIParameters } from '@n8n/ai-utilities';
+import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';

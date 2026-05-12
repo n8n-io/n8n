@@ -12,6 +12,12 @@
       ],
       "node-catalog": [
         "dist/esm/node-catalog/index.d.ts"
+      ],
+      "fromai-helpers": [
+        "dist/esm/utils/fromai-helpers.d.ts"
+      ],
+      "http-proxy-agent": [
+        "dist/esm/utils/http-proxy-agent.d.ts"
       ]
     }
   },
@@ -30,6 +36,16 @@
       "types": "./dist/esm/node-catalog/index.d.ts",
       "import": "./dist/esm/node-catalog/index.js",
       "require": "./dist/cjs/node-catalog/index.js"
+    },
+    "./fromai-helpers": {
+      "types": "./dist/esm/utils/fromai-helpers.d.ts",
+      "import": "./dist/esm/utils/fromai-helpers.js",
+      "require": "./dist/cjs/utils/fromai-helpers.js"
+    },
+    "./http-proxy-agent": {
+      "types": "./dist/esm/utils/http-proxy-agent.d.ts",
+      "import": "./dist/esm/utils/http-proxy-agent.js",
+      "require": "./dist/cjs/utils/http-proxy-agent.js"
     },
     "./*": "./*"
   },
