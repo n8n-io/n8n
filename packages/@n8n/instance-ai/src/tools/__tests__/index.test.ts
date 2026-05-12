@@ -2,7 +2,7 @@ import { createAllTools, createOrchestratorDomainTools } from '..';
 import type { InstanceAiContext } from '../../types';
 
 jest.mock('../../parsers/structured-file-parser', () => ({
-	isStructuredAttachment: jest.fn(() => false),
+	isParseableAttachment: jest.fn(() => false),
 }));
 
 jest.mock('../attachments/parse-file.tool', () => ({
@@ -82,8 +82,8 @@ jest.mock('../workflows/build-workflow.tool', () => ({
 }));
 
 jest.mock('../workflows.tool', () => ({
-	createWorkflowsTool: jest.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `workflows-${scope}` : 'workflows',
+	createWorkflowsTool: jest.fn((_context: unknown, options?: unknown) => ({
+		id: options ? 'workflows-filtered' : 'workflows',
 	})),
 }));
 
@@ -91,10 +91,18 @@ jest.mock('../workspace.tool', () => ({
 	createWorkspaceTool: jest.fn(() => ({ id: 'workspace' })),
 }));
 
-function makeContext(): InstanceAiContext {
+jest.mock('../filesystem/create-tools-from-mcp-server', () => ({
+	createToolsFromLocalMcpServer: jest.fn(() => ({
+		browser_connect: { id: 'browser_connect' },
+		browser_navigate: { id: 'browser_navigate' },
+	})),
+}));
+
+function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
 		userId: 'user-a',
 		logger: { warn: jest.fn() },
+		...overrides,
 	} as unknown as InstanceAiContext;
 }
 
@@ -127,7 +135,7 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(orchestratorTools).toMatchObject({
-			workflows: { id: 'workflows-orchestrator' },
+			workflows: { id: 'workflows-filtered' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables-orchestrator' },
@@ -135,6 +143,42 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes-orchestrator' },
 			'ask-user': { id: 'ask-user' },
+		});
+
+		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, {
+			allowedActions: [
+				'list',
+				'get',
+				'delete',
+				'unarchive',
+				'setup',
+				'publish',
+				'unpublish',
+				'list-versions',
+				'get-version',
+				'restore-version',
+				'update-version',
+			],
+		});
+		expect(createWorkflowsTool).toHaveBeenCalledWith(
+			context,
+			expect.objectContaining({
+				allowedActions: expect.not.arrayContaining(['get-as-code']),
+			}),
+		);
+	});
+
+	it('includes local MCP server tools in orchestrator domain tools', () => {
+		const context = makeContext({
+			localMcpServer: {} as InstanceAiContext['localMcpServer'],
+		});
+
+		const orchestratorTools = createOrchestratorDomainTools(context);
+
+		expect(orchestratorTools).toMatchObject({
+			browser_connect: { id: 'browser_connect' },
+			browser_navigate: { id: 'browser_navigate' },
 		});
 	});
 });

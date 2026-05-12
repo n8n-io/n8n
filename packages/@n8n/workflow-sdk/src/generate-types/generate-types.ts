@@ -105,6 +105,13 @@ ${prefix} AssignmentType = 'string' | 'number' | 'boolean' | 'array' | 'object' 
 ${prefix} AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: AssignmentType }> };`;
 }
 
+function generateResourceMapperTypeDeclaration(exported: boolean): string {
+	const prefix = exported ? 'export type' : 'type';
+	return `${prefix} ResourceMapperField = { id?: string; displayName?: string; required?: boolean; defaultMatch?: boolean; display?: boolean; type?: string; canBeUsedToMatch?: boolean; [key: string]: unknown };
+${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?: string; [key: string]: unknown };
+${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
+}
+
 function isCustomApiCall(operation: string): boolean {
 	return operation === CUSTOM_API_CALL_KEY;
 }
@@ -244,7 +251,7 @@ const AI_TYPE_TO_SUBNODE_FIELD: Record<
 // =============================================================================
 
 export interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -733,6 +740,8 @@ function mapNestedPropertyTypeInner(
 				return 'string[]';
 			case 'resourceLocator':
 				return generateResourceLocatorType(prop);
+			case 'resourceMapper':
+				return 'ResourceMapperValue | Expression<string>';
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -744,10 +753,7 @@ function mapNestedPropertyTypeInner(
 
 	switch (prop.type) {
 		case 'string': {
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+			return 'string | Expression<string>';
 		}
 		case 'number':
 			return 'number | Expression<number>';
@@ -792,6 +798,8 @@ function mapNestedPropertyTypeInner(
 			return 'IDataObject | string | Expression<string>';
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
+		case 'resourceMapper':
+			return 'ResourceMapperValue | Expression<string>';
 		case 'filter':
 			return 'FilterValue';
 		case 'assignmentCollection':
@@ -875,11 +883,17 @@ function generateNestedPropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
+		const safeBuilderHint = prop.builderHint.propertyHint
 			.replace(/\*\//g, '*\\/')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(`${indent} * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(`${indent} * @placeholderSupported false`);
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -1041,7 +1055,7 @@ function generateFixedCollectionType(
 				groupJsDocLines.push(`${INDENT.repeat(2)}/** ${desc}`);
 			}
 			if (group.builderHint) {
-				const safeBuilderHint = group.builderHint.message
+				const safeBuilderHint = group.builderHint.propertyHint
 					.replace(/\*\//g, '*\\/')
 					.replace(/</g, '&lt;')
 					.replace(/>/g, '&gt;');
@@ -1375,14 +1389,11 @@ function generateCollectionType(
 }
 
 /**
- * Strip Expression<...> and PlaceholderValue from a type string.
+ * Strip Expression<...> from a type string.
  * Used when noDataExpression is true to produce plain types.
  */
 function stripExpressionFromType(typeStr: string): string {
-	return typeStr
-		.replace(/\s*\|\s*Expression<[^>]+>/g, '')
-		.replace(/\s*\|\s*PlaceholderValue/g, '')
-		.trim();
+	return typeStr.replace(/\s*\|\s*Expression<[^>]+>/g, '').trim();
 }
 
 /**
@@ -1425,6 +1436,8 @@ function mapPropertyTypeInner(
 				return 'string[]';
 			case 'resourceLocator':
 				return generateResourceLocatorType(prop);
+			case 'resourceMapper':
+				return 'ResourceMapperValue | Expression<string>';
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -1436,10 +1449,7 @@ function mapPropertyTypeInner(
 
 	switch (prop.type) {
 		case 'string': {
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+			return 'string | Expression<string>';
 		}
 
 		case 'number':
@@ -1491,6 +1501,9 @@ function mapPropertyTypeInner(
 
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
+
+		case 'resourceMapper':
+			return 'ResourceMapperValue | Expression<string>';
 
 		case 'filter':
 			return 'FilterValue';
@@ -1901,11 +1914,17 @@ export function generatePropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
+		const safeBuilderHint = prop.builderHint.propertyHint
 			.replace(/\*\//g, '*\\/')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(` * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(' * @placeholderSupported false');
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -2327,14 +2346,18 @@ export function generateSharedFile(
 	// Helper types
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(true));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(true));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(true));
 		}
 		lines.push('');
 	}
@@ -2445,15 +2468,19 @@ export function generateDiscriminatorFile(
 	// Check what helper types we need
 	const needsFilter = props.some((p) => p.type === 'filter');
 	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = props.some((p) => p.type === 'resourceMapper');
 
 	// Inline helper types (only the ones needed)
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -2889,14 +2916,18 @@ export function generateSingleVersionTypeFile(
 	// Helper types (if needed) based on filtered properties
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -3155,14 +3186,18 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	// Helper types (if needed) - only add if they'll actually be used in output
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}

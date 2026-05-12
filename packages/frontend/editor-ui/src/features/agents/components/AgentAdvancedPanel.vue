@@ -55,7 +55,6 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
-const requireToolApproval = ref(props.config?.config?.requireToolApproval ?? false);
 
 watch(
 	() => props.config,
@@ -66,7 +65,6 @@ watch(
 		budgetTokens.value = t?.budgetTokens ?? 1024;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
 		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
-		requireToolApproval.value = cfg.config?.requireToolApproval ?? false;
 	},
 	{ deep: true },
 );
@@ -118,13 +116,6 @@ function onConcurrencyInput(value: string) {
 	void emitConcurrency();
 }
 
-function onApprovalToggle(value: boolean) {
-	requireToolApproval.value = value;
-	emit('update:config', {
-		config: { ...props.config?.config, requireToolApproval: value },
-	});
-}
-
 const thinkingDisabledReason = computed(() =>
 	capabilities.value.thinking
 		? ''
@@ -142,10 +133,12 @@ const thinkingDisabledReason = computed(() =>
 	<N8nCollapsiblePanel
 		v-model="isExpanded"
 		:class="$style.panel"
-		:title="i18n.baseText('agents.builder.advanced.title')"
 		:disabled="!props.collapsible"
 		data-testid="agent-behavior-panel"
 	>
+		<template #title>
+			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
+		</template>
 		<div :class="$style.content">
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
@@ -221,23 +214,6 @@ const thinkingDisabledReason = computed(() =>
 					@update:model-value="onConcurrencyInput"
 				/>
 			</div>
-
-			<div :class="$style.row">
-				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
-						i18n.baseText('agents.builder.advanced.approval.label')
-					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('agents.builder.advanced.approval.hint') }}
-					</N8nText>
-				</div>
-				<N8nSwitch2
-					:model-value="requireToolApproval"
-					:disabled="props.disabled"
-					data-testid="agent-require-approval-toggle"
-					@update:model-value="(v) => onApprovalToggle(Boolean(v))"
-				/>
-			</div>
 		</div>
 	</N8nCollapsiblePanel>
 </template>
@@ -257,6 +233,10 @@ const thinkingDisabledReason = computed(() =>
 .panel.panel > :first-child {
 	padding: 0;
 	min-height: auto;
+}
+
+.panel.panel > :first-child h3 {
+	margin: 0;
 }
 
 .panel.panel > [data-state] > :first-child {

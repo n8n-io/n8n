@@ -66,4 +66,11 @@ describe('credential guardrail prompts', () => {
 			expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');
 		}
 	});
+
+	it('does not instruct the sandbox builder about publishing when publish is not on its tool surface', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
+
+		expect(prompt).not.toContain('workflows(action="publish")');
+		expect(prompt).not.toContain('Do NOT publish');
+	});
 });

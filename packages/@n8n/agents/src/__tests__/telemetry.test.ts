@@ -8,6 +8,7 @@ describe('Telemetry builder', () => {
 		expect(built.enabled).toBe(true);
 		expect(built.recordInputs).toBe(true);
 		expect(built.recordOutputs).toBe(true);
+		expect(built.runtimeRootSpanEnabled).toBe(true);
 		expect(built.functionId).toBeUndefined();
 		expect(built.metadata).toBeUndefined();
 		expect(built.integrations).toEqual([]);
@@ -22,6 +23,7 @@ describe('Telemetry builder', () => {
 			.metadata({ team: 'platform', version: 2 })
 			.recordInputs(false)
 			.recordOutputs(false)
+			.runtimeRootSpan(false)
 			.build();
 
 		expect(built.enabled).toBe(false);
@@ -29,6 +31,7 @@ describe('Telemetry builder', () => {
 		expect(built.metadata).toEqual({ team: 'platform', version: 2 });
 		expect(built.recordInputs).toBe(false);
 		expect(built.recordOutputs).toBe(false);
+		expect(built.runtimeRootSpanEnabled).toBe(false);
 	});
 
 	it('accepts a pre-built tracer', async () => {
