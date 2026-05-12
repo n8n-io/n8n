@@ -199,8 +199,18 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				}
 			}
 
+			// Editor-driven manual runs resolve against the running user's own
+			// per-user storage — the user is connecting to themselves, so output
+			// redaction would just hide their own data. Externally-identified
+			// resolutions (chat-hub etc.) keep the safe default.
+			const isManualSelfConnect = credentialContext.metadata?.source === 'manual-execution';
+
 			// Adds and override static data with dynamically resolved data
-			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
+			return {
+				data: { ...staticData, ...dynamicData },
+				isDynamic: true,
+				requiresRedaction: !isManualSelfConnect,
+			};
 		} catch (error) {
 			return this.handleResolutionError(
 				credentialsResolveMetadata,

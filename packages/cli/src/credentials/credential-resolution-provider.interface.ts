@@ -17,6 +17,14 @@ export type CredentialResolutionResult = {
 	data: ICredentialDataDecryptedObject;
 	/** True only when the credential was actually resolved via a dynamic resolver (not a fallback to static data). */
 	isDynamic: boolean;
+	/**
+	 * Whether this resolution requires the execution data to be redacted.
+	 * Defaults to true for externally-identified resolutions (chat-hub etc.)
+	 * because their tokens are sensitive to operators. False for editor-driven
+	 * manual runs where the n8n user is connecting to themselves — they should
+	 * see their own execution output.
+	 */
+	requiresRedaction?: boolean;
 };
 
 /**

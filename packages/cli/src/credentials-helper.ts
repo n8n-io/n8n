@@ -412,7 +412,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalData.workflowSettings,
 			);
 			decryptedDataOriginal = resolveResult.data;
-			if (resolveResult.isDynamic) {
+			// Only flag for the redaction pipeline when the resolver reports that
+			// this resolution actually exposes sensitive externally-supplied data.
+			// Manual self-connect (the editor user resolving their own per-user
+			// credential) deliberately opts out — they should see their own output.
+			if (resolveResult.isDynamic && resolveResult.requiresRedaction !== false) {
 				additionalData.currentNodeUsedDynamicCredentials = true;
 			}
 		}
