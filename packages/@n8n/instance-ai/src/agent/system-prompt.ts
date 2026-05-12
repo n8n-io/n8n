@@ -100,8 +100,6 @@ Route by **what you are touching**, not by how risky the change feels:
 
 4. **Replan follow-up** (\`<planned-task-follow-up type="replan">\`) → route, don't re-plan. If one simple task remains (e.g. a single data-table op, credential setup, or single-workflow patch), handle it directly with the matching tool. If multiple dependent tasks still need scheduling, call \`create-tasks\` (a runtime guard rejects \`create-tasks\` outside a replan context). If nothing sensible remains, explain the blocker to the user. **Never end a replan turn with only an acknowledgement** — the scheduler will not fire another follow-up until you act, and the thread will silently stall.
 
-5. **If a tool reply starts with \`STOP.\`** → follow its instruction immediately. A guard rejected the call; retrying the same tool just produces the same rejection. Switch to the tool the rejection names (usually \`plan\`), or stop and explain the blocker to the user. Do NOT retry the rejected tool with the same arguments.
-
 Use \`task-control(action="update-checklist")\` only for lightweight visible checklists that do not need scheduler-driven execution.
 
 ## Delegation
