@@ -35,6 +35,16 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 
+type ObservationLogTaskKind = 'observer' | 'reflector';
+
+interface ObservationLogTaskLockHandle {
+	scopeKind: ObservationLogScopeKind;
+	scopeId: string;
+	taskKind: ObservationLogTaskKind;
+	holderId: string;
+	heldUntil: Date;
+}
+
 @Service()
 export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	constructor(
@@ -392,13 +402,29 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		scopeId: string,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<ObservationLockHandle | null> {
+		const handle = await this.acquireObservationLogTaskLock(scopeKind, scopeId, 'observer', opts);
+		if (!handle) return null;
+		return {
+			scopeKind: handle.scopeKind,
+			scopeId: handle.scopeId,
+			holderId: handle.holderId,
+			heldUntil: handle.heldUntil,
+		};
+	}
+
+	async acquireObservationLogTaskLock(
+		scopeKind: ObservationLogScopeKind,
+		scopeId: string,
+		taskKind: ObservationLogTaskKind,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<ObservationLogTaskLockHandle | null> {
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
 
 		const updateResult = await this.observationLockRepository
 			.createQueryBuilder()
 			.update(AgentObservationLockEntity)
-			.set({ taskKind: 'observer', holderId: opts.holderId, heldUntil })
+			.set({ taskKind, holderId: opts.holderId, heldUntil })
 			.where('"scopeKind" = :scopeKind')
 			.andWhere('"scopeId" = :scopeId')
 			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
@@ -406,14 +432,14 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			.execute();
 
 		if ((updateResult.affected ?? 0) > 0) {
-			return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
+			return { scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil };
 		}
 
 		await this.observationLockRepository
 			.createQueryBuilder()
 			.insert()
 			.into(AgentObservationLockEntity)
-			.values({ scopeKind, scopeId, taskKind: 'observer', holderId: opts.holderId, heldUntil })
+			.values({ scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil })
 			.orIgnore()
 			.execute();
 
@@ -424,10 +450,20 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		});
 		if (!claimed) return null;
 
-		return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
+		return { scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil };
 	}
 
 	async releaseObservationLock(
+		handle: ObservationLockHandle & { scopeKind: ObservationLogScopeKind },
+	): Promise<void> {
+		await this.releaseScopeLock(handle);
+	}
+
+	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
+		await this.releaseScopeLock(handle);
+	}
+
+	private async releaseScopeLock(
 		handle: ObservationLockHandle & { scopeKind: ObservationLogScopeKind },
 	): Promise<void> {
 		await this.observationLockRepository.delete({

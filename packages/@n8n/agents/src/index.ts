@@ -55,6 +55,7 @@ export type {
 	ObserveFn,
 	ScopeKind,
 	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogMarker,
@@ -65,6 +66,8 @@ export type {
 	ObservationLogScope,
 	ObservationLogScopeKind,
 	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
 	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
@@ -155,6 +158,7 @@ export {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from './runtime/observation-log-observer';
+export { ScopedMemoryTaskRunner } from './runtime/scoped-memory-task-runner';
 export type {
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
@@ -165,6 +169,16 @@ export type {
 	RunObservationLogObserverOpts,
 	RunObservationLogObserverResult,
 } from './runtime/observation-log-observer';
+export type {
+	ScopedMemoryTaskDescriptor,
+	ScopedMemoryTaskError,
+	ScopedMemoryTaskEvent,
+	ScopedMemoryTaskHandle,
+	ScopedMemoryTaskInfo,
+	ScopedMemoryTaskResult,
+	ScopedMemoryTaskRunnerOptions,
+	ScopedMemoryTaskStatus,
+} from './runtime/scoped-memory-task-runner';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';

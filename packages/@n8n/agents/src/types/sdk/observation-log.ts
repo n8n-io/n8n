@@ -8,9 +8,17 @@ export type ObservationLogStatus = (typeof OBSERVATION_LOG_STATUSES)[number];
 
 export type ObservationLogScopeKind = 'thread' | 'resource';
 
+export type ObservationLogTaskKind = 'observer' | 'reflector';
+
 export interface ObservationLogScope {
 	scopeKind: ObservationLogScopeKind;
 	scopeId: string;
+}
+
+export interface ObservationLogTaskLockHandle extends ObservationLogScope {
+	taskKind: ObservationLogTaskKind;
+	holderId: string;
+	heldUntil: Date;
 }
 
 export interface ObservationLogEntry extends ObservationLogScope {
@@ -75,4 +83,14 @@ export interface BuiltObservationLogStore {
 		scope: ObservationLogScope,
 		reflection: ObservationLogReflection,
 	): Promise<ObservationLogReflectionResult>;
+}
+
+export interface BuiltObservationLogTaskLockStore {
+	acquireObservationLogTaskLock(
+		scopeKind: ObservationLogScopeKind,
+		scopeId: string,
+		taskKind: ObservationLogTaskKind,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<ObservationLogTaskLockHandle | null>;
+	releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void>;
 }
