@@ -9,6 +9,10 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 
+const mockWindowSizeState = vi.hoisted(() => ({
+	width: { value: 1200 },
+}));
+
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
@@ -30,7 +34,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal()),
 	useScroll: () => ({ arrivedState: { bottom: true } }),
-	useWindowSize: () => ({ width: ref(1200) }),
+	useWindowSize: () => ({ width: mockWindowSizeState.width }),
 }));
 
 const InstanceAiInputStub = defineComponent({
@@ -83,6 +87,7 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as typeof store.threads;
 		store.loadHistoricalMessages.mockResolvedValue('applied');
+		mockWindowSizeState.width.value = 1200;
 
 		// `useExecutionPushEvents` (consumed by ThreadView) registers a push
 		// listener and stores the returned removeListener; it gets invoked on
@@ -141,5 +146,25 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(store.switchThread).toHaveBeenCalledWith('thread-2');
 		});
+	});
+
+	it('uses edge reveal when the viewport is too narrow for pinned artifacts', async () => {
+		mockWindowSizeState.width.value = 900;
+		store.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.messages;
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
+		});
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
 	});
 });

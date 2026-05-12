@@ -20,11 +20,12 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { useElementSize, useScroll, useSessionStorage } from '@vueuse/core';
+import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
@@ -32,6 +33,7 @@ import { useExecutionPushEvents } from './useExecutionPushEvents';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -59,6 +61,9 @@ const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
+const sidebar = useSidebarState();
+const { width: windowWidth } = useWindowSize();
+const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -105,6 +110,7 @@ const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
 const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
+const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
@@ -183,8 +189,18 @@ function suppressPanelTransitionsUntilStableRender() {
 // least the other half when side panels or app layout chrome are visible.
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
+const mainSidebarOccupiedWidth = computed(() =>
+	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : (mainSidebarWidth.value ?? 0),
+);
+const instanceAiSidebarOccupiedWidth = computed(() =>
+	sidebar.collapsed.value ? 0 : (sidebar.width?.value ?? DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH),
+);
+const availableWidthForPinnedArtifactsPanel = computed(
+	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
+);
 const isArtifactsPanelPinningAvailable = computed(
-	() => threadAreaWidth.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
+	() =>
+		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
 const isArtifactsPanelEffectivelyPinned = computed(
 	() => isArtifactsPanelPinningAvailable.value && isArtifactsPanelPinned.value,
@@ -203,6 +219,12 @@ const showArtifactsPanel = computed(
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
 		(isArtifactsPanelEffectivelyPinned.value || isArtifactsPanelRevealed.value),
+);
+const reserveArtifactsPanelLayout = computed(
+	() => showArtifactsPanel.value && isArtifactsPanelEffectivelyPinned.value,
+);
+const shouldSuppressContentLayoutTransitions = computed(
+	() => !isPreviewPanelTransitionEnabled.value,
 );
 const previewPanelWidth = ref(0);
 const isResizingPreview = ref(false);
@@ -226,6 +248,10 @@ watch(previewMaxWidth, (max) => {
 
 function handlePreviewResize({ width }: { width: number }) {
 	previewPanelWidth.value = width;
+}
+
+function handlePreviewPanelAfterLeave() {
+	isPreviewExpanded.value = false;
 }
 
 watch(preview.isPreviewVisible, (visible) => {
@@ -514,10 +540,9 @@ function handleStop() {
 				:class="[
 					$style.contentArea,
 					{
-						[$style.contentAreaWithPinnedArtifacts]:
-							showArtifactsPanel && isArtifactsPanelEffectivelyPinned,
+						[$style.contentAreaWithPinnedArtifacts]: reserveArtifactsPanelLayout,
 					},
-					{ [$style.contentAreaWithoutLayoutTransitions]: !isPreviewPanelTransitionEnabled },
+					{ [$style.contentAreaWithoutLayoutTransitions]: shouldSuppressContentLayoutTransitions },
 				]"
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
 				data-test-id="instance-ai-content-area"
@@ -644,7 +669,7 @@ function handleStop() {
 		<Transition
 			name="preview-panel-slide"
 			:css="isPreviewPanelTransitionEnabled"
-			@after-leave="isPreviewExpanded = false"
+			@after-leave="handlePreviewPanelAfterLeave"
 		>
 			<div
 				v-show="preview.isPreviewVisible.value"

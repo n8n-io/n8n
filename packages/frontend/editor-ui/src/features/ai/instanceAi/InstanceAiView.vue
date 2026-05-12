@@ -39,6 +39,7 @@ function handleSidebarResize({ width }: { width: number }) {
 
 provide(SidebarStateKey, {
 	collapsed: sidebarCollapsed,
+	width: sidebarWidth,
 	toggle: toggleSidebarCollapse,
 });
 
