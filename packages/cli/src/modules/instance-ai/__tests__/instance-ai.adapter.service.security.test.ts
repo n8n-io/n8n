@@ -378,13 +378,59 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Credential adapter — IDOR boundary for confirmation payload credential IDs
-//
-// `setupWorkflowApply` and `credentialSelection` confirmation payloads carry
-// client-supplied credential IDs. The credential adapter resolves them
-// through `credentialsService.getOne(user, ...)`, which the underlying
-// service binds to the requesting user — IDs the user can't access throw
-// rather than leaking the credential.
+// Credential listing — workflow/project scoping
+// ---------------------------------------------------------------------------
+
+describe('credentialService.list — scoping', () => {
+	it('uses getCredentialsAUserCanUseInAWorkflow when workflowId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
+			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.list({ type: 'slackApi', workflowId: 'wf-1' });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			workflowId: 'wf-1',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+		// type filter applied post-fetch
+		expect(result).toEqual([{ id: 'c1', name: 'Slack Shared', type: 'slackApi' }]);
+	});
+
+	it('uses getCredentialsAUserCanUseInAWorkflow when projectId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		await ctx.credentialService.list({ projectId: 'proj-1' });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'proj-1',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+	});
+
+	it('falls back to getMany (broad) when neither workflowId nor projectId is provided', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		await ctx.credentialService.list({ type: 'slackApi' });
+
+		expect(credentialsService.getMany).toHaveBeenCalledWith(user, {
+			listQueryOptions: { filter: { type: 'slackApi' } },
+			includeGlobal: true,
+		});
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Credential adapter — credential ownership revalidation
 // ---------------------------------------------------------------------------
 
 describe('credentialService.get — credential ownership revalidation', () => {

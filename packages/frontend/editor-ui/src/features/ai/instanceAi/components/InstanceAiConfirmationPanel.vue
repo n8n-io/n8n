@@ -13,7 +13,7 @@ import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
-import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
+import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
@@ -304,10 +304,9 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:workflow-id="chunk.item.toolCall.confirmation.workflowId ?? ''"
-					:message="chunk.item.toolCall.confirmation.message"
 					:project-id="chunk.item.toolCall.confirmation.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
+					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
 
 				<!-- Credential setup -->

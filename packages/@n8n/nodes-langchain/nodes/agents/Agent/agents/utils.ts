@@ -1,8 +1,20 @@
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INode,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 
 import type { ZodObjectAny } from '../../../../types/types';
+
+/** `IExecuteFunctions` vs `ISupplyDataFunctions` (e.g. agent as a tool); only the former has `getExecuteData`. */
+export function isExecuteFunctions(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+): context is IExecuteFunctions {
+	return 'getExecuteData' in context;
+}
 
 export async function extractParsedOutput(
 	ctx: IExecuteFunctions,
