@@ -1096,23 +1096,18 @@ function handleStop() {
 
 .artifacts-panel-preview-enter-active,
 .artifacts-panel-preview-leave-active {
-	--artifacts-panel-fade-enter-easing: var(--easing--ease-out);
-	--artifacts-panel-fade-exit-easing: var(--easing--ease-in);
-	--animation--fade-in--duration: var(
-		--instance-ai-panel-transition-duration,
-		var(--duration--snappy)
-	);
-	--animation--fade-in--translate: 0;
-	--animation--fade-out--duration: var(
-		--instance-ai-panel-transition-duration,
-		var(--duration--snappy)
-	);
+	transition: opacity var(--instance-ai-panel-transition-duration, var(--duration--snappy)) linear;
 
 	will-change: opacity;
 
 	@media (prefers-reduced-motion: reduce) {
 		will-change: auto;
 	}
+}
+
+.artifacts-panel-preview-enter-from,
+.artifacts-panel-preview-leave-to {
+	opacity: 0;
 }
 
 .artifacts-panel-fade-enter-active {
@@ -1124,16 +1119,7 @@ function handleStop() {
 	pointer-events: none;
 }
 
-.artifacts-panel-preview-enter-active {
-	--animation--fade-in--easing: var(--artifacts-panel-fade-enter-easing);
-
-	@include motion.fade-in;
-}
-
 .artifacts-panel-preview-leave-active {
-	--animation--fade-out--easing: var(--easing--ease-out);
-
-	@include motion.fade-out;
 	pointer-events: none;
 }
 </style>
