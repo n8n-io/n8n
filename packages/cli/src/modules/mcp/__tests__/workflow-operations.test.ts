@@ -291,6 +291,17 @@ describe('applyOperations', () => {
 			}
 		});
 
+		test('rejects paths with invalid ~ escape sequences', () => {
+			for (const path of ['/foo~2bar', '/foo~', '/~', '/foo/bar~']) {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 1 },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) continue;
+				expect(result.error).toContain('invalid');
+			}
+		});
+
 		test('fails clearly when descending through an array (indices not supported)', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { values: [{ name: 'Content-Type', value: 'application/json' }] };

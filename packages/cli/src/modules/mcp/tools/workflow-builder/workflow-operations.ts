@@ -187,9 +187,14 @@ const parseJsonPointer = (path: string): string[] | null => {
 	if (!path.startsWith('/')) return null;
 	const tail = path.slice(1);
 	if (tail.length === 0) return null;
-	const segments = tail.split('/').map((seg) => seg.replace(/~1/g, '/').replace(/~0/g, '~'));
-	for (const seg of segments) {
+	const rawSegments = tail.split('/');
+	const segments: string[] = [];
+	for (const raw of rawSegments) {
+		// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
+		if (/~(?:[^01]|$)/.test(raw)) return null;
+		const seg = raw.replace(/~1/g, '/').replace(/~0/g, '~');
 		if (seg.length === 0 || !isSafeObjectProperty(seg)) return null;
+		segments.push(seg);
 	}
 	return segments;
 };
