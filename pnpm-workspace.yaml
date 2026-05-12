@@ -48,6 +48,7 @@ catalog:
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.36.0
+  '@supabase/supabase-js': 2.50.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
   '@testcontainers/mysql': ^11.13.0
@@ -62,8 +63,8 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 4.1.1
-  axios: 1.16.0
   agent-browser: 0.26.0
+  axios: 1.16.0
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3

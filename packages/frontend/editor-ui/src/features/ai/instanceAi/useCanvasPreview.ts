@@ -1,5 +1,4 @@
 import { computed, ref, watch } from 'vue';
-import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
@@ -7,7 +6,7 @@ import {
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';
-import type { useInstanceAiStore } from './instanceAi.store';
+import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
 	id: string;
@@ -23,18 +22,18 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 };
 
 interface UseCanvasPreviewOptions {
-	store: ReturnType<typeof useInstanceAiStore>;
-	route: RouteLocationNormalizedLoadedGeneric;
+	thread: ThreadRuntime;
+	threadId: () => string;
 }
 
-export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 
 	// All artifacts (workflows + data tables) in the current thread, derived from resource registry
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
-		for (const entry of store.producedArtifacts.values()) {
+		for (const entry of thread.producedArtifacts.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
 				result.push({
 					id: entry.id,
@@ -117,26 +116,23 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	// Each thread is stateless for the preview panel: switching threads
 	// closes the panel. Past artifacts are reachable via their inline
 	// references in the message timeline.
-	watch(
-		() => route.params.threadId,
-		(threadId, oldThreadId) => {
-			// Skip if this is the initial route setup (e.g. URL updated from
-			// /instance-ai to /instance-ai/:threadId after the first message)
-			if (!oldThreadId) return;
-			// Skip if the thread ID hasn't actually changed
-			if (threadId === oldThreadId) return;
+	watch(threadId, (nextThreadId, oldThreadId) => {
+		// Skip if this is the initial route setup (e.g. URL updated from
+		// /instance-ai to /instance-ai/:threadId after the first message)
+		if (!oldThreadId) return;
+		// Skip if the thread ID hasn't actually changed
+		if (nextThreadId === oldThreadId) return;
 
-			activeTabId.value = undefined;
-		},
-	);
+		activeTabId.value = undefined;
+	});
 
 	// --- Auto-open canvas when AI creates/modifies a workflow ---
 
 	const workflowRefreshKey = ref(0);
 
 	const latestBuildResult = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
 				const result = getLatestBuildResult(msg.agentTree);
 				if (result) return result;
@@ -158,7 +154,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		() => latestBuildResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestBuildResult.value) return;
-			if (store.isHydratingThread) return;
+			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuildResult.value.workflowId;
 			workflowRefreshKey.value++;
@@ -171,8 +167,8 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
 
 	const latestSetupResult = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
 				const result = getLatestWorkflowSetupResult(msg.agentTree);
 				if (result) return result;
@@ -198,8 +194,8 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
 
 	const latestDataTableResult = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
 				const result = getLatestDataTableResult(msg.agentTree);
 				if (result) return result;
@@ -212,7 +208,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		() => latestDataTableResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestDataTableResult.value) return;
-			if (store.isHydratingThread) return;
+			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestDataTableResult.value.dataTableId;
 			dataTableRefreshKey.value++;
@@ -223,8 +219,8 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	// --- Close data table preview if the active table is deleted ---
 
 	const latestDeletedDataTableId = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
 				const id = getLatestDeletedDataTableId(msg.agentTree);
 				if (id) return id;
