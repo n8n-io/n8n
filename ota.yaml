@@ -31,70 +31,54 @@ execution:
   contexts:
     host:
       backend: native
-runtimes:
-  node: ">=24"
 tools:
-  pnpm: ">=10.22.0"
+  pnpm:
+    version: ">=10.22.0"
+    acquisition:
+      provider: corepack
+      package: pnpm
+      version: "10.22.0"
+native_prerequisites:
+  node-native-build-tools:
+    description: Host-native build tooling for workspace packages with native addons
+    platforms:
+      linux:
+        check: node-native-build-tools-linux
+        apt:
+          - build-essential
+          - python3
+      macos:
+        check: node-native-build-tools-macos
+        xcode_clt: true
+      windows:
+        check: node-native-build-tools-windows
+        visual_studio_build_tools: true
+        winget:
+          - Microsoft.VisualStudio.2022.BuildTools
+        activation:
+          kind: visual_studio_dev_shell
+          arch: x64
 env:
   sources:
     - kind: dotenv
       path: .env.local
-readiness:
-  probes:
-    app-backend-ready:
+surfaces:
+  backend:
+    kind: http
+    port: 5678
+    path: /
+    readiness:
       kind: http
-      target:
-        kind: task
-        name: dev
-        listener: backend
-        address_view: host
       path: /healthz/readiness
-      timeout: 10000
-    app-editor-ready:
+      timeout: 10s
+  editor:
+    kind: http
+    port: 8080
+    path: /
+    readiness:
       kind: http
-      target:
-        kind: task
-        name: dev
-        listener: editor
-        address_view: host
       path: /
-      timeout: 10000
-    backend-ready:
-      kind: http
-      target:
-        kind: task
-        name: dev:be
-        listener: backend
-        address_view: host
-      path: /healthz/readiness
-      timeout: 10000
-    editor-ready:
-      kind: http
-      target:
-        kind: task
-        name: dev:fe
-        listener: editor
-        address_view: host
-      path: /
-      timeout: 10000
-    ai-backend-ready:
-      kind: http
-      target:
-        kind: task
-        name: dev:ai
-        listener: backend
-        address_view: host
-      path: /healthz/readiness
-      timeout: 10000
-    runtime-backend-ready:
-      kind: http
-      target:
-        kind: task
-        name: start
-        listener: backend
-        address_view: host
-      path: /healthz/readiness
-      timeout: 10000
+      timeout: 10s
 tasks:
   setup:env-local:
     context: host
@@ -103,7 +87,10 @@ tasks:
       n8n documents `.env.local` as optional for development.
       This task only materializes the template when the file is missing.
     category: setup
-    run: test -f .env.local || cp .env.local.example .env.local
+    action:
+      kind: copy_if_missing
+      from: .env.local.example
+      to: .env.local
     safe_for_agent: true
   install:
     context: host
@@ -113,6 +100,13 @@ tasks:
       It links workspace packages and prepares the repo for build and development flows.
     category: setup
     run: pnpm install
+    requirements:
+      runtimes:
+        node: ">=24"
+      tools:
+        pnpm: ">=10.22.0"
+      native:
+        - node-native-build-tools
     depends_on:
       - setup:env-local
     safe_for_agent: true
@@ -124,9 +118,29 @@ tasks:
       and as the production-mode verification step after development changes.
     category: build
     run: pnpm build
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     safe_for_agent: true
+  build:docker:
+    context: host
+    description: Build the local n8n Docker image
+    notes: |
+      This is the documented packaged-image build path for local testcontainer and Docker-based testing flows.
+      It is useful when contributor work needs a local image rather than the published packaged runtime.
+    category: build
+    run: pnpm build:docker
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
+    depends_on:
+      - install
   setup:
     context: host
     description: Prepare the repo for contributor work
@@ -135,6 +149,11 @@ tasks:
       create `.env.local` if needed, install workspace dependencies, and build the monorepo.
     category: setup
     run: pnpm build
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     safe_for_agent: true
@@ -143,6 +162,11 @@ tasks:
     description: Run the monorepo typecheck flow
     category: test
     run: pnpm typecheck
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     safe_for_agent: true
@@ -151,6 +175,11 @@ tasks:
     description: Run the monorepo lint suite
     category: test
     run: pnpm lint
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     safe_for_agent: true
@@ -159,6 +188,11 @@ tasks:
     description: Run the monorepo test suite
     category: test
     run: pnpm test
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - setup
     safe_for_agent: true
@@ -170,45 +204,21 @@ tasks:
       It runs the broader local development stack in parallel and is the canonical repo workflow.
     category: dev
     run: pnpm dev
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     runtime:
       kind: service
-      readiness:
-        probe: app-backend-ready
-        interval: 5s
-        retries: 12
-        start_period: 10s
-      listeners:
+      surfaces:
         backend:
-          protocol: http
-          bind:
-            address: 127.0.0.1
-            port:
-              mode: fixed
-              value: 5678
           project:
             host:
-              address: 127.0.0.1
               primary: true
-              port:
-                mode: fixed
-                value: 5678
-              path: /
-        editor:
-          protocol: http
-          bind:
-            address: 127.0.0.1
-            port:
-              mode: fixed
-              value: 8080
-          project:
-            host:
-              address: 127.0.0.1
-              port:
-                mode: fixed
-                value: 8080
-              path: /
+        editor: {}
   dev:be:
     context: host
     description: Start the backend-focused development workflow
@@ -217,32 +227,18 @@ tasks:
       It is the narrower default agent runtime because it exposes one stable backend service surface.
     category: dev
     run: pnpm dev:be
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     safe_for_agent: true
     runtime:
       kind: service
-      readiness:
-        probe: backend-ready
-        interval: 5s
-        retries: 12
-        start_period: 10s
-      listeners:
-        backend:
-          protocol: http
-          bind:
-            address: 127.0.0.1
-            port:
-              mode: fixed
-              value: 5678
-          project:
-            host:
-              address: 127.0.0.1
-              primary: true
-              port:
-                mode: fixed
-                value: 5678
-              path: /
+      surfaces:
+        - backend
   dev:fe:
     context: host
     description: Start the frontend-focused development workflow
@@ -250,32 +246,18 @@ tasks:
       This runs the editor-ui and design system development surfaces without the broader backend watch graph.
     category: dev
     run: pnpm dev:fe
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     safe_for_agent: true
     runtime:
       kind: service
-      readiness:
-        probe: editor-ready
-        interval: 5s
-        retries: 12
-        start_period: 10s
-      listeners:
-        editor:
-          protocol: http
-          bind:
-            address: 127.0.0.1
-            port:
-              mode: fixed
-              value: 8080
-          project:
-            host:
-              address: 127.0.0.1
-              primary: true
-              port:
-                mode: fixed
-                value: 8080
-              path: /
+      surfaces:
+        - editor
   dev:ai:
     context: host
     description: Start the AI-node-focused development workflow
@@ -283,31 +265,17 @@ tasks:
       This is the documented selective development path for AI and LangChain node work.
     category: dev
     run: pnpm dev:ai
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - install
     runtime:
       kind: service
-      readiness:
-        probe: backend-ready
-        interval: 5s
-        retries: 12
-        start_period: 10s
-      listeners:
-        backend:
-          protocol: http
-          bind:
-            address: 127.0.0.1
-            port:
-              mode: fixed
-              value: 5678
-          project:
-            host:
-              address: 127.0.0.1
-              primary: true
-              port:
-                mode: fixed
-                value: 5678
-              path: /
+      surfaces:
+        - backend
   start:
     context: host
     description: Start n8n from the built CLI entrypoint
@@ -316,31 +284,73 @@ tasks:
       rather than the watch-mode development workflow.
     category: dev
     run: pnpm start
+    requirements:
+      tools:
+        pnpm: ">=10.22.0"
+      checks:
+        - workspace-dependencies-installed
     depends_on:
       - build
     runtime:
       kind: service
-      readiness:
-        probe: backend-ready
-        interval: 5s
-        retries: 12
-        start_period: 10s
-      listeners:
+      surfaces:
+        - backend
+  quickstart:
+    context: host
+    description: Start n8n instantly through the packaged npx entrypoint
+    notes: |
+      This mirrors the README quickstart path for trying n8n without the monorepo contributor setup.
+      It is a packaged command launch, not the source-repo development workflow.
+    category: dev
+    launch:
+      kind: command
+      exe: npx
+      args:
+        - --yes
+        - n8n
+    requirements:
+      runtimes:
+        node: ">=24"
+      tools:
+        npx: "*"
+    runtime:
+      kind: service
+      surfaces:
+        - backend
+  docker:run:
+    context: host
+    description: Start the packaged n8n container image
+    notes: |
+      This mirrors the README Docker quickstart path as a first-class packaged runtime launch.
+      The named volume is part of the launch truth; Docker creates it on demand when missing.
+    category: dev
+    launch:
+      kind: container
+      name: n8n
+      image: docker.n8n.io/n8nio/n8n
+      volumes:
+        - name: n8n_data
+          target: /home/node/.n8n
+    requirements:
+      tools:
+        docker: "*"
+    runtime:
+      kind: service
+      surfaces:
         backend:
-          protocol: http
           bind:
-            address: 127.0.0.1
+            address: 0.0.0.0
             port:
               mode: fixed
               value: 5678
           project:
             host:
               address: 127.0.0.1
-              primary: true
               port:
                 mode: fixed
                 value: 5678
               path: /
+              primary: true
 workflows:
   default: app
   app:
@@ -351,12 +361,12 @@ workflows:
     run:
       task: dev
     readiness:
-      probes:
-        - app-backend-ready
-        - app-editor-ready
+      surfaces:
+        - backend
+        - editor
     exposes:
-      - http://127.0.0.1:5678
-      - http://127.0.0.1:8080
+      - surface: backend
+      - surface: editor
   backend:
     intent: backend_development
     description: Selective backend-only development workflow
@@ -365,10 +375,10 @@ workflows:
     run:
       task: dev:be
     readiness:
-      probes:
-        - ai-backend-ready
+      surfaces:
+        - backend
     exposes:
-      - http://127.0.0.1:5678
+      - surface: backend
   frontend:
     intent: frontend_development
     description: Selective frontend-only development workflow
@@ -377,10 +387,10 @@ workflows:
     run:
       task: dev:fe
     readiness:
-      probes:
-        - editor-ready
+      surfaces:
+        - editor
     exposes:
-      - http://127.0.0.1:8080
+      - surface: editor
   ai:
     intent: ai_development
     description: Selective AI-node development workflow
@@ -389,10 +399,10 @@ workflows:
     run:
       task: dev:ai
     readiness:
-      probes:
-        - runtime-backend-ready
+      surfaces:
+        - backend
     exposes:
-      - http://127.0.0.1:5678
+      - surface: backend
   runtime:
     intent: local_runtime
     description: Production-style local runtime from the built CLI entrypoint
@@ -401,26 +411,52 @@ workflows:
     run:
       task: start
     readiness:
-      probes:
-        - backend-ready
+      surfaces:
+        - backend
     exposes:
-      - http://127.0.0.1:5678
+      - surface: backend
+  instant:
+    intent: quickstart
+    description: README-style packaged command quickstart through npx
+    run:
+      task: quickstart
+    readiness:
+      surfaces:
+        - backend
+    exposes:
+      - surface: backend
+  docker:
+    intent: packaged_runtime
+    description: README-style packaged container runtime through the published n8n image
+    run:
+      task: docker:run
+    readiness:
+      surfaces:
+        - backend
+    exposes:
+      - surface: backend
 checks:
-  - name: node-installed
+  - name: node-native-build-tools-linux
     kind: precondition
     severity: error
-    run: node --version
-    timeout: 10
-  - name: pnpm-installed
+    run: sh -c "cc --version && c++ --version && make --version && python3 --version"
+    timeout: 10000
+  - name: node-native-build-tools-macos
     kind: precondition
     severity: error
-    run: pnpm --version
-    timeout: 10
+    run: sh -c "xcode-select -p && python3 --version"
+    timeout: 10000
+  - name: node-native-build-tools-windows
+    kind: precondition
+    severity: error
+    run: powershell -NoProfile -ExecutionPolicy Bypass -Command "$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'; if (!(Test-Path $vswhere)) { exit 1 }; & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath; if ($LASTEXITCODE -ne 0) { exit 1 }; py --version"
+    timeout: 10000
   - name: workspace-dependencies-installed
-    kind: precondition
+    kind: file
     severity: error
-    run: test -d node_modules
-    timeout: 10
+    path: node_modules
+    expect: directory
+    timeout: 10000
 agent:
   entrypoint: setup
   default_task: dev:be
