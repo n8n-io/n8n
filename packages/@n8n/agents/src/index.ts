@@ -158,6 +158,11 @@ export {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from './runtime/observation-log-observer';
+export {
+	parseObservationLogReflectionJson,
+	renderObservationLogForReflection,
+	runObservationLogReflector,
+} from './runtime/observation-log-reflector';
 export { ScopedMemoryTaskRunner } from './runtime/scoped-memory-task-runner';
 export type {
 	ObservationLogObserveFn,
@@ -169,6 +174,14 @@ export type {
 	RunObservationLogObserverOpts,
 	RunObservationLogObserverResult,
 } from './runtime/observation-log-observer';
+export type {
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
+	ObservationLogReflectorMemory,
+	ObservationLogReflectorWarning,
+	RunObservationLogReflectorOpts,
+	RunObservationLogReflectorResult,
+} from './runtime/observation-log-reflector';
 export type {
 	ScopedMemoryTaskDescriptor,
 	ScopedMemoryTaskError,
