@@ -8,6 +8,7 @@ import {
 	getWorkflowById,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -734,6 +735,70 @@ describe('WorkflowRepository', () => {
 			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
 
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('nodeContent filter', () => {
+		let workflowRepository: WorkflowRepository;
+
+		beforeEach(async () => {
+			await testDb.truncate([
+				'SharedWorkflow',
+				'ProjectRelation',
+				'WorkflowEntity',
+				'Project',
+				'User',
+			]);
+			workflowRepository = Container.get(WorkflowRepository);
+		});
+
+		const nodeNamed = (name: string) => ({
+			id: `id-${name}`,
+			name,
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		});
+
+		const search = async (user: User, nodeContent: string) =>
+			await workflowRepository.getManyWithSharingSubquery(
+				user,
+				{ scopes: ['workflow:read'] as Scope[] },
+				{ filter: { nodeContent }, select: { name: true, nodes: true } },
+			);
+
+		it('matches on node content and excludes non-matching workflows', async () => {
+			// ARRANGE
+			const { createOwner } = await import('../../shared/db/users.js');
+			const owner = await createOwner();
+
+			await createWorkflow({ name: 'Has Slack', nodes: [nodeNamed('Send Slack Alert')] }, owner);
+			await createWorkflow({ name: 'No match', nodes: [nodeNamed('Do Nothing')] }, owner);
+
+			// ACT
+			const found = await search(owner, 'slack alert');
+
+			// ASSERT
+			expect(found.map((w) => w.name)).toEqual(['Has Slack']);
+		});
+
+		// Regression: SQLite has no default LIKE escape character. Without an explicit
+		// ESCAPE clause the backslashes from escapeLike match literally and the query
+		// silently returns nothing; without escaping at all, % and _ act as wildcards.
+		it('treats % and _ in the query as literals, not wildcards', async () => {
+			// ARRANGE
+			const { createOwner } = await import('../../shared/db/users.js');
+			const owner = await createOwner();
+
+			await createWorkflow({ name: 'Literal', nodes: [nodeNamed('Discount 50% off')] }, owner);
+			await createWorkflow({ name: 'Decoy', nodes: [nodeNamed('Discount 50 percent off')] }, owner);
+
+			// ACT & ASSERT — '%' matches only the row literally containing it
+			expect((await search(owner, '50% off')).map((w) => w.name)).toEqual(['Literal']);
+
+			// '_' must not stand in for the space in either row
+			expect(await search(owner, 'Discount_50')).toEqual([]);
 		});
 	});
 

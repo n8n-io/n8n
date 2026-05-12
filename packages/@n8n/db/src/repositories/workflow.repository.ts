@@ -881,6 +881,54 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
+	 * Like {@link getManyAndCountWithSharingSubquery}, but skips the COUNT query and
+	 * expresses sharing as `EXISTS` rather than `id IN (subquery)`.
+	 *
+	 * Use for capped scans that sort and limit. `IN (subquery)` makes the planner
+	 * drive from `shared_workflow` and sort every match in a temp B-tree; `EXISTS`
+	 * keeps it driving from `workflow`, so an `ORDER BY updatedAt` + `LIMIT` can
+	 * short-circuit on the index instead of scanning the whole table.
+	 */
+	async getManyWithSharingSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		},
+		options: ListQuery.Options = {},
+	): Promise<WorkflowEntity[]> {
+		const qb = this.getManyQueryWithSharingSubquery(
+			user,
+			sharingOptions,
+			options,
+			undefined,
+			'exists',
+		);
+
+		if (this.globalConfig.database.type !== 'postgresdb') return await qb.getMany();
+
+		// Postgres cannot estimate the selectivity of `LIKE '%…%'`, so it assumes
+		// almost nothing matches and picks a sequential scan with a top-N sort over
+		// the whole table rather than walking the `updatedAt` index and stopping at
+		// the limit. Measured on a 20k-workflow corpus: 75ms vs 1ms. The planner
+		// still falls back to a sequential scan when no index can serve the query
+		// (a query matching nothing costs the same either way), so this only
+		// removes a bad choice rather than forcing a worse one. SET LOCAL keeps it
+		// scoped to this transaction so pooled connections are unaffected.
+		return await this.manager.transaction(async (tx) => {
+			const { queryRunner } = tx;
+			if (!queryRunner) return await qb.getMany();
+
+			await tx.query('SET LOCAL enable_seqscan = off');
+			return await qb.setQueryRunner(queryRunner).getMany();
+		});
+	}
+
+	/**
 	 * Build a query that filters workflows based on sharing permissions using a subquery.
 	 */
 	private getManyQueryWithSharingSubquery(
@@ -895,6 +943,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		},
 		options: ListQuery.Options = {},
 		callableForParentWorkflowId?: string,
+		sharingPredicate: 'in' | 'exists' = 'in',
 	): SelectQueryBuilder<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
 
@@ -922,6 +971,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				...sharedWorkflowSubquery.getParameters(),
 				...callableSubquery.getParameters(),
 			});
+		} else if (sharingPredicate === 'exists') {
+			// Correlate on the outer row so the planner can keep `workflow` as the
+			// driving table. See getManyWithSharingSubquery for why this matters.
+			const correlated = sharedWorkflowSubquery.andWhere('sw.workflowId = workflow.id');
+			qb.andWhere(`EXISTS (${correlated.getQuery()})`);
+			qb.setParameters(correlated.getParameters());
 		} else {
 			// Apply the sharing filter using the subquery
 			qb.andWhere(`workflow.id IN (${sharedWorkflowSubquery.getQuery()})`);
@@ -1080,7 +1135,38 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
+		this.applyNodeContentFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
+	}
+
+	/**
+	 * Substring match against the JSON-encoded `nodes` column, for searching node
+	 * names, notes and parameter values across workflows.
+	 *
+	 * Matches the draft `nodes`, not `activeVersion.nodes`: callers navigate the
+	 * user into the editor, which opens the draft, so a hit on a published-only
+	 * node would land on something they cannot see.
+	 *
+	 * Non-sargable by nature (leading wildcard over a blob). Always pair with a
+	 * `take` to bound the scan.
+	 */
+	private applyNodeContentFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.nodeContent !== 'string' || filter.nodeContent.trim() === '') return;
+
+		// PG needs an explicit cast off the json column; SQLite stores it as text already.
+		const nodesExpression =
+			this.globalConfig.database.type === 'postgresdb'
+				? '"workflow"."nodes"::text'
+				: 'workflow.nodes';
+
+		// ESCAPE is required: SQLite has no default escape character, so without it
+		// the backslashes from escapeLike match literally and the query returns nothing.
+		qb.andWhere(`LOWER(${nodesExpression}) LIKE :nodeContent ESCAPE '\\'`, {
+			nodeContent: `%${this.escapeLike(filter.nodeContent.trim().toLowerCase())}%`,
+		});
 	}
 
 	private applyAvailableInMCPFilter(

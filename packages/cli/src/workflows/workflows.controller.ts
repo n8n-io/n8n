@@ -6,6 +6,8 @@ import {
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
 	ManualRunDto,
+	SearchWorkflowNodesQueryDto,
+	type SearchWorkflowNodesResponse,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 	type WorkflowPublicationStatus,
@@ -33,6 +35,7 @@ import {
 	Put,
 	Query,
 	RestController,
+	createUserKeyedRateLimiter,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
@@ -64,6 +67,7 @@ import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowNodeSearchService } from './workflow-node-search.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
@@ -94,6 +98,7 @@ export class WorkflowsController {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowNodeSearchService: WorkflowNodeSearchService,
 	) {}
 
 	@Post('/')
@@ -151,6 +156,23 @@ export class WorkflowsController {
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);
 		}
+	}
+
+	/**
+	 * Full-text node search across readable workflows. Each call runs an
+	 * unindexable substring scan, so it is rate limited per user: the client
+	 * debounces at 300ms, which no human can sustain past this ceiling.
+	 */
+	@Get('/search-nodes', {
+		keyedRateLimit: createUserKeyedRateLimiter({ limit: 120, windowMs: 60_000 }),
+	})
+	async searchNodes(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+		@Query query: SearchWorkflowNodesQueryDto,
+	): Promise<SearchWorkflowNodesResponse> {
+		const results = await this.workflowNodeSearchService.search(req.user, query.query);
+		return { results };
 	}
 
 	@Get('/new')

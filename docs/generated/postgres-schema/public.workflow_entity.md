@@ -51,6 +51,7 @@
 | ---- | ---------- |
 | IDX_workflow_entity_name | CREATE INDEX "IDX_workflow_entity_name" ON public.workflow_entity USING btree (name) |
 | IDX_workflow_entity_sourceWorkflowId | CREATE INDEX "IDX_workflow_entity_sourceWorkflowId" ON public.workflow_entity USING btree ("sourceWorkflowId") WHERE ("sourceWorkflowId" IS NOT NULL) |
+| IDX_workflow_entity_updatedAt | CREATE INDEX "IDX_workflow_entity_updatedAt" ON public.workflow_entity USING btree ("updatedAt") |
 | pk_workflow_entity_id | CREATE UNIQUE INDEX pk_workflow_entity_id ON public.workflow_entity USING btree (id) |
 | workflow_entity_pkey | CREATE UNIQUE INDEX workflow_entity_pkey ON public.workflow_entity USING btree (id) |
 

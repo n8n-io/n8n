@@ -139,6 +139,16 @@ export {
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 } from './workflows/workflow-public.dto';
+export {
+	SearchWorkflowNodesQueryDto,
+	NODE_SEARCH_MIN_QUERY_LENGTH,
+	NODE_SEARCH_MAX_QUERY_LENGTH,
+	NODE_SEARCH_MAX_RESULTS,
+	NODE_SEARCH_PER_WORKFLOW_CAP,
+	NODE_SEARCH_MAX_CANDIDATE_WORKFLOWS,
+	type NodeSearchHit,
+	type SearchWorkflowNodesResponse,
+} from './workflows/search-workflow-nodes.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';

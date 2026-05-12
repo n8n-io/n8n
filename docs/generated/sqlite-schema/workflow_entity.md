@@ -51,6 +51,7 @@ CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" va
 | ---- | ---------- |
 | IDX_e10425f6ab9964c4c1623a4a03 | CREATE INDEX "IDX_e10425f6ab9964c4c1623a4a03" ON "workflow_entity" ("name")  |
 | IDX_workflow_entity_sourceWorkflowId | CREATE INDEX "IDX_workflow_entity_sourceWorkflowId" ON "workflow_entity" ("sourceWorkflowId") WHERE "sourceWorkflowId" IS NOT NULL |
+| IDX_workflow_entity_updatedAt | CREATE INDEX "IDX_workflow_entity_updatedAt" ON "workflow_entity" ("updatedAt")  |
 | sqlite_autoindex_workflow_entity_1 | PRIMARY KEY (id) |
 
 ## Triggers

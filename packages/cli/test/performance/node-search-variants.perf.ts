@@ -1,0 +1,166 @@
+/**
+ * Evidence for the two query decisions behind the node content search. Both
+ * findings are load-bearing, so this file exists to make them reproducible
+ * rather than folklore:
+ *
+ *  1. `workflow_entity.updatedAt` needs an index (migration
+ *     AddUpdatedAtIndexToWorkflowEntity1786525332822). Without it, an
+ *     `ORDER BY updatedAt ... LIMIT n` sorts the whole table.
+ *  2. Sharing must be expressed as `EXISTS`, not `id IN (subquery)`. The `IN`
+ *     form makes SQLite drive from `shared_workflow` and sort every match in a
+ *     temp B-tree, which throws away the index entirely.
+ *
+ * Run with: pnpm test:performance
+ */
+import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+import { v4 as uuid } from 'uuid';
+
+import { createOwner } from '../integration/shared/db/users';
+
+const CORPUS = 20_000;
+const SAMPLES = 15;
+
+/** Shape of an `EXPLAIN QUERY PLAN` row in SQLite. */
+type PlanRow = { detail: string };
+
+/** SQLite-only: uses EXPLAIN QUERY PLAN and sqlite_master. See
+ * node-search-postgres-plan.perf.ts for the Postgres equivalent. */
+const isSqlite = () => Container.get(GlobalConfig).database.type === 'sqlite';
+const LOREM = 'onboarding flow reads from the CRM and forwards it to billing. '.repeat(6);
+
+describe('node search SQL variants', () => {
+	let ds: DataSource;
+	const report: string[] = [];
+
+	beforeAll(async () => {
+		if (!isSqlite()) return;
+		await testDb.init();
+		await testDb.truncate([
+			'SharedWorkflow',
+			'ProjectRelation',
+			'WorkflowEntity',
+			'Project',
+			'User',
+		]);
+		const owner = await createOwner();
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const repo = Container.get(WorkflowRepository);
+		const shared = Container.get(SharedWorkflowRepository);
+
+		for (let start = 0; start < CORPUS; start += 500) {
+			const size = Math.min(500, CORPUS - start);
+			const rows = Array.from({ length: size }, (_, k) =>
+				repo.create({
+					id: `var-wf-${(start + k).toString().padStart(7, '0')}`,
+					name: `Workflow ${start + k}`,
+					active: false,
+					isArchived: false,
+					nodes: [
+						{
+							id: uuid(),
+							name: `Step 3 of flow ${start + k}`,
+							type: 'n8n-nodes-base.set',
+							typeVersion: 1,
+							position: [0, 0] as [number, number],
+							parameters: { body: LOREM },
+						},
+					],
+					connections: {},
+					nodeGroups: [],
+					versionId: uuid(),
+					settings: {},
+				}),
+			);
+			await repo.insert(rows);
+			await shared.insert(
+				rows.map((w) => ({
+					workflowId: w.id,
+					projectId: project.id,
+					role: 'workflow:owner' as const,
+				})),
+			);
+		}
+		ds = Container.get(DataSource);
+	});
+
+	afterAll(async () => {
+		if (!isSqlite()) return;
+		console.log(`\n${'='.repeat(78)}\nSQL VARIANTS (${CORPUS} workflows)\n${'='.repeat(78)}`);
+		report.forEach((l) => console.log(l));
+		console.log('='.repeat(78));
+		await testDb.terminate();
+	});
+
+	it('EXISTS keeps the updatedAt index; IN (subquery) discards it', async () => {
+		if (!isSqlite()) return;
+
+		const bench = async (label: string, sql: string) => {
+			const params = ['%step 3 of flow%'];
+			const samples: number[] = [];
+			for (let i = 0; i < SAMPLES; i++) {
+				const t0 = performance.now();
+				await ds.query(sql, params);
+				samples.push(performance.now() - t0);
+			}
+			samples.sort((a, b) => a - b);
+			const plan = await ds.query<PlanRow[]>(`EXPLAIN QUERY PLAN ${sql}`, params);
+			const p50 = samples[Math.floor(samples.length / 2)];
+			report.push(`\n  ${label}\n    p50=${p50.toFixed(1)}ms`);
+			plan.forEach((p) => report.push(`      ${p.detail}`));
+			return { p50, plan: plan.map((p) => p.detail).join(' | ') };
+		};
+
+		const SELECT =
+			'SELECT w.updatedAt AS w_updatedAt, w.id, w.name, w.nodes FROM workflow_entity w';
+		const LIKE = "LOWER(w.nodes) LIKE ? ESCAPE '\\'";
+		const TAIL = 'ORDER BY w_updatedAt DESC LIMIT 100';
+
+		const inForm = await bench(
+			'sharing as: w.id IN (SELECT workflowId FROM shared_workflow)',
+			`${SELECT} WHERE w.id IN (SELECT sw.workflowId FROM shared_workflow sw) AND ${LIKE} ${TAIL}`,
+		);
+		const existsForm = await bench(
+			'sharing as: EXISTS (... WHERE sw.workflowId = w.id)   [shipped]',
+			`${SELECT} WHERE EXISTS (SELECT 1 FROM shared_workflow sw WHERE sw.workflowId = w.id) AND ${LIKE} ${TAIL}`,
+		);
+
+		// The IN form materialises and sorts; the EXISTS form walks the index.
+		expect(inForm.plan).toContain('TEMP B-TREE FOR ORDER BY');
+		expect(existsForm.plan).toContain('IDX_workflow_entity_updatedAt');
+		expect(existsForm.p50).toBeLessThan(inForm.p50);
+	});
+
+	it('dropping the updatedAt index regresses the shipped shape', async () => {
+		if (!isSqlite()) return;
+
+		const shipped = `SELECT w.updatedAt AS w_updatedAt, w.id FROM workflow_entity w
+			WHERE EXISTS (SELECT 1 FROM shared_workflow sw WHERE sw.workflowId = w.id)
+			AND LOWER(w.nodes) LIKE ? ESCAPE '\\' ORDER BY w_updatedAt DESC LIMIT 100`;
+
+		const time = async () => {
+			const t0 = performance.now();
+			await ds.query(shipped, ['%step 3 of flow%']);
+			return performance.now() - t0;
+		};
+
+		await time();
+		const withIndex = await time();
+
+		await ds.query('DROP INDEX IF EXISTS IDX_workflow_entity_updatedAt');
+		const withoutIndex = await time();
+		await ds.query(
+			'CREATE INDEX IF NOT EXISTS IDX_workflow_entity_updatedAt ON workflow_entity (updatedAt)',
+		);
+
+		report.push(
+			`\n  updatedAt index present: ${withIndex.toFixed(1)}ms   dropped: ${withoutIndex.toFixed(1)}ms`,
+		);
+		expect(withIndex).toBeLessThan(withoutIndex);
+	});
+});
