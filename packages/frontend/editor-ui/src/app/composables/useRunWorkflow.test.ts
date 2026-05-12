@@ -450,7 +450,7 @@ describe('useRunWorkflow({ router })', () => {
 				const { runWorkflow } = useRunWorkflow({ router });
 				await runWorkflow({});
 
-				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledOnce();
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
 			});
 
 			it('should not save before execute when autosave is disabled and state is dirty', async () => {
@@ -474,7 +474,7 @@ describe('useRunWorkflow({ router })', () => {
 				const { runWorkflow } = useRunWorkflow({ router });
 				await runWorkflow({});
 
-				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledOnce();
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
 			});
 		});
 
