@@ -207,7 +207,9 @@ export function useCanvasOperations() {
 
 	const lastClickPosition = ref<XYPosition>([0, 0]);
 
-	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
+	const preventOpeningNDV =
+		typeof globalThis.localStorage?.getItem === 'function' &&
+		!!globalThis.localStorage.getItem('NodeView.preventOpeningNDV');
 
 	const editableWorkflowObject = computed(() =>
 		workflowDocumentStore.value

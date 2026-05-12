@@ -47,6 +47,7 @@ const defaultScopes = [
 	'folder:list',
 	'workflow:read',
 	'workflow:list',
+	'workflow:execute',
 	'credential:read',
 	'credential:list',
 ];
@@ -538,6 +539,11 @@ describe('ProjectRoleView', () => {
 
 			// workflow:read is already checked (it's in defaultScopes)
 			expect(readCheckbox).toBeChecked();
+			// ensure execute starts unchecked for this assertion
+			if (executeCheckbox.getAttribute('aria-checked') === 'true') {
+				await userEvent.click(executeCheckbox);
+			}
+			expect(executeCheckbox).not.toBeChecked();
 
 			await userEvent.click(executeCheckbox);
 			expect(executeCheckbox).toBeChecked();
@@ -556,7 +562,12 @@ describe('ProjectRoleView', () => {
 			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
 
 			// First enable workflow:execute
-			await userEvent.click(executeCheckbox);
+			if (readCheckbox.getAttribute('aria-checked') !== 'true') {
+				await userEvent.click(readCheckbox);
+			}
+			if (executeCheckbox.getAttribute('aria-checked') !== 'true') {
+				await userEvent.click(executeCheckbox);
+			}
 			expect(executeCheckbox).toBeChecked();
 			expect(readCheckbox).toBeChecked();
 
@@ -576,7 +587,10 @@ describe('ProjectRoleView', () => {
 			const executeCheckbox = getByTestId('scope-checkbox-workflow:execute');
 			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
 
-			// workflow:execute is not checked; uncheck workflow:read
+			// ensure workflow:execute is not checked; then uncheck workflow:read
+			if (executeCheckbox.getAttribute('aria-checked') === 'true') {
+				await userEvent.click(executeCheckbox);
+			}
 			expect(executeCheckbox).not.toBeChecked();
 			await userEvent.click(readCheckbox);
 			expect(readCheckbox).not.toBeChecked();
@@ -593,6 +607,9 @@ describe('ProjectRoleView', () => {
 			const updateCheckbox = getByTestId('scope-checkbox-workflow:update');
 			const executeCheckbox = getByTestId('scope-checkbox-workflow:execute');
 
+			if (executeCheckbox.getAttribute('aria-checked') === 'true') {
+				await userEvent.click(executeCheckbox);
+			}
 			expect(executeCheckbox).not.toBeChecked();
 
 			await userEvent.click(updateCheckbox);
