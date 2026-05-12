@@ -5,8 +5,8 @@ import { ref } from 'vue';
 import {
 	createResultError,
 	createResultOk,
-	ICredentialDataDecryptedObject,
 	type GenericValue,
+	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type Result,
 } from 'n8n-workflow';
