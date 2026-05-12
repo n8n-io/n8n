@@ -270,7 +270,7 @@ describe('AgentsController integration credentials', () => {
 		);
 	});
 
-	it('returns stored Telegram settings in integration status', async () => {
+	it('returns Telegram integrations from the persisted agent entry even when the live bridge is empty', async () => {
 		const settings = { accessMode: 'private' as const, allowedUserIds: ['123'] };
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
@@ -286,11 +286,14 @@ describe('AgentsController integration credentials', () => {
 			],
 		} as never);
 
+		// In-memory chat-service map is transiently empty (boot / reconnect /
+		// leader-takeover race). Status must still surface the integration
+		// from the persisted entry, otherwise the FE trigger chip flickers.
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getStatus.mockReturnValue({
-			status: 'connected',
-			connections: 1,
-			integrations: [{ type: 'telegram', credentialId: 'cred-telegram' }],
+			status: 'disconnected',
+			connections: 0,
+			integrations: [],
 		});
 
 		const agentScheduleService = mock<AgentScheduleService>();

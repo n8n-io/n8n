@@ -842,22 +842,19 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		// Decorate live chat connections with the settings persisted on the agent.
-		// The bridge doesn't surface them itself (the persisted entry is the
-		// single source of truth), so the controller stitches them in here.
-		const chatStatus = this.chatIntegrationService.getStatus(agentId);
-		const settingsByKey = new Map<string, AgentTelegramIntegrationSettings>();
-		for (const i of agent.integrations ?? []) {
-			if (isAgentCredentialIntegration(i) && i.settings) {
-				settingsByKey.set(`${i.type}:${i.credentialId}`, i.settings);
-			}
-		}
-		const chatIntegrations = chatStatus.integrations.map((i) => {
-			const settings = i.credentialId
-				? settingsByKey.get(`${i.type}:${i.credentialId}`)
-				: undefined;
-			return settings ? { ...i, settings } : i;
-		});
+		// Drive status from the persisted agent entry, not from the chat
+		// service's in-memory `connections` map. That map is transiently empty
+		// during boot / reconnect / leader takeover, which made the trigger
+		// chip disappear in the UI even though the integration is configured.
+		// Matches how the schedule trigger already reports `active` from the
+		// persisted config rather than runtime state.
+		const chatIntegrations = (agent.integrations ?? [])
+			.filter(isAgentCredentialIntegration)
+			.map((i) => ({
+				type: i.type,
+				credentialId: i.credentialId,
+				...(i.settings ? { settings: i.settings } : {}),
+			}));
 		const schedule = this.agentScheduleService.getConfig(agent);
 		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
 		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
