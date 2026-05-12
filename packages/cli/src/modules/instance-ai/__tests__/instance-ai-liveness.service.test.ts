@@ -10,7 +10,12 @@ import {
 	type InstanceAiLivenessTimeoutReason,
 } from '@n8n/instance-ai';
 
-import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from '../liveness';
+import {
+	INSTANCE_AI_RUN_TIMEOUT_REASON,
+	InstanceAiLivenessService,
+	type InstanceAiLivenessSweepResult,
+} from '../liveness';
+import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
 
 type TestSuspendedRun = {
 	runId: string;
@@ -22,11 +27,13 @@ function createLivenessService() {
 	const policyConfig = createInstanceAiLivenessPolicyConfig();
 	const policy = new InstanceAiLivenessPolicy(policyConfig);
 	const runState = {
-		sweepTimedOut: jest.fn((_policy: InstanceAiLivenessPolicy, _now?: number) => ({
-			activeThreadIds: [] as string[],
-			suspendedThreadIds: [] as string[],
-			confirmationRequestIds: [] as string[],
-		})),
+		sweepTimedOut: jest.fn(
+			(_policy: InstanceAiLivenessPolicy, _now?: number): InstanceAiLivenessSweepResult => ({
+				activeThreadIds: [] as string[],
+				suspendedThreadIds: [] as string[],
+				confirmationRequestIds: [] as string[],
+			}),
+		),
 		cancelActiveRun: jest.fn(
 			(_threadId: string): { runId: string; abortController: AbortController } | undefined =>
 				undefined,
@@ -93,11 +100,27 @@ describe('InstanceAiLivenessService', () => {
 			threadId: 'thread-suspended',
 			abortController: suspendedAbortController,
 		};
+		const activeTimeout: InstanceAiRunTimeoutDetails = {
+			reason: 'idle_timeout',
+			surface: 'active-run',
+			timeoutMs: 600_000,
+			elapsedMs: 650_000,
+			idleMs: 606_000,
+		};
+		const suspendedTimeout: InstanceAiRunTimeoutDetails = {
+			reason: 'max_lifetime',
+			surface: 'suspended-run',
+			timeoutMs: 1_800_000,
+			elapsedMs: 1_801_000,
+			idleMs: 900_000,
+		};
 
 		runState.sweepTimedOut.mockReturnValue({
 			activeThreadIds: ['thread-active'],
 			suspendedThreadIds: ['thread-suspended'],
 			confirmationRequestIds: ['request-1'],
+			activeTimeouts: { 'thread-active': activeTimeout },
+			suspendedTimeouts: { 'thread-suspended': suspendedTimeout },
 		});
 		runState.cancelActiveRun.mockReturnValue({
 			runId: 'run-active',
@@ -136,7 +159,14 @@ describe('InstanceAiLivenessService', () => {
 			'thread-confirmation',
 			expect.objectContaining({ responseId: 'run-timeout:run-confirmation' }),
 		);
-		expect(service.consumeRunTimedOut('run-active')).toBe(true);
+		expect(service.consumeRunTimeout('run-active')).toEqual({
+			timedOut: true,
+			details: activeTimeout,
+		});
+		expect(service.consumeRunTimeout('run-suspended')).toEqual({
+			timedOut: true,
+			details: suspendedTimeout,
+		});
 		expect(service.hasTimedOutActiveRunThread('thread-active')).toBe(true);
 	});
 
