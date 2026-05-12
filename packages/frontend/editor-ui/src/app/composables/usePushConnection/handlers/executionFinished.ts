@@ -489,7 +489,7 @@ export function setRunExecutionData(
 	workflowState.executingNode.clearNodeExecutionQueue();
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
-	const workflowExecution = executionDataStore.execution;
+	const workflowExecution = executionDataStore.getExecutionSnapshot();
 
 	if (workflowExecution === null) {
 		return;
@@ -500,7 +500,7 @@ export function setRunExecutionData(
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
-	} as IExecutionResponse);
+	});
 	executionDataStore.setExecutionRunData(runExecutionData);
 	stateStore.setActiveExecutionId(undefined);
 

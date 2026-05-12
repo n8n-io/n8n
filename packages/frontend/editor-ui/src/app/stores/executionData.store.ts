@@ -80,6 +80,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			return runData[nodeName];
 		}
 
+		/**
+		 * Returns a shallow snapshot of the current execution as a mutable
+		 * `IExecutionResponse`. Use this when you need to build an updated
+		 * execution to pass back to `setExecution()` — mutating top-level
+		 * fields on the snapshot does not affect store state. For reactive
+		 * reads, use `execution` instead.
+		 */
+		function getExecutionSnapshot(): IExecutionResponse | null {
+			return execution.value === null ? null : { ...execution.value };
+		}
+
 		function setExecution(value: IExecutionResponse | null, opts: SetExecutionOptions = {}) {
 			const { stripWaitingTaskData = true } = opts;
 			if (stripWaitingTaskData && value?.data?.waitTill) {
@@ -335,6 +346,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),
 			getExecutionRunDataByNodeName,
+			getExecutionSnapshot,
 			// Write API
 			setExecution,
 			setExecutionRunData,
