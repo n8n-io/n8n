@@ -9,7 +9,7 @@
  * provider: Anthropic takes a `budgetTokens` number, OpenAI takes a
  * `reasoningEffort` low/medium/high select.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { AgentMemoryProfilesResponse } from '@n8n/api-types';
 import { useDebounceFn } from '@vueuse/core';
 import {
@@ -32,9 +32,9 @@ import {
 	type ReasoningEffort,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
-import AgentMiniEditor from './AgentMiniEditor.vue';
 
 const PROFILE_POLL_INTERVAL_MS = 5000;
+const LazyAgentMiniEditor = defineAsyncComponent(async () => await import('./AgentMiniEditor.vue'));
 const i18n = useI18n();
 const rootStore = useRootStore();
 
@@ -69,7 +69,6 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
-const requireToolApproval = ref(props.config?.config?.requireToolApproval ?? false);
 const profileKey = computed(() =>
 	props.projectId && props.agentId ? `${props.projectId}:${props.agentId}` : null,
 );
@@ -80,7 +79,6 @@ const profile = ref<AgentMemoryProfilesResponse | null>(null);
 let profilePollInterval: ReturnType<typeof setInterval> | null = null;
 
 const canLoadProfile = computed(() => !props.disabled && Boolean(props.projectId && props.agentId));
-const profileLoaded = computed(() => loadedProfileKey.value === profileKey.value);
 const profileLoading = computed(
 	() => profileKey.value !== null && loadingProfileKeys.value.has(profileKey.value),
 );
@@ -94,7 +92,6 @@ watch(
 		budgetTokens.value = t?.budgetTokens ?? 1024;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
 		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
-		requireToolApproval.value = cfg.config?.requireToolApproval ?? false;
 	},
 	{ deep: true },
 );
@@ -144,13 +141,6 @@ function onConcurrencyInput(value: string) {
 	if (!Number.isFinite(n) || n < 1) return;
 	toolCallConcurrency.value = n;
 	void emitConcurrency();
-}
-
-function onApprovalToggle(value: boolean) {
-	requireToolApproval.value = value;
-	emit('update:config', {
-		config: { ...props.config?.config, requireToolApproval: value },
-	});
 }
 
 async function loadProfile() {
@@ -335,23 +325,6 @@ const thinkingDisabledReason = computed(() =>
 				/>
 			</div>
 
-			<div :class="$style.row">
-				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
-						i18n.baseText('agents.builder.advanced.approval.label')
-					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('agents.builder.advanced.approval.hint') }}
-					</N8nText>
-				</div>
-				<N8nSwitch2
-					:model-value="requireToolApproval"
-					:disabled="props.disabled"
-					data-testid="agent-require-approval-toggle"
-					@update:model-value="(v) => onApprovalToggle(Boolean(v))"
-				/>
-			</div>
-
 			<div :class="$style.profileDivider" data-testid="agent-user-profile-divider" />
 
 			<section :class="$style.profileSection" data-testid="agent-user-profile-section">
@@ -372,7 +345,7 @@ const thinkingDisabledReason = computed(() =>
 					</template>
 				</div>
 				<div v-if="!profileLoading && !profileError" :class="$style.profileContent">
-					<AgentMiniEditor
+					<LazyAgentMiniEditor
 						:class="$style.profileEditor"
 						:model-value="
 							profile?.userProfile ??
