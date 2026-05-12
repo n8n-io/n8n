@@ -64,7 +64,6 @@ class ModulesHooksRegistry {
 							newStaticData,
 							executionId: this.executionId,
 							retryOf: this.retryOf,
-							mode: this.mode,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -79,7 +78,6 @@ class ModulesHooksRegistry {
 							nodeName,
 							taskData,
 							executionId: this.executionId,
-							mode: this.mode,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -95,7 +93,6 @@ class ModulesHooksRegistry {
 							taskData,
 							executionData,
 							executionId: this.executionId,
-							mode: this.mode,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -110,7 +107,6 @@ class ModulesHooksRegistry {
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,
-							mode: this.mode,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -125,7 +121,6 @@ class ModulesHooksRegistry {
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,
-							mode: this.mode,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);

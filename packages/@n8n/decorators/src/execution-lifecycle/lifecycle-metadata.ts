@@ -7,7 +7,6 @@ import type {
 	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import type { Class } from '../types';
@@ -22,7 +21,6 @@ export type NodeExecuteBeforeContext = {
 	nodeName: string;
 	taskData: ITaskStartedData;
 	executionId: string;
-	mode: WorkflowExecuteMode;
 };
 
 export type NodeExecuteAfterContext = {
@@ -32,7 +30,6 @@ export type NodeExecuteAfterContext = {
 	taskData: ITaskData;
 	executionData: IRunExecutionData;
 	executionId: string;
-	mode: WorkflowExecuteMode;
 };
 
 export type WorkflowExecuteBeforeContext = {
@@ -41,7 +38,6 @@ export type WorkflowExecuteBeforeContext = {
 	workflowInstance: Workflow;
 	executionData?: IRunExecutionData;
 	executionId: string;
-	mode: WorkflowExecuteMode;
 };
 
 export type WorkflowExecuteAfterContext = {
@@ -51,7 +47,6 @@ export type WorkflowExecuteAfterContext = {
 	newStaticData: IDataObject;
 	executionId: string;
 	retryOf?: string;
-	mode: WorkflowExecuteMode;
 };
 
 export type WorkflowExecuteResumeContext = {
@@ -60,7 +55,6 @@ export type WorkflowExecuteResumeContext = {
 	workflowInstance: Workflow;
 	executionData: IRunExecutionData;
 	executionId: string;
-	mode: WorkflowExecuteMode;
 };
 
 /** Context arg passed to a lifecycle event handler method. */

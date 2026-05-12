@@ -1491,7 +1491,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -1609,7 +1608,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -1741,7 +1739,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -1882,7 +1879,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -1938,7 +1934,6 @@ describe('chatHub', () => {
 								workflow: capturedWorkflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId: capturedExecutionId,
 							});
 						});
@@ -2072,7 +2067,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -2213,7 +2207,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -2301,7 +2294,6 @@ describe('chatHub', () => {
 									workflow: capturedWorkflowData,
 									runData,
 									newStaticData: {},
-									mode: 'manual' as const,
 									executionId: capturedExecutionId,
 								});
 							});
@@ -2515,7 +2507,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -2650,7 +2641,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -2766,7 +2756,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});
@@ -2882,7 +2871,6 @@ describe('chatHub', () => {
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
-								mode: 'manual' as const,
 								executionId,
 							});
 						});

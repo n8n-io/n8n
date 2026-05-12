@@ -65,7 +65,12 @@ import { assertExecutionDataExists } from '@/utils/assertions';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import { ExecuteContext, PollContext, resolveSourceOverwrite } from './node-execution-context';
+import {
+	ExecuteContext,
+	PollContext,
+	getAdditionalKeys,
+	resolveSourceOverwrite,
+} from './node-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -1034,6 +1039,17 @@ export class WorkflowExecute {
 			subNodeExecutionResults,
 		);
 
+		this.applyCustomTelemetryTags(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			executionData,
+		);
+
 		let data: INodeExecutionData[][] | EngineRequest | null;
 		let executionSucceeded = false;
 		let closingError: Error | undefined;
@@ -1087,6 +1103,65 @@ export class WorkflowExecute {
 		}
 
 		return { data, hints: context.hints };
+	}
+
+	/**
+	 * Evaluates per-node `customTelemetryTags` expressions and merges them into
+	 * `executionData.metadata.tracing`, where `setMetadata({ tracing })` from
+	 * node-runtime code also writes. Existing tracing entries take precedence on
+	 * key collision, so node-authored semantics win over user-defined tags.
+	 */
+	private applyCustomTelemetryTags(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		executionData: IExecuteData,
+	): void {
+		const tags = node.customTelemetryTags?.tag;
+		if (!tags?.length) return;
+
+		const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+		const fromSettings: Record<string, string | number | boolean> = {};
+
+		for (const { key, value } of tags) {
+			const trimmedKey = key?.trim();
+			if (!trimmedKey) continue;
+
+			try {
+				const evaluated = workflow.expression.getParameterValue(
+					value,
+					runExecutionData,
+					runIndex,
+					0,
+					node.name,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executionData,
+					false,
+					{},
+				);
+				if (evaluated === undefined || evaluated === null) continue;
+				fromSettings[trimmedKey] = String(evaluated);
+			} catch (error) {
+				Logger.warn('Failed to evaluate customTelemetryTags expression', {
+					nodeName: node.name,
+					tagKey: trimmedKey,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		if (Object.keys(fromSettings).length === 0) return;
+
+		executionData.metadata = {
+			...(executionData.metadata ?? {}),
+			tracing: { ...fromSettings, ...(executionData.metadata?.tracing ?? {}) },
+		};
 	}
 
 	/**
