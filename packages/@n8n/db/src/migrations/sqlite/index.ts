@@ -168,6 +168,7 @@ import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
+import { ReplaceAgentObservationTables1785000000000 } from '../common/1785000000000-ReplaceAgentObservationTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -341,6 +342,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,
+	ReplaceAgentObservationTables1785000000000,
 ];
 
 export { sqliteMigrations };
