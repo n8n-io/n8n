@@ -319,9 +319,11 @@ onMounted(loadTimeline);
 
 .empty {
 	display: flex;
-	place-content: center;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
 	padding: var(--spacing--xl) var(--spacing--m);
-	min-height: 200px;
+	height: 100%;
 }
 
 .timeline {
