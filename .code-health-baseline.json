@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-12T08:06:05.095Z",
-	"totalViolations": 122,
+	"generated": "2026-05-12T09:24:33.654Z",
+	"totalViolations": 94,
 	"violations": {
 		"packages/core/package.json": [
 			{
@@ -141,8 +141,8 @@
 			{
 				"rule": "catalog-violations",
 				"line": 47,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "589f90baeece"
+				"message": "n8n-workflow appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "c5830b76ff8e"
 			}
 		],
 		"packages/@n8n/json-schema-to-zod/package.json": [
@@ -151,6 +151,38 @@
 				"line": 63,
 				"message": "zod@^3.25.76 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "0e18482e8781"
+			}
+		],
+		"packages/@n8n/node-cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 76,
+				"message": "eslint@>= 9 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "1b5deae544ea"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 52,
+				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "da74ed210d07"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 59,
+				"message": "prettier appears in 3 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "188baf266f61"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 51,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9711a9b00bf9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 55,
+				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6a9e12780943"
 			}
 		],
 		"packages/@n8n/nodes-langchain/package.json": [
@@ -201,38 +233,6 @@
 				"line": 293,
 				"message": "pdf-parse appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "0c7d44a9c2e4"
-			}
-		],
-		"packages/@n8n/node-cli/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 76,
-				"message": "eslint@>= 9 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "1b5deae544ea"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 52,
-				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "da74ed210d07"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 59,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "9e47058c6edb"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 51,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "9711a9b00bf9"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 55,
-				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "6a9e12780943"
 			}
 		],
 		"packages/@n8n/tournament/package.json": [
@@ -305,188 +305,6 @@
 				"hash": "50fb70481f8f"
 			}
 		],
-		"packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 43,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "c3815ab2677d"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "11608ee90ba9"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 44,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "70fc7a306272"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 49,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "4514689aef5c"
-			}
-		],
-		"packages/@n8n/node-cli/src/template/templates/declarative/custom/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 40,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "c55e0c75d586"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 43,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "999c932ac3ae"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 41,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "4268f09633aa"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "2f772d0b5a09"
-			}
-		],
-		"packages/@n8n/node-cli/src/template/templates/programmatic/example/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 40,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "cd90d70b3ce4"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 43,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "d0998542352d"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 41,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "0c7bd1cbf6cb"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "fd2577d9c87b"
-			}
-		],
-		"packages/@n8n/node-cli/src/template/templates/programmatic/ai/memory-custom/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 41,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "298daa052478"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 44,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "9d70bb26b233"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 42,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "b7f8b2a358d8"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 47,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "42aefb6c9989"
-			}
-		],
-		"packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 43,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "3c8b4977fd8a"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "9d31f8f7537c"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 44,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "f10c6c40e67c"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 49,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "e1734c74601d"
-			}
-		],
-		"packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 43,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "91ea1dbe7d4e"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "72d08eab5625"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 44,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "030ae6daa9ec"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 49,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "91b58c718e73"
-			}
-		],
-		"packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-openai-compatible/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 43,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "082bc9c01097"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "1b9d2910ce91"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 44,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "cd6a1b0be867"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 49,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "6b5e714159dc"
-			}
-		],
 		"packages/cli/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -515,8 +333,8 @@
 			{
 				"rule": "catalog-violations",
 				"line": 202,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "dee51c035f89"
+				"message": "prettier appears in 3 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "3cab98902302"
 			},
 			{
 				"rule": "catalog-violations",
@@ -546,49 +364,49 @@
 		"packages/@n8n/instance-ai/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 78,
+				"line": 80,
 				"message": "@ai-sdk/anthropic appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "5b2153508e47"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 84,
+				"line": 86,
 				"message": "@types/psl appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "56dabb51b433"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 55,
+				"line": 56,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8fa6b9a8fc91"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 62,
+				"line": 64,
 				"message": "csv-parse appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8f082fc2e8b6"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 69,
+				"line": 71,
 				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "9a9d97065952"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 85,
+				"line": 87,
 				"message": "@types/turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "12e346c47b39"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 49,
+				"line": 50,
 				"message": "@joplin/turndown-plugin-gfm appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "a3cf1504b5c2"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 66,
+				"line": 68,
 				"message": "pdf-parse appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "283fa9114c03"
 			}
@@ -685,8 +503,8 @@
 			{
 				"rule": "catalog-violations",
 				"line": 90,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "1d2d6bb68778"
+				"message": "prettier appears in 3 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9e9c7ec09a0b"
 			},
 			{
 				"rule": "catalog-violations",
@@ -725,8 +543,8 @@
 			{
 				"rule": "catalog-violations",
 				"line": 72,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "717de3a58c50"
+				"message": "n8n-workflow appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "ea4fbfff30ba"
 			}
 		],
 		"packages/@n8n/mcp-browser/package.json": [
