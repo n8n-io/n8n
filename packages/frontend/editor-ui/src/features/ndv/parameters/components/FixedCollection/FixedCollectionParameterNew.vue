@@ -2,7 +2,6 @@
 import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { telemetry } from '@/app/plugins/telemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -29,10 +28,10 @@ import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const locale = useI18n();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -66,6 +65,8 @@ const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];
 	delete: [];
 }>();
+
+const workflowId = useWorkflowId();
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
@@ -414,7 +415,7 @@ const handleDelete = (optionName: string, index?: number) => {
 
 const trackFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
@@ -422,7 +423,7 @@ const trackFieldAdded = () => {
 const trackFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
