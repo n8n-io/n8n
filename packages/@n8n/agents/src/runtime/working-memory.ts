@@ -4,7 +4,7 @@ import type { BuiltTool } from '../types';
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
-export const UPDATE_WORKING_MEMORY_TOOL_NAME = 'updateWorkingMemory';
+export const UPDATE_WORKING_MEMORY_TOOL_NAME = 'update_working_memory';
 
 /**
  * The default instruction block injected into the system prompt when working memory
@@ -19,7 +19,7 @@ export const WORKING_MEMORY_DEFAULT_INSTRUCTION = [
 
 /**
  * Generate the system prompt instruction for working memory.
- * Tells the LLM to call the updateWorkingMemory tool when it has new information to persist.
+ * Tells the LLM to call the update_working_memory tool when it has new information to persist.
  *
  * @param template - The working memory template or schema.
  * @param structured - Whether the working memory is structured (JSON schema).
@@ -73,7 +73,7 @@ export interface WorkingMemoryToolConfig {
 }
 
 /**
- * Build the updateWorkingMemory BuiltTool that the agent calls to persist working memory.
+ * Build the update_working_memory BuiltTool that the agent calls to persist working memory.
  *
  * For freeform working memory the input schema is `{ memory: string }`.
  * For structured working memory the input schema is the configured Zod object schema,

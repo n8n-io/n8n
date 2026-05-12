@@ -3,7 +3,7 @@ import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -27,7 +27,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const { renameNode } = useCanvasOperations();
 const nodeHelpers = useNodeHelpers();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const activeNode = computed(() => workflowDocumentStore?.value?.getNodeById(nodeId));
 const foreignCredentials = computed(() =>

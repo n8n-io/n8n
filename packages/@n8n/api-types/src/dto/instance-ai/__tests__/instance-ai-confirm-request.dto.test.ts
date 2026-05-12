@@ -63,7 +63,7 @@ describe('InstanceAiConfirmRequestDto', () => {
 			['domainAccessDeny', { kind: 'domainAccessDeny' }],
 			// confirmResourceDecision (store)
 			[
-				'resourceDecision with arbitrary decision token',
+				'resourceDecision with allowed decision token',
 				{ kind: 'resourceDecision', resourceDecision: 'allowForSession' },
 			],
 			// useSetupActions: handleApply
@@ -127,6 +127,14 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('resourceDecision without decision', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'resourceDecision' });
+			expect(result.success).toBe(false);
+		});
+
+		test('resourceDecision rejects persistent daemon-only decisions', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'resourceDecision',
+				resourceDecision: 'alwaysAllow',
+			});
 			expect(result.success).toBe(false);
 		});
 

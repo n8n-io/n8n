@@ -479,6 +479,33 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
+		it('confirmation-request passes through webSearch metadata when present', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'research'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-ws',
+					toolCallId: 'tc-1',
+					toolName: 'research',
+					args: { action: 'web-search', query: 'sanuli' },
+					severity: 'info',
+					message: 'n8n AI wants to search the web for: sanuli',
+					webSearch: { query: 'sanuli' },
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-ws',
+				severity: 'info',
+				message: 'n8n AI wants to search the web for: sanuli',
+				webSearch: { query: 'sanuli' },
+			});
+		});
+
 		it('confirmation-request passes through projectId when present', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'setup-credentials'));

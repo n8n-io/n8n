@@ -50,13 +50,13 @@ describe('research tool', () => {
 					{ title: 'n8n Docs', url: 'https://docs.n8n.io', snippet: 'Documentation for n8n' },
 				],
 			};
-			const context = createMockContext();
+			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'n8n docs' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			expect(context.webResearchService!.search).toHaveBeenCalledWith('n8n docs', {
@@ -68,7 +68,7 @@ describe('research tool', () => {
 
 		it('should pass maxResults and includeDomains to search', async () => {
 			const searchResponse = { query: 'stripe api', results: [] };
-			const context = createMockContext();
+			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
@@ -79,7 +79,7 @@ describe('research tool', () => {
 					maxResults: 10,
 					includeDomains: ['docs.stripe.com'],
 				},
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			expect(context.webResearchService!.search).toHaveBeenCalledWith('stripe api', {
@@ -99,13 +99,13 @@ describe('research tool', () => {
 					},
 				],
 			};
-			const context = createMockContext();
+			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'test' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			const snippet = (result as { results: Array<{ snippet: string }> }).results[0].snippet;
@@ -130,13 +130,13 @@ describe('research tool', () => {
 					},
 				],
 			};
-			const context = createMockContext();
+			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'test' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			const snippet = (result as { results: Array<{ snippet: string }> }).results[0].snippet;
@@ -161,13 +161,13 @@ describe('research tool', () => {
 					},
 				],
 			};
-			const context = createMockContext();
+			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'test' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			const snippet = (result as { results: Array<{ snippet: string }> }).results[0].snippet;
@@ -184,7 +184,7 @@ describe('research tool', () => {
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'test query' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			expect(result).toEqual({ query: 'test query', results: [] });
@@ -198,10 +198,160 @@ describe('research tool', () => {
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'no search' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			expect(result).toEqual({ query: 'no search', results: [] });
+		});
+
+		// ── Gating tests ────────────────────────────────────────────
+
+		it('should return empty results when permission is blocked', async () => {
+			const context = createMockContext({ permissions: { webSearch: 'blocked' } });
+			context.webResearchService!.search = jest.fn();
+
+			const tool = createResearchTool(context);
+			const result = await tool.execute!(
+				{ action: 'web-search' as const, query: 'sensitive query' },
+				createAgentCtx() as never,
+			);
+
+			expect(context.webResearchService!.search).not.toHaveBeenCalled();
+			expect(result).toEqual({ query: 'sensitive query', results: [] });
+		});
+
+		it('should suspend when web-search is not yet approved', async () => {
+			const suspendFn = jest.fn();
+			const tracker = {
+				isHostAllowed: jest.fn(),
+				approveDomain: jest.fn(),
+				approveAllDomains: jest.fn(),
+				approveOnce: jest.fn(),
+				isWebSearchAllowed: jest.fn().mockReturnValue(false),
+				approveWebSearch: jest.fn(),
+				approveWebSearchOnce: jest.fn(),
+			};
+			const context = createMockContext({
+				domainAccessTracker: tracker as never,
+				permissions: {},
+			});
+			context.webResearchService!.search = jest.fn();
+
+			const tool = createResearchTool(context);
+			await tool.execute!(
+				{ action: 'web-search' as const, query: 'how to deploy n8n' },
+				createAgentCtx({ suspend: suspendFn }) as never,
+			);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					message: expect.stringContaining('how to deploy n8n'),
+					severity: 'info',
+					webSearch: { query: 'how to deploy n8n' },
+				}),
+			);
+			expect(context.webResearchService!.search).not.toHaveBeenCalled();
+		});
+
+		it('should skip suspension when web-search is already approved in tracker', async () => {
+			const tracker = {
+				isHostAllowed: jest.fn(),
+				approveDomain: jest.fn(),
+				approveAllDomains: jest.fn(),
+				approveOnce: jest.fn(),
+				isWebSearchAllowed: jest.fn().mockReturnValue(true),
+				approveWebSearch: jest.fn(),
+				approveWebSearchOnce: jest.fn(),
+			};
+			const context = createMockContext({ domainAccessTracker: tracker as never });
+			const searchResponse = { query: 'q', results: [] };
+			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+
+			const suspendFn = jest.fn();
+			const tool = createResearchTool(context);
+			await tool.execute!(
+				{ action: 'web-search' as const, query: 'q' },
+				createAgentCtx({ suspend: suspendFn }) as never,
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.webResearchService!.search).toHaveBeenCalled();
+		});
+
+		it('should grant transient approval and run search on resume with allow_once', async () => {
+			const tracker = {
+				isHostAllowed: jest.fn(),
+				approveDomain: jest.fn(),
+				approveAllDomains: jest.fn(),
+				approveOnce: jest.fn(),
+				isWebSearchAllowed: jest.fn().mockReturnValue(false),
+				approveWebSearch: jest.fn(),
+				approveWebSearchOnce: jest.fn(),
+			};
+			const context = createMockContext({ domainAccessTracker: tracker as never });
+			const searchResponse = { query: 'q', results: [] };
+			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+
+			const tool = createResearchTool(context);
+			await tool.execute!(
+				{ action: 'web-search' as const, query: 'q' },
+				createAgentCtx({
+					resumeData: { approved: true, domainAccessAction: 'allow_once' },
+				}) as never,
+			);
+
+			expect(tracker.approveWebSearchOnce).toHaveBeenCalledWith('test-run');
+			expect(tracker.approveWebSearch).not.toHaveBeenCalled();
+			expect(context.webResearchService!.search).toHaveBeenCalled();
+		});
+
+		it('should grant persistent approval on resume with allow_domain', async () => {
+			const tracker = {
+				isHostAllowed: jest.fn(),
+				approveDomain: jest.fn(),
+				approveAllDomains: jest.fn(),
+				approveOnce: jest.fn(),
+				isWebSearchAllowed: jest.fn().mockReturnValue(false),
+				approveWebSearch: jest.fn(),
+				approveWebSearchOnce: jest.fn(),
+			};
+			const context = createMockContext({ domainAccessTracker: tracker as never });
+			context.webResearchService!.search = jest.fn().mockResolvedValue({ query: 'q', results: [] });
+
+			const tool = createResearchTool(context);
+			await tool.execute!(
+				{ action: 'web-search' as const, query: 'q' },
+				createAgentCtx({
+					resumeData: { approved: true, domainAccessAction: 'allow_domain' },
+				}) as never,
+			);
+
+			expect(tracker.approveWebSearch).toHaveBeenCalled();
+			expect(tracker.approveWebSearchOnce).not.toHaveBeenCalled();
+		});
+
+		it('should return empty results when resumed with denial', async () => {
+			const tracker = {
+				isHostAllowed: jest.fn(),
+				approveDomain: jest.fn(),
+				approveAllDomains: jest.fn(),
+				approveOnce: jest.fn(),
+				isWebSearchAllowed: jest.fn().mockReturnValue(false),
+				approveWebSearch: jest.fn(),
+				approveWebSearchOnce: jest.fn(),
+			};
+			const context = createMockContext({ domainAccessTracker: tracker as never });
+			context.webResearchService!.search = jest.fn();
+
+			const tool = createResearchTool(context);
+			const result = await tool.execute!(
+				{ action: 'web-search' as const, query: 'q' },
+				createAgentCtx({ resumeData: { approved: false } }) as never,
+			);
+
+			expect(context.webResearchService!.search).not.toHaveBeenCalled();
+			expect(result).toEqual({ query: 'q', results: [] });
 		});
 	});
 
@@ -543,6 +693,101 @@ describe('research tool', () => {
 				'https://example.com',
 				expect.objectContaining({ maxContentLength: 5000 }),
 			);
+		});
+
+		// ── Same-eTLD+1 redirect auto-allow (TRUST-73) ───────────────
+		// The research tool builds an `authorizeUrl` callback that the fetch
+		// loop calls on each redirect hop. We capture that callback by mocking
+		// the underlying webResearchService.fetchUrl, then exercise it directly
+		// to assert security boundaries without spinning up a real network stack.
+
+		describe('redirect authorizer (same-eTLD+1)', () => {
+			type AuthorizeUrl = (targetUrl: string) => Promise<void>;
+
+			async function captureAuthorizeUrl(inputUrl: string): Promise<AuthorizeUrl> {
+				// Tracker: original host pre-allowed (so the initial fetch passes
+				// without suspending), but every other host is unknown — that
+				// keeps the redirect check live, which is what we want to test.
+				const inputHost = new URL(inputUrl).hostname;
+				const tracker = {
+					isHostAllowed: jest.fn((host: string) => host === inputHost),
+					approveDomain: jest.fn(),
+					approveAllDomains: jest.fn(),
+					approveOnce: jest.fn(),
+					clearRun: jest.fn(),
+					setPendingApprovalHost: jest.fn(),
+					consumePendingApprovalHost: jest.fn(),
+					isAllDomainsApproved: jest.fn().mockReturnValue(false),
+					isWebSearchAllowed: jest.fn().mockReturnValue(false),
+					approveWebSearch: jest.fn(),
+					approveWebSearchOnce: jest.fn(),
+				};
+				let captured: AuthorizeUrl | undefined;
+				const context = createMockContext({
+					domainAccessTracker: tracker as never,
+					permissions: {},
+				});
+				context.webResearchService!.fetchUrl = jest.fn(
+					async (_url: string, options?: { authorizeUrl?: AuthorizeUrl }) => {
+						await Promise.resolve();
+						captured = options?.authorizeUrl;
+						return {
+							url: inputUrl,
+							finalUrl: inputUrl,
+							title: '',
+							content: '',
+							truncated: false,
+							contentLength: 0,
+						};
+					},
+				) as never;
+
+				const tool = createResearchTool(context);
+				await tool.execute!(
+					{ action: 'fetch-url' as const, url: inputUrl },
+					createAgentCtx() as never,
+				);
+				if (!captured) throw new Error('authorizeUrl was not captured');
+				return captured;
+			}
+
+			it('allows redirect within the same registrable domain over HTTPS', async () => {
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('https://linear.app/developers')).resolves.toBeUndefined();
+			});
+
+			it('blocks redirect to a host that only superficially resembles the source', async () => {
+				// `attacker-linear.app` "ends with" `linear.app` for naive checks —
+				// PSL correctly identifies it as a different registrable domain.
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('https://attacker-linear.app/x')).rejects.toThrow(
+					/redirect.*not allowed/i,
+				);
+			});
+
+			it('blocks HTTPS-to-HTTP redirect even within the same registrable domain', async () => {
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('http://linear.app/developers')).rejects.toThrow(
+					/redirect.*not allowed/i,
+				);
+			});
+
+			it('blocks redirect to a different registrable domain', async () => {
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('https://evil.example/x')).rejects.toThrow(/redirect.*not allowed/i);
+			});
+
+			it('rejection error does not echo the blocked URL as a retry hint (TRUST-73)', async () => {
+				// Pre-fix wording was "Retry with the direct URL: <blocked>" — that
+				// caused the LLM to retry the same blocked host forever. Lock in
+				// the new clearer phrasing so the message can't regress.
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				const caught = await authorize('https://evil.example/x').catch((e: unknown) => e);
+				expect(caught).toBeInstanceOf(Error);
+				const message = (caught as Error).message;
+				expect(message).toMatch(/skip this URL/i);
+				expect(message).not.toMatch(/retry with the direct URL/i);
+			});
 		});
 	});
 });

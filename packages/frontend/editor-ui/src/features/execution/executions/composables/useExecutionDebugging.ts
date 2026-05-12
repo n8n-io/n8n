@@ -8,10 +8,7 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -19,6 +16,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isFullExecutionResponse } from '@/app/utils/typeGuards';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { isTrimmedNodeExecutionData } from 'n8n-workflow';
 
 /**
  * @param providedWorkflowState - Optional workflow state to use instead of injecting.
@@ -33,9 +31,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
@@ -121,6 +117,10 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 				// Get the first main output that has data, preserving all execution data including binary
 				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
 				if (nodeData) {
+					// Pinning a placeholder would round-trip it through the next manual run and persist it to DB.
+					if (isTrimmedNodeExecutionData(nodeData)) {
+						return;
+					}
 					pinnings++;
 					workflowDocumentStore.value.pinNodeData(node.name, nodeData);
 

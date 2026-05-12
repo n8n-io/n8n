@@ -43,11 +43,9 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -83,11 +81,7 @@ const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowDocumentStore = computed(() => {
-	const wfId = workflowsStore.workflowId;
-	if (!wfId) return null;
-	return useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
-});
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
@@ -192,7 +186,7 @@ const isMCPEnabled = computed(
 const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
-const workflowName = computed(() => workflowDocumentStore.value?.name ?? '');
+const workflowName = computed(() => workflowDocumentStore.value.name);
 const workflowId = computed(() => workflowsStore.workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
@@ -209,11 +203,13 @@ const isDataRedactionLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction],
 );
 
-const isRedactionSettingVisible = computed(
-	() =>
-		settingsStore.isModuleActive('redaction') &&
-		(isDataRedactionLicensed.value ? workflowPermissions.value.updateRedactionSetting : true),
+const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
+
+const isRedactionSettingLocked = computed(
+	() => isDataRedactionLicensed.value && !workflowPermissions.value.updateRedactionSetting,
 );
+
+const redactionMembersModalOpen = ref(false);
 
 function goToDataRedactionUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('workflow-settings', 'upgrade-data-redaction');
@@ -594,8 +590,8 @@ const saveSettings = async () => {
 	delete data.settings.maxExecutionTimeout;
 
 	isLoading.value = true;
-	data.versionId = workflowDocumentStore?.value?.versionId ?? '';
-	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
+	data.versionId = workflowDocumentStore.value.versionId;
+	data.expectedChecksum = workflowDocumentStore.value.checksum;
 
 	try {
 		await workflowsStore.updateWorkflow(String(route.params.workflowId), data);
@@ -610,10 +606,9 @@ const saveSettings = async () => {
 		Object.entries(workflowSettings.value).filter(([, value]) => value !== 'DEFAULT'),
 	);
 
-	const oldSettings = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
-		{}) as IWorkflowSettings;
+	const oldSettings = workflowDocumentStore.value.getSettingsSnapshot() as IWorkflowSettings;
 
-	workflowDocumentStore?.value?.setSettings(localWorkflowSettings);
+	workflowDocumentStore.value.setSettings(localWorkflowSettings);
 
 	isLoading.value = false;
 
@@ -739,8 +734,8 @@ onMounted(async () => {
 		});
 	}
 
-	const workflowSettingsData = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
-		{}) as IWorkflowSettings;
+	const workflowSettingsData =
+		workflowDocumentStore.value.getSettingsSnapshot() as IWorkflowSettings;
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
@@ -1179,10 +1174,19 @@ onBeforeUnmount(() => {
 							:span="10"
 							:class="[
 								$style['setting-name'],
-								{ [$style['setting-name--disabled']]: !isDataRedactionLicensed },
+								{
+									[$style['setting-name--disabled']]:
+										!isDataRedactionLicensed || isRedactionSettingLocked,
+								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactProductionData') }}
+							<N8nIcon
+								v-if="isRedactionSettingLocked"
+								icon="lock"
+								size="xsmall"
+								style="opacity: 1"
+							/>
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
@@ -1197,28 +1201,47 @@ onBeforeUnmount(() => {
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
-						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="redactProductionData"
-								:disabled="
-									!isDataRedactionLicensed ||
-									readOnlyEnv ||
-									!workflowPermissions.updateRedactionSetting ||
-									workflowHasDynamicCredentials
-								"
-								:placeholder="i18n.baseText('workflowSettings.selectOption')"
-								filterable
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-redact-production-select"
-							>
-								<N8nOption
-									v-for="option of redactionToggleOptions"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
+						<ElCol
+							:span="14"
+							class="ignore-key-press-canvas"
+							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+						>
+							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+								<template #content>
+									<span
+										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
+										<span
+											:class="$style['permission-notice-link']"
+											@click="redactionMembersModalOpen = true"
+											>{{
+												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
+											}}</span
+										></span
+									>
+								</template>
+								<N8nSelect
+									v-model="redactProductionData"
+									:disabled="
+										!isDataRedactionLicensed ||
+										readOnlyEnv ||
+										!workflowPermissions.updateRedactionSetting ||
+										isRedactionSettingLocked ||
+										workflowHasDynamicCredentials
+									"
+									:placeholder="i18n.baseText('workflowSettings.selectOption')"
+									filterable
+									:limit-popper-width="true"
+									data-test-id="workflow-settings-redact-production-select"
 								>
-								</N8nOption>
-							</N8nSelect>
+									<N8nOption
+										v-for="option of redactionToggleOptions"
+										:key="option.key"
+										:label="option.value"
+										:value="option.key"
+									>
+									</N8nOption>
+								</N8nSelect>
+							</N8nTooltip>
 						</ElCol>
 					</ElRow>
 					<ElRow v-if="workflowHasDynamicCredentials" :class="$style['dynamic-credentials-hint']">
@@ -1234,10 +1257,14 @@ onBeforeUnmount(() => {
 							:span="10"
 							:class="[
 								$style['setting-name'],
-								{ [$style['setting-name--disabled']]: !isDataRedactionLicensed },
+								{
+									[$style['setting-name--disabled']]:
+										!isDataRedactionLicensed || isRedactionSettingLocked,
+								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
+							<N8nIcon v-if="isRedactionSettingLocked" icon="lock" size="xsmall" />
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
@@ -1252,27 +1279,46 @@ onBeforeUnmount(() => {
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
-						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="redactManualData"
-								:disabled="
-									!isDataRedactionLicensed ||
-									readOnlyEnv ||
-									!workflowPermissions.updateRedactionSetting
-								"
-								:placeholder="i18n.baseText('workflowSettings.selectOption')"
-								filterable
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-redact-manual-select"
-							>
-								<N8nOption
-									v-for="option of redactionToggleOptions"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
+						<ElCol
+							:span="14"
+							class="ignore-key-press-canvas"
+							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+						>
+							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+								<template #content>
+									<span
+										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
+										<span
+											:class="$style['permission-notice-link']"
+											@click="redactionMembersModalOpen = true"
+											>{{
+												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
+											}}</span
+										></span
+									>
+								</template>
+								<N8nSelect
+									v-model="redactManualData"
+									:disabled="
+										!isDataRedactionLicensed ||
+										readOnlyEnv ||
+										!workflowPermissions.updateRedactionSetting ||
+										isRedactionSettingLocked
+									"
+									:placeholder="i18n.baseText('workflowSettings.selectOption')"
+									filterable
+									:limit-popper-width="true"
+									data-test-id="workflow-settings-redact-manual-select"
 								>
-								</N8nOption>
-							</N8nSelect>
+									<N8nOption
+										v-for="option of redactionToggleOptions"
+										:key="option.key"
+										:label="option.value"
+										:value="option.key"
+									>
+									</N8nOption>
+								</N8nSelect>
+							</N8nTooltip>
 						</ElCol>
 					</ElRow>
 				</template>
@@ -1502,6 +1548,12 @@ onBeforeUnmount(() => {
 					@click="saveSettings"
 				/>
 			</div>
+			<RedactionMembersModal
+				v-if="workflowDocumentStore?.homeProject?.id"
+				:open="redactionMembersModalOpen"
+				:project-id="workflowDocumentStore?.homeProject?.id"
+				@update:open="redactionMembersModalOpen = $event"
+			/>
 		</template>
 	</Modal>
 </template>
@@ -1551,6 +1603,12 @@ onBeforeUnmount(() => {
 
 .setting-name--disabled {
 	opacity: 0.5;
+}
+
+.permission-notice-link {
+	color: var(--color-foreground-xlight);
+	text-decoration: underline;
+	cursor: pointer;
 }
 
 .upgrade-badge {

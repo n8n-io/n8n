@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { reactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LOCAL_STORAGE_PARALLEL_EVAL_BY_WORKFLOW } from '@/app/constants/localStorage';
@@ -11,10 +12,30 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	})),
 }));
 
+// Singleton-shaped mock so the store keeps a stable `settingsStore` reference
+// across the test lifetime. Mutating `.settings.evaluationConcurrencyLimit`
+// then propagates through the `maxConcurrency` `computed`'s reactive read of
+// `settingsStore.settings?.evaluationConcurrencyLimit`, which mirrors how the
+// real store updates after `/rest/login` resolves and settings are populated.
+const mockSettingsState = reactive({
+	settings: { evaluationConcurrencyLimit: -1 },
+});
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => mockSettingsState),
+}));
+
+const mockEvaluationConcurrencyLimit = (limit: number) => {
+	mockSettingsState.settings.evaluationConcurrencyLimit = limit;
+};
+
 describe('parallelEval.store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		localStorage.removeItem(LOCAL_STORAGE_PARALLEL_EVAL_BY_WORKFLOW);
+		// Reset settings mock between tests; `clearAllMocks` only resets call
+		// history, not `mockReturnValue` implementations, so cross-test bleed
+		// would otherwise cap the slider in unrelated cases.
+		mockEvaluationConcurrencyLimit(-1);
 	});
 
 	afterEach(() => {
@@ -129,6 +150,60 @@ describe('parallelEval.store', () => {
 
 			store.setConcurrencyValue('wf-c', Number.NEGATIVE_INFINITY);
 			expect(store.concurrencyValue('wf-c')).toBe(DEFAULT_PARALLEL_CONCURRENCY);
+		});
+	});
+
+	describe('maxConcurrency (admin cap via N8N_CONCURRENCY_EVALUATION_LIMIT)', () => {
+		it('defaults to 10 when the limit is unset (-1, "unlimited")', () => {
+			mockEvaluationConcurrencyLimit(-1);
+			const store = useParallelEvalStore();
+			expect(store.maxConcurrency).toBe(10);
+		});
+
+		it('lowers the slider ceiling to the configured limit', () => {
+			mockEvaluationConcurrencyLimit(5);
+			const store = useParallelEvalStore();
+			expect(store.maxConcurrency).toBe(5);
+		});
+
+		it('caps at 10 even when the configured limit is higher (BE clamp parity)', () => {
+			mockEvaluationConcurrencyLimit(50);
+			const store = useParallelEvalStore();
+			expect(store.maxConcurrency).toBe(10);
+		});
+
+		it('treats 0 the same as unlimited (BE convention)', () => {
+			mockEvaluationConcurrencyLimit(0);
+			const store = useParallelEvalStore();
+			expect(store.maxConcurrency).toBe(10);
+		});
+
+		it('setConcurrencyValue clamps writes to the configured limit', () => {
+			mockEvaluationConcurrencyLimit(4);
+			const store = useParallelEvalStore();
+			store.setConcurrencyValue('wf-a', 9);
+			expect(store.concurrencyValue('wf-a')).toBe(4);
+		});
+
+		it('concurrencyValue surfaces the clamped value when admin lowers the cap below a stored preference', () => {
+			// Pre-existing user preference of 8 (stored when limit was open).
+			mockEvaluationConcurrencyLimit(-1);
+			const store = useParallelEvalStore();
+			store.setConcurrencyValue('wf-a', 8);
+			expect(store.concurrencyValue('wf-a')).toBe(8);
+
+			// Admin lowers cap to 3 — UI should reflect 3, not 8.
+			mockEvaluationConcurrencyLimit(3);
+			expect(store.concurrencyValue('wf-a')).toBe(3);
+		});
+
+		it('effectiveConcurrency reflects the cap so the value sent to BE matches the slider', () => {
+			mockEvaluationConcurrencyLimit(-1);
+			const store = useParallelEvalStore();
+			store.setConcurrencyValue('wf-a', 8);
+
+			mockEvaluationConcurrencyLimit(2);
+			expect(store.effectiveConcurrency('wf-a')).toBe(2);
 		});
 	});
 
