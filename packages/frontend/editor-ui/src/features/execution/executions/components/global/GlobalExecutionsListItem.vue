@@ -10,6 +10,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
+import type { SingleNodeExecutionSummaryExtras } from '../../executions.types';
 import { computed, ref, useCssModule } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
@@ -22,6 +23,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { getCallerLabel, getSingleNodeHeadline } from '../../executions.utils';
+
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -35,7 +38,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		execution: ExecutionSummary;
+		execution: ExecutionSummary & SingleNodeExecutionSummaryExtras;
 		selected?: boolean;
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
@@ -55,6 +58,33 @@ const executionHelpers = useExecutionHelpers();
 const isStopping = ref(false);
 
 const isRunning = computed(() => props.execution.status === 'running');
+
+const isSingleNodeExecution = computed(() => props.execution.mode === 'single-node');
+
+const singleNodeHeadline = computed(() =>
+	isSingleNodeExecution.value
+		? getSingleNodeHeadline(
+				props.execution,
+				locale.baseText('executionsList.singleNode.headlineFallback'),
+			)
+		: '',
+);
+
+const singleNodeCallerLabel = computed(() =>
+	isSingleNodeExecution.value ? getCallerLabel(props.execution.caller, locale) : '',
+);
+
+const SOURCE_ICON: Record<string, IconName> = {
+	mcp: 'bot',
+	cli: 'terminal',
+	sdk: 'code',
+};
+
+const sourceIconName = computed<IconName>(() => {
+	const kind = props.execution.caller?.kind;
+	if (!kind) return 'plug-zap';
+	return SOURCE_ICON[kind] ?? 'plug-zap';
+});
 
 const isWaitTillIndefinite = computed(() => {
 	if (!props.execution.waitTill) {
@@ -186,7 +216,23 @@ async function handleActionItemClick(commandData: Command) {
 			/>
 		</td>
 		<td>
-			<N8nTooltip :content="execution.workflowName || workflowName" placement="top">
+			<template v-if="isSingleNodeExecution">
+				<RouterLink
+					:to="{
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { workflowId: execution.workflowId, executionId: execution.id },
+					}"
+					:class="$style.workflowName"
+					data-test-id="execution-list-single-node-name"
+					target="_blank"
+				>
+					{{ singleNodeHeadline }}
+				</RouterLink>
+				<small v-if="singleNodeCallerLabel" :class="$style.singleNodeCaller">
+					{{ singleNodeCallerLabel }}
+				</small>
+			</template>
+			<N8nTooltip v-else :content="execution.workflowName || workflowName" placement="top">
 				<RouterLink
 					:to="{
 						name: VIEWS.EXECUTION_PREVIEW,
@@ -269,6 +315,15 @@ async function handleActionItemClick(commandData: Command) {
 			<N8nTooltip v-else-if="execution.mode === 'chat'" content="Chat Execution" placement="top">
 				<N8nIcon icon="messages-square" />
 			</N8nTooltip>
+			<N8nTooltip
+				v-else-if="isSingleNodeExecution"
+				:content="
+					singleNodeCallerLabel || locale.baseText('executionsList.singleNode.headlineFallback')
+				"
+				placement="top"
+			>
+				<N8nIcon :icon="sourceIconName" />
+			</N8nTooltip>
 		</td>
 		<td>
 			<N8nButton
@@ -340,5 +395,12 @@ tr.dangerBg {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 	max-width: 450px;
+}
+
+.singleNodeCaller {
+	display: block;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--xs);
+	margin-top: var(--spacing--5xs);
 }
 </style>

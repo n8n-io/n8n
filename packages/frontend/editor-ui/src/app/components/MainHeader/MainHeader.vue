@@ -26,6 +26,7 @@ import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 
 import { N8nIcon } from '@n8n/design-system';
+import { isHubPlaceholderName } from '@/features/execution/executions/executions.utils';
 import { useToast } from '@/app/composables/useToast';
 const router = useRouter();
 const route = useRoute();
@@ -57,14 +58,6 @@ const executionRoutes: VIEWS[] = [
 	VIEWS.WORKFLOW_EXECUTIONS,
 	VIEWS.EXECUTION_PREVIEW,
 ];
-const tabBarItems = computed(() => {
-	return [
-		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
-		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
-		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
-	];
-});
-
 const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
@@ -76,6 +69,22 @@ const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
 const workflowDescription = computed(() => workflowDocumentStore?.value?.description ?? '');
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
+
+// n8n Hub placeholder workflows back single-node executions and aren't user-
+// authored. We hide the Editor / Evaluations tabs for them — there's nothing
+// to edit and tests don't apply — leaving only Executions for inspection.
+const isHubPlaceholderWorkflow = computed(() => isHubPlaceholderName(workflowName.value));
+
+const tabBarItems = computed(() => {
+	if (isHubPlaceholderWorkflow.value) {
+		return [{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') }];
+	}
+	return [
+		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
+		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
+	];
+});
 
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,

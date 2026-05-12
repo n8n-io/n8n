@@ -50,6 +50,8 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		chatHub: {},
 		chatHubAgent: {},
 		breakingChanges: {},
+		tool: {},
+		node: {},
 		apiKey: {},
 		encryptionKey: {},
 		credentialResolver: {},

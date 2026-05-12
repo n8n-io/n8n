@@ -4,6 +4,8 @@ import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { ExecutionCallerKind } from '@n8n/api-types';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -169,6 +171,58 @@ describe('GlobalExecutionsListItem', () => {
 
 	afterEach(() => {
 		vitest.useRealTimers();
+	});
+
+	const mockExecution = {
+		status: 'success' as const,
+		id: '999',
+		workflowId: 'wf1',
+		workflowName: 'Test Workflow',
+		startedAt: new Date('2024-01-01T12:00:00Z'),
+		stoppedAt: new Date('2024-01-01T12:00:01Z'),
+		finished: true,
+	} as unknown as ExecutionSummary;
+
+	const defaultWorkflowPermissions = {
+		execute: true,
+		update: true,
+	};
+
+	describe('single-node source icon', () => {
+		it.each<[ExecutionCallerKind, IconName]>([
+			['mcp', 'bot'],
+			['cli', 'terminal'],
+			['sdk', 'code'],
+		])('renders the %s icon for caller.kind = %s', async (kind, icon) => {
+			const { container } = renderComponent({
+				props: {
+					execution: {
+						...mockExecution,
+						mode: 'single-node',
+						caller: { kind, name: 'demo' },
+					},
+					workflowPermissions: defaultWorkflowPermissions,
+					concurrencyCap: 0,
+				},
+			});
+			const iconEl = container.querySelector(`[data-icon="${icon}"]`);
+			expect(iconEl).not.toBeNull();
+		});
+
+		it('falls back to the plug-zap icon for an unknown future caller.kind', () => {
+			const { container } = renderComponent({
+				props: {
+					execution: {
+						...mockExecution,
+						mode: 'single-node',
+						caller: { kind: 'browser' as ExecutionCallerKind, name: 'web-ui' },
+					},
+					workflowPermissions: defaultWorkflowPermissions,
+					concurrencyCap: 0,
+				},
+			});
+			expect(container.querySelector('[data-icon="plug-zap"]')).not.toBeNull();
+		});
 	});
 
 	it('uses `createdAt` to calculate running time if `startedAt` is undefined', async () => {

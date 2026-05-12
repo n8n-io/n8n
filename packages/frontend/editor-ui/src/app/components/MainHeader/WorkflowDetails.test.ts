@@ -43,6 +43,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
 		push: vi.fn().mockResolvedValue(undefined),
+		resolve: vi.fn().mockReturnValue({ href: '/executions' }),
 		currentRoute: {
 			value: {
 				params: {
@@ -134,6 +135,9 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 			RouterLink: true,
 			FolderBreadcrumbs: {
 				template: '<div><slot name="append" /></div>',
+			},
+			N8nBreadcrumbs: {
+				template: '<div data-test-id="hub-action-breadcrumbs"><slot name="append" /></div>',
 			},
 		},
 		directives: {
@@ -760,6 +764,29 @@ describe('WorkflowDetails', () => {
 				expect.objectContaining({ id: workflow.id }),
 				expect.anything(),
 			);
+		});
+	});
+
+	describe('WorkflowDetails breadcrumbs', () => {
+		it('renders the executions-link breadcrumb for hub placeholder workflows', async () => {
+			const { findByTestId } = renderComponent({
+				props: {
+					id: 'wf-1',
+					tags: [],
+					name: '__n8n-hub-action::n8n-nodes-base.slack.message.post',
+					isArchived: false,
+				},
+			});
+			const crumbs = await findByTestId('hub-action-breadcrumbs');
+			expect(crumbs).toBeInTheDocument();
+		});
+
+		it('renders FolderBreadcrumbs for regular workflows', async () => {
+			const { findByTestId, queryByTestId } = renderComponent({
+				props: { id: 'wf-2', tags: [], name: 'My Workflow', isArchived: false },
+			});
+			expect(await findByTestId('canvas-breadcrumbs')).toBeInTheDocument();
+			expect(queryByTestId('hub-action-breadcrumbs')).toBeNull();
 		});
 	});
 

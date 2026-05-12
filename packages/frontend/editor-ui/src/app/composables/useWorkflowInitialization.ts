@@ -21,6 +21,10 @@ import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesS
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
+import {
+	isHubPlaceholderName,
+	getFriendlyHubWorkflowName,
+} from '@/features/execution/executions/executions.utils';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -193,7 +197,13 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	async function handleDebugModeRoute() {
 		if (!isDebugRoute.value) return;
 
-		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
+		{
+			const debugName = currentWorkflowDocumentStore.value?.name ?? '';
+			documentTitle.setDocumentTitle(
+				isHubPlaceholderName(debugName) ? getFriendlyHubWorkflowName(debugName) : debugName,
+				'DEBUG',
+			);
+		}
 
 		if (!workflowsStore.isInDebugMode) {
 			const executionId = route.params.executionId;
@@ -259,10 +269,15 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		disposeCurrentWorkflowDocumentStore();
 		resetWorkspace();
 
-		if (builderStore.streaming) {
-			documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
-		} else {
-			documentTitle.setDocumentTitle(data.name, 'IDLE');
+		{
+			const titleName = isHubPlaceholderName(data.name)
+				? getFriendlyHubWorkflowName(data.name)
+				: data.name;
+			if (builderStore.streaming) {
+				documentTitle.setDocumentTitle(titleName, 'AI_BUILDING');
+			} else {
+				documentTitle.setDocumentTitle(titleName, 'IDLE');
+			}
 		}
 
 		try {
@@ -375,7 +390,24 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			);
 			void workflowsStore.fetchLastSuccessfulExecution();
 		} catch (error) {
+			// Single-node executions (n8n Hub Phase 5.3) may point at a synthesized
+			// workflowId that doesn't correspond to a saved workflow. When the
+			// executions route is what's being rendered, surface the missing
+			// workflow as an empty state instead of redirecting to entity-not-found,
+			// so the per-execution detail view can still render its caller summary.
+			const isExecutionsRoute =
+				route.name === VIEWS.WORKFLOW_EXECUTIONS ||
+				route.name === VIEWS.EXECUTION_PREVIEW ||
+				route.name === VIEWS.EXECUTION_HOME;
 			if ((error as { httpStatusCode?: number }).httpStatusCode === 404) {
+				if (isExecutionsRoute) {
+					disposeCurrentWorkflowDocumentStore();
+					workflowsStore.setWorkflowId(id);
+					const workflowDocumentId = createWorkflowDocumentId(id);
+					currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+					currentNDVStore.value = useNDVStore(workflowDocumentId);
+					return;
+				}
 				return await router.replace({
 					name: VIEWS.ENTITY_NOT_FOUND,
 					params: { entityType: 'workflow' },

@@ -7,10 +7,12 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
+import type { SingleNodeExecutionSummaryExtras } from '../../executions.types';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
+import { getCallerLabel } from '../../executions.utils';
 
 import {
 	N8nActionDropdown,
@@ -59,6 +61,12 @@ const executionUIDetails = computed<IExecutionUIData>(() =>
 );
 const isActive = computed(() => props.execution.id === route.params.executionId);
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
+
+const singleNodeCallerLabel = computed(() => {
+	const extras = props.execution as ExecutionSummary & SingleNodeExecutionSummaryExtras;
+	if (extras.mode !== 'single-node') return '';
+	return getCallerLabel(extras.caller, locale);
+});
 
 onMounted(() => {
 	emit('mounted', props.execution.id);
@@ -145,6 +153,11 @@ function onRetryMenuItemSelect(action: string): void {
 				<div v-if="execution.mode === 'retry'">
 					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
+					</N8nText>
+				</div>
+				<div v-if="singleNodeCallerLabel" :class="$style.singleNodeCaller">
+					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
+						{{ singleNodeCallerLabel }}
 					</N8nText>
 				</div>
 				<div v-if="isAnnotationEnabled" :class="$style.annotation">
@@ -293,6 +306,10 @@ function onRetryMenuItemSelect(action: string): void {
 				color: var(--color--danger);
 			}
 		}
+	}
+
+	.singleNodeCaller {
+		margin-top: var(--spacing--4xs);
 	}
 }
 

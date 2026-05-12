@@ -15,7 +15,14 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { executionRetryMessage } from '../executions.utils';
+import {
+	executionRetryMessage,
+	getFriendlyHubWorkflowName,
+	getSingleNodeHeadline,
+	isHubPlaceholderName,
+} from '../executions.utils';
+import type { SingleNodeExecutionSummaryExtras } from '../executions.types';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -32,6 +39,7 @@ const telemetry = useTelemetry();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 
 const loading = ref(false);
@@ -73,6 +81,37 @@ const execution = computed(() => {
 
 const currentExecution = ref<ExecutionSummary | undefined>();
 
+// Single-node executions (n8n Hub Phase 5.3) may target a synthesized workflowId
+// that has no saved entity. Synthesize a minimal placeholder so the executions
+// list still renders the detail panel for the caller summary.
+const placeholderWorkflow = computed<IWorkflowDb | undefined>(() => {
+	if (workflow.value || !workflowId.value) return undefined;
+	if (execution.value?.mode !== 'single-node') return undefined;
+	const fallback: IWorkflowDb = {
+		id: workflowId.value,
+		name: execution.value?.workflowName ?? '',
+		active: false,
+		isArchived: false,
+		createdAt: 0,
+		updatedAt: 0,
+		nodes: [],
+		connections: {},
+		settings: { executionOrder: 'v1' },
+		tags: [],
+		pinData: {},
+		versionId: '',
+		activeVersionId: null,
+		usedCredentials: [],
+		sharedWithProjects: [],
+		scopes: [],
+	};
+	return fallback;
+});
+
+const effectiveWorkflow = computed<IWorkflowDb | undefined>(
+	() => workflow.value ?? placeholderWorkflow.value,
+);
+
 // Check if this is a new workflow by looking for the ?new query param
 const isNewWorkflowRoute = computed(() => {
 	return route.query.new === 'true';
@@ -91,6 +130,25 @@ watch(
 		await fetchExecution();
 	},
 );
+
+// For n8n Hub single-node executions the placeholder workflow's `name` is a
+// structural id (e.g. `__n8n-hub-action::n8n-nodes-base.slack.message.search`).
+// The richer `actionDisplayName` ("Slack - Search for messages") only becomes
+// available once the execution is fetched. Re-set the browser tab title here
+// so it lines up with the header breadcrumb.
+watch([() => currentExecution.value?.id, () => effectiveWorkflow.value?.name], () => {
+	const wfName = effectiveWorkflow.value?.name;
+	if (!wfName || !isHubPlaceholderName(wfName)) return;
+	const active = currentExecution.value as
+		| (ExecutionSummary & SingleNodeExecutionSummaryExtras)
+		| undefined;
+	const friendly =
+		active?.actionDisplayName ??
+		(active
+			? getSingleNodeHeadline(active, getFriendlyHubWorkflowName(wfName))
+			: getFriendlyHubWorkflowName(wfName));
+	documentTitle.setDocumentTitle(friendly, 'IDLE');
+});
 
 onMounted(async () => {
 	fetchWorkflow();
@@ -342,10 +400,10 @@ async function loadMore(): Promise<void> {
 </script>
 <template>
 	<WorkflowExecutionsList
-		v-if="workflow"
+		v-if="effectiveWorkflow"
 		:executions="executions"
 		:execution="execution"
-		:workflow="workflow"
+		:workflow="effectiveWorkflow"
 		:loading="loading"
 		:loading-more="loadingMore"
 		:has-more="hasMore"

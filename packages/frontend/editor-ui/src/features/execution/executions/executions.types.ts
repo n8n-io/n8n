@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { Scope } from '@n8n/permissions';
+import type { ExecutionCaller } from '@n8n/api-types';
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -78,7 +79,24 @@ export interface IExecutionResponse extends IExecutionBase {
 	triggerNode?: string;
 }
 
-export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+/**
+ * Extra fields the backend surfaces on single-node execution summaries
+ * (n8n Hub Task 20 / Phase 5.1). Both fields are optional so workflow-run
+ * summaries remain unaffected.
+ */
+export type SingleNodeExecutionSummaryExtras = {
+	caller?: ExecutionCaller;
+	/** n8n node id, e.g. `n8n-nodes-base.slack`. */
+	nodeType?: string;
+	/** Full operation id, e.g. `n8n-nodes-base.slack.message.send`. */
+	actionId?: string;
+	/** Human-friendly label, e.g. `Slack - Post Message`. Preferred for display. */
+	actionDisplayName?: string;
+};
+
+export type ExecutionSummaryWithScopes = ExecutionSummary & {
+	scopes: Scope[];
+} & SingleNodeExecutionSummaryExtras;
 
 export interface IExecutionsListResponse {
 	count: number;

@@ -25,7 +25,9 @@ import type {
 	ExecutionsQueryFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
+	SingleNodeExecutionSummaryExtras,
 } from './executions.types';
+import type { ExecutionCaller, ExecutionCallerKind } from '@n8n/api-types';
 import { isEmpty } from '@/app/utils/typesUtils';
 import {
 	CORE_NODES_CATEGORY,
@@ -570,4 +572,80 @@ export function buildExecutionResponseFromSchema({
 		data,
 		workflowData: workflow,
 	};
+}
+
+/**
+ * Brand-cased labels for the caller `kind` discriminator. Centralized so the
+ * three list/detail components agree on capitalization and forward-compat.
+ */
+export const CALLER_SOURCE_LABEL: Record<ExecutionCallerKind | string, string> = {
+	mcp: 'MCP',
+	cli: 'CLI',
+	sdk: 'SDK',
+};
+
+/**
+ * Build just the "SOURCE (Name)" or "SOURCE" segment — no "via " prefix. Used
+ * by the detail-view header, which already says "via {caller}" in its template.
+ * Returns `''` when no caller is attached.
+ */
+export function getCallerDisplay(caller: ExecutionCaller | undefined): string {
+	if (!caller) return '';
+	const source = CALLER_SOURCE_LABEL[caller.kind] ?? caller.kind.toUpperCase();
+	return caller.name && caller.name !== source ? `${source} (${caller.name})` : source;
+}
+
+/**
+ * Compose the "via MCP (Claude Desktop)" sub-line shown on list rows. Returns
+ * `''` when no caller is attached.
+ */
+export function getCallerLabel(caller: ExecutionCaller | undefined, locale: typeof i18n): string {
+	const display = getCallerDisplay(caller);
+	if (!display) return '';
+	return locale.baseText('executionsList.singleNode.via', { interpolate: { caller: display } });
+}
+
+/**
+ * Resolve the most-specific human-friendly label we can build for a single-node
+ * execution, falling back through the available fields in preference order:
+ *   actionDisplayName → actionId → nodeType → caller.name → fallback.
+ */
+export function getSingleNodeHeadline(
+	extras: SingleNodeExecutionSummaryExtras,
+	fallback: string,
+): string {
+	return (
+		extras.actionDisplayName ??
+		extras.actionId ??
+		extras.nodeType ??
+		extras.caller?.name ??
+		fallback
+	);
+}
+
+/**
+ * Hub placeholder workflows back single-node executions and aren't user-
+ * authored. Centralize the prefix check so it's not duplicated across the
+ * MainHeader, WorkflowDetails, and workflow service.
+ */
+export function isHubPlaceholderName(name: string | undefined): boolean {
+	return !!name && (name.startsWith('__n8n-hub-action::') || name.startsWith('__n8n-hub-'));
+}
+
+/**
+ * Render a hub placeholder workflow name as a friendly action label.
+ * Examples:
+ *   "__n8n-hub-action::n8n-nodes-base.slack.message.post" → "slack — message post"
+ *   "__n8n-hub-action::httpRequest"                       → "httpRequest"
+ *   "User-authored workflow"                              → "User-authored workflow"
+ */
+export function getFriendlyHubWorkflowName(name: string): string {
+	if (!isHubPlaceholderName(name)) return name;
+	const stripped = name.replace(/^__n8n-hub-action::/, '').replace(/^__n8n-hub-/, '');
+	const parts = stripped.split('.');
+	if (parts.length >= 3) {
+		// Drop the package segment (e.g. "n8n-nodes-base"), keep service + operation.
+		return `${parts[1]} — ${parts.slice(2).join(' ')}`;
+	}
+	return stripped;
 }

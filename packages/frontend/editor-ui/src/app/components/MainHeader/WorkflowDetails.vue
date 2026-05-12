@@ -37,7 +37,14 @@ import {
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nBadge, N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
+import {
+	isHubPlaceholderName,
+	getFriendlyHubWorkflowName,
+} from '@/features/execution/executions/executions.utils';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
+import type { SingleNodeExecutionSummaryExtras } from '@/features/execution/executions/executions.types';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -68,6 +75,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
+const executionsStore = useExecutionsStore();
 const collaborationStore = useCollaborationStore();
 const sourceControlStore = useSourceControlStore();
 const foldersStore = useFoldersStore();
@@ -111,13 +119,48 @@ const readOnly = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
 
-// For workflow name and tags editing: needs update permission and not archived
+// n8n Hub placeholder workflows back single-node executions. Suppress all
+// editing affordances (name, tags, publish, archive) so users don't try to
+// modify these internal rows. We also rewrite the displayed name to a
+// friendly form derived from the action id.
+const isHubPlaceholderWorkflow = computed(() => isHubPlaceholderName(props.name));
+
+// For workflow name and tags editing: needs update permission and not archived.
+// Hub placeholder workflows are always read-only — they're internal infrastructure.
 const readOnlyActions = computed(() => {
+	if (isHubPlaceholderWorkflow.value) return true;
 	if (isNewWorkflow.value) return readOnly.value;
 	return readOnly.value || props.isArchived || !workflowPermissions.value.update;
 });
 
 const workflowTagIds = computed(() => props.tags);
+
+const displayedWorkflowName = computed(() => {
+	if (!isHubPlaceholderWorkflow.value) return props.name;
+	// When viewing a specific single-node execution, prefer the rich
+	// `actionDisplayName` resolved at execution time (e.g. "Slack - Search for
+	// messages") over the structural placeholder name (e.g.
+	// "n8n-nodes-base.slack.message.search"). Falls back to the parsed friendly
+	// name when no execution is in focus.
+	const active = executionsStore.activeExecution as
+		| (ExecutionSummary & SingleNodeExecutionSummaryExtras)
+		| null;
+	return active?.actionDisplayName ?? getFriendlyHubWorkflowName(props.name);
+});
+
+const hubBreadcrumbItems = computed<PathItem[]>(() => [
+	{
+		id: 'executions',
+		label: locale.baseText('generic.executions'),
+		href: router.resolve({ name: VIEWS.EXECUTIONS }).href,
+	},
+]);
+
+function onHubBreadcrumbItemSelected(item: PathItem) {
+	if (item.id === 'executions') {
+		void router.push({ name: VIEWS.EXECUTIONS });
+	}
+}
 
 const currentFolderForBreadcrumbs = computed(() => {
 	if (!isNewWorkflow.value && props.currentFolder) {
@@ -426,7 +469,30 @@ onBeforeUnmount(() => {
 			data-test-id="canvas-breadcrumbs"
 		>
 			<template #default="{ bp }">
+				<N8nBreadcrumbs
+					v-if="isHubPlaceholderWorkflow"
+					:items="hubBreadcrumbItems"
+					data-test-id="hub-action-breadcrumbs"
+					@item-selected="onHubBreadcrumbItemSelected"
+				>
+					<template #append>
+						<span :class="$style['path-separator']">/</span>
+						<N8nInlineTextEdit
+							ref="renameInput"
+							:key="id"
+							placeholder="Workflow name"
+							data-test-id="workflow-name-input"
+							class="name"
+							:model-value="displayedWorkflowName"
+							:max-length="MAX_WORKFLOW_NAME_LENGTH"
+							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
+							:read-only="true"
+							:disabled="true"
+						/>
+					</template>
+				</N8nBreadcrumbs>
 				<FolderBreadcrumbs
+					v-else
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbsItemSelected"
@@ -443,7 +509,7 @@ onBeforeUnmount(() => {
 							placeholder="Workflow name"
 							data-test-id="workflow-name-input"
 							class="name"
-							:model-value="name"
+							:model-value="displayedWorkflowName"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
 							:read-only="readOnlyActions"
@@ -497,16 +563,18 @@ onBeforeUnmount(() => {
 		</span>
 
 		<ConnectionTracker class="actions">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" />
-			<WorkflowHeaderDraftPublishActions
-				:id="id"
-				ref="workflowHeaderActions"
-				:tags="tags"
-				:name="name"
-				:is-archived="isArchived"
-				:is-new-workflow="isNewWorkflow"
-				:workflow-permissions="workflowPermissions"
-			/>
+			<template v-if="!isHubPlaceholderWorkflow">
+				<WorkflowProductionChecklist v-if="!isNewWorkflow" />
+				<WorkflowHeaderDraftPublishActions
+					:id="id"
+					ref="workflowHeaderActions"
+					:tags="tags"
+					:name="name"
+					:is-archived="isArchived"
+					:is-new-workflow="isNewWorkflow"
+					:workflow-permissions="workflowPermissions"
+				/>
+			</template>
 		</ConnectionTracker>
 	</div>
 </template>

@@ -19,6 +19,8 @@ import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
+import type { SingleNodeExecutionSummaryExtras } from '../../executions.types';
+import { getSingleNodeHeadline, getCallerDisplay } from '../../executions.utils';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
@@ -28,7 +30,7 @@ import VoteButtons from './VoteButtons.vue';
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
 const props = defineProps<{
-	execution?: ExecutionSummary;
+	execution?: ExecutionSummary & SingleNodeExecutionSummaryExtras;
 }>();
 
 const emit = defineEmits<{
@@ -71,6 +73,30 @@ const debugButtonData = computed(() =>
 const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
 );
+
+/**
+ * Single-node executions (n8n Hub Phase 5.3) don't map to a saved workflow,
+ * so the detail view swaps the "Workflow: <name>" header for caller-attribution
+ * and hides workflow-editing affordances.
+ */
+const isSingleNodeExecution = computed(() => props.execution?.mode === 'single-node');
+
+const singleNodeHeader = computed(() => {
+	if (!isSingleNodeExecution.value || !props.execution) return '';
+	const action = getSingleNodeHeadline(props.execution, '');
+	const callerSegment = getCallerDisplay(props.execution.caller);
+	if (action && callerSegment) {
+		return locale.baseText('executionDetails.singleNode.header', {
+			interpolate: { nodeType: action, caller: callerSegment },
+		});
+	}
+	if (action) {
+		return locale.baseText('executionDetails.singleNode.headerNoCaller', {
+			interpolate: { nodeType: action },
+		});
+	}
+	return locale.baseText('executionDetails.singleNode.fallbackHeader');
+});
 
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
@@ -255,7 +281,17 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
 			<div :class="$style.executionDetailsLeft">
-				<div :class="$style.executionTitle">
+				<div v-if="isSingleNodeExecution" :class="$style.singleNodeHeader">
+					<N8nText
+						size="large"
+						color="text-dark"
+						:bold="true"
+						data-test-id="execution-preview-single-node-header"
+					>
+						{{ singleNodeHeader }}
+					</N8nText>
+				</div>
+				<div v-else :class="$style.executionTitle">
 					<N8nText size="large" color="text-dark" :bold="true" data-test-id="execution-time">{{
 						executionUIDetails?.startTime
 					}}</N8nText
@@ -351,6 +387,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 			<div :class="$style.actions">
 				<RouterLink
+					v-if="!isSingleNodeExecution"
 					:to="{
 						name: VIEWS.EXECUTION_DEBUG,
 						params: {
@@ -469,6 +506,12 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.singleNodeHeader {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .voteButtons {

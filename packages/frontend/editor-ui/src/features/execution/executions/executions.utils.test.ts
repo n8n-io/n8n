@@ -50,7 +50,10 @@ vi.mock('@/app/stores/workflows.store', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	i18n: {
-		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
+		baseText: (
+			key: string,
+			options?: { interpolate?: { error?: string; details?: string; caller?: string } },
+		) => {
 			const texts: { [key: string]: string } = {
 				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
 				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
@@ -59,6 +62,7 @@ vi.mock('@n8n/i18n', () => ({
 				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
 				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
+				'executionsList.singleNode.via': `via ${options?.interpolate?.caller}`,
 			};
 			return texts[key] || key;
 		},
@@ -1035,5 +1039,119 @@ describe('generateFakeDataFromSchema', () => {
 		const result = generateFakeDataFromSchema({ fields: [] });
 		expect(result).toHaveLength(1);
 		expect(result[0].json).toEqual({});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// n8n Hub UI helpers
+// ---------------------------------------------------------------------------
+
+import type { ExecutionCaller } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
+import {
+	CALLER_SOURCE_LABEL,
+	getCallerDisplay,
+	getCallerLabel,
+	getSingleNodeHeadline,
+	isHubPlaceholderName,
+	getFriendlyHubWorkflowName,
+} from './executions.utils';
+
+describe('n8n Hub UI helpers', () => {
+	describe('CALLER_SOURCE_LABEL', () => {
+		it('maps the three known kinds to brand-cased labels', () => {
+			expect(CALLER_SOURCE_LABEL.mcp).toBe('MCP');
+			expect(CALLER_SOURCE_LABEL.cli).toBe('CLI');
+			expect(CALLER_SOURCE_LABEL.sdk).toBe('SDK');
+		});
+	});
+
+	describe('getCallerDisplay', () => {
+		it('returns empty string when caller is undefined', () => {
+			expect(getCallerDisplay(undefined)).toBe('');
+		});
+
+		it('returns "SOURCE (Name)" when caller name differs from the source label', () => {
+			expect(getCallerDisplay({ kind: 'mcp', name: 'Claude Desktop' })).toBe(
+				'MCP (Claude Desktop)',
+			);
+		});
+
+		it('returns just "SOURCE" when name matches the source label', () => {
+			expect(getCallerDisplay({ kind: 'cli', name: 'CLI' })).toBe('CLI');
+		});
+
+		it('falls back to UPPERCASED kind for unknown future kinds', () => {
+			expect(getCallerDisplay({ kind: 'browser', name: 'Web' } as unknown as ExecutionCaller)).toBe(
+				'BROWSER (Web)',
+			);
+		});
+	});
+
+	describe('getCallerLabel', () => {
+		it('returns empty string when caller is undefined', () => {
+			expect(getCallerLabel(undefined, i18n)).toBe('');
+		});
+
+		it('prepends "via " to the caller display', () => {
+			const caller: ExecutionCaller = { kind: 'mcp', name: 'Claude Desktop' };
+			expect(getCallerLabel(caller, i18n)).toBe('via MCP (Claude Desktop)');
+		});
+	});
+
+	describe('getSingleNodeHeadline', () => {
+		it('prefers actionDisplayName when present', () => {
+			const out = getSingleNodeHeadline(
+				{
+					actionDisplayName: 'Slack - Send a message',
+					actionId: 'n8n-nodes-base.slack.message.send',
+					nodeType: 'n8n-nodes-base.slack',
+					caller: { kind: 'mcp', name: 'Claude' },
+				},
+				'fallback',
+			);
+			expect(out).toBe('Slack - Send a message');
+		});
+
+		it('falls back through actionId, nodeType, caller.name, then fallback', () => {
+			expect(
+				getSingleNodeHeadline({ actionId: 'n8n-nodes-base.slack.message.send' }, 'fallback'),
+			).toBe('n8n-nodes-base.slack.message.send');
+			expect(getSingleNodeHeadline({ nodeType: 'n8n-nodes-base.slack' }, 'fallback')).toBe(
+				'n8n-nodes-base.slack',
+			);
+			expect(
+				getSingleNodeHeadline({ caller: { kind: 'sdk', name: 'sdk-script' } }, 'fallback'),
+			).toBe('sdk-script');
+			expect(getSingleNodeHeadline({}, 'fallback')).toBe('fallback');
+		});
+	});
+
+	describe('isHubPlaceholderName', () => {
+		it.each([
+			['__n8n-hub-action::n8n-nodes-base.slack', true],
+			['__n8n-hub-legacy-name', true],
+			['My Workflow', false],
+			['', false],
+			[undefined, false],
+		])('%s → %s', (name, expected) => {
+			expect(isHubPlaceholderName(name)).toBe(expected);
+		});
+	});
+
+	describe('getFriendlyHubWorkflowName', () => {
+		it('renders 3+ dot-segment action ids as "<service> — <rest>"', () => {
+			expect(
+				getFriendlyHubWorkflowName('__n8n-hub-action::n8n-nodes-base.slack.message.post'),
+			).toBe('slack — message post');
+		});
+
+		it('returns the stripped name when there are fewer than 3 segments', () => {
+			expect(getFriendlyHubWorkflowName('__n8n-hub-action::httpRequest')).toBe('httpRequest');
+		});
+
+		it('returns the raw name unchanged when the prefix is absent', () => {
+			expect(getFriendlyHubWorkflowName('Some Workflow')).toBe('Some Workflow');
+		});
 	});
 });
