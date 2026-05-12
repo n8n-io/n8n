@@ -56,7 +56,7 @@
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.15",
     "@dotenvx/dotenvx": "^1.40.0",
     "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
