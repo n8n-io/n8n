@@ -161,6 +161,25 @@ describe('WorkflowCreationService', () => {
 				'The workflow you are trying to save contains credentials that are not shared with you',
 			);
 		});
+
+		it('should default missing nodeGroups before saving', async () => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			const { transactionManager } = setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.name = 'Test';
+			newWorkflow.nodes = [];
+			newWorkflow.connections = {};
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+			).rejects.toThrow('Stopping for test');
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.nodeGroups).toEqual([]);
+		});
 	});
 
 	describe('redaction policy scope enforcement on create', () => {

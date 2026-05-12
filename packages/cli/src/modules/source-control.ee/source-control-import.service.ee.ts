@@ -726,7 +726,9 @@ export class SourceControlImportService {
 
 		const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
-		const { versionId, nodes, connections, id, owner } = importedWorkflow;
+		importedWorkflow.nodeGroups ??= [];
+
+		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
 
 		if (!id || !versionId || !nodes || !connections) {
 			this.logger.error(
@@ -764,7 +766,10 @@ export class SourceControlImportService {
 		}
 
 		try {
-			await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
+			await this.saveOrUpdateWorkflowHistory(
+				{ id, versionId, nodes, connections, nodeGroups },
+				userId,
+			);
 		} catch (error) {
 			const e = ensureError(error);
 			this.logger.error(`Failed to save or update workflow history for workflow ${id}`, {
@@ -1663,11 +1668,12 @@ export class SourceControlImportService {
 			versionId: string;
 			nodes: IWorkflowToImport['nodes'];
 			connections: IWorkflowToImport['connections'];
+			nodeGroups: IWorkflowToImport['nodeGroups'];
 			id: string;
 		},
 		userId: string,
 	): Promise<void> {
-		const { versionId, nodes, connections, id } = importedWorkflow;
+		const { versionId, nodes, connections, nodeGroups, id } = importedWorkflow;
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -1676,20 +1682,26 @@ export class SourceControlImportService {
 		const existingVersion = await this.workflowHistoryService.findVersion(id, versionId);
 
 		if (existingVersion) {
-			// Check if nodes or connections changed
+			// Check if workflow content changed
 			const nodesChanged = !isEqual(existingVersion.nodes, nodes);
 			const connectionsChanged = !isEqual(existingVersion.connections, connections);
+			const nodeGroupsChanged = !isEqual(existingVersion.nodeGroups, nodeGroups);
 
-			if (nodesChanged || connectionsChanged) {
+			if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
 				await this.workflowHistoryService.updateVersion(id, versionId, {
 					nodes,
 					connections,
+					nodeGroups,
 					authors,
 				});
 			}
 		} else {
 			// Create new version history record
-			await this.workflowHistoryService.saveVersion(authors, { versionId, nodes, connections }, id);
+			await this.workflowHistoryService.saveVersion(
+				authors,
+				{ versionId, nodes, connections, nodeGroups },
+				id,
+			);
 		}
 	}
 

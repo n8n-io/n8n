@@ -30,7 +30,7 @@ export class WorkflowHistoryService {
 		workflowId: string,
 		take: number,
 		skip: number,
-	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>> {
+	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections' | 'nodeGroups'>>> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
