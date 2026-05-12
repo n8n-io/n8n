@@ -709,6 +709,7 @@ function handleStop() {
 
 <style lang="scss" module>
 .threadArea {
+	--instance-ai-artifacts-panel-width: 280px;
 	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
 	--instance-ai-panel-transition-easing: var(--easing--ease-in-out);
 
@@ -792,8 +793,6 @@ function handleStop() {
 }
 
 .contentArea {
-	--instance-ai-artifacts-panel-width: 280px;
-
 	display: flex;
 	flex: 1;
 	min-height: 0;
@@ -1038,15 +1037,13 @@ function handleStop() {
 }
 
 .artifacts-panel-fade-enter-active,
-.artifacts-panel-fade-leave-active {
+.artifacts-panel-fade-leave-active,
+.artifacts-panel-preview-enter-active,
+.artifacts-panel-preview-leave-active {
 	--artifacts-panel-fade-enter-easing: var(--easing--ease-out);
 	--artifacts-panel-fade-exit-easing: var(--easing--ease-in);
-	--animation--fade-in-right--easing: var(--artifacts-panel-fade-enter-easing);
-	--animation--fade-in-right--translate: 100%;
-	--animation--fade-out-right--easing: var(--artifacts-panel-fade-exit-easing);
-	--animation--fade-out-right--translate: 100%;
 
-	will-change: opacity, transform;
+	will-change: opacity;
 
 	@media (prefers-reduced-motion: reduce) {
 		will-change: auto;
@@ -1054,14 +1051,23 @@ function handleStop() {
 }
 
 .artifacts-panel-fade-enter-active {
-	@include motion.fade-in-right;
+	--animation--fade-in--easing: var(--artifacts-panel-fade-enter-easing);
+
+	@include motion.fade-in;
 }
 
 .artifacts-panel-fade-leave-active {
-	--animation--fade-out-right--duration: calc(var(--duration--snappy) - 40ms);
+	--animation--fade-out--duration: calc(var(--duration--snappy) - 40ms);
+	--animation--fade-out--easing: var(--artifacts-panel-fade-exit-easing);
 
-	@include motion.fade-out-right;
+	@include motion.fade-out;
 	pointer-events: none;
+}
+
+.artifacts-panel-preview-enter-active {
+	--animation--fade-in--easing: var(--artifacts-panel-fade-enter-easing);
+
+	@include motion.fade-in;
 }
 
 .artifacts-panel-preview-leave-active {
