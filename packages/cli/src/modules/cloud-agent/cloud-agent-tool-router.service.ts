@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { IUser } from 'n8n-workflow';
 import { Readable } from 'stream';
 
+import { CloudAgentAdapter } from './cloud-agent.adapter.service';
 import { AgentClient } from './cloud-agent-client.service';
 
 /**
@@ -25,9 +26,10 @@ export class CloudAgentToolRouter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly client: AgentClient,
+		private readonly adapter: CloudAgentAdapter,
 	) {}
 
-	start(runId: string, threadId: string, user: IUser): void {
+	start(runId: string, threadId: string, user: User): void {
 		if (this.active.has(runId)) return;
 		const abort = new AbortController();
 		this.active.set(runId, abort);
@@ -53,7 +55,7 @@ export class CloudAgentToolRouter {
 	private async loop(
 		runId: string,
 		threadId: string,
-		user: IUser,
+		user: User,
 		signal: AbortSignal,
 	): Promise<void> {
 		const upstream = await this.client.openEventStream(threadId, user);
@@ -90,7 +92,7 @@ export class CloudAgentToolRouter {
 		}
 	}
 
-	private async handle(runId: string, event: AgentEvent, user: IUser): Promise<void> {
+	private async handle(runId: string, event: AgentEvent, user: User): Promise<void> {
 		if (event.type === 'run-finish' || event.type === 'run-error') {
 			this.active.delete(runId);
 			return;
@@ -116,32 +118,34 @@ export class CloudAgentToolRouter {
 	}
 
 	/**
-	 * Family dispatch. Intentionally stubbed: each handler returns shape-correct
-	 * empty / placeholder data so the cloud agent has something to round-trip
-	 * against. Real adapter wiring (WorkflowService / CredentialsService /
-	 * LoadNodesAndCredentials) lands in the next commit.
+	 * Dispatch a family=n8n tool call to the real n8n services via the
+	 * adapter. The adapter enforces RBAC using the passed `User`.
 	 */
 	private async dispatch(
 		name: string,
 		args: unknown,
-		_user: IUser,
+		user: User,
 	): Promise<{ output: unknown; isError: boolean }> {
 		switch (name) {
 			case 'workflows':
-				return {
-					output: { workflows: [], _stub: true, args },
-					isError: false,
-				};
+				return await this.adapter.dispatchWorkflows(
+					args as Parameters<CloudAgentAdapter['dispatchWorkflows']>[0],
+					user,
+				);
 			case 'credentials':
-				return {
-					output: { credentials: [], _stub: true, args },
-					isError: false,
-				};
+				return await this.adapter.dispatchCredentials(
+					args as Parameters<CloudAgentAdapter['dispatchCredentials']>[0],
+					user,
+				);
 			case 'nodes':
-				return {
-					output: { matches: [], _stub: true, args },
-					isError: false,
-				};
+				return await this.adapter.dispatchNodes(
+					args as Parameters<CloudAgentAdapter['dispatchNodes']>[0],
+				);
+			case 'ask_user':
+				// ask_user is rendered by the browser; the answer comes back from
+				// the frontend via the existing postToolResult endpoint. The tool
+				// router doesn't auto-answer.
+				return { output: { pending: true }, isError: false };
 			default:
 				return {
 					output: { error: `unknown n8n tool: ${name}` },

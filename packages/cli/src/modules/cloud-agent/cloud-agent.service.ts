@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { IUser } from 'n8n-workflow';
 
 import { AgentClient } from './cloud-agent-client.service';
 import { CloudAgentToolRouter } from './cloud-agent-tool-router.service';
@@ -31,26 +31,26 @@ export class AgentService {
 
 	async startRun(
 		payload: { threadId: string; message: string },
-		user: IUser,
+		user: User,
 	): Promise<{ runId: string }> {
 		const result = await this.client.startRun(payload, user);
 		this.toolRouter.start(result.runId, payload.threadId, user);
 		return result;
 	}
 
-	async openEventStream(threadId: string, user: IUser, lastEventId?: number): Promise<Response> {
+	async openEventStream(threadId: string, user: User, lastEventId?: number): Promise<Response> {
 		return await this.client.openEventStream(threadId, user, lastEventId);
 	}
 
 	async postToolResult(
 		runId: string,
 		payload: { toolCallId: string; output: unknown; isError: boolean },
-		user: IUser,
+		user: User,
 	): Promise<void> {
 		await this.client.postToolResult(runId, payload, user);
 	}
 
-	async cancelRun(runId: string, user: IUser): Promise<{ cancelled: boolean }> {
+	async cancelRun(runId: string, user: User): Promise<{ cancelled: boolean }> {
 		this.toolRouter.stop(runId);
 		return await this.client.cancelRun(runId, user);
 	}
