@@ -420,18 +420,19 @@ describe('N8nMemory', () => {
 			);
 		});
 
-		it('dedupes entries by agentId, resourceId, and exact content hash', async () => {
+		it('returns the existing entry when an exact content hash insert races', async () => {
 			const existing = makeEntryEntity({ id: 'existing-entry' });
+			memoryEntryRepository.save.mockRejectedValueOnce(new Error('unique constraint failed'));
 			memoryEntryRepository.findOneBy.mockResolvedValue(existing);
 
 			const result = await memory.saveEpisodicMemoryEntries([makeEntry()]);
 
+			expect(memoryEntryRepository.save).toHaveBeenCalled();
 			expect(memoryEntryRepository.findOneBy).toHaveBeenCalledWith({
 				agentId: 'agent-1',
 				resourceId: 'user-1',
 				contentHash: 'hash-1',
 			});
-			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
 			expect(result).toEqual([
 				expect.objectContaining({
 					id: 'existing-entry',
