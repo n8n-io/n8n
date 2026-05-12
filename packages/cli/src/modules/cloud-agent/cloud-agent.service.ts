@@ -3,17 +3,21 @@ import { Service } from '@n8n/di';
 import type { IUser } from 'n8n-workflow';
 
 import { AgentClient } from './cloud-agent-client.service';
+import { CloudAgentToolRouter } from './cloud-agent-tool-router.service';
 
 /**
- * High-level orchestration for the cloud agent. Owns the AgentClient instance
- * and (in future commits) the tool router that dispatches family=n8n tool
- * calls back to n8n's services.
+ * High-level orchestration for the cloud agent.
+ *
+ * startRun() forwards the user message to the cloud service to get a runId,
+ * then kicks off the tool-router subscription so family=n8n tool calls get
+ * dispatched locally with the user's RBAC. cancelRun() tears that down.
  */
 @Service()
 export class AgentService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly client: AgentClient,
+		private readonly toolRouter: CloudAgentToolRouter,
 	) {}
 
 	async init(): Promise<void> {
@@ -22,13 +26,16 @@ export class AgentService {
 
 	async shutdown(): Promise<void> {
 		this.logger.scoped('cloud-agent').debug('AgentService shutdown');
+		this.toolRouter.stopAll();
 	}
 
 	async startRun(
 		payload: { threadId: string; message: string },
 		user: IUser,
 	): Promise<{ runId: string }> {
-		return await this.client.startRun(payload, user);
+		const result = await this.client.startRun(payload, user);
+		this.toolRouter.start(result.runId, payload.threadId, user);
+		return result;
 	}
 
 	async openEventStream(threadId: string, user: IUser, lastEventId?: number): Promise<Response> {
@@ -44,6 +51,7 @@ export class AgentService {
 	}
 
 	async cancelRun(runId: string, user: IUser): Promise<{ cancelled: boolean }> {
+		this.toolRouter.stop(runId);
 		return await this.client.cancelRun(runId, user);
 	}
 }
