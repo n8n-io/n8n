@@ -52,10 +52,9 @@ export class InstanceRedactionEnforcementService {
 		const parsed = redactionEnforcementSettingsSchema.parse(next);
 		const serialized = JSON.stringify(parsed);
 
-		await this.settingsRepository.upsert(
-			{ key: KEY, value: serialized, loadOnStartup: true },
-			['key'],
-		);
+		await this.settingsRepository.upsert({ key: KEY, value: serialized, loadOnStartup: true }, [
+			'key',
+		]);
 
 		await this.cacheService.set(KEY, serialized);
 	}
