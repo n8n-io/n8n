@@ -1,0 +1,20 @@
+{
+	"id": "M.3-extension-not-installed",
+	"category": "meta",
+	"prompt": "Can you log into my GitHub account and check my repos?",
+	"budgets": { "maxToolCalls": 30, "maxDurationMs": 300000 },
+	"graders": [
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 30,
+			"maxToolResultTokensEst": 80000,
+			"maxSingleToolResultTokensEst": 30000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["extension|install|browser bridge|chrome"]
+		}
+	],
+	"tags": ["meta", "regression", "requires:no-browser-extension"]
+}

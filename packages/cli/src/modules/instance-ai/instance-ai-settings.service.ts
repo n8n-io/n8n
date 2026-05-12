@@ -7,11 +7,12 @@ import type {
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -78,7 +79,6 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
-	optinModalDismissed?: boolean;
 }
 
 @Service()
@@ -99,8 +99,6 @@ export class InstanceAiSettingsService {
 	private adminN8nSandboxCredentialId: string | null = null;
 
 	private adminSearchCredentialId: string | null = null;
-
-	private optinModalDismissed: boolean = false;
 
 	constructor(
 		globalConfig: GlobalConfig,
@@ -128,6 +126,11 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
+		const envSnapshot = {
+			sandboxEnabled: this.config.sandboxEnabled,
+			sandboxProvider: this.config.sandboxProvider,
+		};
+
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
 		if (row) {
 			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
@@ -135,6 +138,21 @@ export class InstanceAiSettingsService {
 			});
 			this.applyAdminSettings(persisted);
 		}
+
+		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
+		// or a persisted DB setting are in effect — these can silently disagree.
+		const c = this.config;
+		const overridden =
+			c.sandboxEnabled !== envSnapshot.sandboxEnabled ||
+			c.sandboxProvider !== envSnapshot.sandboxProvider;
+		Container.get(Logger)
+			.scoped('instance-ai')
+			.info(
+				`Sandbox: enabled=${c.sandboxEnabled} provider=${c.sandboxProvider}` +
+					(overridden
+						? ` (DB override; env was enabled=${envSnapshot.sandboxEnabled} provider=${envSnapshot.sandboxProvider})`
+						: ' (from env)'),
+			);
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -158,7 +176,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
-			optinModalDismissed: this.optinModalDismissed,
 		};
 	}
 
@@ -203,8 +220,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.optinModalDismissed !== undefined)
-			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
@@ -567,8 +582,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
-		if (persisted.optinModalDismissed !== undefined)
-			this.optinModalDismissed = persisted.optinModalDismissed;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -594,7 +607,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
-			optinModalDismissed: this.optinModalDismissed,
 		};
 
 		await this.settingsRepository.upsert(

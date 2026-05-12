@@ -29,6 +29,7 @@ export {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmRequestKind,
+	type InstanceAiResourceDecision,
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
@@ -198,6 +199,8 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
+export * from './evaluations';
+
 export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
@@ -235,6 +238,24 @@ export {
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
+export { CreateAgentDto } from './agents/create-agent.dto';
+export { UpdateAgentDto } from './agents/update-agent.dto';
+export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
+export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
+export {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	CreateAgentSkillDto,
+	agentSkillSchema,
+} from './agents/create-agent-skill.dto';
+export { UpdateAgentSkillDto } from './agents/update-agent-skill.dto';
+export { AgentIntegrationDto } from './agents/agent-integration.dto';
+export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
+export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
+
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
-export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export {
+	ListEncryptionKeysQueryDto,
+	ENCRYPTION_KEYS_SORT_OPTIONS,
+	type EncryptionKeysSortOption,
+} from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

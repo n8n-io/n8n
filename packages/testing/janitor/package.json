@@ -5,9 +5,6 @@
 	"description": "Static analysis and architecture enforcement for Playwright test suites",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"bin": {
-		"playwright-janitor": "dist/cli.js"
-	},
 	"files": [
 		"dist"
 	],
@@ -36,7 +33,7 @@
 		"glob": "^10.0.0"
 	},
 	"peerDependencies": {
-		"ts-morph": ">=20.0.0"
+		"ts-morph": "catalog:"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:",

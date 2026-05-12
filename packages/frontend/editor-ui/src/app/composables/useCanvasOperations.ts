@@ -118,6 +118,7 @@ import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
+import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -137,9 +138,8 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
 	pinDataToExecutionData,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
@@ -191,9 +191,7 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -218,7 +216,7 @@ export function useCanvasOperations() {
 	);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
-		return workflowsStore.workflowTriggerNodes;
+		return workflowDocumentStore.value.workflowTriggerNodes;
 	});
 
 	/**
@@ -2313,11 +2311,12 @@ export function useCanvasOperations() {
 			} catch (error) {}
 		}
 
-		// Reset editable workflow state
-		workflowsStore.resetWorkflow();
+		// Reset editable workflow state. resetState() must run BEFORE resetWorkflow()
+		// — it reads ws.workflowId to target the per-workflow execution-state store, and
+		// resetWorkflow() empties that id.
 		workflowState.resetState();
+		workflowsStore.resetWorkflow();
 		workflowsStore.clearCurrentWorkflowExecutions();
-		workflowState.setActiveExecutionId(undefined);
 		workflowsStore.setLastSuccessfulExecution(null);
 
 		// Reset actions
@@ -2334,7 +2333,14 @@ export function useCanvasOperations() {
 	async function initializeWorkspace(data: IWorkflowDb) {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
-		data.nodes.forEach((node) => {
+
+		// Filter out nodes with missing type to prevent canvas rendering crashes
+		const validNodes = data.nodes
+			.filter((node) => !!node.type)
+			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
+		const validNodeNames = validNodes.map((node) => node.name);
+
+		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
 			nodeHelpers.matchCredentials(node);
@@ -2345,8 +2351,8 @@ export function useCanvasOperations() {
 			}
 		});
 
-		initializedDocumentStore.setNodes(data.nodes);
-		initializedDocumentStore.setConnections(data.connections);
+		initializedDocumentStore.setNodes(validNodes);
+		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2618,6 +2624,34 @@ export function useCanvasOperations() {
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 			return {};
+		}
+
+		// Filter out nodes with missing type to prevent crashes
+		if (workflowData.nodes) {
+			const invalidNodes = workflowData.nodes.filter((node) => !node.type);
+			if (invalidNodes.length > 0) {
+				toast.showError(
+					new Error(
+						i18n.baseText('nodeView.showError.importWorkflowData.invalidNodes', {
+							interpolate: { count: String(invalidNodes.length) },
+						}),
+					),
+					i18n.baseText('nodeView.showError.importWorkflowData.title'),
+				);
+				workflowData.nodes = workflowData.nodes.filter((node) => !!node.type);
+			}
+		}
+
+		if (workflowData.nodes) {
+			workflowData.nodes = workflowData.nodes.map((node) => ({
+				...node,
+				position: ensureNodePosition(node.position),
+			}));
+		}
+
+		if (workflowData.connections) {
+			const validNodeNames = workflowData.nodes?.map((node) => node.name);
+			workflowData.connections = sanitizeConnections(workflowData.connections, validNodeNames);
 		}
 
 		try {
@@ -3018,11 +3052,26 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.setName(workflowData.name);
 	}
 
-	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
+	async function tryToOpenSubworkflowInNewTab(nodeId: string): Promise<boolean> {
 		const node = workflowDocumentStore.value.getNodeById(nodeId);
 		if (!node) return false;
-		const subWorkflowId = NodeHelpers.getSubworkflowId(node);
+		let subWorkflowId = NodeHelpers.getSubworkflowId(node);
 		if (!subWorkflowId) return false;
+
+		if (subWorkflowId.startsWith('=')) {
+			try {
+				const resolved = await workflowHelpers.resolveExpression(
+					subWorkflowId,
+					{},
+					{ contextNodeName: node.name },
+				);
+				if (typeof resolved !== 'string' || !resolved) return false;
+				subWorkflowId = resolved;
+			} catch {
+				return false;
+			}
+		}
+
 		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
 		return true;
 	}

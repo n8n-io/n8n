@@ -2,8 +2,7 @@ import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
-import type { DirectoryLoader } from 'n8n-core';
-import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
+import { CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
@@ -100,9 +99,9 @@ describe('LoadNodesAndCredentials', () => {
 		beforeEach(() => {
 			const mockInstance = (pkg: string, directory: string) => {
 				const mi = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-				mi.loaders[pkg] = mock<DirectoryLoader>({
-					directory,
-				});
+				const mockLoader = mock<DirectoryLoader>({ directory });
+				Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
+				mi.loaders[pkg] = mockLoader;
 				return mi;
 			};
 			instance = mockInstance(packageName, dir);
@@ -575,6 +574,7 @@ describe('LoadNodesAndCredentials', () => {
 			reset: jest.fn(),
 			loadAll: jest.fn(),
 		});
+		Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
 
 		beforeEach(() => {
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
@@ -604,7 +604,6 @@ describe('LoadNodesAndCredentials', () => {
 
 			await instance.setupHotReload();
 
-			console.log(subscribe);
 			expect(subscribe).toHaveBeenCalledTimes(2);
 			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
 				ignore: ['**/node_modules/**/node_modules/**'],
