@@ -123,7 +123,7 @@ describe('completion utils', () => {
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
 
-			expect(autocompletableNodeNames(mockWorkflowDocumentStore)).toEqual(['Node 2', 'Node 1']);
+			expect(autocompletableNodeNames('test@latest')).toEqual(['Node 2', 'Node 1']);
 		});
 
 		it('should work for AI tool nodes', () => {
@@ -142,7 +142,7 @@ describe('completion utils', () => {
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
 
-			expect(autocompletableNodeNames(mockWorkflowDocumentStore)).toEqual(['Normal Node']);
+			expect(autocompletableNodeNames('test@latest')).toEqual(['Normal Node']);
 		});
 	});
 
