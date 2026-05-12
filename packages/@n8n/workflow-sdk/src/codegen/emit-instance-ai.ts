@@ -25,8 +25,15 @@ function generateWorkflowCode(workflow: WorkflowJSON): string {
 	return generateCode(tree, workflow, graph, {});
 }
 
-/** SDK functions a workflow file may call. Order matters only for tidiness. */
-const SDK_FUNCTIONS = [
+/**
+ * SDK functions a workflow file may call. Order matters only for tidiness.
+ *
+ * A drift test (`emit-instance-ai.test.ts`) asserts this list stays in sync with the
+ * function exports of `@n8n/workflow-sdk`. When you add or remove a function export,
+ * the test will fail until the new name is placed either here (if a workflow file
+ * may call it) or in the test's intentional-exclusion list (if it's a utility).
+ */
+export const SDK_FUNCTIONS = [
 	'workflow',
 	'trigger',
 	'node',

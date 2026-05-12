@@ -1,4 +1,10 @@
-import { emitInstanceAi, buildImports, hoistSharedCredentials } from './emit-instance-ai';
+import * as sdk from '../index';
+import {
+	emitInstanceAi,
+	buildImports,
+	hoistSharedCredentials,
+	SDK_FUNCTIONS,
+} from './emit-instance-ai';
 import type { WorkflowJSON } from '../types/base';
 
 describe('emit-instance-ai', () => {
@@ -198,6 +204,140 @@ describe('emit-instance-ai', () => {
 			// `mynewCredential(` should not include `newCredential` in imports
 			const body = 'const x = mynewCredential(); const y = trigger();';
 			expect(buildImports(body)).toBe("import { trigger } from '@n8n/workflow-sdk';");
+		});
+	});
+
+	describe('SDK_FUNCTIONS drift guard', () => {
+		// Every function exported from `@n8n/workflow-sdk` falls into one of two buckets:
+		//   - SDK_FUNCTIONS  → workflow-callable, must appear in generated import line
+		//   - INTENTIONALLY_EXCLUDED → utility/codegen/validation/type guard, never appears
+		//                              inside an emitted workflow body
+		// When a new export is added, this test fails until it's categorised. That's the
+		// signal to decide whether `emit-instance-ai` should know about it.
+		const INTENTIONALLY_EXCLUDED = new Set<string>([
+			// Classes
+			'PluginRegistry',
+			'ValidationError',
+			'ValidationWarning',
+			// Expression helpers (workflows use `expr()` only; the rest are parser internals)
+			'createFromAIExpression',
+			'isExpression',
+			'nodeJson',
+			'parseExpression',
+			// Type guards (callable but never appear in workflow bodies)
+			'isDataTableType',
+			'isHttpRequestType',
+			'isIfNodeType',
+			'isMergeNodeType',
+			'isNodeChain',
+			'isNodeInstance',
+			'isSplitInBatchesType',
+			'isStickyNoteType',
+			'isSwitchNodeType',
+			'isWebhookType',
+			// Codegen + parse round-trip
+			'emitInstanceAi',
+			'generateWorkflowCode',
+			'parseWorkflowCode',
+			'parseWorkflowCodeToBuilder',
+			// Code-step helpers — appear as arguments to `.code()` callbacks, not as
+			// standalone calls in the emitted body
+			'runOnceForAllItems',
+			'runOnceForEachItem',
+			// Safe-access utilities (used inside .code() callbacks too)
+			'getProperty',
+			'hasProperty',
+			'isPlainObject',
+			// Validation
+			'validateNodeConfig',
+			'validateWorkflow',
+			'setSchemaBaseDirs',
+			// Pin-data + schema discovery
+			'discoverOutputSchemaForNode',
+			'discoverSchemasForNode',
+			'findSchemaForOperation',
+			'inferSchemasFromRunData',
+			'needsPinData',
+			'normalizePinData',
+			// Display-options matching
+			'matchesDisplayOptions',
+			// Plugin registration
+			'registerDefaultPlugins',
+			// Generate-types module (build-time type generation, never appears in workflows)
+			'buildDiscriminatorTree',
+			'extractDiscriminatorCombinations',
+			'extractOutputTypes',
+			'filterPropertiesForVersion',
+			'generateDiscriminatedUnion',
+			'generateDiscriminatorSchemaFile',
+			'generateIndexFile',
+			'generateJsonSchemaFromData',
+			'generateNodeJSDoc',
+			'generateNodeTypeFile',
+			'generatePropertyJSDoc',
+			'generatePropertyLine',
+			'generateResourceIndexSchemaFile',
+			'generateSchemaIndexFile',
+			'generateSchemaPropertyLine',
+			'generateSingleVersionSchemaFile',
+			'generateSingleVersionTypeFile',
+			'generateSplitVersionIndexSchemaFile',
+			'generateSubnodeUnionTypes',
+			'generateSubnodesFile',
+			'generateTypes',
+			'generateVersionIndexFile',
+			'getHighestVersion',
+			'getPackageName',
+			'getPropertiesForCombination',
+			'getSubnodeOutputType',
+			'groupNodesByOutputType',
+			'groupVersionsByProperties',
+			'hasDiscriminatorPattern',
+			'jsonSchemaToTypeScript',
+			'literalUnion',
+			'loadNodeTypes',
+			'mapPropertyToZodSchema',
+			'mapPropertyType',
+			'multiOptionsSchema',
+			'nodeNameToFileName',
+			'optionsWithExpression',
+			'orchestrateGeneration',
+			'planSplitVersionFiles',
+			'planSplitVersionSchemaFiles',
+			'propertyAppliesToVersion',
+			'versionToFileName',
+			'versionToTypeName',
+		]);
+
+		const sdkFunctionExports = new Set(
+			Object.entries(sdk)
+				.filter(([, v]) => typeof v === 'function')
+				.map(([k]) => k),
+		);
+
+		it('categorises every SDK function export', () => {
+			const categorised = new Set([...SDK_FUNCTIONS, ...INTENTIONALLY_EXCLUDED]);
+			const uncategorised = [...sdkFunctionExports].filter((n) => !categorised.has(n)).sort();
+
+			expect(uncategorised).toEqual([]);
+		});
+
+		it('has no stale entries in SDK_FUNCTIONS', () => {
+			const stale = SDK_FUNCTIONS.filter((n) => !sdkFunctionExports.has(n)).sort();
+
+			expect(stale).toEqual([]);
+		});
+
+		it('has no stale entries in INTENTIONALLY_EXCLUDED', () => {
+			const stale = [...INTENTIONALLY_EXCLUDED].filter((n) => !sdkFunctionExports.has(n)).sort();
+
+			expect(stale).toEqual([]);
+		});
+
+		it('does not double-list a function in both sets', () => {
+			const overlap = SDK_FUNCTIONS.filter((n) => INTENTIONALLY_EXCLUDED.has(n)).sort();
+
+			expect(overlap).toEqual([]);
 		});
 	});
 
