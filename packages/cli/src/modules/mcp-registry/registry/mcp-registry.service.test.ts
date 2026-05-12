@@ -1,6 +1,6 @@
 import { McpRegistryService } from './mcp-registry.service';
 import type { McpRegistryServer } from './mcp-registry.types';
-import { notionMockServer } from './notion-mock-server';
+import { linearMockServer, notionMockServer } from './mock-servers';
 
 describe('McpRegistryService', () => {
 	let service: McpRegistryService;
@@ -20,19 +20,23 @@ describe('McpRegistryService', () => {
 
 	describe('getAll', () => {
 		it('returns active servers by default', () => {
-			expect(service.getAll()).toEqual([notionMockServer]);
+			expect(service.getAll()).toEqual([notionMockServer, linearMockServer]);
 		});
 
 		it('omits deprecated servers by default', () => {
 			seedDeprecated('old');
 
-			expect(service.getAll()).toEqual([notionMockServer]);
+			expect(service.getAll()).toEqual([notionMockServer, linearMockServer]);
 		});
 
 		it('returns deprecated servers when includeDeprecated is true', () => {
 			const deprecated = seedDeprecated('old');
 
-			expect(service.getAll({ includeDeprecated: true })).toEqual([notionMockServer, deprecated]);
+			expect(service.getAll({ includeDeprecated: true })).toEqual([
+				notionMockServer,
+				linearMockServer,
+				deprecated,
+			]);
 		});
 	});
 

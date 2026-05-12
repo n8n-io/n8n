@@ -150,6 +150,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 					agentId,
 					role,
 					parentId,
+					tools,
 					toolCalls: [],
 					textContent: '',
 					reasoning: '',
@@ -258,11 +259,16 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 				const agentId = getString(event.data, 'agentId') ?? getString(payload, 'agentId') ?? '';
 				const role = getString(payload, 'role') ?? '';
 				const parentId = getString(payload, 'parentId');
+				const toolsRaw = payload.tools;
+				const tools = Array.isArray(toolsRaw)
+					? (toolsRaw as unknown[]).filter((t): t is string => typeof t === 'string')
+					: [];
 
 				agentMap.set(agentId, {
 					agentId,
 					role,
 					parentId,
+					tools,
 					toolCalls: [],
 					textContent: '',
 					reasoning: '',

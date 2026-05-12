@@ -10,6 +10,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { deepCopy } from 'n8n-workflow';
@@ -25,6 +26,7 @@ import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetr
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
@@ -57,6 +59,7 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -65,6 +68,8 @@ const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
 const agentId = computed(() => route.params.agentId as string);
+
+const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
 // UI state
 const {
@@ -86,6 +91,10 @@ const {
 const initialized = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
+
+watch(agentName, (name) => {
+	documentTitle.set(name || locale.baseText('agents.heading'));
+});
 const {
 	activeChatSessionId,
 	continueSessionId,
@@ -451,7 +460,11 @@ async function onConfigUpdated() {
 	builderTelemetry.trackSkillsAdded();
 }
 
-const headerActions = [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }];
+const headerActions = computed(() =>
+	canDeleteAgent.value
+		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
+		: [],
+);
 
 async function onHeaderAction(action: string) {
 	if (action === 'delete') {
@@ -540,10 +553,13 @@ async function initialize() {
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
-	// Fire-and-forget: the interactive ask_credential tool card reads these
-	// stores. Failures are non-fatal — the cards stay disabled until data lands.
-	void credentialsStore.fetchAllCredentials({ projectId: projectId.value }).catch(() => undefined);
-	void credentialsStore.fetchCredentialTypes(false).catch(() => undefined);
+	// Keep agent credential pickers aligned with the workflow editor: load only
+	// credentials the current user can use in this project context.
+	credentialsStore.setCredentials([]);
+	await Promise.all([
+		credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
+		credentialsStore.fetchCredentialTypes(false),
+	]).catch(() => undefined);
 	// Stop any in-flight auto-refresh from the previous agent before kicking
 	// off a new fetch — keeps the store tied to the current project/agent.
 	sessionsStore.stopAutoRefresh();
@@ -652,6 +668,8 @@ function onOpenToolFromList(index: number) {
 		data: {
 			toolRef: tool,
 			customTool,
+			projectId: projectId.value,
+			agentId: agentId.value,
 			existingToolNames: tools
 				.map((toolRef, i) => (i === index ? null : toolRef.name))
 				.filter((name): name is string => !!name),
@@ -883,6 +901,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:is-build-chat-streaming="isBuildChatStreaming"
 					:is-published="Boolean(agent?.publishedVersion)"
 					:is-full-width="isChatFullWidth"
+					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"
 					@session-select="onSessionPick"
 					@new-chat="onNewChat"
@@ -910,6 +929,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:applied-skills="appliedSkills"
 				:connected-triggers="connectedTriggers"
 				:is-build-chat-streaming="isBuildChatStreaming"
+				:can-edit-agent="canEditAgent"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
 				@update:config="onConfigFieldUpdate"
