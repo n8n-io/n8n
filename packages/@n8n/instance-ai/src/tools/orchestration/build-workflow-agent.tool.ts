@@ -11,6 +11,7 @@ import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -1621,6 +1622,14 @@ function isBuildViaPlanGuardEnabled(): boolean {
 	return raw.toLowerCase() !== 'false' && raw !== '0';
 }
 
+/**
+ * If the LLM ignores plan-guard rejections and retries the same direct call, the
+ * orchestrator can burn its entire step budget (and the eval CLI's per-build timeout)
+ * looping. After this many consecutive rejections in a single tool instance we abort
+ * the run with a UserError so the loop surfaces as a clean failure instead of a stall. See INS-242.
+ */
+const PLAN_GUARD_REJECTION_LIMIT = 3;
+
 async function resolveWorkflowNameForEditConfirmation(
 	context: OrchestrationContext,
 	workflowId: string,
@@ -1635,6 +1644,25 @@ async function resolveWorkflowNameForEditConfirmation(
 }
 
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
+	let consecutivePlanGuardRejections = 0;
+
+	const rejectWithGuard = (message: string): { result: string; taskId: string } => {
+		consecutivePlanGuardRejections += 1;
+		if (consecutivePlanGuardRejections >= PLAN_GUARD_REJECTION_LIMIT) {
+			context.logger.warn(
+				'build-workflow-with-agent plan-guard rejection limit reached — aborting run',
+				{
+					threadId: context.threadId,
+					rejectionCount: consecutivePlanGuardRejections,
+				},
+			);
+			throw new UserError(
+				'Stopped: the agent looped on `build-workflow-with-agent` rejections without correcting them. Try again or rephrase the request.',
+			);
+		}
+		return { result: message, taskId: '' };
+	};
+
 	return createTool({
 		id: 'build-workflow-with-agent',
 		description:
@@ -1664,34 +1692,19 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							hasWorkflowId: Boolean(input.workflowId),
 						},
 					);
-					return {
-						result:
-							'Error: direct builder calls require `bypassPlan: true` + an existing ' +
-							'`workflowId` + a one-sentence `reason`. Use that combination for any edit to ' +
-							'an existing workflow. For new workflows, multi-workflow builds, or data-table ' +
-							'schema changes, call `plan` with a `build-workflow` task instead — the planner ' +
-							'discovers credentials, data tables, and best practices, and schedules an ' +
-							'orchestrator-run verification checkpoint.',
-						taskId: '',
-					};
+					return rejectWithGuard(
+						'STOP. Call `plan` with a `build-workflow` task — do NOT retry this tool. Direct builder calls outside a plan are only allowed for edits to an existing workflow (`bypassPlan: true` + `workflowId` + one-sentence `reason`).',
+					);
 				}
 				if (!input.workflowId) {
-					return {
-						result:
-							'Error: `bypassPlan: true` is for edits to an EXISTING workflow and requires a ' +
-							'`workflowId`. New workflow builds must go through `plan` so an orchestrator-run ' +
-							'verification checkpoint is scheduled. Call `plan` with a `build-workflow` task ' +
-							'instead.',
-						taskId: '',
-					};
+					return rejectWithGuard(
+						'STOP. `bypassPlan: true` is for edits to an EXISTING workflow only. For new workflows call `plan` with a `build-workflow` task — do NOT retry this tool without a `workflowId`.',
+					);
 				}
 				if (!input.reason || input.reason.trim().length === 0) {
-					return {
-						result:
-							'Error: `bypassPlan: true` requires a one-sentence `reason` describing the edit ' +
-							'(e.g. "swap Slack channel", "fix Code node shape issue").',
-						taskId: '',
-					};
+					return rejectWithGuard(
+						'STOP. `bypassPlan: true` requires a one-sentence `reason` (e.g. "swap Slack channel"). Retry once with `reason` set; do not retry without it.',
+					);
 				}
 				context.logger.warn('build-workflow-with-agent bypassing plan with bypassPlan=true', {
 					threadId: context.threadId,
@@ -1739,6 +1752,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				}
 			}
 
+			consecutivePlanGuardRejections = 0;
 			const result = await startBuildWorkflowAgentTask(context, input);
 			return { result: result.result, taskId: result.taskId };
 		},

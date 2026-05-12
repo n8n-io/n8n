@@ -821,25 +821,23 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		}
 	});
 
-	it('rejects direct calls outside a replan/checkpoint follow-up', async () => {
+	it('rejects direct calls outside a replan/checkpoint follow-up with an imperative STOP message', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
 		const out = await tool.execute({ task: 'Build a Slack notifier' });
 
 		expect(out.taskId).toBe('');
-		expect(out.result).toContain('bypassPlan');
-		expect(out.result).toMatch(
-			/For new workflows, multi-workflow builds, or data-table schema changes/,
-		);
+		expect(out.result).toMatch(/^STOP\./);
 		expect(out.result).toContain('`plan`');
+		expect(out.result).toContain('bypassPlan');
 		expect(context.logger.warn).toHaveBeenCalledWith(
 			'build-workflow-with-agent called outside plan/replan context — rejecting',
 			expect.objectContaining({ threadId: 'test-thread' }),
 		);
 	});
 
-	it('rejects bypassPlan=true without a workflowId (new builds must go through plan)', async () => {
+	it('rejects bypassPlan=true without a workflowId with an imperative STOP message', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
@@ -850,10 +848,13 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		});
 
 		expect(out.taskId).toBe('');
-		expect(out.result).toMatch(/edits to an EXISTING workflow and requires a `workflowId`/);
+		expect(out.result).toMatch(/^STOP\./);
+		expect(out.result).toMatch(/EXISTING workflow/);
+		expect(out.result).toContain('`workflowId`');
+		expect(out.result).toContain('`plan`');
 	});
 
-	it('rejects bypassPlan=true without a reason', async () => {
+	it('rejects bypassPlan=true without a reason with an imperative STOP message', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
@@ -864,7 +865,8 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		});
 
 		expect(out.taskId).toBe('');
-		expect(out.result).toContain('requires a one-sentence `reason`');
+		expect(out.result).toMatch(/^STOP\./);
+		expect(out.result).toContain('`reason`');
 	});
 
 	it('allows the call when bypassPlan=true with a reason is provided', async () => {
@@ -883,7 +885,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		// Guard passes → reaches startBuildWorkflowAgentTask, which short-circuits on
 		// missing spawnBackgroundTask. The point is we got past the guard, not what
 		// the downstream does.
-		expect(out.result).not.toMatch(/`bypassPlan: true` is for edits/);
+		expect(out.result).not.toMatch(/^STOP\./);
 		const warnMock = context.logger.warn as jest.Mock<void, [string, Record<string, unknown>?]>;
 		expect(warnMock.mock.calls.some((c) => c[0].includes('bypassing plan'))).toBe(true);
 	});
@@ -894,7 +896,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		const out = await tool.execute({ task: 'retry after failure' });
 
-		expect(out.result).not.toContain('direct builder calls require');
+		expect(out.result).not.toMatch(/^STOP\./);
 		expect(context.logger.warn).not.toHaveBeenCalledWith(
 			'build-workflow-with-agent called outside plan/replan context — rejecting',
 			expect.anything(),
@@ -907,7 +909,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		const out = await tool.execute({ task: 'checkpoint branch' });
 
-		expect(out.result).not.toContain('direct builder calls require');
+		expect(out.result).not.toMatch(/^STOP\./);
 	});
 
 	it('skips the guard when the env flag is disabled', async () => {
@@ -917,7 +919,124 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		const out = await tool.execute({ task: 'build directly' });
 
-		expect(out.result).not.toContain('direct builder calls require');
+		expect(out.result).not.toContain('STOP');
+	});
+
+	// If the LLM keeps retrying the same rejected call, the tool throws after
+	// PLAN_GUARD_REJECTION_LIMIT (3) consecutive rejections so the loop surfaces
+	// as a clean failure instead of a stall.
+	it('throws after three consecutive plan-guard rejections in the same tool instance', async () => {
+		const context = createMockContext();
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const first = await tool.execute({ task: 'one' });
+		expect(first.result).toMatch(/^STOP\./);
+
+		const second = await tool.execute({ task: 'two' });
+		expect(second.result).toMatch(/^STOP\./);
+
+		await expect(tool.execute({ task: 'three' })).rejects.toThrow(/looped on .* rejections/);
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'build-workflow-with-agent plan-guard rejection limit reached — aborting run',
+			expect.objectContaining({
+				threadId: 'test-thread',
+				rejectionCount: 3,
+			}),
+		);
+	});
+
+	it('counts mixed-cause rejections (missing bypassPlan / workflowId / reason) toward the same limit', async () => {
+		const context = createMockContext();
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		// 1: missing bypassPlan
+		await tool.execute({ task: 'one' });
+		// 2: bypassPlan=true but missing workflowId
+		await tool.execute({
+			task: 'two',
+			bypassPlan: true,
+			reason: 'patch a thing',
+		});
+		// 3: bypassPlan=true + workflowId but missing reason — throws
+		await expect(
+			tool.execute({
+				task: 'three',
+				bypassPlan: true,
+				workflowId: 'WF_EXISTING',
+			}),
+		).rejects.toThrow(/looped on .* rejections/);
+	});
+
+	it('resets the rejection counter when a call gets past the guard', async () => {
+		const context = createMockContext({
+			domainContext: createMockDomainContext({ updateWorkflow: 'always_allow' }),
+		});
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		// Two rejections — counter at 2.
+		await tool.execute({ task: 'one' });
+		await tool.execute({ task: 'two' });
+
+		// A valid bypassPlan call gets past the guard (startBuildWorkflowAgentTask
+		// short-circuits on missing spawnBackgroundTask, but the counter resets
+		// BEFORE that call, so the counter is back to 0).
+		const past = await tool.execute({
+			task: 'edit an existing workflow',
+			workflowId: 'WF_EXISTING',
+			bypassPlan: true,
+			reason: 'Swap Slack channel on this notifier.',
+		});
+		expect(past.result).not.toMatch(/^STOP\./);
+
+		// Two more rejections — the counter restarts from 0, so this must NOT throw.
+		const fourth = await tool.execute({ task: 'three' });
+		expect(fourth.result).toMatch(/^STOP\./);
+		const fifth = await tool.execute({ task: 'four' });
+		expect(fifth.result).toMatch(/^STOP\./);
+	});
+
+	it('keeps the rejection counter per tool instance (one orchestrator run = one counter)', async () => {
+		const contextA = createMockContext();
+		const toolA = createBuildWorkflowAgentTool(contextA) as unknown as BuildExecutable;
+
+		await toolA.execute({ task: 'a-one' });
+		await toolA.execute({ task: 'a-two' });
+
+		// A different tool instance must start with a fresh counter.
+		const contextB = createMockContext();
+		const toolB = createBuildWorkflowAgentTool(contextB) as unknown as BuildExecutable;
+
+		const out = await toolB.execute({ task: 'b-one' });
+		expect(out.result).toMatch(/^STOP\./);
+
+		// And toolA, which is at 2, throws on its next call as expected.
+		await expect(toolA.execute({ task: 'a-three' })).rejects.toThrow(/looped on .* rejections/);
+	});
+
+	it('does not increment the counter or throw when the guard is disabled by env flag', async () => {
+		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
+		const context = createMockContext();
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		// Many calls with input shapes that would otherwise trip the guard — none throw.
+		for (let i = 0; i < 5; i++) {
+			const out = await tool.execute({ task: `call-${i}` });
+			expect(out.result).not.toMatch(/^STOP\./);
+		}
+	});
+
+	it('does not increment the counter when the run is a replan follow-up', async () => {
+		// Counter only advances when the guard branch actually rejects. A replan
+		// follow-up skips the guard, so the counter stays at zero and a later
+		// rejection-prone call sees a fresh counter.
+		const context = createMockContext({ isReplanFollowUp: true });
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		// Many follow-up bypasses — none should throw.
+		for (let i = 0; i < 5; i++) {
+			const out = await tool.execute({ task: `replan-${i}` });
+			expect(out.result).not.toMatch(/^STOP\./);
+		}
 	});
 });
 
