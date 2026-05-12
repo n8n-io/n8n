@@ -12,16 +12,26 @@ import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSugg
 
 type AmendContext = { agentId: string; role: string } | null;
 
-const props = defineProps<{
-	isStreaming: boolean;
-	isSendingMessage: boolean;
-	isAwaitingConfirmation: boolean;
-	currentThreadId: string;
-	amendContext: AmendContext;
-	contextualSuggestion: string | null;
-	researchMode: boolean;
-	suggestions?: readonly InstanceAiEmptyStateSuggestion[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		isStreaming?: boolean;
+		isSubmitting?: boolean;
+		isAwaitingConfirmation?: boolean;
+		currentThreadId?: string;
+		amendContext?: AmendContext;
+		contextualSuggestion?: string | null;
+		researchMode: boolean;
+		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+	}>(),
+	{
+		isStreaming: false,
+		isSubmitting: false,
+		isAwaitingConfirmation: false,
+		currentThreadId: '',
+		amendContext: null,
+		contextualSuggestion: null,
+	},
+);
 
 const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
@@ -40,7 +50,7 @@ defineExpose({
 	focus: () => chatInputRef.value?.focus(),
 });
 
-const isBusy = computed(() => props.isStreaming || props.isSendingMessage);
+const isBusy = computed(() => props.isStreaming || props.isSubmitting);
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
