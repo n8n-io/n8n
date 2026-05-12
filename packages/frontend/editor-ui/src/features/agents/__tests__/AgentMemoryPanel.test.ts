@@ -75,6 +75,17 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 
 const getAgentMemoryProfilesMock = vi.mocked(getAgentMemoryProfiles);
 
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (error: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+
+	return { promise, resolve, reject };
+}
+
 function mountPanel(
 	props: Partial<{
 		config: AgentJsonConfig | null;
@@ -264,6 +275,37 @@ describe('AgentMemoryPanel', () => {
 			'project-1',
 			'agent-2',
 		);
+		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
+			'Profile for the second agent.',
+		);
+	});
+
+	it('starts loading the new profile if the agent id changes while a request is in flight', async () => {
+		const firstLoad = deferred<{ userProfile: string | null }>();
+		const secondLoad = deferred<{ userProfile: string | null }>();
+		getAgentMemoryProfilesMock
+			.mockReturnValueOnce(firstLoad.promise)
+			.mockReturnValueOnce(secondLoad.promise);
+		const wrapper = mountPanel();
+
+		await wrapper.find('[data-testid="agent-memory-profiles-toggle"]').trigger('click');
+		expect(getAgentMemoryProfilesMock).toHaveBeenCalledWith(restApiContext, 'project-1', 'agent-1');
+
+		await wrapper.setProps({ agentId: 'agent-2' });
+		expect(getAgentMemoryProfilesMock).toHaveBeenLastCalledWith(
+			restApiContext,
+			'project-1',
+			'agent-2',
+		);
+
+		secondLoad.resolve({ userProfile: 'Profile for the second agent.' });
+		await flushPromises();
+		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
+			'Profile for the second agent.',
+		);
+
+		firstLoad.resolve({ userProfile: 'Stale first profile.' });
+		await flushPromises();
 		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
 			'Profile for the second agent.',
 		);
