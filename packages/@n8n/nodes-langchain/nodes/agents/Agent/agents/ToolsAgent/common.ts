@@ -50,8 +50,12 @@ function isImageFile(mimeType: string): boolean {
 	return mimeType.startsWith('image/');
 }
 
+function isAudioFile(mimeType: string): boolean {
+	return mimeType.startsWith('audio/');
+}
+
 /**
- * Extracts binary messages (images and text files) from the input data.
+ * Extracts binary messages (images, audio and text files) from the input data.
  * When operating in filesystem mode, the binary stream is first converted to a buffer.
  *
  * Images are converted to base64 data URLs.
@@ -64,12 +68,16 @@ function isImageFile(mimeType: string): boolean {
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	binaryDataOverride?: Record<string, any>,
 ): Promise<HumanMessage> {
-	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
+	const binaryData = binaryDataOverride ?? ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
 			// select only the files we can process
-			.filter((data) => isImageFile(data.mimeType) || isTextFile(data.mimeType))
+			.filter(
+				(data) =>
+					isImageFile(data.mimeType) || isTextFile(data.mimeType) || isAudioFile(data.mimeType),
+			)
 			.map(async (data) => {
 				// Handle images
 				if (isImageFile(data.mimeType)) {
@@ -93,6 +101,27 @@ export async function extractBinaryMessages(
 						type: 'image_url',
 						image_url: {
 							url: binaryUrlString,
+						},
+					};
+				}
+				// Handle audio files
+				else if (isAudioFile(data.mimeType)) {
+					let base64Data: string;
+
+					if (data.id) {
+						const binaryBuffer = await ctx.helpers.binaryToBuffer(
+							await ctx.helpers.getBinaryStream(data.id),
+						);
+						base64Data = Buffer.from(binaryBuffer).toString(BINARY_ENCODING);
+					} else {
+						base64Data = data.data.includes('base64,') ? data.data.split('base64,')[1] : data.data;
+					}
+
+					return {
+						type: 'input_audio',
+						input_audio: {
+							data: base64Data,
+							format: data.mimeType.split('/')[1] || 'mp3',
 						},
 					};
 				}
@@ -425,6 +454,7 @@ export async function prepareMessages(
 	options: {
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
+		passthroughBinaryAudios?: boolean;
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
@@ -445,8 +475,18 @@ export async function prepareMessages(
 
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
-	if (hasBinaryData && options.passthroughBinaryImages) {
-		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
+	if (hasBinaryData && (options.passthroughBinaryImages || options.passthroughBinaryAudios)) {
+		const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
+		const filteredBinaryData = Object.fromEntries(
+			Object.entries(binaryData).filter(([_, data]) => {
+				if (isImageFile(data.mimeType) && options.passthroughBinaryImages) return true;
+				if (isAudioFile(data.mimeType) && options.passthroughBinaryAudios) return true;
+				if (isTextFile(data.mimeType)) return true;
+				return false;
+			}),
+		);
+
+		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, filteredBinaryData);
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
 		} else {

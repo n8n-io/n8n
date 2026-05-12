@@ -281,6 +281,44 @@ export async function toolsAgentExecute(
 			);
 		}
 
+			const input = getPromptInputByType({
+				ctx: this,
+				i: itemIndex,
+				inputKey: 'text',
+				promptTypeKey: 'promptType',
+			});
+			if (input === undefined) {
+				throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
+			}
+			const outputParser = await getOptionalOutputParser(this, itemIndex);
+			const tools = await getTools(this, outputParser);
+			const options = this.getNodeParameter('options', itemIndex, {}) as {
+				systemMessage?: string;
+				maxIterations?: number;
+				returnIntermediateSteps?: boolean;
+				passthroughBinaryImages?: boolean;
+				passthroughBinaryAudios?: boolean;
+				tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
+			};
+
+			// Prepare the prompt messages and prompt template.
+			const messages = await prepareMessages(this, itemIndex, {
+				systemMessage: options.systemMessage,
+				passthroughBinaryImages: options.passthroughBinaryImages ?? true,
+				passthroughBinaryAudios: options.passthroughBinaryAudios ?? true,
+				outputParser,
+			});
+			const prompt: ChatPromptTemplate = preparePrompt(messages);
+
+			// Create executors for primary and fallback models
+			const executor = createAgentExecutor(
+				model,
+				tools,
+				prompt,
+				options,
+				outputParser,
+				memory,
+				fallbackModel,
 		if (needsFallback && !fallbackModel) {
 			throw new NodeOperationError(
 				this.getNode(),

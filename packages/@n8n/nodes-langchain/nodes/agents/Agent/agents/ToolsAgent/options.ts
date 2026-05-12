@@ -40,6 +40,14 @@ export const commonOptions: INodeProperties[] = [
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
 	{
+		displayName: 'Automatically Passthrough Binary Audios',
+		name: 'passthroughBinaryAudios',
+		type: 'boolean',
+		default: true,
+		description:
+			'Whether or not binary audios should be automatically passed through to the agent as audio type messages',
+	},
+	{
 		displayName: 'Tracing Metadata',
 		name: 'tracingMetadata',
 		type: 'fixedCollection',
