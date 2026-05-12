@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
@@ -5,12 +6,14 @@ import type {
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
-import type { IRun, IRunExecutionData } from 'n8n-workflow';
+import type { INode, IRun, IRunExecutionData, Workflow } from 'n8n-workflow';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { OtelConfig } from '../otel.config';
 import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
 import type { TracingContext, TraceContextService } from '../tracing-context';
+
+const logger = mock<Logger>();
 
 const emptyExecutionData = {
 	resultData: { runData: {}, pinData: {} },
@@ -48,11 +51,12 @@ describe('OtelLifecycleHandler', () => {
 			},
 			workflowInstance: undefined as never,
 			executionId: 'exec-sub',
+			mode: 'manual',
 		};
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config, logger);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
 		});
 
@@ -133,7 +137,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config, logger);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
 		});
 
@@ -172,7 +176,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config, logger);
 		});
 
 		const makeCtx = (
@@ -269,12 +273,12 @@ describe('OtelLifecycleHandler', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
 			config.includeNodeSpans = true;
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config, logger);
 		});
 
 		it('should skip node spans when includeNodeSpans is false', () => {
 			config.includeNodeSpans = false;
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config, logger);
 
 			handler.onNodeStart(makeStartCtx());
 			handler.onNodeEnd(makeEndCtx());
@@ -346,6 +350,219 @@ describe('OtelLifecycleHandler', () => {
 			handler.onNodeEnd(makeEndCtx({}, 'MissingNode'));
 
 			expect(tracer.endNode).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('customTelemetryTags', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const config = mock<OtelConfig>();
+		let handler: OtelLifecycleHandler;
+
+		const getParameterValue = jest.fn();
+		const workflowInstance = {
+			expression: { getParameterValue },
+		} as unknown as Workflow;
+
+		const node: INode = {
+			id: 'n1',
+			name: 'Node1',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const makeEndCtx = (
+			nodeOverride: Partial<INode> = {},
+			taskOverrides: Partial<NodeExecuteAfterContext['taskData']> = {},
+		): NodeExecuteAfterContext =>
+			({
+				type: 'nodeExecuteAfter',
+				workflow: {
+					id: 'wf-1',
+					name: 'Test',
+					nodes: [{ ...node, ...nodeOverride }],
+					connections: {},
+				},
+				nodeName: 'Node1',
+				executionId: 'exec-1',
+				mode: 'manual',
+				taskData: {
+					startTime: 0,
+					executionTime: 10,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: {} }]] },
+					...taskOverrides,
+				},
+				executionData: emptyExecutionData,
+			}) as unknown as NodeExecuteAfterContext;
+
+		const primeCache = async () =>
+			await handler.onWorkflowStart({
+				type: 'workflowExecuteBefore',
+				workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
+				workflowInstance,
+				executionId: 'exec-1',
+				mode: 'manual',
+			} as unknown as WorkflowExecuteBeforeContext);
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			config.includeNodeSpans = true;
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config, logger);
+		});
+
+		it('emits user-configured tags after evaluating expressions', async () => {
+			await primeCache();
+			getParameterValue.mockImplementation((value: string) => {
+				if (value === '={{ $json.id }}') return 'cust-42';
+				return value;
+			});
+
+			handler.onNodeEnd(
+				makeEndCtx({
+					customTelemetryTags: {
+						tag: [
+							{ key: 'customer.id', value: '={{ $json.id }}' },
+							{ key: 'region', value: 'eu-west' },
+						],
+					},
+				}),
+			);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					customAttributes: { 'customer.id': 'cust-42', region: 'eu-west' },
+				}),
+			);
+		});
+
+		it('lets setMetadata({tracing}) values win on key collision', async () => {
+			await primeCache();
+			getParameterValue.mockImplementation((value: string) => value);
+
+			handler.onNodeEnd(
+				makeEndCtx(
+					{
+						customTelemetryTags: {
+							tag: [
+								{ key: 'llm.model', value: 'user-set-value' },
+								{ key: 'region', value: 'eu-west' },
+							],
+						},
+					},
+					{
+						metadata: { tracing: { 'llm.model': 'gpt-4o' } },
+					} as unknown as Partial<NodeExecuteAfterContext['taskData']>,
+				),
+			);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					customAttributes: { 'llm.model': 'gpt-4o', region: 'eu-west' },
+				}),
+			);
+		});
+
+		it('drops tags whose expression throws and keeps the rest', async () => {
+			await primeCache();
+			getParameterValue.mockImplementation((value: string) => {
+				if (value === 'BROKEN') throw new Error('expression failed');
+				return value;
+			});
+
+			handler.onNodeEnd(
+				makeEndCtx({
+					customTelemetryTags: {
+						tag: [
+							{ key: 'broken', value: 'BROKEN' },
+							{ key: 'ok', value: 'still-here' },
+						],
+					},
+				}),
+			);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: { ok: 'still-here' } }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to evaluate customTelemetryTags expression',
+				expect.objectContaining({ tagKey: 'broken' }),
+			);
+		});
+
+		it('drops tags whose evaluated value is undefined or null', async () => {
+			await primeCache();
+			getParameterValue.mockImplementation((value: string) => {
+				if (value === '={{ $json.missing }}') return undefined;
+				if (value === 'NULL') return null;
+				return value;
+			});
+
+			handler.onNodeEnd(
+				makeEndCtx({
+					customTelemetryTags: {
+						tag: [
+							{ key: 'a', value: '={{ $json.missing }}' },
+							{ key: 'b', value: 'NULL' },
+							{ key: 'c', value: 'kept' },
+						],
+					},
+				}),
+			);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: { c: 'kept' } }),
+			);
+		});
+
+		it('passes undefined customAttributes when tags array is empty and no metadata', async () => {
+			await primeCache();
+
+			handler.onNodeEnd(makeEndCtx({ customTelemetryTags: { tag: [] } }));
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: undefined }),
+			);
+		});
+
+		it('skips evaluation when the workflow instance was never cached', () => {
+			handler.onNodeEnd(
+				makeEndCtx({
+					customTelemetryTags: { tag: [{ key: 'a', value: '={{ $json.id }}' }] },
+				}),
+			);
+
+			expect(getParameterValue).not.toHaveBeenCalled();
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: undefined }),
+			);
+		});
+
+		it('drops the cached workflow when the execution ends', async () => {
+			await primeCache();
+			handler.onWorkflowEnd({
+				type: 'workflowExecuteAfter',
+				workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
+				executionId: 'exec-1',
+				newStaticData: {},
+				mode: 'manual',
+				runData: {
+					status: 'success',
+					mode: 'manual',
+					data: { resultData: { runData: {}, pinData: {} } },
+				},
+			} as unknown as WorkflowExecuteAfterContext);
+
+			handler.onNodeEnd(
+				makeEndCtx({
+					customTelemetryTags: { tag: [{ key: 'a', value: '={{ $json.id }}' }] },
+				}),
+			);
+
+			expect(getParameterValue).not.toHaveBeenCalled();
 		});
 	});
 });

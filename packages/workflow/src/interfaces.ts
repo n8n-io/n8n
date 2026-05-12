@@ -1380,6 +1380,7 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	customTelemetryTags?: { tag: Array<{ key: string; value: string }> };
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
