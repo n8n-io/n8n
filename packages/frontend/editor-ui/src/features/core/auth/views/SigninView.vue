@@ -2,8 +2,6 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nButton } from '@n8n/design-system';
-
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 
@@ -211,14 +209,6 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 	password.value = form.password;
 };
 
-// Shown when at least one user on the instance has a registered passkey
-// (signal comes from `frontendSettings.mfa.passkeysAvailable`). The Web
-// platform doesn't expose per-device passkey presence, so the per-instance
-// flag is the most reliable surface: if nobody has a passkey, the button is
-// useless; if someone does, the user might be them and we should offer it.
-const showPasskeyButton = computed(() => settingsStore.isPasskeyAvailable);
-const passkeyLoading = ref(false);
-
 const onSigninWithPasskeyComplete = async () => {
 	await settingsStore.getSettings();
 	toast.clearAllStickyNotifications();
@@ -237,10 +227,8 @@ const onSigninWithPasskeyComplete = async () => {
 };
 
 // `@simplewebauthn/browser` wraps the underlying DOMException in a custom
-// `WebAuthnError` that carries a stable `code`, so checking `instanceof
-// DOMException` doesn't match. We treat user-dismissed and aborted ceremonies
-// (e.g. autofill cancelled by the explicit button) as benign — silent.
-// Anything else is a real server rejection: the credentialId isn't on file.
+// `WebAuthnError`. Both raw DOMException names and the wrapped codes for
+// user dismissal / aborted ceremony are treated as benign — silent.
 const isBenignPasskeyError = (e: unknown): boolean => {
 	if (!e || typeof e !== 'object') return false;
 	const candidate = e as { name?: string; code?: string; cause?: { name?: string } };
@@ -249,24 +237,6 @@ const isBenignPasskeyError = (e: unknown): boolean => {
 	if (candidate.code === 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY') return true;
 	const causeName = candidate.cause?.name;
 	return causeName === 'NotAllowedError' || causeName === 'AbortError';
-};
-
-const handlePasskeySignInError = (e: unknown) => {
-	if (isBenignPasskeyError(e)) return;
-	toast.showError(e, locale.baseText('auth.signin.passkey.error'));
-};
-
-const onSigninWithPasskeyClick = async () => {
-	passkeyLoading.value = true;
-	try {
-		const signedIn = await usersStore.signinWithPasskey();
-		if (!signedIn) return;
-		await onSigninWithPasskeyComplete();
-	} catch (e) {
-		handlePasskeySignInError(e);
-	} finally {
-		passkeyLoading.value = false;
-	}
 };
 
 // Conditional UI: while the signin page is mounted, ask the browser to surface
@@ -282,7 +252,11 @@ onMounted(async () => {
 		if (!signedIn) return;
 		await onSigninWithPasskeyComplete();
 	} catch (e) {
-		handlePasskeySignInError(e);
+		// Benign dismissals / abort signals are common on this path (the user
+		// may submit the password form before completing autofill, or close
+		// the OS picker). Only surface real failures.
+		if (isBenignPasskeyError(e)) return;
+		toast.showError(e, locale.baseText('auth.signin.passkey.error'));
 	}
 });
 </script>
@@ -296,25 +270,7 @@ onMounted(async () => {
 			:with-sso="true"
 			data-test-id="signin-form"
 			@submit="onEmailPasswordSubmitted"
-		>
-			<template v-if="showPasskeyButton" #header>
-				<div :class="$style.passkeyHeader">
-					<N8nButton
-						variant="outline"
-						size="large"
-						icon="user-round"
-						:label="locale.baseText('auth.signin.passkey.button')"
-						:loading="passkeyLoading"
-						:class="$style.passkeyButton"
-						data-test-id="signin-with-passkey-button"
-						@click="onSigninWithPasskeyClick"
-					/>
-					<div :class="$style.passkeyDivider">
-						<span>{{ locale.baseText('auth.signin.passkey.divider') }}</span>
-					</div>
-				</div>
-			</template>
-		</AuthView>
+		/>
 		<MfaView
 			v-if="showMfaView"
 			:report-error="reportError"
@@ -327,33 +283,3 @@ onMounted(async () => {
 		/>
 	</div>
 </template>
-
-<style lang="scss" module>
-.passkeyHeader {
-	margin-bottom: var(--spacing--xl);
-}
-
-.passkeyButton {
-	width: 100%;
-}
-
-.passkeyDivider {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	margin-top: var(--spacing--lg);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text--tint-2);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-
-	&::before,
-	&::after {
-		content: '';
-		flex: 1;
-		height: 1px;
-		background-color: var(--color--background--shade-1);
-	}
-}
-</style>

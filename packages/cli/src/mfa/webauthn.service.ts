@@ -332,14 +332,4 @@ export class WebAuthnService {
 		const count = await this.webauthnCredentialRepository.count({ where: { userId } });
 		return count > 0;
 	}
-
-	/**
-	 * True when at least one user on the instance has any webauthn credential
-	 * registered. Drives the "Sign in with passkey" shortcut on the signin
-	 * page — when there are no credentials we hide the button entirely.
-	 */
-	async hasAnyCredential(): Promise<boolean> {
-		const count = await this.webauthnCredentialRepository.count({ take: 1 });
-		return count > 0;
-	}
 }

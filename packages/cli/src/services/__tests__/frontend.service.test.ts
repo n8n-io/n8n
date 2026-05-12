@@ -293,7 +293,6 @@ describe('FrontendService', () => {
 				mfa: {
 					enabled: false,
 					enforced: false,
-					passkeysAvailable: false,
 				},
 			};
 

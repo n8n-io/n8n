@@ -51,7 +51,6 @@ const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 				{{ title }}
 			</N8nHeading>
 		</div>
-		<slot name="header"></slot>
 		<div :class="$style.inputsContainer">
 			<N8nFormInputs
 				:inputs="inputs"

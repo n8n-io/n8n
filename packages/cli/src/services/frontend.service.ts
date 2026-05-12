@@ -345,7 +345,6 @@ export class FrontendService {
 			mfa: {
 				enabled: false,
 				enforced: false,
-				passkeysAvailable: false,
 			},
 			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
@@ -557,7 +556,6 @@ export class FrontendService {
 
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
-		this.settings.mfa.passkeysAvailable = await this.mfaService.webauthn.hasAnyCredential();
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 

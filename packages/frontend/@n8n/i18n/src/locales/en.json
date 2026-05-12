@@ -240,8 +240,6 @@
 	"auth.setup.setupOwner": "Set up owner account",
 	"auth.signin": "Sign in",
 	"auth.signin.error": "Problem logging in",
-	"auth.signin.passkey.button": "Sign in with passkey",
-	"auth.signin.passkey.divider": "or use password",
 	"auth.signin.passkey.error": "This passkey is no longer linked to an account. Sign in with email and password instead.",
 	"auth.signout": "Sign out",
 	"auth.signout.error": "Could not sign out",
