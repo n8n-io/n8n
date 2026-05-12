@@ -6,6 +6,8 @@ import {
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
 	ROLE,
+	SearchWorkflowNodesQueryDto,
+	type SearchWorkflowNodesResponse,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 } from '@n8n/api-types';
@@ -43,6 +45,7 @@ import { CollaborationService } from '../collaboration/collaboration.service';
 import { WorkflowCreationService } from './workflow-creation.service';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowNodeSearchService } from './workflow-node-search.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
@@ -86,6 +89,7 @@ export class WorkflowsController {
 		private readonly collaborationService: CollaborationService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly workflowNodeSearchService: WorkflowNodeSearchService,
 	) {}
 
 	@Post('/')
@@ -148,6 +152,16 @@ export class WorkflowsController {
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);
 		}
+	}
+
+	@Get('/search-nodes')
+	async searchNodes(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+		@Query query: SearchWorkflowNodesQueryDto,
+	): Promise<SearchWorkflowNodesResponse> {
+		const results = await this.workflowNodeSearchService.search(req.user, query.query);
+		return { results };
 	}
 
 	@Get('/new')

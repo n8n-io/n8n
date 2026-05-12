@@ -119,11 +119,22 @@ export function useNodeCommands(options: {
 			? i18n.baseText('commandBar.sections.nodes')
 			: i18n.baseText('commandBar.nodes.openNode');
 
+		const keywords: string[] = [name, type];
+		if (node.notes) keywords.push(node.notes);
+		if (node.parameters) {
+			try {
+				keywords.push(JSON.stringify(node.parameters));
+			} catch {
+				// ignore non-serializable parameters
+			}
+		}
+
 		return {
 			id,
 			title,
 			section,
-			keywords: [name, type],
+			keywords,
+			matchAnySearchTerm: true,
 			icon: {
 				component: NodeIcon,
 				props: {

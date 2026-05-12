@@ -16,6 +16,7 @@ import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import { useInstanceAiCommands } from './useInstanceAiCommands';
+import { useGlobalNodeSearchCommands } from './useGlobalNodeSearchCommands';
 import type { CommandGroup } from '../types';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
@@ -86,12 +87,17 @@ export function useCommandBar() {
 	const instanceAiCommandGroup = useInstanceAiCommands({
 		lastQuery,
 	});
+	const globalNodeSearchGroup = useGlobalNodeSearchCommands({
+		lastQuery,
+		activeNodeId,
+	});
 
 	const canvasViewGroups: CommandGroup[] = [
 		recentResourcesGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
@@ -101,6 +107,7 @@ export function useCommandBar() {
 		executionCommandGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -112,6 +119,7 @@ export function useCommandBar() {
 		recentResourcesGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -125,6 +133,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
@@ -134,6 +143,7 @@ export function useCommandBar() {
 		recentResourcesGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -146,6 +156,7 @@ export function useCommandBar() {
 		dataTableNavigationGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		credentialNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
@@ -155,6 +166,7 @@ export function useCommandBar() {
 		recentResourcesGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -169,6 +181,7 @@ export function useCommandBar() {
 		genericCommandGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
@@ -179,6 +192,7 @@ export function useCommandBar() {
 		instanceAiCommandGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,

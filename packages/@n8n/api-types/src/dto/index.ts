@@ -112,6 +112,15 @@ export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export {
+	SearchWorkflowNodesQueryDto,
+	NODE_SEARCH_MIN_QUERY_LENGTH,
+	NODE_SEARCH_MAX_QUERY_LENGTH,
+	NODE_SEARCH_MAX_RESULTS,
+	NODE_SEARCH_PER_WORKFLOW_CAP,
+	type NodeSearchHit,
+	type SearchWorkflowNodesResponse,
+} from './workflows/search-workflow-nodes.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
