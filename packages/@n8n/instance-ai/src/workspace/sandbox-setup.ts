@@ -224,7 +224,7 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 }
 
 /** Dirs the agent's `list_files` may probe; some providers 404 on missing dirs. */
-const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows'];
+const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows', 'examples'];
 
 /**
  * Build a shell script that writes all files at once.
