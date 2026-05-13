@@ -194,6 +194,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 				axiosConfig.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			} else {
 				axiosConfig.headers = {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					'Content-Type': 'application/x-www-form-urlencoded',
 				};
 			}
@@ -479,6 +480,17 @@ export async function proxyRequestToAxios(
 					responseData = await binaryToString(responseData);
 				}
 
+				// Try to parse JSON strings so NodeApiError receives an object for
+				// response.data, which allows it to populate context.data and extract
+				// a human-readable description from the response body.
+				if (typeof responseData === 'string') {
+					try {
+						responseData = JSON.parse(responseData);
+					} catch {
+						// Not JSON — keep as string
+					}
+				}
+
 				if (configObject.simple === false) {
 					if (configObject.resolveWithFullResponse) {
 						return {
@@ -501,7 +513,12 @@ export async function proxyRequestToAxios(
 					 */
 					status: response.status,
 					error: responseData,
-					response: pick(response, ['headers', 'status', 'statusText']),
+					response: {
+						...pick(response, ['headers', 'status', 'statusText']),
+						// Include response body so NodeApiError can populate context.data
+						// and extract a human-readable description from it
+						data: responseData,
+					},
 				});
 			} else if ('rejectUnauthorized' in configObject && error.code?.includes('CERT')) {
 				throw new NodeSslError(error);

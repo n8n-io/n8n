@@ -21,7 +21,6 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	jsonParse,
-	removeCircularRefs,
 	sleep,
 	ensureError,
 } from 'n8n-workflow';
@@ -829,11 +828,33 @@ export class HttpRequestV3 implements INodeType {
 
 						throw error;
 					} else {
-						removeCircularRefs(responseData.reason as JsonObject);
-						// Return the actual reason as error
+						if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
+							responseData.reason.error = Buffer.from(
+								responseData.reason.error as Buffer,
+							).toString();
+						}
+
+						let nodeError: NodeApiError;
+						if (responseData?.reason instanceof NodeApiError) {
+							nodeError = responseData.reason;
+							set(nodeError, 'context.itemIndex', itemIndex);
+						} else {
+							const errorData = (
+								responseData.reason ? responseData.reason : responseData
+							) as JsonObject;
+							nodeError = new NodeApiError(this.getNode(), errorData, { itemIndex });
+						}
+						set(nodeError, 'context.request', sanitizedRequests[itemIndex]);
+
 						returnItems.push({
 							json: {
-								error: responseData.reason,
+								error: {
+									message: nodeError.message,
+									name: nodeError.name,
+									description: nodeError.description,
+									context: nodeError.context,
+									httpCode: nodeError.httpCode,
+								},
 							},
 							pairedItem: {
 								item: itemIndex,

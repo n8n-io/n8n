@@ -607,4 +607,124 @@ describe('HttpRequestV3', () => {
 			);
 		});
 	});
+	describe('Error handling with continueOnFail', () => {
+		const makeErrorResponse = (body: object | string, statusCode = 400) => {
+			const error = Object.assign(new Error('Request failed'), {
+				statusCode,
+				status: statusCode,
+				error: typeof body === 'string' ? body : JSON.stringify(body),
+				response: {
+					headers: { 'content-type': 'application/json' },
+					status: statusCode,
+					statusText: 'Bad Request',
+					data: body,
+				},
+			});
+			return error;
+		};
+
+		const setupContinueOnFail = () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+		};
+
+		it('should output a NodeApiError structure (not raw AxiosError) when request fails', async () => {
+			setupContinueOnFail();
+			(executeFunctions.helpers.request as jest.Mock).mockRejectedValue(
+				makeErrorResponse({ error: 'The specific reason why this failed' }),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			const errorOutput = result[0][0].json.error as Record<string, unknown>;
+			expect(errorOutput.name).toBe('NodeApiError');
+		});
+
+		it('should populate context.data from the JSON response body', async () => {
+			setupContinueOnFail();
+			const responseBody = { error: 'The specific reason why this failed' };
+			(executeFunctions.helpers.request as jest.Mock).mockRejectedValue(
+				makeErrorResponse(responseBody),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			const errorOutput = result[0][0].json.error as Record<string, unknown>;
+			const context = errorOutput.context as Record<string, unknown>;
+			expect(context.data).toEqual(responseBody);
+		});
+
+		it('should extract description from a message field in the response body', async () => {
+			setupContinueOnFail();
+			const responseBody = { message: 'Validation failed: field is required' };
+			(executeFunctions.helpers.request as jest.Mock).mockRejectedValue(
+				makeErrorResponse(responseBody),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			const errorOutput = result[0][0].json.error as Record<string, unknown>;
+			expect(errorOutput.description).toBe('Validation failed: field is required');
+		});
+
+		it('should include context.itemIndex indicating which item failed', async () => {
+			setupContinueOnFail();
+			(executeFunctions.helpers.request as jest.Mock).mockRejectedValue(
+				makeErrorResponse({ error: 'bad' }),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			const errorOutput = result[0][0].json.error as Record<string, unknown>;
+			const context = errorOutput.context as Record<string, unknown>;
+			expect(context.itemIndex).toBe(0);
+		});
+
+		it('should include httpCode from the response status', async () => {
+			setupContinueOnFail();
+			(executeFunctions.helpers.request as jest.Mock).mockRejectedValue(
+				makeErrorResponse({ error: 'not found' }, 404),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			const errorOutput = result[0][0].json.error as Record<string, unknown>;
+			expect(errorOutput.httpCode).toBe('404');
+		});
+
+		it('should handle non-JSON error bodies without throwing', async () => {
+			setupContinueOnFail();
+			const error = makeErrorResponse('Internal Server Error', 500);
+			(error.response as Record<string, unknown>).data = 'Internal Server Error';
+			(executeFunctions.helpers.request as jest.Mock).mockRejectedValue(error);
+
+			const result = await node.execute.call(executeFunctions);
+
+			const errorOutput = result[0][0].json.error as Record<string, unknown>;
+			expect(errorOutput.name).toBe('NodeApiError');
+		});
+
+		it('should resolve (not throw) even for 500 responses when continueOnFail is enabled', async () => {
+			setupContinueOnFail();
+			(executeFunctions.helpers.request as jest.Mock).mockRejectedValue(
+				makeErrorResponse({ error: 'internal error' }, 500),
+			);
+
+			await expect(node.execute.call(executeFunctions)).resolves.toBeDefined();
+		});
+	});
 });
