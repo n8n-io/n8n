@@ -509,10 +509,7 @@ export class WorkflowRunner {
 			this.poolConfigService = Container.get(PoolConfigService);
 		}
 
-		const category = getExecutionCategory(data.executionMode);
-		const poolAssignment = await this.poolConfigService.getPoolAssignment();
-		const poolName = category ? poolAssignment[category] : undefined;
-		const queueName = poolQueueName(poolName);
+		const { queueName, poolName } = await this.getQueueForWorkflow(data);
 
 		const jobData: JobData = {
 			workflowId,
@@ -675,6 +672,16 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+	}
+
+	private async getQueueForWorkflow(
+		data: IWorkflowExecutionDataProcess,
+	): Promise<{ queueName: string; poolName: string | undefined }> {
+		const category = getExecutionCategory(data.executionMode);
+		const poolAssignment = await this.poolConfigService.getPoolAssignment();
+		const poolName = category ? poolAssignment[category] : undefined;
+
+		return { queueName: poolQueueName(poolName), poolName };
 	}
 
 	/**
