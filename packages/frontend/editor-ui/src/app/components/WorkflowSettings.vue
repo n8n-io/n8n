@@ -223,17 +223,16 @@ const workerPoolOptionsForCategory = (category: WorkerPoolCategory) => {
 };
 
 const selectedWorkerPool = (category: WorkerPoolCategory) => {
-	return workflowSettings.value[workerPoolSettingKeys[category]] ?? 'DEFAULT';
+	return workflowSettings.value[workerPoolSettingKeys[category]] || 'DEFAULT';
 };
 
 const onWorkerPoolChange = (category: WorkerPoolCategory, value: string) => {
 	const settingKey = workerPoolSettingKeys[category];
 
-	if (value === 'DEFAULT') {
-		delete workflowSettings.value[settingKey];
-	} else {
-		workflowSettings.value[settingKey] = value;
-	}
+	// Send empty string (not `delete`) so the backend's PATCH-merge of `settings`
+	// actually overwrites any previously-stored override. `removeDefaultValues`
+	// strips empty-string overrides before persisting to keep the JSON tidy.
+	workflowSettings.value[settingKey] = value === 'DEFAULT' ? '' : value;
 };
 
 const isSelectedResolverEditable = computed(() => {

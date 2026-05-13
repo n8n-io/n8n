@@ -183,6 +183,18 @@ export function removeDefaultValues(
 		delete cleanedSettings.credentialResolverId;
 	}
 
+	// Remove worker pool overrides if they were cleared (empty string / falsy values from UI clear action).
+	const poolOverrideKeys = [
+		'workerPoolOverrideProduction',
+		'workerPoolOverrideManual',
+		'workerPoolOverrideEvaluation',
+	] as const;
+	for (const key of poolOverrideKeys) {
+		if (!cleanedSettings[key]) {
+			delete cleanedSettings[key];
+		}
+	}
+
 	return cleanedSettings;
 }
 
