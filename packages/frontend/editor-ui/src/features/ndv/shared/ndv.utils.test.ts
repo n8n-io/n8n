@@ -18,6 +18,7 @@ import {
 	setValue,
 	shouldSkipParamValidation,
 	createCommonNodeSettings,
+	collectSettings,
 } from './ndv.utils';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -594,6 +595,74 @@ describe('createCommonNodeSettings', () => {
 			expect(names).toContain('notes');
 			expect(names).toContain('notesInFlow');
 		}
+	});
+
+	it('should not include customTelemetryTags when isOtelEnabled is false', () => {
+		const regularSettings = createCommonNodeSettings(false, mockT, false);
+		const toolSettings = createCommonNodeSettings(true, mockT, false);
+
+		expect(regularSettings.map((s) => s.name)).not.toContain('customTelemetryTags');
+		expect(toolSettings.map((s) => s.name)).not.toContain('customTelemetryTags');
+	});
+
+	it('should not include customTelemetryTags when isOtelEnabled is omitted', () => {
+		const settings = createCommonNodeSettings(false, mockT);
+		expect(settings.map((s) => s.name)).not.toContain('customTelemetryTags');
+	});
+
+	it('should include customTelemetryTags as the last setting when isOtelEnabled is true', () => {
+		const regularSettings = createCommonNodeSettings(false, mockT, true);
+		const toolSettings = createCommonNodeSettings(true, mockT, true);
+
+		for (const settings of [regularSettings, toolSettings]) {
+			expect(settings[settings.length - 1].name).toBe('customTelemetryTags');
+		}
+	});
+
+	it('should configure customTelemetryTags with non-expression key and expression-capable value', () => {
+		const settings = createCommonNodeSettings(false, mockT, true);
+		const tagsSetting = settings.find((s) => s.name === 'customTelemetryTags');
+
+		expect(tagsSetting).toBeDefined();
+		expect(tagsSetting?.type).toBe('fixedCollection');
+		expect(tagsSetting?.typeOptions).toEqual({ multipleValues: true, sortable: true });
+		expect(tagsSetting?.isNodeSetting).toBe(true);
+
+		const tagOption = (tagsSetting?.options as INodeProperties[] | undefined)?.[0] as
+			| { name: string; values: INodeProperties[] }
+			| undefined;
+		expect(tagOption?.name).toBe('tag');
+
+		const keyField = tagOption?.values.find((v) => v.name === 'key');
+		const valueField = tagOption?.values.find((v) => v.name === 'value');
+
+		expect(keyField?.noDataExpression).toBe(true);
+		expect(valueField?.noDataExpression).toBeUndefined();
+	});
+});
+
+describe('collectSettings', () => {
+	const customTelemetryTags = {
+		tag: [
+			{ key: 'environment', value: 'production' },
+			{ key: 'team', value: '={{ $json.team }}' },
+		],
+	};
+
+	it('should round-trip customTelemetryTags from the node object', () => {
+		const node = mock<INodeUi>({ customTelemetryTags });
+
+		const result = collectSettings(node, []);
+
+		expect(result.customTelemetryTags).toEqual(customTelemetryTags);
+	});
+
+	it('should fall back to an empty customTelemetryTags object when the node has none', () => {
+		const node = mock<INodeUi>({ customTelemetryTags: undefined });
+
+		const result = collectSettings(node, []);
+
+		expect(result.customTelemetryTags).toEqual({});
 	});
 });
 
