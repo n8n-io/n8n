@@ -75,10 +75,10 @@ export class ScopedMemoryTaskRunner {
 		this.tracker = options.tracker ?? new BackgroundTaskTracker();
 		this.lockStore = options.lockStore;
 		this.lockTtlMs = options.lockTtlMs ?? DEFAULT_LOCK_TTL_MS;
-		this.maxCapturedErrors = Math.max(
-			0,
-			Math.floor(options.maxCapturedErrors ?? DEFAULT_MAX_CAPTURED_ERRORS),
-		);
+		const maxCapturedErrors = Math.floor(options.maxCapturedErrors ?? DEFAULT_MAX_CAPTURED_ERRORS);
+		this.maxCapturedErrors = Number.isFinite(maxCapturedErrors)
+			? Math.max(0, maxCapturedErrors)
+			: 0;
 		this.onEvent = options.onEvent;
 	}
 
