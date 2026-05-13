@@ -4,6 +4,7 @@ import type { DataTableResource } from '@/features/core/dataTable/types';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { BOARD_DETAILS } from '@/features/core/dataTable/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 vi.mock('@/features/collaboration/projects/projects.store');
@@ -54,9 +55,13 @@ const renderComponent = createComponentRenderer(DataTableCard, {
 				props: ['to'],
 				computed: {
 					href() {
-						// Generate href from the route object
 						if (this.to && typeof this.to === 'object') {
-							return `/projects/${this.to.params.projectId}/datatables/${this.to.params.id}`;
+							const { projectId, id } = this.to.params;
+							if (this.to.name === BOARD_DETAILS) {
+								return `/projects/${projectId}/boards/${id}`;
+							}
+
+							return `/projects/${projectId}/datatables/${id}`;
 						}
 						return '#';
 					},
@@ -121,6 +126,22 @@ describe('DataTableCard', () => {
 		expect(link).toHaveAttribute(
 			'href',
 			`/projects/${DEFAULT_DATA_TABLE.projectId}/datatables/${DEFAULT_DATA_TABLE.id}`,
+		);
+	});
+
+	it('should render correct route to board details', () => {
+		const wrapper = renderComponent({
+			props: {
+				dataTable: {
+					...DEFAULT_DATA_TABLE,
+					kind: 'board',
+				},
+			},
+		});
+		const link = wrapper.getByTestId('data-table-card-link');
+		expect(link).toHaveAttribute(
+			'href',
+			`/projects/${DEFAULT_DATA_TABLE.projectId}/boards/${DEFAULT_DATA_TABLE.id}`,
 		);
 	});
 

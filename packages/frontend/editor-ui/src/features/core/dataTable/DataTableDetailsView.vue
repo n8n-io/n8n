@@ -9,10 +9,18 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter, useRoute } from 'vue-router';
-import { BOARD_VIEW, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import {
+	BOARD_DETAILS,
+	BOARD_VIEW,
+	DATA_TABLE_DETAILS,
+	DATA_TABLE_VIEW,
+	PROJECT_BOARDS,
+	PROJECT_DATA_TABLES,
+} from '@/features/core/dataTable/constants';
 import type { DataTableKind } from '@n8n/api-types';
 import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
+import BoardKanbanView from '@/features/core/dataTable/components/BoardKanbanView.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
 import { useDebounce } from '@/app/composables/useDebounce';
@@ -49,10 +57,24 @@ const sourceControlStore = useSourceControlStore();
 const { fetchDependencyCounts, hasDependencies } = useDependencies();
 
 const dataTableKind = computed<DataTableKind | undefined>(() => {
+	if (route.name === BOARD_DETAILS) {
+		return 'board';
+	}
+
 	if (route.query.kind === 'board' || route.query.kind === 'list') {
 		return route.query.kind;
 	}
+
 	return undefined;
+});
+
+const listRouteName = computed(() => {
+	const isBoard = dataTableKind.value === 'board';
+	if (props.projectId) {
+		return isBoard ? PROJECT_BOARDS : PROJECT_DATA_TABLES;
+	}
+
+	return isBoard ? BOARD_VIEW : DATA_TABLE_VIEW;
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -63,9 +85,16 @@ const loading = ref(false);
 const saving = ref(false);
 const dataTable = ref<DataTable | null>(null);
 const dataTableTableRef = ref<InstanceType<typeof DataTableTable>>();
+const boardKanbanRef = ref<InstanceType<typeof BoardKanbanView>>();
 const searchQuery = ref('');
 
+const isBoardView = computed(() => (dataTableKind.value ?? dataTable.value?.kind) === 'board');
+
 const { debounce } = useDebounce();
+
+const listLabel = computed(() =>
+	i18n.baseText(dataTableKind.value === 'board' ? 'board.boards' : 'dataTable.dataTables'),
+);
 
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {
@@ -73,7 +102,7 @@ const showErrorAndGoBackToList = async (error: unknown) => {
 	}
 	toast.showError(error, i18n.baseText('dataTable.getDetails.error'));
 	await router.push({
-		name: dataTableKind.value === 'board' ? BOARD_VIEW : DATA_TABLE_VIEW,
+		name: listRouteName.value,
 		params: { projectId: props.projectId },
 	});
 };
@@ -88,7 +117,7 @@ const initialize = async () => {
 		);
 		if (response) {
 			dataTable.value = response;
-			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
+			documentTitle.set(`${listLabel.value} > ${response.name}`);
 		} else {
 			await showErrorAndGoBackToList(new Error(i18n.baseText('dataTable.notFound')));
 		}
@@ -135,6 +164,11 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 };
 
 const onCsvImported = async () => {
+	if (isBoardView.value) {
+		await boardKanbanRef.value?.fetchRows();
+		return;
+	}
+
 	await dataTableTableRef.value?.fetchDataTableRows();
 };
 
@@ -145,7 +179,7 @@ const handleSourceControlPull = async () => {
 		const response = await dataTableStore.fetchDataTableDetails(props.id, props.projectId);
 		if (response) {
 			dataTable.value = response;
-			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
+			documentTitle.set(`${listLabel.value} > ${response.name}`);
 		} else {
 			await showErrorAndGoBackToList(new Error(i18n.baseText('dataTable.notFound')));
 		}
@@ -157,6 +191,24 @@ const handleSourceControlPull = async () => {
 };
 
 watch(
+	() => [route.name, route.query.kind, props.projectId, props.id] as const,
+	async ([name, kind]) => {
+		if (name !== DATA_TABLE_DETAILS || kind !== 'board') {
+			return;
+		}
+
+		await router.replace({
+			name: BOARD_DETAILS,
+			params: {
+				projectId: props.projectId,
+				id: props.id,
+			},
+		});
+	},
+	{ immediate: true },
+);
+
+watch(
 	() => props.id,
 	async () => {
 		await initialize();
@@ -164,7 +216,7 @@ watch(
 );
 
 onMounted(async () => {
-	documentTitle.set(i18n.baseText('dataTable.dataTables'));
+	documentTitle.set(listLabel.value);
 	await initialize();
 
 	sourceControlEventBus.on('pull', handleSourceControlPull);
@@ -187,10 +239,11 @@ onBeforeUnmount(() => {
 			/>
 			<N8nLoading :loading="true" variant="h1" :rows="10" :shrink-last="false" />
 		</div>
-		<div v-else-if="dataTable">
+		<div v-else-if="dataTable" :class="$style.detailsBody">
 			<div :class="$style.header">
 				<DataTableBreadcrumbs
 					:data-table="dataTable"
+					:kind="dataTableKind"
 					:read-only="readOnlyEnv"
 					@imported="onCsvImported"
 				/>
@@ -216,7 +269,7 @@ onBeforeUnmount(() => {
 						<template #prefix>
 							<N8nIcon icon="search" />
 						</template>
-						<template #suffix>
+						<template v-if="!isBoardView" #suffix>
 							<N8nTooltip placement="bottom">
 								<template #content>
 									{{ i18n.baseText('dataTable.search.dateSearchInfo') }}
@@ -227,22 +280,33 @@ onBeforeUnmount(() => {
 							</N8nTooltip>
 						</template>
 					</N8nInput>
-					<N8nButton
-						data-test-id="data-table-header-add-row-button"
-						:disabled="readOnlyEnv"
-						@click="dataTableTableRef?.addRow"
-						>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
-					>
-					<AddColumnButton
-						:use-text-trigger="true"
-						:popover-id="'ds-details-add-column-popover'"
-						:params="{ onAddColumn }"
-						:disabled="readOnlyEnv"
-					/>
+					<template v-if="!isBoardView">
+						<N8nButton
+							data-test-id="data-table-header-add-row-button"
+							:disabled="readOnlyEnv"
+							@click="dataTableTableRef?.addRow"
+							>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
+						>
+						<AddColumnButton
+							:use-text-trigger="true"
+							:popover-id="'ds-details-add-column-popover'"
+							:params="{ onAddColumn }"
+							:disabled="readOnlyEnv"
+						/>
+					</template>
 				</div>
 			</div>
 			<div :class="$style.content">
+				<BoardKanbanView
+					v-if="isBoardView"
+					ref="boardKanbanRef"
+					:data-table="dataTable"
+					:search="searchQuery"
+					:read-only="readOnlyEnv"
+					@toggle-save="onToggleSave"
+				/>
 				<DataTableTable
+					v-else
 					ref="dataTableTableRef"
 					:data-table="dataTable"
 					:search="searchQuery"
@@ -259,9 +323,18 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	min-height: 0;
 	width: 100%;
 	box-sizing: border-box;
-	align-content: start;
+	overflow: hidden;
+}
+
+.detailsBody {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .header-loading {
@@ -272,6 +345,7 @@ onBeforeUnmount(() => {
 
 .header {
 	display: flex;
+	flex-shrink: 0;
 	gap: var(--spacing--lg);
 	align-items: center;
 }
@@ -297,6 +371,14 @@ onBeforeUnmount(() => {
 
 .search {
 	max-width: 196px;
+}
+
+.content {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .infoIcon {

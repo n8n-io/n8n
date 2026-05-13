@@ -3,7 +3,7 @@ import DataTableDetailsView from '@/features/core/dataTable/DataTableDetailsView
 import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useToast } from '@/app/composables/useToast';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -39,6 +39,13 @@ vi.mock('@n8n/i18n', () => {
 
 const mockRouter = {
 	push: vi.fn(),
+	replace: vi.fn(),
+};
+
+const mockRoute = {
+	name: 'data-table-details',
+	query: {},
+	params: {},
 };
 
 const mockToast = {
@@ -67,6 +74,7 @@ const renderComponent = createComponentRenderer(DataTableDetailsView, {
 		stubs: {
 			DataTableBreadcrumbs: true,
 			DataTableTable: true,
+			BoardKanbanView: true,
 		},
 	},
 });
@@ -75,6 +83,7 @@ describe('DataTableDetailsView', () => {
 	beforeEach(() => {
 		(useToast as ReturnType<typeof vi.fn>).mockReturnValue(mockToast);
 		(useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
+		(useRoute as ReturnType<typeof vi.fn>).mockReturnValue(mockRoute);
 		vi.clearAllMocks();
 	});
 

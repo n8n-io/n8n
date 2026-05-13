@@ -4,8 +4,9 @@ import {
 	ADD_BOARD_MODAL_KEY,
 	ADD_DATA_TABLE_MODAL_KEY,
 	DATA_TABLE_DETAILS,
-	DATA_TABLE_VIEW,
+	BOARD_DETAILS,
 	BOARD_VIEW,
+	DATA_TABLE_VIEW,
 	PROJECT_BOARDS,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
@@ -78,6 +79,16 @@ export const DataTableModule: FrontendModuleDescription = {
 				kind: 'board',
 				...route.params,
 			}),
+			meta: {
+				projectRoute: true,
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: BOARD_DETAILS,
+			path: 'boards/:id',
+			props: true,
+			component: DataTableDetailsView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],

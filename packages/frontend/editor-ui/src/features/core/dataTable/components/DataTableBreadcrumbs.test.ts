@@ -35,6 +35,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
 				'dataTable.dataTables': 'Data Tables',
+				'board.boards': 'Boards',
 				'dataTable.add.input.name.label': 'Data table name',
 				'dataTable.rename.error': 'Something went wrong while renaming the data table.',
 				'generic.unknownError': 'Something went wrong',
@@ -147,6 +148,20 @@ describe('DataTableBreadcrumbs', () => {
 			await userEvent.click(dataTablesLink);
 
 			expect(mockRouter.push).toHaveBeenCalledWith('/projects/project-1/datatables');
+		});
+
+		it('should render boards breadcrumb when kind is board', async () => {
+			const { getByText } = renderComponent({
+				props: {
+					dataTable: { ...mockDataTable, kind: 'board' },
+					kind: 'board',
+				},
+			});
+
+			const boardsLink = getByText('Boards');
+			await userEvent.click(boardsLink);
+
+			expect(mockRouter.push).toHaveBeenCalledWith('/projects/project-1/boards');
 		});
 
 		it('should render DataTableActions component that can trigger navigation', () => {

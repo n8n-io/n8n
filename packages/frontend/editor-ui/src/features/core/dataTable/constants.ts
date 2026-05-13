@@ -4,6 +4,7 @@ import { DATA_TABLE_COLUMN_REGEX } from '@n8n/api-types';
 export const DATA_TABLE_VIEW = 'data-tables';
 export const PROJECT_DATA_TABLES = 'project-data-tables';
 export const DATA_TABLE_DETAILS = 'data-table-details';
+export const BOARD_DETAILS = 'board-details';
 export const BOARD_VIEW = 'boards';
 export const PROJECT_BOARDS = 'project-boards';
 export const DATA_TABLE_STORE = 'dataTableStore';
@@ -32,6 +33,7 @@ export const DATA_TABLE_CARD_ACTIONS = {
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';
 export const ADD_BOARD_MODAL_KEY = 'addBoardModal';
+export const ADD_BOARD_CARD_MODAL_KEY = 'addBoardCardModal';
 export const DOWNLOAD_DATA_TABLE_MODAL_KEY = 'downloadDataTableModal';
 export const IMPORT_CSV_MODAL_KEY = 'importCsvModal';
 

@@ -5,6 +5,9 @@ export type DataTable = {
 	id: string;
 	name: string;
 	kind?: DataTableKind;
+	metadata?: {
+		allowedStatuses?: string[];
+	} | null;
 	sizeBytes: number;
 	columns: DataTableColumn[];
 	createdAt: string;
