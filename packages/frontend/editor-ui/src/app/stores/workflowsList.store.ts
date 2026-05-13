@@ -103,6 +103,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 			parentFolderId?: string;
 			availableInMCP?: boolean;
 			triggerNodeTypes?: string[];
+			webhookId?: string;
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,

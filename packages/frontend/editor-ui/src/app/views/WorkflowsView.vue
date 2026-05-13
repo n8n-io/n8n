@@ -93,6 +93,7 @@ import {
 	N8nIcon,
 	N8nInfoTip,
 	N8nInlineTextEdit,
+	N8nInput,
 	N8nInputLabel,
 	N8nLink,
 	N8nLoading,
@@ -109,6 +110,7 @@ interface Filters extends BaseFilters {
 	status: string | boolean;
 	showArchived: boolean;
 	tags: string[];
+	webhookId: string;
 }
 
 const StatusFilter = {
@@ -175,6 +177,7 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	showArchived: false,
 	tags: [],
+	webhookId: '',
 });
 
 const workflowListEventBus = createEventBus<WorkflowListEventMap>();
@@ -419,7 +422,8 @@ const hasFilters = computed(() => {
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
 		filters.value.showArchived ||
-		filters.value.tags.length
+		filters.value.tags.length ||
+		filters.value.webhookId
 	);
 });
 
@@ -668,6 +672,7 @@ const fetchWorkflows = async () => {
 				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
 				parentFolderId: getParentFolderId(parentFolder),
+				webhookId: filters.value.webhookId || undefined,
 			},
 			fetchFolders,
 			projectPages.isSharedSubPage,
@@ -829,6 +834,12 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.tags;
 	}
 
+	if (filters.value.webhookId) {
+		currentQuery.webhookId = filters.value.webhookId;
+	} else {
+		delete currentQuery.webhookId;
+	}
+
 	if (filters.value.homeProject) {
 		currentQuery.homeProject = filters.value.homeProject;
 	} else {
@@ -842,7 +853,7 @@ const saveFiltersOnQueryString = () => {
 
 const setFiltersFromQueryString = async () => {
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived, webhookId } = route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -909,6 +920,13 @@ const setFiltersFromQueryString = async () => {
 	} else {
 		delete newQuery.showArchived;
 		filters.value.showArchived = false;
+	}
+
+	if (isValidString(webhookId)) {
+		newQuery.webhookId = webhookId;
+		filters.value.webhookId = webhookId;
+	} else {
+		delete newQuery.webhookId;
 	}
 
 	void router.replace({ query: newQuery });
@@ -1718,6 +1736,16 @@ function onNameToggle() {
 	}, 0);
 }
 
+function extractWebhookId(value: string): string {
+	try {
+		const url = new URL(value);
+		const pathParts = url.pathname.split('/').filter(Boolean);
+		return pathParts[pathParts.length - 1] ?? value;
+	} catch {
+		return value;
+	}
+}
+
 const onNameSubmit = async (name: string) => {
 	if (!currentFolder.value || !currentProject.value) return;
 
@@ -2118,6 +2146,21 @@ const onNameSubmit = async (name: string) => {
 					:model-value="filters.showArchived || false"
 					data-test-id="show-archived-checkbox"
 					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.webhookId')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<N8nInput
+					:model-value="filters.webhookId"
+					:placeholder="i18n.baseText('workflows.filters.webhookId.placeholder')"
+					data-test-id="webhook-id-filter"
+					@update:model-value="setKeyValue('webhookId', extractWebhookId($event))"
 				/>
 			</div>
 		</template>
