@@ -52,6 +52,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WEBHOOK_METRICS')
 	includeWebhookMetrics: boolean = false;
 
+	/** Whether to include the `n8n_form_submission_duration_seconds` histogram for form submissions (POST only). */
+	@Env('N8N_METRICS_INCLUDE_FORM_METRICS')
+	includeFormMetrics: boolean = false;
+
 	/** Whether to include the `n8n_workflow_info` gauge mapping workflow IDs to names. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_INFO')
 	includeWorkflowInfo: boolean = false;

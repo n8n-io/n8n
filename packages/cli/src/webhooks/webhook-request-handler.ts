@@ -239,6 +239,7 @@ class WebhookRequestHandler {
 export function createWebhookHandlerFor(
 	webhookManager: IWebhookManager,
 	expectedNodeType?: ExpectedWebhookNodeType,
+	metricKind: 'webhook' | 'form' | 'none' = 'webhook',
 ): express.RequestHandler {
 	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
 
@@ -251,18 +252,35 @@ export function createWebhookHandlerFor(
 		}
 		res.locals.webhookPath = params.path;
 
-		const startNs = process.hrtime.bigint();
-		res.on('finish', () => {
-			const durationSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
-			const workflowId = (res.locals as { workflowId?: string }).workflowId ?? '';
-			Container.get(PrometheusMetricsService).observeWebhookRequest({
-				method: req.method,
-				statusCode: res.statusCode,
-				webhookPath: params.path,
-				workflowId,
-				durationSeconds,
+		if (metricKind !== 'none') {
+			const startNs = process.hrtime.bigint();
+			res.on('finish', () => {
+				const durationSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
+				const workflowId = (res.locals as { workflowId?: string }).workflowId ?? '';
+				const metricsService = Container.get(PrometheusMetricsService);
+
+				if (metricKind === 'form') {
+					// Only POSTs are form submissions; GETs render the form page.
+					// Continuations on /form-waiting/* are excluded via metricKind='none'.
+					if (req.method !== 'POST') return;
+					metricsService.observeFormSubmission({
+						statusCode: res.statusCode,
+						formPath: params.path,
+						workflowId,
+						durationSeconds,
+					});
+					return;
+				}
+
+				metricsService.observeWebhookRequest({
+					method: req.method,
+					statusCode: res.statusCode,
+					webhookPath: params.path,
+					workflowId,
+					durationSeconds,
+				});
 			});
-		});
+		}
 
 		await handler.handleRequest(webhookRequest, res);
 	};

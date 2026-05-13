@@ -51,6 +51,7 @@ export class PrometheusMetricsService {
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 			webhook: this.globalConfig.endpoints.metrics.includeWebhookMetrics,
+			form: this.globalConfig.endpoints.metrics.includeFormMetrics,
 			workflowInfo: this.globalConfig.endpoints.metrics.includeWorkflowInfo,
 			workflowExecutionDuration:
 				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
@@ -77,6 +78,7 @@ export class PrometheusMetricsService {
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
 		this.initWebhookRequestMetric();
+		this.initFormSubmissionMetric();
 		this.initQueueMetrics();
 		this.initWorkflowExecutionDurationMetric();
 		this.initActiveWorkflowCountMetric();
@@ -310,6 +312,36 @@ export class PrometheusMetricsService {
 				method: observation.method,
 				status_code: String(observation.statusCode),
 				webhook_path: observation.webhookPath,
+				workflow_id: observation.workflowId,
+			},
+			observation.durationSeconds,
+		);
+	}
+
+	private initFormSubmissionMetric() {
+		if (!this.includes.metrics.form) return;
+
+		this.histograms.formSubmissionDuration = new promClient.Histogram({
+			name: this.prefix + 'form_submission_duration_seconds',
+			help: 'Duration of form submissions (POST) served by n8n, in seconds.',
+			labelNames: ['status_code', 'form_path', 'workflow_id'],
+			buckets: [0.003, 0.03, 0.1, 0.3, 1.5, 10],
+		});
+	}
+
+	observeFormSubmission(observation: {
+		statusCode: number;
+		formPath: string;
+		workflowId: string;
+		durationSeconds: number;
+	}) {
+		const histogram = this.histograms.formSubmissionDuration;
+		if (!histogram) return;
+
+		histogram.observe(
+			{
+				status_code: String(observation.statusCode),
+				form_path: observation.formPath,
 				workflow_id: observation.workflowId,
 			},
 			observation.durationSeconds,

@@ -5,6 +5,7 @@ export type MetricCategory =
 	| 'logs'
 	| 'queue'
 	| 'webhook'
+	| 'form'
 	| 'workflowExecutionDuration'
 	| 'workflowInfo'
 	| 'workflowStatistics';

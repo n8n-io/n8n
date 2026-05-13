@@ -30,6 +30,7 @@ globalConfig.endpoints.metrics = {
 	includeCacheMetrics: true,
 	includeMessageEventBusMetrics: true,
 	includeWebhookMetrics: true,
+	includeFormMetrics: true,
 	includeWorkflowInfo: true,
 	includeCredentialTypeLabel: false,
 	includeNodeTypeLabel: false,

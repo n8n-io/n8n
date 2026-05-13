@@ -253,7 +253,10 @@ export abstract class AbstractServer {
 			const liveWebhooks = Container.get(LiveWebhooks);
 
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, createWebhookHandlerFor(liveWebhooks, 'form'));
+			this.app.all(
+				`/${this.endpointForm}/*path`,
+				createWebhookHandlerFor(liveWebhooks, 'form', 'form'),
+			);
 
 			// Register a handler for live webhooks
 			this.app.all(
@@ -261,10 +264,13 @@ export abstract class AbstractServer {
 				createWebhookHandlerFor(liveWebhooks, 'webhook'),
 			);
 
-			// Register a handler for waiting forms
+			// Register a handler for waiting forms. Skipped from metrics: only the
+			// first POST to the form trigger counts as a "form submission" — these
+			// continuation requests are mid-workflow state and would otherwise
+			// duplicate the count and pollute the form_path label with execution IDs.
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path{/:suffix}`,
-				createWebhookHandlerFor(Container.get(WaitingForms)),
+				createWebhookHandlerFor(Container.get(WaitingForms), undefined, 'none'),
 			);
 
 			// Register a handler for waiting webhooks
@@ -282,7 +288,7 @@ export abstract class AbstractServer {
 
 			this.app.all(
 				`/${this.endpointFormTest}/*path`,
-				createWebhookHandlerFor(testWebhooks, 'form'),
+				createWebhookHandlerFor(testWebhooks, 'form', 'form'),
 			);
 			this.app.all(
 				`/${this.endpointWebhookTest}/*path`,
