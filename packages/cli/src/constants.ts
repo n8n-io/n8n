@@ -112,6 +112,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'wordpressOAuth2Api',
 	'figmaOAuth2Api',
 	'gumroadOAuth2Api',
+	'bitbucketOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

@@ -152,6 +152,101 @@ describe('Bitbucket GenericFunctions', () => {
 			});
 		});
 
+		describe('with OAuth2 authentication', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('oAuth2');
+				mockHookFunctions.getNodeParameter.mockReturnValue('oAuth2');
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('oAuth2');
+			});
+
+			it('should call httpRequestWithAuthentication with bitbucketOAuth2Api', async () => {
+				const mockResponse = { data: 'test response' };
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(mockResponse);
+
+				const result = await bitbucketApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/repositories',
+					{},
+					{},
+				);
+
+				expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+					'bitbucketOAuth2Api',
+					{
+						method: 'GET',
+						qs: {},
+						url: 'https://api.bitbucket.org/2.0/repositories',
+						json: true,
+					},
+				);
+				expect(result).toEqual(mockResponse);
+			});
+
+			it('should handle custom URI with OAuth2', async () => {
+				const mockResponse = { data: 'test response' };
+				const customUri = 'https://custom.api.bitbucket.org/2.0/custom';
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(mockResponse);
+
+				await bitbucketApiRequest.call(
+					mockExecuteFunctions,
+					'POST',
+					'/repositories',
+					{ name: 'test' },
+					{ page: 1 },
+					customUri,
+				);
+
+				expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+					'bitbucketOAuth2Api',
+					{
+						method: 'POST',
+						qs: { page: 1 },
+						body: { name: 'test' },
+						url: customUri,
+						json: true,
+					},
+				);
+			});
+
+			it('should remove empty body with OAuth2', async () => {
+				const mockResponse = { data: 'test response' };
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(mockResponse);
+
+				await bitbucketApiRequest.call(mockExecuteFunctions, 'GET', '/repositories');
+
+				const expectedOptions: IHttpRequestOptions = {
+					method: 'GET',
+					qs: {},
+					url: 'https://api.bitbucket.org/2.0/repositories',
+					json: true,
+				};
+
+				expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+					'bitbucketOAuth2Api',
+					expectedOptions,
+				);
+			});
+
+			it('should work with hook functions using OAuth2', async () => {
+				const mockResponse = { values: [] };
+				mockHookFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(mockResponse);
+
+				const result = await bitbucketApiRequest.call(mockHookFunctions, 'GET', '/workspaces');
+
+				expect(mockHookFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+					'bitbucketOAuth2Api',
+					{
+						method: 'GET',
+						qs: {},
+						url: 'https://api.bitbucket.org/2.0/workspaces',
+						json: true,
+					},
+				);
+				expect(result).toEqual(mockResponse);
+			});
+		});
+
 		describe('with password authentication', () => {
 			beforeEach(() => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('password');
