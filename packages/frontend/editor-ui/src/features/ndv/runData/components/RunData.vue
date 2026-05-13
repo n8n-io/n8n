@@ -106,6 +106,7 @@ const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunData
 
 const LazyRunDataSchema = defineAsyncComponent(async () => await import('./VirtualSchema.vue'));
 const LazyRunDataHtml = defineAsyncComponent(async () => await import('./RunDataHtml.vue'));
+const LazyRunDataDiff = defineAsyncComponent(async () => await import('./RunDataDiff.vue'));
 const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('./RunDataParsedAiContent.vue'),
 );
@@ -1432,6 +1433,17 @@ const shouldDisplayHtml = computed(
 		node.value.parameters.operation === 'generateHtmlTemplate',
 );
 
+const shouldDisplayDiff = computed(() => {
+	if (!hasNodeRun.value || !isPaneTypeOutput.value) return false;
+	const firstItem = jsonData.value?.[0]?.json;
+	return (
+		firstItem?.diff !== undefined &&
+		typeof firstItem.diff === 'object' &&
+		firstItem.diff !== null &&
+		'stats' in (firstItem.diff as object)
+	);
+});
+
 function setDisplayMode() {
 	if (shouldDisplayHtml.value) {
 		emit('displayModeChange', 'html');
@@ -1549,6 +1561,7 @@ defineExpose({ enterEditMode });
 					:has-binary-data="binaryData.length > 0"
 					:pane-type="paneType"
 					:node-generates-html="shouldDisplayHtml"
+					:node-generates-diff="shouldDisplayDiff"
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
@@ -2159,6 +2172,10 @@ defineExpose({ enterEditMode });
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
 				<LazyRunDataHtml :input-html="inputHtml" />
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'diff'">
+				<LazyRunDataDiff :input-data="jsonData" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">

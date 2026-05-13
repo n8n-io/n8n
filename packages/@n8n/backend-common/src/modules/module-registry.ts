@@ -56,6 +56,7 @@ export class ModuleRegistry {
 		'encryption-key-manager',
 		'oauth-jwe',
 		'inbound-secrets',
+		'harness',
 	];
 
 	private readonly activeModules: string[] = [];

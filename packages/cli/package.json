@@ -122,6 +122,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/instance-ai": "workspace:*",
+    "@n8n/n8n-nodes-harness": "workspace:*",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/syslog-client": "workspace:*",

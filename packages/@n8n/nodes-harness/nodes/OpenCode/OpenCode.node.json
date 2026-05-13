@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.openCode",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["AI"],
+	"subcategories": {
+		"AI": ["AI Harness"]
+	},
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://opencode.ai/docs"
+			}
+		]
+	},
+	"alias": [
+		"opencode",
+		"ai agent",
+		"coding assistant",
+		"harness",
+		"claude code",
+		"codex",
+		"ai coding"
+	]
+}
