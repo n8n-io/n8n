@@ -124,6 +124,17 @@
 				color: var(--color-label);
 				text-align: left;
 				line-height: 1.5;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.logged-in-banner-picture {
+				width: 32px;
+				height: 32px;
+				border-radius: 50%;
+				flex-shrink: 0;
+				object-fit: cover;
 			}
 
 			.logged-in-banner a {
@@ -514,7 +525,12 @@
 
 				{{#if loggedInBanner}}
 					<div class='logged-in-banner'>
-						Logged in as <strong>{{loggedInBanner.displayName}}</strong>{{#if loggedInBanner.email}} ({{loggedInBanner.email}}){{/if}} — not you? <a href='{{loggedInBanner.logoutUrl}}'>Log out</a>
+						{{#if loggedInBanner.pictureUrl}}
+							<img class='logged-in-banner-picture' src='{{loggedInBanner.pictureUrl}}' alt='' referrerpolicy='no-referrer' />
+						{{/if}}
+						<div>
+							Logged in as <strong>{{loggedInBanner.displayName}}</strong>{{#if loggedInBanner.email}} ({{loggedInBanner.email}}){{/if}} — not you? <a href='{{loggedInBanner.logoutUrl}}'>Log out</a>
+						</div>
 					</div>
 				{{/if}}
 

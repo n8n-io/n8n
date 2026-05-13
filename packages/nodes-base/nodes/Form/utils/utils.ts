@@ -619,12 +619,27 @@ function buildLoggedInBanner(
 		return undefined;
 	};
 
+	// Only accept http(s) picture URLs so something like `javascript:` or `data:`
+	// from a misbehaving IDP can't sneak into the rendered `<img src>`.
+	const pickHttpUrl = (key: string): string | undefined => {
+		const value = claims[key];
+		if (typeof value !== 'string' || value.length === 0) return undefined;
+		try {
+			const parsed = new URL(value);
+			return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? value : undefined;
+		} catch {
+			return undefined;
+		}
+	};
+
 	const displayName = pickString('name', 'preferred_username', 'email', 'sub') ?? 'User';
 	const email = pickString('email');
+	const pictureUrl = pickHttpUrl('picture');
 	const separator = canonicalFormUrl.includes('?') ? '&' : '?';
 	return {
 		displayName,
 		email,
+		pictureUrl,
 		logoutUrl: `${canonicalFormUrl}${separator}reauth=1`,
 	};
 }

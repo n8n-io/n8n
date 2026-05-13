@@ -37,6 +37,7 @@ export type FormField = {
 export type FormLoggedInBanner = {
 	displayName: string;
 	email?: string;
+	pictureUrl?: string;
 	logoutUrl: string;
 };
 
