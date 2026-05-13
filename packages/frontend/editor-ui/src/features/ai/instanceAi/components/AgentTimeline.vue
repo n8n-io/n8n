@@ -11,7 +11,7 @@ import { computed } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
@@ -23,13 +23,13 @@ import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	const entry = store.producedArtifacts.get(artifact.resourceId);
+	const entry = thread.producedArtifacts.get(artifact.resourceId);
 	return entry?.name ?? artifact.name;
 }
 
@@ -120,7 +120,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
 	const eventProps = {
-		thread_id: store.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'plan-review',
@@ -137,8 +137,8 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	};
 	telemetry.track('User finished providing input', eventProps);
 
-	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(requestId, {
+	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(requestId, {
 		kind: 'approval',
 		approved,
 		...(feedback ? { userInput: feedback } : {}),
@@ -293,7 +293,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						:name="resolveArtifactName(artifact)"
 						:resource-id="artifact.resourceId"
 						:project-id="artifact.projectId"
-						:archived="store.producedArtifacts.get(artifact.resourceId)?.archived"
+						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
 						:metadata="formatArtifactMetadata(artifact)"
 					/>
 				</template>

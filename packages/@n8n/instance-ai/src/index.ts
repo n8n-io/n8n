@@ -6,6 +6,8 @@ export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
+	appendGeneratedWorkflowIdToRootMetadata,
+	appendRootRunMetadata,
 	createInstanceAiTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
@@ -89,6 +91,7 @@ export type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
 	PendingConfirmation,
+	RunStateTimeoutDetails,
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
@@ -110,6 +113,16 @@ export type {
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
+export {
+	createInstanceAiLivenessPolicyConfig,
+	INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+	InstanceAiLivenessPolicy,
+	type InstanceAiLivenessDecision,
+	type InstanceAiLivenessInput,
+	type InstanceAiLivenessPolicyConfig,
+	type InstanceAiLivenessSurface,
+	type InstanceAiLivenessTimeoutReason,
+} from './runtime/liveness-policy';
 export type {
 	StreamableAgent,
 	StreamRunOptions,

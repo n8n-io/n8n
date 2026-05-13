@@ -17,6 +17,9 @@ import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { scrubSecretsInText } from '../../src/utils/scrub-secrets';
+import { redactSecrets } from '../harness/redact';
+
 // ---------------------------------------------------------------------------
 // Shared shape after normalization
 // ---------------------------------------------------------------------------
@@ -43,6 +46,15 @@ export interface BuilderRecord {
 	feedback: FeedbackEntry[];
 	tokenInput?: number;
 	tokenOutput?: number;
+	/** Number of `submit-workflow` calls during the build. IA-only — EE
+	 *  doesn't capture a tool-call timeline in the comparable shape. */
+	submitCalls?: number;
+	/** Number of tool calls that errored or returned a failed result. */
+	toolCallErrors?: number;
+	/** Total tool calls observed, used as the error-rate denominator. */
+	toolCallsTotal?: number;
+	/** Raw tool-call trace. IA-only — populated by `loadInstanceAiRun`. */
+	toolCalls?: IAToolCallTrace[];
 }
 
 interface BuilderSummary {
@@ -59,6 +71,17 @@ interface BuilderSummary {
 		primaryPassRate: number;
 		avgDiagnostic: number;
 		avgDurationMs: number;
+		/** Total `submit-workflow` calls aggregated across IA records. Undefined
+		 *  for EE (which doesn't capture a comparable tool-call timeline). */
+		submitCallsTotal?: number;
+		/** Mean `submit-workflow` calls per record (IA only). */
+		avgSubmitCalls?: number;
+		/** Total tool calls observed across IA records. */
+		toolCallsTotal?: number;
+		/** Total errored tool calls observed across IA records. */
+		toolCallErrors?: number;
+		/** `toolCallErrors / toolCallsTotal` micro-averaged. IA-only. */
+		toolCallErrorRate?: number;
 	};
 }
 
@@ -70,6 +93,16 @@ interface BuilderRun {
 // ---------------------------------------------------------------------------
 // Instance AI loader (writes results.jsonl + workflows/<id>.json + summary.json)
 // ---------------------------------------------------------------------------
+
+interface IAToolCallTrace {
+	step: number;
+	toolCallId: string;
+	toolName: string;
+	args?: unknown;
+	result?: unknown;
+	error?: string;
+	elapsedMs?: number;
+}
 
 interface IAResultRecord {
 	exampleId: string;
@@ -86,6 +119,25 @@ interface IAResultRecord {
 		tokenUsage?: { input?: number; output?: number };
 	};
 	feedback: Array<{ metric: string; score: number; kind?: string; comment?: string }>;
+	toolCalls?: IAToolCallTrace[];
+}
+
+/**
+ * Whether a tool call should count toward the "tool error rate" metric.
+ * Mirrors `isErroredToolCall` in `pairwise.ts`.
+ */
+function isErroredIAToolCall(trace: IAToolCallTrace): boolean {
+	if (trace.error !== undefined) return true;
+	const r = trace.result;
+	if (r === null || r === undefined) return false;
+	if (typeof r === 'object' && !Array.isArray(r)) {
+		const obj = r as Record<string, unknown>;
+		if (obj.success === false) return true;
+		if (typeof obj.error === 'string' && obj.error.length > 0) return true;
+		if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+	}
+	if (typeof r === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(r)) return true;
+	return false;
 }
 
 interface IASummary {
@@ -125,20 +177,27 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 		// Use only iteration 1 for a fair 1:1 comparison.
 		.filter((r) => r.iteration === 1);
 
-	const normalized: BuilderRecord[] = records.map((r) => ({
-		prompt: r.prompt,
-		exampleId: r.exampleId,
-		dos: r.dos,
-		donts: r.donts,
-		workflow: r.workflow,
-		durationMs: r.build.durationMs,
-		success: r.build.success,
-		errorClass: r.build.errorClass,
-		errorMessage: r.build.errorMessage,
-		feedback: r.feedback,
-		tokenInput: r.build.tokenUsage?.input,
-		tokenOutput: r.build.tokenUsage?.output,
-	}));
+	const normalized: BuilderRecord[] = records.map((r) => {
+		const tcs = r.toolCalls ?? [];
+		return {
+			prompt: r.prompt,
+			exampleId: r.exampleId,
+			dos: r.dos,
+			donts: r.donts,
+			workflow: r.workflow,
+			durationMs: r.build.durationMs,
+			success: r.build.success,
+			errorClass: r.build.errorClass,
+			errorMessage: r.build.errorMessage,
+			feedback: r.feedback,
+			tokenInput: r.build.tokenUsage?.input,
+			tokenOutput: r.build.tokenUsage?.output,
+			submitCalls: tcs.filter((tc) => tc.toolName === 'submit-workflow').length,
+			toolCallErrors: tcs.filter(isErroredIAToolCall).length,
+			toolCallsTotal: tcs.length,
+			toolCalls: tcs,
+		};
+	});
 
 	const avgDuration =
 		normalized.length === 0
@@ -166,6 +225,10 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 			? 0
 			: diagnosticScores.reduce((a, b) => a + b, 0) / diagnosticScores.length;
 
+	const submitCallsTotal = normalized.reduce((s, r) => s + (r.submitCalls ?? 0), 0);
+	const toolCallsTotal = normalized.reduce((s, r) => s + (r.toolCallsTotal ?? 0), 0);
+	const toolCallErrors = normalized.reduce((s, r) => s + (r.toolCallErrors ?? 0), 0);
+
 	return {
 		summary: {
 			label: `${summary.builder} (instance-ai)`,
@@ -181,6 +244,11 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 				primaryPassRate,
 				avgDiagnostic,
 				avgDurationMs: avgDuration,
+				submitCallsTotal,
+				avgSubmitCalls: normalized.length ? submitCallsTotal / normalized.length : 0,
+				toolCallsTotal,
+				toolCallErrors,
+				toolCallErrorRate: toolCallsTotal ? toolCallErrors / toolCallsTotal : 0,
 			},
 		},
 		records: normalized,
@@ -564,9 +632,15 @@ function renderBuilderColumn(label: string, record: BuilderRecord | undefined): 
 	if (record.tokenInput !== undefined && record.tokenOutput !== undefined) {
 		metaParts.push(`<span>${record.tokenInput}+${record.tokenOutput} tok</span>`);
 	}
+	if (record.submitCalls !== undefined && record.submitCalls > 0) {
+		metaParts.push(`<span>submit ×${record.submitCalls}</span>`);
+	}
+	if (record.toolCallErrors !== undefined && record.toolCallErrors > 0) {
+		metaParts.push(`<span>err ×${record.toolCallErrors}</span>`);
+	}
 
 	const errorBlock = record.errorMessage
-		? `<div class="error">${escapeHtml(record.errorMessage)}</div>`
+		? `<div class="error">${escapeHtml(scrubSecretsInText(record.errorMessage))}</div>`
 		: '';
 
 	const idLine = record.exampleId
@@ -586,12 +660,110 @@ function renderBuilderColumn(label: string, record: BuilderRecord | undefined): 
 </div>`;
 }
 
-function renderRow(row: ComparisonRow, index: number): string {
+interface SideLabels {
+	ee: string;
+	ia: string;
+}
+
+function summarizeToolCallArgs(toolName: string, args: unknown): string {
+	if (!args || typeof args !== 'object') return '';
+	// Redact secret-shaped keys (password / token / api_key / …) and scrub the
+	// extracted free-form strings for known credential patterns. The same
+	// summarized text is used as a data-attribute on the row, so any leaked
+	// secret would persist in the HTML and be searchable via filter input.
+	const a = redactSecrets(args) as Record<string, unknown>;
+	const str = (v: unknown): string => (typeof v === 'string' ? scrubSecretsInText(v) : '');
+	const trunc = (s: string, n = 160): string => (s.length > n ? s.slice(0, n) + '…' : s);
+	switch (toolName) {
+		case 'mastra_workspace_execute_command':
+			return trunc(str(a.command));
+		case 'mastra_workspace_edit_file':
+			return trunc(str(a.path));
+		case 'mastra_workspace_write_file': {
+			const p = str(a.path);
+			const len = typeof a.content === 'string' ? a.content.length : 0;
+			return `${p}${len ? ` (${len} chars)` : ''}`;
+		}
+		case 'mastra_workspace_read_file': {
+			const p = str(a.path);
+			const off = typeof a.offset === 'number' ? a.offset : undefined;
+			const lim = typeof a.limit === 'number' ? a.limit : undefined;
+			const range = off !== undefined || lim !== undefined ? ` @${off ?? 0}+${lim ?? '∞'}` : '';
+			return trunc(`${p}${range}`);
+		}
+		case 'mastra_workspace_grep':
+			return trunc(`${str(a.pattern)}${a.path ? ` in ${str(a.path)}` : ''}`);
+		case 'mastra_workspace_lsp_inspect': {
+			const line = typeof a.line === 'number' ? String(a.line) : '?';
+			return trunc(`${str(a.path)}:${line} ${str(a.match)}`);
+		}
+		case 'mastra_workspace_mkdir':
+			return trunc(str(a.path));
+		case 'submit-workflow':
+			return trunc(`${str(a.name)} ${str(a.filePath)}`);
+		case 'verify-built-workflow':
+			return trunc(str(a.workflowId) || str(a.workItemId));
+		case 'credentials':
+		case 'data-tables':
+		case 'nodes':
+		case 'workflows':
+			return trunc(str(a.action));
+		default:
+			return trunc(scrubSecretsInText(JSON.stringify(a)), 120);
+	}
+}
+
+function renderToolCallRows(traces: IAToolCallTrace[]): string {
+	return traces
+		.map((tc) => {
+			const errored = isErroredIAToolCall(tc);
+			const elapsed = tc.elapsedMs !== undefined ? formatDuration(tc.elapsedMs) : '—';
+			const cls = errored ? 'tc-err' : '';
+			const argSummary = summarizeToolCallArgs(tc.toolName, tc.args);
+			const argCell = argSummary ? `<code class="tc-args">${escapeHtml(argSummary)}</code>` : '';
+			const detail = errored && tc.error ? escapeHtml(scrubSecretsInText(tc.error)) : '';
+			return `<tr class="${cls}"><td>${tc.step}</td><td>${escapeHtml(tc.toolName)}</td><td>${argCell}</td><td>${elapsed}</td><td>${detail}</td></tr>`;
+		})
+		.join('');
+}
+
+function renderToolCallsColumn(label: string, record: BuilderRecord | undefined): string {
+	if (!record) {
+		return `<div class="tc-col missing"><div class="tc-col-label">${escapeHtml(label)}</div><div class="missing-msg">No record.</div></div>`;
+	}
+	const traces = record.toolCalls ?? [];
+	if (traces.length === 0) {
+		return `<div class="tc-col"><div class="tc-col-label">${escapeHtml(label)} <span class="tc-summary">(0 calls)</span></div><div class="missing-msg">No tool calls captured.</div></div>`;
+	}
+	const errCount = traces.filter(isErroredIAToolCall).length;
+	const errBadge = errCount > 0 ? ` · <span class="tc-err-badge">${errCount} err</span>` : '';
+	return `<div class="tc-col">
+  <div class="tc-col-label">${escapeHtml(label)} <span class="tc-summary">(${traces.length} call${traces.length === 1 ? '' : 's'}${errBadge})</span></div>
+  <table class="tool-calls">
+    <thead><tr><th>#</th><th>Tool</th><th>Args</th><th>Time</th><th>Error</th></tr></thead>
+    <tbody>${renderToolCallRows(traces)}</tbody>
+  </table>
+</div>`;
+}
+
+function renderToolCallsSection(row: ComparisonRow, labels: SideLabels): string {
+	const anyTraces = (row.ee?.toolCalls?.length ?? 0) > 0 || (row.ia?.toolCalls?.length ?? 0) > 0;
+	if (!anyTraces) return '';
+	return `<details class="tool-calls-section">
+  <summary>Tool calls</summary>
+  <div class="tc-grid">
+    ${renderToolCallsColumn(labels.ee, row.ee)}
+    ${renderToolCallsColumn(labels.ia, row.ia)}
+  </div>
+</details>`;
+}
+
+function renderRow(row: ComparisonRow, index: number, labels: SideLabels): string {
 	const verdictLabel: Record<ComparisonRow['verdict'], string> = {
 		'both-pass': 'BOTH PASS',
 		'both-fail': 'BOTH FAIL',
-		'ee-only': 'CODE ONLY',
-		'ia-only': 'IA ONLY',
+		'ee-only': `${labels.ee.toUpperCase()} ONLY`,
+		'ia-only': `${labels.ia.toUpperCase()} ONLY`,
 		neither: '—',
 	};
 	const verdictCls: Record<ComparisonRow['verdict'], string> = {
@@ -622,14 +794,33 @@ function renderRow(row: ComparisonRow, index: number): string {
 	// Heavy content (workflow previews + judge tables) is wrapped in a <template>
 	// so the n8n-demo web component is NOT instantiated until the user expands
 	// the row. The lazy loader script in the document head does the swap.
-	return `<details class="row ${verdictCls[row.verdict]}" id="row-${index}">
+	const usedTools = new Set<string>();
+	const toolArgsCorpus: string[] = [];
+	for (const tc of row.ee?.toolCalls ?? []) {
+		usedTools.add(tc.toolName);
+		const summary = summarizeToolCallArgs(tc.toolName, tc.args);
+		if (summary) toolArgsCorpus.push(summary);
+	}
+	for (const tc of row.ia?.toolCalls ?? []) {
+		usedTools.add(tc.toolName);
+		const summary = summarizeToolCallArgs(tc.toolName, tc.args);
+		if (summary) toolArgsCorpus.push(summary);
+	}
+	const dataAttrs = [
+		`data-verdict="${row.verdict}"`,
+		`data-prompt="${escapeAttr(row.prompt.toLowerCase())}"`,
+		`data-id="${escapeAttr(idText.toLowerCase())}"`,
+		`data-tools="${escapeAttr([...usedTools].join(' '))}"`,
+		`data-tool-args="${escapeAttr(toolArgsCorpus.join(' ␟ ').toLowerCase())}"`,
+	].join(' ');
+	return `<details class="row ${verdictCls[row.verdict]}" id="row-${index}" ${dataAttrs}>
   <summary>
     <span class="verdict">${verdictLabel[row.verdict]}</span>
     ${idChip}
     <span class="prompt-preview">${escapeHtml(promptPreview)}</span>
     <span class="builder-chips">
-      ${builderChip('Code', eeHead)}
-      ${builderChip('IA', iaHead)}
+      ${builderChip(labels.ee, eeHead)}
+      ${builderChip(labels.ia, iaHead)}
     </span>
   </summary>
   <div class="body">
@@ -644,12 +835,13 @@ function renderRow(row: ComparisonRow, index: number): string {
     <div class="lazy-slot" data-loaded="false">
       <template>
         <div class="builder-grid">
-          ${renderBuilderColumn('Code Builder', row.ee)}
-          ${renderBuilderColumn('instance-ai', row.ia)}
+          ${renderBuilderColumn(labels.ee, row.ee)}
+          ${renderBuilderColumn(labels.ia, row.ia)}
         </div>
       </template>
       <div class="lazy-placeholder">Click to load workflow previews and judge details…</div>
     </div>
+    ${renderToolCallsSection(row, labels)}
   </div>
 </details>`;
 }
@@ -676,6 +868,16 @@ function renderSummaryCard(
   <div class="metric"><strong>${summary.totals.avgDiagnostic.toFixed(2)}</strong><span>avg diagnostic</span></div>
   <div class="metric"><strong>${formatDuration(summary.totals.avgDurationMs)}</strong><span>avg build time</span></div>
   <div class="metric"><strong>${summary.totals.buildSuccess}/${totalRecords}</strong><span>built ok</span></div>
+  ${
+		summary.totals.toolCallErrorRate !== undefined
+			? `<div class="metric"><strong>${pct(summary.totals.toolCallErrorRate)}</strong><span>tool error rate (${summary.totals.toolCallErrors ?? 0}/${summary.totals.toolCallsTotal ?? 0})</span></div>`
+			: ''
+	}
+  ${
+		summary.totals.avgSubmitCalls !== undefined
+			? `<div class="metric"><strong>${summary.totals.avgSubmitCalls.toFixed(2)}</strong><span>avg submit calls</span></div>`
+			: ''
+	}
   ${failureBits ? `<div class="meta-row failures">Failures: ${escapeHtml(failureBits)}</div>` : ''}
 </div>`;
 }
@@ -686,11 +888,13 @@ function renderMetricsNote(): string {
   <span><b>Primary pass</b> — workflow passes only if a majority of LLM judges (2 of 3) find zero "don't" violations. Computed over all prompt attempts; build failures count as fail.</span>
   <span><b>Average diagnostic</b> — mean fraction of criteria (dos + don'ts) satisfied across the dataset, averaged across judges. Range 0–1; gives partial credit.</span>
   <span><b>Average build time</b> — averaged across all attempts including failures, so build timeouts (20-min cap) inflate this number.</span>
+  <span><b>Tool error rate</b> — fraction of tool calls that errored or returned a failed result (e.g. <code>tsc</code> non-zero exit, <code>submit-workflow</code> rejection). Captures build-path roughness even on builds that eventually succeeded. <i>IA-only.</i></span>
+  <span><b>Avg submit calls</b> — mean <code>submit-workflow</code> invocations per build. 1.0 = clean first-try submit. <i>IA-only.</i></span>
   <span><b>Verdicts</b> compare per-prompt primary pass between the two builders.</span>
 </aside>`;
 }
 
-function renderVerdictTotals(rows: ComparisonRow[]): string {
+function renderVerdictTotals(rows: ComparisonRow[], labels: SideLabels): string {
 	const counts: Record<ComparisonRow['verdict'], number> = {
 		'both-pass': 0,
 		'both-fail': 0,
@@ -706,18 +910,23 @@ function renderVerdictTotals(rows: ComparisonRow[]): string {
 
 	return `<div class="verdict-grid">
   ${card('Both pass', counts['both-pass'], 'verdict-both-pass')}
-  ${card('Code Builder only passes', counts['ee-only'], 'verdict-ee-only')}
-  ${card('IA only passes', counts['ia-only'], 'verdict-ia-only')}
+  ${card(`${labels.ee} only passes`, counts['ee-only'], 'verdict-ee-only')}
+  ${card(`${labels.ia} only passes`, counts['ia-only'], 'verdict-ia-only')}
   ${card('Both fail', counts['both-fail'], 'verdict-both-fail')}
 </div>`;
 }
 
-function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): string {
+function renderDocument(
+	ee: BuilderRun,
+	ia: BuilderRun,
+	rows: ComparisonRow[],
+	labels: SideLabels,
+): string {
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Pairwise Eval Comparison — Code Builder vs Instance AI</title>
+<title>Pairwise Eval Comparison — ${escapeHtml(labels.ee)} vs ${escapeHtml(labels.ia)}</title>
 <script defer src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs@2.0.0/webcomponents-loader.js"></script>
 <script defer src="https://www.unpkg.com/lit@2.0.0-rc.2/polyfill-support.js"></script>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@n8n_io/n8n-demo-component/n8n-demo.bundled.js"></script>
@@ -859,25 +1068,102 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
   table.judges tr:last-child td { border-bottom: none; }
   table.judges td.judge-pass { color: var(--pass); font-weight: 600; }
   table.judges td.judge-fail { color: var(--fail); font-weight: 600; }
+  .tool-calls-section { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .tool-calls-section > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--fg); padding: 4px 0; user-select: none; }
+  .tool-calls-section > summary:hover { color: var(--accent, #58a6ff); }
+  .tc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  .tc-col { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; min-width: 0; }
+  .tc-col.missing { background: var(--subtle); }
+  .tc-col-label { font-weight: 600; font-size: 12px; margin-bottom: 6px; }
+  .tc-summary { color: var(--muted); font-weight: 400; }
+  .tc-err-badge { color: var(--fail); font-weight: 600; }
+  table.tool-calls { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.tool-calls th, table.tool-calls td { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.tool-calls th { color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.tool-calls td:nth-child(1) { color: var(--muted); width: 28px; font-variant-numeric: tabular-nums; }
+  table.tool-calls td:nth-child(2) { white-space: nowrap; }
+  table.tool-calls td:nth-child(3) { color: var(--muted); }
+  table.tool-calls td:nth-child(4) { color: var(--muted); width: 60px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.tool-calls tr:last-child td { border-bottom: none; }
+  table.tool-calls tr.tc-err td { color: var(--fail); }
+  table.tool-calls tr.tc-err td:nth-child(5) { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+  code.tc-args { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; color: var(--fg); white-space: pre-wrap; word-break: break-all; display: inline-block; max-height: 60px; overflow-y: auto; }
+  .filter-bar { display: flex; gap: 10px; align-items: center; padding: 12px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 14px; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; }
+  .filter-bar #filter-text { flex: 1 1 280px; min-width: 240px; padding: 6px 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+  .filter-bar #filter-text:focus { outline: none; border-color: var(--accent, #58a6ff); }
+  .filter-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: var(--subtle); border: 1px solid var(--border); border-radius: 16px; font-size: 12px; cursor: pointer; user-select: none; }
+  .filter-chip input { cursor: pointer; }
+  .filter-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .filter-reset { padding: 5px 12px; background: var(--subtle); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .filter-reset:hover { background: var(--card); }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1>Pairwise Eval Comparison — Code Builder vs Instance AI</h1>
-  <div class="subhead">${rows.length} prompt${rows.length === 1 ? '' : 's'} compared. Rows are ordered: Code-only wins, IA-only wins, both fail, both pass.</div>
+  <h1>Pairwise Eval Comparison — ${escapeHtml(labels.ee)} vs ${escapeHtml(labels.ia)}</h1>
+  <div class="subhead">${rows.length} prompt${rows.length === 1 ? '' : 's'} compared. Rows are ordered: ${escapeHtml(labels.ee)}-only wins, ${escapeHtml(labels.ia)}-only wins, both fail, both pass.</div>
 </header>
 <main>
   <section class="summary-row">
-    ${renderSummaryCard('Code Builder', ee.summary, ee.records.length, ee.records)}
-    ${renderSummaryCard('instance-ai', ia.summary, ia.records.length, ia.records)}
+    ${renderSummaryCard(ee.summary.label || labels.ee, ee.summary, ee.records.length, ee.records)}
+    ${renderSummaryCard(ia.summary.label || labels.ia, ia.summary, ia.records.length, ia.records)}
   </section>
-  ${renderVerdictTotals(rows)}
+  ${renderVerdictTotals(rows, labels)}
   ${renderMetricsNote()}
+  <section class="filter-bar">
+    <input type="search" id="filter-text" placeholder="Filter by prompt, example id, tool name, or tool args (e.g. paths, commands)…" autocomplete="off" />
+    <label class="filter-chip"><input type="checkbox" data-verdict="both-pass" checked /> Both pass</label>
+    <label class="filter-chip"><input type="checkbox" data-verdict="ee-only" checked /> ${escapeHtml(labels.ee)} only</label>
+    <label class="filter-chip"><input type="checkbox" data-verdict="ia-only" checked /> ${escapeHtml(labels.ia)} only</label>
+    <label class="filter-chip"><input type="checkbox" data-verdict="both-fail" checked /> Both fail</label>
+    <span class="filter-count" id="filter-count">${rows.length} / ${rows.length}</span>
+    <button type="button" id="filter-reset" class="filter-reset">Reset</button>
+  </section>
   <section class="rows">
-    ${rows.map((r, i) => renderRow(r, i)).join('\n')}
+    ${rows.map((r, i) => renderRow(r, i, labels)).join('\n')}
   </section>
 </main>
 <script>
+  // Filter bar — narrows visible rows by free-text query AND verdict checkboxes.
+  (function() {
+    const input = document.getElementById('filter-text');
+    const checks = Array.from(document.querySelectorAll('.filter-bar input[type=checkbox]'));
+    const rows = Array.from(document.querySelectorAll('details.row'));
+    const counter = document.getElementById('filter-count');
+    const resetBtn = document.getElementById('filter-reset');
+    const total = rows.length;
+    function apply() {
+      const q = (input.value || '').trim().toLowerCase();
+      const verdicts = new Set(checks.filter((c) => c.checked).map((c) => c.dataset.verdict));
+      let visible = 0;
+      for (const r of rows) {
+        const v = r.dataset.verdict || '';
+        const prompt = r.dataset.prompt || '';
+        const id = r.dataset.id || '';
+        const tools = r.dataset.tools || '';
+        const toolArgs = r.dataset.toolArgs || '';
+        const passesVerdict = verdicts.has(v);
+        const passesText =
+          !q ||
+          prompt.includes(q) ||
+          id.includes(q) ||
+          tools.toLowerCase().includes(q) ||
+          toolArgs.includes(q);
+        const show = passesVerdict && passesText;
+        r.style.display = show ? '' : 'none';
+        if (show) visible++;
+      }
+      counter.textContent = visible + ' / ' + total;
+    }
+    input.addEventListener('input', apply);
+    for (const c of checks) c.addEventListener('change', apply);
+    resetBtn.addEventListener('click', () => {
+      input.value = '';
+      for (const c of checks) c.checked = true;
+      apply();
+    });
+  })();
+
   // Lazy-load heavy preview content (n8n-demo + judge tables) on first expand.
   // Each row contains <template> with the workflow previews inside a
   // .lazy-slot[data-loaded="false"] div. On the first toggle-open we move the
@@ -911,6 +1197,9 @@ interface CliArgs {
 	eeDir: string;
 	iaDir: string;
 	out: string;
+	eeAsIa: boolean;
+	eeLabel?: string;
+	iaLabel?: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -920,21 +1209,34 @@ function parseArgs(argv: string[]): CliArgs {
 		const value = argv[idx + 1];
 		return value && !value.startsWith('--') ? value : undefined;
 	};
+	const has = (flag: string): boolean => argv.includes(flag);
 	const eeDir = get('--ee-dir');
 	const iaDir = get('--ia-dir');
 	if (!eeDir || !iaDir) {
 		throw new Error(
-			'Usage: tsx evaluations/cli/compare-pairwise.ts --ee-dir <path> --ia-dir <path> [--out <path>]',
+			'Usage: tsx evaluations/cli/compare-pairwise.ts --ee-dir <path> --ia-dir <path> [--out <path>] [--ee-as-ia] [--ee-label <name>] [--ia-label <name>]',
 		);
 	}
 	const defaultOut = path.join(path.dirname(path.resolve(iaDir)), 'comparison.html');
 	const out = path.resolve(get('--out') ?? defaultOut);
-	return { eeDir: path.resolve(eeDir), iaDir: path.resolve(iaDir), out };
+	return {
+		eeDir: path.resolve(eeDir),
+		iaDir: path.resolve(iaDir),
+		out,
+		eeAsIa: has('--ee-as-ia'),
+		eeLabel: get('--ee-label'),
+		iaLabel: get('--ia-label'),
+	};
 }
 
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
-	const [ee, ia] = await Promise.all([loadEERun(args.eeDir), loadInstanceAiRun(args.iaDir)]);
+	const [ee, ia] = await Promise.all([
+		args.eeAsIa ? loadInstanceAiRun(args.eeDir) : loadEERun(args.eeDir),
+		loadInstanceAiRun(args.iaDir),
+	]);
+	if (args.eeLabel) ee.summary.label = args.eeLabel;
+	if (args.iaLabel) ia.summary.label = args.iaLabel;
 
 	console.log(
 		`EE records: ${ee.records.length} (pass rate ${pct(ee.summary.totals.primaryPassRate)})`,
@@ -947,7 +1249,11 @@ async function main(): Promise<void> {
 	const matched = rows.filter((r) => r.ee && r.ia).length;
 	console.log(`Joined ${rows.length} prompts (${matched} matched on both sides)`);
 
-	const html = renderDocument(ee, ia, rows);
+	const labels: SideLabels = {
+		ee: args.eeLabel ?? (args.eeAsIa ? 'A' : 'Code'),
+		ia: args.iaLabel ?? (args.eeAsIa ? 'B' : 'IA'),
+	};
+	const html = renderDocument(ee, ia, rows, labels);
 	await fs.writeFile(args.out, html, 'utf8');
 	console.log(`Wrote comparison report to ${args.out}`);
 }
