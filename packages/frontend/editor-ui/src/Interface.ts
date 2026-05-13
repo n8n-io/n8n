@@ -426,6 +426,9 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
 	binaryMode?: WorkflowSettingsBinaryMode;
 	availableInMCP?: boolean;
+	workerPoolOverrideProduction?: string;
+	workerPoolOverrideManual?: string;
+	workerPoolOverrideEvaluation?: string;
 }
 
 export interface ITimeoutHMS {

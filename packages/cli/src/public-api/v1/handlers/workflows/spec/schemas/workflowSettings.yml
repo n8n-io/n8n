@@ -67,3 +67,15 @@ properties:
       Security note: When a workflow is available in MCP, it can be discovered and executed
       by any MCP client that has the appropriate API credentials for your n8n instance.
     example: false
+  workerPoolOverrideProduction:
+    type: string
+    description: Worker pool override for production executions.
+    example: gpu
+  workerPoolOverrideManual:
+    type: string
+    description: Worker pool override for manual executions.
+    example: gpu
+  workerPoolOverrideEvaluation:
+    type: string
+    description: Worker pool override for evaluation executions.
+    example: gpu

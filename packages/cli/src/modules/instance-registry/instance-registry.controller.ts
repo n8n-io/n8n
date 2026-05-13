@@ -1,6 +1,8 @@
 import type { ClusterCheckSummary, ClusterInfoResponse } from '@n8n/api-types';
 import { Get, RestController } from '@n8n/decorators';
 
+import { PoolConfigService } from '@/scaling/pool-config.service';
+
 import { CheckService } from './checks/check.service';
 import { InstanceRegistryService } from './instance-registry.service';
 
@@ -9,13 +11,15 @@ export class InstanceRegistryController {
 	constructor(
 		private readonly instanceRegistryService: InstanceRegistryService,
 		private readonly checkService: CheckService,
+		private readonly poolConfigService: PoolConfigService,
 	) {}
 
 	@Get('/')
 	async getClusterInfo(): Promise<ClusterInfoResponse> {
-		const [instances, { results }] = await Promise.all([
+		const [instances, { results }, poolAssignment] = await Promise.all([
 			this.instanceRegistryService.getAllInstances(),
 			this.checkService.runChecks(),
+			this.poolConfigService.getPoolAssignment(),
 		]);
 
 		const now = Date.now();
@@ -61,6 +65,7 @@ export class InstanceRegistryController {
 		return {
 			instances,
 			checks,
+			poolAssignment,
 		};
 	}
 }

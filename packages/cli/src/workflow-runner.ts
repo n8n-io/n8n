@@ -678,6 +678,24 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 	): Promise<{ queueName: string; poolName: string | undefined }> {
 		const category = getExecutionCategory(data.executionMode);
+		let overridePoolName: string | undefined;
+
+		switch (category) {
+			case 'production':
+				overridePoolName = data.workflowData.settings?.workerPoolOverrideProduction;
+				break;
+			case 'manual':
+				overridePoolName = data.workflowData.settings?.workerPoolOverrideManual;
+				break;
+			case 'evaluation':
+				overridePoolName = data.workflowData.settings?.workerPoolOverrideEvaluation;
+				break;
+		}
+
+		if (overridePoolName) {
+			return { queueName: poolQueueName(overridePoolName), poolName: overridePoolName };
+		}
+
 		const poolAssignment = await this.poolConfigService.getPoolAssignment();
 		const poolName = category ? poolAssignment[category] : undefined;
 

@@ -1,6 +1,8 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
+import type { PoolConfigService } from '@/scaling/pool-config.service';
+
 import type { CheckService } from '../checks/check.service';
 import { InstanceRegistryController } from '../instance-registry.controller';
 import type { InstanceRegistryService } from '../instance-registry.service';
@@ -21,12 +23,15 @@ describe('InstanceRegistryController', () => {
 	let controller: InstanceRegistryController;
 	let service: jest.Mocked<InstanceRegistryService>;
 	let checkService: jest.Mocked<CheckService>;
+	let poolConfigService: jest.Mocked<PoolConfigService>;
 
 	beforeEach(() => {
 		service = mock<InstanceRegistryService>();
 		checkService = mock<CheckService>();
+		poolConfigService = mock<PoolConfigService>();
 		checkService.runChecks.mockResolvedValue({ currentState: new Map(), results: [] });
-		controller = new InstanceRegistryController(service, checkService);
+		poolConfigService.getPoolAssignment.mockResolvedValue({});
+		controller = new InstanceRegistryController(service, checkService, poolConfigService);
 	});
 
 	describe('getClusterInfo', () => {
