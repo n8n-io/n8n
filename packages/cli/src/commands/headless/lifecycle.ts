@@ -13,6 +13,10 @@ const MANUAL_TYPES = new Set([
 	'n8n-nodes-base.start', // legacy pre-Manual-Trigger node, still considered manual-style.
 ]);
 
+// Node types that listen for HTTP requests. Only when one of these is
+// present in an activated workflow does headless need to bind a port.
+const WEBHOOK_TRIGGER_TYPES = new Set(['n8n-nodes-base.webhook', 'n8n-nodes-base.formTrigger']);
+
 export interface LifecycleRunOptions {
 	port: number;
 	host: string;
@@ -26,6 +30,13 @@ export interface LifecycleRunOptions {
 
 export interface Lifecycle {
 	kind: 'manual' | 'long-lived';
+	/**
+	 * True when at least one activated workflow has an HTTP-driven trigger
+	 * (webhook, formTrigger). The Headless command stands up the HTTP
+	 * listener only in this case — schedule-only or polling-only sets keep
+	 * the process alive without ever opening a port.
+	 */
+	needsWebhookListener: boolean;
 	run(opts: LifecycleRunOptions): Promise<void>;
 }
 
@@ -47,13 +58,19 @@ function workflowIsLongLived(workflow: CreatedWorkflow, nodeTypes: NodeTypes): b
 	return workflow.parsed.nodes.some((node) => isLongLivedNode(node, nodeTypes));
 }
 
+function workflowNeedsWebhookListener(workflow: CreatedWorkflow): boolean {
+	return workflow.parsed.nodes.some((node) => WEBHOOK_TRIGGER_TYPES.has(node.type));
+}
+
 export function detectLifecycle(workflows: CreatedWorkflow[], owner: User): Lifecycle {
 	const nodeTypes = Container.get(NodeTypes);
 	const longLived = workflows.some((wf) => workflowIsLongLived(wf, nodeTypes));
+	const needsWebhookListener = workflows.some(workflowNeedsWebhookListener);
 
 	if (longLived) {
 		return {
 			kind: 'long-lived',
+			needsWebhookListener,
 			async run({ signal }) {
 				try {
 					await engineAdapter.waitWhileActive(signal);
@@ -66,6 +83,7 @@ export function detectLifecycle(workflows: CreatedWorkflow[], owner: User): Life
 
 	return {
 		kind: 'manual',
+		needsWebhookListener: false,
 		async run() {
 			const errors: string[] = [];
 			for (const wf of workflows) {

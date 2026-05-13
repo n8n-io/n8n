@@ -128,6 +128,34 @@ describe('detectLifecycle', () => {
 
 		expect(lifecycle.kind).toBe('manual');
 	});
+
+	test('reports needsWebhookListener=true for a workflow with a webhook trigger', () => {
+		stubNodeType('n8n-nodes-base.webhook', { group: ['trigger'] });
+		const workflow = wf('Webhook', [node({ type: 'n8n-nodes-base.webhook', typeVersion: 1 })]);
+
+		const lifecycle = detectLifecycle([workflow], owner);
+
+		expect(lifecycle.needsWebhookListener).toBe(true);
+	});
+
+	test('reports needsWebhookListener=false for a schedule-only workflow', () => {
+		stubNodeType('n8n-nodes-base.scheduleTrigger', { group: ['trigger'] });
+		const workflow = wf('Schedule', [
+			node({ type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1 }),
+		]);
+
+		const lifecycle = detectLifecycle([workflow], owner);
+
+		expect(lifecycle.needsWebhookListener).toBe(false);
+	});
+
+	test('reports needsWebhookListener=false for a manual-only workflow', () => {
+		const workflow = wf('Manual', [node({ type: 'n8n-nodes-base.manualTrigger' })]);
+
+		const lifecycle = detectLifecycle([workflow], owner);
+
+		expect(lifecycle.needsWebhookListener).toBe(false);
+	});
 });
 
 describe('manual lifecycle run()', () => {

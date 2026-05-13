@@ -1,0 +1,52 @@
+{
+	"name": "Headless Webhook Workflow",
+	"nodes": [
+		{
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [240, 300],
+			"webhookId": "headless-test-webhook",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "headless-test",
+				"responseMode": "lastNode"
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [460, 300],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "echo",
+							"name": "echo",
+							"value": "={{ $json.body }}",
+							"type": "object"
+						}
+					]
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"active": false
+}

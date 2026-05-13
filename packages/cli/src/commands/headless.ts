@@ -1,9 +1,11 @@
 import { Command } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BaseCommand } from './base-command';
 import { crudAdapter } from './headless/crud-adapter';
+import { HeadlessWebhookServer } from './headless/headless-webhook-server';
 import { detectLifecycle } from './headless/lifecycle';
 import { ensureOwner } from './headless/owner';
 import { parseWorkflowSource } from './headless/parse';
@@ -45,6 +47,8 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private lifecyclePromise?: Promise<void>;
 
+	private webhookServer?: HeadlessWebhookServer;
+
 	async run() {
 		if (this.flags.credentials) {
 			throw new UserError(
@@ -64,6 +68,16 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.info(
 			`headless: ${lifecycle.kind} workflow set ready (${imported.length} workflow${imported.length === 1 ? '' : 's'})`,
 		);
+
+		if (lifecycle.needsWebhookListener) {
+			this.webhookServer = Container.get(HeadlessWebhookServer);
+			await this.webhookServer.init();
+			await this.webhookServer.start();
+			this.webhookServer.markAsReady();
+			this.logger.info(
+				`headless: webhook listener on http://${this.flags.host}:${this.flags.port}`,
+			);
+		}
 
 		this.lifecyclePromise = lifecycle.run({
 			port: this.flags.port,
@@ -87,6 +101,9 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 				// Errors from lifecycle.run surface via the normal awaiter in run();
 				// stopProcess only cares that the teardown drained.
 			});
+		}
+		if (this.webhookServer) {
+			await this.webhookServer.close();
 		}
 	}
 }
