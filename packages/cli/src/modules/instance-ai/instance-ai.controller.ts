@@ -742,6 +742,11 @@ export class InstanceAiController {
 			[userId],
 		);
 
+		// Best-effort: auto-create a Device Connection credential for the user
+		void this.instanceAiService
+			.ensureDeviceCredential(userId, payload.hostIdentifier ?? null)
+			.catch(() => {});
+
 		// Try to consume a pairing token and upgrade to a session key
 		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
 		if (sessionKey) {

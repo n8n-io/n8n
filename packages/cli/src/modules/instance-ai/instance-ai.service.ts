@@ -18,7 +18,13 @@ import { ErrorReporter } from 'n8n-core';
 import type { InstanceAiConfig } from '@n8n/config';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
-import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
+import {
+	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
+	ProjectRepository,
+	UserRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UrlService } from '@/services/url.service';
@@ -91,6 +97,7 @@ import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
@@ -442,6 +449,9 @@ export class InstanceAiService {
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
+		private readonly credentialsService: CredentialsService,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -1480,6 +1490,39 @@ export class InstanceAiService {
 			user_id: userId,
 			tool_groups: data.toolCategories.filter((c) => c.enabled).map((c) => c.name),
 		});
+	}
+
+	/**
+	 * Ensure a DeviceConnectionApi credential exists for the user.
+	 * Called on gateway init — creates the credential on first connection,
+	 * skips on reconnections where it already exists.
+	 */
+	async ensureDeviceCredential(userId: string, hostIdentifier: string | null): Promise<void> {
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
+
+		const existing = await this.credentialsRepository.findBy({
+			type: 'deviceConnectionApi',
+			shared: { projectId: personalProject.id },
+		});
+
+		if (existing.length > 0) {
+			return;
+		}
+
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
+		const deviceName = hostIdentifier ?? 'Unknown Device';
+
+		await this.credentialsService.createUnmanagedCredential(
+			{
+				name: deviceName,
+				type: 'deviceConnectionApi',
+				data: { deviceOwnerId: userId, deviceName },
+			},
+			user,
+		);
 	}
 
 	resolveGatewayRequest(
