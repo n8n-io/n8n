@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.12.1",
+  "version": "0.14.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -26,10 +26,6 @@
       "types": "./dist/prompts/node-guidance/parameter-guides/index.d.ts",
       "default": "./dist/prompts/node-guidance/parameter-guides/index.js"
     },
-    "./prompts/node-guidance/node-tips": {
-      "types": "./dist/prompts/node-guidance/node-tips/index.d.ts",
-      "default": "./dist/prompts/node-guidance/node-tips/index.js"
-    },
     "./prompts/node-guidance/node-recommendations": {
       "types": "./dist/prompts/node-guidance/node-recommendations/index.d.ts",
       "default": "./dist/prompts/node-guidance/node-recommendations/index.js"
@@ -41,6 +37,10 @@
     "./prompts/node-selection": {
       "types": "./dist/prompts/node-selection/index.d.ts",
       "default": "./dist/prompts/node-selection/index.js"
+    },
+    "./examples-loader": {
+      "types": "./dist/examples-loader.d.ts",
+      "default": "./dist/examples-loader.js"
     }
   },
   "scripts": {
@@ -53,7 +53,6 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "pretest": "npx tsx scripts/extract-workflows.ts",
     "extract-workflows": "npx tsx scripts/extract-workflows.ts",
     "test": "jest",
     "test:unit": "jest",
@@ -61,8 +60,13 @@
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
+    "create-examples-zip": "npx tsx scripts/create-examples-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
-    "code-to-json": "npx tsx src/cli/index.ts code-to-json"
+    "code-to-json": "npx tsx src/cli/index.ts code-to-json",
+    "fetch-templates": "npx tsx scripts/fetch-templates.ts",
+    "regenerate-examples": "npx tsx scripts/regenerate-examples.ts",
+    "criteria:calibrate": "npx tsx scripts/calibration.ts",
+    "criteria:coverage": "npx tsx scripts/coverage.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -75,9 +79,6 @@
       "prompts/node-guidance/parameter-guides": [
         "./dist/prompts/node-guidance/parameter-guides/index.d.ts"
       ],
-      "prompts/node-guidance/node-tips": [
-        "./dist/prompts/node-guidance/node-tips/index.d.ts"
-      ],
       "prompts/node-guidance/node-recommendations": [
         "./dist/prompts/node-guidance/node-recommendations/index.d.ts"
       ],
@@ -86,13 +87,19 @@
       ],
       "prompts/node-selection": [
         "./dist/prompts/node-selection/index.d.ts"
+      ],
+      "examples-loader": [
+        "./dist/examples-loader.d.ts"
       ]
     }
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "examples/manifest.json",
+    "examples/templates.zip"
   ],
   "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/adm-zip": "^0.5.7",
     "@types/estree": "^1.0.8",

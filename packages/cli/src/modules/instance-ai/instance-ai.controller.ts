@@ -34,6 +34,7 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
@@ -137,6 +138,21 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
+		if (payload.attachments && payload.attachments.length > 0) {
+			try {
+				validateAttachmentMimeTypes(payload.attachments);
+			} catch (error) {
+				if (error instanceof UnsupportedAttachmentError) {
+					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
+					throw new BadRequestError(
+						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
+							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				throw error;
+			}
+		}
+
 		// One active run per thread
 		if (this.instanceAiService.hasActiveRun(threadId)) {
 			throw new ConflictError('A run is already active for this thread');
@@ -170,6 +186,11 @@ export class InstanceAiController {
 		const ownership = await this.memoryService.checkThreadOwnership(req.user.id, threadId);
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
+		}
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
 		}
 
 		// When the thread didn't exist at connect time, another user could create
@@ -547,6 +568,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
@@ -625,9 +647,13 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
+		const expiresAt = this.instanceAiService.getGatewayApiKeyExpiresAt(req.user.id, token);
+		const ttlSeconds = expiresAt
+			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
+			: null;
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
-		return { token, command };
+		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })

@@ -1,0 +1,3 @@
+{"kind":"header","version":1,"testName":"restore archived workflow via Instance AI","recordedAt":"2026-05-05T00:00:00.000Z"}
+{"kind":"tool-call","stepId":1,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"list","query":"INS-199 Archived Restore Target","status":"archived"},"output":{"workflows":[{"id":"ins-199-archived-restore-target","name":"INS-199 Archived Restore Target","versionId":"recorded-version-id","activeVersionId":null,"isArchived":true,"createdAt":"2026-05-05T00:00:00.000Z","updatedAt":"2026-05-05T00:00:00.000Z"}]}}
+{"kind":"tool-call","stepId":2,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"unarchive","workflowId":"ins-199-archived-restore-target"},"output":{"success":true}}

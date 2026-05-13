@@ -446,6 +446,44 @@ export function enrichMimeTypesWithExtensions(mimeTypes: string): string {
 	return mimeTypes;
 }
 
+/**
+ * Mirrors the HTML `accept` attribute matching rules:
+ * - exact MIME match (`text/csv`)
+ * - MIME wildcard match (`image/*`)
+ * - extension match (`.md`, `.docx`)
+ *
+ * Extension matching is required because macOS reports an empty `file.type`
+ * for some formats (notably `.md`), so a MIME-only check would falsely reject
+ * files that the picker explicitly allowed.
+ */
+export function isFileAcceptedByAccept(
+	fileName: string,
+	fileMimeType: string,
+	acceptString: string,
+): boolean {
+	if (!acceptString || acceptString === '*/*') return true;
+	const tokens = acceptString
+		.split(',')
+		.map((t) => t.trim())
+		.filter(Boolean);
+	const lowerName = fileName.toLowerCase();
+	const lowerType = fileMimeType.toLowerCase();
+	for (const rawToken of tokens) {
+		const token = rawToken.toLowerCase();
+		if (token.startsWith('.')) {
+			if (lowerName.endsWith(token)) return true;
+			continue;
+		}
+		if (!lowerType) continue;
+		if (token === lowerType) return true;
+		if (token.endsWith('/*')) {
+			const prefix = token.slice(0, token.indexOf('/'));
+			if (lowerType.startsWith(`${prefix}/`)) return true;
+		}
+	}
+	return false;
+}
+
 export const isEditable = (message: ChatMessage): boolean => {
 	return message.status === 'success' && message.type !== 'ai';
 };

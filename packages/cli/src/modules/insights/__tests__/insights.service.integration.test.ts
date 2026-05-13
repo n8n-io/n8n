@@ -513,6 +513,30 @@ describe('InsightsService (Integration)', () => {
 			expect(byWorkflow.data[0].workflowId).toEqual(workflow2.id);
 		});
 
+		test('returns total count when page is past the end', async () => {
+			const now = DateTime.utc();
+			for (const workflow of [workflow1, workflow2, workflow3]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+			}
+
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
+
+			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				startDate,
+				endDate: today,
+				skip: 10,
+				take: 10,
+			});
+
+			expect(byWorkflow.count).toEqual(3);
+			expect(byWorkflow.data).toHaveLength(0);
+		});
+
 		test('compacted data are grouped by workflow correctly with projectId filter', async () => {
 			// ARRANGE
 			const now = DateTime.utc();

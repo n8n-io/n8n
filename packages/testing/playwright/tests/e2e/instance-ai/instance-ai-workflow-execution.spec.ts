@@ -107,8 +107,7 @@ test.describe(
 			});
 
 			// Double-click a node to open NDV
-			const setNode = n8n.instanceAi.getPreviewNodeByName('ndv output test');
-			await setNode.dblclick();
+			await n8n.instanceAi.openPreviewNodeByName('ndv output test');
 
 			// The NDV output panel should be visible with execution data
 			await expect(n8n.instanceAi.getPreviewNdvOutputPanel()).toBeVisible({

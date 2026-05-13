@@ -1,5 +1,4 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
-import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -92,7 +91,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. Parses the code into a workflow and saves it. Always validate with ${CODE_BUILDER_VALIDATE_TOOL.toolName} first.`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation.`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -149,7 +148,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
-			const workflowJson = layoutWorkflowJSON(result.workflow);
+			const workflowJson = result.workflow;
 
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
@@ -269,7 +268,9 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const hint = getSdkReferenceHint(error);
+			const hint = getSdkReferenceHint(error, {
+				afterReference: `Rewrite the code, call ${CODE_BUILDER_VALIDATE_TOOL.toolName} until it returns valid=true, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
+			});
 			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
 			return {

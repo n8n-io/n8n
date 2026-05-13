@@ -13,6 +13,7 @@ import type {
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_OTHER_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
@@ -190,6 +191,8 @@ export function mapToolSubcategoryIcon(sectionKey: string): IconName {
 			return 'database';
 		case AI_CATEGORY_HUMAN_IN_THE_LOOP:
 			return 'badge-check';
+		case AI_CATEGORY_MCP_NODES:
+			return 'mcp';
 		default:
 			return 'globe';
 	}
