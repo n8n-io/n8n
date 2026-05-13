@@ -1,4 +1,5 @@
 import { createEventBus } from '@n8n/utils/event-bus';
+import type { MfaMethod } from '@n8n/api-types';
 
 export interface ConfirmPasswordClosedEventPayload {
 	currentPassword: string;
@@ -30,10 +31,8 @@ export interface MfaModalEvents {
  */
 export const promptMfaCodeBus = createEventBus<MfaModalEvents>();
 
-export type TwoFactorMethod = 'totp' | 'passkey' | 'security_key';
-
 export interface TwoFactorWizardEvents {
-	completed: { method: TwoFactorMethod };
+	completed: { method: MfaMethod };
 }
 
 export const twoFactorWizardBus = createEventBus<TwoFactorWizardEvents>();

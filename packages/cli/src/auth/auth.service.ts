@@ -425,6 +425,17 @@ export class AuthService {
 		await this.userRepository.update(userId, { tokensValidAfter: new Date() });
 	}
 
+	/**
+	 * Rotate the calling session after a security-sensitive change: invalidate
+	 * other sessions, then issue a fresh cookie so the current request keeps
+	 * its session. Callers that need to emit telemetry events should do so
+	 * around this call (the helper has no event coupling).
+	 */
+	async rotateSession(res: Response, user: User, usedMfa: boolean, req: { browserId?: string }) {
+		await this.invalidateOtherSessions(user.id);
+		this.issueCookie(res, user, usedMfa, req.browserId);
+	}
+
 	private isTokenStale(user: User, jwt: { iat: number }): boolean {
 		const validAfter = user.tokensValidAfter;
 		if (!validAfter) return false;

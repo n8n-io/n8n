@@ -6,11 +6,26 @@ import { v4 as uuid } from 'uuid';
 
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
+import { CacheService } from '@/services/cache/cache.service';
 
 import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
-import { WebAuthnService } from './webauthn.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { isPlatformCredential, WebAuthnService } from './webauthn.service';
+
+export type MfaProof = {
+	mfaCode?: string;
+	mfaRecoveryCode?: string;
+	webauthnResponse?: unknown;
+};
+
+/** Number of distinct proofs supplied (used by callers that require exactly one). */
+export function countMfaProofs(proof: MfaProof): number {
+	let n = 0;
+	if (typeof proof.mfaCode === 'string' && proof.mfaCode.length > 0) n++;
+	if (typeof proof.mfaRecoveryCode === 'string' && proof.mfaRecoveryCode.length > 0) n++;
+	if (proof.webauthnResponse !== undefined && proof.webauthnResponse !== null) n++;
+	return n;
+}
 
 export const MFA_CACHE_KEY = 'mfa:enforce';
 @Service()
@@ -125,10 +140,10 @@ export class MfaService {
 			if (index === -1) return false;
 			// remove used recovery code
 			validCodes.splice(index, 1);
-			user.mfaRecoveryCodes = await Promise.all(
+			const reencrypted = await Promise.all(
 				validCodes.map(async (code) => await this.cipher.encryptV2(code)),
 			);
-			await this.userRepository.save(user);
+			await this.userRepository.update(userId, { mfaRecoveryCodes: reencrypted });
 			return true;
 		}
 
@@ -143,12 +158,7 @@ export class MfaService {
 	}
 
 	async enableMfa(userId: string) {
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: ['role'],
-		});
-		user.mfaEnabled = true;
-		return await this.userRepository.save(user);
+		await this.userRepository.update(userId, { mfaEnabled: true });
 	}
 
 	async getAvailableMfaMethods(
@@ -163,11 +173,7 @@ export class MfaService {
 
 		const credentials = await this.webauthn.getUserCredentials(userId);
 		for (const cred of credentials) {
-			const transports = cred.transports ?? [];
-			const isPlatform =
-				(transports.length > 0 && transports.every((t) => t === 'internal')) ||
-				cred.deviceType === 'multiDevice';
-			methods.push(isPlatform ? 'passkey' : 'security_key');
+			methods.push(isPlatformCredential(cred) ? 'passkey' : 'security_key');
 		}
 
 		return methods;
@@ -219,5 +225,17 @@ export class MfaService {
 
 	async validateWebAuthn(userId: string, response: unknown): Promise<boolean> {
 		return await this.webauthn.verifyAuthenticationResponse(userId, response);
+	}
+
+	/**
+	 * Validate any one of the three possible proofs (TOTP code, recovery code,
+	 * webauthn assertion). Callers that require exactly one proof should pre-
+	 * check with `countMfaProofs` and reject ambiguous inputs.
+	 */
+	async validateProof(userId: string, proof: MfaProof): Promise<boolean> {
+		if (proof.webauthnResponse !== undefined && proof.webauthnResponse !== null) {
+			return await this.validateWebAuthn(userId, proof.webauthnResponse);
+		}
+		return await this.validateMfa(userId, proof.mfaCode, proof.mfaRecoveryCode);
 	}
 }

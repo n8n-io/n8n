@@ -16,7 +16,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { MfaService } from '@/mfa/mfa.service';
+import { countMfaProofs, MfaService } from '@/mfa/mfa.service';
+import { isPlatformCredential } from '@/mfa/webauthn.service';
 import { MFA } from '@/requests';
 
 @RestController('/mfa')
@@ -130,7 +131,7 @@ export class MFAController {
 		if (!verified)
 			throw new BadRequestError('MFA code expired. Close the modal and enable MFA again', 997);
 
-		const updatedUser = await this.mfaService.enableMfa(id);
+		await this.mfaService.enableMfa(id);
 
 		this.eventService.emit('user-mfa-enabled', {
 			user: {
@@ -142,8 +143,7 @@ export class MFAController {
 			},
 		});
 
-		await this.authService.invalidateOtherSessions(id);
-		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
+		await this.authService.rotateSession(res, req.user, verified, req);
 	}
 
 	@Post('/disable', {
@@ -155,23 +155,18 @@ export class MFAController {
 
 		const { mfaCode, mfaRecoveryCode, webauthnResponse } = req.body;
 
-		const mfaCodeDefined = !!(mfaCode && typeof mfaCode === 'string');
-		const mfaRecoveryCodeDefined = !!(mfaRecoveryCode && typeof mfaRecoveryCode === 'string');
-		const webauthnDefined = webauthnResponse !== undefined && webauthnResponse !== null;
-
-		const proofs = [mfaCodeDefined, mfaRecoveryCodeDefined, webauthnDefined].filter(Boolean);
-		if (proofs.length !== 1) {
+		if (countMfaProofs(req.body) !== 1) {
 			throw new BadRequestError(
 				'Exactly one of mfaCode, mfaRecoveryCode, or webauthnResponse is required to disable MFA',
 			);
 		}
 
 		let disableMethod: 'mfaCode' | 'recoveryCode' | 'webauthn';
-		if (mfaCodeDefined) {
-			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode!);
+		if (typeof mfaCode === 'string' && mfaCode.length > 0) {
+			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode);
 			disableMethod = 'mfaCode';
-		} else if (mfaRecoveryCodeDefined) {
-			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode!);
+		} else if (typeof mfaRecoveryCode === 'string' && mfaRecoveryCode.length > 0) {
+			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
 			disableMethod = 'recoveryCode';
 		} else {
 			await this.mfaService.disableMfaWithWebAuthn(userId, webauthnResponse);
@@ -189,13 +184,7 @@ export class MFAController {
 			disableMethod,
 		});
 
-		const updatedUser = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: ['role'],
-		});
-
-		await this.authService.invalidateOtherSessions(userId);
-		this.authService.issueCookie(res, updatedUser, false, req.browserId);
+		await this.authService.rotateSession(res, req.user, false, req);
 	}
 
 	@Post('/verify', {
@@ -288,10 +277,12 @@ export class MFAController {
 			transports,
 		);
 
-		const isPlatformAuthenticator =
-			(transports ?? []).includes('internal') ||
-			verification.registrationInfo.credentialDeviceType === 'multiDevice';
-		const method = isPlatformAuthenticator ? 'passkey' : 'security_key';
+		const method = isPlatformCredential({
+			transports: transports ?? null,
+			deviceType: verification.registrationInfo.credentialDeviceType,
+		})
+			? 'passkey'
+			: 'security_key';
 
 		let recoveryCodes: string[] | undefined;
 		const { decryptedRecoveryCodes } = await this.mfaService.getSecretAndRecoveryCodes(userId);
@@ -300,9 +291,8 @@ export class MFAController {
 			await this.mfaService.saveRecoveryCodes(userId, recoveryCodes);
 		}
 
-		const updatedUser = await this.mfaService.enableMfa(userId);
-		await this.authService.invalidateOtherSessions(userId);
-		this.authService.issueCookie(res, updatedUser, true, req.browserId);
+		await this.mfaService.enableMfa(userId);
+		await this.authService.rotateSession(res, req.user, true, req);
 
 		return {
 			id: savedCredential.id,
@@ -363,27 +353,18 @@ export class MFAController {
 		res: Response,
 	) {
 		const { id } = req.params;
-		const { mfaCode, mfaRecoveryCode, webauthnResponse } = req.body;
 		const userId = req.user.id;
 
 		// Removing a credential is security-sensitive — re-verify the user's
 		// active 2FA method (TOTP code, recovery code, or a fresh webauthn
 		// assertion) before we touch the credential row.
-		const provided = [mfaCode, mfaRecoveryCode, webauthnResponse].filter(
-			(v) => v !== undefined && v !== null && v !== '',
-		);
-		if (provided.length !== 1) {
+		if (countMfaProofs(req.body) !== 1) {
 			throw new BadRequestError(
 				'Exactly one of mfaCode, mfaRecoveryCode, or webauthnResponse is required to remove this credential',
 			);
 		}
 
-		let proofValid: boolean;
-		if (webauthnResponse !== undefined && webauthnResponse !== null) {
-			proofValid = await this.mfaService.validateWebAuthn(userId, webauthnResponse);
-		} else {
-			proofValid = await this.mfaService.validateMfa(userId, mfaCode, mfaRecoveryCode);
-		}
+		const proofValid = await this.mfaService.validateProof(userId, req.body);
 		if (!proofValid) {
 			throw new BadRequestError('Invalid two-factor proof');
 		}
@@ -419,12 +400,7 @@ export class MFAController {
 				mfaRecoveryCodes: [],
 			});
 
-			const updatedUser = await this.userRepository.findOneOrFail({
-				where: { id: userId },
-				relations: ['role'],
-			});
-			await this.authService.invalidateOtherSessions(userId);
-			this.authService.issueCookie(res, updatedUser, false, req.browserId);
+			await this.authService.rotateSession(res, req.user, false, req);
 		}
 
 		return { success: true };

@@ -1,12 +1,11 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { ROLE, type Role } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import { ROLE, type Role, type WebAuthnCredentialResponse } from '@n8n/api-types';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInputs, ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import type { WebAuthnCredentialResponse } from '@n8n/api-types';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
@@ -19,13 +18,13 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
-import { twoFactorWizardBus } from '../auth.eventBus';
-import type { TwoFactorMethod } from '../auth.eventBus';
+import {
+	twoFactorWizardBus,
+	confirmPasswordEventBus,
+	type ConfirmPasswordModalEvents,
+} from '../auth.eventBus';
 import { useMfaReverify } from '../composables/useMfaReverify';
-import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
-import { confirmPasswordEventBus } from '../auth.eventBus';
 import {
 	N8nAvatar,
 	N8nBadge,
@@ -122,13 +121,15 @@ const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
 
-const activeMfaMethods = computed<TwoFactorMethod[]>(() => {
-	if (!currentUser.value?.mfaEnabled) return [];
-	return (currentUser.value.availableMfaMethods as TwoFactorMethod[] | undefined) ?? [];
-});
-
-const has2fa = computed(
-	() => activeMfaMethods.value.includes('totp') || activeMfaMethods.value.includes('security_key'),
+// `availableMfaMethods` (server-derived) is the source of truth for TOTP;
+// `webauthnCredentials` (full list with metadata) is the source of truth for
+// passkey/security_key counts and rendering. Keeping these split avoids the
+// dual-signal drift where the badge ("2 registered") and the activation check
+// can disagree.
+const hasTotp = computed(
+	() =>
+		currentUser.value?.mfaEnabled === true &&
+		(currentUser.value.availableMfaMethods ?? []).includes('totp'),
 );
 const webauthnCredentials = ref<WebAuthnCredentialResponse[]>([]);
 
@@ -140,6 +141,11 @@ const passkeyCredentials = computed<WebAuthnCredentialResponse[]>(() =>
 );
 const securityKeyCredentials = computed<WebAuthnCredentialResponse[]>(() =>
 	webauthnCredentials.value.filter((c) => !isPlatformCredential(c)),
+);
+
+const has2fa = computed(
+	() =>
+		hasTotp.value || passkeyCredentials.value.length > 0 || securityKeyCredentials.value.length > 0,
 );
 
 const formatSetupDate = (iso: string) => {
@@ -409,7 +415,7 @@ async function onSetupPasskeyClick() {
 }
 
 function isMethodActive(method: 'totp' | 'security_key'): boolean {
-	if (method === 'totp') return activeMfaMethods.value.includes('totp');
+	if (method === 'totp') return hasTotp.value;
 	if (method === 'security_key') return securityKeyCredentials.value.length > 0;
 	return false;
 }
@@ -427,10 +433,10 @@ async function onTwoFactorMethodClick(method: 'totp' | 'security_key') {
 }
 
 async function onDisable2faClick() {
-	await disableMfa('disabled2fa');
+	await disableMfa();
 }
 
-async function disableMfa(_intent: 'removedPasskey' | 'disabled2fa') {
+async function disableMfa() {
 	const proof = await reverify();
 	if (!proof) return;
 	try {
@@ -611,7 +617,7 @@ onBeforeUnmount(() => {
 						<!-- TOTP card -->
 						<div :class="$style.methodCard" data-test-id="mfa-method-totp">
 							<div :class="$style.methodCardHeader">
-								<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
+								<div :class="[$style.activeMethodIcon, $style.tone_totp]">
 									<N8nIcon icon="shield" />
 								</div>
 								<div :class="$style.methodCardContent">
@@ -805,19 +811,6 @@ onBeforeUnmount(() => {
 	justify-self: start;
 }
 
-.disableMfaButton {
-	> span {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
-.button {
-	font-size: var(--spacing--xs);
-	> span {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
 .infoText {
 	font-size: var(--font-size--xs);
 	color: var(--text-color--subtle);
@@ -831,16 +824,6 @@ onBeforeUnmount(() => {
 
 .themeSelect {
 	max-width: 50%;
-}
-
-.activeMethodCard {
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--xs);
 }
 
 .methodCards {
@@ -863,10 +846,6 @@ onBeforeUnmount(() => {
 	display: flex;
 	gap: var(--spacing--xs);
 	align-items: center;
-}
-
-.methodCardMuted {
-	opacity: 0.85;
 }
 
 .credList {
@@ -967,12 +946,6 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--2xs);
 }
 
-.activeMethodHeader {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-
 .activeMethodIcon {
 	width: var(--spacing--xl);
 	height: var(--spacing--xl);
@@ -982,25 +955,6 @@ onBeforeUnmount(() => {
 	justify-content: center;
 	flex-shrink: 0;
 	font-size: var(--font-size--md);
-}
-
-.activeMethodInfo {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-}
-
-.activeMethodLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.activeMethodActions {
-	display: flex;
-	gap: var(--spacing--3xs);
-	margin-top: var(--spacing--3xs);
 }
 
 .tone_totp {

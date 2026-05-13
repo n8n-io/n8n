@@ -262,8 +262,7 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		await this.authService.invalidateOtherSessions(user.id);
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		await this.authService.rotateSession(res, user, user.mfaEnabled, req);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 

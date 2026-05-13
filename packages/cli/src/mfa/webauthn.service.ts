@@ -7,6 +7,19 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
+/**
+ * Whether a credential is a platform authenticator (passkey) vs a roaming
+ * authenticator (security key). Returning the credential's transports without
+ * `'internal'` and not a multi-device synced credential means it's a roaming
+ * authenticator. Single source of truth — keep callers from drifting.
+ */
+export function isPlatformCredential(c: {
+	transports?: string[] | null;
+	deviceType?: string | null;
+}): boolean {
+	return (c.transports ?? []).includes('internal') || c.deviceType === 'multiDevice';
+}
+
 @Service()
 export class WebAuthnService {
 	constructor(
@@ -170,9 +183,7 @@ export class WebAuthnService {
 		// only satisfy the ceremony with a matching credential.
 		const filterByKind = (c: (typeof allCredentials)[number]) => {
 			if (!kind) return true;
-			const isPlatform =
-				(c.transports ?? []).includes('internal') || c.deviceType === 'multiDevice';
-			return kind === 'passkey' ? isPlatform : !isPlatform;
+			return kind === 'passkey' ? isPlatformCredential(c) : !isPlatformCredential(c);
 		};
 		const credentials = allCredentials.filter(filterByKind);
 
@@ -198,37 +209,40 @@ export class WebAuthnService {
 		return options;
 	}
 
-	async verifyAuthenticationResponse(userId: string, response: unknown) {
+	/**
+	 * Shared assertion verification used by both per-user (challenge keyed by
+	 * userId) and passwordless (challenge keyed by challengeId) flows. Verifies
+	 * the signature, updates `counter` + `lastUsedAt` on success, and deletes
+	 * the consumed challenge. Returns the verification result plus the
+	 * matching credential so callers can drive flow-specific follow-ups.
+	 */
+	private async verifyAssertion(
+		response: unknown,
+		challengeCacheKey: string,
+		credentialLookup: { userId?: string },
+		options: { requireUserVerification: boolean },
+	) {
 		const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
 
-		const challenge = await this.cacheService.get(`webauthn:challenge:auth:${userId}`);
-		if (!challenge) {
-			throw new Error('WebAuthn authentication challenge expired or not found');
-		}
+		const challenge = await this.cacheService.get(challengeCacheKey);
+		if (!challenge) return null;
 
 		const authResponse = response as Parameters<typeof verifyAuthenticationResponse>[0]['response'];
 		const credentialId = authResponse.id;
 
 		const credential = await this.webauthnCredentialRepository.findOne({
-			where: { userId, credentialId },
+			where: credentialLookup.userId
+				? { userId: credentialLookup.userId, credentialId }
+				: { credentialId },
 		});
-
-		if (!credential) {
-			throw new Error('WebAuthn credential not found');
-		}
-
-		const transports = credential.transports ?? [];
-		const isPlatformAuthenticator =
-			(transports.length > 0 && transports.every((t) => t === 'internal')) ||
-			credential.deviceType === 'multiDevice';
-		const requireUserVerification = isPlatformAuthenticator;
+		if (!credential) return null;
 
 		const verification = await verifyAuthenticationResponse({
 			response: authResponse,
 			expectedChallenge: challenge as string,
 			expectedOrigin: this.getOrigin(),
 			expectedRPID: this.getRpId(),
-			requireUserVerification,
+			requireUserVerification: options.requireUserVerification,
 			credential: {
 				id: credential.credentialId,
 				publicKey: new Uint8Array(credential.publicKey),
@@ -246,9 +260,32 @@ export class WebAuthnService {
 			});
 		}
 
-		await this.cacheService.delete(`webauthn:challenge:auth:${userId}`);
+		await this.cacheService.delete(challengeCacheKey);
 
-		return verification.verified;
+		return { verification, credential };
+	}
+
+	async verifyAuthenticationResponse(userId: string, response: unknown) {
+		// Per-user flow looks up the credential row first to derive UV
+		// requirements (passkeys must be UV; security keys can be UV-optional).
+		const authResponse = response as { id: string };
+		const credential = await this.webauthnCredentialRepository.findOne({
+			where: { userId, credentialId: authResponse.id },
+		});
+		if (!credential) {
+			throw new Error('WebAuthn credential not found');
+		}
+
+		const result = await this.verifyAssertion(
+			response,
+			`webauthn:challenge:auth:${userId}`,
+			{ userId },
+			{ requireUserVerification: isPlatformCredential(credential) },
+		);
+		if (!result) {
+			throw new Error('WebAuthn authentication challenge expired or not found');
+		}
+		return result.verification.verified;
 	}
 
 	async generatePasswordlessAuthenticationOptions() {
@@ -281,50 +318,19 @@ export class WebAuthnService {
 	}
 
 	async verifyPasswordlessAuthentication(challengeId: string, response: unknown): Promise<User> {
-		const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
-
-		const cacheKey = `webauthn:challenge:passwordless:${challengeId}`;
-		const challenge = await this.cacheService.get(cacheKey);
-		if (!challenge) throw new AuthError('Unauthorized');
-
-		const authResponse = response as Parameters<typeof verifyAuthenticationResponse>[0]['response'];
-		const credentialId = authResponse.id;
-
-		// Identify the user from the credential row — the signature verification
-		// below proves possession of the matching private key, so the credential
-		// row's `userId` is the authoritative identity.
-		const credential = await this.webauthnCredentialRepository.findOne({
-			where: { credentialId },
-		});
-		if (!credential) throw new AuthError('Unauthorized');
-
-		const verification = await verifyAuthenticationResponse({
-			response: authResponse,
-			expectedChallenge: challenge as string,
-			expectedOrigin: this.getOrigin(),
-			expectedRPID: this.getRpId(),
-			requireUserVerification: true,
-			credential: {
-				id: credential.credentialId,
-				publicKey: new Uint8Array(credential.publicKey),
-				counter: credential.counter,
-				transports: (credential.transports ?? undefined) as
-					| Parameters<typeof verifyAuthenticationResponse>[0]['credential']['transports']
-					| undefined,
-			},
-		});
-		if (!verification.verified || !verification.authenticationInfo) {
-			throw new AuthError('Unauthorized');
-		}
-
-		await this.webauthnCredentialRepository.update(credential.id, {
-			counter: verification.authenticationInfo.newCounter,
-			lastUsedAt: new Date(),
-		});
-		await this.cacheService.delete(cacheKey);
+		// Passwordless flow identifies the user from the credential row —
+		// the signature verification proves possession of the matching private
+		// key, so the credential row's `userId` is the authoritative identity.
+		const result = await this.verifyAssertion(
+			response,
+			`webauthn:challenge:passwordless:${challengeId}`,
+			{},
+			{ requireUserVerification: true },
+		);
+		if (!result || !result.verification.verified) throw new AuthError('Unauthorized');
 
 		const user = await this.userRepository.findOne({
-			where: { id: credential.userId },
+			where: { id: result.credential.userId },
 			relations: ['role'],
 		});
 		if (!user || user.disabled) throw new AuthError('Unauthorized');

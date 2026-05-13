@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import {
 	N8nButton,
 	N8nIcon,
@@ -17,7 +18,8 @@ import { WEBAUTHN_SETUP_WIZARD_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { twoFactorWizardBus, type TwoFactorMethod } from '../auth.eventBus';
+import type { MfaMethod } from '@n8n/api-types';
+import { twoFactorWizardBus } from '../auth.eventBus';
 import { suggestCredentialLabel } from '../utils/suggest-label';
 import MfaWizardSteps from './MfaWizardSteps.vue';
 
@@ -97,13 +99,21 @@ const onRegister = async () => {
 			label.value.trim(),
 			attachment.value,
 		);
-		const completed: TwoFactorMethod = method.value;
+		const completed: MfaMethod = method.value;
+		const toastKeys: { title: BaseTextKey; message: BaseTextKey } =
+			completed === 'passkey'
+				? {
+						title: 'settings.personal.twoFactor.toast.enabled.passkey.title',
+						message: 'settings.personal.twoFactor.toast.enabled.passkey.message',
+					}
+				: {
+						title: 'settings.personal.twoFactor.toast.enabled.security_key.title',
+						message: 'settings.personal.twoFactor.toast.enabled.security_key.message',
+					};
 		toast.showMessage({
 			type: 'success',
-			title: i18n.baseText(`settings.personal.twoFactor.toast.enabled.${completed}.title` as never),
-			message: i18n.baseText(
-				`settings.personal.twoFactor.toast.enabled.${completed}.message` as never,
-			),
+			title: i18n.baseText(toastKeys.title),
+			message: i18n.baseText(toastKeys.message),
 		});
 		twoFactorWizardBus.emit('completed', { method: completed });
 		if (result.recoveryCodes?.length) {

@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import type { IFormInputs, InputAutocompletePropType } from '@/Interface';
 import type { MfaMethod } from '@n8n/api-types';
-import { N8nLogo } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCard,
+	N8nFormInputs,
+	N8nHeading,
+	N8nIcon,
+	N8nLogo,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
@@ -10,20 +19,10 @@ import {
 import { mfaEventBus } from '../auth.eventBus';
 import { LAST_2FA_METHOD_KEY } from '../auth.constants';
 import { computed, onMounted, ref, watch } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-
-import {
-	N8nButton,
-	N8nCard,
-	N8nFormInputs,
-	N8nHeading,
-	N8nIcon,
-	N8nNotice,
-	N8nText,
-} from '@n8n/design-system';
 
 const props = defineProps<{
 	reportError: boolean;
@@ -65,17 +64,35 @@ const showSwitcher = computed(() => {
 const switcherTarget = computed<MfaMethod>(() =>
 	currentMethod.value === 'totp' ? webauthnMethod.value : 'totp',
 );
-const switcherLabelKey = computed(() =>
-	switcherTarget.value === 'totp'
-		? 'mfa.login.switcher.useTotp'
-		: switcherTarget.value === 'passkey'
-			? 'mfa.login.switcher.usePasskey'
-			: 'mfa.login.switcher.useSecurityKey',
-);
+const switcherLabelKey = computed<BaseTextKey>(() => {
+	if (switcherTarget.value === 'totp') return 'mfa.login.switcher.useTotp';
+	if (switcherTarget.value === 'passkey') return 'mfa.login.switcher.usePasskey';
+	return 'mfa.login.switcher.useSecurityKey';
+});
 const switcherIcon = computed(() => (switcherTarget.value === 'totp' ? 'shield' : 'key-round'));
 const onSwitcherClick = () => {
 	currentMethod.value = switcherTarget.value;
 };
+
+const webauthnCopyKeys = computed(() => {
+	const m = currentMethod.value;
+	if (m === 'passkey') {
+		return {
+			title: 'mfa.login.passkey.title',
+			waitingTitle: 'mfa.login.passkey.waiting.title',
+			description: 'mfa.login.passkey.description',
+			waitingDescription: 'mfa.login.passkey.waiting.description',
+			button: 'mfa.login.passkey.button',
+		} satisfies Record<string, BaseTextKey>;
+	}
+	return {
+		title: 'mfa.login.security_key.title',
+		waitingTitle: 'mfa.login.security_key.waiting.title',
+		description: 'mfa.login.security_key.description',
+		waitingDescription: 'mfa.login.security_key.waiting.description',
+		button: 'mfa.login.security_key.button',
+	} satisfies Record<string, BaseTextKey>;
+});
 
 const hasAnyChanges = ref(false);
 const formBus = ref(mfaEventBus);
@@ -337,7 +354,7 @@ watch(currentMethod, (next) => {
 				>
 					<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
 						<N8nIcon :icon="switcherIcon" size="xsmall" />
-						{{ i18.baseText(switcherLabelKey as never) }}
+						{{ i18.baseText(switcherLabelKey) }}
 					</button>
 				</div>
 			</template>
@@ -355,20 +372,14 @@ watch(currentMethod, (next) => {
 						<N8nIcon :icon="currentMethod === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
 					</div>
 					<N8nHeading tag="h3" size="medium" color="text-dark" :class="$style.promptTitle">
-						<template v-if="!webauthnWaiting">{{
-							i18.baseText(`mfa.login.${currentMethod}.title` as never)
-						}}</template>
-						<template v-else>{{
-							i18.baseText(`mfa.login.${currentMethod}.waiting.title` as never)
-						}}</template>
+						<template v-if="!webauthnWaiting">{{ i18.baseText(webauthnCopyKeys.title) }}</template>
+						<template v-else>{{ i18.baseText(webauthnCopyKeys.waitingTitle) }}</template>
 					</N8nHeading>
 					<N8nText size="small" color="text-base" :class="$style.promptDescription">
 						<template v-if="!webauthnWaiting">{{
-							i18.baseText(`mfa.login.${currentMethod}.description` as never)
+							i18.baseText(webauthnCopyKeys.description)
 						}}</template>
-						<template v-else>{{
-							i18.baseText(`mfa.login.${currentMethod}.waiting.description` as never)
-						}}</template>
+						<template v-else>{{ i18.baseText(webauthnCopyKeys.waitingDescription) }}</template>
 					</N8nText>
 				</div>
 				<N8nNotice
@@ -382,7 +393,7 @@ watch(currentMethod, (next) => {
 				</N8nText>
 				<N8nButton
 					v-if="!webauthnWaiting"
-					:label="i18.baseText(`mfa.login.${currentMethod}.button` as never)"
+					:label="i18.baseText(webauthnCopyKeys.button)"
 					size="large"
 					:class="$style.fullWidthButton"
 					data-test-id="mfa-webauthn-button"
@@ -405,7 +416,7 @@ watch(currentMethod, (next) => {
 				>
 					<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
 						<N8nIcon :icon="switcherIcon" size="xsmall" />
-						{{ i18.baseText(switcherLabelKey as never) }}
+						{{ i18.baseText(switcherLabelKey) }}
 					</button>
 				</div>
 			</template>

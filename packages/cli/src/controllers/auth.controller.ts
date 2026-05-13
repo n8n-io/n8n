@@ -96,17 +96,34 @@ export class AuthController {
 
 		await this.validateMfa(user, mfaCode, mfaRecoveryCode, webauthnResponse);
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		return await this.completeLogin(res, req, user, {
+			authenticationMethod: usedAuthenticationMethod,
+			usedMfa: user.mfaEnabled,
+		});
+	}
+
+	/**
+	 * Final steps of a successful login: issue the session cookie, emit the
+	 * `user-logged-in` event, and return the public user payload. Shared by the
+	 * password login and the passwordless webauthn login.
+	 */
+	private async completeLogin(
+		res: Response,
+		req: { browserId?: string },
+		user: User,
+		opts: { authenticationMethod: AuthProviderType; usedMfa: boolean },
+	): Promise<PublicUser> {
+		this.authService.issueCookie(res, user, opts.usedMfa, req.browserId);
 
 		this.eventService.emit('user-logged-in', {
 			user,
-			authenticationMethod: usedAuthenticationMethod,
+			authenticationMethod: opts.authenticationMethod,
 		});
 
 		return await this.userService.toPublic(user, {
 			posthog: this.postHog,
 			withScopes: true,
-			mfaAuthenticated: user.mfaEnabled,
+			mfaAuthenticated: opts.usedMfa,
 		});
 	}
 
@@ -225,17 +242,9 @@ export class AuthController {
 
 		// WebAuthn UV (biometric/PIN) satisfies the second factor, so the session
 		// is issued with `usedMfa: true` and bypasses the MFA-enforced gate.
-		this.authService.issueCookie(res, user, true, req.browserId);
-
-		this.eventService.emit('user-logged-in', {
-			user,
+		return await this.completeLogin(res, req, user, {
 			authenticationMethod: 'email',
-		});
-
-		return await this.userService.toPublic(user, {
-			posthog: this.postHog,
-			withScopes: true,
-			mfaAuthenticated: true,
+			usedMfa: true,
 		});
 	}
 

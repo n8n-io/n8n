@@ -1,4 +1,4 @@
-import { UserUpdateRequestDto } from '@n8n/api-types';
+import { PasswordUpdateRequestDto, UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
@@ -514,7 +514,9 @@ describe('MeController', () => {
 							lastName: 'Potato',
 						}),
 					),
-				).rejects.toThrowError(new BadRequestError('Two-factor code is required to change email'));
+				).rejects.toThrowError(
+					new BadRequestError('Two-factor verification is required to change email'),
+				);
 			});
 
 			it('should throw InvalidMfaCodeError if mfa code is invalid', async () => {
@@ -527,7 +529,7 @@ describe('MeController', () => {
 					mfaEnabled: true,
 				} as unknown as User;
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
-				mockMfaService.validateMfa.mockResolvedValue(false);
+				mockMfaService.validateProof.mockResolvedValue(false);
 
 				await expect(
 					controller.updateCurrentUser(
@@ -559,7 +561,7 @@ describe('MeController', () => {
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
-				mockMfaService.validateMfa.mockResolvedValue(true);
+				mockMfaService.validateProof.mockResolvedValue(true);
 
 				const result = await controller.updateCurrentUser(
 					req,
@@ -877,13 +879,14 @@ describe('MeController', () => {
 				} as unknown as AuthenticatedRequest;
 
 				await expect(
-					controller.updatePassword(
-						req,
-						mock(),
-						mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
-					),
+					controller.updatePassword(req, mock(), {
+						currentPassword: 'old_password',
+						newPassword: 'NewPassword123',
+						mfaCode: undefined,
+						webauthnResponse: undefined,
+					} as PasswordUpdateRequestDto),
 				).rejects.toThrowError(
-					new BadRequestError('Two-factor code is required to change password.'),
+					new BadRequestError('Two-factor verification is required to change password.'),
 				);
 			});
 
@@ -891,7 +894,7 @@ describe('MeController', () => {
 				const req = {
 					user: mock({ password: passwordHash, mfaEnabled: true }),
 				} as unknown as AuthenticatedRequest;
-				mockMfaService.validateMfa.mockResolvedValue(false);
+				mockMfaService.validateProof.mockResolvedValue(false);
 
 				await expect(
 					controller.updatePassword(
@@ -914,7 +917,7 @@ describe('MeController', () => {
 				const res = mock<Response>();
 				userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
 				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
-				mockMfaService.validateMfa.mockResolvedValue(true);
+				mockMfaService.validateProof.mockResolvedValue(true);
 
 				const result = await controller.updatePassword(
 					req,
