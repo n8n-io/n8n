@@ -53,6 +53,7 @@ import { useCredentialResolvers } from '@/features/resolvers/composables/useCred
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
+import { getProjectPoolSettings } from '@n8n/rest-api-client/api/orchestration';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -144,6 +145,8 @@ type WorkerPoolSettingKey =
 
 const workerPoolNames = ref<string[]>([]);
 const globalPoolAssignment = ref<Partial<Record<WorkerPoolCategory, string>>>({});
+const projectPoolAssignment = ref<Partial<Record<WorkerPoolCategory, string>>>({});
+const projectAllowedPools = ref<string[]>([]);
 
 const workerPoolSettingKeys = {
 	production: 'workerPoolOverrideProduction',
@@ -171,19 +174,52 @@ const loadWorkerPoolOptions = async () => {
 	if (clusterInfo?.poolAssignment) {
 		globalPoolAssignment.value = clusterInfo.poolAssignment;
 	}
+
+	const projectId = workflowDocumentStore.value?.homeProject?.id;
+	if (projectId) {
+		try {
+			const projectSettings = await getProjectPoolSettings(rootStore.restApiContext, projectId);
+			projectPoolAssignment.value = projectSettings.assignment;
+			projectAllowedPools.value = projectSettings.allowedPools;
+		} catch {
+			// Fall back to instance defaults if project settings unavailable
+		}
+	}
 };
 
 const workerPoolOptionsForCategory = (category: WorkerPoolCategory) => {
-	const globalPool = globalPoolAssignment.value[category];
-	const poolName = globalPool || i18n.baseText('workflowSettings.workerPool.default').toLowerCase();
+	const effectiveDefault =
+		projectPoolAssignment.value[category] ?? globalPoolAssignment.value[category];
+	const poolName =
+		effectiveDefault || i18n.baseText('workflowSettings.workerPool.default').toLowerCase();
 	const defaultLabel = i18n.baseText('workflowSettings.workerPool.defaultWithPool', {
 		interpolate: { poolName },
 	});
 
-	return [
+	let availablePools = workerPoolNames.value;
+	if (projectAllowedPools.value.length > 0) {
+		const allowed = new Set(projectAllowedPools.value);
+		availablePools = workerPoolNames.value.filter((name) => allowed.has(name));
+	}
+
+	const options = [
 		{ key: 'DEFAULT', value: defaultLabel },
-		...workerPoolNames.value.map((name) => ({ key: name, value: name })),
+		...availablePools.map((name) => ({ key: name, value: name })),
 	];
+
+	const currentOverride = workflowSettings.value[workerPoolSettingKeys[category]];
+	if (
+		currentOverride &&
+		currentOverride !== 'DEFAULT' &&
+		!availablePools.includes(currentOverride)
+	) {
+		options.push({
+			key: currentOverride,
+			value: `${currentOverride} (${i18n.baseText('workflowSettings.workerPool.notAllowed')})`,
+		});
+	}
+
+	return options;
 };
 
 const selectedWorkerPool = (category: WorkerPoolCategory) => {

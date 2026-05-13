@@ -6,3 +6,8 @@ export type WorkerPoolsResponse = {
 	pools: string[];
 	assignment: PoolAssignment;
 };
+
+export type ProjectPoolSettingsResponse = {
+	assignment: PoolAssignment;
+	allowedPools: string[];
+};
