@@ -156,7 +156,20 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
-const { fetchDependencyCounts } = useDependencies();
+const { fetchDependencyCounts, downloadDependencyGraph } = useDependencies();
+const dependencyGraphDownloading = ref(false);
+
+async function onDownloadDependencyGraph() {
+	if (dependencyGraphDownloading.value) return;
+	dependencyGraphDownloading.value = true;
+	try {
+		await downloadDependencyGraph();
+	} catch (e) {
+		toast.showError(e, i18n.baseText('workflows.downloadDependencyGraph.error'));
+	} finally {
+		dependencyGraphDownloading.value = false;
+	}
+}
 const {
 	showRecommendedTemplatesInline,
 	emptyStateHeading: emptyListHeading,
@@ -1806,8 +1819,21 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="showFolders || showRegisteredCommunityCTA" #add-button>
+		<template #add-button>
+			<N8nTooltip placement="top" :content="i18n.baseText('workflows.downloadDependencyGraph')">
+				<N8nButton
+					variant="outline"
+					size="medium"
+					icon-only
+					icon="download"
+					:loading="dependencyGraphDownloading"
+					:aria-label="i18n.baseText('workflows.downloadDependencyGraph')"
+					data-test-id="download-dependency-graph-button"
+					@click="onDownloadDependencyGraph"
+				/>
+			</N8nTooltip>
 			<N8nTooltip
+				v-if="showFolders || showRegisteredCommunityCTA"
 				placement="top"
 				:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 			>

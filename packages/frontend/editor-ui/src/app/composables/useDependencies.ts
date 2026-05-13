@@ -82,6 +82,23 @@ export function useDependencies() {
 		countsMap.value = {};
 	}
 
+	async function downloadDependencyGraph(): Promise<void> {
+		const dot = await workflowDependenciesApi.getDependencyGraphDot(rootStore.restApiContext);
+		const blob = new Blob([dot], { type: 'text/vnd.graphviz;charset=utf-8' });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = 'workflow-dependencies.dot';
+		link.style.display = 'none';
+		document.body.appendChild(link);
+		try {
+			link.click();
+		} finally {
+			if (document.body.contains(link)) document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+		}
+	}
+
 	return {
 		fetchDependencyCounts,
 		fetchDependencies,
@@ -90,5 +107,6 @@ export function useDependencies() {
 		getTotalCount,
 		hasDependencies,
 		clearCache,
+		downloadDependencyGraph,
 	};
 }

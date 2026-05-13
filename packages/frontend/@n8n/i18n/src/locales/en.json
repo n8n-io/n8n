@@ -3976,6 +3976,8 @@
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add workflow",
 	"workflows.addFolder": "Add folder",
+	"workflows.downloadDependencyGraph": "Download dependency graph",
+	"workflows.downloadDependencyGraph.error": "Could not download dependency graph",
 	"workflows.publish": "Publish",
 	"workflows.published": "Published",
 	"workflows.publish.permissionDenied": "You don't have permission to publish this workflow",

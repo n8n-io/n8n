@@ -69,6 +69,74 @@ export class WorkflowDependencyQueryService {
 		return result;
 	}
 
+	/**
+	 * Build a DOT-format dependency graph for every workflow the user can read.
+	 * Workflows, credentials and data tables the user cannot access appear as
+	 * anonymized "(restricted)" nodes so the graph structure is preserved
+	 * without leaking resource identifiers.
+	 */
+	async getDependencyGraph(user: User): Promise<string> {
+		const accessibleWfIds = await this.workflowFinderService.findAllWorkflowIdsForUser(user, [
+			'workflow:read',
+		]);
+
+		if (accessibleWfIds.length === 0) return emptyDotGraph();
+
+		const rawDeps = await this.dependencyRepository.find({
+			where: [
+				{
+					workflowId: In(accessibleWfIds),
+					dependencyType: In(['credentialId', 'dataTableId', 'errorWorkflow', 'workflowCall']),
+				},
+				{
+					dependencyKey: In(accessibleWfIds),
+					dependencyType: In(['errorWorkflow', 'workflowCall']),
+				},
+			],
+			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+		});
+
+		if (rawDeps.length === 0) return emptyDotGraph();
+
+		const maps = this.buildDepMaps(rawDeps);
+
+		const [accessibleReferencedWfIds, accessibleCredIds, accessibleDtIds] = await Promise.all([
+			this.filterByAccess([...maps.allWfIds], 'workflow', user),
+			this.filterByAccess([...maps.allCredIds], 'credential', user),
+			this.filterByAccess([...maps.allDtIds], 'dataTable', user),
+		]);
+
+		const [credentials, workflows, dataTables] = await Promise.all([
+			accessibleCredIds.length > 0
+				? this.credentialsRepository.find({
+						where: { id: In(accessibleCredIds) },
+						select: ['id', 'name'],
+					})
+				: [],
+			accessibleReferencedWfIds.length > 0
+				? this.workflowRepository.find({
+						where: { id: In(accessibleReferencedWfIds) },
+						select: ['id', 'name'],
+					})
+				: [],
+			accessibleDtIds.length > 0
+				? this.dataTableRepository.find({
+						where: { id: In(accessibleDtIds) },
+						select: ['id', 'name'],
+					})
+				: [],
+		]);
+
+		const wfNames = new Map<string, string>();
+		const credNames = new Map<string, string>();
+		const dtNames = new Map<string, string>();
+		for (const w of workflows) wfNames.set(w.id, w.name ?? w.id);
+		for (const c of credentials) credNames.set(c.id, c.name ?? c.id);
+		for (const dt of dataTables) dtNames.set(dt.id, dt.name ?? dt.id);
+
+		return buildDotGraph(maps, { wfNames, credNames, dtNames });
+	}
+
 	/** Return resolved dependencies for each input resource, excluding inaccessible ones. */
 	async getResourceDependencies(
 		resourceIds: string[],
@@ -310,4 +378,93 @@ function addToSet(map: Map<string, Set<string>>, key: string, val: string) {
 		map.set(key, set);
 	}
 	set.add(val);
+}
+
+function emptyDotGraph(): string {
+	return 'digraph WorkflowDependencies {\n  rankdir=LR;\n}\n';
+}
+
+function dotEscape(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function buildDotGraph(
+	maps: RawDepMaps,
+	names: {
+		wfNames: Map<string, string>;
+		credNames: Map<string, string>;
+		dtNames: Map<string, string>;
+	},
+): string {
+	const lines: string[] = [];
+	lines.push('digraph WorkflowDependencies {');
+	lines.push('  rankdir=LR;');
+	lines.push('  node [fontname="Helvetica"];');
+	lines.push('  edge [fontname="Helvetica", fontsize=10];');
+	lines.push('');
+
+	const restrictedIds = new Map<string, string>();
+	let restrictedCounter = 0;
+	const nodeIdFor = (
+		id: string,
+		prefix: 'wf' | 'cred' | 'dt',
+		nameMap: Map<string, string>,
+	): { nodeId: string; accessible: boolean } => {
+		if (nameMap.has(id)) return { nodeId: `${prefix}_${id}`, accessible: true };
+		let placeholder = restrictedIds.get(`${prefix}:${id}`);
+		if (!placeholder) {
+			placeholder = `restricted_${prefix}_${++restrictedCounter}`;
+			restrictedIds.set(`${prefix}:${id}`, placeholder);
+		}
+		return { nodeId: placeholder, accessible: false };
+	};
+
+	const emittedNodes = new Set<string>();
+	const declareNode = (
+		id: string,
+		prefix: 'wf' | 'cred' | 'dt',
+		nameMap: Map<string, string>,
+		shape: string,
+	) => {
+		const { nodeId, accessible } = nodeIdFor(id, prefix, nameMap);
+		if (emittedNodes.has(nodeId)) return nodeId;
+		emittedNodes.add(nodeId);
+
+		if (accessible) {
+			const label = dotEscape(nameMap.get(id)!);
+			lines.push(`  "${nodeId}" [label="${label}", shape=${shape}];`);
+		} else {
+			lines.push(`  "${nodeId}" [label="(restricted)", shape=${shape}, style=dashed, color=gray];`);
+		}
+		return nodeId;
+	};
+
+	for (const id of maps.allWfIds) declareNode(id, 'wf', names.wfNames, 'box');
+	for (const id of maps.allCredIds) declareNode(id, 'cred', names.credNames, 'ellipse');
+	for (const id of maps.allDtIds) declareNode(id, 'dt', names.dtNames, 'cylinder');
+
+	lines.push('');
+
+	const emitEdges = (
+		sourceMap: Map<string, Set<string>>,
+		targetPrefix: 'wf' | 'cred' | 'dt',
+		targetNames: Map<string, string>,
+		attrs: string,
+	) => {
+		for (const [sourceId, targets] of sourceMap) {
+			const source = nodeIdFor(sourceId, 'wf', names.wfNames).nodeId;
+			for (const targetId of targets) {
+				const target = nodeIdFor(targetId, targetPrefix, targetNames).nodeId;
+				lines.push(`  "${source}" -> "${target}" [${attrs}];`);
+			}
+		}
+	};
+
+	emitEdges(maps.subMap, 'wf', names.wfNames, 'label="calls"');
+	emitEdges(maps.errorWfMap, 'wf', names.wfNames, 'label="error", style=dashed');
+	emitEdges(maps.credMap, 'cred', names.credNames, 'label="uses", color="#888888"');
+	emitEdges(maps.dtMap, 'dt', names.dtNames, 'label="uses", color="#888888"');
+
+	lines.push('}');
+	return lines.join('\n') + '\n';
 }

@@ -31,3 +31,12 @@ export async function getResourceDependencies(
 		{ resourceIds, resourceType },
 	);
 }
+
+export async function getDependencyGraphDot(context: IRestApiContext): Promise<string> {
+	const { dot } = await makeRestApiRequest<{ dot: string }>(
+		context,
+		'GET',
+		'/workflow-dependencies/graph',
+	);
+	return dot;
+}

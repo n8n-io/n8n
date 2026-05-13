@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { WorkflowEntity, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -10,7 +10,9 @@ import { z } from 'zod';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { EventService } from '@/events/event.service';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -50,6 +52,7 @@ type WorkflowHandlers = {
 	updateWorkflowTags: PublicAPIEndpoint<WorkflowRequest.UpdateTags>;
 	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
+	getWorkflowDependencyGraph: PublicAPIEndpoint<WorkflowRequest.GetDependencyGraph>;
 };
 
 const workflowHandlers: WorkflowHandlers = {
@@ -454,6 +457,24 @@ const workflowHandlers: WorkflowHandlers = {
 			} catch (error) {
 				return handleError(error);
 			}
+		},
+	],
+	getWorkflowDependencyGraph: [
+		publicApiScope('workflow:list'),
+		async (req, res) => {
+			if (!Container.get(WorkflowsConfig).indexingEnabled) {
+				throw new ServiceUnavailableError('Workflow dependency indexing is not enabled');
+			}
+
+			const dot = await Container.get(WorkflowDependencyQueryService).getDependencyGraph(req.user);
+
+			if (req.query.format === 'dot') {
+				res.setHeader('Content-Type', 'text/vnd.graphviz; charset=utf-8');
+				res.setHeader('Content-Disposition', 'attachment; filename="workflow-dependencies.dot"');
+				return res.send(dot);
+			}
+
+			return res.json({ dot });
 		},
 	],
 };

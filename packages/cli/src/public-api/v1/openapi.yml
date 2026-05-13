@@ -76,6 +76,8 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
+  /workflows/dependency-graph:
+    $ref: './handlers/workflows/spec/paths/workflows.dependency-graph.yml'
   /workflows/{id}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{id}/{versionId}:

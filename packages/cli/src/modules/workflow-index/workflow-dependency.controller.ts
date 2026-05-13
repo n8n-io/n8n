@@ -1,7 +1,8 @@
 import { GetResourceDependenciesDto, GetResourceDependencyCountsDto } from '@n8n/api-types';
 import { WorkflowsConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Post, RestController } from '@n8n/decorators';
+import type { Response } from 'express';
 
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
@@ -42,6 +43,24 @@ export class WorkflowDependencyController {
 			body.resourceType,
 			req.user,
 		);
+	}
+
+	@Get('/graph')
+	async getDependencyGraph(req: AuthenticatedRequest): Promise<{ dot: string }> {
+		this.assertIndexingEnabled();
+
+		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user);
+		return { dot };
+	}
+
+	@Get('/graph.dot')
+	async downloadDependencyGraph(req: AuthenticatedRequest, res: Response) {
+		this.assertIndexingEnabled();
+
+		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user);
+		res.setHeader('Content-Type', 'text/vnd.graphviz; charset=utf-8');
+		res.setHeader('Content-Disposition', 'attachment; filename="workflow-dependencies.dot"');
+		res.send(dot);
 	}
 
 	private assertIndexingEnabled() {
