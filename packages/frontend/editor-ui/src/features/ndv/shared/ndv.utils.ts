@@ -49,6 +49,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 		maxTries: 3,
 		waitBetweenTries: 1000,
 		notes: '',
+		customTelemetryTags: {},
 		parameters: {},
 	};
 }
@@ -451,6 +452,7 @@ export function shouldSkipParamValidation(
 export function createCommonNodeSettings(
 	isToolOrModelNode: boolean,
 	t: (key: BaseTextKey) => string,
+	isOtelEnabled = false,
 ) {
 	const ret: INodeProperties[] = [];
 
@@ -572,6 +574,40 @@ export function createCommonNodeSettings(
 		},
 	);
 
+	if (isOtelEnabled) {
+		ret.push({
+			displayName: t('nodeSettings.customTelemetryTags.displayName'),
+			name: 'customTelemetryTags',
+			type: 'fixedCollection',
+			typeOptions: { multipleValues: true, sortable: true },
+			placeholder: t('nodeSettings.customTelemetryTags.placeholder'),
+			default: {},
+			description: t('nodeSettings.customTelemetryTags.description'),
+			isNodeSetting: true,
+			options: [
+				{
+					name: 'tag',
+					displayName: t('nodeSettings.customTelemetryTags.tag.displayName'),
+					values: [
+						{
+							displayName: t('nodeSettings.customTelemetryTags.tag.key.displayName'),
+							name: 'key',
+							type: 'string',
+							default: '',
+							noDataExpression: true,
+						},
+						{
+							displayName: t('nodeSettings.customTelemetryTags.tag.value.displayName'),
+							name: 'value',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		});
+	}
+
 	return ret;
 }
 
@@ -657,6 +693,14 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		ret = {
 			...ret,
 			waitBetweenTries: node.waitBetweenTries,
+		};
+	}
+
+	if (node.customTelemetryTags) {
+		foundNodeSettings.push('customTelemetryTags');
+		ret = {
+			...ret,
+			customTelemetryTags: node.customTelemetryTags,
 		};
 	}
 

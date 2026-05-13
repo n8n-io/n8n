@@ -39,6 +39,7 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch }
 import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = defineProps<{
 	initialNode: INode;
@@ -58,6 +59,7 @@ const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const nodeHelpers = useNodeHelpers();
 const environmentsStore = useEnvironmentsStore();
+const settingsStore = useSettingsStore();
 
 const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
@@ -94,7 +96,7 @@ const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => {
 });
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(true, i18n.baseText.bind(i18n)).filter(
+	createCommonNodeSettings(true, i18n.baseText.bind(i18n), settingsStore.isOtelEnabled).filter(
 		(s) => s.name !== 'notes' && s.name !== 'notesInFlow',
 	),
 );

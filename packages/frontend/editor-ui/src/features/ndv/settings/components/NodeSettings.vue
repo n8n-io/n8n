@@ -158,7 +158,8 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
-const { isPreviewMode } = useSettingsStore();
+const settingsStore = useSettingsStore();
+const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(() =>
 	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
@@ -488,7 +489,11 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(
+		isToolNode.value || isModelNode.value,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelEnabled,
+	),
 );
 
 const iconSource = useNodeIconSource(nodeType, node);
