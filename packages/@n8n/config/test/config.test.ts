@@ -58,6 +58,12 @@ describe('GlobalConfig', () => {
 		},
 		mfa: {
 			enabled: true,
+			webauthn: {
+				rpId: '',
+				rpName: 'n8n',
+				origin: '',
+				challengeTtlMs: 300_000,
+			},
 		},
 		hiringBanner: {
 			enabled: true,
