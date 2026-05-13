@@ -2311,11 +2311,12 @@ export function useCanvasOperations() {
 			} catch (error) {}
 		}
 
-		// Reset editable workflow state
-		workflowsStore.resetWorkflow();
+		// Reset editable workflow state. resetState() must run BEFORE resetWorkflow()
+		// — it reads ws.workflowId to target the per-workflow execution-state store, and
+		// resetWorkflow() empties that id.
 		workflowState.resetState();
+		workflowsStore.resetWorkflow();
 		workflowsStore.clearCurrentWorkflowExecutions();
-		workflowState.setActiveExecutionId(undefined);
 		workflowsStore.setLastSuccessfulExecution(null);
 
 		// Reset actions

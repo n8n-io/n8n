@@ -9,7 +9,7 @@ const telemetryTrack = vi.fn();
 
 type InputTestProps = {
 	isStreaming: boolean;
-	isSendingMessage: boolean;
+	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
@@ -20,7 +20,7 @@ type InputTestProps = {
 
 const defaultProps = (): InputTestProps => ({
 	isStreaming: false,
-	isSendingMessage: false,
+	isSubmitting: false,
 	isAwaitingConfirmation: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
@@ -93,10 +93,12 @@ describe('InstanceAiInput', () => {
 
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
 
-		expect(textbox).toHaveAttribute(
-			'placeholder',
-			"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
-		);
+		await waitFor(() => {
+			expect(textbox).toHaveAttribute(
+				'placeholder',
+				"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
+			);
+		});
 
 		await userEvent.unhover(getByTestId('instance-ai-suggestion-build-workflow'));
 
@@ -356,7 +358,7 @@ describe('InstanceAiInput', () => {
 
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();
 
-		await rerender(inputProps({ suggestions, isSendingMessage: true }));
+		await rerender(inputProps({ suggestions, isSubmitting: true }));
 
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
@@ -400,9 +402,12 @@ describe('InstanceAiInput', () => {
 		const textbox = getByRole('textbox');
 		const initialPlaceholder = textbox.getAttribute('placeholder') ?? '';
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
-		expect(textbox.getAttribute('placeholder')).not.toBe(initialPlaceholder);
 
-		await rerender(inputProps({ suggestions, isSendingMessage: true }));
+		await waitFor(() => {
+			expect(textbox.getAttribute('placeholder')).not.toBe(initialPlaceholder);
+		});
+
+		await rerender(inputProps({ suggestions, isSubmitting: true }));
 
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
@@ -431,7 +436,7 @@ describe('InstanceAiInput', () => {
 			inputProps({
 				suggestions,
 				currentThreadId: 'thread-shown',
-				isSendingMessage: true,
+				isSubmitting: true,
 			}),
 		);
 		await waitFor(() => {

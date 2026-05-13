@@ -167,6 +167,7 @@ async function runObservationCycleForTest({
 			resourceId,
 			now,
 			trigger: { type: 'per-turn' },
+			gap: null,
 			telemetry: undefined,
 		});
 		const persistedRows = await store.appendObservations(observedRows);
