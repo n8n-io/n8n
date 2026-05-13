@@ -87,6 +87,10 @@ jest.mock('../workflows.tool', () => ({
 	})),
 }));
 
+jest.mock('../workflow-context.tool', () => ({
+	createWorkflowContextTool: jest.fn(() => ({ id: 'workflow-context' })),
+}));
+
 jest.mock('../workspace.tool', () => ({
 	createWorkspaceTool: jest.fn(() => ({ id: 'workspace' })),
 }));
@@ -179,6 +183,37 @@ describe('domain tool construction', () => {
 		expect(orchestratorTools).toMatchObject({
 			browser_connect: { id: 'browser_connect' },
 			browser_navigate: { id: 'browser_navigate' },
+		});
+	});
+
+	describe('workflow-context conditional registration', () => {
+		const snapshot = {
+			workflowId: 'wf-1',
+			name: 'Demo',
+			nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.scheduleTrigger', position: [0, 0] }],
+			connections: {},
+		};
+
+		it('omits workflow-context from createAllTools when no snapshot is set', () => {
+			const tools = createAllTools(makeContext());
+			expect(tools).not.toHaveProperty('workflow-context');
+		});
+
+		it('registers workflow-context in createAllTools when a snapshot is present', () => {
+			const tools = createAllTools(makeContext({ currentWorkflowSnapshot: snapshot }));
+			expect(tools).toMatchObject({ 'workflow-context': { id: 'workflow-context' } });
+		});
+
+		it('omits workflow-context from createOrchestratorDomainTools when no snapshot is set', () => {
+			const tools = createOrchestratorDomainTools(makeContext());
+			expect(tools).not.toHaveProperty('workflow-context');
+		});
+
+		it('registers workflow-context in createOrchestratorDomainTools when a snapshot is present', () => {
+			const tools = createOrchestratorDomainTools(
+				makeContext({ currentWorkflowSnapshot: snapshot }),
+			);
+			expect(tools).toMatchObject({ 'workflow-context': { id: 'workflow-context' } });
 		});
 	});
 });

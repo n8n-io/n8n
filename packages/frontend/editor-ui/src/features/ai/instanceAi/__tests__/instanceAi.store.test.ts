@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensureThread } from '../instanceAi.api';
+import { ensureThread, postMessage } from '../instanceAi.api';
 import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -64,9 +64,29 @@ const localStorageStub = {
 const originalLocalStorage = globalThis.localStorage;
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockDeleteThread = vi.mocked(deleteThreadApi);
+const mockPostMessage = vi.mocked(postMessage);
+
+class FakeEventSource {
+	url: string;
+	withCredentials: boolean;
+	readyState = 0;
+	onopen: ((ev?: unknown) => void) | null = null;
+	onmessage: ((ev: MessageEvent) => void) | null = null;
+	onerror: ((ev?: unknown) => void) | null = null;
+	constructor(url: string, init?: { withCredentials?: boolean }) {
+		this.url = url;
+		this.withCredentials = init?.withCredentials ?? false;
+	}
+	addEventListener() {}
+	removeEventListener() {}
+	close() {
+		this.readyState = 2;
+	}
+}
 
 beforeAll(() => {
 	vi.stubGlobal('localStorage', localStorageStub);
+	vi.stubGlobal('EventSource', FakeEventSource);
 });
 
 afterAll(() => {
@@ -163,6 +183,67 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(disposeSpy).toHaveBeenCalledOnce();
 		expect(store.getRuntime('thread-1')).toBeUndefined();
 		expect(store.threads).toEqual([]);
+	});
+});
+
+describe('useInstanceAiStore - workflow-chat runtime', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+	});
+
+	const snapshot = {
+		workflowId: 'wf-1',
+		name: 'Demo',
+		nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.scheduleTrigger', position: [0, 0] }],
+		connections: {},
+	};
+
+	it('forwards the live snapshot via postMessage when sendMessage runs', async () => {
+		const store = useInstanceAiStore();
+		const getWorkflowContext = vi.fn().mockReturnValue(snapshot);
+		const runtime = store.createWorkflowChatRuntime('thread-1', { getWorkflowContext });
+
+		await runtime.sendMessage('what triggers this workflow?');
+
+		// Hook is invoked exactly once per send — the provider must be read at
+		// dispatch time, not at runtime-creation time, so subsequent sends see
+		// the fresh editor state instead of a stale closure capture.
+		expect(getWorkflowContext).toHaveBeenCalledOnce();
+		expect(mockPostMessage).toHaveBeenCalledOnce();
+		const args = mockPostMessage.mock.calls[0];
+		// Last positional arg of postMessage is the workflowContext.
+		expect(args[args.length - 1]).toEqual(snapshot);
+	});
+
+	it('reads the snapshot at every sendMessage so live edits are picked up', async () => {
+		const store = useInstanceAiStore();
+		let current = snapshot;
+		const runtime = store.createWorkflowChatRuntime('thread-1', {
+			getWorkflowContext: () => current,
+		});
+
+		await runtime.sendMessage('first');
+		current = { ...snapshot, name: 'Renamed Workflow' };
+		await runtime.sendMessage('second');
+
+		expect(mockPostMessage).toHaveBeenCalledTimes(2);
+		const firstArgs = mockPostMessage.mock.calls[0];
+		const secondArgs = mockPostMessage.mock.calls[1];
+		expect(firstArgs[firstArgs.length - 1]).toMatchObject({ name: 'Demo' });
+		expect(secondArgs[secondArgs.length - 1]).toMatchObject({ name: 'Renamed Workflow' });
+	});
+
+	it('does not send a workflowContext for runtimes created without the workflow-chat hook', async () => {
+		const store = useInstanceAiStore();
+		const runtime = store.getOrCreateRuntime('thread-1');
+
+		await runtime.sendMessage('hello');
+
+		expect(mockPostMessage).toHaveBeenCalledOnce();
+		const args = mockPostMessage.mock.calls[0];
+		expect(args[args.length - 1]).toBeUndefined();
 	});
 });
 

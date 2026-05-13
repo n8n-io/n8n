@@ -72,6 +72,9 @@ const { createToolsFromLocalMcpServer } =
 const { createOrchestratorDomainTools } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('../../tools') as { createOrchestratorDomainTools: jest.Mock };
+const { getSystemPrompt } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../system-prompt') as { getSystemPrompt: jest.Mock };
 
 function createMcpManagerStub(regularTools: ToolsInput = {}, browserTools: ToolsInput = {}) {
 	return {
@@ -239,5 +242,58 @@ describe('createInstanceAgent', () => {
 		expect(agentTools.custom_plan).toMatchObject({ id: 'custom-plan' });
 		expect(mcpContextTools.shared_tool).toMatchObject({ id: 'local-shared' });
 		expect(mcpContextTools.github_workflows).toMatchObject({ id: 'github-workflows' });
+	});
+
+	describe('workflow-chat mode', () => {
+		const memoryConfig = { storage: { id: 'memory-store' } } as never;
+		const snapshot = {
+			workflowId: 'wf-1',
+			name: 'Demo',
+			nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.scheduleTrigger', position: [0, 0] }],
+			connections: {},
+		};
+
+		beforeEach(() => {
+			getSystemPrompt.mockClear();
+		});
+
+		it('passes workflowChatMode=true to getSystemPrompt when the context has a snapshot', async () => {
+			await createInstanceAgent({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'chat',
+					localGatewayStatus: undefined,
+					licenseHints: undefined,
+					localMcpServer: undefined,
+					currentWorkflowSnapshot: snapshot,
+				},
+				orchestrationContext: { runId: 'chat', browserMcpConfig: undefined },
+				memoryConfig,
+				mcpManager: createMcpManagerStub(),
+			} as never);
+
+			expect(getSystemPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowChatMode: true }),
+			);
+		});
+
+		it('passes workflowChatMode=false to getSystemPrompt when no snapshot is present', async () => {
+			await createInstanceAgent({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'no-chat',
+					localGatewayStatus: undefined,
+					licenseHints: undefined,
+					localMcpServer: undefined,
+				},
+				orchestrationContext: { runId: 'no-chat', browserMcpConfig: undefined },
+				memoryConfig,
+				mcpManager: createMcpManagerStub(),
+			} as never);
+
+			expect(getSystemPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowChatMode: false }),
+			);
+		});
 	});
 });
