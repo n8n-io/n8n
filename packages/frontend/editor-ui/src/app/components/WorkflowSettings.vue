@@ -136,10 +136,20 @@ const {
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
+type WorkerPoolCategory = 'production' | 'manual' | 'evaluation';
+type WorkerPoolSettingKey =
+	| 'workerPoolOverrideProduction'
+	| 'workerPoolOverrideManual'
+	| 'workerPoolOverrideEvaluation';
+
 const workerPoolNames = ref<string[]>([]);
-const globalPoolAssignment = ref<Partial<Record<'production' | 'manual' | 'evaluation', string>>>(
-	{},
-);
+const globalPoolAssignment = ref<Partial<Record<WorkerPoolCategory, string>>>({});
+
+const workerPoolSettingKeys = {
+	production: 'workerPoolOverrideProduction',
+	manual: 'workerPoolOverrideManual',
+	evaluation: 'workerPoolOverrideEvaluation',
+} satisfies Record<WorkerPoolCategory, WorkerPoolSettingKey>;
 
 const instanceRegistryStore = useInstanceRegistryStore();
 
@@ -163,7 +173,7 @@ const loadWorkerPoolOptions = async () => {
 	}
 };
 
-const workerPoolOptionsForCategory = (category: 'production' | 'manual' | 'evaluation') => {
+const workerPoolOptionsForCategory = (category: WorkerPoolCategory) => {
 	const globalPool = globalPoolAssignment.value[category];
 	const defaultLabel = globalPool
 		? `${i18n.baseText('workflowSettings.workerPool.default')} - ${globalPool}`
@@ -175,14 +185,17 @@ const workerPoolOptionsForCategory = (category: 'production' | 'manual' | 'evalu
 	];
 };
 
-const onWorkerPoolChange = (category: 'production' | 'manual' | 'evaluation', value: string) => {
-	if (!workflowSettings.value.workerPoolOverrides) {
-		workflowSettings.value.workerPoolOverrides = {};
-	}
+const selectedWorkerPool = (category: WorkerPoolCategory) => {
+	return workflowSettings.value[workerPoolSettingKeys[category]] ?? 'DEFAULT';
+};
+
+const onWorkerPoolChange = (category: WorkerPoolCategory, value: string) => {
+	const settingKey = workerPoolSettingKeys[category];
+
 	if (value === 'DEFAULT') {
-		delete workflowSettings.value.workerPoolOverrides[category];
+		delete workflowSettings.value[settingKey];
 	} else {
-		workflowSettings.value.workerPoolOverrides[category] = value;
+		workflowSettings.value[settingKey] = value;
 	}
 };
 
@@ -638,13 +651,6 @@ const saveSettings = async () => {
 		return;
 	}
 	delete data.settings.maxExecutionTimeout;
-
-	if (
-		data.settings.workerPoolOverrides &&
-		Object.keys(data.settings.workerPoolOverrides).length === 0
-	) {
-		delete data.settings.workerPoolOverrides;
-	}
 
 	isLoading.value = true;
 	data.versionId = workflowDocumentStore.value.versionId;
@@ -1497,7 +1503,7 @@ onBeforeUnmount(() => {
 						</ElCol>
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
-								:model-value="workflowSettings.workerPoolOverrides?.production ?? 'DEFAULT'"
+								:model-value="selectedWorkerPool('production')"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-worker-pool-production"
@@ -1524,7 +1530,7 @@ onBeforeUnmount(() => {
 						</ElCol>
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
-								:model-value="workflowSettings.workerPoolOverrides?.manual ?? 'DEFAULT'"
+								:model-value="selectedWorkerPool('manual')"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-worker-pool-manual"
@@ -1553,7 +1559,7 @@ onBeforeUnmount(() => {
 						</ElCol>
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
-								:model-value="workflowSettings.workerPoolOverrides?.evaluation ?? 'DEFAULT'"
+								:model-value="selectedWorkerPool('evaluation')"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-worker-pool-evaluation"
