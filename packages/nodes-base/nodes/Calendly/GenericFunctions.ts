@@ -17,7 +17,7 @@ function getAuthenticationTypeFromApiKey(data: string): 'accessToken' | 'apiKey'
 export async function getAuthenticationType(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 ): Promise<'accessToken' | 'apiKey'> {
-	const authentication = this.getNodeParameter('authentication', 0) as string;
+	const authentication = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 	if (authentication === 'apiKey') {
 		const { apiKey } = await this.getCredentials<{ apiKey: string }>('calendlyApi');
 		return getAuthenticationTypeFromApiKey(apiKey);
@@ -67,7 +67,7 @@ export async function calendlyApiRequest(
 	options = Object.assign({}, options, option);
 
 	const credentialsType =
-		(this.getNodeParameter('authentication', 0) as string) === 'apiKey'
+		(this.getNodeParameter('authentication', 0, 'accessToken') as string) === 'apiKey'
 			? 'calendlyApi'
 			: 'calendlyOAuth2Api';
 	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
