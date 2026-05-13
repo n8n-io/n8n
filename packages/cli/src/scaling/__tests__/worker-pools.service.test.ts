@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
-import { PoolConfigService } from '@/scaling/pool-config.service';
+import type { PoolConfigService } from '@/scaling/pool-config.service';
 import { WorkerPoolsService } from '@/scaling/worker-pools.service';
 
 describe('WorkerPoolsService', () => {

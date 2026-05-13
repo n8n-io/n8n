@@ -5,8 +5,8 @@ import { mock } from 'jest-mock-extended';
 
 import { OrchestrationController } from '@/controllers/orchestration.controller';
 import type { License } from '@/license';
-import { PoolConfigService } from '@/scaling/pool-config.service';
-import { WorkerPoolsService } from '@/scaling/worker-pools.service';
+import type { PoolConfigService } from '@/scaling/pool-config.service';
+import type { WorkerPoolsService } from '@/scaling/worker-pools.service';
 import type { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 describe('OrchestrationController', () => {
