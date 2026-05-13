@@ -316,7 +316,7 @@ export namespace AskAiRequest {
 			pushRef: string;
 			ndvPushRef: string;
 		};
-		forNode: 'code' | 'transform';
+		forNode: 'code' | 'transform' | 'executions-nl-filter';
 	}
 }
 
