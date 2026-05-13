@@ -46,6 +46,7 @@ catalog:
   '@n8n/typeorm': 0.3.20-17
   '@n8n_io/ai-assistant-sdk': 1.21.0
   '@openrouter/ai-sdk-provider': ^2.8.0
+  '@opentelemetry/sdk-node': ^0.217.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.36.0
   '@supabase/supabase-js': 2.50.0
