@@ -12,6 +12,8 @@ import { parseCredentialsFile, parseWorkflowSource } from '../parse';
 const FIXTURES_DIR = resolve(__dirname, '../../../../test/commands/headless/fixtures');
 const WORKFLOW_FIXTURE = join(FIXTURES_DIR, 'workflow-manual.json');
 const CREDENTIALS_FIXTURE = join(FIXTURES_DIR, 'credentials.json');
+const WORKFLOWS_ARRAY_FIXTURE = join(FIXTURES_DIR, 'workflows-array.json');
+const WORKFLOWS_DIR_FIXTURE = join(FIXTURES_DIR, 'workflows-dir');
 
 describe('parseWorkflowSource', () => {
 	let scratchDir: string;
@@ -58,15 +60,77 @@ describe('parseWorkflowSource', () => {
 		await expect(parseWorkflowSource(missingConnections)).rejects.toThrow(/connections/);
 	});
 
-	it('throws "not yet supported" UserError when given an array top-level', async () => {
-		const arrayFile = join(scratchDir, 'array.json');
-		writeFileSync(arrayFile, JSON.stringify([{ name: 'a', nodes: [], connections: {} }]));
+	it('returns multiple workflows from an array file in source order', async () => {
+		const result = await parseWorkflowSource(WORKFLOWS_ARRAY_FIXTURE);
 
-		await expect(parseWorkflowSource(arrayFile)).rejects.toThrow(/not yet supported/);
+		expect(result).toHaveLength(2);
+		expect(result[0].name).toBe('Headless Array Workflow A');
+		expect(result[1].name).toBe('Headless Array Workflow B');
 	});
 
-	it('throws "not yet supported" UserError when given a directory path', async () => {
-		await expect(parseWorkflowSource(scratchDir)).rejects.toThrow(/not yet supported/);
+	it('throws UserError naming the offending index when one array element is invalid', async () => {
+		const mixed = join(scratchDir, 'mixed.json');
+		writeFileSync(
+			mixed,
+			JSON.stringify([
+				{ name: 'valid', nodes: [], connections: {} },
+				{ name: 'broken', connections: {} },
+			]),
+		);
+
+		await expect(parseWorkflowSource(mixed)).rejects.toThrow(UserError);
+		await expect(parseWorkflowSource(mixed)).rejects.toThrow(/\[1\]/);
+		await expect(parseWorkflowSource(mixed)).rejects.toThrow(/nodes/);
+	});
+
+	it('parses every *.json file in a directory in lexicographic order', async () => {
+		const result = await parseWorkflowSource(WORKFLOWS_DIR_FIXTURE);
+
+		expect(result).toHaveLength(2);
+		expect(result[0].name).toBe('Headless Webhook Workflow');
+		expect(result[1].name).toBe('Headless Schedule Workflow');
+	});
+
+	it('throws UserError naming the directory when no *.json files are present', async () => {
+		await expect(parseWorkflowSource(scratchDir)).rejects.toThrow(UserError);
+		await expect(parseWorkflowSource(scratchDir)).rejects.toThrow(/No \*\.json files found/);
+		await expect(parseWorkflowSource(scratchDir)).rejects.toThrow(scratchDir);
+	});
+
+	it('ignores hidden files and non-JSON files when reading a directory', async () => {
+		writeFileSync(join(scratchDir, '.DS_Store'), 'binary-noise');
+		writeFileSync(join(scratchDir, 'README.md'), '# notes');
+		writeFileSync(
+			join(scratchDir, 'a.json'),
+			JSON.stringify({ name: 'only-real', nodes: [], connections: {} }),
+		);
+
+		const result = await parseWorkflowSource(scratchDir);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe('only-real');
+	});
+
+	it('concatenates array-files and single-object files in lexicographic order', async () => {
+		writeFileSync(
+			join(scratchDir, '01-single.json'),
+			JSON.stringify({ name: 'single-A', nodes: [], connections: {} }),
+		);
+		writeFileSync(
+			join(scratchDir, '02-array.json'),
+			JSON.stringify([
+				{ name: 'array-B-1', nodes: [], connections: {} },
+				{ name: 'array-B-2', nodes: [], connections: {} },
+			]),
+		);
+		writeFileSync(
+			join(scratchDir, '03-single.json'),
+			JSON.stringify({ name: 'single-C', nodes: [], connections: {} }),
+		);
+
+		const result = await parseWorkflowSource(scratchDir);
+
+		expect(result.map((wf) => wf.name)).toEqual(['single-A', 'array-B-1', 'array-B-2', 'single-C']);
 	});
 });
 
@@ -106,11 +170,32 @@ describe('parseCredentialsFile', () => {
 		await expect(parseCredentialsFile(missingFields)).rejects.toThrow(/type/);
 	});
 
-	it('throws "not yet supported" UserError when given an array top-level', async () => {
+	it('returns multiple credentials from an array file in source order', async () => {
 		const arrayFile = join(scratchDir, 'creds-array.json');
-		writeFileSync(arrayFile, JSON.stringify([{ name: 'a', type: 't', data: {} }]));
+		writeFileSync(
+			arrayFile,
+			JSON.stringify([
+				{ name: 'cred-A', type: 'httpHeaderAuth', data: { apiKey: 'a' } },
+				{ name: 'cred-B', type: 'httpBasicAuth', data: { user: 'u', password: 'p' } },
+			]),
+		);
 
-		await expect(parseCredentialsFile(arrayFile)).rejects.toThrow(/not yet supported/);
+		const result = await parseCredentialsFile(arrayFile);
+
+		expect(result).toHaveLength(2);
+		expect(result[0].name).toBe('cred-A');
+		expect(result[1].name).toBe('cred-B');
+	});
+
+	it('throws UserError naming the offending index when one array element is invalid', async () => {
+		const arrayFile = join(scratchDir, 'creds-mixed.json');
+		writeFileSync(
+			arrayFile,
+			JSON.stringify([{ name: 'good', type: 'httpHeaderAuth', data: {} }, { name: 'bad' }]),
+		);
+
+		await expect(parseCredentialsFile(arrayFile)).rejects.toThrow(UserError);
+		await expect(parseCredentialsFile(arrayFile)).rejects.toThrow(/\[1\]/);
 	});
 
 	it('throws "not yet supported" UserError when given a directory path', async () => {

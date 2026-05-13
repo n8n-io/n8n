@@ -1,0 +1,106 @@
+[
+	{
+		"id": "wf-headless-array-001",
+		"name": "Headless Array Workflow A",
+		"nodes": [
+			{
+				"parameters": {},
+				"id": "manual-trigger-array-a",
+				"name": "When clicking 'Execute workflow'",
+				"type": "n8n-nodes-base.manualTrigger",
+				"typeVersion": 1,
+				"position": [240, 300]
+			},
+			{
+				"parameters": {
+					"assignments": {
+						"assignments": [
+							{
+								"id": "set-array-a",
+								"name": "greeting",
+								"value": "hello from array workflow A",
+								"type": "string"
+							}
+						]
+					},
+					"options": {}
+				},
+				"id": "set-array-a",
+				"name": "Set",
+				"type": "n8n-nodes-base.set",
+				"typeVersion": 3.4,
+				"position": [460, 300]
+			}
+		],
+		"connections": {
+			"When clicking 'Execute workflow'": {
+				"main": [
+					[
+						{
+							"node": "Set",
+							"type": "main",
+							"index": 0
+						}
+					]
+				]
+			}
+		},
+		"active": false,
+		"settings": {
+			"executionOrder": "v1"
+		},
+		"versionId": "00000000-0000-0000-0000-0000000000a1"
+	},
+	{
+		"id": "wf-headless-array-002",
+		"name": "Headless Array Workflow B",
+		"nodes": [
+			{
+				"parameters": {},
+				"id": "manual-trigger-array-b",
+				"name": "When clicking 'Execute workflow'",
+				"type": "n8n-nodes-base.manualTrigger",
+				"typeVersion": 1,
+				"position": [240, 300]
+			},
+			{
+				"parameters": {
+					"assignments": {
+						"assignments": [
+							{
+								"id": "set-array-b",
+								"name": "greeting",
+								"value": "hello from array workflow B",
+								"type": "string"
+							}
+						]
+					},
+					"options": {}
+				},
+				"id": "set-array-b",
+				"name": "Set",
+				"type": "n8n-nodes-base.set",
+				"typeVersion": 3.4,
+				"position": [460, 300]
+			}
+		],
+		"connections": {
+			"When clicking 'Execute workflow'": {
+				"main": [
+					[
+						{
+							"node": "Set",
+							"type": "main",
+							"index": 0
+						}
+					]
+				]
+			}
+		},
+		"active": false,
+		"settings": {
+			"executionOrder": "v1"
+		},
+		"versionId": "00000000-0000-0000-0000-0000000000a2"
+	}
+]
