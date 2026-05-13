@@ -279,11 +279,13 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockSetHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				expect.stringContaining('sandbox'),
 			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
+				authToken: undefined,
+				dangerousCustomCss: undefined,
 				formTitle: '',
 				formDescription: 'Test message',
 				formDescriptionMetadata: 'Test message',
@@ -298,10 +300,12 @@ describe('Send and Wait utils tests', () => {
 						inputRequired: 'form-required',
 						defaultValue: '',
 						isTextarea: true,
+						placeholder: undefined,
 					},
 				],
 				appendAttribution: true,
 				buttonLabel: 'Submit',
+				nonce: expect.any(String),
 			});
 		});
 
@@ -365,11 +369,13 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockSetHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				expect.stringContaining('sandbox'),
 			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
+				authToken: undefined,
+				dangerousCustomCss: 'body { background-color: red; }',
 				formTitle: 'Test title',
 				formDescription: 'Test description',
 				formDescriptionMetadata: 'Test description',
@@ -384,11 +390,12 @@ describe('Send and Wait utils tests', () => {
 						defaultValue: '',
 						isInput: true,
 						type: 'text',
+						placeholder: undefined,
 					},
 				],
 				appendAttribution: true,
 				buttonLabel: 'Test button',
-				dangerousCustomCss: 'body { background-color: red; }',
+				nonce: expect.any(String),
 			});
 		});
 

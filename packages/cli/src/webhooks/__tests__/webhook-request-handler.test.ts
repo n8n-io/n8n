@@ -16,7 +16,13 @@ import type {
 jest.mock('n8n-core', () => ({
 	...jest.requireActual('n8n-core'),
 	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
-	getHtmlSandboxCSP: jest.fn().mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+	getHtmlSandboxCSP: jest
+		.fn()
+		.mockImplementation((_nonce: string | undefined, includeSandbox = true) =>
+			includeSandbox
+				? 'sandbox allow-downloads allow-forms allow-modals'
+				: "object-src 'none'; base-uri 'none'",
+		),
 }));
 
 describe('WebhookRequestHandler', () => {
@@ -306,7 +312,7 @@ describe('WebhookRequestHandler', () => {
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		});
 
-		it('should not set CSP sandbox header when sandboxing is disabled', async () => {
+		it('should preserve CSP header without sandbox directive when sandboxing is disabled', async () => {
 			jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			const req = mock<WebhookRequest>({
@@ -326,7 +332,10 @@ describe('WebhookRequestHandler', () => {
 
 			await handler(req, res);
 
-			expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.not.stringContaining('sandbox'),
+			);
 		});
 	});
 });

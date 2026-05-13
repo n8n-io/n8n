@@ -168,6 +168,18 @@ const plugins: UserConfig['plugins'] = [
 				: html;
 		},
 	},
+	{
+		name: 'csp-nonce',
+		transformIndexHtml(html, ctx) {
+			// Only needed for production build output; dev server uses the template as-is
+			// and the BE replaces {{CSP_NONCE}} at request time.
+			if (ctx.server) return html;
+			return html.replace(
+				/<script(?![^>]*\bnonce=)([^>]*)>/g,
+				'<script nonce="{{CSP_NONCE}}"$1>',
+			);
+		},
+	},
 	// For sanitize-html
 	nodePolyfills({
 		include: ['fs', 'path', 'url', 'util', 'timers'],

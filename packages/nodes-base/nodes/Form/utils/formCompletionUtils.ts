@@ -1,5 +1,6 @@
 import { type Response } from 'express';
 import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { randomBytes } from 'crypto';
 import {
 	type NodeTypeAndVersion,
 	type IWebhookFunctions,
@@ -71,11 +72,16 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	const nonce = randomBytes(16).toString('base64');
+	if (respondWith !== 'redirect') {
+		res.setHeader(
+			'Content-Security-Policy',
+			getHtmlSandboxCSP(nonce, !isFormHtmlSandboxingDisabled()),
+		);
 	}
 
 	res.render('form-trigger-completion', {
+		nonce,
 		title: completionTitle,
 		message: completionMessage,
 		formTitle: title,

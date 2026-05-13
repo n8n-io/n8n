@@ -1,7 +1,8 @@
 jest.mock('n8n-core', () => ({
-	getHtmlSandboxCSP: jest.fn(
-		() =>
-			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+	getHtmlSandboxCSP: jest.fn((nonce: string | undefined, includeSandbox = true) =>
+		includeSandbox
+			? 'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols'
+			: "object-src 'none'; base-uri 'none'",
 	),
 	isFormHtmlSandboxingDisabled: jest.fn(() => false),
 }));
@@ -100,8 +101,10 @@ describe('formCompletionUtils', () => {
 		beforeEach(() => {
 			jest
 				.mocked(getHtmlSandboxCSP)
-				.mockReturnValue(
-					'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				.mockImplementation((_nonce, includeSandbox = true) =>
+					includeSandbox
+						? 'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols'
+						: "object-src 'none'; base-uri 'none'",
 				);
 			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(false);
 		});
@@ -124,8 +127,10 @@ describe('formCompletionUtils', () => {
 
 			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: undefined,
+				dangerousCustomCss: undefined,
 				formTitle: 'Form Title',
 				message: 'Form has been submitted successfully',
+				nonce: expect.any(String),
 				redirectUrl: undefined,
 				responseBinary: encodeURIComponent(JSON.stringify('')),
 				responseText: '',
@@ -154,13 +159,14 @@ describe('formCompletionUtils', () => {
 			expect(sanitizeHtmlSpy).toHaveBeenCalledTimes(1);
 			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: undefined,
+				dangerousCustomCss: undefined,
 				formTitle: 'Form Title',
 				message: 'Safe message<b>bold</b>',
+				nonce: expect.any(String),
 				redirectUrl: undefined,
 				responseBinary: encodeURIComponent(JSON.stringify('')),
 				responseText: 'Response text',
 				title: 'Form Completion',
-				dangerousCustomCss: undefined,
 			});
 
 			sanitizeHtmlSpy.mockRestore();
@@ -186,13 +192,14 @@ describe('formCompletionUtils', () => {
 
 			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: undefined,
+				dangerousCustomCss: undefined,
 				formTitle: 'Form Title',
 				message: `Some message${replacement}Other text`,
+				nonce: expect.any(String),
 				redirectUrl: undefined,
 				responseBinary: encodeURIComponent(JSON.stringify('')),
 				responseText: 'Response text',
 				title: 'Form Completion',
-				dangerousCustomCss: undefined,
 			});
 		});
 
@@ -263,8 +270,10 @@ describe('formCompletionUtils', () => {
 
 				expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
 					appendAttribution: undefined,
+					dangerousCustomCss: undefined,
 					formTitle: 'Form Title',
 					message: 'Form has been submitted successfully',
+					nonce: expect.any(String),
 					redirectUrl: undefined,
 					responseBinary: encodeURIComponent(
 						JSON.stringify({
@@ -317,8 +326,10 @@ describe('formCompletionUtils', () => {
 
 				expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
 					appendAttribution: undefined,
+					dangerousCustomCss: undefined,
 					formTitle: 'Form Title',
 					message: 'Form has been submitted successfully',
+					nonce: expect.any(String),
 					redirectUrl: undefined,
 					responseBinary: encodeURIComponent(
 						JSON.stringify({
@@ -372,7 +383,7 @@ describe('formCompletionUtils', () => {
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
 
-		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
+		it('should set Content-Security-Policy header without sandbox directive when form HTML sandboxing is disabled', async () => {
 			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -386,9 +397,10 @@ describe('formCompletionUtils', () => {
 
 			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
 
-			expect(mockResponse.setHeader).not.toHaveBeenCalledWith(
+			expect(getHtmlSandboxCSP).toHaveBeenCalledWith(expect.any(String), false);
+			expect(mockResponse.setHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				expect.any(String),
+				expect.not.stringContaining('sandbox'),
 			);
 			expect(mockResponse.render).toHaveBeenCalled();
 		});

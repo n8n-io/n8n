@@ -24,6 +24,18 @@ export default mergeConfig(
 			}),
 			dts(),
 			{
+				name: 'csp-nonce',
+				transformIndexHtml(html, ctx) {
+					// Only needed for production build output; dev server uses the template as-is
+					// and the BE replaces {{CSP_NONCE}} at request time.
+					if (ctx.server) return html;
+					return html.replace(
+						/<script(?![^>]*\bnonce=)([^>]*)>/g,
+						'<script nonce="{{CSP_NONCE}}"$1>',
+					);
+				},
+			},
+			{
 				name: 'rename-css-file',
 				closeBundle() {
 					// The chat.css is automatically named based on vite.config.ts library name.

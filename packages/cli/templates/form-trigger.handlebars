@@ -691,7 +691,7 @@
 				<input id="useResponseData" style="display: none;" value={{useResponseData}} />
 			</section>
 		</div>
-		<script>
+		<script {{#if nonce}}nonce="{{{nonce}}}"{{/if}}>
 			// Get signature from URL for fetch requests
 			const url = new URL(window.location.href);
 			let formSignature = url.searchParams.get('signature');

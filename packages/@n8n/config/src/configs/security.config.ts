@@ -58,8 +58,11 @@ export class SecurityConfig {
 	crossOriginOpenerPolicy: z.infer<typeof crossOriginOpenerPolicySchema> = 'same-origin';
 
 	/**
-	 * Whether to disable HTML sandboxing for webhooks. The sandboxing mechanism uses CSP headers now,
-	 * but the name is kept for backwards compatibility.
+	 * Whether to disable the `sandbox` directive in the CSP header for webhooks.
+	 * The sandboxing mechanism uses CSP headers now, but the name is kept for backwards compatibility.
+	 *
+	 * To disable the entire CSP, use `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` or override the policy with
+	 * `N8N_CONTENT_SECURITY_POLICY`.
 	 */
 	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
 	disableWebhookHtmlSandboxing: boolean = false;
@@ -71,6 +74,9 @@ export class SecurityConfig {
 	 * malicious user can build a workflow that makes requests using other users' credentials.
 	 * The correct way to prevent this is to configure forms to be served from a different
 	 * (sub)domain instead of disabling the sandbox.
+	 *
+	 * To disable the entire CSP, use `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` or override the policy with
+	 * `N8N_CONTENT_SECURITY_POLICY`.
 	 */
 	@Env('N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX')
 	disableFormHtmlSandboxing: boolean = false;

@@ -2,7 +2,7 @@ import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { getHtmlSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	WAITING_FORMS_EXECUTION_STATUS,
@@ -13,6 +13,13 @@ import {
 import type { WaitingWebhookRequest } from '../webhook.types';
 
 import { WaitingForms } from '@/webhooks/waiting-forms';
+
+const mockIsFormHtmlSandboxingDisabled = jest.fn().mockReturnValue(false);
+
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	isFormHtmlSandboxingDisabled: () => mockIsFormHtmlSandboxingDisabled(),
+}));
 
 class TestWaitingForms extends WaitingForms {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
@@ -41,6 +48,8 @@ describe('WaitingForms', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+		mockIsFormHtmlSandboxingDisabled.mockReset();
+		mockIsFormHtmlSandboxingDisabled.mockReturnValue(false);
 	});
 
 	describe('findCompletionPage', () => {
@@ -507,12 +516,22 @@ describe('WaitingForms', () => {
 
 			const result = await waitingForms.executeWebhook(req, res);
 
-			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
-			expect(res.render).toHaveBeenCalledWith('form-trigger-completion', {
-				title: 'Form Submitted',
-				message: 'Your response has been recorded',
-				formTitle: 'Form Submitted',
-			});
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining("script-src 'nonce-"),
+			);
+			expect(res.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					title: 'Form Submitted',
+					message: 'Your response has been recorded',
+					formTitle: 'Form Submitted',
+				}),
+			);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
@@ -673,7 +692,14 @@ describe('WaitingForms', () => {
 			// Should not throw or return 401 - should proceed to render completion page
 			const result = await waitingForms.executeWebhook(req, res);
 
-			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining("script-src 'nonce-"),
+			);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
