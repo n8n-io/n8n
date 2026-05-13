@@ -696,6 +696,13 @@ export class WorkflowRunner {
 			return { queueName: poolQueueName(overridePoolName), poolName: overridePoolName };
 		}
 
+		if (category && data.projectId) {
+			const projectPool = await this.poolConfigService.getProjectPool(data.projectId, category);
+			if (projectPool) {
+				return { queueName: poolQueueName(projectPool), poolName: projectPool };
+			}
+		}
+
 		const poolAssignment = await this.poolConfigService.getPoolAssignment();
 		const poolName = category ? poolAssignment[category] : undefined;
 

@@ -1,4 +1,4 @@
-import { SettingsRepository } from '@n8n/db';
+import { ProjectPoolSettingsRepository, SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
@@ -14,6 +14,7 @@ const SETTINGS_KEY = 'workerPools.assignment';
 export class PoolConfigService {
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
+		private readonly projectPoolSettingsRepository: ProjectPoolSettingsRepository,
 		private readonly cacheService: CacheService,
 	) {}
 
@@ -58,5 +59,50 @@ export class PoolConfigService {
 		await this.cacheService.set(SETTINGS_KEY, serialized);
 
 		return next;
+	}
+
+	async getProjectPool(
+		projectId: string,
+		category: ExecutionCategory,
+	): Promise<string | undefined> {
+		const cacheKey = `projectPool:${projectId}`;
+
+		const cached = await this.cacheService.get<string>(cacheKey);
+		if (cached !== undefined) {
+			const settings = jsonParse<ProjectPoolColumns>(cached, { fallbackValue: {} });
+			return pickPool(settings, category) ?? undefined;
+		}
+
+		const row = await this.projectPoolSettingsRepository.findOneBy({ projectId });
+
+		const toCache = row
+			? JSON.stringify({
+					productionPool: row.productionPool,
+					manualPool: row.manualPool,
+					evaluationPool: row.evaluationPool,
+				})
+			: JSON.stringify({});
+		await this.cacheService.set(cacheKey, toCache);
+
+		if (!row) return undefined;
+		return pickPool(row, category) ?? undefined;
+	}
+}
+
+type ProjectPoolColumns = Partial<
+	Pick<import('@n8n/db').ProjectPoolSettings, 'productionPool' | 'manualPool' | 'evaluationPool'>
+>;
+
+function pickPool(
+	settings: ProjectPoolColumns,
+	category: ExecutionCategory,
+): string | null | undefined {
+	switch (category) {
+		case 'production':
+			return settings.productionPool;
+		case 'manual':
+			return settings.manualPool;
+		case 'evaluation':
+			return settings.evaluationPool;
 	}
 }
