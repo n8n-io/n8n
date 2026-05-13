@@ -18,8 +18,7 @@ jest.mock('@n8n/di', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-const FALLBACK_INSTRUCTIONS =
-	'No API documentation was found for this endpoint. Generate the response based on your knowledge of this API. Follow standard REST conventions for the HTTP method: GET returns resource data, POST returns the created resource, PUT/PATCH returns the updated resource, DELETE returns 204 or confirmation.';
+import { FALLBACK_INSTRUCTIONS } from '../api-docs';
 
 let mockFetch: jest.Mock;
 let savedApiKey: string | undefined;
