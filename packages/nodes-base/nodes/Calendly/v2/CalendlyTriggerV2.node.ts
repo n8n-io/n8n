@@ -1,0 +1,187 @@
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	type INodeTypeBaseDescription,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
+
+import { calendlyApiRequest } from '../GenericFunctions';
+
+export class CalendlyTriggerV2 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'Calendly Trigger',
+			name: 'calendlyTrigger',
+			group: ['trigger'],
+			version: 2,
+			description: 'Starts the workflow when Calendly events occur',
+			defaults: {
+				name: 'Calendly Trigger',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'calendlyOAuth2Api',
+					required: true,
+				},
+			],
+			webhooks: [
+				{
+					name: 'default',
+					httpMethod: 'POST',
+					responseMode: 'onReceived',
+					path: 'webhook',
+				},
+			],
+			properties: [
+				{
+					displayName: 'Scope',
+					name: 'scope',
+					type: 'options',
+					default: 'user',
+					required: true,
+					options: [
+						{
+							name: 'Organization',
+							value: 'organization',
+							description: 'Triggers the webhook for all subscribed events within the organization',
+						},
+						{
+							name: 'User',
+							value: 'user',
+							description:
+								'Triggers the webhook for subscribed events that belong to the current user',
+						},
+					],
+				},
+				{
+					displayName: 'Events',
+					name: 'events',
+					type: 'multiOptions',
+					options: [
+						{
+							name: 'Event Created',
+							value: 'invitee.created',
+							description: 'Receive notifications when a new Calendly event is created',
+						},
+						{
+							name: 'Event Canceled',
+							value: 'invitee.canceled',
+							description: 'Receive notifications when a Calendly event is canceled',
+						},
+					],
+					default: [],
+					required: true,
+				},
+			],
+		};
+	}
+
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
+				const events = this.getNodeParameter('events') as string[];
+				const scope = this.getNodeParameter('scope', 0) as string;
+
+				const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
+
+				const qs: IDataObject = {};
+
+				if (scope === 'user') {
+					qs.scope = 'user';
+					qs.organization = resource.current_organization;
+					qs.user = resource.uri;
+				}
+
+				if (scope === 'organization') {
+					qs.scope = 'organization';
+					qs.organization = resource.current_organization;
+				}
+
+				const endpoint = '/webhook_subscriptions';
+				const { collection } = await calendlyApiRequest.call(this, 'GET', endpoint, {}, qs);
+
+				for (const webhook of collection) {
+					if (
+						webhook.callback_url === webhookUrl &&
+						events.length === webhook.events.length &&
+						events.every((event: string) => webhook.events.includes(event))
+					) {
+						webhookData.webhookURI = webhook.uri;
+						return true;
+					}
+				}
+
+				return false;
+			},
+			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const events = this.getNodeParameter('events') as string[];
+				const scope = this.getNodeParameter('scope', 0) as string;
+
+				const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
+
+				const body: IDataObject = {
+					url: webhookUrl,
+					events,
+					organization: resource.current_organization,
+					scope,
+				};
+
+				if (scope === 'user') {
+					body.user = resource.uri;
+				}
+
+				const endpoint = '/webhook_subscriptions';
+				const responseData = await calendlyApiRequest.call(this, 'POST', endpoint, body);
+
+				if (responseData?.resource === undefined || responseData?.resource?.uri === undefined) {
+					return false;
+				}
+
+				webhookData.webhookURI = responseData.resource.uri;
+				return true;
+			},
+			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+
+				if (webhookData.webhookURI !== undefined) {
+					try {
+						await calendlyApiRequest.call(
+							this,
+							'DELETE',
+							'',
+							{},
+							{},
+							webhookData.webhookURI as string,
+						);
+					} catch (error) {
+						return false;
+					}
+
+					delete webhookData.webhookURI;
+				}
+
+				return true;
+			},
+		},
+	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const bodyData = this.getBodyData();
+		return {
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
+		};
+	}
+}
