@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 
-import { isStructuredAttachment } from '../parsers/structured-file-parser';
+import { isParseableAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
@@ -40,7 +40,7 @@ export function createAllTools(context: InstanceAiContext): ToolRegistry {
 		nodes: createNodesTool(context),
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
-		...(context.currentUserAttachments?.some(isStructuredAttachment)
+		...(context.currentUserAttachments?.some(isParseableAttachment)
 			? { 'parse-file': createParseFileTool(context) }
 			: {}),
 	};
@@ -60,6 +60,9 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): ToolR
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),
 		'ask-user': createAskUserTool(),
+		...(context.currentUserAttachments?.some(isParseableAttachment)
+			? { 'parse-file': createParseFileTool(context) }
+			: {}),
 	};
 }
 

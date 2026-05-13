@@ -1,4 +1,5 @@
 import { createAllTools, createOrchestratorDomainTools } from '..';
+import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
 
 jest.mock('../../parsers/structured-file-parser', () => ({
@@ -109,6 +110,7 @@ function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCont
 describe('domain tool construction', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.mocked(isParseableAttachment).mockReturnValue(false);
 	});
 
 	it('creates the native full domain tool map', () => {
@@ -146,39 +148,31 @@ describe('domain tool construction', () => {
 		});
 
 		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context, {
-			allowedActions: [
-				'list',
-				'get',
-				'delete',
-				'unarchive',
-				'setup',
-				'publish',
-				'unpublish',
-				'list-versions',
-				'get-version',
-				'restore-version',
-				'update-version',
-			],
-		});
-		expect(createWorkflowsTool).toHaveBeenCalledWith(
-			context,
-			expect.objectContaining({
-				allowedActions: expect.not.arrayContaining(['get-as-code']),
-			}),
-		);
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
 	});
 
-	it('includes local MCP server tools in orchestrator domain tools', () => {
+	it('does not include local MCP server tools in orchestrator domain tools', () => {
 		const context = makeContext({
 			localMcpServer: {} as InstanceAiContext['localMcpServer'],
 		});
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
-		expect(orchestratorTools).toMatchObject({
-			browser_connect: { id: 'browser_connect' },
-			browser_navigate: { id: 'browser_navigate' },
+		expect(orchestratorTools).not.toHaveProperty('browser_connect');
+		expect(orchestratorTools).not.toHaveProperty('browser_navigate');
+	});
+
+	it('includes parse-file tools when attachments are parseable', () => {
+		jest.mocked(isParseableAttachment).mockReturnValue(true);
+		const context = makeContext({
+			currentUserAttachments: [{ data: '', mimeType: 'text/html', fileName: 'page.html' }],
+		});
+
+		expect(createAllTools(context)).toMatchObject({
+			'parse-file': { id: 'parse-file' },
+		});
+		expect(createOrchestratorDomainTools(context)).toMatchObject({
+			'parse-file': { id: 'parse-file' },
 		});
 	});
 });

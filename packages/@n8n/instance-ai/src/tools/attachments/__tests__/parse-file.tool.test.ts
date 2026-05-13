@@ -155,6 +155,30 @@ describe('createParseFileTool', () => {
 		});
 	});
 
+	describe('with a valid HTML attachment', () => {
+		it('extracts visible text content', async () => {
+			const html =
+				'<html><head><title>Release</title></head><body><p>Launch codeword: amber-otter</p></body></html>';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64(html), mimeType: 'text/html', fileName: 'release.html' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			);
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('html');
+			expect(result.title).toBe('Release');
+			expect(result.content).toContain('amber-otter');
+		});
+	});
+
 	describe('with unsupported format', () => {
 		it('returns error gracefully', async () => {
 			const context = createMockContext({

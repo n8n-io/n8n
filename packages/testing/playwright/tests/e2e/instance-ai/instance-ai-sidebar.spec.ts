@@ -42,6 +42,8 @@ test.describe(
 			// Create first thread with a unique message
 			await n8n.instanceAi.sendMessage('Message in first thread');
 			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
 			// Sidebar starts collapsed; open it so the new-thread button and
 			// thread list are queryable.
@@ -54,8 +56,7 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Message in second thread');
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Sidebar is ordered by most recent activity, so the first thread is now second.
-			const firstThread = n8n.instanceAi.sidebar.getThreadItems().nth(1);
+			const firstThread = n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath);
 			await expect(firstThread).toBeVisible({ timeout: 10_000 });
 			await firstThread.click();
 
