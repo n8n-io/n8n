@@ -31,3 +31,27 @@ export async function getResourceDependencies(
 		{ resourceIds, resourceType },
 	);
 }
+
+export interface GraphNode {
+	id: string;
+	label: string;
+	type: 'workflow' | 'credential' | 'dataTable';
+	projectId?: string;
+	projectName?: string;
+	restricted?: boolean;
+}
+
+export interface GraphLink {
+	source: string;
+	target: string;
+	label: string;
+}
+
+export interface DependencyGraph {
+	nodes: GraphNode[];
+	links: GraphLink[];
+}
+
+export async function getDependencyGraph(context: IRestApiContext): Promise<DependencyGraph> {
+	return await makeRestApiRequest<DependencyGraph>(context, 'GET', '/workflow-dependencies/graph');
+}

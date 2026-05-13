@@ -55,6 +55,10 @@ catalog:
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
   '@types/basic-auth': ^1.1.3
+  '@types/d3-drag': ^3.0.7
+  '@types/d3-force': ^3.0.10
+  '@types/d3-selection': ^3.0.11
+  '@types/d3-zoom': ^3.0.8
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': 9.0.10
   '@types/lodash': 4.17.17
@@ -69,6 +73,10 @@ catalog:
   callsites: 3.1.0
   chokidar: 4.0.3
   cron: 4.4.0
+  d3-drag: ^3.0.0
+  d3-force: ^3.0.0
+  d3-selection: ^3.0.0
+  d3-zoom: ^3.0.0
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   fast-glob: 3.2.12

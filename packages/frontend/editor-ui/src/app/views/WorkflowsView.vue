@@ -1806,8 +1806,27 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="showFolders || showRegisteredCommunityCTA" #add-button>
+		<template #add-button>
+			<N8nTooltip placement="top" content="Dependency Graph">
+				<N8nButton
+					variant="outline"
+					size="medium"
+					icon-only
+					icon="network"
+					aria-label="Dependency Graph"
+					data-test-id="dependency-graph-button"
+					@click="
+						router.push({
+							name: VIEWS.DEPENDENCY_GRAPH,
+							query: route.params.projectId
+								? { projectId: route.params.projectId as string }
+								: undefined,
+						})
+					"
+				/>
+			</N8nTooltip>
 			<N8nTooltip
+				v-if="showFolders || showRegisteredCommunityCTA"
 				placement="top"
 				:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 			>

@@ -126,6 +126,18 @@ catalogs:
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
+    '@types/d3-drag':
+      specifier: ^3.0.7
+      version: 3.0.7
+    '@types/d3-force':
+      specifier: ^3.0.10
+      version: 3.0.10
+    '@types/d3-selection':
+      specifier: ^3.0.11
+      version: 3.0.11
+    '@types/d3-zoom':
+      specifier: ^3.0.8
+      version: 3.0.8
     '@types/express':
       specifier: ^5.0.1
       version: 5.0.1
@@ -159,6 +171,18 @@ catalogs:
     cron:
       specifier: 4.4.0
       version: 4.4.0
+    d3-drag:
+      specifier: ^3.0.0
+      version: 3.0.0
+    d3-force:
+      specifier: ^3.0.0
+      version: 3.0.0
+    d3-selection:
+      specifier: ^3.0.0
+      version: 3.0.0
+    d3-zoom:
+      specifier: ^3.0.0
+      version: 3.0.0
     eslint:
       specifier: 9.29.0
       version: 9.29.0
@@ -3983,6 +4007,18 @@ importers:
       curlconverter:
         specifier: ^4.12.0
         version: 4.12.0
+      d3-drag:
+        specifier: 'catalog:'
+        version: 3.0.0
+      d3-force:
+        specifier: 'catalog:'
+        version: 3.0.0
+      d3-selection:
+        specifier: 'catalog:'
+        version: 3.0.0
+      d3-zoom:
+        specifier: 'catalog:'
+        version: 3.0.0
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -4140,6 +4176,18 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@types/d3-drag':
+        specifier: 'catalog:'
+        version: 3.0.7
+      '@types/d3-force':
+        specifier: 'catalog:'
+        version: 3.0.10
+      '@types/d3-selection':
+        specifier: 'catalog:'
+        version: 3.0.11
+      '@types/d3-zoom':
+        specifier: 'catalog:'
+        version: 3.0.8
       '@types/dateformat':
         specifier: ^3.0.0
         version: 3.0.1
@@ -11597,6 +11645,24 @@ packages:
   '@types/cors@2.8.19':
     resolution: {integrity: sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg==}
 
+  '@types/d3-color@3.1.3':
+    resolution: {integrity: sha512-iO90scth9WAbmgv7ogoq57O9YpKmFBbmoEoCHDB2xMBY0+/KVrqAaCDyCE16dUspeOvIxFFRI+0sEtqDqy2b4A==}
+
+  '@types/d3-drag@3.0.7':
+    resolution: {integrity: sha512-HE3jVKlzU9AaMazNufooRJ5ZpWmLIoc90A37WU2JMmeq28w1FQqCZswHZ3xR+SuxYftzHq6WU6KJHvqxKzTxxQ==}
+
+  '@types/d3-force@3.0.10':
+    resolution: {integrity: sha512-ZYeSaCF3p73RdOKcjj+swRlZfnYpK1EbaDiYICEEp5Q6sUiqFaFQ9qgoshp5CzIyyb/yD09kD9o2zEltCexlgw==}
+
+  '@types/d3-interpolate@3.0.4':
+    resolution: {integrity: sha512-mgLPETlrpVV1YRJIglr4Ez47g7Yxjl1lj7YKsiMCb27VJH9W8NVM6Bb9d8kkpG/uAQS5AmbA48q2IAolKKo1MA==}
+
+  '@types/d3-selection@3.0.11':
+    resolution: {integrity: sha512-bhAXu23DJWsrI45xafYpkQ4NtcKMwWnAC/vKrd2l+nxMFuvOT3XMYTIj2opv8vq8AO5Yh7Qac/nSeP/3zjTK0w==}
+
+  '@types/d3-zoom@3.0.8':
+    resolution: {integrity: sha512-iqMC4/YlFCSlO8+2Ii1GGGliCAY4XdeG748w5vQUbevlbDu0zSjH/+jojorQVBK/se0j6DUFNPBGSqD3YWYnDw==}
+
   '@types/dateformat@3.0.1':
     resolution: {integrity: sha512-KlPPdikagvL6ELjWsljbyDIPzNCeliYkqRpI+zea99vBBbCIA5JNshZAwQKTON139c87y9qvTFVgkFd14rtS4g==}
 
@@ -14173,8 +14239,16 @@ packages:
     resolution: {integrity: sha512-wR/XK3D3XcLIZwpbvQwQ5fK+8Ykds1ip7A2Txe0yxncXSdq1L9skcG7blcedkOX+ZcgxGAmLX1FrRGbADwzi0w==}
     engines: {node: '>=12'}
 
+  d3-force@3.0.0:
+    resolution: {integrity: sha512-zxV/SsA+U4yte8051P4ECydjD/S+qeYtnaIyAs9tgHCqfguma/aAQDjo85A9Z6EKhBirHRJHXIgJUlffT4wdLg==}
+    engines: {node: '>=12'}
+
   d3-interpolate@3.0.1:
     resolution: {integrity: sha512-3bYs1rOD33uo8aqJfKP3JWPAibgw8Zm2+L9vBKEHJ2Rg+viTR7o5Mmv5mZcieN+FRYaAOWX5SJATX6k1PWz72g==}
+    engines: {node: '>=12'}
+
+  d3-quadtree@3.0.1:
+    resolution: {integrity: sha512-04xDrxQTDTCFwP5H6hRhsRcb9xxv2RzkcsygFzmkSIOJy3PeRJP7sNk3VRIbKXcog561P9oU0/rVH6vDROAgUw==}
     engines: {node: '>=12'}
 
   d3-selection@3.0.0:
@@ -32021,6 +32095,25 @@ snapshots:
     dependencies:
       '@types/node': 20.19.21
 
+  '@types/d3-color@3.1.3': {}
+
+  '@types/d3-drag@3.0.7':
+    dependencies:
+      '@types/d3-selection': 3.0.11
+
+  '@types/d3-force@3.0.10': {}
+
+  '@types/d3-interpolate@3.0.4':
+    dependencies:
+      '@types/d3-color': 3.1.3
+
+  '@types/d3-selection@3.0.11': {}
+
+  '@types/d3-zoom@3.0.8':
+    dependencies:
+      '@types/d3-interpolate': 3.0.4
+      '@types/d3-selection': 3.0.11
+
   '@types/dateformat@3.0.1': {}
 
   '@types/debug@4.1.12':
@@ -35136,9 +35229,17 @@ snapshots:
 
   d3-ease@3.0.1: {}
 
+  d3-force@3.0.0:
+    dependencies:
+      d3-dispatch: 3.0.1
+      d3-quadtree: 3.0.1
+      d3-timer: 3.0.1
+
   d3-interpolate@3.0.1:
     dependencies:
       d3-color: 3.1.0
+
+  d3-quadtree@3.0.1: {}
 
   d3-selection@3.0.0: {}
 

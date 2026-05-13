@@ -1,7 +1,7 @@
 import { GetResourceDependenciesDto, GetResourceDependencyCountsDto } from '@n8n/api-types';
 import { WorkflowsConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Post, RestController } from '@n8n/decorators';
 
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
@@ -42,6 +42,12 @@ export class WorkflowDependencyController {
 			body.resourceType,
 			req.user,
 		);
+	}
+
+	@Get('/graph')
+	async getDependencyGraph(req: AuthenticatedRequest) {
+		this.assertIndexingEnabled();
+		return await this.workflowDependencyQueryService.getDependencyGraph(req.user);
 	}
 
 	private assertIndexingEnabled() {

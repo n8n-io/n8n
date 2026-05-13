@@ -472,6 +472,14 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/workflows/dependency-graph',
+		name: VIEWS.DEPENDENCY_GRAPH,
+		component: async () => await import('@/app/views/DependencyGraphView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/workflows/demo/diff',
 		name: VIEWS.DEMO_DIFF,
 		component: async () => await import('@/app/views/DemoDiffView.vue'),
