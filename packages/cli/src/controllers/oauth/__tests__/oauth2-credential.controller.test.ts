@@ -423,7 +423,7 @@ describe('OAuth2CredentialController', () => {
 					reason: 'Received following query parameters: undefined',
 				},
 			});
-			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
 		it('should render the error page when `state` query param is invalid', async () => {
@@ -438,11 +438,11 @@ describe('OAuth2CredentialController', () => {
 					message: 'Invalid state format',
 				},
 			});
-			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
 		it('should render the error page when credential is not found in DB', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(null);
 
 			await controller.handleCallback(req, res);
 
@@ -451,12 +451,16 @@ describe('OAuth2CredentialController', () => {
 					message: 'OAuth callback failed because of insufficient permissions',
 				},
 			});
-			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
-			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({ id: '1' });
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'1',
+				expect.anything(),
+				['credential:update'],
+			);
 		});
 
 		it('should render the error page when csrfSecret on the saved credential does not match the state', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(false);
 
@@ -470,7 +474,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('should render the error page when state is older than 5 minutes', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 
@@ -487,7 +491,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('should render the error page when code exchange fails', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
@@ -509,7 +513,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('should render the error page when code exchange fails, and the server responses with html', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
@@ -533,7 +537,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('should exchange the code for a valid token, and save it to DB', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
@@ -578,7 +582,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('merges oauthTokenData if it already exists', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({
 				csrfSecret,
 				oauthTokenData: { token: true },
@@ -622,7 +626,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('overwrites oauthTokenData if it is a string', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({
 				csrfSecret,
 				oauthTokenData: CREDENTIAL_BLANKING_VALUE,
