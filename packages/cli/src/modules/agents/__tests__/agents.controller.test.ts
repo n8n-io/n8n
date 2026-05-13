@@ -57,45 +57,6 @@ describe('AgentsController route access scopes', () => {
 });
 
 describe('AgentsController integration credentials', () => {
-	it('lists credentials through the workflow-scoped user project resolver', async () => {
-		const credentialsService = mock<CredentialsService>();
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{
-				id: 'cred-allowed',
-				name: 'Allowed Slack',
-				type: 'slackApi',
-				scopes: [],
-				isManaged: false,
-				isGlobal: false,
-				isResolvable: true,
-			},
-		]);
-
-		const controller = new AgentsController(
-			mock<AgentsService>(),
-			mock<AgentsBuilderService>(),
-			credentialsService,
-			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
-			mock<AgentRepository>(),
-			mock<AgentExecutionService>(),
-			mock<ChatIntegrationRegistry>(),
-		);
-
-		await expect(
-			controller.listCredentials({
-				params: { projectId: 'project-1', agentId: 'agent-1' },
-				user: { id: 'user-1' },
-			} as never),
-		).resolves.toEqual([{ id: 'cred-allowed', name: 'Allowed Slack', type: 'slackApi' }]);
-
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
-			{ id: 'user-1' },
-			{ projectId: 'project-1' },
-		);
-		expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
-	});
-
 	it('rejects credentials that are not usable in the agent project', async () => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([

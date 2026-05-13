@@ -37,9 +37,15 @@ export interface SandboxWorkspace {
 	};
 }
 
+import { getTemplateTelemetrySession } from './template-telemetry';
+
 /**
  * Execute a shell command in the sandbox and wait for completion.
  * Tries `executeCommand` first, falls back to `processes.spawn` + wait.
+ *
+ * If a TemplateTelemetrySession is bound to the workspace via
+ * `attachTemplateTelemetrySession`, the command + stdout get observed for
+ * template-usage events. Failures in the observer never break the command.
  */
 export async function runInSandbox(
 	workspace: SandboxWorkspace,
@@ -49,18 +55,28 @@ export async function runInSandbox(
 	const sandbox = workspace.sandbox;
 	if (!sandbox) throw new Error('Workspace has no sandbox');
 
+	let result: { exitCode: number; stdout: string; stderr: string };
 	if (sandbox.executeCommand) {
-		const result = await sandbox.executeCommand(command, [], { cwd });
-		return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
-	}
-
-	if (sandbox.processes) {
+		const r = await sandbox.executeCommand(command, [], { cwd });
+		result = { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr };
+	} else if (sandbox.processes) {
 		const handle = await sandbox.processes.spawn(command, { cwd });
-		const result = await handle.wait();
-		return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+		const r = await handle.wait();
+		result = { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr };
+	} else {
+		throw new Error('Sandbox has neither executeCommand nor processes available');
 	}
 
-	throw new Error('Sandbox has neither executeCommand nor processes available');
+	const session = getTemplateTelemetrySession(workspace);
+	if (session) {
+		try {
+			session.observe(command, result.stdout);
+		} catch {
+			// Telemetry must never fail a command. Swallow.
+		}
+	}
+
+	return result;
 }
 
 /**

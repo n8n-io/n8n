@@ -221,18 +221,6 @@ export class AgentsController {
 		return { ok: true };
 	}
 
-	@Get('/:agentId/credentials')
-	@ProjectScope('agent:read')
-	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		const { projectId } = req.params;
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			projectId,
-			req.user,
-		);
-		return await credentialProvider.list();
-	}
-
 	@Get('/catalog/models')
 	@ProjectScope('agent:read')
 	async getModelCatalog() {

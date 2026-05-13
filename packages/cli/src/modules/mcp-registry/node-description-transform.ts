@@ -36,6 +36,14 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 	const remote = pickRemote(server);
 	if (!remote) return null;
 
+	let hostname: string;
+	try {
+		const url = new URL(remote.endpointUrl);
+		hostname = url.hostname;
+	} catch {
+		return null;
+	}
+
 	return {
 		name: getMcpRegistryCredentialTypeName(server),
 		extends: [MCP_BASE_OAUTH2_CREDENTIAL_NAME],
@@ -58,7 +66,13 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				displayName: 'Allowed HTTP Request Domains',
 				name: 'allowedHttpRequestDomains',
 				type: 'hidden',
-				default: 'none',
+				default: 'domains',
+			},
+			{
+				displayName: 'Allowed Domains',
+				name: 'allowedDomains',
+				type: 'hidden',
+				default: hostname,
 			},
 		],
 	};

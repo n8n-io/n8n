@@ -10,7 +10,7 @@ import {
 	watch,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
@@ -23,7 +23,7 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useInstanceAiStore } from './instanceAi.store';
+import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
@@ -49,10 +49,10 @@ const props = defineProps<{
 }>();
 
 const store = useInstanceAiStore();
+const thread = provideThread(props.threadId);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
-const route = useRoute();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
@@ -60,12 +60,12 @@ const creditBanner = useCreditWarningBanner(isLowCredits);
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
 // it in its natural chronological slot.
-const builderAgents = computed(() => collectActiveBuilderAgents(store.messages));
+const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages));
 
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => store.messages.filter(messageHasVisibleContent));
+const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
@@ -75,11 +75,11 @@ const executionTracking = useExecutionPushEvents();
 // figuring out which thread to show. Rendering only on a defined value avoids
 // the "New conversation" → real title flash when resuming a recent thread.
 const currentThreadTitle = computed<string | undefined>(() => {
-	const thread = store.threads.find((t) => t.id === store.currentThreadId);
-	if (thread && thread.title && thread.title !== NEW_CONVERSATION_TITLE) {
-		return thread.title;
+	const threadSummary = store.threads.find((t) => t.id === props.threadId);
+	if (threadSummary && threadSummary.title && threadSummary.title !== NEW_CONVERSATION_TITLE) {
+		return threadSummary.title;
 	}
-	const firstUserMsg = store.messages.find((m) => m.role === 'user');
+	const firstUserMsg = thread.messages.find((m) => m.role === 'user');
 	if (firstUserMsg?.content) {
 		const text = firstUserMsg.content.trim();
 		return text.length > 60 ? text.slice(0, 60) + '…' : text;
@@ -89,8 +89,8 @@ const currentThreadTitle = computed<string | undefined>(() => {
 
 // --- Canvas / data table preview ---
 const preview = useCanvasPreview({
-	store,
-	route,
+	thread,
+	threadId: () => props.threadId,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
@@ -160,17 +160,6 @@ watch(
 	},
 );
 
-// Reset scroll state when switching threads so new content auto-scrolls
-watch(
-	() => store.currentThreadId,
-	() => {
-		userScrolledUp.value = false;
-		void nextTick(() => {
-			chatInputRef.value?.focus();
-		});
-	},
-);
-
 function scrollToBottom(smooth = false) {
 	const container = scrollContainerRef.value;
 	if (container) {
@@ -232,39 +221,19 @@ watch(
 	{ immediate: true },
 );
 
-function reconnectThreadIfHydrationApplied(threadId: string): void {
-	void store.loadHistoricalMessages(threadId).then((hydrationStatus) => {
+function reconnectThreadAfterHydration(): void {
+	void thread.loadHistoricalMessages().then((hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void store.loadThreadStatus(threadId);
-		store.connectSSE(threadId);
+		void thread.loadThreadStatus();
+		thread.connectSSE();
 	});
 }
 
-// Sync the route's :threadId into the store. Three cases:
-// 1. We're already on this thread (e.g. arriving from EmptyView after the
-//    first sendMessage updated the URL): keep the in-flight stream and only
-//    reconnect SSE if it was torn down between mounts.
-// 2. We know this thread (loaded in sidebar): switch.
-// 3. We don't know it yet — wait for loadThreads to populate, then validate.
+// Validate the route's :threadId against the loaded thread list, then connect
+// this route-scoped runtime. Route changes remount this component, so no
+// store-level "active thread" state is needed here.
 async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
-	if (requestedThreadId === store.currentThreadId) {
-		if (store.sseState === 'disconnected') {
-			reconnectThreadIfHydrationApplied(requestedThreadId);
-		}
-		return;
-	}
-
-	// Different thread — clear execution tracking from previous one.
-	executionTracking.clearAll();
-
-	if (store.threads.some((t) => t.id === requestedThreadId)) {
-		store.switchThread(requestedThreadId);
-		return;
-	}
-
-	// Threads not loaded yet (or this id is unknown) — wait for the parent
-	// layout's loadThreads to complete, then re-validate.
 	if (!store.threads.length) {
 		await store.loadThreads();
 	}
@@ -274,20 +243,18 @@ async function syncRouteToStore() {
 		void router.replace({ name: INSTANCE_AI_VIEW });
 		return;
 	}
-	store.switchThread(requestedThreadId);
+	if (thread.sseState === 'disconnected') {
+		reconnectThreadAfterHydration();
+	}
 }
 
-watch(
-	() => props.threadId,
-	() => void syncRouteToStore(),
-	{ immediate: true },
-);
-
 onMounted(() => {
+	void syncRouteToStore();
 	void nextTick(() => chatInputRef.value?.focus());
 });
 
 onUnmounted(() => {
+	thread.closeSSE();
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
@@ -309,11 +276,11 @@ const eventRelay = useEventRelay({
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-	void store.sendMessage(message, attachments, rootStore.pushRef);
+	void thread.sendMessage(message, attachments, rootStore.pushRef);
 }
 
 function handleStop() {
-	void store.cancelRun();
+	void thread.cancelRun();
 }
 </script>
 
@@ -327,7 +294,7 @@ function handleStop() {
 						{{ currentThreadTitle }}
 					</N8nHeading>
 					<N8nText
-						v-if="store.sseState === 'reconnecting'"
+						v-if="thread.sseState === 'reconnecting'"
 						size="small"
 						color="text-light"
 						:class="$style.reconnecting"
@@ -396,7 +363,7 @@ function handleStop() {
 					>
 						<Transition name="fade">
 							<N8nIconButton
-								v-if="userScrolledUp && store.hasMessages"
+								v-if="userScrolledUp && thread.hasMessages"
 								variant="outline"
 								icon="arrow-down"
 								:class="$style.scrollToBottomButton"
@@ -421,9 +388,16 @@ function handleStop() {
 							/>
 							<InstanceAiInput
 								ref="chatInputRef"
-								:is-streaming="store.isStreaming"
+								:is-streaming="thread.isStreaming"
+								:is-submitting="thread.isSendingMessage"
+								:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+								:current-thread-id="thread.id"
+								:amend-context="thread.amendContext"
+								:contextual-suggestion="thread.contextualSuggestion"
+								:research-mode="store.researchMode"
 								@submit="handleSubmit"
 								@stop="handleStop"
+								@toggle-research-mode="store.toggleResearchMode()"
 							/>
 						</div>
 					</div>
