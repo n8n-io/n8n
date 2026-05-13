@@ -27,7 +27,10 @@ import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { McpClientManager } from '../../src/mcp/mcp-client-manager';
-import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
+import {
+	executeResumableStream,
+	normalizeStreamSource,
+} from '../../src/runtime/resumable-stream-executor';
 import { createAllTools } from '../../src/tools';
 import type {
 	InstanceAiContext,
@@ -136,13 +139,15 @@ export async function runDiscoveryScenario(
 			disableDeferredTools: true,
 		});
 
-		const streamSource = await agent.stream(options.scenario.userMessage, {
-			maxSteps,
-			abortSignal: abortController.signal,
-			providerOptions: {
-				anthropic: { cacheControl: { type: 'ephemeral' as const } },
-			},
-		});
+		const streamSource = normalizeStreamSource(
+			await agent.stream(options.scenario.userMessage, {
+				maxSteps,
+				abortSignal: abortController.signal,
+				providerOptions: {
+					anthropic: { cacheControl: { type: 'ephemeral' as const } },
+				},
+			}),
+		);
 
 		const result = await executeResumableStream({
 			agent: asResumable(agent),
