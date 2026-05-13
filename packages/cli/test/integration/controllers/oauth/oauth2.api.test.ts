@@ -7,7 +7,7 @@ import { parse as parseQs } from 'querystring';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
-import { saveCredential } from '@test-integration/db/credentials';
+import { saveCredential, shareCredentialWithUsers } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
@@ -73,6 +73,18 @@ describe('OAuth2 API', () => {
 			state,
 			scope: 'openid',
 		});
+	});
+
+	it('should not return an auth URL for a read-only sharee', async () => {
+		await shareCredentialWithUsers(credential, [anotherUser]);
+
+		const response = await testServer
+			.authAgentFor(anotherUser)
+			.get('/oauth2-credential/auth')
+			.query({ id: credential.id })
+			.expect(404);
+
+		expect(response.body).toMatchObject({ message: 'Credential not found' });
 	});
 
 	it('should fail on auth when callback is called as another user', async () => {

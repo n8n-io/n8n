@@ -155,7 +155,7 @@ describe('OAuth1CredentialController', () => {
 					reason: 'Received following query parameters: {"state":"test"}',
 				},
 			});
-			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
 		it('should render the error page when `state` query param is invalid', async () => {
@@ -173,11 +173,11 @@ describe('OAuth1CredentialController', () => {
 					message: 'Invalid state format',
 				},
 			});
-			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
 		it('should render the error page when credential is not found in DB', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(null);
 
 			await controller.handleCallback(req, res);
 
@@ -186,12 +186,16 @@ describe('OAuth1CredentialController', () => {
 					message: 'OAuth callback failed because of insufficient permissions',
 				},
 			});
-			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
-			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({ id: '1' });
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'1',
+				expect.anything(),
+				['credential:update'],
+			);
 		});
 
 		it('should render the error page when state differs from the stored state in the credential', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret: 'invalid' });
 
 			await controller.handleCallback(req, res);
@@ -204,7 +208,7 @@ describe('OAuth1CredentialController', () => {
 		});
 
 		it('should render the error page when state is older than 5 minutes', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 
@@ -220,7 +224,7 @@ describe('OAuth1CredentialController', () => {
 		});
 
 		it('should exchange the code for a valid token, and save it to DB', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',

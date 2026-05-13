@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
@@ -73,7 +73,7 @@ export abstract class AbstractOAuthController {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:read'],
+			['credential:update'],
 		);
 
 		if (!credential) {
@@ -155,9 +155,20 @@ export abstract class AbstractOAuthController {
 		});
 	}
 
-	/** Get a credential without user check */
-	protected async getCredentialWithoutUser(credentialId: string): Promise<ICredentialsDb | null> {
-		return await this.credentialsRepository.findOneBy({ id: credentialId });
+	/** Get a credential with user check */
+	protected async getCredentialWithUser(
+		credentialId: string,
+		user: User,
+	): Promise<ICredentialsDb | null> {
+		if (skipAuthOnOAuthCallback) {
+			return await this.credentialsRepository.findOneById(credentialId);
+		}
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:update'],
+		);
+		return credential;
 	}
 
 	createCsrfState(credentialsId: string, userId?: string): [string, string] {
@@ -207,7 +218,7 @@ export abstract class AbstractOAuthController {
 	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
-		const credential = await this.getCredentialWithoutUser(state.cid);
+		const credential = await this.getCredentialWithUser(state.cid, req.user);
 		if (!credential) {
 			throw new UnexpectedError('OAuth callback failed because of insufficient permissions');
 		}
