@@ -3461,6 +3461,7 @@ export interface IWorkflowSettings {
 	workerPoolOverrideProduction?: string;
 	workerPoolOverrideManual?: string;
 	workerPoolOverrideEvaluation?: string;
+	priority?: 'default' | 'high';
 }
 
 export interface WorkflowFEMeta {
