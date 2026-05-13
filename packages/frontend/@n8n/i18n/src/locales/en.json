@@ -5773,7 +5773,6 @@
 	"instanceAi.activitySummary.questions": "{count} answered questions",
 	"instanceAi.activitySummary.subagents": "{count} subagents",
 	"projects.menu.instanceAi": "AI Assistant",
-	"projects.menu.cloudAgent": "Cloud Agent",
 	"chatInputBase.button.attach": "Attach files",
 	"instanceAi.filesystem.access.read": "Read only",
 	"instanceAi.filesystem.access.readWrite": "Read & Write",

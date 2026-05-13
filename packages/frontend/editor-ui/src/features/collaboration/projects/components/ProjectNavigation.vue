@@ -14,7 +14,6 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { CLOUD_AGENT_VIEW } from '@/features/ai/cloudAgent/constants';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -54,12 +53,6 @@ const isInstanceAiNavVisible = computed(() => {
 	if (!settingsStore.isModuleActive('instance-ai')) return false;
 	const ms = settingsStore.moduleSettings['instance-ai'];
 	return ms?.enabled !== false;
-});
-const isCloudAgentNavVisible = computed(() => {
-	if (!settingsStore.isModuleActive('cloud-agent')) return false;
-	const ms = settingsStore.moduleSettings['cloud-agent'];
-	if (ms?.enabled === false) return false;
-	return hasPermission(['rbac'], { rbac: { scope: 'cloudAgent:message' } });
 });
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
@@ -129,14 +122,6 @@ const instanceAi = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
-const cloudAgent = computed<IMenuItem>(() => ({
-	id: 'cloud-agent',
-	icon: 'sparkles',
-	label: locale.baseText('projects.menu.cloudAgent'),
-	route: { to: { name: CLOUD_AGENT_VIEW } },
-	preview: true,
-}));
-
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -193,13 +178,6 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'instance-ai'"
 				data-test-id="project-instance-ai-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="isCloudAgentNavVisible"
-				:item="cloudAgent"
-				:compact="props.collapsed"
-				:active="activeTabId === 'cloud-agent'"
-				data-test-id="project-cloud-agent-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"
