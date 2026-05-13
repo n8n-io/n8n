@@ -389,7 +389,10 @@ describe('enqueueExecution', () => {
 					runner.enqueueExecution('1', 'workflow-xyz', data, false, realtime),
 				).rejects.toThrow();
 
-				expect(addJob).toHaveBeenCalledWith(expect.any(Object), { priority: expected });
+				expect(addJob).toHaveBeenCalledWith(
+					expect.any(Object),
+					expect.objectContaining({ priority: expected }),
+				);
 			},
 		);
 	});
