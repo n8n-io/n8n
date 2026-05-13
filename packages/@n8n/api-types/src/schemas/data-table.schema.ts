@@ -35,9 +35,21 @@ export const dataTableColumnSchema = dataTableCreateColumnSchema.extend({
 	dataTableId: dataTableIdSchema,
 });
 
+export const dataTableKindSchema = z.enum(['board', 'list']);
+export type DataTableKind = z.infer<typeof dataTableKindSchema>;
+
+export const dataTableMetadataSchema = z
+	.object({
+		allowedStatuses: z.array(z.string()).optional(),
+	})
+	.nullable();
+export type DataTableMetadata = z.infer<typeof dataTableMetadataSchema>;
+
 export const dataTableSchema = z.object({
 	id: dataTableIdSchema,
 	name: dataTableNameSchema,
+	kind: dataTableKindSchema,
+	metadata: dataTableMetadataSchema,
 	columns: z.array(dataTableColumnSchema),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),

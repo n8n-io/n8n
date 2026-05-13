@@ -216,12 +216,16 @@ export {
 	type DataTable,
 	type DataTableColumn,
 	type DataTableCreateColumnSchema,
+	type DataTableKind,
 	type DataTableListFilter,
 	type DataTableListOptions,
 	type DataTableListSortBy,
+	type DataTableMetadata,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
 	dataTableIdSchema,
+	dataTableKindSchema,
+	dataTableMetadataSchema,
 } from './schemas/data-table.schema';
 
 export type {

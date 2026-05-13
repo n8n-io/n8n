@@ -175,6 +175,7 @@ import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
+import { AddKindAndMetadataToDataTable1778658535626 } from '../common/1778658535626-AddKindAndMetadataToDataTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -355,4 +356,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,
+	AddKindAndMetadataToDataTable1778658535626,
 ];
