@@ -73,6 +73,7 @@
     "cron": "catalog:",
     "curlconverter": "^4.12.0",
     "cytoscape": "catalog:",
+    "cytoscape-dagre": "catalog:",
     "dateformat": "^3.0.3",
     "element-plus": "catalog:frontend",
     "email-providers": "^2.0.1",

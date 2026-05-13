@@ -162,6 +162,9 @@ catalogs:
     cytoscape:
       specifier: ^3.33.3
       version: 3.33.3
+    cytoscape-dagre:
+      specifier: ^2.5.0
+      version: 2.5.0
     eslint:
       specifier: 9.29.0
       version: 9.29.0
@@ -3989,6 +3992,9 @@ importers:
       cytoscape:
         specifier: 'catalog:'
         version: 3.33.3
+      cytoscape-dagre:
+        specifier: 'catalog:'
+        version: 2.5.0(cytoscape@3.33.3)
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -14159,6 +14165,11 @@ packages:
   currency-codes@2.1.0:
     resolution: {integrity: sha512-aASwFNP8VjZ0y0PWlSW7c9N/isYTLxK6OCbm7aVuQMk7dWO2zgup9KGiFQgeL9OGL5P/ulvCHcjQizmuEeZXtw==}
 
+  cytoscape-dagre@2.5.0:
+    resolution: {integrity: sha512-VG2Knemmshop4kh5fpLO27rYcyUaaDkRw+6PiX4bstpB+QFt0p2oauMrsjVbUamGWQ6YNavh7x2em2uZlzV44g==}
+    peerDependencies:
+      cytoscape: ^3.2.22
+
   cytoscape@3.33.3:
     resolution: {integrity: sha512-Gej7U+OKR+LZ8kvX7rb2HhCYJ0IhvEFsnkud4SB1PR+BUY/TsSO0dmOW59WEVLu51b1Rm+gQRKoz4bLYxGSZ2g==}
     engines: {node: '>=0.10'}
@@ -14208,6 +14219,9 @@ packages:
   d@1.0.2:
     resolution: {integrity: sha512-MOqHvMWF9/9MX6nza0KgvFH4HpMU0EF5uUDXqX/BtxtU8NfB0QzRtJ8Oe/6SuS4kbhyzVJwjd97EA4PKrzJ8bw==}
     engines: {node: '>=0.12'}
+
+  dagre@0.8.5:
+    resolution: {integrity: sha512-/aTqmnRta7x7MCCpExk7HQL2O4owCT2h8NT//9I1OQ9vt29Pa0BzSAkR5lwFUcQ7491yVi/3CXU9jQ5o0Mn2Sw==}
 
   dashdash@1.14.1:
     resolution: {integrity: sha512-jRFi8UDGo6j+odZiEpjazZaWqEal3w/basFjQHQEwVtZJGDpxbH1MeYluwCS8Xq5wmLJooDlMgvVarmWfGM44g==}
@@ -15866,6 +15880,9 @@ packages:
 
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
+
+  graphlib@2.1.8:
+    resolution: {integrity: sha512-jcLLfkpoVGmH7/InMC/1hIvOPSUh38oJtGhvrOFGzioE1DZ+0YW16RgmOJhHiuWTvGiJQ9Z1Ik43JvkRPRvE+A==}
 
   graphql-request@6.1.0:
     resolution: {integrity: sha512-p+XPfS4q7aIpKVcgmnZKhMNqhltk20hfXtkaIkTfjjmiKMJ5xrt5c743cL03y/K7y1rg3WrIC49xGiEQ4mxdNw==}
@@ -35129,6 +35146,11 @@ snapshots:
       first-match: 0.0.1
       nub: 0.0.0
 
+  cytoscape-dagre@2.5.0(cytoscape@3.33.3):
+    dependencies:
+      cytoscape: 3.33.3
+      dagre: 0.8.5
+
   cytoscape@3.33.3: {}
 
   d3-color@3.1.0: {}
@@ -35177,6 +35199,11 @@ snapshots:
     dependencies:
       es5-ext: 0.10.64
       type: 2.7.3
+
+  dagre@0.8.5:
+    dependencies:
+      graphlib: 2.1.8
+      lodash: 4.18.1
 
   dashdash@1.14.1:
     dependencies:
@@ -37366,6 +37393,10 @@ snapshots:
   graceful-fs@4.2.11: {}
 
   graphemer@1.4.0: {}
+
+  graphlib@2.1.8:
+    dependencies:
+      lodash: 4.18.1
 
   graphql-request@6.1.0(encoding@0.1.13)(graphql@16.11.0):
     dependencies:

@@ -70,6 +70,7 @@ catalog:
   chokidar: 4.0.3
   cron: 4.4.0
   cytoscape: ^3.33.3
+  cytoscape-dagre: ^2.5.0
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   fast-glob: 3.2.12

@@ -13,6 +13,8 @@ interface ClassifiedNode {
 	bucket: NodeBucket;
 	vendor: string | null;
 	destination: string | null;
+	/** True when this node was only marked external via ai_* propagation from a subordinate. */
+	propagated?: boolean;
 }
 
 interface ClassifiedEdge {
@@ -52,6 +54,15 @@ const LOCAL_TRIGGERS = new Set<string>([
 	'n8n-nodes-base.errorTrigger',
 	'n8n-nodes-base.workflowTrigger',
 	'n8n-nodes-base.start',
+]);
+
+// Nodes whose declared credentials are for *local* operations (JWT signing, HMAC, response
+// authentication) rather than outbound network calls. Without this list rule #6 would mark them
+// external just because they reference a credential type.
+const ALWAYS_INTERNAL = new Set<string>([
+	'n8n-nodes-base.respondToWebhook',
+	'n8n-nodes-base.jwt',
+	'n8n-nodes-base.crypto',
 ]);
 
 const CODE_LIKE_TYPES = new Set<string>([
@@ -183,6 +194,18 @@ export class VisualizationsController {
 			};
 		}
 
+		// 3.5 Nodes whose credentials are misleading (local-only crypto/signing) — keep internal.
+		if (ALWAYS_INTERNAL.has(node.type)) {
+			return {
+				id,
+				name: node.name,
+				type: node.type,
+				bucket: 'internal',
+				vendor: null,
+				destination: null,
+			};
+		}
+
 		// 4. Inbound external trigger — counts as external (receives outside data).
 		if (INBOUND_EXTERNAL_TRIGGERS.has(node.type)) {
 			return {
@@ -274,6 +297,38 @@ export class VisualizationsController {
 				nameToId.set(n.name, n.id ?? n.name);
 			});
 			const edges = this.buildEdges((w.connections ?? {}) as Record<string, unknown>, nameToId);
+
+			// Propagate external-ness upward through ai_* edges.
+			// If a node has any subordinate (model / tool / memory / etc.) that is external,
+			// the consuming node is effectively making external calls via that subordinate.
+			const byId = new Map(nodes.map((n) => [n.id, n]));
+			const aiKidsByParent = new Map<string, string[]>();
+			for (const e of edges) {
+				if (!e.port.startsWith('ai_')) continue;
+				const list = aiKidsByParent.get(e.to) ?? [];
+				list.push(e.from);
+				aiKidsByParent.set(e.to, list);
+			}
+			let dirty = true;
+			while (dirty) {
+				dirty = false;
+				for (const parent of nodes) {
+					if (parent.bucket !== 'internal') continue;
+					const kids = aiKidsByParent.get(parent.id);
+					if (!kids) continue;
+					for (const kidId of kids) {
+						const kid = byId.get(kidId);
+						if (kid && kid.bucket !== 'internal') {
+							parent.bucket = 'external-known';
+							parent.vendor = parent.vendor ?? kid.vendor ?? 'via-tool';
+							parent.propagated = true;
+							dirty = true;
+							break;
+						}
+					}
+				}
+			}
+
 			return {
 				id: w.id,
 				name: w.name,
