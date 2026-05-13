@@ -345,6 +345,7 @@ function onCreateCredential(type: string) {
 			props.projectId,
 			undefined,
 			undefined,
+			undefined,
 			{
 				hideAskAssistant: true,
 			},

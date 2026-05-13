@@ -32,6 +32,17 @@ import { formatErrorResult } from './tools/utils';
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_AUTH_RETRIES = 5;
 
+/** Thrown when the gateway rejects our pairing token with 401/403. */
+export class GatewayAuthError extends Error {
+	constructor(
+		readonly status: number,
+		readonly body: string,
+	) {
+		super(`Gateway rejected token: ${status} ${body}`);
+		this.name = 'GatewayAuthError';
+	}
+}
+
 /** Tag tool definitions with a category annotation (mutates in place for efficiency). */
 function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[] {
 	for (const def of defs) {
@@ -101,7 +112,7 @@ export class GatewayClient {
 
 	constructor(private readonly options: GatewayClientOptions) {}
 
-	/** Return the active API key — session key if available, otherwise the original key. */
+	/** Session key when the server has upgraded the pairing token; otherwise the original token. */
 	private get apiKey(): string {
 		return this.sessionKey ?? this.options.apiKey;
 	}
@@ -301,6 +312,9 @@ export class GatewayClient {
 
 		if (!response.ok) {
 			const text = await response.text();
+			if (response.status === 401 || response.status === 403) {
+				throw new GatewayAuthError(response.status, text);
+			}
 			throw new Error(`Failed to upload capabilities: ${response.status} ${text}`);
 		}
 

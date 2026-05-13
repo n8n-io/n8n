@@ -28,9 +28,40 @@ export class FacebookGraphApi implements INodeType {
 			{
 				name: 'facebookGraphApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authType: ['accessToken'],
+					},
+				},
+			},
+			{
+				name: 'facebookGraphApiOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authType: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authType',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The authentication method to use',
+			},
 			{
 				displayName: 'Host URL',
 				name: 'hostUrl',
@@ -80,6 +111,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v25.0',
+						value: 'v25.0',
+					},
+					{
+						name: 'v24.0',
+						value: 'v24.0',
 					},
 					{
 						name: 'v23.0',
@@ -330,7 +369,16 @@ export class FacebookGraphApi implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
+			const authType = this.getNodeParameter('authType', itemIndex, 'accessToken') as string;
+			const qs: IDataObject = {};
+
+			let graphApiAccessToken: string | undefined;
+			if (authType === 'accessToken') {
+				const graphApiCredentials = await this.getCredentials('facebookGraphApi');
+				graphApiAccessToken = graphApiCredentials.accessToken as string;
+				qs.access_token = graphApiAccessToken;
+			}
+			// OAuth2: token is injected automatically via requestWithAuthentication
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter(
@@ -350,10 +398,6 @@ export class FacebookGraphApi implements INodeType {
 			if (edge) {
 				uri = `${uri}/${edge}`;
 			}
-
-			const qs: IDataObject = {
-				access_token: graphApiCredentials.accessToken,
-			};
 			const requestOptions: IRequestOptions = {
 				headers: {
 					accept: 'application/json,text/*;q=0.99',
@@ -433,7 +477,15 @@ export class FacebookGraphApi implements INodeType {
 
 			try {
 				// Now that the options are all set make the actual http request
-				response = await this.helpers.request(requestOptions);
+				if (authType === 'oAuth2') {
+					response = await this.helpers.requestWithAuthentication.call(
+						this,
+						'facebookGraphApiOAuth2Api',
+						requestOptions,
+					);
+				} else {
+					response = await this.helpers.request(requestOptions);
+				}
 			} catch (error) {
 				if (!this.continueOnFail()) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);

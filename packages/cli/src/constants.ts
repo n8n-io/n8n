@@ -105,8 +105,11 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'microsoftOAuth2Api',
 	'highLevelOAuth2Api',
 	'mcpOAuth2Api',
+	'facebookGraphApiOAuth2Api',
+	'facebookGraphAppOAuth2Api',
 	'stravaOAuth2Api',
 	'wordpressOAuth2Api',
+	'figmaOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

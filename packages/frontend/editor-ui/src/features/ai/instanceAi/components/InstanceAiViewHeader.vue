@@ -1,27 +1,20 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
 import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useSidebarState } from '../instanceAiLayout';
-import { INSTANCE_AI_SETTINGS_VIEW } from '../constants';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 
 const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
-const router = useRouter();
 const sidebar = useSidebarState();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
-
-function goToSettings() {
-	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
-}
 </script>
 
 <template>
@@ -53,14 +46,6 @@ function goToSettings() {
 				:credits-quota="store.creditsQuota"
 				:is-low-credits="store.isLowCredits"
 				@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-			/>
-			<N8nIconButton
-				icon="cog"
-				variant="ghost"
-				size="small"
-				icon-size="large"
-				data-test-id="instance-ai-settings-button"
-				@click="goToSettings"
 			/>
 			<slot name="actions" />
 		</div>

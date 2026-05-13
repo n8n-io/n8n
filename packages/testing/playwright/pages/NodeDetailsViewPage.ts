@@ -143,6 +143,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
 
+	getOutputDataValues() {
+		return this.getOutputDataContainer().locator('[class*=value_]');
+	}
+
 	async setPinnedData(data: object | string) {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
@@ -866,6 +870,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAddResourceItem() {
 		return this.page.getByTestId('rlc-item-add-resource');
+	}
+
+	getAddResourceCreateOption() {
+		return this.getAddResourceItem().getByText(/Create a/);
 	}
 
 	getExpressionModeToggle(index: number = 1) {
