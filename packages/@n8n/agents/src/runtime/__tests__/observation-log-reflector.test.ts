@@ -1,3 +1,4 @@
+import type { ObservationLogEntry } from '../../types/sdk/observation-log';
 import { InMemoryMemory } from '../memory-store';
 import {
 	normalizeObservationLogReflection,
@@ -5,7 +6,6 @@ import {
 	renderObservationLogForReflection,
 	runObservationLogReflector,
 } from '../observation-log-reflector';
-import type { ObservationLogEntry } from '../../types/sdk/observation-log';
 
 function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntry {
 	return {

@@ -1,6 +1,8 @@
+import { normalizeObservationLogReflection } from './observation-log-reflector';
 import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
 import type { AgentDbMessage } from '../types/sdk/message';
 import type { ObservationCursor } from '../types/sdk/observation';
+import { estimateObservationTokens } from '../types/sdk/observation-log';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -14,8 +16,6 @@ import type {
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 } from '../types/sdk/observation-log';
-import { estimateObservationTokens } from '../types/sdk/observation-log';
-import { normalizeObservationLogReflection } from './observation-log-reflector';
 
 interface StoredMessage {
 	message: AgentDbMessage;

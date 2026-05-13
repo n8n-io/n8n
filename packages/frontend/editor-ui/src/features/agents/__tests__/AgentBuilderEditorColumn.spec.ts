@@ -42,6 +42,7 @@ async function mountColumn() {
 			appliedSkills: [],
 			connectedTriggers: [],
 			isBuildChatStreaming: false,
+			canEditAgent: true,
 			executionsDescription: '',
 		},
 		global: {
