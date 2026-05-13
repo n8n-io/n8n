@@ -1,4 +1,4 @@
-import { SettingsRepository } from '@n8n/db';
+import { ProjectPoolSettingsRepository, SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
@@ -14,6 +14,7 @@ const SETTINGS_KEY = 'workerPools.assignment';
 export class PoolConfigService {
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
+		private readonly projectPoolSettingsRepository: ProjectPoolSettingsRepository,
 		private readonly cacheService: CacheService,
 	) {}
 
@@ -58,5 +59,23 @@ export class PoolConfigService {
 		await this.cacheService.set(SETTINGS_KEY, serialized);
 
 		return next;
+	}
+
+	async getProjectPool(
+		projectId: string,
+		category: ExecutionCategory,
+	): Promise<string | undefined> {
+		const cacheKey = `projectPool:${projectId}:${category}`;
+
+		const cached = await this.cacheService.get<string>(cacheKey);
+		if (cached !== undefined) return cached || undefined;
+
+		const poolName = await this.projectPoolSettingsRepository.getPoolForCategory(
+			projectId,
+			category,
+		);
+
+		void this.cacheService.set(cacheKey, poolName ?? '');
+		return poolName;
 	}
 }
