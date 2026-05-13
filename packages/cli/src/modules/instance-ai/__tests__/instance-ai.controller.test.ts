@@ -61,6 +61,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
 
+import type { CloudAgentBridgeService } from '../cloud-agent-bridge.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import type { SubAgentEvalService } from '../eval/sub-agent-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
@@ -100,6 +101,9 @@ describe('InstanceAiController', () => {
 
 	const subAgentEvalService = mock<SubAgentEvalService>();
 
+	const cloudAgentBridge = mock<CloudAgentBridgeService>();
+	cloudAgentBridge.isEnabled.mockReturnValue(false);
+
 	const controller = new InstanceAiController(
 		instanceAiService,
 		memoryService,
@@ -110,6 +114,7 @@ describe('InstanceAiController', () => {
 		moduleRegistry,
 		push,
 		urlService,
+		cloudAgentBridge,
 		globalConfig,
 	);
 

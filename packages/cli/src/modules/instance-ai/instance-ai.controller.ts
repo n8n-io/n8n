@@ -37,6 +37,7 @@ import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { CloudAgentBridgeService } from './cloud-agent-bridge.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -99,6 +100,7 @@ export class InstanceAiController {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
+		private readonly cloudAgentBridge: CloudAgentBridgeService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -130,6 +132,14 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
+		if (this.cloudAgentBridge.isEnabled()) {
+			if (!payload.message) {
+				throw new BadRequestError('Cloud-agent mode requires a message');
+			}
+			const { runId } = await this.cloudAgentBridge.startRun(req.user, threadId, payload.message);
+			return { runId };
+		}
+
 		this.requireInstanceAiEnabled();
 		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
 			throw new BadRequestError('Either message or attachments must be provided');
@@ -179,6 +189,16 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiEventsQuery,
 	) {
+		if (this.cloudAgentBridge.isEnabled()) {
+			const headerValue = req.headers['last-event-id'];
+			const parsedHeader = headerValue ? parseInt(String(headerValue), 10) : NaN;
+			const lastEventId =
+				Number.isFinite(parsedHeader) && parsedHeader >= 0
+					? parsedHeader
+					: (query.lastEventId ?? undefined);
+			await this.cloudAgentBridge.streamEvents(req, res, threadId, req.user, lastEventId);
+			return;
+		}
 		this.requireInstanceAiEnabled();
 		// Verify the requesting user owns this thread before streaming events.
 		// A thread that doesn't exist yet is allowed — the frontend opens the SSE
@@ -370,6 +390,10 @@ export class InstanceAiController {
 	@Post('/chat/:threadId/cancel')
 	@GlobalScope('instanceAi:message')
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		if (this.cloudAgentBridge.isEnabled()) {
+			await this.cloudAgentBridge.cancelRun(req.user, threadId);
+			return { ok: true };
+		}
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelRun(threadId);
@@ -510,6 +534,9 @@ export class InstanceAiController {
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
+		if (this.cloudAgentBridge.isEnabled()) {
+			return { threads: [], total: 0, page: 0, hasMore: false };
+		}
 		this.requireInstanceAiEnabled();
 		return await this.memoryService.listThreads(req.user.id);
 	}
@@ -521,6 +548,21 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
+		if (this.cloudAgentBridge.isEnabled()) {
+			// Cloud-agent allocates thread state lazily on first chat; we just
+			// echo back the requested id so the frontend can navigate to it.
+			const id = payload.threadId ?? randomUUID();
+			const now = new Date().toISOString();
+			return {
+				thread: {
+					id,
+					resourceId: req.user.id,
+					createdAt: now,
+					updatedAt: now,
+				},
+				created: true,
+			};
+		}
 		this.requireInstanceAiEnabled();
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
