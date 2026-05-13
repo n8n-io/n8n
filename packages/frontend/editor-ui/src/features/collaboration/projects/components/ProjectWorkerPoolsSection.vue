@@ -91,7 +91,7 @@ watch(isValid, (value) => emit('update:isValid', value), { immediate: true });
 </script>
 
 <template>
-	<fieldset data-test-id="project-worker-pools-section">
+	<fieldset class="project-worker-pools" data-test-id="project-worker-pools-section">
 		<h3>
 			<label>{{ i18n.baseText('projects.settings.workerPools.title') }}</label>
 		</h3>
@@ -205,5 +205,39 @@ watch(isValid, (value) => emit('update:isValid', value), { immediate: true });
 .error {
 	display: block;
 	margin-top: var(--spacing--xs);
+}
+</style>
+
+<style lang="scss">
+// Apply n8n's tag tokens to Element Plus's internal `.el-tag` markup so the
+// chips rendered for the Allowed pools multi-select match the rest of the app
+// (e.g. Execution tags). Non-module + parent-class scoped so the overrides
+// don't leak globally.
+.project-worker-pools {
+	.el-tag,
+	.el-tag.el-tag--info {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing--4xs);
+		height: var(--tag--height);
+		padding: var(--tag--padding);
+		line-height: var(--tag--line-height);
+		color: var(--tag--color--text);
+		background-color: var(--tag--color--background);
+		border: 1px solid var(--tag--border-color);
+		border-radius: var(--tag--radius);
+		font-size: var(--tag--font-size);
+
+		.el-tag__close {
+			max-height: 14px;
+			max-width: 14px;
+			line-height: 14px;
+
+			&:hover {
+				background-color: transparent !important;
+				color: var(--color--primary--shade-1);
+			}
+		}
+	}
 }
 </style>
