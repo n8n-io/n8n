@@ -13,7 +13,7 @@ export class AgentObservationLockEntity extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 255 })
 	scopeId: string;
 
-	@Column({ type: 'varchar', length: 20 })
+	@PrimaryColumn({ type: 'varchar', length: 20 })
 	taskKind: ObservationTaskKind;
 
 	@Column({ type: 'varchar', length: 64 })

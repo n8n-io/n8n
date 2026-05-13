@@ -740,6 +740,7 @@ describe('N8nMemory', () => {
 			expect(observationLockRepository.delete).toHaveBeenCalledWith({
 				scopeKind: 'resource',
 				scopeId: 't-1',
+				taskKind: 'observer',
 				holderId: 'A',
 			});
 		});
