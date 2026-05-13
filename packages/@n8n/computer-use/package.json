@@ -1,13 +1,15 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
-  "bin": {
-    "n8n-computer-use": "dist/cli.js"
+  "publishConfig": {
+    "bin": {
+      "n8n-computer-use": "dist/cli.js"
+    }
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "start": "node dist/cli.js http://localhost:5678 --allowed-origins http://localhost:5678",
+    "start": "node dist/cli.js http://localhost:5678 --log-level debug --allowed-origins http://localhost:5678",
     "dev": "pnpm build && (pnpm watch & pnpm start)",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
@@ -23,10 +25,11 @@
   "main": "dist/cli.js",
   "exports": {
     ".": "./dist/cli.js",
-    "./daemon": "./dist/daemon.js",
     "./config": "./dist/config.js",
+    "./gateway-client": "./dist/gateway-client.js",
     "./logger": "./dist/logger.js",
-    "./gateway-session": "./dist/gateway-session.js"
+    "./gateway-session": "./dist/gateway-session.js",
+    "./settings-store": "./dist/settings-store.js"
   },
   "module": "src/cli.ts",
   "types": "dist/cli.d.ts",

@@ -1,25 +1,20 @@
-import { z } from 'zod';
-
-import type { BuiltTool } from '../types';
+import type { z } from 'zod';
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
-
-export const UPDATE_WORKING_MEMORY_TOOL_NAME = 'updateWorkingMemory';
 
 /**
  * The default instruction block injected into the system prompt when working memory
  * is configured. Exported so callers can reference it when building custom instructions.
  */
 export const WORKING_MEMORY_DEFAULT_INSTRUCTION = [
-	'You have persistent working memory that survives across conversations.',
-	'Your current working memory state is shown below.',
-	`When you learn new information about the user or conversation that should be remembered, call the \`${UPDATE_WORKING_MEMORY_TOOL_NAME}\` tool.`,
-	'Only call it when something has actually changed — do NOT call it if nothing new was learned.',
+	'You have thread working memory that is maintained automatically by an out-of-band observer.',
+	'Your current working memory state is shown below. Use it as context for this conversation.',
+	'Do not try to edit working memory directly. The observer updates it after turns when durable thread state changes.',
 ].join('\n');
 
 /**
  * Generate the system prompt instruction for working memory.
- * Tells the LLM to call the updateWorkingMemory tool when it has new information to persist.
+ * Tells the LLM how to read the injected working-memory document.
  *
  * @param template - The working memory template or schema.
  * @param structured - Whether the working memory is structured (JSON schema).
@@ -32,8 +27,8 @@ export function buildWorkingMemoryInstruction(
 	instruction?: string,
 ): string {
 	const format = structured
-		? 'The memory argument must be valid JSON matching the schema'
-		: 'Update the template with any new information learned';
+		? 'The working memory document is valid JSON matching this schema'
+		: 'The working memory document follows this template';
 
 	const body = instruction ?? WORKING_MEMORY_DEFAULT_INSTRUCTION;
 
@@ -61,53 +56,4 @@ export function templateFromSchema(schema: ZodObjectSchema): string {
 		obj[key] = desc ?? '';
 	}
 	return JSON.stringify(obj, null, 2);
-}
-
-export interface WorkingMemoryToolConfig {
-	/** Whether this is structured (Zod-schema-driven) working memory. */
-	structured: boolean;
-	/** Zod schema for structured working memory input validation. */
-	schema?: ZodObjectSchema;
-	/** Called with the serialized working memory string to persist it. */
-	persist: (content: string) => Promise<void>;
-}
-
-/**
- * Build the updateWorkingMemory BuiltTool that the agent calls to persist working memory.
- *
- * For freeform working memory the input schema is `{ memory: string }`.
- * For structured working memory the input schema is the configured Zod object schema,
- * whose values are serialized to JSON before persisting.
- */
-export function buildWorkingMemoryTool(config: WorkingMemoryToolConfig): BuiltTool {
-	if (config.structured && config.schema) {
-		const schema = config.schema;
-		return {
-			name: UPDATE_WORKING_MEMORY_TOOL_NAME,
-			description:
-				'Update your persistent working memory with new information about the user or conversation. Only call this when something has actually changed.',
-			inputSchema: schema,
-			handler: async (input: unknown) => {
-				const content = JSON.stringify(input, null, 2);
-				await config.persist(content);
-				return { success: true, message: 'Working memory updated.' };
-			},
-		};
-	}
-
-	const freeformSchema = z.object({
-		memory: z.string().describe('The updated working memory content.'),
-	});
-
-	return {
-		name: UPDATE_WORKING_MEMORY_TOOL_NAME,
-		description:
-			'Update your persistent working memory with new information about the user or conversation. Only call this when something has actually changed.',
-		inputSchema: freeformSchema,
-		handler: async (input: unknown) => {
-			const { memory } = input as z.infer<typeof freeformSchema>;
-			await config.persist(memory);
-			return { success: true, message: 'Working memory updated.' };
-		},
-	};
 }

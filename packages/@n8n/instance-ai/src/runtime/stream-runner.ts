@@ -9,6 +9,7 @@ import {
 	type ResumableStreamSource,
 	type TraceStatus,
 } from './resumable-stream-executor';
+import type { WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, withTraceParentContext } from '../tracing/langsmith-tracing';
 import { asResumable } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -24,12 +25,14 @@ export interface StreamRunOptions {
 	signal: AbortSignal;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	onActivity?: () => void;
 }
 
 export interface StreamRunResult {
 	status: TraceStatus;
 	mastraRunId: string;
 	text?: Promise<string>;
+	workSummary: WorkSummary;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -85,6 +88,7 @@ async function consumeStream(
 			eventBus: options.eventBus,
 			signal: options.signal,
 			logger: options.logger,
+			onActivity: options.onActivity,
 		},
 		control: { mode: 'manual' },
 		initialMastraRunId: options.mastraRunId,
@@ -96,6 +100,7 @@ async function consumeStream(
 			status: 'suspended',
 			mastraRunId: result.mastraRunId,
 			text: result.text,
+			workSummary: result.workSummary,
 			suspension: result.suspension,
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 		};
@@ -110,5 +115,6 @@ async function consumeStream(
 					: 'completed',
 		mastraRunId: result.mastraRunId,
 		text: result.text,
+		workSummary: result.workSummary,
 	};
 }

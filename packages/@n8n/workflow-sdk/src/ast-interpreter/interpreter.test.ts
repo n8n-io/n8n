@@ -56,14 +56,7 @@ const createMockSDKFunctions = (): SDKFunctions => ({
 		content,
 		options,
 	})),
-	placeholder: jest.fn((value: string) => ({
-		__placeholder: true as const,
-		hint: value,
-		toString: () => `<__PLACEHOLDER_VALUE__${value}__>`,
-		toJSON() {
-			return this.toString();
-		},
-	})),
+	placeholder: jest.fn((value: string) => `<__PLACEHOLDER_VALUE__${value}__>`),
 	newCredential: jest.fn((name: string) => ({ __newCredential: true, name })),
 	ifElse: jest.fn(),
 	switchCase: jest.fn(),
@@ -84,6 +77,10 @@ const createMockSDKFunctions = (): SDKFunctions => ({
 	fromAi: jest.fn(
 		(key: string, desc?: string) => `={{ $fromAI('${key}'${desc ? `, '${desc}'` : ''}) }}`,
 	),
+	nodeJson: jest.fn((node: { name: string } | string, path: string) => {
+		const name = typeof node === 'string' ? node : node.name;
+		return `={{ $('${name}').item.json.${path} }}`;
+	}),
 });
 
 describe('AST Interpreter', () => {
@@ -222,6 +219,14 @@ describe('AST Interpreter', () => {
 			const result = interpretSDKCode(code, sdkFunctions);
 			expect(sdkFunctions.fromAi).toHaveBeenCalledWith('email', 'The recipient email address');
 			expect(result).toContain('$fromAI');
+		});
+
+		it('should call nodeJson function', () => {
+			const code = "export default nodeJson('Telegram Trigger', 'message.chat.id');";
+			const result = interpretSDKCode(code, sdkFunctions);
+
+			expect(sdkFunctions.nodeJson).toHaveBeenCalledWith('Telegram Trigger', 'message.chat.id');
+			expect(result).toBe("={{ $('Telegram Trigger').item.json.message.chat.id }}");
 		});
 
 		it('should chain method calls', () => {
@@ -958,17 +963,15 @@ describe('AST Interpreter', () => {
 		});
 	});
 
-	describe('expr(placeholder(...)) error', () => {
-		it('should throw clear error when expr receives a PlaceholderValue', () => {
+	describe('expr(placeholder(...)) round-trip', () => {
+		it('prepends = to the placeholder marker so it parses as an n8n expression', () => {
 			const funcs: SDKFunctions = {
 				...createMockSDKFunctions(),
 				expr,
 			};
 			const code = `const val = expr(placeholder('Your ID'));
 export default val;`;
-			expect(() => interpretSDKCode(code, funcs)).toThrow(
-				"expr(placeholder('Your ID')) is invalid",
-			);
+			expect(interpretSDKCode(code, funcs)).toBe('=<__PLACEHOLDER_VALUE__Your ID__>');
 		});
 	});
 });

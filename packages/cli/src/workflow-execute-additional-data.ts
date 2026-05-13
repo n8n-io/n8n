@@ -30,6 +30,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	EnvProviderState,
 	ExecuteWorkflowData,
+	ExecuteAgentData,
 	RelatedExecution,
 	IRunExecutionData,
 } from 'n8n-workflow';
@@ -250,6 +251,68 @@ export async function executeWorkflow(
 	return await executionPromise;
 }
 
+/**
+ * Executes an agent with the given ID and message.
+ */
+export async function executeAgent(
+	agentId: string,
+	message: string,
+	executionId: string,
+	threadId: string,
+	additionalData: IWorkflowExecuteAdditionalData,
+): Promise<ExecuteAgentData> {
+	let userId = additionalData.userId;
+	let projectId = additionalData.projectId;
+
+	// Trigger-fired and webhook executions build `additionalData` without a
+	// `userId` (see `getBase` callers in `active-workflow-manager`,
+	// `webhooks/*`, `scaling/job-processor`). Resolve the workflow's owning
+	// project to derive both `userId` and `projectId` so the agent runs under
+	// the workflow owner's identity, mirroring the projectId backfill below.
+	if ((!userId || !projectId) && additionalData.workflowId) {
+		const { OwnershipService } = await import('@/services/ownership.service');
+		const ownershipService = Container.get(OwnershipService);
+		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
+		projectId = projectId ?? project.id;
+		if (!userId) {
+			const owner = await ownershipService.getPersonalProjectOwnerCached(project.id);
+			userId = owner?.id;
+		}
+	}
+
+	if (!userId) {
+		throw new UnexpectedError('Cannot execute agent without a userId in additional data');
+	}
+	if (!projectId) {
+		throw new UnexpectedError(
+			'Cannot execute agent without a projectId or workflowId in additional data',
+		);
+	}
+
+	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const agentsService = Container.get(AgentsService);
+
+	return await agentsService.executeForWorkflow(
+		agentId,
+		message,
+		executionId,
+		threadId,
+		userId,
+		projectId,
+	);
+}
+
+async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
+	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const agentsService = Container.get(AgentsService);
+	// Only published agents are runnable from a workflow — see the publish
+	// guard in `executeForWorkflow`. Filtering here keeps unpublished agents
+	// out of the MessageAnAgent dropdown so users don't pick one that would
+	// fail at execution time.
+	const agents = await agentsService.findPublishedByUser(userId);
+	return agents.map((agent) => ({ id: agent.id, name: agent.name }));
+}
+
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -313,6 +376,8 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		additionalDataIntegrated.executeAgent = additionalData.executeAgent;
+		additionalDataIntegrated.listAgents = additionalData.listAgents;
 		// Propagate the root execution mode so nested subworkflows retain the original
 		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
 		additionalDataIntegrated.rootExecutionMode =
@@ -471,7 +536,9 @@ export async function getBase({
 	executionTimeoutTimestamp?: number;
 	workflowSettings?: IWorkflowSettings;
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
+	const urlService = Container.get(UrlService);
+	const urlBaseWebhook = urlService.getWebhookBaseUrl();
+	const instanceBaseUrl = urlService.getInstanceBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
@@ -483,8 +550,10 @@ export async function getBase({
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
+		executeAgent,
+		listAgents,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
-		instanceBaseUrl: urlBaseWebhook,
+		instanceBaseUrl: `${instanceBaseUrl}/`,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,

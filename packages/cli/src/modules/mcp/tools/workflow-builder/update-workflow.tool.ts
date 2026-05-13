@@ -1,11 +1,18 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
-import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { CODE_BUILDER_VALIDATE_TOOL, MCP_UPDATE_WORKFLOW_TOOL } from './constants';
-import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
+import { validateCredentialReferences } from './credential-validation';
+import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import {
+	applyOperations,
+	partialUpdateOperationSchema,
+	toWorkflowSlice,
+	type PartialUpdateOperation,
+} from './workflow-operations';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -16,61 +23,59 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { getMcpWorkflow, getSdkReferenceHint } from '../workflow-validation.utils';
+import { getMcpWorkflow } from '../workflow-validation.utils';
+
+const MAX_OPERATIONS_PER_CALL = 100;
 
 const inputSchema = {
-	workflowId: z.string().describe('The ID of the workflow to update'),
-	code: z
-		.string()
+	workflowId: z.string().describe('The ID of the workflow to update.'),
+	operations: z
+		.array(partialUpdateOperationSchema)
+		.min(1)
+		.max(MAX_OPERATIONS_PER_CALL)
 		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
-		),
-	name: z
-		.string()
-		.max(128)
-		.optional()
-		.describe('Optional workflow name. If not provided, uses the name from the code.'),
-	description: z
-		.string()
-		.max(255)
-		.optional()
-		.describe(
-			'Short workflow description summarizing what it does (1-2 sentences, max 255 chars).',
+			`Ordered list of operations to apply (max ${MAX_OPERATIONS_PER_CALL}). Operations are applied atomically: if any operation fails (e.g. node not found, duplicate name), the whole batch is rejected and no changes are saved.`,
 		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
-	workflowId: z.string().describe('The ID of the updated workflow'),
-	name: z.string().describe('The name of the updated workflow'),
-	nodeCount: z.number().describe('The number of nodes in the workflow'),
-	url: z.string().describe('The URL to open the workflow in n8n'),
+	workflowId: z.string(),
+	name: z.string(),
+	nodeCount: z.number(),
+	url: z.string(),
+	appliedOperations: z.number().describe('Number of operations applied.'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
-				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
-				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
-				credentialType: z.string().describe('The credential type that was auto-assigned'),
+				nodeName: z.string(),
+				credentialName: z.string(),
+				credentialType: z.string(),
 			}),
 		)
-		.describe('List of credentials that were automatically assigned to nodes'),
-	note: z
-		.string()
-		.optional()
+		.describe('Credentials auto-assigned to nodes that were added in this update.'),
+	validationWarnings: z
+		.array(
+			z.object({
+				code: z.string(),
+				message: z.string(),
+				nodeName: z.string().optional(),
+			}),
+		)
 		.describe(
-			'Additional notes about the workflow update, such as any nodes that were skipped during credential auto-assignment.',
+			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
-	hint: z
-		.string()
-		.optional()
-		.describe(
-			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
-		),
+	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 /**
- * MCP tool that updates a workflow in n8n from validated SDK code.
- * Parses the code, validates it, and updates the existing workflow.
- * Only workflows that are available in MCP can be updated.
+ * MCP tool that updates a workflow by applying a small list of named operations
+ * (addNode, removeNode, updateNodeParameters, addConnection, …) directly to the
+ * stored JSON. The agent emits a tiny diff per call instead of re-sending the
+ * full SDK code, which keeps output-token cost roughly constant per edit.
+ *
+ * Graph + JSON validation runs on the resulting workflow before save, so the
+ * end-state safety net matches the create-from-code path; only the
+ * TS-code → JSON parse step is skipped.
  */
 export const createUpdateWorkflowTool = (
 	user: User,
@@ -85,36 +90,36 @@ export const createUpdateWorkflowTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
-		description: `Update an existing workflow in n8n from validated SDK code. Parses the code into a workflow and saves the changes. Always validate with ${CODE_BUILDER_VALIDATE_TOOL.toolName} first.`,
+		description:
+			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged.',
 		inputSchema,
 		outputSchema,
 		annotations: {
 			title: MCP_UPDATE_WORKFLOW_TOOL.displayTitle,
 			readOnlyHint: false,
 			destructiveHint: true,
-			idempotentHint: true,
+			idempotentHint: false,
 			openWorldHint: false,
 		},
 	},
 	handler: async ({
 		workflowId,
-		code,
-		name,
-		description,
+		operations,
 	}: {
 		workflowId: string;
-		code: string;
-		name?: string;
-		description?: string;
+		operations: PartialUpdateOperation[];
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
-			parameters: { workflowId, codeLength: code.length, hasName: !!name },
+			parameters: {
+				workflowId,
+				opCount: operations.length,
+				opTypes: operations.map((op) => op.type),
+			},
 		};
 
 		try {
-			// Fetch the workflow to check if it's available in MCP
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,
 				user,
@@ -124,58 +129,73 @@ export const createUpdateWorkflowTool = (
 
 			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
 
-			const { ParseValidateHandler, stripImportStatements } = await import(
-				'@n8n/ai-workflow-builder'
+			const result = applyOperations(toWorkflowSlice(existingWorkflow), operations);
+
+			if (!result.success) {
+				throw new Error(result.error);
+			}
+
+			const credentialCheck = await validateCredentialReferences(
+				operations,
+				existingWorkflow,
+				user,
+				credentialsService,
+				nodeTypes,
 			);
-
-			const handler = new ParseValidateHandler({ generatePinData: false });
-			const strippedCode = stripImportStatements(code);
-			const result = await handler.parseAndValidate(strippedCode);
-
-			const workflowJson = layoutWorkflowJSON(result.workflow);
+			if (!credentialCheck.ok) {
+				throw new Error(credentialCheck.error);
+			}
 
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
-				name: name ?? workflowJson.name,
-				...(description !== undefined ? { description } : {}),
-				nodes: workflowJson.nodes,
-				connections: workflowJson.connections,
-				pinData: workflowJson.pinData,
-				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
+				name: result.workflow.name,
+				...(result.workflow.description !== undefined
+					? { description: result.workflow.description }
+					: {}),
+				nodes: result.workflow.nodes,
+				connections: result.workflow.connections,
+				meta: {
+					...(existingWorkflow.meta ?? {}),
+					aiBuilderAssisted: true,
+					builderVariant: 'mcp',
+				},
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
 
-			stripNullCredentialStubs(workflowUpdateData.nodes);
+			let credentialAssignments: Array<{
+				nodeName: string;
+				credentialName: string;
+				credentialType: string;
+			}> = [];
+			let skippedHttpNodes: string[] = [];
 
-			// Preserve user-configured credentials from the existing workflow.
-			// Match nodes by name + type so that auto-assign skips them.
-			const existingCredsByNode = new Map(
-				existingWorkflow.nodes.map((n) => [n.name, { type: n.type, credentials: n.credentials }]),
-			);
-			for (const node of workflowUpdateData.nodes) {
-				if (!node.credentials) {
-					const existing = existingCredsByNode.get(node.name);
-					if (existing?.type === node.type && existing.credentials) {
-						node.credentials = { ...existing.credentials };
-					}
-				}
-			}
+			if (result.addedNodeNames.length > 0) {
+				const addedNodeSet = new Set(result.addedNodeNames);
+				const addedNodes = workflowUpdateData.nodes.filter((n) => addedNodeSet.has(n.name));
+				const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({
+					where: { workflowId, role: 'workflow:owner' },
+					select: ['projectId'],
+				});
 
-			// Resolve the project ID from the workflow's owner relationship
-			const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({
-				where: { workflowId, role: 'workflow:owner' },
-				select: ['projectId'],
-			});
-
-			const { assignments: credentialAssignments, skippedHttpNodes } =
-				await autoPopulateNodeCredentials(
-					workflowUpdateData,
+				const autoAssign = await autoPopulateNodeCredentials(
+					{ ...workflowUpdateData, nodes: addedNodes },
 					user,
 					nodeTypes,
 					credentialsService,
 					sharedWorkflow.projectId,
 				);
+				credentialAssignments = autoAssign.assignments;
+				skippedHttpNodes = autoAssign.skippedHttpNodes;
+			}
+
+			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
+			const validator = new ParseValidateHandler({ generatePinData: false });
+			const validationWarnings = validator.validateJSON({
+				name: workflowUpdateData.name,
+				nodes: workflowUpdateData.nodes,
+				connections: workflowUpdateData.connections,
+			} as unknown as WorkflowJSON);
 
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: true,
@@ -201,7 +221,9 @@ export const createUpdateWorkflowTool = (
 				name: updatedWorkflow.name,
 				nodeCount: updatedWorkflow.nodes.length,
 				url: workflowUrl,
+				appliedOperations: operations.length,
 				autoAssignedCredentials: credentialAssignments,
+				validationWarnings,
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
@@ -220,8 +242,7 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const hint = getSdkReferenceHint(error);
-			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
+			const output = { error: errorMessage };
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

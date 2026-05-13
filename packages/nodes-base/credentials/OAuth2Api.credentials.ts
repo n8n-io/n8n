@@ -203,5 +203,37 @@ export class OAuth2Api implements ICredentialType {
 				'HTTP status code that indicates the token has expired. Some APIs return 403 instead of 401.',
 			doNotInherit: true,
 		},
+		{
+			displayName: 'Encrypted Tokens (JWE)',
+			name: 'jweEnabled',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected.',
+			envFeatureFlag: 'OAUTH2_JWE',
+			doNotInherit: true,
+		},
+		{
+			// `doNotInherit` matches `jweEnabled` above. Inheriting just `jwksUri`
+			// without `jweEnabled` breaks `getParameterResolveOrder` on every
+			// extending credential because `jwksUri.displayOptions` references a
+			// field the child doesn't have, leaving the dependency unresolved.
+			// Future JWE-aware OAuth2 extensions can re-declare both fields.
+			displayName: 'JWKS URI',
+			name: 'jwksUri',
+			type: 'string',
+			typeOptions: {
+				copyButton: true,
+			},
+			default: '',
+			description:
+				'Provide this URL to your IdP so it can fetch the public key used to encrypt access and ID tokens for this instance.',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+				},
+			},
+			doNotInherit: true,
+		},
 	];
 }

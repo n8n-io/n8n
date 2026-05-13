@@ -1,3 +1,4 @@
+import type { PublishTimelineEvent } from '@n8n/api-types';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
@@ -20,7 +21,7 @@ export type WorkflowPublishHistory = {
 	id: number;
 	event: 'activated' | 'deactivated';
 	userId: string | null;
-	versionId: string;
+	versionId: string | null;
 	workflowId: string;
 };
 
@@ -80,6 +81,19 @@ export const getWorkflowVersionsByIds = async (
 		context.baseUrl,
 		`/workflow-history/workflow/${workflowId}/versions`,
 		{ versionIds },
+	);
+	return data;
+};
+
+export type { PublishTimelineEvent } from '@n8n/api-types';
+
+export const getPublishTimeline = async (
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<PublishTimelineEvent[]> => {
+	const { data } = await get(
+		context.baseUrl,
+		`/workflow-history/workflow/${workflowId}/publish-timeline`,
 	);
 	return data;
 };
