@@ -88,4 +88,12 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
 	},
+	'ephemeralNode:read': {
+		displayName: 'Discover Ephemeral Nodes',
+		description: 'Allows discovering nodes available for ephemeral single-node execution.',
+	},
+	'ephemeralNode:execute': {
+		displayName: 'Execute Ephemeral Node',
+		description: 'Allows executing a single node inline without a saved workflow.',
+	},
 };

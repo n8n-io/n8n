@@ -56,6 +56,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		instanceAi: {},
 		securitySettings: {},
 		roleMappingRule: {},
+		ephemeralNode: {},
 	});
 
 	function addGlobalRole(role: Role) {

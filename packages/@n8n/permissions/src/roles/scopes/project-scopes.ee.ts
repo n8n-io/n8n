@@ -60,6 +60,8 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'ephemeralNode:read',
+	'ephemeralNode:execute',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -106,6 +108,8 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataTable:writeRow',
 	'dataTable:readColumn',
 	'dataTable:writeColumn',
+	'ephemeralNode:read',
+	'ephemeralNode:execute',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -152,6 +156,8 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'ephemeralNode:read',
+	'ephemeralNode:execute',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -173,6 +179,7 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataTable:readColumn',
 	'projectVariable:list',
 	'projectVariable:read',
+	'ephemeralNode:read',
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];
