@@ -2809,6 +2809,38 @@ describe('OauthService', () => {
 				}),
 			).rejects.toThrow('Request token failed');
 		});
+
+		it('should preserve pre-existing query params on the authorization URL', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'trelloOAuth1Api' });
+			const oauthCredentials: OAuth1CredentialData = {
+				consumerKey: 'consumer_key',
+				consumerSecret: 'consumer_secret',
+				requestTokenUrl: 'https://trello.com/1/OAuthGetRequestToken',
+				authUrl:
+					'https://trello.com/1/OAuthAuthorizeToken?scope=read,write,account&expiration=never&name=n8n',
+				accessTokenUrl: 'https://trello.com/1/OAuthGetAccessToken',
+				signatureMethod: 'HMAC-SHA1',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.request).mockResolvedValue({
+				data: 'oauth_token=random-token&oauth_token_secret=random-secret',
+			});
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const authUri = await service.generateAOauth1AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			const parsed = new URL(authUri);
+			expect(parsed.searchParams.get('scope')).toBe('read,write,account');
+			expect(parsed.searchParams.get('expiration')).toBe('never');
+			expect(parsed.searchParams.get('name')).toBe('n8n');
+			expect(parsed.searchParams.get('oauth_token')).toBe('random-token');
+		});
 	});
 
 	describe('extractAccountIdentifier', () => {

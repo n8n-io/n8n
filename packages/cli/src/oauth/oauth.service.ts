@@ -666,7 +666,9 @@ export class OauthService {
 			);
 		}
 
-		const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
+		const returnUriUrl = new URL(oauthCredentials.authUrl);
+		returnUriUrl.searchParams.set('oauth_token', responseJson.oauth_token);
+		const returnUri = returnUriUrl.toString();
 
 		await this.encryptAndSaveData(credential, { csrfSecret }, []);
 

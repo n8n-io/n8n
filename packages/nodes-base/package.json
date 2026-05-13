@@ -374,6 +374,7 @@
       "dist/credentials/TravisCiApi.credentials.js",
       "dist/credentials/TrellixEpoApi.credentials.js",
       "dist/credentials/TrelloApi.credentials.js",
+      "dist/credentials/TrelloOAuth1Api.credentials.js",
       "dist/credentials/TwakeCloudApi.credentials.js",
       "dist/credentials/TwakeServerApi.credentials.js",
       "dist/credentials/TwilioApi.credentials.js",
