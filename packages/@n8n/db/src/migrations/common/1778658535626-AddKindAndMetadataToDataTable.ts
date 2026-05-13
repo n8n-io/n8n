@@ -14,7 +14,7 @@ export class AddKindAndMetadataToDataTable1778658535626 implements ReversibleMig
 				.json.comment(
 					"Optional structured metadata, e.g. { allowedStatuses: string[] } for 'board' kind",
 				)
-				.default('{}'),
+				.default("'{}'"),
 		]);
 	}
 
