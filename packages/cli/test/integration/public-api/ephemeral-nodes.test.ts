@@ -1,5 +1,8 @@
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import handlers from '@/public-api/v1/handlers/ephemeral-nodes/ephemeral-nodes.handler';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
@@ -14,19 +17,75 @@ let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let authUnscopedAgent: SuperAgentTest;
 
+// Fixtures cover the two cases the active tests need to distinguish:
+//   - VersionedNodeType nodes (multiple entries sharing a `name`, each with a
+//     scalar `version` and a shared `defaultVersion`) — modelling how
+//     `directory-loader.ts` actually populates `types.nodes`. HTTP Request
+//     appears 3× to exercise the collapse-to-`defaultVersion` path.
+//   - A non-allowlisted node (Slack) that would otherwise pass structural
+//     filters — proves `EPHEMERAL_NODE_ALLOWLIST` is the gate.
+const nodeFixtures: INodeTypeDescription[] = [
+	{
+		name: 'n8n-nodes-base.httpRequest',
+		displayName: 'HTTP Request',
+		description: 'Makes an HTTP request and returns the response',
+		group: ['input'],
+		version: 1,
+		defaultVersion: 4.2,
+		codex: { categories: ['Core Nodes'] },
+		credentials: [{ name: 'legacyHttpAuth' }],
+	} as INodeTypeDescription,
+	{
+		name: 'n8n-nodes-base.httpRequest',
+		displayName: 'HTTP Request',
+		description: 'Makes an HTTP request and returns the response',
+		group: ['input'],
+		version: 4,
+		defaultVersion: 4.2,
+		codex: { categories: ['Core Nodes'] },
+		credentials: [{ name: 'httpBasicAuth' }, { name: 'httpHeaderAuth' }],
+	} as INodeTypeDescription,
+	{
+		name: 'n8n-nodes-base.httpRequest',
+		displayName: 'HTTP Request',
+		description: 'Makes an HTTP request and returns the response',
+		group: ['input'],
+		version: 4.2,
+		defaultVersion: 4.2,
+		codex: { categories: ['Core Nodes'] },
+		credentials: [{ name: 'httpBasicAuth' }, { name: 'httpHeaderAuth' }, { name: 'oAuth2Api' }],
+	} as INodeTypeDescription,
+	{
+		name: 'n8n-nodes-base.slack',
+		displayName: 'Slack',
+		description: 'Consume Slack API',
+		group: ['output'],
+		version: 2,
+		codex: { categories: ['Communication'] },
+		credentials: [{ name: 'slackApi' }],
+	} as INodeTypeDescription,
+];
+
+let unscopedMember: User;
+
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
 	member = await createMemberWithApiKey();
+	// A member API key that explicitly does NOT carry `ephemeralNode:read` —
+	// used to assert 403 on the gated list endpoint and the discover hide.
+	unscopedMember = await createMemberWithApiKey({ scopes: ['user:read'] });
+
+	// The handler reads from `LoadNodesAndCredentials.types.nodes` via
+	// `collectTypes()`. In production this is populated by `postProcessLoaders`;
+	// the test harness's `initNodeTypes` only populates `loaded.nodes`, so we
+	// seed `types.nodes` directly with the fixtures above.
+	Container.get(LoadNodesAndCredentials).types.nodes = nodeFixtures;
 });
 
 beforeEach(() => {
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
-	// Skipped tests below reference an "unscoped" agent (an API key that does
-	// not hold `node:read`). Wire it up here so type-checking stays green and
-	// the body is ready to re-enable. Today it's the same as the member agent
-	// because there's no scope to lack.
-	authUnscopedAgent = testServer.publicApiAgentFor(member);
+	authUnscopedAgent = testServer.publicApiAgentFor(unscopedMember);
 });
 
 describe('GET /ephemeral-nodes', () => {
@@ -34,41 +93,98 @@ describe('GET /ephemeral-nodes', () => {
 		await testServer.publicApiAgentWithoutApiKey().get('/ephemeral-nodes').expect(401);
 	});
 
-	test('returns 200 with stub catalogue for any authenticated owner', async () => {
+	test('returns only the allowlisted subset of the catalogue', async () => {
 		const response = await authOwnerAgent.get('/ephemeral-nodes').expect(200);
 
-		expect(response.body).toEqual({ data: [], nextCursor: null });
+		expect(response.body.nextCursor).toBeNull();
+
+		const names = response.body.data.map((n: { nodeType: string }) => n.nodeType);
+		// Fixture seeds httpRequest + slack; only allowlisted entries surface.
+		// v1 ships with `httpRequest` only.
+		expect(names).toEqual(['n8n-nodes-base.httpRequest']);
 	});
 
-	test('returns 200 with stub catalogue for any authenticated member', async () => {
+	test('returns the same catalogue for any authenticated member', async () => {
 		const response = await authMemberAgent.get('/ephemeral-nodes').expect(200);
 
-		expect(response.body).toEqual({ data: [], nextCursor: null });
+		const names = response.body.data.map((n: { nodeType: string }) => n.nodeType);
+		expect(names).toEqual(['n8n-nodes-base.httpRequest']);
 	});
 
-	test('accepts the documented query params without rejecting', async () => {
-		// Validation only — the stub returns an empty list regardless.
+	test('collapses VersionedNodeType entries to the `defaultVersion` row', async () => {
 		const response = await authOwnerAgent
 			.get('/ephemeral-nodes')
-			.query({ nodeType: 'n8n-nodes-base.httpRequest', limit: 50 })
+			.query({ nodeType: 'n8n-nodes-base.httpRequest' })
+			.expect(200);
+
+		// The fixture seeds 3 HTTP Request rows (v1, v4, v4.2); only the
+		// `defaultVersion: 4.2` row should surface. `supportedCredentialTypes`
+		// comes from EPHEMERAL_NODE_ALLOWLIST (curated), not from the
+		// descriptor's `credentials[]`.
+		expect(response.body.data).toEqual([
+			{
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				displayName: 'HTTP Request',
+				description: 'Makes an HTTP request and returns the response',
+				category: 'Core Nodes',
+				supportedCredentialTypes: ['httpBearerAuth'],
+			},
+		]);
+	});
+
+	test('filters by `nodeType` query parameter', async () => {
+		const response = await authOwnerAgent
+			.get('/ephemeral-nodes')
+			.query({ nodeType: 'n8n-nodes-base.httpRequest' })
+			.expect(200);
+
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].nodeType).toBe('n8n-nodes-base.httpRequest');
+	});
+
+	test('returns an empty array for a non-allowlisted `nodeType`', async () => {
+		// Slack exists in the fixture and would pass structural filters, but
+		// it's not in EPHEMERAL_NODE_ALLOWLIST, so the API treats it the same
+		// as an unknown node.
+		const response = await authOwnerAgent
+			.get('/ephemeral-nodes')
+			.query({ nodeType: 'n8n-nodes-base.slack' })
 			.expect(200);
 
 		expect(response.body).toEqual({ data: [], nextCursor: null });
 	});
 
-	// Skipped: flip to `test(...)` when Engineer A's permissions PR lands and
-	// the handler gates with `apiKeyHasScopeWithGlobalScopeFallback({ scope: 'node:read' })`.
-	// The owner/member fixtures will need explicit `{ scopes: [...] }` then — one
-	// holding `node:read`, one without.
-	test.skip('returns 403 without node:read scope', async () => {
+	test('returns an empty array for an unknown `nodeType`', async () => {
+		const response = await authOwnerAgent
+			.get('/ephemeral-nodes')
+			.query({ nodeType: 'does-not-exist' })
+			.expect(200);
+
+		expect(response.body).toEqual({ data: [], nextCursor: null });
+	});
+
+	test('paginates with limit + cursor (single-entry allowlist)', async () => {
+		// With only `httpRequest` allowlisted, the catalogue has one entry —
+		// limit=1 returns it with no further cursor. Multi-page pagination is
+		// covered by the shared paginateArray() utility's own tests.
+		const response = await authOwnerAgent.get('/ephemeral-nodes').query({ limit: 1 }).expect(200);
+
+		expect(response.body.data.map((n: { nodeType: string }) => n.nodeType)).toEqual([
+			'n8n-nodes-base.httpRequest',
+		]);
+		expect(response.body.nextCursor).toBeNull();
+	});
+
+	test('returns 403 without ephemeralNode:read scope', async () => {
 		await authUnscopedAgent.get('/ephemeral-nodes').expect(403);
 	});
 });
 
 describe('GET /discover lists ephemeral-nodes', () => {
-	// Discover treats `scope: null` endpoints as visible to everyone (see
+	// Discover filters endpoints by the caller's scope set (see
 	// discover.service.ts — `ep.scope === null || scopeSet.has(ep.scope)`).
-	test('any authenticated owner sees the ephemeralnode resource', async () => {
+	test('any owner with ephemeralNode:read sees the ephemeralnode resource', async () => {
 		const response = await authOwnerAgent.get('/discover').expect(200);
 
 		const resourceKeys = Object.keys(response.body.data.resources);
@@ -83,16 +199,14 @@ describe('GET /discover lists ephemeral-nodes', () => {
 		expect(operationIds).toContain('listEphemeralNodes');
 	});
 
-	test('any authenticated member also sees the ephemeralnode resource', async () => {
+	test('any member with ephemeralNode:read also sees the ephemeralnode resource', async () => {
 		const response = await authMemberAgent.get('/discover').expect(200);
 
 		const resourceKeys = Object.keys(response.body.data.resources);
 		expect(resourceKeys).toContain('ephemeralnode');
 	});
 
-	// Skipped: flip to `test(...)` when the handler is scope-gated. Discover
-	// will then hide the resource from callers without `node:read`.
-	test.skip('owner without node:read does not see the ephemeralnode resource', async () => {
+	test('caller without ephemeralNode:read does not see the ephemeralnode resource', async () => {
 		const response = await authUnscopedAgent.get('/discover').expect(200);
 
 		const resourceKeys = Object.keys(response.body.data.resources);
@@ -101,23 +215,15 @@ describe('GET /discover lists ephemeral-nodes', () => {
 });
 
 describe('listEphemeralNodes handler middleware', () => {
-	// Swap-back guard: when the permissions PR adds `node:read`,
-	// this handler MUST be updated to gate with
-	// `apiKeyHasScopeWithGlobalScopeFallback({ scope: 'node:read' })`. That
-	// At that point this assertion flips and you need to:
-	//   1. Replace this test body with `expect(hasScopedMiddleware).toBe(true)`
-	//      (or just delete this suite — the 401/403 coverage proves auth+scope).
-	//   2. Uncomment the 403 case in the `GET /ephemeral-nodes` suite for callers
-	//      lacking `node:read`.
-	//   3. Uncomment the "without node:read does not see…" case in the discover suite.
-	test('handler is currently auth-only (no scope middleware) — swap when permissions PR lands', () => {
+	test('handler is gated by ephemeralNode:read scope', () => {
 		const middlewareChain = handlers.listEphemeralNodes as unknown as Array<
 			Record<string, unknown>
 		>;
-		const hasScopedMiddleware = middlewareChain.some(
+		const scopedMiddleware = middlewareChain.find(
 			(mw) => typeof mw === 'function' && '__apiKeyScope' in mw,
-		);
+		) as { __apiKeyScope: string } | undefined;
 
-		expect(hasScopedMiddleware).toBe(false);
+		expect(scopedMiddleware).toBeDefined();
+		expect(scopedMiddleware?.__apiKeyScope).toBe('ephemeralNode:read');
 	});
 });

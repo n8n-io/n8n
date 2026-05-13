@@ -4,17 +4,18 @@
  *
  *   1. GET /credentials   → needs id, name, type per item
  *   2. GET /projects      → needs id, name per item
- *   3. GET /ephemeral-nodes → contract-only stub today
+ *   3. GET /ephemeral-nodes → needs nodeType, nodeTypeVersion, displayName, description per item
  *   4. GET /discover      → must list all three resources for the caller
  *
  * If a field drops out of any of the response shapes this test catches it.
- *
- * NOTE: /ephemeral-nodes is currently auth-only (no scope gate) pending
- * Engineer A's permissions PR. See `ephemeral-nodes.handler.ts` for context.
  */
 
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createOwnerWithApiKey } from '../shared/db/users';
@@ -33,8 +34,23 @@ let authAgent: SuperAgentTest;
 beforeAll(async () => {
 	await utils.initCredentialsTypes();
 	owner = await createOwnerWithApiKey({
-		scopes: ['credential:list', 'project:list'],
+		scopes: ['credential:list', 'project:list', 'ephemeralNode:read'],
 	});
+
+	// One executable fixture is enough to exercise the response shape this
+	// contract test guards. See `ephemeral-nodes.test.ts` for the full
+	// filter/pagination/mapping coverage.
+	Container.get(LoadNodesAndCredentials).types.nodes = [
+		{
+			name: 'n8n-nodes-base.httpRequest',
+			displayName: 'HTTP Request',
+			description: 'Makes an HTTP request and returns the response',
+			group: ['input'],
+			version: 4.2,
+			codex: { categories: ['Core Nodes'] },
+			credentials: [{ name: 'httpBasicAuth' }],
+		} as INodeTypeDescription,
+	];
 });
 
 beforeEach(async () => {
@@ -75,10 +91,19 @@ describe('Ephemeral nodes discovery flow contract', () => {
 		}
 	});
 
-	test('GET /ephemeral-nodes returns the documented stub shape', async () => {
+	test('GET /ephemeral-nodes returns nodeType, nodeTypeVersion, and displayName for every item', async () => {
 		const response = await authAgent.get('/ephemeral-nodes').expect(200);
 
-		expect(response.body).toEqual({ data: [], nextCursor: null });
+		expect(Array.isArray(response.body.data)).toBe(true);
+		expect(response.body.data.length).toBeGreaterThan(0);
+
+		for (const node of response.body.data) {
+			expect(typeof node.nodeType).toBe('string');
+			expect(typeof node.nodeTypeVersion).toBe('number');
+			expect(typeof node.displayName).toBe('string');
+			expect(typeof node.description).toBe('string');
+			expect(Array.isArray(node.supportedCredentialTypes)).toBe(true);
+		}
 	});
 
 	test('GET /discover surfaces credentials, projects, and ephemeralnode for the same API key', async () => {
@@ -90,14 +115,12 @@ describe('Ephemeral nodes discovery flow contract', () => {
 		);
 	});
 
-	// Skipped: flip to `test(...)` when Engineer A's permissions PR lands.
-	// Also add `'node:read'` to the `createOwnerWithApiKey` scopes in `beforeAll`.
-	// Sanity check that one API key can hold all three scopes Claude needs.
-	test.skip('A single API key can carry credential:list + project:list + node:read', async () => {
+	// Sanity check that one API key can hold all three scopes an LLM client needs.
+	test('A single API key can carry credential:list + project:list + ephemeralNode:read', async () => {
 		const response = await authAgent.get('/discover').expect(200);
 
 		expect(response.body.data.scopes).toEqual(
-			expect.arrayContaining(['credential:list', 'project:list', 'node:read']),
+			expect.arrayContaining(['credential:list', 'project:list', 'ephemeralNode:read']),
 		);
 	});
 });

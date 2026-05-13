@@ -5,15 +5,22 @@ import { Container } from '@n8n/di';
 import type { INodeParameters } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import type { PaginatedRequest } from '@/public-api/types';
 
-import { toInlineRequest, toPublicResponse } from './ephemeral-nodes.mapper';
+import { isNodeTypeAllowlisted } from './ephemeral-nodes.allowlist';
+import {
+	mapToEphemeralNodeList,
+	toInlineRequest,
+	toPublicResponse,
+} from './ephemeral-nodes.mapper';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
+import { paginateArray } from '../../shared/services/pagination.service';
 
 type EphemeralNodesHandlers = {
 	executeEphemeralNode: PublicAPIEndpoint<AuthenticatedRequest>;
@@ -32,6 +39,14 @@ const ephemeralNodesHandlers: EphemeralNodesHandlers = {
 				throw new BadRequestError(parsed.error.errors[0].message);
 			}
 			const dto = parsed.data;
+
+			// The public API only exposes a curated subset of nodes; refuse
+			// anything outside that set before doing project lookups or hitting
+			// the shared executor (which is also used by the agent runtime and
+			// applies looser, tool-oriented criteria).
+			if (!isNodeTypeAllowlisted(dto.nodeType)) {
+				throw new BadRequestError(`Node type "${dto.nodeType}" is not available for execution`);
+			}
 
 			const projectId = (
 				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(req.user.id)
@@ -55,9 +70,15 @@ const ephemeralNodesHandlers: EphemeralNodesHandlers = {
 		},
 	],
 	listEphemeralNodes: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'ephemeralNode:read' }),
 		validCursor,
-		async (_req, res) => {
-			return res.json({ data: [], nextCursor: null });
+		async (req, res) => {
+			const { offset = 0, limit = 100, nodeType } = req.query;
+
+			const { nodes } = await Container.get(LoadNodesAndCredentials).collectTypes();
+			const catalogue = mapToEphemeralNodeList(nodes, { nodeType });
+
+			return res.json(paginateArray(catalogue, { offset, limit }));
 		},
 	],
 };

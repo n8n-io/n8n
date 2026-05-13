@@ -89,15 +89,24 @@ describe('POST /ephemeral-nodes/execute', () => {
 			expect(mockExecutor.executeInline).not.toHaveBeenCalled();
 		});
 
-		test('rejects trigger nodes with 400', async () => {
+		test('rejects non-allowlisted node types with 400 before hitting the executor', async () => {
+			await authOwnerAgent
+				.post('/ephemeral-nodes/execute')
+				.send({ ...validPayload, nodeType: 'n8n-nodes-base.slack' })
+				.expect(400);
+
+			expect(mockExecutor.validateNodeForExecution).not.toHaveBeenCalled();
+			expect(mockExecutor.executeInline).not.toHaveBeenCalled();
+		});
+
+		test('maps a trigger-node validation error from the executor to 400', async () => {
+			// Use an allowlisted nodeType so the request reaches the executor; the
+			// executor's UserError is what we're verifying gets surfaced as 400.
 			mockExecutor.validateNodeForExecution.mockImplementationOnce(() => {
 				throw new UserError('Trigger nodes cannot be executed standalone');
 			});
 
-			await authOwnerAgent
-				.post('/ephemeral-nodes/execute')
-				.send({ ...validPayload, nodeType: 'n8n-nodes-base.webhook' })
-				.expect(400);
+			await authOwnerAgent.post('/ephemeral-nodes/execute').send(validPayload).expect(400);
 
 			expect(mockExecutor.executeInline).not.toHaveBeenCalled();
 		});
