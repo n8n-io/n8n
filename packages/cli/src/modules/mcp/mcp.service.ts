@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerMcpApps, registerMcpAppTool } from '@n8n/mcp-apps/server';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
@@ -32,6 +33,7 @@ import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
+import { createPreviewWorkflowTool } from './tools/preview-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
@@ -120,6 +122,7 @@ export class McpService {
 				instructions: getMcpInstructions(builderEnabled),
 			},
 		);
+		await registerMcpApps(server);
 
 		// Existing tools
 		const workflowSearchTool = createSearchWorkflowsTool(
@@ -183,6 +186,22 @@ export class McpService {
 			workflowDetailsTool.name,
 			workflowDetailsTool.config,
 			workflowDetailsTool.handler,
+		);
+
+		const previewWorkflowTool = createPreviewWorkflowTool(
+			user,
+			this.workflowFinderService,
+			this.telemetry,
+		);
+		const previewWorkflowToolConfig = previewWorkflowTool.config;
+		if (!previewWorkflowToolConfig._meta) {
+			throw new Error('Preview workflow tool is missing MCP Apps metadata');
+		}
+		registerMcpAppTool(
+			server,
+			previewWorkflowTool.name,
+			{ ...previewWorkflowToolConfig, _meta: previewWorkflowToolConfig._meta },
+			previewWorkflowTool.handler,
 		);
 
 		const publishWorkflowTool = createPublishWorkflowTool(

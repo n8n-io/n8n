@@ -19,6 +19,7 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 			idempotentHint?: boolean;
 			openWorldHint?: boolean;
 		};
+		_meta?: Record<string, unknown>;
 	};
 	handler: ToolCallback<InputArgs>;
 };

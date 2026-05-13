@@ -4,7 +4,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
+import { MCP_PREVIEW_WORKFLOW_TOOL, MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import {
@@ -65,6 +65,7 @@ const outputSchema = {
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
 	note: z.string().optional(),
+	hint: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 /**
@@ -227,6 +228,7 @@ export const createUpdateWorkflowTool = (
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
+				hint: getPreviewWorkflowHint(updatedWorkflow.id),
 			};
 
 			return {
@@ -252,3 +254,7 @@ export const createUpdateWorkflowTool = (
 		}
 	},
 });
+
+function getPreviewWorkflowHint(workflowId: string): string {
+	return `Call ${MCP_PREVIEW_WORKFLOW_TOOL.toolName} with workflowId="${workflowId}" to show the workflow diagram to the user.`;
+}

@@ -162,6 +162,9 @@ describe('update-workflow MCP tool', () => {
 			expect(result.isError).toBeUndefined();
 			expect(response.workflowId).toBe('wf-1');
 			expect(response.appliedOperations).toBe(1);
+			expect(response.hint).toBe(
+				'Call preview_workflow with workflowId="wf-1" to show the workflow diagram to the user.',
+			);
 
 			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 			const b = saved.nodes.find((n) => n.name === 'B')!;

@@ -1,0 +1,176 @@
+:root {
+	--app-background: var(--color-background-primary, #f6f7fb);
+	--app-surface: var(--color-background-secondary, #ffffff);
+	--app-surface-raised: var(--color-background-tertiary, #fdfefe);
+	--app-text: var(--color-text-primary, #182230);
+	--app-text-muted: var(--color-text-secondary, #667085);
+	--app-border: var(--color-border-primary, #d9e1ec);
+	--app-accent: var(--color-accent-primary, #4f46e5);
+	--app-accent-soft: var(--color-accent-secondary, #eef2ff);
+	--app-shadow: 0 18px 60px rgba(15, 23, 42, 0.12);
+	font-family: var(
+		--font-family-sans,
+		Inter,
+		ui-sans-serif,
+		system-ui,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		sans-serif
+	);
+}
+
+html,
+body,
+#app {
+	min-height: 100%;
+}
+
+body {
+	margin: 0;
+	background:
+		radial-gradient(circle at 20% 0%, var(--app-accent-soft), transparent 32rem),
+		var(--app-background);
+	color: var(--app-text);
+}
+
+.app-shell {
+	box-sizing: border-box;
+	min-height: 100vh;
+	padding: 24px;
+}
+
+.diagram-card,
+.empty-state {
+	box-sizing: border-box;
+	min-height: calc(100vh - 48px);
+	border: 1px solid var(--app-border);
+	border-radius: 24px;
+	background: color-mix(in srgb, var(--app-surface) 92%, transparent);
+	box-shadow: var(--app-shadow);
+}
+
+.diagram-card {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.diagram-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 20px 24px;
+	border-bottom: 1px solid var(--app-border);
+}
+
+.diagram-header h1,
+.empty-state h1 {
+	margin: 4px 0 0;
+	font-size: clamp(1.25rem, 2vw, 1.75rem);
+	line-height: 1.2;
+}
+
+.eyebrow,
+.summary {
+	margin: 0;
+	color: var(--app-text-muted);
+	font-size: 0.78rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.summary {
+	padding: 6px 10px;
+	border-radius: 999px;
+	background: var(--app-accent-soft);
+	color: var(--app-accent);
+	white-space: nowrap;
+}
+
+.empty-state {
+	display: grid;
+	place-content: center;
+	padding: 32px;
+	text-align: center;
+}
+
+.empty-state p:last-child {
+	max-width: 32rem;
+	margin: 12px auto 0;
+	color: var(--app-text-muted);
+}
+
+.diagram-frame {
+	flex: 1;
+	min-height: 360px;
+	overflow: auto;
+	background:
+		linear-gradient(var(--app-border) 1px, transparent 1px),
+		linear-gradient(90deg, var(--app-border) 1px, transparent 1px), var(--app-surface-raised);
+	background-size: 40px 40px;
+}
+
+.workflow-svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	min-height: 520px;
+}
+
+.connection-line {
+	stroke: color-mix(in srgb, var(--app-accent) 72%, var(--app-border));
+	stroke-width: 2.5;
+	stroke-linecap: round;
+}
+
+.arrowhead {
+	fill: color-mix(in srgb, var(--app-accent) 72%, var(--app-border));
+}
+
+.node-card {
+	fill: var(--app-surface);
+	stroke: var(--app-border);
+	stroke-width: 1.5;
+	filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.12));
+}
+
+.node-name,
+.node-type {
+	dominant-baseline: middle;
+	pointer-events: none;
+}
+
+.node-name {
+	fill: var(--app-text);
+	font-size: 15px;
+	font-weight: 700;
+}
+
+.node-type {
+	fill: var(--app-text-muted);
+	font-size: 11px;
+}
+
+@media (max-width: 640px) {
+	.app-shell {
+		padding: 12px;
+	}
+
+	.diagram-card,
+	.empty-state {
+		min-height: calc(100vh - 24px);
+		border-radius: 18px;
+	}
+
+	.diagram-header {
+		flex-direction: column;
+		padding: 16px;
+	}
+
+	.workflow-svg {
+		min-height: 460px;
+	}
+}

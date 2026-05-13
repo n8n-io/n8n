@@ -188,7 +188,32 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(response.name).toBeDefined();
 			expect(response.nodeCount).toBe(2);
 			expect(response.url).toBe('https://n8n.example.com/workflow/wf-saved-1');
+			expect(response.hint).toBe(
+				'Call preview_workflow with workflowId="wf-saved-1" to show the workflow diagram to the user.',
+			);
 			expect(result.isError).toBeUndefined();
+		});
+
+		test('includes preview hint when reporting a persisted workflow after post-save error', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-saved-1';
+				throw new Error('post-save failed');
+			});
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce(
+				Object.assign(new WorkflowEntity(), {
+					...mockWorkflowJson,
+					id: 'wf-saved-1',
+					name: 'Recovered Workflow',
+				}),
+			);
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.workflowId).toBe('wf-saved-1');
+			expect(response.hint).toBe(
+				'Call preview_workflow with workflowId="wf-saved-1" to show the workflow diagram to the user.',
+			);
 		});
 
 		test('sets correct workflow entity defaults', async () => {

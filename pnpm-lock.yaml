@@ -93,6 +93,9 @@ catalogs:
     '@mastra/memory':
       specifier: 1.10.0
       version: 1.10.0
+    '@modelcontextprotocol/ext-apps':
+      specifier: 1.3.2
+      version: 1.3.2
     '@n8n/typeorm':
       specifier: 0.3.20-16
       version: 0.3.20-16
@@ -264,6 +267,9 @@ catalogs:
     vite-plugin-dts:
       specifier: ^4.5.4
       version: 4.5.4
+    vite-plugin-singlefile:
+      specifier: 2.3.3
+      version: 2.3.3
     vitest:
       specifier: ^4.1.1
       version: 4.1.1
@@ -1878,6 +1884,39 @@ importers:
         specifier: 'catalog:'
         version: 6.0.1
 
+  packages/@n8n/mcp-apps:
+    devDependencies:
+      '@modelcontextprotocol/ext-apps':
+        specifier: 'catalog:'
+        version: 1.3.2(@modelcontextprotocol/sdk@1.26.0(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.67)
+      '@modelcontextprotocol/sdk':
+        specifier: 1.26.0
+        version: 1.26.0(zod@3.25.67)
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.4(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.0.1
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-plugin-singlefile:
+        specifier: 'catalog:'
+        version: 2.3.3(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
+
   packages/@n8n/mcp-browser:
     dependencies:
       '@joplin/turndown-plugin-gfm':
@@ -2705,6 +2744,9 @@ importers:
       '@n8n/instance-ai':
         specifier: workspace:*
         version: link:../@n8n/instance-ai
+      '@n8n/mcp-apps':
+        specifier: workspace:*
+        version: link:../@n8n/mcp-apps
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
@@ -8392,6 +8434,20 @@ packages:
 
   '@mixmark-io/domino@2.2.0':
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
+
+  '@modelcontextprotocol/ext-apps@1.3.2':
+    resolution: {integrity: sha512-DGG1FxN3s8g4KV+BF64dxph8j2mtxgU56Lu/WgBjylomqRIPshW0ut47OtBN4+V8r+Qp8kKUvCOBBzPY9+GurA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.24.0
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+      zod: 3.25.67
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   '@modelcontextprotocol/sdk@1.26.0':
     resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
@@ -16943,9 +16999,6 @@ packages:
   jose@4.15.9:
     resolution: {integrity: sha512-1vUQX+IdDMVPj4k8kOxgUqlcK518yluMuGZwqlr44FS1ppZB/5GWh4rZG89erpOBOJjU/OBsnCVFfapsRz6nEA==}
 
-  jose@6.1.3:
-    resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
-
   jose@6.2.2:
     resolution: {integrity: sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ==}
 
@@ -21993,6 +22046,16 @@ packages:
     resolution: {integrity: sha512-rHZ324W3LhfGPxWwQb2N048TThB6nVvnipsqBUJEzh3R9xeK9KI3si+GMQxCuAcpPJBVf0LpDtJ+beYzB3/chg==}
     peerDependencies:
       vite: ^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+
+  vite-plugin-singlefile@2.3.3:
+    resolution: {integrity: sha512-XVnGH0QzbOa8fxRSsHdCarVN1BSBXNi7uLMQYlrGRN5apdHkk62XQWRJhVever0lnfuyBkwn+kvVChdm/OoOUg==}
+    engines: {node: '>18.0.0'}
+    peerDependencies:
+      rollup: ^4.59.0
+      vite: ^5.4.21 || ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
 
   vite-plugin-static-copy@4.0.0:
     resolution: {integrity: sha512-TTf6cVTV4M2pH2Wfr3zhevdRsIQezfm2ltDkSfkjqvvdryJHYQyNoPISvuytX3r9jFZV0yVeMYyGTsAvAH2XLw==}
@@ -28316,6 +28379,14 @@ snapshots:
 
   '@mixmark-io/domino@2.2.0': {}
 
+  '@modelcontextprotocol/ext-apps@1.3.2(@modelcontextprotocol/sdk@1.26.0(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.67)':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
+      zod: 3.25.67
+    optionalDependencies:
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.67)':
     dependencies:
       '@hono/node-server': 1.19.13(hono@4.12.18)
@@ -28329,7 +28400,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
       hono: 4.12.18
-      jose: 6.1.3
+      jose: 6.2.2
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
       raw-body: 3.0.0
@@ -38885,8 +38956,6 @@ snapshots:
 
   jose@4.15.9: {}
 
-  jose@6.1.3: {}
-
   jose@6.2.2: {}
 
   js-base64@3.7.2: {}
@@ -45055,6 +45124,11 @@ snapshots:
       vite: 8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
     transitivePeerDependencies:
       - rollup
+
+  vite-plugin-singlefile@2.3.3(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
+    dependencies:
+      micromatch: 4.0.8
+      vite: 8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   vite-plugin-static-copy@4.0.0(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:

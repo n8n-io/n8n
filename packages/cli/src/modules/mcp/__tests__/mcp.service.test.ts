@@ -1,3 +1,6 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
@@ -8,9 +11,15 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import {
+	RESOURCE_MIME_TYPE,
+	RESOURCE_URI_META_KEY,
+	WORKFLOW_DIAGRAM_URI,
+} from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
+import { readFile } from 'node:fs/promises';
 
 import { McpService } from '../mcp.service';
 import { NodeCatalogService } from '@/node-catalog';
@@ -29,6 +38,31 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+class LinkedTransport implements Transport {
+	peer?: LinkedTransport;
+	onclose?: () => void;
+	onerror?: (error: Error) => void;
+	onmessage?: Transport['onmessage'];
+
+	async start(): Promise<void> {}
+
+	async send(message: JSONRPCMessage): Promise<void> {
+		this.peer?.onmessage?.(message);
+	}
+
+	async close(): Promise<void> {
+		this.onclose?.();
+	}
+}
+
+function createTransportPair(): [LinkedTransport, LinkedTransport] {
+	const clientTransport = new LinkedTransport();
+	const serverTransport = new LinkedTransport();
+	clientTransport.peer = serverTransport;
+	serverTransport.peer = clientTransport;
+	return [clientTransport, serverTransport];
+}
 
 describe('McpService', () => {
 	let mcpService: McpService;
@@ -282,6 +316,42 @@ describe('McpService', () => {
 			expect(typeof server.connect).toBe('function');
 			expect(typeof server.close).toBe('function');
 			expect(typeof server.registerTool).toBe('function');
+		});
+
+		it('should expose preview workflow app metadata and resource', async () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+			jest.mocked(readFile).mockResolvedValue('<!doctype html><html></html>');
+			const server = await mcpService.getServer(user);
+			const client = new Client({ name: 'test-client', version: '1.0.0' });
+			const [clientTransport, serverTransport] = createTransportPair();
+
+			await server.connect(serverTransport);
+			await client.connect(clientTransport);
+
+			try {
+				const tools = await client.listTools();
+				const previewTool = tools.tools.find((tool) => tool.name === 'preview_workflow');
+
+				expect(previewTool?._meta).toEqual(
+					expect.objectContaining({
+						[RESOURCE_URI_META_KEY]: WORKFLOW_DIAGRAM_URI,
+						ui: expect.objectContaining({ resourceUri: WORKFLOW_DIAGRAM_URI }),
+					}),
+				);
+
+				const resource = await client.readResource({ uri: WORKFLOW_DIAGRAM_URI });
+
+				expect(resource.contents[0]).toEqual(
+					expect.objectContaining({
+						uri: WORKFLOW_DIAGRAM_URI,
+						mimeType: RESOURCE_MIME_TYPE,
+						text: expect.stringContaining('<!doctype html>'),
+					}),
+				);
+			} finally {
+				await client.close();
+				await server.close();
+			}
 		});
 
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {

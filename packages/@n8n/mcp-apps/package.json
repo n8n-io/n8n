@@ -1,0 +1,46 @@
+{
+  "name": "@n8n/mcp-apps",
+  "version": "0.1.0",
+  "description": "MCP Apps UI resources and server helpers for n8n",
+  "main": "dist/server/index.js",
+  "types": "dist/server/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "server": [
+        "dist/server/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "pnpm build:ui && pnpm build:server",
+    "build:ui": "vite build",
+    "build:server": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.build.json"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "1.26.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/ext-apps": "catalog:",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "@n8n/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-singlefile": "catalog:",
+    "vue": "catalog:frontend",
+    "zod": "catalog:"
+  }
+}

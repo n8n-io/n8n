@@ -12,3 +12,8 @@ export {
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
 } from '@n8n/ai-workflow-builder';
+
+export const MCP_PREVIEW_WORKFLOW_TOOL = {
+	toolName: 'preview_workflow',
+	displayTitle: 'Preview Workflow',
+} as const;

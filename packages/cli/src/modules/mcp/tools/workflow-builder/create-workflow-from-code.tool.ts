@@ -1,7 +1,11 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import {
+	CODE_BUILDER_VALIDATE_TOOL,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	MCP_PREVIEW_WORKFLOW_TOOL,
+} from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -70,9 +74,7 @@ const outputSchema = {
 	hint: z
 		.string()
 		.optional()
-		.describe(
-			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
-		),
+		.describe('Actionable hint for the next step. When present, follow the suggested action.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -208,6 +210,7 @@ export const createCreateWorkflowFromCodeTool = (
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
+				hint: getPreviewWorkflowHint(savedWorkflow.id),
 			};
 
 			return {
@@ -253,6 +256,7 @@ export const createCreateWorkflowFromCodeTool = (
 						url: workflowUrl,
 						autoAssignedCredentials: [],
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+						hint: getPreviewWorkflowHint(persisted.id),
 					};
 
 					return {
@@ -281,3 +285,7 @@ export const createCreateWorkflowFromCodeTool = (
 		}
 	},
 });
+
+function getPreviewWorkflowHint(workflowId: string): string {
+	return `Call ${MCP_PREVIEW_WORKFLOW_TOOL.toolName} with workflowId="${workflowId}" to show the workflow diagram to the user.`;
+}
