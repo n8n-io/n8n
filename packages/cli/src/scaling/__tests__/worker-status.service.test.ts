@@ -15,6 +15,7 @@ describe('WorkerStatusService', () => {
 
 		workerStatusService = new WorkerStatusService(
 			mock(), // jobProcessor
+			mock(), // globalConfig
 			mock(), // instanceSettings
 			mock(), // publisher
 			mockPush,
@@ -41,6 +42,8 @@ describe('WorkerStatusService', () => {
 			hostname: 'test-worker',
 			interfaces: [],
 			version: '1.0.0',
+			poolName: '',
+			queueName: 'jobs',
 			isInContainer: false,
 			process: {
 				memory: {
