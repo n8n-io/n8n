@@ -498,10 +498,9 @@ describe('ExecutionRecorder — tool-result error normalization', () => {
 
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect(tc.success).toBe(false);
-		// Serializing an Error directly produces "{}" because name/message/stack are
-		// non-enumerable. The recorder must normalise so the persisted timeline
-		// carries the message that the UI can render.
-		expect(JSON.parse(JSON.stringify(tc.output))).toEqual({
+		// `tc.output` must be a plain enumerable object — a raw Error would serialize
+		// to "{}" via TypeORM's JSON column, losing the diagnostic the UI needs.
+		expect(tc.output).toEqual({
 			error: 'Credential "Telegram acc" is not accessible or does not exist.',
 		});
 	});
@@ -552,7 +551,7 @@ describe('ExecutionRecorder — tool-result error normalization', () => {
 
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect(tc.success).toBe(false);
-		expect(JSON.parse(JSON.stringify(tc.output))).toEqual({ error: 'still bad' });
+		expect(tc.output).toEqual({ error: 'still bad' });
 	});
 
 	it('leaves a successful tool result untouched', () => {
