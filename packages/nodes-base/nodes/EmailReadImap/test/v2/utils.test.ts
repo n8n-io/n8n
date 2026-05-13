@@ -173,6 +173,7 @@ describe('Test IMap V2 utils', () => {
 				onEmailBatch,
 			});
 
+			expect(localConnection.addFlags).toHaveBeenCalledTimes(1);
 			expect(localConnection.addFlags).toHaveBeenCalledWith([875], '\\SEEN');
 			expect(onEmailBatch).toHaveBeenCalledWith([
 				expect.objectContaining({

@@ -6,7 +6,7 @@ import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
 
 import { EmailReadImapV2 } from '../../v2/EmailReadImapV2.node';
 
-let capturedOnMail: ((numEmails: number) => void) | undefined;
+let capturedOnMail: ((numEmails: number) => Promise<void>) | undefined;
 let capturedSearchCriteria: unknown[][] = [];
 
 const mockConnection = Object.assign(new EventEmitter(), {
@@ -19,10 +19,12 @@ const mockConnection = Object.assign(new EventEmitter(), {
 });
 
 jest.mock('@n8n/imap', () => ({
-	connect: jest.fn().mockImplementation(async (config: { onMail?: (n: number) => void }) => {
-		capturedOnMail = config.onMail;
-		return mockConnection;
-	}),
+	connect: jest
+		.fn()
+		.mockImplementation(async (config: { onMail?: (n: number) => Promise<void> }) => {
+			capturedOnMail = config.onMail;
+			return mockConnection;
+		}),
 }));
 
 jest.mock('../../v2/utils', () => ({
@@ -102,20 +104,15 @@ describe('searchCriteria leak on repeated onMail calls', () => {
 
 		expect(capturedOnMail).toBeDefined();
 
-		const flushPromiseChain = async () => await new Promise((resolve) => setTimeout(resolve, 50));
-
 		// Simulate the first onMail — lastMessageUid is undefined,
 		// so it takes the SINCE path, not the UID push path
-		capturedOnMail!(1);
-		await flushPromiseChain();
+		await capturedOnMail!(1);
 		expect(capturedSearchCriteria).toHaveLength(1);
 		// After first call, the mock sets lastMessageUid = 1
 
-		// Now fire onMail 10 more times, waiting for each to complete
-		// (onMail calls are serialized via a promise chain)
+		// Now fire onMail 10 more times
 		for (let i = 0; i < 10; i++) {
-			capturedOnMail!(1);
-			await flushPromiseChain();
+			await capturedOnMail!(1);
 		}
 
 		expect(capturedSearchCriteria).toHaveLength(11);

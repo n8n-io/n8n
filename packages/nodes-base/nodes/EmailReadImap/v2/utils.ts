@@ -116,7 +116,6 @@ export async function getNewEmails(
 		this.logger.debug(`Process ${results.length} new emails in node "EmailReadImap"`);
 
 		const newEmails: INodeExecutionData[] = [];
-		const processedUids: number[] = [];
 		let newEmail: INodeExecutionData;
 		let attachments: IBinaryData[];
 		let propertyName: string;
@@ -156,7 +155,9 @@ export async function getNewEmails(
 				};
 
 				newEmails.push(parsedEmail);
-				processedUids.push(message.attributes.uid);
+				if (postProcessAction === 'read') {
+					await imapConnection.addFlags([message.attributes.uid], '\\SEEN');
+				}
 			}
 		} else if (format === 'simple') {
 			const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
@@ -223,7 +224,9 @@ export async function getNewEmails(
 				}
 
 				newEmails.push(newEmail);
-				processedUids.push(message.attributes.uid);
+				if (postProcessAction === 'read') {
+					await imapConnection.addFlags([message.attributes.uid], '\\SEEN');
+				}
 			}
 		} else if (format === 'raw') {
 			for (const message of results) {
@@ -249,13 +252,10 @@ export async function getNewEmails(
 				};
 
 				newEmails.push(newEmail);
-				processedUids.push(message.attributes.uid);
+				if (postProcessAction === 'read') {
+					await imapConnection.addFlags([message.attributes.uid], '\\SEEN');
+				}
 			}
-		}
-
-		// only mark messages as seen once processing has finished
-		if (postProcessAction === 'read' && processedUids.length > 0) {
-			await imapConnection.addFlags(processedUids, '\\SEEN');
 		}
 
 		await onEmailBatch(newEmails);
