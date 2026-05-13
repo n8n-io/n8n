@@ -31,10 +31,7 @@ export class ProjectPoolSettingsRepository extends Repository<ProjectPoolSetting
 	async getSettings(
 		projectId: string,
 	): Promise<{ assignment: PoolAssignment; allowedPools: string[] } | undefined> {
-		const row = await this.findOne({
-			where: { projectId },
-			select: ['productionPool', 'manualPool', 'evaluationPool', 'allowedPools'],
-		});
+		const row = await this.findOneBy({ projectId });
 		if (!row) return undefined;
 
 		const assignment: PoolAssignment = {};
