@@ -129,20 +129,6 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'User Info URL',
-			name: 'userInfoUrl',
-			type: 'string',
-			default: '',
-			placeholder: 'https://example.com/userinfo',
-			description:
-				'Optional OIDC userinfo endpoint. If set, claims returned by this endpoint are merged into the user data. Leave empty to use only ID token claims.',
-			displayOptions: {
-				show: {
-					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['oauthLogin'],
-				},
-			},
-		},
-		{
 			displayName: 'User Output Field',
 			name: 'userOutputField',
 			type: 'string',

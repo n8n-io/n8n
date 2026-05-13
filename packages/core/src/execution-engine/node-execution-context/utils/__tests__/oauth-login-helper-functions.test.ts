@@ -141,33 +141,28 @@ describe('getOauthLoginHelperFunctions', () => {
 				60,
 			);
 
-		const nodeWithUserinfo = mock<INode>({
+		const formNode = mock<INode>({
 			id: 'node-abc',
 			name: 'Form Trigger',
-			parameters: { userInfoUrl: 'https://idp.example.com/userinfo' },
 			credentials: { oAuth2Api: { id: 'cred-xyz', name: 'My OAuth Creds' } },
 		});
+
+		const buildIdToken = (payload: Record<string, unknown>): string =>
+			'eyJhbGciOiJIUzI1NiJ9.' + Buffer.from(JSON.stringify(payload)).toString('base64url') + '.sig';
 
 		afterEach(() => {
 			nock.cleanAll();
 		});
 
-		it('exchanges the code, fetches userinfo, and returns merged claims + signed session JWT', async () => {
+		it('exchanges the code and returns merged id-token claims + signed session JWT', async () => {
 			nock('https://idp.example.com')
 				.post('/token')
 				.reply(200, {
 					access_token: 'at-1',
-					id_token:
-						'eyJhbGciOiJIUzI1NiJ9.' +
-						Buffer.from(JSON.stringify({ sub: 'u-1', name: 'Jane' })).toString('base64url') +
-						'.sig',
+					id_token: buildIdToken({ sub: 'u-1', name: 'Jane', email: 'jane@example.com' }),
 				});
-			nock('https://idp.example.com')
-				.get('/userinfo')
-				.matchHeader('authorization', 'Bearer at-1')
-				.reply(200, { sub: 'u-1', email: 'jane@example.com' });
 
-			const helpers = getOauthLoginHelperFunctions(workflow, nodeWithUserinfo, additionalData);
+			const helpers = getOauthLoginHelperFunctions(workflow, formNode, additionalData);
 			const result = await helpers.exchangeWebhookOauthCode({
 				code: 'code-1',
 				state: buildValidState(),
@@ -187,7 +182,7 @@ describe('getOauthLoginHelperFunctions', () => {
 		});
 
 		it('throws when state JWT is invalid', async () => {
-			const helpers = getOauthLoginHelperFunctions(workflow, nodeWithUserinfo, additionalData);
+			const helpers = getOauthLoginHelperFunctions(workflow, formNode, additionalData);
 			await expect(
 				helpers.exchangeWebhookOauthCode({ code: 'code-1', state: 'tampered.jwt.value' }),
 			).rejects.toThrow(/state is invalid/);
@@ -199,7 +194,7 @@ describe('getOauthLoginHelperFunctions', () => {
 				HMAC_SECRET,
 				60,
 			);
-			const helpers = getOauthLoginHelperFunctions(workflow, nodeWithUserinfo, additionalData);
+			const helpers = getOauthLoginHelperFunctions(workflow, formNode, additionalData);
 			await expect(
 				helpers.exchangeWebhookOauthCode({ code: 'code-1', state: wrongState }),
 			).rejects.toThrow(/does not match this form/);
@@ -207,39 +202,13 @@ describe('getOauthLoginHelperFunctions', () => {
 
 		it('throws when token exchange fails', async () => {
 			nock('https://idp.example.com').post('/token').reply(400, { error: 'invalid_grant' });
-			const helpers = getOauthLoginHelperFunctions(workflow, nodeWithUserinfo, additionalData);
+			const helpers = getOauthLoginHelperFunctions(workflow, formNode, additionalData);
 			await expect(
 				helpers.exchangeWebhookOauthCode({ code: 'bad-code', state: buildValidState() }),
 			).rejects.toThrow();
 		});
 
-		it('still returns claims from id_token when userInfoUrl is not configured', async () => {
-			const nodeNoUserinfo = mock<INode>({
-				id: 'node-abc',
-				name: 'Form Trigger',
-				parameters: { userInfoUrl: '' },
-				credentials: { oAuth2Api: { id: 'cred-xyz', name: 'My OAuth Creds' } },
-			});
-			nock('https://idp.example.com')
-				.post('/token')
-				.reply(200, {
-					access_token: 'at-2',
-					id_token:
-						'eyJhbGciOiJIUzI1NiJ9.' +
-						Buffer.from(JSON.stringify({ sub: 'u-2' })).toString('base64url') +
-						'.sig',
-				});
-
-			const helpers = getOauthLoginHelperFunctions(workflow, nodeNoUserinfo, additionalData);
-			const result = await helpers.exchangeWebhookOauthCode({
-				code: 'code-x',
-				state: buildValidState(),
-			});
-
-			expect(result.claims.sub).toBe('u-2');
-		});
-
-		it('strips OIDC housekeeping claims (iat, exp, iss, aud, ...) from the merged result', async () => {
+		it('strips OIDC housekeeping claims (iat, exp, iss, aud, ...) from the result', async () => {
 			const idTokenPayload = {
 				sub: 'u-3',
 				iat: 100,
@@ -254,21 +223,9 @@ describe('getOauthLoginHelperFunctions', () => {
 			};
 			nock('https://idp.example.com')
 				.post('/token')
-				.reply(200, {
-					access_token: 'at-3',
-					id_token:
-						'eyJhbGciOiJIUzI1NiJ9.' +
-						Buffer.from(JSON.stringify(idTokenPayload)).toString('base64url') +
-						'.sig',
-				});
-			const noUserinfo = mock<INode>({
-				id: 'node-abc',
-				name: 'Form',
-				parameters: { userInfoUrl: '' },
-				credentials: { oAuth2Api: { id: 'cred-xyz', name: 'x' } },
-			});
-			const helpers = getOauthLoginHelperFunctions(workflow, noUserinfo, additionalData);
+				.reply(200, { access_token: 'at-3', id_token: buildIdToken(idTokenPayload) });
 
+			const helpers = getOauthLoginHelperFunctions(workflow, formNode, additionalData);
 			const result = await helpers.exchangeWebhookOauthCode({
 				code: 'code-h',
 				state: buildValidState(),

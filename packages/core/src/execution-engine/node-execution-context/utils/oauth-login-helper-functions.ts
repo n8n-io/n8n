@@ -165,8 +165,10 @@ export function getOauthLoginHelperFunctions(
 				},
 			);
 
-			const { access_token: accessToken, id_token: idToken } = tokenResponse.data;
-
+			// With `openid` scope (and `profile` / `email` for the usual fields), every
+			// major IDP returns user claims in the id_token. The userinfo endpoint is
+			// redundant for our purposes, so we don't call it.
+			const { id_token: idToken } = tokenResponse.data;
 			let idTokenClaims: Record<string, unknown> = {};
 			if (typeof idToken === 'string') {
 				const decoded = decode(idToken);
@@ -175,21 +177,7 @@ export function getOauthLoginHelperFunctions(
 				}
 			}
 
-			let userinfoClaims: Record<string, unknown> = {};
-			const userInfoUrl =
-				typeof node.parameters?.userInfoUrl === 'string' ? node.parameters.userInfoUrl : '';
-			if (userInfoUrl && accessToken) {
-				const userinfoResponse = await axios.get<Record<string, unknown>>(userInfoUrl, {
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					headers: { Authorization: `Bearer ${accessToken}` },
-					validateStatus: (status) => status === 200,
-				});
-				if (userinfoResponse.data && typeof userinfoResponse.data === 'object') {
-					userinfoClaims = userinfoResponse.data;
-				}
-			}
-
-			const merged: Record<string, unknown> = { ...idTokenClaims, ...userinfoClaims };
+			const merged: Record<string, unknown> = { ...idTokenClaims };
 			for (const key of HOUSEKEEPING_CLAIMS) delete merged[key];
 
 			const sessionJwt = signFormOauthJwt<FormOauthSessionJwtPayload>(
