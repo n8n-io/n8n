@@ -5,7 +5,12 @@ import { Container } from '@n8n/di';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 
-import { buildRegistrationResponse, generateAuthenticator } from './webauthn-test-helper';
+import {
+	buildAuthenticationResponse,
+	buildRegistrationResponse,
+	generateAuthenticator,
+	type WebAuthnAuthenticator,
+} from './webauthn-test-helper';
 import { createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
@@ -53,6 +58,41 @@ async function fetchRegistrationChallenge(
 		.get(`/mfa/webauthn/registration-options?attachment=${attachment}`)
 		.expect(200);
 	return response.body.data.challenge as string;
+}
+
+/**
+ * Full registration ceremony: fetch a challenge, build a signed response,
+ * verify. Returns the authenticator (so tests can sign assertions later) and
+ * the credential row id assigned by the server.
+ */
+async function registerCredentialFor(
+	user: User,
+	attachment: 'platform' | 'cross-platform',
+	label = `cred-${attachment}`,
+): Promise<{ authenticator: WebAuthnAuthenticator; credentialRowId: string }> {
+	const authenticator = generateAuthenticator();
+	const challenge = await fetchRegistrationChallenge(user, attachment);
+	const response = buildRegistrationResponse({
+		authenticator,
+		challenge,
+		origin: ORIGIN,
+		rpId: RP_ID,
+		attachment,
+	});
+	const res = await testServer
+		.authAgentFor(user)
+		.post('/mfa/webauthn/registration-verify')
+		.send({ label, response, attachment })
+		.expect(200);
+	return { authenticator, credentialRowId: res.body.data.id as string };
+}
+
+async function fetchAuthChallenge(user: User): Promise<string> {
+	const res = await testServer.authlessAgent
+		.post('/mfa/webauthn/authentication-options')
+		.send({ email: user.email })
+		.expect(200);
+	return res.body.data.challenge as string;
 }
 
 describe('POST /mfa/webauthn/registration-verify (real crypto)', () => {
@@ -269,5 +309,289 @@ describe('POST /mfa/webauthn/registration-verify (real crypto)', () => {
 			.expect(500);
 
 		expect(await credentialRepo.count({ where: { userId: owner.id } })).toBe(1);
+	});
+});
+
+describe('WebAuthn authentication assertion (real crypto)', () => {
+	// Authentication assertions are verified by `WebAuthnService.verifyAuthenticationResponse`,
+	// reachable from any endpoint that takes a `webauthnResponse` proof. We
+	// drive it through `POST /mfa/webauthn/credentials/:id/remove` because
+	// that's the simplest endpoint that exercises the full path (challenge
+	// from `/authentication-options` → assertion verify → counter update).
+
+	const removeCredential = (
+		user: User,
+		credentialRowId: string,
+		response: ReturnType<typeof buildAuthenticationResponse>,
+	) =>
+		testServer
+			.authAgentFor(user)
+			.post(`/mfa/webauthn/credentials/${credentialRowId}/remove`)
+			.send({ webauthnResponse: response });
+
+	test('accepts a valid passkey assertion (UV required)', async () => {
+		// Register two credentials so removing one isn't blocked by the
+		// "would leave 0 auth on enforced MFA" guard.
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		await registerCredentialFor(owner, 'platform', 'second passkey');
+
+		const challenge = await fetchAuthChallenge(owner);
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+		});
+
+		await removeCredential(owner, passkey.credentialRowId, assertion).expect(200);
+
+		// Credential row was deleted after a successful verify-then-remove.
+		// Counter / `lastUsedAt` side effects are asserted in the
+		// passwordless-login tests where the row stays put.
+		expect(await credentialRepo.findOne({ where: { id: passkey.credentialRowId } })).toBeNull();
+	});
+
+	test('accepts a security-key assertion without user verification (UV optional)', async () => {
+		// Match the service's `requireUserVerification = isPlatformCredential(c)`
+		// branch: security keys aren't platform credentials so the verify path
+		// must accept an assertion with `UV=0`.
+		const securityKey = await registerCredentialFor(owner, 'cross-platform', 'yubikey');
+		await registerCredentialFor(owner, 'platform', 'backup passkey');
+
+		const challenge = await fetchAuthChallenge(owner);
+		const assertion = buildAuthenticationResponse({
+			authenticator: securityKey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: false,
+		});
+
+		await removeCredential(owner, securityKey.credentialRowId, assertion).expect(200);
+	});
+
+	test('rejects a passkey assertion missing the user-verified flag', async () => {
+		// Mirror image of the case above: passkeys must be UV — sending
+		// `UV=0` must fail verification.
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		await registerCredentialFor(owner, 'platform', 'backup');
+
+		const challenge = await fetchAuthChallenge(owner);
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: false,
+		});
+
+		// Missing UV makes `@simplewebauthn/server` throw, which the router
+		// maps to 500. Pinning current behaviour — same 400-vs-500 note as
+		// the registration tests.
+		await removeCredential(owner, passkey.credentialRowId, assertion).expect(500);
+		// Row still exists.
+		expect(await credentialRepo.findOne({ where: { id: passkey.credentialRowId } })).not.toBeNull();
+	});
+
+	test('rejects an assertion signed with the wrong private key', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		await registerCredentialFor(owner, 'platform', 'backup');
+
+		// Generate an unrelated authenticator, then sign as if we were the
+		// real one. `@simplewebauthn/server` recomputes the digest against
+		// the stored COSE public key — `verify()` returns false (no throw,
+		// well-formed DER signature is just invalid for this key), and the
+		// controller surfaces it as 400 "Invalid two-factor proof".
+		const attacker = generateAuthenticator();
+
+		const challenge = await fetchAuthChallenge(owner);
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+			signWithKey: attacker.privateKey,
+		});
+
+		await removeCredential(owner, passkey.credentialRowId, assertion).expect(400);
+	});
+
+	test('rejects an assertion whose signature byte has been tampered', async () => {
+		// Canary that proves we exercise the signature path. The DER envelope
+		// stays valid; only the trailing byte flips, so verification fails on
+		// integrity rather than on a parser error.
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		await registerCredentialFor(owner, 'platform', 'backup');
+
+		const challenge = await fetchAuthChallenge(owner);
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+			tamperSignature: true,
+		});
+
+		// Same as wrong-key: `verify()` returns false → 400.
+		await removeCredential(owner, passkey.credentialRowId, assertion).expect(400);
+	});
+
+	test('rejects an assertion whose rpIdHash does not match', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		await registerCredentialFor(owner, 'platform', 'backup');
+
+		const challenge = await fetchAuthChallenge(owner);
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+			rpIdHashOverride: 'evil.example',
+		});
+
+		// The service throws a plain Error here, which the router maps to 500.
+		// Pinning current behaviour — see registration tests for the same
+		// 400-vs-500 note.
+		await removeCredential(owner, passkey.credentialRowId, assertion).expect(500);
+	});
+});
+
+describe('POST /login/webauthn/verify (passwordless, real crypto)', () => {
+	type PasswordlessOptions = { challengeId: string; challenge: string };
+	const fetchPasswordlessOptions = async (): Promise<PasswordlessOptions> => {
+		const res = await testServer.authlessAgent.post('/login/webauthn/options').expect(200);
+		return {
+			challengeId: res.body.data.challengeId as string,
+			challenge: res.body.data.challenge as string,
+		};
+	};
+
+	test('signs the user in and increments the credential counter + lastUsedAt', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+
+		const { challengeId, challenge } = await fetchPasswordlessOptions();
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 7,
+			userVerified: true,
+		});
+
+		const res = await testServer.authlessAgent
+			.post('/login/webauthn/verify')
+			.send({ challengeId, response: assertion })
+			.expect(200);
+
+		// Public user payload returned + cookie set.
+		expect(res.body.data.id).toBe(owner.id);
+		const setCookie = res.headers['set-cookie'];
+		const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
+		expect(cookies.some((c) => typeof c === 'string' && c.startsWith(`${AUTH_COOKIE_NAME}=`))).toBe(
+			true,
+		);
+
+		// Counter + lastUsedAt persisted on the credential row.
+		const after = await credentialRepo.findOneByOrFail({ id: passkey.credentialRowId });
+		expect(after.counter).toBe(7);
+		expect(after.lastUsedAt).toBeInstanceOf(Date);
+	});
+
+	test('rejects a passwordless assertion signed with the wrong key', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		const attacker = generateAuthenticator();
+
+		const { challengeId, challenge } = await fetchPasswordlessOptions();
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+			signWithKey: attacker.privateKey,
+		});
+
+		await testServer.authlessAgent
+			.post('/login/webauthn/verify')
+			.send({ challengeId, response: assertion })
+			.expect(401);
+
+		// No counter advance on failed verify.
+		const after = await credentialRepo.findOneByOrFail({ id: passkey.credentialRowId });
+		expect(after.counter).toBe(0);
+	});
+
+	test('rejects passwordless login when the user is disabled', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		await userRepo.update(owner.id, { disabled: true });
+
+		const { challengeId, challenge } = await fetchPasswordlessOptions();
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+		});
+
+		await testServer.authlessAgent
+			.post('/login/webauthn/verify')
+			.send({ challengeId, response: assertion })
+			.expect(401);
+	});
+
+	test('rejects passwordless login when the credentialId is unknown', async () => {
+		// Register a real credential, then forge a response from an unrelated
+		// authenticator — its credentialId is not in any row.
+		await registerCredentialFor(owner, 'platform', 'passkey');
+		const stranger = generateAuthenticator();
+
+		const { challengeId, challenge } = await fetchPasswordlessOptions();
+		const assertion = buildAuthenticationResponse({
+			authenticator: stranger,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+		});
+
+		await testServer.authlessAgent
+			.post('/login/webauthn/verify')
+			.send({ challengeId, response: assertion })
+			.expect(401);
+	});
+
+	test('rejects passwordless login when the challengeId is unknown', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+
+		const { challenge } = await fetchPasswordlessOptions();
+		const assertion = buildAuthenticationResponse({
+			authenticator: passkey.authenticator,
+			challenge,
+			origin: ORIGIN,
+			rpId: RP_ID,
+			counter: 1,
+			userVerified: true,
+		});
+
+		// Well-formed UUID (passes DTO validation) but no matching cache entry.
+		await testServer.authlessAgent
+			.post('/login/webauthn/verify')
+			.send({ challengeId: '00000000-0000-4000-8000-000000000000', response: assertion })
+			.expect(401);
 	});
 });

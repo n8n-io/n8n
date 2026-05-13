@@ -4,14 +4,11 @@
  * mocking it. Uses only built-in `crypto` + a tiny hand-rolled CBOR encoder
  * for the COSE_Key — no new npm deps.
  *
- * Chunk 1 ships only `buildRegistrationResponse`. `buildAuthenticationResponse`
- * lands with the authentication-ceremony chunk.
- *
  * Spec references: WebAuthn L3 §6.1 (authenticator data layout), §6.5
  * (attested credential data), and RFC 8152 (COSE_Key for ES256).
  */
 
-import { createHash, generateKeyPairSync, randomBytes, type KeyObject } from 'crypto';
+import { createHash, createSign, generateKeyPairSync, randomBytes, type KeyObject } from 'crypto';
 
 export type WebAuthnAuthenticator = {
 	credentialId: Uint8Array;
@@ -118,6 +115,96 @@ export function buildRegistrationResponse(opts: BuildRegistrationOptions) {
 			transports,
 		},
 		authenticatorAttachment: attachment,
+		clientExtensionResults: {},
+		type: 'public-key' as const,
+	};
+}
+
+export type BuildAuthenticationOptions = {
+	authenticator: WebAuthnAuthenticator;
+	/** Base64url, exactly as returned by `/authentication-options` or
+	 * `/login/webauthn/options`. */
+	challenge: string;
+	origin: string;
+	rpId: string;
+	/** Counter value to embed in the signed authData. */
+	counter: number;
+	/**
+	 * Whether the authenticator performed user verification. Defaults to
+	 * `true` (passkey-style ceremony); set `false` to model a security key
+	 * registered without a PIN.
+	 */
+	userVerified?: boolean;
+	/** Override the rpIdHash before signing — used by the "wrong RP" test. */
+	rpIdHashOverride?: string;
+	/**
+	 * Sign the response with this key instead of the credential's private
+	 * key — used by the "wrong key" test to model a spoofed assertion.
+	 */
+	signWithKey?: KeyObject;
+	/**
+	 * Tamper the final signature by flipping its last byte. The DER prefix
+	 * stays valid so `@simplewebauthn/server` reaches the signature check
+	 * before failing.
+	 */
+	tamperSignature?: boolean;
+};
+
+/**
+ * Build an `AuthenticationResponseJSON` signed by the credential's private
+ * key. `@simplewebauthn/server` recomputes
+ *   `sha256(authenticatorData || sha256(clientDataJSON))`
+ * and verifies the ECDSA signature against the stored COSE public key — so a
+ * tampered byte anywhere in this chain (rpIdHash, challenge, counter,
+ * signature itself) is caught.
+ */
+export function buildAuthenticationResponse(opts: BuildAuthenticationOptions) {
+	const { authenticator, challenge, origin, rpId, counter } = opts;
+
+	const clientData = JSON.stringify({
+		type: 'webauthn.get',
+		challenge,
+		origin,
+		crossOrigin: false,
+	});
+	const clientDataJSON = Buffer.from(clientData, 'utf-8');
+
+	const rpIdHash = createHash('sha256')
+		.update(opts.rpIdHashOverride ?? rpId)
+		.digest();
+
+	const up = 0x01;
+	const uv = (opts.userVerified ?? true) ? 0x04 : 0;
+	const flags = up | uv;
+
+	const counterBuf = Buffer.alloc(4);
+	counterBuf.writeUInt32BE(counter, 0);
+
+	// No attestedCredentialData on authentication ceremonies, so authData is
+	// just rpIdHash || flags || counter.
+	const authData = Buffer.concat([rpIdHash, Buffer.from([flags]), counterBuf]);
+
+	const clientDataHash = createHash('sha256').update(clientDataJSON).digest();
+	const signer = createSign('SHA256');
+	signer.update(Buffer.concat([authData, clientDataHash]));
+	signer.end();
+	let signature = signer.sign(opts.signWithKey ?? authenticator.privateKey);
+
+	if (opts.tamperSignature) {
+		// Flip the last byte while keeping the DER envelope intact — the
+		// signature check fails on integrity, not on parser errors.
+		signature = Buffer.from(signature);
+		signature[signature.length - 1] ^= 0xff;
+	}
+
+	return {
+		id: toBase64Url(authenticator.credentialId),
+		rawId: toBase64Url(authenticator.credentialId),
+		response: {
+			clientDataJSON: toBase64Url(clientDataJSON),
+			authenticatorData: toBase64Url(authData),
+			signature: toBase64Url(signature),
+		},
 		clientExtensionResults: {},
 		type: 'public-key' as const,
 	};
