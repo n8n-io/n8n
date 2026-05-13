@@ -69,7 +69,11 @@ onBeforeUnmount(() => {
 				:class="stale ? [$style.cardHeading, $style.stale] : [$style.cardHeading]"
 				data-test-id="worker-card-name"
 			>
-				Name: {{ worker.senderId }} ({{ worker.hostname }}) <br />
+				Name: {{ worker.senderId }} ({{ worker.hostname }}) |
+				{{ i18n.baseText('workerList.item.pool') }}:
+				{{ worker.poolName || i18n.baseText('workerList.item.pool.default') }} |
+				{{ i18n.baseText('workerList.item.queue') }}: {{ worker.queueName }}
+				<br />
 				Average Load: {{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free memory:
 				{{ memAsGb(worker.process.memory.available) }}GB /
 				{{

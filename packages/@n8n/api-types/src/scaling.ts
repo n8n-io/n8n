@@ -44,4 +44,6 @@ export type WorkerStatus = {
 		internal: boolean;
 	}>;
 	version: string;
+	poolName: string;
+	queueName: string;
 };

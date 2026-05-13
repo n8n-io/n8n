@@ -67,6 +67,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "logStreaming:*",
   "orchestration:read",
   "orchestration:list",
+  "orchestration:manage",
   "orchestration:*",
   "project:create",
   "project:read",

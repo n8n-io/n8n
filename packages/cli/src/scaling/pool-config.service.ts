@@ -36,4 +36,27 @@ export class PoolConfigService {
 		await this.cacheService.set(SETTINGS_KEY, JSON.stringify(assignment));
 		return assignment;
 	}
+
+	async setPoolAssignment(partial: PoolAssignment): Promise<PoolAssignment> {
+		const current = await this.getPoolAssignment();
+		const next: PoolAssignment = { ...current };
+		for (const [category, pool] of Object.entries(partial) as Array<
+			[ExecutionCategory, string | undefined]
+		>) {
+			if (pool === undefined || pool === '') {
+				delete next[category];
+			} else {
+				next[category] = pool;
+			}
+		}
+
+		const serialized = JSON.stringify(next);
+		await this.settingsRepository.upsert(
+			{ key: SETTINGS_KEY, value: serialized, loadOnStartup: true },
+			['key'],
+		);
+		await this.cacheService.set(SETTINGS_KEY, serialized);
+
+		return next;
+	}
 }
