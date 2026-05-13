@@ -2188,7 +2188,7 @@ export class NextCloud implements INodeType {
 								this,
 								'POST',
 								'/index.php/apps/deck/api/v1.0/boards',
-								JSON.stringify(deckBody),
+								deckBody,
 								deckHeaders,
 							);
 
@@ -2239,7 +2239,7 @@ export class NextCloud implements INodeType {
 								this,
 								'PUT',
 								`/index.php/apps/deck/api/v1.0/boards/${encodeURIComponent(boardId)}`,
-								JSON.stringify(deckBody),
+								deckBody,
 								deckHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -2293,7 +2293,7 @@ export class NextCloud implements INodeType {
 								this,
 								'POST',
 								'index.php/apps/notes/api/v1/notes',
-								JSON.stringify(notesBody),
+								notesBody,
 								notesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -2357,7 +2357,7 @@ export class NextCloud implements INodeType {
 								this,
 								'PUT',
 								`index.php/apps/notes/api/v1/notes/${encodeURIComponent(noteId)}`,
-								JSON.stringify(notesBody),
+								notesBody,
 								notesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -2409,7 +2409,7 @@ export class NextCloud implements INodeType {
 								this,
 								'POST',
 								'/ocs/v2.php/apps/tables/api/2/tables',
-								JSON.stringify(tablesBody),
+								tablesBody,
 								tablesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -2432,13 +2432,11 @@ export class NextCloud implements INodeType {
 								'',
 								tablesHeaders,
 							);
-							console.log('response', responseData);
 							const executionData = this.helpers.constructExecutionMetaData(
 								wrapData(responseData.ocs.data as INodeExecutionData),
 
 								{ itemData: { item: i } },
 							);
-							console.log('exe', JSON.stringify(executionData));
 							returnData.push(...executionData);
 							break;
 						}
@@ -2479,7 +2477,7 @@ export class NextCloud implements INodeType {
 								this,
 								'PUT',
 								`/ocs/v2.php/apps/tables/api/2/tables/${encodeURIComponent(tableId)}`,
-								JSON.stringify(tablesBody),
+								tablesBody,
 								tablesHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -2646,7 +2644,7 @@ export class NextCloud implements INodeType {
 								this,
 								'POST',
 								'/index.php/apps/tables/api/1/columns',
-								JSON.stringify(columnBody),
+								columnBody,
 								tablesHeaders,
 							);
 
@@ -2723,7 +2721,7 @@ export class NextCloud implements INodeType {
 								this,
 								'PUT',
 								`/index.php/apps/tables/api/1/columns/${encodeURIComponent(columnId)}`,
-								JSON.stringify(columnBody),
+								columnBody,
 								tablesHeaders,
 							);
 
@@ -2817,7 +2815,7 @@ export class NextCloud implements INodeType {
 								this,
 								'POST',
 								`/index.php/apps/tables/api/1/tables/${encodeURIComponent(tableId)}/rows`,
-								JSON.stringify(rowBody),
+								rowBody,
 								tablesHeaders,
 							);
 
@@ -2842,7 +2840,7 @@ export class NextCloud implements INodeType {
 								this,
 								'PUT',
 								`/index.php/apps/tables/api/1/rows/${encodeURIComponent(rowId)}`,
-								JSON.stringify(rowBody),
+								rowBody,
 								tablesHeaders,
 							);
 
@@ -2936,7 +2934,7 @@ export class NextCloud implements INodeType {
 								this,
 								'POST',
 								`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}`,
-								JSON.stringify(talkBody),
+								talkBody,
 								talkHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -2963,7 +2961,7 @@ export class NextCloud implements INodeType {
 								this,
 								'PUT',
 								`/ocs/v2.php/apps/spreed/api/v1/chat/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
-								JSON.stringify(talkBody),
+								talkBody,
 								talkHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -3115,7 +3113,7 @@ export class NextCloud implements INodeType {
 								this,
 								'POST',
 								'ocs/v2.php/apps/spreed/api/v4/room',
-								JSON.stringify(talkBody),
+								talkBody,
 								talkHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -3139,7 +3137,7 @@ export class NextCloud implements INodeType {
 								this,
 								'PUT',
 								`ocs/v2.php/apps/spreed/api/v4/room/${encodeURIComponent(conversationId)}`,
-								JSON.stringify(talkBody),
+								talkBody,
 								talkHeaders,
 							);
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -3383,7 +3381,7 @@ export class NextCloud implements INodeType {
 					const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 						itemData: { item: i },
 					});
-					// returnData.push(...executionData);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
