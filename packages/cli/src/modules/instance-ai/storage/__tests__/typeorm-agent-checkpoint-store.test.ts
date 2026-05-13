@@ -93,7 +93,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 		expect(txRepo.delete).toHaveBeenCalledTimes(1);
 	});
 
-	it('uses a pessimistic lock when the database supports it', async () => {
+	it('uses a pessimistic lock when running on postgres', async () => {
 		const txRepo = mock<Repository<InstanceAiCheckpoint>>();
 		txRepo.findOne.mockResolvedValueOnce(makeCheckpoint());
 		txRepo.delete.mockResolvedValueOnce({ affected: 1, raw: {} });
@@ -107,6 +107,22 @@ describe('TypeORMAgentCheckpointStore', () => {
 
 		const findOptions = txRepo.findOne.mock.calls[0][0];
 		expect(findOptions.lock).toEqual({ mode: 'pessimistic_write' });
+	});
+
+	it('does not use a pessimistic lock when running on sqlite-pooled', async () => {
+		const txRepo = mock<Repository<InstanceAiCheckpoint>>();
+		txRepo.findOne.mockResolvedValueOnce(makeCheckpoint());
+		txRepo.delete.mockResolvedValueOnce({ affected: 1, raw: {} });
+		const txManager = {
+			connection: { options: { type: 'sqlite-pooled' } },
+			getRepository: () => txRepo,
+		} as unknown as EntityManager;
+		setTransactionManager(txManager);
+
+		await store.load('checkpoint:run-1');
+
+		const findOptions = txRepo.findOne.mock.calls[0][0];
+		expect(findOptions.lock).toBeUndefined();
 	});
 
 	it('deletes stale checkpoints by update time', async () => {

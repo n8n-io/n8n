@@ -88,7 +88,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 	}
 
 	private supportsPessimisticWriteLock(manager: EntityManager): boolean {
-		return !['sqlite', 'better-sqlite3'].includes(manager.connection.options.type);
+		return manager.connection.options.type === 'postgres';
 	}
 
 	private async serializeLoad(
