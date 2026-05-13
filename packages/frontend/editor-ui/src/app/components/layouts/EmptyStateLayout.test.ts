@@ -10,6 +10,11 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import userEvent from '@testing-library/user-event';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
+const surfaceMcpEmptyState = vi.hoisted(() => ({
+	showTile: false,
+	showReminder: false,
+}));
+
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push: vi.fn(),
@@ -23,6 +28,10 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
+vi.mock('@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState', () => ({
+	useSurfaceMcpEmptyState: vi.fn(() => surfaceMcpEmptyState),
+}));
+
 const renderComponent = createComponentRenderer(EmptyStateLayout, {
 	pinia: createTestingPinia(),
 	global: {
@@ -32,6 +41,12 @@ const renderComponent = createComponentRenderer(EmptyStateLayout, {
 			},
 			ReadyToRunButton: {
 				template: '<button data-test-id="ready-to-run-button">Ready to Run</button>',
+			},
+			SurfaceMcpEmptyStateTile: {
+				template: '<div data-test-id="mcp-onboarding-card" />',
+			},
+			SurfaceMcpEmptyStateReminder: {
+				template: '<div data-test-id="mcp-onboarding-reminder" />',
 			},
 		},
 	},
@@ -76,6 +91,8 @@ describe('EmptyStateLayout', () => {
 		} as unknown as ReturnType<typeof useSourceControlStore>['preferences'];
 
 		bannersStore.bannersHeight = 0;
+		surfaceMcpEmptyState.showTile = false;
+		surfaceMcpEmptyState.showReminder = false;
 
 		// Default: feature disabled (control variant)
 		recommendedTemplatesStore.isFeatureEnabled = false;
@@ -164,6 +181,16 @@ describe('EmptyStateLayout', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('new-workflow-card')).toBeInTheDocument();
+		});
+
+		it('renders Surface MCP empty-state insertion components when enabled', () => {
+			surfaceMcpEmptyState.showTile = true;
+			surfaceMcpEmptyState.showReminder = true;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('mcp-onboarding-card')).toBeInTheDocument();
+			expect(getByTestId('mcp-onboarding-reminder')).toBeInTheDocument();
 		});
 
 		it('should emit click:add event when workflow card is clicked', async () => {
