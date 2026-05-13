@@ -229,6 +229,8 @@ export class Expression {
 
 	private static vmEvaluator?: IExpressionEvaluator;
 
+	private static readonly BROWSER_CALLER = {};
+
 	constructor(private readonly timezone: string) {}
 
 	/**
@@ -236,11 +238,10 @@ export class Expression {
 	 * @private
 	 */
 	private static shouldUseVm(): boolean {
-		return (
-			(this.expressionEngine === 'vm' || this.expressionEngine === 'quickjs') &&
-			!IS_FRONTEND &&
-			!!this.vmEvaluator
-		);
+		if (!this.vmEvaluator) return false;
+		if (this.expressionEngine === 'quickjs') return true;
+		if (this.expressionEngine === 'vm') return !IS_FRONTEND;
+		return false;
 	}
 
 	/**
@@ -256,8 +257,10 @@ export class Expression {
 		maxCodeCacheSize: number;
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
+		runtimeBundle?: string;
 	}): Promise<void> {
-		if ((options.engine !== 'vm' && options.engine !== 'quickjs') || IS_FRONTEND) return;
+		if (options.engine === 'legacy') return;
+		if (options.engine === 'vm' && IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
 
 		if (!this.vmEvaluator) {
@@ -270,6 +273,7 @@ export class Expression {
 								timeout: options.bridgeTimeout,
 								memoryLimit: options.bridgeMemoryLimit,
 								logger: LoggerProxy,
+								runtimeBundle: options.runtimeBundle,
 							})
 					: () =>
 							new runtime.IsolatedVmBridge({
@@ -290,6 +294,12 @@ export class Expression {
 				observability: options.observability,
 			});
 			await this.vmEvaluator.initialize();
+			// Browser uses a single shared caller for all evaluations since the
+			// sync evaluate() requires a pre-acquired caller and Expression
+			// instances are short-lived in the editor.
+			if (IS_FRONTEND) {
+				await this.vmEvaluator.acquire(Expression.BROWSER_CALLER);
+			}
 		}
 	}
 
@@ -601,19 +611,16 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// Use VM evaluator if engine is set to 'vm' or 'quickjs' and we're not in the browser
-		if (
-			(Expression.expressionEngine === 'vm' || Expression.expressionEngine === 'quickjs') &&
-			!IS_FRONTEND
-		) {
+		if (Expression.shouldUseVm()) {
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
 					`N8N_EXPRESSION_ENGINE=${Expression.expressionEngine} is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.`,
 				);
 			}
 
+			const caller = IS_FRONTEND ? Expression.BROWSER_CALLER : this;
 			try {
-				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
+				const result = Expression.vmEvaluator.evaluate(expression, data, caller, {
 					timezone: this.timezone,
 				});
 				return result as string | null | (() => unknown);
