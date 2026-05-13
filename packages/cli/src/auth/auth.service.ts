@@ -367,14 +367,14 @@ export class AuthService {
 		return this.jwtService.sign(payload, { expiresIn });
 	}
 
-	generatePasswordResetUrl(user: User) {
+	async generatePasswordResetUrl(user: User, availableMfaMethods: string[] = []): Promise<string> {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
 		url.searchParams.append('token', this.generatePasswordResetToken(user));
 		url.searchParams.append('mfaEnabled', user.mfaEnabled.toString());
-		if (user.mfaEnabled && user.mfaMethod) {
-			url.searchParams.append('mfaMethod', user.mfaMethod);
+		if (user.mfaEnabled && availableMfaMethods.length > 0) {
+			url.searchParams.append('mfaMethods', availableMfaMethods.join(','));
 		}
 
 		return url.toString();

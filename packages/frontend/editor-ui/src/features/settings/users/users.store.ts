@@ -444,9 +444,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		});
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = true;
-			// Use the BE-classified method — the OS picker may route a
-			// cross-platform request through a platform authenticator.
-			currentUser.value.mfaMethod = result.method;
+			const existing = currentUser.value.availableMfaMethods ?? [];
+			if (!existing.includes(result.method)) {
+				currentUser.value.availableMfaMethods = [...existing, result.method];
+			}
 		}
 		return result;
 	};
@@ -476,12 +477,17 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		options: { useBrowserAutofill?: boolean } = {},
 	): Promise<boolean> => {
 		const { startAuthentication } = await import('@simplewebauthn/browser');
-		const optionsJSON = await webauthnApi.getPasswordlessAuthOptions(rootStore.restApiContext);
+		const response = await webauthnApi.getPasswordlessAuthOptions(rootStore.restApiContext);
+		const { challengeId } = response;
 		const assertion = await startAuthentication({
-			optionsJSON: optionsJSON as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+			optionsJSON: response as unknown as Parameters<typeof startAuthentication>[0]['optionsJSON'],
 			useBrowserAutofill: options.useBrowserAutofill,
 		});
-		const user = await webauthnApi.verifyPasswordlessAuth(rootStore.restApiContext, assertion);
+		const user = await webauthnApi.verifyPasswordlessAuth(
+			rootStore.restApiContext,
+			challengeId,
+			assertion,
+		);
 		if (!user) return false;
 		await setCurrentUser(user);
 		return true;

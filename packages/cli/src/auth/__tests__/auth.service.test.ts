@@ -775,9 +775,9 @@ describe('AuthService', () => {
 	});
 
 	describe('generatePasswordResetUrl', () => {
-		it('should generate a valid url', () => {
+		it('should generate a valid url', async () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
-			const url = authService.generatePasswordResetUrl(user);
+			const url = await authService.generatePasswordResetUrl(user);
 			expect(url).toMatch(
 				/^https:\/\/n8n\.instance\/change-password\?token=[\w.-]+&mfaEnabled=false$/,
 			);

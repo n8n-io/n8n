@@ -102,9 +102,6 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: 'simple-array', default: '' })
 	mfaRecoveryCodes: string[];
 
-	@Column({ type: 'varchar', length: 20, nullable: true })
-	mfaMethod?: 'totp' | 'passkey' | 'security_key' | null;
-
 	/**
 	 * Bumped on any sensitive account change (2FA enable/disable/switch, new
 	 * credential, password change, etc.). Auth middleware rejects any JWT whose

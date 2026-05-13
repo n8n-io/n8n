@@ -85,7 +85,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
-	mfaMethod?: MfaMethod | null;
+	availableMfaMethods?: MfaMethod[];
 	mfaAuthenticated?: boolean;
 }
 

@@ -4866,6 +4866,7 @@
 	"settings.personal.method.button.setUp": "Set up",
 	"settings.personal.method.button.remove": "Remove",
 	"settings.personal.method.button.disable": "Disable",
+	"settings.personal.method.button.addAnother": "Add another",
 	"settings.personal.method.detail.setUpOn": "Set up {date}",
 	"settings.personal.twoFactor.section.title": "Two-factor authentication (2FA)",
 	"settings.personal.twoFactor.description": "Add a second step after your password. Only one method can be active at a time.",

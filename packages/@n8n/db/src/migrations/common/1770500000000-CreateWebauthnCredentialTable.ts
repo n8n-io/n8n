@@ -14,6 +14,7 @@ export class CreateWebauthnCredentialTable1770500000000 implements ReversibleMig
 				column('deviceType').varchar(32),
 				column('backedUp').bool.default(false).notNull,
 				column('transports').text,
+				column('aaguid').varchar(36),
 				column('label').varchar(255).notNull,
 			)
 			.withTimestamps.withIndexOn('credentialId', true)

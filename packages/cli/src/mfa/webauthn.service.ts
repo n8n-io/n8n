@@ -41,17 +41,10 @@ export class WebAuthnService {
 		userId: string,
 		email: string,
 		displayName: string,
-		_existingCredentialIds: string[],
 		attachment: 'platform' | 'cross-platform',
 	) {
 		const { generateRegistrationOptions } = await import('@simplewebauthn/server');
 
-		// Platform path is strict so the OS goes straight to its passkey/biometric
-		// flow. Cross-platform path leaves attachment unset on purpose: Firefox on
-		// macOS hangs when given a strict `cross-platform` and otherwise can't
-		// reach the OS picker. Letting the OS show its native picker (iCloud first
-		// with "More Options → Use Security Key") matches what GitHub does and
-		// works in Firefox. We classify the actual authenticator from the response.
 		const authenticatorSelection =
 			attachment === 'platform'
 				? ({
@@ -63,14 +56,10 @@ export class WebAuthnService {
 						userVerification: 'preferred',
 					} as const);
 
-		// Intentionally not passing excludeCredentials — Firefox hangs at the OS
-		// dialog when an excluded credential entry lacks transports, and our
-		// replace-on-register flow already enforces a single credential per user.
-		// `userDisplayName` must not be empty: Firefox/macOS hangs the security
-		// key dialog when the field is an empty string.
-		// `userID` is our internal user UUID so that passwordless assertions
-		// echo it back as `userHandle`, letting us identify the user without
-		// a password.
+		const existingCredentials = await this.webauthnCredentialRepository.find({
+			where: { userId },
+		});
+
 		const options = await generateRegistrationOptions({
 			rpName: this.getRpName(),
 			rpID: this.getRpId(),
@@ -79,6 +68,16 @@ export class WebAuthnService {
 			userID: new TextEncoder().encode(userId),
 			attestationType: 'none',
 			authenticatorSelection,
+			excludeCredentials: existingCredentials.map((c) => ({
+				id: c.credentialId,
+				...(c.transports?.length && {
+					transports: c.transports as NonNullable<
+						NonNullable<
+							Parameters<typeof generateRegistrationOptions>[0]['excludeCredentials']
+						>[number]['transports']
+					>,
+				}),
+			})),
 		});
 
 		// Hint the browser at the intended authenticator class. Chrome respects
@@ -138,10 +137,11 @@ export class WebAuthnService {
 			};
 			credentialDeviceType: string;
 			credentialBackedUp: boolean;
+			aaguid: string;
 		},
 		transports?: string[],
 	) {
-		const { credential, credentialDeviceType, credentialBackedUp } = registrationInfo;
+		const { credential, credentialDeviceType, credentialBackedUp, aaguid } = registrationInfo;
 
 		return await this.webauthnCredentialRepository.save(
 			this.webauthnCredentialRepository.create({
@@ -152,6 +152,7 @@ export class WebAuthnService {
 				deviceType: credentialDeviceType,
 				backedUp: credentialBackedUp,
 				transports: transports ?? null,
+				aaguid: aaguid || null,
 				label,
 			}),
 		);
@@ -205,11 +206,11 @@ export class WebAuthnService {
 			throw new Error('WebAuthn credential not found');
 		}
 
-		// Security keys may be PIN-less, so we don't require UV during authentication
-		// for them. Passkeys are platform authenticators where UV is the whole point.
 		const transports = credential.transports ?? [];
-		const isPlatformOnly = transports.length > 0 && transports.every((t) => t === 'internal');
-		const requireUserVerification = isPlatformOnly;
+		const isPlatformAuthenticator =
+			(transports.length > 0 && transports.every((t) => t === 'internal')) ||
+			credential.deviceType === 'multiDevice';
+		const requireUserVerification = isPlatformAuthenticator;
 
 		const verification = await verifyAuthenticationResponse({
 			response: authResponse,
@@ -257,19 +258,21 @@ export class WebAuthnService {
 		// boundary.
 		(options as typeof options & { hints: string[] }).hints = ['client-device'];
 
+		const challengeId = crypto.randomUUID();
 		await this.cacheService.set(
-			'webauthn:challenge:passwordless',
+			`webauthn:challenge:passwordless:${challengeId}`,
 			options.challenge,
 			this.getChallengeTtlMs(),
 		);
 
-		return options;
+		return { ...options, challengeId };
 	}
 
-	async verifyPasswordlessAuthentication(response: unknown): Promise<User> {
+	async verifyPasswordlessAuthentication(challengeId: string, response: unknown): Promise<User> {
 		const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
 
-		const challenge = await this.cacheService.get('webauthn:challenge:passwordless');
+		const cacheKey = `webauthn:challenge:passwordless:${challengeId}`;
+		const challenge = await this.cacheService.get(cacheKey);
 		if (!challenge) throw new AuthError('Unauthorized');
 
 		const authResponse = response as Parameters<typeof verifyAuthenticationResponse>[0]['response'];
@@ -305,7 +308,7 @@ export class WebAuthnService {
 		await this.webauthnCredentialRepository.update(credential.id, {
 			counter: verification.authenticationInfo.newCounter,
 		});
-		await this.cacheService.delete('webauthn:challenge:passwordless');
+		await this.cacheService.delete(cacheKey);
 
 		const user = await this.userRepository.findOne({
 			where: { id: credential.userId },

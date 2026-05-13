@@ -134,6 +134,7 @@ export interface PublicUser {
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
+	availableMfaMethods?: string[];
 	isManagedByEnv?: boolean;
 }
 

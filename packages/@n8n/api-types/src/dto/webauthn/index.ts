@@ -5,5 +5,6 @@ export interface WebAuthnCredentialResponse {
 	deviceType: string | null;
 	backedUp: boolean;
 	transports: string[] | null;
+	aaguid: string | null;
 	createdAt: string;
 }

@@ -32,6 +32,7 @@ import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
+import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
@@ -53,6 +54,7 @@ export class UserService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly jwtService: JwtService,
 		private readonly projectService: ProjectService,
+		private readonly mfaService: MfaService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -145,6 +147,10 @@ export class UserService {
 		}
 
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
+
+		if (user.mfaEnabled) {
+			publicUser.availableMfaMethods = await this.mfaService.getAvailableMfaMethods(user.id);
+		}
 
 		const { instanceSettingsLoader } = this.globalConfig;
 		if (

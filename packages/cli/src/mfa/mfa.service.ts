@@ -144,14 +144,26 @@ export class MfaService {
 		return await this.userRepository.save(user);
 	}
 
-	async setMfaMethod(userId: string, method: 'totp' | 'passkey' | 'security_key') {
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: ['role'],
-		});
-		user.mfaEnabled = true;
-		user.mfaMethod = method;
-		return await this.userRepository.save(user);
+	async getAvailableMfaMethods(
+		userId: string,
+	): Promise<Array<'totp' | 'passkey' | 'security_key'>> {
+		const methods: Array<'totp' | 'passkey' | 'security_key'> = [];
+
+		const user = await this.userRepository.findOneByOrFail({ id: userId });
+		if (user.mfaSecret) {
+			methods.push('totp');
+		}
+
+		const credentials = await this.webauthn.getUserCredentials(userId);
+		for (const cred of credentials) {
+			const transports = cred.transports ?? [];
+			const isPlatform =
+				(transports.length > 0 && transports.every((t) => t === 'internal')) ||
+				cred.deviceType === 'multiDevice';
+			methods.push(isPlatform ? 'passkey' : 'security_key');
+		}
+
+		return methods;
 	}
 
 	async clearTotpState(userId: string) {
@@ -186,7 +198,6 @@ export class MfaService {
 			mfaEnabled: false,
 			mfaSecret: null,
 			mfaRecoveryCodes: [],
-			mfaMethod: null,
 		});
 		await this.webauthn.deleteAllUserCredentials(userId);
 	}

@@ -72,11 +72,14 @@ const getMfaEnabled = () => {
 };
 
 const getMfaMethod = (): MfaMethod | null => {
-	const param = router.currentRoute.value.query.mfaMethod;
+	const param = router.currentRoute.value.query.mfaMethods;
 	if (typeof param !== 'string') return null;
-	if (param === 'totp' || param === 'passkey' || param === 'security_key') {
-		return param;
-	}
+	const methods = param
+		.split(',')
+		.filter((m): m is MfaMethod => m === 'totp' || m === 'passkey' || m === 'security_key');
+	if (methods.includes('passkey')) return 'passkey';
+	if (methods.includes('security_key')) return 'security_key';
+	if (methods.includes('totp')) return 'totp';
 	return null;
 };
 

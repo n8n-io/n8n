@@ -176,7 +176,8 @@ export class AuthController {
 		}
 
 		if (!mfaCode && !mfaRecoveryCode && !webauthnResponse) {
-			throw new AuthError('MFA Error', 998, { mfaMethod: user.mfaMethod ?? 'totp' });
+			const availableMethods = await this.mfaService.getAvailableMfaMethods(user.id);
+			throw new AuthError('MFA Error', 998, { availableMethods });
 		}
 
 		if (webauthnResponse) {
@@ -215,7 +216,10 @@ export class AuthController {
 		res: Response,
 		@Body payload: PasswordlessVerifyRequestDto,
 	): Promise<PublicUser> {
-		const user = await this.mfaService.webauthn.verifyPasswordlessAuthentication(payload.response);
+		const user = await this.mfaService.webauthn.verifyPasswordlessAuthentication(
+			payload.challengeId,
+			payload.response,
+		);
 
 		this.validateSsoRestrictions(user, user.email);
 

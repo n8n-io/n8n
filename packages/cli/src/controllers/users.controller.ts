@@ -46,6 +46,7 @@ import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.serv
 import { UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { UserService } from '@/services/user.service';
+import { MfaService } from '@/mfa/mfa.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -68,6 +69,7 @@ export class UsersController {
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly provisioningService: ProvisioningService,
+		private readonly mfaService: MfaService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -164,7 +166,10 @@ export class UsersController {
 			throw new ForbiddenError('Admin cannot reset password of global owner');
 		}
 
-		const link = this.authService.generatePasswordResetUrl(user);
+		const availableMethods = user.mfaEnabled
+			? await this.mfaService.getAvailableMfaMethods(user.id)
+			: [];
+		const link = await this.authService.generatePasswordResetUrl(user, availableMethods);
 		return { link };
 	}
 

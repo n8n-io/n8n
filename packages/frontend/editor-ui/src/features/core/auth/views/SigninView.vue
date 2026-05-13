@@ -37,7 +37,8 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const showMfaView = ref(false);
-const mfaMethod = ref<MfaMethod>('totp');
+const availableMfaMethods = ref<MfaMethod[]>(['totp']);
+const mfaMethod = computed<MfaMethod>(() => availableMfaMethods.value[0] ?? 'totp');
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
@@ -171,8 +172,9 @@ const login = async (form: LoginRequestDto) => {
 		await router.push({ name: VIEWS.HOMEPAGE });
 	} catch (error) {
 		if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
-			const methodFromError = (error.meta as { mfaMethod?: MfaMethod } | undefined)?.mfaMethod;
-			mfaMethod.value = methodFromError ?? 'totp';
+			const methods = (error.meta as { availableMethods?: MfaMethod[] } | undefined)
+				?.availableMethods;
+			availableMfaMethods.value = methods?.length ? methods : ['totp'];
 			showMfaView.value = true;
 			cacheCredentials(form);
 			return;

@@ -34,6 +34,9 @@ export class WebauthnCredential extends WithTimestampsAndStringId {
 	@JsonColumn({ nullable: true })
 	transports: string[] | null;
 
+	@Column({ type: String, length: 36, nullable: true })
+	aaguid: string | null;
+
 	@Column({ type: String, length: 255 })
 	label: string;
 }

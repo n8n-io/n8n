@@ -74,12 +74,7 @@ export class MFAController {
 		allowSkipMFA: true,
 	})
 	async getQRCode(req: AuthenticatedRequest) {
-		const { email, id, mfaMethod } = req.user;
-
-		if (mfaMethod === 'totp')
-			throw new BadRequestError(
-				'MFA already enabled with the authenticator app. Disable it to generate a new secret and recovery codes',
-			);
+		const { email, id } = req.user;
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
 			await this.mfaService.getSecretAndRecoveryCodes(id);
@@ -118,7 +113,7 @@ export class MFAController {
 	})
 	async activateMFA(req: MFA.Activate, res: Response) {
 		const { mfaCode = null } = req.body;
-		const { id, mfaMethod } = req.user;
+		const { id } = req.user;
 
 		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
 
@@ -126,8 +121,6 @@ export class MFAController {
 			await this.mfaService.getSecretAndRecoveryCodes(id);
 
 		if (!mfaCode) throw new BadRequestError('Token is required to enable MFA feature');
-
-		if (mfaMethod === 'totp') throw new BadRequestError('MFA already enabled');
 
 		if (!secret || !recoveryCodes.length) {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
@@ -138,10 +131,7 @@ export class MFAController {
 		if (!verified)
 			throw new BadRequestError('MFA code expired. Close the modal and enable MFA again', 997);
 
-		// Switching from webauthn to TOTP — clear any existing webauthn credentials
-		await this.mfaService.webauthn.deleteAllUserCredentials(id);
-
-		const updatedUser = await this.mfaService.setMfaMethod(id, 'totp');
+		const updatedUser = await this.mfaService.enableMfa(id);
 
 		this.eventService.emit('user-mfa-enabled', {
 			user: {
@@ -247,16 +237,12 @@ export class MFAController {
 			);
 		}
 
-		const existingCredentials = await this.mfaService.webauthn.getUserCredentials(id);
-		const existingIds = existingCredentials.map((c) => c.credentialId);
-
 		const displayName = [firstName, lastName].filter(Boolean).join(' ').trim();
 
 		return await this.mfaService.webauthn.generateRegistrationOptions(
 			id,
 			email,
 			displayName,
-			existingIds,
 			attachment,
 		);
 	}
@@ -294,10 +280,6 @@ export class MFAController {
 			throw new BadRequestError('WebAuthn registration verification failed');
 		}
 
-		// Replace any existing 2FA state — only one method active at a time
-		await this.mfaService.webauthn.deleteAllUserCredentials(userId);
-		await this.mfaService.clearTotpState(userId);
-
 		const transports = (response as { response?: { transports?: string[] } })?.response?.transports;
 
 		const savedCredential = await this.mfaService.webauthn.saveCredential(
@@ -307,15 +289,11 @@ export class MFAController {
 			transports,
 		);
 
-		// Classify from the actual authenticator, not the client-provided hint:
-		// when `attachment === 'cross-platform'` the OS picker may still route the
-		// user through iCloud Keychain or Windows Hello, in which case we should
-		// record this as a passkey rather than a security key.
 		const isPlatformAuthenticator =
 			(transports ?? []).includes('internal') ||
 			verification.registrationInfo.credentialDeviceType === 'multiDevice';
 		const method = isPlatformAuthenticator ? 'passkey' : 'security_key';
-		const updatedUser = await this.mfaService.setMfaMethod(userId, method);
+		const updatedUser = await this.mfaService.enableMfa(userId);
 		await this.authService.invalidateOtherSessions(userId);
 		this.authService.issueCookie(res, updatedUser, true, req.browserId);
 
@@ -323,9 +301,6 @@ export class MFAController {
 			id: savedCredential.id,
 			credentialId: savedCredential.credentialId,
 			label: savedCredential.label,
-			// The OS picker may route a cross-platform request through a platform
-			// authenticator (e.g. iCloud Keychain), so the actual method is
-			// derived from the response — not the client's attachment hint.
 			method,
 		};
 	}
@@ -358,6 +333,7 @@ export class MFAController {
 			deviceType: c.deviceType,
 			backedUp: c.backedUp,
 			transports: c.transports,
+			aaguid: c.aaguid ?? null,
 			createdAt: c.createdAt.toISOString(),
 		}));
 	}
@@ -382,7 +358,6 @@ export class MFAController {
 				mfaEnabled: false,
 				mfaSecret: null,
 				mfaRecoveryCodes: [],
-				mfaMethod: null,
 			});
 
 			const updatedUser = await this.userRepository.findOneOrFail({

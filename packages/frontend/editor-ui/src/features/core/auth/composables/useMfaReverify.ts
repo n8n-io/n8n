@@ -24,7 +24,8 @@ export function useMfaReverify() {
 		const user = usersStore.currentUser;
 		if (!user || !user.mfaEnabled) return null;
 
-		const method = user.mfaMethod ?? 'totp';
+		const methods = user.availableMfaMethods ?? [];
+		const method = methods[0] ?? 'totp';
 
 		if (method === 'totp') {
 			return await new Promise<MfaProof | null>((resolve) => {

@@ -124,7 +124,10 @@ export class PasswordResetController {
 				throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 			}
 
-			const url = this.authService.generatePasswordResetUrl(user);
+			const availableMethods = user.mfaEnabled
+				? await this.mfaService.getAvailableMfaMethods(user.id)
+				: [];
+			const url = await this.authService.generatePasswordResetUrl(user, availableMethods);
 
 			const { id, firstName } = user;
 			try {

@@ -53,13 +53,19 @@ export async function updateCredential(
 	return await makeRestApiRequest(context, 'PATCH', `/mfa/webauthn/credentials/${id}`, data);
 }
 
-export async function getPasswordlessAuthOptions(context: IRestApiContext) {
+export async function getPasswordlessAuthOptions(
+	context: IRestApiContext,
+): Promise<{ challengeId: string; [key: string]: unknown }> {
 	return await makeRestApiRequest(context, 'POST', '/login/webauthn/options');
 }
 
 export async function verifyPasswordlessAuth(
 	context: IRestApiContext,
+	challengeId: string,
 	response: unknown,
 ): Promise<CurrentUserResponse> {
-	return await makeRestApiRequest(context, 'POST', '/login/webauthn/verify', { response });
+	return await makeRestApiRequest(context, 'POST', '/login/webauthn/verify', {
+		challengeId,
+		response,
+	});
 }

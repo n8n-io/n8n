@@ -25,9 +25,12 @@ const settingsStore = useSettingsStore();
 const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 const { reverify } = useMfaReverify();
 
-const activeMfaMethod = computed(() => usersStore.currentUser?.mfaMethod ?? null);
+const activeMfaMethods = computed(
+	() => (usersStore.currentUser?.availableMfaMethods ?? []) as string[],
+);
 const isWebauthnMfa = computed(
-	() => activeMfaMethod.value === 'passkey' || activeMfaMethod.value === 'security_key',
+	() =>
+		activeMfaMethods.value.includes('passkey') || activeMfaMethods.value.includes('security_key'),
 );
 
 const passwordsMatch = (value: string | number | boolean | null | undefined) => {

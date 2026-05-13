@@ -123,38 +123,30 @@ const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
 
-const activeMfaMethod = computed<TwoFactorMethod | null>(() => {
-	if (!currentUser.value?.mfaEnabled) return null;
-	return (currentUser.value.mfaMethod as TwoFactorMethod | null | undefined) ?? null;
+const activeMfaMethods = computed<TwoFactorMethod[]>(() => {
+	if (!currentUser.value?.mfaEnabled) return [];
+	return (currentUser.value.availableMfaMethods as TwoFactorMethod[] | undefined) ?? [];
 });
 
-/**
- * Passwordless sign-in (passkey) and Two-factor authentication (TOTP /
- * security key) are presented as independent subsections in the new design.
- *
- * Today the backend still treats passkey as one of three mutually exclusive
- * MFA methods, so the FE derives both states from `mfaMethod` / `mfaEnabled`.
- * Step 2 of this restructure decouples them on the backend so a user can
- * have both active at once.
- */
-const hasPasskey = computed(() => activeMfaMethod.value === 'passkey');
 const has2fa = computed(
-	() => activeMfaMethod.value === 'totp' || activeMfaMethod.value === 'security_key',
+	() => activeMfaMethods.value.includes('totp') || activeMfaMethods.value.includes('security_key'),
 );
-const twoFactorMethod = computed<TwoFactorMethod | null>(() =>
-	has2fa.value ? activeMfaMethod.value : null,
-);
+const twoFactorMethod = computed<TwoFactorMethod | null>(() => {
+	if (activeMfaMethods.value.includes('totp')) return 'totp';
+	if (activeMfaMethods.value.includes('security_key')) return 'security_key';
+	return null;
+});
 
 const webauthnCredentials = ref<WebAuthnCredentialResponse[]>([]);
 
 const isPlatformCredential = (c: WebAuthnCredentialResponse) =>
 	(c.transports ?? []).includes('internal') || c.deviceType === 'multiDevice';
 
-const passkeyCredential = computed<WebAuthnCredentialResponse | null>(
-	() => webauthnCredentials.value.find(isPlatformCredential) ?? null,
+const passkeyCredentials = computed<WebAuthnCredentialResponse[]>(() =>
+	webauthnCredentials.value.filter(isPlatformCredential),
 );
-const securityKeyCredential = computed<WebAuthnCredentialResponse | null>(
-	() => webauthnCredentials.value.find((c) => !isPlatformCredential(c)) ?? null,
+const securityKeyCredentials = computed<WebAuthnCredentialResponse[]>(() =>
+	webauthnCredentials.value.filter((c) => !isPlatformCredential(c)),
 );
 
 const formatSetupDate = (iso: string) => {
@@ -173,29 +165,28 @@ const formatCredentialDetail = (c: WebAuthnCredentialResponse) => {
 	return [c.label, setupSuffix].filter(Boolean).join(' · ');
 };
 
-const passkeyDetail = computed(() => {
-	if (hasPasskey.value && passkeyCredential.value) {
-		return formatCredentialDetail(passkeyCredential.value);
-	}
-	return i18n.baseText('settings.personal.twoFactor.method.passkey.detail');
-});
-
-const securityKeyDetail = computed(() => {
-	if (twoFactorMethod.value === 'security_key' && securityKeyCredential.value) {
-		return formatCredentialDetail(securityKeyCredential.value);
-	}
-	return i18n.baseText('settings.personal.twoFactor.method.security_key.detail');
-});
-
 async function refreshWebauthnCredentials() {
-	if (!hasPasskey.value && twoFactorMethod.value !== 'security_key') {
-		webauthnCredentials.value = [];
-		return;
-	}
 	try {
 		webauthnCredentials.value = await usersStore.fetchWebAuthnCredentials();
 	} catch {
 		webauthnCredentials.value = [];
+	}
+}
+
+async function removeWebAuthnCredential(credentialId: string) {
+	const proof = await reverify();
+	if (!proof) return;
+	try {
+		await usersStore.deleteWebAuthnCredential(credentialId);
+		showToast({
+			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
+			message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
+			type: 'success',
+			duration: 0,
+		});
+		await refreshWebauthnCredentials();
+	} catch (e) {
+		showError(e, i18n.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
 	}
 }
 const { reverify } = useMfaReverify();
@@ -370,7 +361,7 @@ function openPasswordModal() {
 async function openMethodPicker(options: { excludeMethods?: TwoFactorMethod[] } = {}) {
 	uiStore.openModalWithData({
 		name: TWO_FACTOR_METHOD_PICKER_MODAL_KEY,
-		data: { current: activeMfaMethod.value, excludeMethods: options.excludeMethods },
+		data: { current: twoFactorMethod.value, excludeMethods: options.excludeMethods },
 	});
 }
 
@@ -395,54 +386,27 @@ async function onSetupPasskeyClick() {
 	if (!(await canEnableMfaPreCheck())) return;
 	uiStore.openModalWithData({
 		name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
-		data: { method: 'passkey', replacing: activeMfaMethod.value, standalone: true },
+		data: { method: 'passkey', replacing: twoFactorMethod.value, standalone: true },
 	});
 }
 
-async function onRemovePasskeyClick() {
-	await disableMfa('removedPasskey');
-}
-
-interface TwoFactorMethodOption {
-	method: 'totp' | 'security_key';
-	icon: 'shield' | 'key-round';
-	tone: 'totp' | 'security_key';
-	labelKey: string;
-	descriptionKey: string;
-}
-
 function isMethodActive(method: 'totp' | 'security_key'): boolean {
-	return twoFactorMethod.value === method;
+	if (method === 'totp') return activeMfaMethods.value.includes('totp');
+	if (method === 'security_key') return securityKeyCredentials.value.length > 0;
+	return false;
 }
-
-const twoFactorMethods: TwoFactorMethodOption[] = [
-	{
-		method: 'totp',
-		icon: 'shield',
-		tone: 'totp',
-		labelKey: 'settings.personal.twoFactor.picker.totp.label',
-		descriptionKey: 'settings.personal.twoFactor.picker.totp.description',
-	},
-	{
-		method: 'security_key',
-		icon: 'key-round',
-		tone: 'security_key',
-		labelKey: 'settings.personal.twoFactor.picker.security_key.label',
-		descriptionKey: 'settings.personal.twoFactor.picker.security_key.description',
-	},
-];
 
 async function onTwoFactorMethodClick(method: 'totp' | 'security_key') {
 	if (!(await canEnableMfaPreCheck())) return;
 	if (method === 'totp') {
 		uiStore.openModalWithData({
 			name: TOTP_SETUP_WIZARD_MODAL_KEY,
-			data: { replacing: activeMfaMethod.value },
+			data: { replacing: twoFactorMethod.value },
 		});
 	} else {
 		uiStore.openModalWithData({
 			name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
-			data: { method: 'security_key', replacing: activeMfaMethod.value, standalone: true },
+			data: { method: 'security_key', replacing: twoFactorMethod.value, standalone: true },
 		});
 	}
 }
@@ -469,7 +433,7 @@ async function disableMfa(_intent: 'removedPasskey' | 'disabled2fa') {
 }
 
 const onPickerSelected = ({ method }: { method: TwoFactorMethod }) => {
-	const replacing = activeMfaMethod.value;
+	const replacing = twoFactorMethod.value;
 	if (method === 'totp') {
 		uiStore.openModalWithData({
 			name: TOTP_SETUP_WIZARD_MODAL_KEY,
@@ -566,43 +530,70 @@ onBeforeUnmount(() => {
 							{{ i18n.baseText('settings.personal.passkey.description') }}
 						</N8nText>
 					</div>
-					<div
-						:class="[$style.methodCard]"
-						:data-test-id="`passkey-card-${hasPasskey ? 'enabled' : 'disabled'}`"
-					>
-						<div :class="[$style.activeMethodIcon, $style.tone_passkey]">
-							<N8nIcon icon="fingerprint" />
-						</div>
-						<div :class="$style.methodCardContent">
-							<div :class="$style.methodCardLabel">
-								<N8nText :bold="true">{{
-									i18n.baseText('settings.personal.twoFactor.method.passkey.name')
-								}}</N8nText>
-								<N8nBadge v-if="hasPasskey" theme="success">{{
-									i18n.baseText('settings.personal.mfa.status.enabled')
-								}}</N8nBadge>
-								<N8nBadge v-else theme="default">{{
-									i18n.baseText('settings.personal.method.status.notSetUp')
-								}}</N8nBadge>
+					<div :class="$style.methodCards">
+						<div
+							v-for="cred in passkeyCredentials"
+							:key="cred.id"
+							:class="[$style.methodCard]"
+							:data-test-id="`passkey-card-${cred.id}`"
+						>
+							<div :class="[$style.activeMethodIcon, $style.tone_passkey]">
+								<N8nIcon icon="fingerprint" />
 							</div>
-							<span :class="$style.methodDetail">{{ passkeyDetail }}</span>
+							<div :class="$style.methodCardContent">
+								<div :class="$style.methodCardLabel">
+									<N8nText :bold="true">{{ cred.label }}</N8nText>
+									<N8nBadge theme="success">{{
+										i18n.baseText('settings.personal.mfa.status.enabled')
+									}}</N8nBadge>
+								</div>
+								<span :class="$style.methodDetail">{{ formatCredentialDetail(cred) }}</span>
+							</div>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('settings.personal.method.button.remove')"
+								:data-test-id="`remove-passkey-${cred.id}`"
+								@click="removeWebAuthnCredential(cred.id)"
+							/>
 						</div>
-						<N8nButton
-							v-if="!hasPasskey"
-							variant="subtle"
+						<div
+							v-if="passkeyCredentials.length === 0"
+							:class="[$style.methodCard]"
+							data-test-id="passkey-card-disabled"
+						>
+							<div :class="[$style.activeMethodIcon, $style.tone_passkey]">
+								<N8nIcon icon="fingerprint" />
+							</div>
+							<div :class="$style.methodCardContent">
+								<div :class="$style.methodCardLabel">
+									<N8nText :bold="true">{{
+										i18n.baseText('settings.personal.twoFactor.method.passkey.name')
+									}}</N8nText>
+									<N8nBadge theme="default">{{
+										i18n.baseText('settings.personal.method.status.notSetUp')
+									}}</N8nBadge>
+								</div>
+								<span :class="$style.methodDetail">{{
+									i18n.baseText('settings.personal.twoFactor.method.passkey.detail')
+								}}</span>
+							</div>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('settings.personal.method.button.setUp')"
+								data-test-id="enable-passkey-button"
+								@click="onSetupPasskeyClick"
+							/>
+						</div>
+						<N8nLink
+							v-if="passkeyCredentials.length > 0"
 							size="small"
-							:label="i18n.baseText('settings.personal.method.button.setUp')"
-							data-test-id="enable-passkey-button"
+							data-test-id="add-passkey-button"
 							@click="onSetupPasskeyClick"
-						/>
-						<N8nButton
-							v-else
-							variant="destructive"
-							size="small"
-							:label="i18n.baseText('settings.personal.method.button.remove')"
-							data-test-id="remove-passkey-button"
-							@click="onRemovePasskeyClick"
-						/>
+						>
+							+ {{ i18n.baseText('settings.personal.method.button.addAnother' as never) }}
+						</N8nLink>
 					</div>
 				</div>
 
@@ -621,22 +612,17 @@ onBeforeUnmount(() => {
 						:content="i18n.baseText('settings.personal.mfa.enforced')"
 					/>
 					<div :class="$style.methodCards">
-						<div
-							v-for="option in twoFactorMethods"
-							:key="option.method"
-							:class="[
-								$style.methodCard,
-								has2fa && !isMethodActive(option.method) && $style.methodCardMuted,
-							]"
-							:data-test-id="`mfa-method-${option.method}`"
-						>
-							<div :class="[$style.activeMethodIcon, $style[`tone_${option.tone}`]]">
-								<N8nIcon :icon="option.icon" />
+						<!-- TOTP card -->
+						<div :class="[$style.methodCard]" data-test-id="mfa-method-totp">
+							<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
+								<N8nIcon icon="shield" />
 							</div>
 							<div :class="$style.methodCardContent">
 								<div :class="$style.methodCardLabel">
-									<N8nText :bold="true">{{ i18n.baseText(option.labelKey as never) }}</N8nText>
-									<N8nBadge v-if="isMethodActive(option.method)" theme="success">{{
+									<N8nText :bold="true">{{
+										i18n.baseText('settings.personal.twoFactor.method.totp.name')
+									}}</N8nText>
+									<N8nBadge v-if="isMethodActive('totp')" theme="success">{{
 										i18n.baseText('settings.personal.mfa.status.enabled')
 									}}</N8nBadge>
 									<N8nBadge v-else theme="default">{{
@@ -644,17 +630,15 @@ onBeforeUnmount(() => {
 									}}</N8nBadge>
 								</div>
 								<span :class="$style.methodDetail">{{
-									option.method === 'security_key'
-										? securityKeyDetail
-										: i18n.baseText(option.descriptionKey as never)
+									i18n.baseText('settings.personal.twoFactor.picker.totp.description')
 								}}</span>
 							</div>
 							<N8nButton
-								v-if="isMethodActive(option.method)"
+								v-if="isMethodActive('totp')"
 								variant="destructive"
 								size="small"
 								:label="i18n.baseText('settings.personal.method.button.disable')"
-								:data-test-id="`mfa-method-${option.method}-disable`"
+								data-test-id="mfa-method-totp-disable"
 								@click="onDisable2faClick"
 							/>
 							<N8nButton
@@ -662,10 +646,77 @@ onBeforeUnmount(() => {
 								variant="subtle"
 								size="small"
 								:label="i18n.baseText('settings.personal.method.button.setUp')"
-								:data-test-id="`mfa-method-${option.method}-setup`"
-								@click="onTwoFactorMethodClick(option.method)"
+								data-test-id="mfa-method-totp-setup"
+								@click="onTwoFactorMethodClick('totp')"
 							/>
 						</div>
+
+						<!-- Security key credentials -->
+						<div
+							v-for="cred in securityKeyCredentials"
+							:key="cred.id"
+							:class="[$style.methodCard]"
+							:data-test-id="`security-key-card-${cred.id}`"
+						>
+							<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
+								<N8nIcon icon="key-round" />
+							</div>
+							<div :class="$style.methodCardContent">
+								<div :class="$style.methodCardLabel">
+									<N8nText :bold="true">{{ cred.label }}</N8nText>
+									<N8nBadge theme="success">{{
+										i18n.baseText('settings.personal.mfa.status.enabled')
+									}}</N8nBadge>
+								</div>
+								<span :class="$style.methodDetail">{{ formatCredentialDetail(cred) }}</span>
+							</div>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('settings.personal.method.button.remove')"
+								:data-test-id="`remove-security-key-${cred.id}`"
+								@click="removeWebAuthnCredential(cred.id)"
+							/>
+						</div>
+
+						<!-- Security key setup card (when none registered) -->
+						<div
+							v-if="securityKeyCredentials.length === 0"
+							:class="[$style.methodCard]"
+							data-test-id="mfa-method-security_key"
+						>
+							<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
+								<N8nIcon icon="key-round" />
+							</div>
+							<div :class="$style.methodCardContent">
+								<div :class="$style.methodCardLabel">
+									<N8nText :bold="true">{{
+										i18n.baseText('settings.personal.twoFactor.method.security_key.name')
+									}}</N8nText>
+									<N8nBadge theme="default">{{
+										i18n.baseText('settings.personal.method.status.notSetUp')
+									}}</N8nBadge>
+								</div>
+								<span :class="$style.methodDetail">{{
+									i18n.baseText('settings.personal.twoFactor.picker.security_key.description')
+								}}</span>
+							</div>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('settings.personal.method.button.setUp')"
+								data-test-id="mfa-method-security_key-setup"
+								@click="onTwoFactorMethodClick('security_key')"
+							/>
+						</div>
+						<N8nLink
+							v-if="securityKeyCredentials.length > 0"
+							size="small"
+							data-test-id="add-security-key-button"
+							@click="onTwoFactorMethodClick('security_key')"
+						>
+							+ {{ i18n.baseText('settings.personal.method.button.addAnother' as never) }}
+						</N8nLink>
 					</div>
 				</div>
 			</div>

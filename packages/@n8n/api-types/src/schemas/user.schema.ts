@@ -42,7 +42,7 @@ export const userDetailSchema = userBaseSchema.extend({
 	personalizationAnswers: z.object({}).passthrough().nullable().optional(),
 	projectRelations: z.array(userProjectSchema).nullable().optional(),
 	mfaEnabled: z.boolean().optional(),
-	mfaMethod: mfaMethodSchema.nullable().optional(),
+	availableMfaMethods: z.array(mfaMethodSchema).optional(),
 	lastActiveAt: z.string().nullable().optional(),
 	inviteAcceptUrl: z.string().optional(),
 	isManagedByEnv: z.boolean().optional(),
