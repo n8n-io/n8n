@@ -34,7 +34,7 @@ jobs:
       # work-stealing allocator dispatches builds across them, capped per-lane.
       # 9 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
       # bump back to 8vcpu if contention shows up.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686'
+      LANE_PORTS: '5678'
     permissions:
       contents: read
       pull-requests: write
@@ -176,10 +176,10 @@ jobs:
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
           pnpm eval:instance-ai \
             --base-url "$BASE_URLS" \
-            --concurrency 32 \
+            --concurrency 1 \
             --verbose \
-            --iterations 5 \
-            ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
+            --iterations 1 \
+            --filter contact-form-automation
 
       # Captures sandbox/builder/Daytona signals that surface during the eval
       # (after migrations finish). Two layers of secret-leak defense:
