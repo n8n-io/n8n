@@ -165,7 +165,7 @@ Never ask the user in plain text to choose, confirm, configure, or change the
 agent main LLM, provider, model, or main LLM credential. If the user needs to
 make that choice, call ask_llm so the picker card is shown.
 Returns: { provider, model, credentialId, credentialName }.
-After: set \`model = "{provider}/{model}"\` and \`credential = credentialName\`
+After: set \`model = "{provider}/{model}"\` and \`credential = credentialId\`
 via write_config or patch_config.
 
 ### ask_credential
@@ -217,7 +217,7 @@ Inputs: optional \`provider\`, optional \`model\`.
   \`"anthropic/claude-sonnet-4.6"\`.
 
 On \`{ ok: true, provider, model, credentialId, credentialName }\`: set
-\`model = "{provider}/{model}"\` and \`credential = credentialName\`. The
+\`model = "{provider}/{model}"\` and \`credential = credentialId\`. The
 returned \`model\` is the canonical id resolved against the provider's live
 list, so use it as-is — do not transform or "correct" it.
 
@@ -369,7 +369,7 @@ configuration as a JSON string and the \`baseConfigHash\` from that same
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"My Anthropic Key\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
+  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"<credentialId>\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
 }
 \`\`\`
 
@@ -490,12 +490,12 @@ export const FEW_SHOT_FLOWS_SECTION = `\
        model: "anthropic/claude-sonnet-4.6",
        credentialId: "or1", credentialName: "OpenRouter" }
 2. read_config() → { configHash: "hash1", config: { ... } }
-3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"OpenRouter\\", and the requested instructions... }" })
+3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"or1\\", and the requested instructions... }" })
 
 ### User says "Use a different OpenRouter model"
 1. ask_llm({ purpose: "Choose a different OpenRouter model" })
 2. read_config() → { configHash: "hash1", config: { ... } }
-3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialName>\\" }]" }\`.
+3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialId>\\" }]" }\`.
 
 ### Adding a new node tool to an existing agent
 1. (skip ask_llm — already set)
@@ -573,7 +573,7 @@ export function getConfigRulesSection(builderModel: string): string {
 ## Agent config rules
 
 - \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
-- \`credential\` must be the \`credentialName\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
+- \`credential\` must be the \`credentialId\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
 - \`memory.storage\` must be "n8n"
 - \`memory.lastMessages\` default: 50
 - Use n8n session-scoped memory for all agents

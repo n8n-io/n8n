@@ -12,6 +12,7 @@
 		"dist"
 	],
 	"scripts": {
+		"check": "tsx src/cli.ts",
 		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc --watch",
 		"test": "vitest run",

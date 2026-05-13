@@ -50,7 +50,7 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 describe('InstanceAiMessage', () => {
 	beforeEach(() => {
-		createTestingPinia();
+		createTestingPinia({ stubActions: false });
 	});
 
 	it('should render user message with user bubble', () => {

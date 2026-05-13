@@ -49,11 +49,12 @@ describe('AgentsCredentialProvider', () => {
 		expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 	});
 
-	it('keeps project-scoped listing when no request user is provided', async () => {
+	it('returns project credentials when no request user is provided', async () => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 			credential({ id: 'project-cred', name: 'Project Slack' }),
 		]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 
 		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
 
@@ -64,31 +65,82 @@ describe('AgentsCredentialProvider', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 	});
 
-	it('resolves only credentials included in the workflow-scoped user list', async () => {
+	it('returns global credentials when no request user is provided', async () => {
 		const credentialsService = mock<CredentialsService>();
-		const user = { id: 'user-1' } as User;
-		const allowedCredential = credential({ id: 'allowed', name: 'Allowed Slack' });
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{
-				...listItem({ id: 'allowed', name: 'Allowed Slack' }),
-				scopes: [],
-				isManaged: false,
-				isGlobal: false,
-				isResolvable: true,
-			},
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([
+			credential({ id: 'global-cred', name: 'Global OpenAI', type: 'openAiApi' }),
 		]);
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
+
+		await expect(provider.list()).resolves.toEqual([
+			{ id: 'global-cred', name: 'Global OpenAI', type: 'openAiApi' },
+		]);
+		expect(credentialsService.findAllGlobalCredentialIds).toHaveBeenCalled();
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('merges project and global credentials without duplicates when no request user is provided', async () => {
+		const credentialsService = mock<CredentialsService>();
+		const sharedCred = credential({ id: 'shared-cred', name: 'Shared Slack' });
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
-			allowedCredential,
-			credential({ id: 'project-only', name: 'Project Only Slack' }),
+			credential({ id: 'project-cred', name: 'Project Slack' }),
+			sharedCred,
 		]);
-		credentialsService.decrypt.mockResolvedValue({ apiKey: 'secret' });
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([
+			sharedCred,
+			credential({ id: 'global-cred', name: 'Global OpenAI', type: 'openAiApi' }),
+		]);
 
-		const provider = new AgentsCredentialProvider(credentialsService, 'project-1', user);
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
 
-		await expect(provider.resolve('project-only')).rejects.toThrow(
-			'Credential "project-only" not found or not accessible',
+		await expect(provider.list()).resolves.toEqual([
+			{ id: 'project-cred', name: 'Project Slack', type: 'slackApi' },
+			{ id: 'shared-cred', name: 'Shared Slack', type: 'slackApi' },
+			{ id: 'global-cred', name: 'Global OpenAI', type: 'openAiApi' },
+		]);
+	});
+
+	it('resolves a project credential when no request user is provided', async () => {
+		const credentialsService = mock<CredentialsService>();
+		const projectCred = credential({ id: 'project-cred', name: 'Project Slack' });
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([projectCred]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		credentialsService.decrypt.mockResolvedValue({ apiKey: 'project-secret' });
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
+
+		await expect(provider.resolve('project-cred')).resolves.toEqual({ apiKey: 'project-secret' });
+		expect(credentialsService.decrypt).toHaveBeenCalledWith(projectCred, true);
+	});
+
+	it('resolves a global credential when no request user is provided', async () => {
+		const credentialsService = mock<CredentialsService>();
+		const globalCred = credential({ id: 'global-cred', name: 'Global OpenAI', type: 'openAiApi' });
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([globalCred]);
+		credentialsService.decrypt.mockResolvedValue({ apiKey: 'global-secret' });
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
+
+		await expect(provider.resolve('global-cred')).resolves.toEqual({ apiKey: 'global-secret' });
+		expect(credentialsService.decrypt).toHaveBeenCalledWith(globalCred, true);
+	});
+
+	it('rejects resolve for a credential not in project or global scope when no request user is provided', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+			credential({ id: 'project-cred' }),
+		]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([
+			credential({ id: 'global-cred', type: 'openAiApi' }),
+		]);
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
+
+		await expect(provider.resolve('unknown-cred')).rejects.toThrow(
+			'Credential "unknown-cred" not found or not accessible',
 		);
-		await expect(provider.resolve('allowed')).resolves.toEqual({ apiKey: 'secret' });
-		expect(credentialsService.decrypt).toHaveBeenCalledWith(allowedCredential, true);
 	});
 });
