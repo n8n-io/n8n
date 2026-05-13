@@ -147,6 +147,20 @@ describe('ScopedMemoryTaskRunner', () => {
 		);
 	});
 
+	it('removes settled scope queue entries after completion', async () => {
+		const runner = new ScopedMemoryTaskRunner();
+
+		const handle = runner.schedule(
+			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			async () => await Promise.resolve('done'),
+		);
+
+		await expect(handle.done).resolves.toMatchObject({ status: 'completed', value: 'done' });
+		await runner.flush();
+
+		expect(Reflect.get(runner, 'queuesByScope')).toHaveProperty('size', 0);
+	});
+
 	it('acquires and releases a store lock around the task', async () => {
 		const acquire = jest.fn<
 			ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>,
