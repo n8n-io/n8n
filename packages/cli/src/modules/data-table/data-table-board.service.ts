@@ -41,7 +41,6 @@ const BOARD_COLUMNS = [
 	{ name: 'status', type: 'string' as const, index: 0 },
 	{ name: 'name', type: 'string' as const, index: 1 },
 	{ name: 'description', type: 'string' as const, index: 2 },
-	{ name: 'statusChangedAt', type: 'date' as const, index: 3 },
 ];
 
 @Service()
@@ -124,7 +123,6 @@ export class DataTableBoardService {
 				status: item.status,
 				name: item.name,
 				description: item.description ?? '',
-				statusChangedAt: new Date(),
 			},
 		];
 
@@ -204,7 +202,6 @@ export class DataTableBoardService {
 		if (dto.name !== undefined) data.name = dto.name;
 		if (dto.status !== undefined) {
 			data.status = dto.status;
-			data.statusChangedAt = new Date();
 		}
 		if (dto.description !== undefined) data.description = dto.description;
 
@@ -310,7 +307,7 @@ export class DataTableBoardService {
 						type: 'and',
 						filters: [{ columnName: 'status', condition: 'eq', value: oldStatus }],
 					},
-					data: { status: newStatus, statusChangedAt: new Date() },
+					data: { status: newStatus },
 				},
 				true,
 			);
@@ -360,7 +357,7 @@ export class DataTableBoardService {
 						type: 'and',
 						filters: [{ columnName: 'status', condition: 'eq', value: status }],
 					},
-					data: { status: migrateTo, statusChangedAt: new Date() },
+					data: { status: migrateTo },
 				},
 				true,
 			);
@@ -411,54 +408,6 @@ export class DataTableBoardService {
 
 		await this.updateMetadataStatuses(boardId, orderedStatuses);
 		return orderedStatuses;
-	}
-
-	// ─── Trigger Helpers ──────────────────────────────────────────────────────────
-
-	async ensureStatusChangedAtColumn(boardId: string, projectId: string): Promise<void> {
-		const board = await this.validateBoardExists(boardId, projectId);
-		const hasColumn = board.columns.some((c) => c.name === 'statusChangedAt');
-
-		if (!hasColumn) {
-			await this.dataTableService.addColumn(boardId, projectId, {
-				name: 'statusChangedAt',
-				type: 'date',
-			});
-
-			await this.dataTableService.updateRows(
-				boardId,
-				projectId,
-				{
-					filter: { type: 'and', filters: [] },
-					data: { statusChangedAt: new Date() },
-				},
-				false,
-			);
-		}
-	}
-
-	async getItemsChangedSince(
-		boardId: string,
-		projectId: string,
-		options: { status?: string; since: Date; take?: number },
-	): Promise<{ data: DataTableRowReturn[] }> {
-		await this.validateBoardExists(boardId, projectId);
-
-		const filters: DataTableFilter['filters'] = [
-			{ columnName: 'statusChangedAt', condition: 'gt', value: options.since },
-		];
-
-		if (options.status !== undefined) {
-			filters.push({ columnName: 'status', condition: 'eq', value: options.status });
-		}
-
-		const result = await this.dataTableService.getManyRowsAndCount(boardId, projectId, {
-			filter: { type: 'and', filters },
-			sortBy: ['statusChangedAt', 'ASC'],
-			take: options.take,
-		});
-
-		return { data: result.data };
 	}
 
 	// ─── Private Helpers ──────────────────────────────────────────────────────────

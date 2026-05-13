@@ -229,14 +229,13 @@ export function normalizeRows(
 		...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
 	};
 	return rows.map((row) => {
-		const { id, createdAt, updatedAt, statusChangedAt, ...rest } = row;
+		const { id, createdAt, updatedAt, ...rest } = row;
 
 		const normalized: DataTableRowReturn = {
 			...rest,
 			id,
 			createdAt: normalizeDate(createdAt) ?? new Date(), // fallback should not happen
 			updatedAt: normalizeDate(updatedAt) ?? new Date(), // fallback should not happen
-			...(statusChangedAt !== undefined ? { statusChangedAt: normalizeDate(statusChangedAt) } : {}),
 		};
 
 		for (const [key, value] of Object.entries(rest)) {

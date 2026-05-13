@@ -147,19 +147,6 @@ export class DataTableBoardProxyService implements BoardProxyProvider {
 				checkWrite();
 				return await boardService.reorderStatuses(boardId, projectId, orderedStatuses);
 			},
-
-			// Trigger helpers
-			async ensureStatusTracking() {
-				return await boardService.ensureStatusChangedAtColumn(boardId, projectId);
-			},
-
-			async getItemsChangedSince(options: {
-				status?: string;
-				since: Date;
-				take?: number;
-			}) {
-				return await boardService.getItemsChangedSince(boardId, projectId, options);
-			},
 		};
 	}
 }
