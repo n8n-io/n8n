@@ -58,6 +58,16 @@ function workflowIsLongLived(workflow: CreatedWorkflow, nodeTypes: NodeTypes): b
 	return workflow.parsed.nodes.some((node) => isLongLivedNode(node, nodeTypes));
 }
 
+/**
+ * True when the workflow has at least one trigger that n8n considers
+ * "activatable" (webhook, schedule, polling, etc.). Manual-only workflows
+ * return false because n8n rejects WorkflowService.activateWorkflow on them
+ * — they run on demand via WorkflowRunner without being marked active.
+ */
+export function shouldActivate(workflow: CreatedWorkflow): boolean {
+	return workflowIsLongLived(workflow, Container.get(NodeTypes));
+}
+
 function workflowNeedsWebhookListener(workflow: CreatedWorkflow): boolean {
 	return workflow.parsed.nodes.some((node) => WEBHOOK_TRIGGER_TYPES.has(node.type));
 }

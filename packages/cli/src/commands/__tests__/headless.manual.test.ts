@@ -174,6 +174,9 @@ test('headless command imports, activates, and runs a manual workflow to complet
 		owner,
 		expect.objectContaining({ name: 'Headless Manual Workflow' }),
 	);
-	expect(workflowService.activateWorkflow).toHaveBeenCalledWith(owner, 'wf-1', { source: 'api' });
+	// Manual-only workflows are NOT activated — n8n rejects activate calls on
+	// workflows whose only trigger is a Manual Trigger ("no trigger node").
+	// Instead, WorkflowRunner.run is invoked directly via the engine adapter.
+	expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 	expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 });
