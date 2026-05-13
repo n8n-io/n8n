@@ -72,72 +72,60 @@ describe('PoolConfigService', () => {
 
 	describe('getProjectPool', () => {
 		const projectId = 'project-123';
-		const cacheKey = `projectPool:${projectId}`;
 
 		it('should return pool from DB on cache miss', async () => {
 			cacheService.get.mockResolvedValue(undefined);
-			projectPoolSettingsRepository.findOneBy.mockResolvedValue({
-				projectId,
-				productionPool: 'gpu',
-				manualPool: null,
-				evaluationPool: 'eval',
-				allowedPools: [],
-			} as never);
+			projectPoolSettingsRepository.getPoolForCategory.mockResolvedValue('gpu');
 
 			const result = await service.getProjectPool(projectId, 'production');
 
 			expect(result).toBe('gpu');
-			expect(projectPoolSettingsRepository.findOneBy).toHaveBeenCalledWith({ projectId });
-			expect(cacheService.set).toHaveBeenCalledWith(
-				cacheKey,
-				JSON.stringify({ productionPool: 'gpu', manualPool: null, evaluationPool: 'eval' }),
+			expect(projectPoolSettingsRepository.getPoolForCategory).toHaveBeenCalledWith(
+				projectId,
+				'production',
 			);
+			expect(cacheService.set).toHaveBeenCalledWith(`projectPool:${projectId}:production`, 'gpu');
 		});
 
 		it('should return pool from cache on cache hit', async () => {
-			cacheService.get.mockResolvedValue(
-				JSON.stringify({ productionPool: 'gpu', manualPool: null, evaluationPool: 'eval' }),
-			);
+			cacheService.get.mockResolvedValue('gpu');
 
 			const result = await service.getProjectPool(projectId, 'production');
 
 			expect(result).toBe('gpu');
-			expect(projectPoolSettingsRepository.findOneBy).not.toHaveBeenCalled();
+			expect(projectPoolSettingsRepository.getPoolForCategory).not.toHaveBeenCalled();
 		});
 
 		it('should return undefined when no settings row exists', async () => {
 			cacheService.get.mockResolvedValue(undefined);
-			projectPoolSettingsRepository.findOneBy.mockResolvedValue(null);
+			projectPoolSettingsRepository.getPoolForCategory.mockResolvedValue(undefined);
 
 			const result = await service.getProjectPool(projectId, 'production');
 
 			expect(result).toBeUndefined();
-			expect(cacheService.set).toHaveBeenCalledWith(cacheKey, JSON.stringify({}));
+			expect(cacheService.set).toHaveBeenCalledWith(`projectPool:${projectId}:production`, '');
 		});
 
-		it('should return undefined when category column is null', async () => {
+		it('should return undefined when cached value is empty string', async () => {
+			cacheService.get.mockResolvedValue('');
+
+			const result = await service.getProjectPool(projectId, 'production');
+
+			expect(result).toBeUndefined();
+			expect(projectPoolSettingsRepository.getPoolForCategory).not.toHaveBeenCalled();
+		});
+
+		it('should cache per category', async () => {
 			cacheService.get.mockResolvedValue(undefined);
-			projectPoolSettingsRepository.findOneBy.mockResolvedValue({
-				projectId,
-				productionPool: null,
-				manualPool: 'cpu',
-				evaluationPool: null,
-				allowedPools: [],
-			} as never);
+			projectPoolSettingsRepository.getPoolForCategory
+				.mockResolvedValueOnce('gpu')
+				.mockResolvedValueOnce('cpu');
 
-			const result = await service.getProjectPool(projectId, 'production');
+			await service.getProjectPool(projectId, 'production');
+			await service.getProjectPool(projectId, 'manual');
 
-			expect(result).toBeUndefined();
-		});
-
-		it('should return correct pool per category', async () => {
-			cacheService.get.mockResolvedValue(
-				JSON.stringify({ productionPool: 'gpu', manualPool: 'cpu', evaluationPool: 'eval' }),
-			);
-
-			expect(await service.getProjectPool(projectId, 'production')).toBe('gpu');
-			expect(await service.getProjectPool(projectId, 'manual')).toBe('cpu');
-			expect(await service.getProjectPool(projectId, 'evaluation')).toBe('eval');
+			expect(cacheService.set).toHaveBeenCalledWith(`projectPool:${projectId}:production`, 'gpu');
+			expect(cacheService.set).toHaveBeenCalledWith(`projectPool:${projectId}:manual`, 'cpu');
 		});
 	});
 });

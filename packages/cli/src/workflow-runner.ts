@@ -678,22 +678,10 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 	): Promise<{ queueName: string; poolName: string | undefined }> {
 		const category = getExecutionCategory(data.executionMode);
-		let overridePoolName: string | undefined;
 
-		switch (category) {
-			case 'production':
-				overridePoolName = data.workflowData.settings?.workerPoolOverrideProduction;
-				break;
-			case 'manual':
-				overridePoolName = data.workflowData.settings?.workerPoolOverrideManual;
-				break;
-			case 'evaluation':
-				overridePoolName = data.workflowData.settings?.workerPoolOverrideEvaluation;
-				break;
-		}
-
-		if (overridePoolName) {
-			return { queueName: poolQueueName(overridePoolName), poolName: overridePoolName };
+		const workflowPool = this.getWorkflowPool(data, category);
+		if (workflowPool) {
+			return { queueName: poolQueueName(workflowPool), poolName: workflowPool };
 		}
 
 		if (category && data.projectId) {
@@ -707,6 +695,22 @@ export class WorkflowRunner {
 		const poolName = category ? poolAssignment[category] : undefined;
 
 		return { queueName: poolQueueName(poolName), poolName };
+	}
+
+	private getWorkflowPool(
+		data: IWorkflowExecutionDataProcess,
+		category: ReturnType<typeof getExecutionCategory>,
+	): string | undefined {
+		switch (category) {
+			case 'production':
+				return data.workflowData.settings?.workerPoolOverrideProduction;
+			case 'manual':
+				return data.workflowData.settings?.workerPoolOverrideManual;
+			case 'evaluation':
+				return data.workflowData.settings?.workerPoolOverrideEvaluation;
+			default:
+				return undefined;
+		}
 	}
 
 	/**
