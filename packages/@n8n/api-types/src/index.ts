@@ -382,6 +382,7 @@ export type {
 	McpToolCallResult,
 	InstanceAiEvent,
 	InstanceAiAttachment,
+	InstanceAiWorkflowContext,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,

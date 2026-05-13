@@ -59,6 +59,22 @@ export interface WorkflowNode {
 	webhookId?: string;
 }
 
+/**
+ * Looser node shape used by the workflow-chat snapshot — mirrors the editor
+ * payload, which may omit fields like `position` for newly-dragged nodes and
+ * carries extra fields like `typeVersion`, `credentials`, `disabled`.
+ */
+export interface WorkflowSnapshotNode {
+	name: string;
+	type: string;
+	typeVersion?: number;
+	parameters?: Record<string, unknown>;
+	credentials?: Record<string, unknown>;
+	disabled?: boolean;
+	position?: number[];
+	webhookId?: string;
+}
+
 export interface ExecutionResult {
 	executionId: string;
 	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
@@ -624,6 +640,18 @@ export interface InstanceAiContext {
 	 * Used to register `parse-file` and supply data to the parser.
 	 */
 	currentUserAttachments?: InstanceAiAttachment[];
+	/**
+	 * Snapshot of the workflow the user has open in the editor when chatting in
+	 * workflow-chat mode. Runtime-only — not persisted. Read-only: tools that
+	 * consume this snapshot must never call mutating services.
+	 */
+	currentWorkflowSnapshot?: {
+		workflowId: string;
+		name?: string;
+		nodes: WorkflowSnapshotNode[];
+		connections: Record<string, unknown>;
+		activeNodeName?: string;
+	};
 	/** Optional logger for diagnostics from domain tools. */
 	logger?: Logger;
 	/** Synchronous node-types provider used by host-side schema validation

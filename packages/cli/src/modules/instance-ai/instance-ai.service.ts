@@ -8,6 +8,7 @@ import {
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 	type InstanceAiGatewayCapabilities,
+	type InstanceAiWorkflowContext,
 	type McpToolCallResult,
 	type ToolCategory,
 	type TaskList,
@@ -1098,6 +1099,7 @@ export class InstanceAiService {
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
 		pushRef?: string,
+		workflowContext?: InstanceAiWorkflowContext,
 	): string {
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
@@ -1127,6 +1129,9 @@ export class InstanceAiService {
 			attachments,
 			messageGroupId,
 			timeZone,
+			false,
+			undefined,
+			workflowContext,
 		);
 
 		return runId;
@@ -2683,6 +2688,7 @@ export class InstanceAiService {
 		timeZone?: string,
 		isReplanFollowUp: boolean = false,
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+		workflowContext?: InstanceAiWorkflowContext,
 	): Promise<void> {
 		const signal = abortController.signal;
 		let mastraRunId = '';
@@ -2762,6 +2768,13 @@ export class InstanceAiService {
 			// Thread attachments into the domain context so parse-file can access them
 			if (attachments && attachments.length > 0) {
 				context.currentUserAttachments = attachments;
+			}
+
+			// Thread the workflow-chat snapshot into the domain context. When set,
+			// the orchestrator's tool surface gains `workflow-context` and its
+			// system prompt switches into read-only Q&A mode (in createInstanceAgent).
+			if (workflowContext) {
+				context.currentWorkflowSnapshot = workflowContext;
 			}
 			const memoryConfig = this.createMemoryConfig();
 			const traceInput = {

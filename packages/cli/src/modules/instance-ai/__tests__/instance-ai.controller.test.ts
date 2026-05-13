@@ -148,6 +148,7 @@ describe('InstanceAiController', () => {
 				payload.attachments,
 				payload.timeZone,
 				payload.pushRef,
+				payload.workflowContext,
 			);
 		});
 
@@ -159,6 +160,36 @@ describe('InstanceAiController', () => {
 			await expect(controller.chat(req, res, THREAD_ID, payload)).resolves.toEqual({
 				runId: 'run-1',
 			});
+		});
+
+		it('should forward workflowContext to startRun when set', async () => {
+			const workflowContext = {
+				workflowId: 'wf-1',
+				name: 'Demo',
+				nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.scheduleTrigger' }],
+				connections: {},
+			};
+			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				message: 'what triggers this workflow?',
+				timeZone: 'UTC',
+				workflowContext,
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-wc');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithContext);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithContext.message,
+				payloadWithContext.researchMode,
+				payloadWithContext.attachments,
+				payloadWithContext.timeZone,
+				payloadWithContext.pushRef,
+				workflowContext,
+			);
 		});
 
 		it('should forward pushRef to startRun', async () => {
@@ -181,6 +212,7 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.attachments,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+				payloadWithPushRef.workflowContext,
 			);
 		});
 

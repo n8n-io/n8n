@@ -727,6 +727,32 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
 	});
+
+	it('forwards the workflowContext to executeRun as the trailing argument', () => {
+		const service = createStartRunService();
+		const workflowContext = {
+			workflowId: 'wf-1',
+			name: 'Demo',
+			nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.scheduleTrigger' }],
+			connections: {},
+		};
+
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'what triggers this workflow?',
+			undefined,
+			undefined,
+			'UTC',
+			'push-ref-1',
+			workflowContext,
+		);
+
+		expect(service.executeRun).toHaveBeenCalled();
+		const args = service.executeRun.mock.calls[0];
+		// Last argument is the workflowContext passed through to executeRun.
+		expect(args[args.length - 1]).toEqual(workflowContext);
+	});
 });
 
 describe('InstanceAiService — pending checkpoint re-entry', () => {

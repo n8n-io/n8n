@@ -19,6 +19,7 @@ import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-work
 import { createResearchTool } from './research.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
 import { createTaskControlTool } from './task-control.tool';
+import { createWorkflowContextTool } from './workflow-context.tool';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createWorkflowsTool, type WorkflowAction } from './workflows.tool';
@@ -59,6 +60,9 @@ export function createAllTools(context: InstanceAiContext): ToolsInput {
 		'build-workflow': createBuildWorkflowTool(context),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
+		...(context.currentWorkflowSnapshot
+			? { 'workflow-context': createWorkflowContextTool(context) }
+			: {}),
 	};
 }
 
@@ -80,6 +84,9 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Tools
 		'ask-user': createAskUserTool(),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
+		...(context.currentWorkflowSnapshot
+			? { 'workflow-context': createWorkflowContextTool(context) }
+			: {}),
 	};
 }
 

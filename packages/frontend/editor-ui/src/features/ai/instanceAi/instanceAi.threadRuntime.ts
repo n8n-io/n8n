@@ -13,6 +13,7 @@ import {
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
+	type InstanceAiWorkflowContext,
 	type TaskList,
 	type AgentRunState,
 } from '@n8n/api-types';
@@ -59,6 +60,12 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/**
+	 * Read at `sendMessage` time — supplies a per-message workflow snapshot for
+	 * workflow-chat threads. Omitted (or returning `undefined`) leaves the
+	 * thread in the default mode.
+	 */
+	getWorkflowContext?: () => InstanceAiWorkflowContext | undefined;
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -702,6 +709,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
+				hooks.getWorkflowContext?.(),
 			);
 			return true;
 		} catch (error: unknown) {

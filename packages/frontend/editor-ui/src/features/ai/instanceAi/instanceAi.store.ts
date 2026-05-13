@@ -2,7 +2,11 @@ import { defineStore } from 'pinia';
 import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadSummary,
+	type InstanceAiWorkflowContext,
+} from '@n8n/api-types';
 import { ensureThread, getInstanceAiCredits } from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
@@ -35,25 +39,46 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
-	const runtimeHooks = {
-		getResearchMode: () => researchMode.value,
-		onTitleUpdated: (threadId, title) => {
-			const thread = threads.value.find((t) => t.id === threadId);
-			if (thread) thread.title = title;
-		},
-		// Refresh thread list to pick up Mastra-generated titles
-		onRunFinish: () => {
-			void loadThreads();
-		},
-	} satisfies Parameters<typeof createThreadRuntime>[1];
+	/** Per-thread workflow-context providers. When set, the runtime's
+	 *  `getWorkflowContext` hook reads from here so every `sendMessage` forwards
+	 *  a fresh snapshot to the backend (read at send time, not at create time). */
+	const workflowContextProviders = new Map<string, () => InstanceAiWorkflowContext | undefined>();
+
+	function buildRuntimeHooks(threadId: string): Parameters<typeof createThreadRuntime>[1] {
+		return {
+			getResearchMode: () => researchMode.value,
+			onTitleUpdated: (id, title) => {
+				const thread = threads.value.find((t) => t.id === id);
+				if (thread) thread.title = title;
+			},
+			// Refresh thread list to pick up Mastra-generated titles
+			onRunFinish: () => {
+				void loadThreads();
+			},
+			getWorkflowContext: () => workflowContextProviders.get(threadId)?.(),
+		};
+	}
 
 	function getOrCreateRuntime(threadId: string): ThreadRuntime {
 		const existingRuntime = runtimes.get(threadId);
 		if (existingRuntime) return existingRuntime;
 
-		const runtime = createThreadRuntime(threadId, runtimeHooks);
+		const runtime = createThreadRuntime(threadId, buildRuntimeHooks(threadId));
 		runtimes.set(threadId, runtime);
 		return runtime;
+	}
+
+	/**
+	 * Get or create a runtime for a thread used by the workflow-chat panel.
+	 * The provider is read at every `sendMessage` so the agent always receives
+	 * a current snapshot of the open workflow.
+	 */
+	function createWorkflowChatRuntime(
+		threadId: string,
+		options: { getWorkflowContext: () => InstanceAiWorkflowContext | undefined },
+	): ThreadRuntime {
+		workflowContextProviders.set(threadId, options.getWorkflowContext);
+		return getOrCreateRuntime(threadId);
 	}
 
 	function getRuntime(threadId: string): ThreadRuntime | undefined {
@@ -66,6 +91,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		runtime.dispose();
 		runtimes.delete(threadId);
+		workflowContextProviders.delete(threadId);
 	}
 
 	function disposeRuntimes(): void {
@@ -73,6 +99,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			runtime.dispose();
 		}
 		runtimes.clear();
+		workflowContextProviders.clear();
 	}
 
 	// --- Settings delegation ---
@@ -270,6 +297,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		startCreditsPushListener,
 		stopCreditsPushListener,
 		getOrCreateRuntime,
+		createWorkflowChatRuntime,
 		getRuntime,
 		disposeRuntime,
 		disposeRuntimes,

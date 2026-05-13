@@ -166,6 +166,7 @@ export class InstanceAiController {
 			payload.attachments,
 			payload.timeZone,
 			payload.pushRef,
+			payload.workflowContext,
 		);
 		return { runId };
 	}
