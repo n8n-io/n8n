@@ -59,7 +59,7 @@ export class ReplaceAgentObservationTables1785000000000 implements ReversibleMig
 		await createTable('agents_observation_locks').withColumns(
 			column('scopeKind').varchar(20).notNull.primary.withEnumCheck(OBSERVATION_SCOPE_KINDS),
 			column('scopeId').varchar(255).notNull.primary,
-			column('taskKind').varchar(20).notNull.withEnumCheck(OBSERVATION_TASK_KINDS),
+			column('taskKind').varchar(20).notNull.primary.withEnumCheck(OBSERVATION_TASK_KINDS),
 			column('holderId').varchar(64).notNull,
 			column('heldUntil').timestampTimezone(3).notNull,
 		).withTimestamps;
