@@ -51,10 +51,12 @@ onBeforeMount(() => {
 	pushConnection.initialize();
 	pushStore.pushConnect();
 	orchestrationManagerStore.startWorkerStatusPolling();
+	orchestrationManagerStore.startWorkerPoolsPolling();
 });
 
 onBeforeUnmount(() => {
 	orchestrationManagerStore.stopWorkerStatusPolling();
+	orchestrationManagerStore.stopWorkerPoolsPolling();
 	pushStore.pushDisconnect();
 	pushConnection.terminate();
 });
