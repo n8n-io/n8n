@@ -168,7 +168,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getPreviewToggleButton(): Locator {
-		return this.container.getByTestId('instance-ai-artifacts-preview-toggle');
+		return this.getPreviewPanel().getByTestId('instance-ai-artifacts-preview-toggle');
+	}
+
+	getPreviewPanel(): Locator {
+		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
 	getPreviewIframeLocator(): Locator {

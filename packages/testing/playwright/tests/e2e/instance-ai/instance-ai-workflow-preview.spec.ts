@@ -70,7 +70,7 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewRunningNodes()).toHaveCount(0);
 		});
 
-		test('should close preview panel via header toggle', async ({ n8n }) => {
+		test('should close preview panel via close button', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
