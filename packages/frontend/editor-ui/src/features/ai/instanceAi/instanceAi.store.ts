@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
+import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
@@ -14,9 +13,9 @@ import {
 	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
-import { createThreadRuntime } from './instanceAi.threadRuntime';
+import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
 
-export type { PendingConfirmationItem } from './instanceAi.threadRuntime';
+export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
@@ -34,11 +33,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
 
-	// --- Active thread runtime ---
-	// Per-thread state (messages, SSE, reducer state, hydration) lives here.
-	// The runtime is mutable via `switchTo(threadId)`; refs keep their identity
-	// so external watchers (and re-exports below) continue working across switches.
-	const runtime = createThreadRuntime(uuidv4(), {
+	// --- Thread runtimes ---
+	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
+	const runtimeHooks = {
 		getResearchMode: () => researchMode.value,
 		onTitleUpdated: (threadId, title) => {
 			const thread = threads.value.find((t) => t.id === threadId);
@@ -48,8 +45,35 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		onRunFinish: () => {
 			void loadThreads();
 		},
-		syncThread: async (threadId) => await syncThread(threadId),
-	});
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+
+	function getOrCreateRuntime(threadId: string): ThreadRuntime {
+		const existingRuntime = runtimes.get(threadId);
+		if (existingRuntime) return existingRuntime;
+
+		const runtime = createThreadRuntime(threadId, runtimeHooks);
+		runtimes.set(threadId, runtime);
+		return runtime;
+	}
+
+	function getRuntime(threadId: string): ThreadRuntime | undefined {
+		return runtimes.get(threadId);
+	}
+
+	function disposeRuntime(threadId: string): void {
+		const runtime = runtimes.get(threadId);
+		if (!runtime) return;
+
+		runtime.dispose();
+		runtimes.delete(threadId);
+	}
+
+	function disposeRuntimes(): void {
+		for (const runtime of runtimes.values()) {
+			runtime.dispose();
+		}
+		runtimes.clear();
+	}
 
 	// --- Settings delegation ---
 	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
@@ -164,48 +188,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		});
 	}
 
-	function switchThread(threadId: string): void {
-		runtime.switchTo(threadId);
-		// Load rich historical messages first, then connect SSE after.
-		// loadHistoricalMessages sets the SSE cursor (nextEventId) so SSE
-		// only receives events that arrived AFTER the historical snapshot.
-		void runtime.loadHistoricalMessages(threadId).then((hydrationStatus) => {
-			if (hydrationStatus !== 'applied') return;
-			void runtime.loadThreadStatus(threadId);
-			runtime.connectSSE(threadId);
-		});
-	}
-
-	/**
-	 * Reset the store to a blank "no active thread" state — used when the user
-	 * lands on the base `/instance-ai` route (fresh page, back button, or the
-	 * AI Assistant nav link). Without this, `currentThreadId` keeps pointing
-	 * at the last thread and the sidebar highlights it alongside the empty
-	 * main view.
-	 */
-	function clearCurrentThread(): void {
-		runtime.closeSSE();
-		runtime.resetState(null);
-		// Mirror the initial store state: a fresh UUID that doesn't match any
-		// real thread, so the sidebar highlights nothing and the next
-		// `sendMessage` creates a new thread with this id via `syncThread`.
-		runtime.currentThreadId.value = uuidv4();
-	}
-
-	function newThread(): string {
-		const newThreadId = uuidv4();
-		runtime.closeSSE();
-		runtime.resetState(null);
-		runtime.currentThreadId.value = newThreadId;
-		runtime.connectSSE(newThreadId);
-		return newThreadId;
-	}
-
-	async function deleteThread(
-		threadId: string,
-	): Promise<{ currentThreadId: string; wasActive: boolean }> {
-		const wasActive = threadId === runtime.currentThreadId.value;
-
+	async function deleteThread(threadId: string): Promise<boolean> {
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
 			try {
@@ -213,31 +196,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				persistedThreadIds.delete(threadId);
 			} catch {
 				toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
-				return { currentThreadId: runtime.currentThreadId.value, wasActive };
+				return false;
 			}
 		}
 
 		// Remove thread from list
 		threads.value = threads.value.filter((t) => t.id !== threadId);
+		disposeRuntime(threadId);
 
-		// Clean up event cursor for the deleted thread
-		delete runtime.lastEventIdByThread.value[threadId];
-
-		if (wasActive) {
-			if (threads.value.length > 0) {
-				// Switch to first remaining thread
-				switchThread(threads.value[0].id);
-			} else {
-				// No threads left — prepare a fresh thread (added to sidebar on first message)
-				const freshId = uuidv4();
-				runtime.closeSSE();
-				runtime.resetState(null);
-				runtime.currentThreadId.value = freshId;
-				runtime.connectSSE(freshId);
-			}
-		}
-
-		return { currentThreadId: runtime.currentThreadId.value, wasActive };
+		return true;
 	}
 
 	async function renameThread(threadId: string, title: string): Promise<void> {
@@ -284,64 +251,52 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsQuota,
 		creditsClaimed,
 
-		// Per-thread state (re-exported from runtime — refs)
-		currentThreadId: runtime.currentThreadId,
-		sseState: runtime.sseState,
-		lastEventIdByThread: runtime.lastEventIdByThread,
-		activeRunId: runtime.activeRunId,
-		messages: runtime.messages,
-		debugEvents: runtime.debugEvents,
-		amendContext: runtime.amendContext,
-		resolvedConfirmationIds: runtime.resolvedConfirmationIds,
-		feedbackByResponseId: runtime.feedbackByResponseId,
-
-		// Computed (re-exported)
-		isStreaming: runtime.isStreaming,
-		isSendingMessage: runtime.isSendingMessage,
-		hasMessages: runtime.hasMessages,
-		isHydratingThread: runtime.isHydratingThread,
+		// Computed
 		isGatewayConnected,
 		gatewayDirectory,
 		activeDirectory,
-		contextualSuggestion: runtime.contextualSuggestion,
-		currentTasks: runtime.currentTasks,
-		producedArtifacts: runtime.producedArtifacts,
-		resourceNameIndex: runtime.resourceNameIndex,
-		rateableResponseId: runtime.rateableResponseId,
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
-		pendingConfirmations: runtime.pendingConfirmations,
-		isAwaitingConfirmation: runtime.isAwaitingConfirmation,
 
-		// Thread-list actions (instance-level)
-		newThread,
-		clearCurrentThread,
+		// Thread-list actions
 		deleteThread,
 		renameThread,
 		getThreadMetadata,
 		updateThreadMetadata,
-		switchThread,
 		loadThreads,
 		toggleResearchMode,
 		fetchCredits,
 		startCreditsPushListener,
 		stopCreditsPushListener,
-
-		// Per-thread actions (re-exported from runtime)
-		loadHistoricalMessages: runtime.loadHistoricalMessages,
-		loadThreadStatus: runtime.loadThreadStatus,
-		sendMessage: runtime.sendMessage,
-		cancelRun: runtime.cancelRun,
-		cancelBackgroundTask: runtime.cancelBackgroundTask,
-		amendAgent: runtime.amendAgent,
-		confirmAction: runtime.confirmAction,
-		confirmResourceDecision: runtime.confirmResourceDecision,
-		resolveConfirmation: runtime.resolveConfirmation,
-		findToolCallByRequestId: runtime.findToolCallByRequestId,
-		copyFullTrace: runtime.copyFullTrace,
-		submitFeedback: runtime.submitFeedback,
-		connectSSE: runtime.connectSSE,
-		closeSSE: runtime.closeSSE,
+		getOrCreateRuntime,
+		getRuntime,
+		disposeRuntime,
+		disposeRuntimes,
+		syncThread,
 	};
 });
+
+const ThreadKey: InjectionKey<ThreadRuntime> = Symbol('instanceAiThread');
+
+export function provideThread(thread: ThreadRuntime | string): ThreadRuntime {
+	if (typeof thread === 'string') {
+		const runtime = useInstanceAiStore().getOrCreateRuntime(thread);
+		provide(ThreadKey, runtime);
+		return runtime;
+	}
+	provide(ThreadKey, thread);
+	return thread;
+}
+
+export function useThread(threadId?: string): ThreadRuntime {
+	if (threadId) {
+		return useInstanceAiStore().getOrCreateRuntime(threadId);
+	}
+
+	const thread = inject(ThreadKey, null);
+	if (!thread) {
+		throw new Error('useThread() requires a provideThread() ancestor.');
+	}
+	return thread;
+}

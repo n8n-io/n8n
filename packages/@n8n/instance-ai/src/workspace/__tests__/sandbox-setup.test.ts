@@ -171,6 +171,30 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
+	it('writes the curated examples bundle into examples/', async () => {
+		const runInSandbox: RunInSandboxMock = jest.fn<
+			Promise<{ exitCode: number; stdout: string; stderr: string }>,
+			[Workspace, string, string?]
+		>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
+			Promise<string | null>,
+			[Workspace, string]
+		>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = jest.fn<Promise<void>, [string, string, { recursive: true }]>(async () => {});
+
+		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext());
+
+		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
+		expect(writtenPaths).toContain('/sandbox/examples/index.txt');
+		expect(writtenPaths.some((p) => /^\/sandbox\/examples\/.+\.ts$/.test(p))).toBe(true);
+	});
+
 	it('does not write the initialized marker when npm install fails', async () => {
 		const runInSandbox: RunInSandboxMock = jest.fn<
 			Promise<{ exitCode: number; stdout: string; stderr: string }>,
