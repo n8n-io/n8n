@@ -1,12 +1,15 @@
-import type { ProjectPoolSettingsResponse } from '@n8n/api-types';
+import type { ProjectPoolSettingsResponse, UpdateProjectPoolSettingsDto } from '@n8n/api-types';
 import { ProjectPoolSettingsRepository, SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { poolQueueName } from './queue-name';
 import type { ExecutionCategory, PoolAssignment } from './scaling.types';
+
+const EXECUTION_CATEGORIES: ExecutionCategory[] = ['production', 'manual', 'evaluation'];
 
 const SETTINGS_KEY = 'workerPools.assignment';
 
@@ -98,5 +101,52 @@ export class PoolConfigService {
 
 		void this.cacheService.set(cacheKey, JSON.stringify(result));
 		return result;
+	}
+
+	async setProjectPoolSettings(
+		projectId: string,
+		patch: UpdateProjectPoolSettingsDto,
+	): Promise<ProjectPoolSettingsResponse> {
+		const current = await this.getProjectPoolSettings(projectId);
+
+		const nextAssignment: PoolAssignment = { ...current.assignment };
+		if (patch.assignment) {
+			for (const [category, pool] of Object.entries(patch.assignment) as Array<
+				[ExecutionCategory, string | undefined]
+			>) {
+				if (pool === undefined || pool === '') {
+					delete nextAssignment[category];
+				} else {
+					nextAssignment[category] = pool;
+				}
+			}
+		}
+
+		const nextAllowedPools = patch.allowedPools ?? current.allowedPools;
+
+		for (const category of EXECUTION_CATEGORIES) {
+			const pool = nextAssignment[category];
+			if (pool && !nextAllowedPools.includes(pool)) {
+				throw new BadRequestError(`${category} pool "${pool}" must be one of allowedPools`);
+			}
+		}
+
+		const next: ProjectPoolSettingsResponse = {
+			assignment: nextAssignment,
+			allowedPools: nextAllowedPools,
+		};
+
+		await this.projectPoolSettingsRepository.setSettings(projectId, next);
+		await this.invalidateProjectCaches(projectId);
+
+		return next;
+	}
+
+	private async invalidateProjectCaches(projectId: string): Promise<void> {
+		const keys = [
+			`projectPoolSettings:${projectId}`,
+			...EXECUTION_CATEGORIES.map((category) => `projectPool:${projectId}:${category}`),
+		];
+		await this.cacheService.deleteMany(keys);
 	}
 }
