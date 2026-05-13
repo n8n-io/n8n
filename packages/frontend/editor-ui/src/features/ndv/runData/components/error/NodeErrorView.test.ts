@@ -196,6 +196,18 @@ describe('NodeErrorView.vue', () => {
 		expect(getByTestId('ask-assistant-button')).toBeInTheDocument();
 	});
 
+	it('renders the explain-error button when assistant is available', () => {
+		mockChatPanelStore.canShowAiButtonOnCanvas = true;
+		const { getByTestId } = renderComponent({ props: { error } });
+		expect(getByTestId('explain-error-button')).toBeInTheDocument();
+	});
+
+	it('does not render the explain-error button when assistant is not available', () => {
+		mockChatPanelStore.canShowAiButtonOnCanvas = false;
+		const { queryByTestId } = renderComponent({ props: { error } });
+		expect(queryByTestId('explain-error-button')).not.toBeInTheDocument();
+	});
+
 	describe('onOpenErrorNodeDetailClick', () => {
 		it('does nothing when error has no node', async () => {
 			const errorWithoutNode = {

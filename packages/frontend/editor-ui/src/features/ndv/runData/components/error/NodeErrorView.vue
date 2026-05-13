@@ -34,6 +34,7 @@ import {
 	N8nIconButton,
 	N8nTooltip,
 } from '@n8n/design-system';
+import ExplainErrorButton from './ExplainErrorButton.vue';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -482,12 +483,14 @@ async function onAskAssistantClick() {
 					@click="onOpenErrorNodeDetailClick"
 				/>
 			</div>
-			<div
-				v-if="isAskAssistantAvailable"
-				class="node-error-view__button"
-				data-test-id="node-error-view-ask-assistant-button"
-			>
-				<N8nInlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+			<div v-if="isAskAssistantAvailable" class="node-error-view__assistant-row">
+				<div class="node-error-view__button" data-test-id="node-error-view-ask-assistant-button">
+					<N8nInlineAskAssistantButton
+						:asked="assistantAlreadyAsked"
+						@click="onAskAssistantClick"
+					/>
+				</div>
+				<ExplainErrorButton :error="props.error" />
 			</div>
 		</div>
 
@@ -756,6 +759,12 @@ async function onAskAssistantClick() {
 			margin-right: var(--spacing--5xs);
 			margin-left: var(--spacing--5xs);
 		}
+	}
+
+	&__assistant-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing--2xs);
 	}
 
 	&__debugging {
