@@ -1,0 +1,29 @@
+get:
+  x-eov-operation-id: listEphemeralNodes
+  x-eov-operation-handler: v1/handlers/ephemeral-nodes/ephemeral-nodes.handler
+  tags:
+    - EphemeralNode
+  summary: List nodes that can be executed inline.
+  description: >
+    Returns the catalogue of nodes that can be executed via
+    `POST /ephemeral-nodes/execute`.
+  parameters:
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+    - name: nodeType
+      in: query
+      required: false
+      description: Filter to a single node type (e.g. `n8n-nodes-base.httpRequest`).
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/ephemeralNodeList.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'

@@ -1,0 +1,15 @@
+type: object
+required:
+  - data
+properties:
+  data:
+    type: array
+    items:
+      $ref: './ephemeralNode.yml'
+  nextCursor:
+    type: string
+    description: >
+      Paginate by setting the `cursor` parameter to this value on the next
+      request. `null` when there are no further pages.
+    nullable: true
+    example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
