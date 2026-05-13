@@ -27,6 +27,13 @@ const packagesDir = resolve(__dirname, '..', '..');
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+	// Allow direct import of the runtime IIFE bundle (for ?raw use in editor-ui).
+	// This must come BEFORE the @n8n/expression-runtime stub alias below or it
+	// would be intercepted by the stub.
+	{
+		find: '@n8n/expression-runtime/runtime-bundle.iife.js',
+		replacement: resolve(packagesDir, '@n8n', 'expression-runtime', 'dist', 'bundle', 'runtime.iife.js'),
+	},
 	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
 	{
 		find: '@n8n/expression-runtime',
@@ -89,7 +96,43 @@ const alias = [
 
 const { RELEASE: release } = process.env;
 
+/**
+ * Shim node:fs/promises for browser builds.
+ *
+ * The nodePolyfills plugin maps 'node:fs' → empty.js via a string alias.
+ * Rolldown (and vite's alias system) treats string finds as prefix matches,
+ * so 'node:fs/promises' resolves to 'empty.js/promises' — an invalid path.
+ *
+ * We add a config() hook with enforce:'post' so our alias is prepended AFTER
+ * the nodePolyfills config() hook runs. Because mergeAlias prepends the
+ * incoming aliases ([...newAliases, ...existingAliases]), the last plugin to
+ * run its config() hook ends up with its aliases first in the array, giving
+ * them highest priority. 'post' plugins run last, so our explicit
+ * 'node:fs/promises' alias wins over the generic 'node:fs' alias.
+ *
+ * QuickJsBridge imports node:fs/promises only in readRuntimeBundle(), which
+ * is only called on the Node.js path. In the browser it is dead code because
+ * initialize() is always called with a runtimeBundle string.
+ */
+const nodeFsPromisesShimPlugin = (): UserConfig['plugins'][number] => ({
+	name: 'node-fs-promises-shim',
+	enforce: 'post',
+	config() {
+		return {
+			resolve: {
+				alias: [
+					{
+						find: 'node:fs/promises',
+						replacement: resolve(__dirname, 'vite/node-fs-promises-shim.ts'),
+					},
+				],
+			},
+		};
+	},
+});
+
 const plugins: UserConfig['plugins'] = [
+	nodeFsPromisesShimPlugin(),
 	nodePopularityPlugin(),
 	icons({
 		compiler: 'vue3',

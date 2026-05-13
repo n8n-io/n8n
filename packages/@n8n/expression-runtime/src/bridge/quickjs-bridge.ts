@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
-
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
@@ -18,7 +15,7 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 	return _quickjs;
 }
 
-const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+const BUNDLE_RELATIVE_PATH = ['dist', 'bundle', 'runtime.iife.js'].join('/');
 
 // ============================================================================
 // Sentinel helpers
@@ -160,8 +157,20 @@ function serializeError(err: unknown): ErrorSentinel {
 /**
  * Read the runtime IIFE bundle by walking up from `__dirname` until
  * `dist/bundle/runtime.iife.js` is found.
+ *
+ * Uses dynamic imports for node:fs/promises and node:path so that this
+ * function is tree-shaken in browser builds (where QuickJsBridge.initialize()
+ * is always called with a runtimeBundle config, not this file-read path).
  */
 async function readRuntimeBundle(): Promise<string> {
+	if (typeof process === 'undefined' || !process.versions?.node) {
+		throw new Error(
+			'readRuntimeBundle() is not available in browser environments. ' +
+				'Pass `runtimeBundle` in BridgeConfig instead.',
+		);
+	}
+	const { readFile } = await import('node:fs/promises');
+	const path = await import('node:path');
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
 		try {
