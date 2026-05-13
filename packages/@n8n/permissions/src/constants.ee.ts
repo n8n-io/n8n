@@ -70,6 +70,7 @@ export const RESOURCES = {
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
+	ephemeralNode: ['read', 'execute'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -90,6 +91,7 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
+	ephemeralNode: ['read', 'execute'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';

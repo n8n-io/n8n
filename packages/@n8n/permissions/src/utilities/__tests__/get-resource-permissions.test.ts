@@ -50,6 +50,7 @@ describe('permissions', () => {
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			ephemeralNode: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -177,6 +178,7 @@ describe('permissions', () => {
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			ephemeralNode: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

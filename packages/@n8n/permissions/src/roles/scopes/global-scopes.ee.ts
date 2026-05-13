@@ -148,6 +148,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'roleMappingRule:update',
 	'roleMappingRule:delete',
 	'roleMappingRule:list',
+	'ephemeralNode:read',
+	'ephemeralNode:execute',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -181,6 +183,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'credentialResolver:list',
 	'instanceAi:message',
 	'instanceAi:gateway',
+	'ephemeralNode:read',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
