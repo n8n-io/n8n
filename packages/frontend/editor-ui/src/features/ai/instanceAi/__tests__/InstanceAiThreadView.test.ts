@@ -9,6 +9,10 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 
+const mockWindowSizeState = vi.hoisted(() => ({
+	width: { value: 1200 },
+}));
+
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
@@ -30,7 +34,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal()),
 	useScroll: () => ({ arrivedState: { bottom: true } }),
-	useWindowSize: () => ({ width: ref(1200) }),
+	useWindowSize: () => ({ width: mockWindowSizeState.width }),
 }));
 
 const InstanceAiInputStub = defineComponent({
@@ -73,6 +77,7 @@ describe('InstanceAiThreadView', () => {
 		thread = {
 			id: 'thread-1',
 			messages: [],
+			hasMessages: false,
 			sseState: 'connected',
 			isStreaming: false,
 			isSendingMessage: false,
@@ -106,6 +111,7 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
+		mockWindowSizeState.width.value = 1200;
 
 		// `useExecutionPushEvents` (consumed by ThreadView) registers a push
 		// listener and stores the returned removeListener; it gets invoked on
@@ -165,5 +171,26 @@ describe('InstanceAiThreadView', () => {
 			expect(store.getOrCreateRuntime).toHaveBeenCalledWith('thread-2');
 		});
 		expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
+	});
+
+	it('uses edge reveal when the viewport is too narrow for pinned artifacts', async () => {
+		mockWindowSizeState.width.value = 900;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
+		});
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
 	});
 });
