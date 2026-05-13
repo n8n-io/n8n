@@ -1,8 +1,12 @@
-import type { WorkerPoolsResponse } from '@n8n/api-types';
+import type { WorkerPoolDefaults, WorkerPoolsResponse } from '@n8n/api-types';
+import { UpdateWorkerPoolDefaultsDto } from '@n8n/api-types';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Licensed, Patch, Post, RestController } from '@n8n/decorators';
+import type { Response } from 'express';
 
 import { License } from '@/license';
+import { WorkerPoolDefaultsService } from '@/scaling/worker-pool-defaults.service';
 import { WorkerPoolsService } from '@/scaling/worker-pools.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
@@ -12,6 +16,7 @@ export class OrchestrationController {
 		private readonly licenseService: License,
 		private readonly workerStatusService: WorkerStatusService,
 		private readonly workerPoolsService: WorkerPoolsService,
+		private readonly workerPoolDefaultsService: WorkerPoolDefaultsService,
 	) {}
 
 	/**
@@ -26,9 +31,21 @@ export class OrchestrationController {
 		return await this.workerStatusService.requestWorkerStatus(req.user.id);
 	}
 
+	@Licensed(LICENSE_FEATURES.WORKER_VIEW)
 	@GlobalScope('orchestration:read')
 	@Get('/worker/pools')
-	getWorkerPools(): WorkerPoolsResponse {
-		return { pools: this.workerPoolsService.getAvailablePools() };
+	async getWorkerPools(): Promise<WorkerPoolsResponse> {
+		return await this.workerPoolsService.getPoolsState();
+	}
+
+	@Licensed(LICENSE_FEATURES.WORKER_VIEW)
+	@GlobalScope('orchestration:manage')
+	@Patch('/worker/pools/defaults')
+	async updateWorkerPoolDefaults(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: UpdateWorkerPoolDefaultsDto,
+	): Promise<WorkerPoolDefaults> {
+		return await this.workerPoolDefaultsService.setDefaults(dto);
 	}
 }
