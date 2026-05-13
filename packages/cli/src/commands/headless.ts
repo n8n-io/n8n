@@ -1,10 +1,11 @@
 import { AuthRolesService } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BaseCommand } from './base-command';
-import type { CreatedCredential } from './headless/crud-adapter';
+import type { CreatedCredential, CreatedWorkflow } from './headless/crud-adapter';
 import { crudAdapter } from './headless/crud-adapter';
 import { warnOnMissingEnvRefs } from './headless/env-scan';
 import { HeadlessWebhookServer } from './headless/headless-webhook-server';
@@ -72,44 +73,78 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async run() {
+		this.logger.info(
+			`headless: starting (workflow=${this.flags.workflow}${this.flags.credentials ? `, credentials=${this.flags.credentials}` : ''})`,
+		);
+
 		const owner = await ensureOwner();
+		this.logger.debug(`headless: owner ready (id=${owner.id})`);
 
 		const parsedWorkflows = await parseWorkflowSource(this.flags.workflow);
+		const wfNames = parsedWorkflows.map((w) => `"${w.name}"`).join(', ');
+		this.logger.info(
+			`headless: parsed ${parsedWorkflows.length} workflow${parsedWorkflows.length === 1 ? '' : 's'}: ${wfNames}`,
+		);
 		warnOnMissingEnvRefs(parsedWorkflows);
 
 		let createdCredentials: CreatedCredential[] = [];
 		if (this.flags.credentials) {
 			const parsedCredentials = await parseCredentialsFile(this.flags.credentials);
 			createdCredentials = await crudAdapter.createCredentials(owner, parsedCredentials);
+			const credSummary = createdCredentials.map((c) => `"${c.name}" (${c.type})`).join(', ');
+			this.logger.info(
+				`headless: imported ${createdCredentials.length} credential${createdCredentials.length === 1 ? '' : 's'}: ${credSummary}`,
+			);
 		}
 
 		const imported = await crudAdapter.createWorkflows(owner, parsedWorkflows, createdCredentials);
+
 		// Only activate workflows with an "activatable" trigger (webhook, schedule,
 		// polling, etc.). Manual-only workflows are run on demand via the engine
 		// adapter and stay inactive in the DB — calling activateWorkflow on them
 		// errors with "Workflow cannot be activated because it has no trigger node".
+		let activatedCount = 0;
 		for (const wf of imported) {
 			if (shouldActivate(wf)) {
 				await crudAdapter.activateWorkflow(owner, wf.id);
+				this.logger.info(`headless: activated workflow "${wf.name}"`);
+				activatedCount++;
+			} else {
+				this.logger.debug(`headless: "${wf.name}" is manual — not activating, will run on demand`);
 			}
 		}
 
 		const lifecycle = detectLifecycle(imported, owner);
 		this.logger.info(
-			`headless: ${lifecycle.kind} workflow set ready (${imported.length} workflow${imported.length === 1 ? '' : 's'})`,
+			`headless: lifecycle=${lifecycle.kind} (${activatedCount}/${imported.length} workflow${imported.length === 1 ? '' : 's'} activated)`,
 		);
 
-		if (lifecycle.needsWebhookListener) {
+		// Long-lived runs always bind the HTTP server so K8s liveness/readiness
+		// probes have something to hit, even when no workflow has a webhook
+		// trigger (schedule-only sets still expose /healthz + /healthz/readiness).
+		if (lifecycle.kind === 'long-lived') {
 			this.webhookServer = Container.get(HeadlessWebhookServer);
 			await this.webhookServer.init();
 			await this.webhookServer.start();
 			this.webhookServer.markAsReady();
+			const base = `http://${this.flags.host}:${this.flags.port}`;
+			this.logger.info(`headless: HTTP server listening on ${base}`);
 			this.logger.info(
-				`headless: webhook listener on http://${this.flags.host}:${this.flags.port}`,
+				`headless: health   GET ${base}/healthz   |   readiness   GET ${base}/healthz/readiness`,
 			);
+			const webhookUrls = collectWebhookUrls(imported, base);
+			if (webhookUrls.length > 0) {
+				this.logger.info(`headless: webhook endpoints (${webhookUrls.length}):`);
+				for (const url of webhookUrls) this.logger.info(`  ${url}`);
+			}
 		}
 
 		signalReady();
+		this.logger.info(
+			lifecycle.kind === 'manual'
+				? 'headless: running manual workflow(s)…'
+				: 'headless: waiting for triggers (SIGTERM/SIGINT to stop)',
+		);
 
 		this.lifecyclePromise = lifecycle.run({
 			port: this.flags.port,
@@ -118,6 +153,12 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 		});
 
 		await this.lifecyclePromise;
+
+		this.logger.info(
+			lifecycle.kind === 'manual'
+				? 'headless: all workflows finished'
+				: 'headless: shutdown complete',
+		);
 	}
 
 	async catch(error: Error) {
@@ -131,6 +172,7 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// block (deactivateAll) to settle so the BaseCommand's graceful-shutdown
 	// timer guards the full teardown, not just the abort signal.
 	override async stopProcess() {
+		this.logger.info('headless: stopping (deactivating workflows, closing listener)…');
 		if (!this.shutdownController.signal.aborted) {
 			this.shutdownController.abort();
 		}
@@ -144,4 +186,31 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.webhookServer.close();
 		}
 	}
+}
+
+function getStringParam(node: INode, key: string): string | undefined {
+	const value = node.parameters?.[key];
+	return typeof value === 'string' ? value : undefined;
+}
+
+/**
+ * Extract a flat list of webhook/form-trigger URLs from the activated workflow
+ * set so they can be logged at startup. Helpful in container logs where it is
+ * otherwise opaque what endpoints the listener actually serves.
+ */
+function collectWebhookUrls(workflows: CreatedWorkflow[], base: string): string[] {
+	const urls: string[] = [];
+	for (const wf of workflows) {
+		for (const node of wf.parsed.nodes) {
+			if (node.type === 'n8n-nodes-base.webhook') {
+				const method = (getStringParam(node, 'httpMethod') ?? 'GET').toUpperCase();
+				const path = getStringParam(node, 'path');
+				if (path) urls.push(`${method.padEnd(6)} ${base}/webhook/${path}`);
+			} else if (node.type === 'n8n-nodes-base.formTrigger') {
+				const path = getStringParam(node, 'path');
+				if (path) urls.push(`GET    ${base}/form/${path}`);
+			}
+		}
+	}
+	return urls;
 }

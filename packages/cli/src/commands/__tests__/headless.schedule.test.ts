@@ -33,6 +33,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExternalHooks } from '@/external-hooks';
+import { HeadlessWebhookServer } from '../headless/headless-webhook-server';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { License } from '@/license';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
@@ -62,6 +63,7 @@ const shutdownService = mockInstance(ShutdownService);
 const deprecationService = mockInstance(DeprecationService);
 const workflowService = mockInstance(WorkflowService);
 const nodeTypes = mockInstance(NodeTypes);
+const headlessWebhookServer = mockInstance(HeadlessWebhookServer);
 mockInstance(MessageEventBus);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
@@ -131,6 +133,13 @@ test('headless command keeps a schedule workflow alive until stopProcess and exi
 
 	// ActiveWorkflowManager.removeAll runs during the long-lived branch's finally.
 	activeWorkflowManager.removeAll.mockResolvedValue(undefined);
+
+	// Long-lived runs always bind the HTTP server (for K8s probes), even
+	// when no webhook trigger is present.
+	headlessWebhookServer.init.mockResolvedValue(undefined);
+	headlessWebhookServer.start.mockResolvedValue(undefined);
+	headlessWebhookServer.markAsReady.mockReturnValue(undefined);
+	headlessWebhookServer.close.mockResolvedValue(undefined);
 
 	loadNodesAndCredentials.init.mockResolvedValue(undefined);
 	shutdownService.shutdown.mockReturnValue();
