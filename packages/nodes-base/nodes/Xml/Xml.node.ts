@@ -236,19 +236,23 @@ export class Xml implements INodeType {
 		const options = this.getNodeParameter('options', 0, {});
 
 		const forbiddenKeys = ['__proto__', 'constructor', 'prototype'];
-		const attrkey = String(options.attrkey ?? '');
-		const charkey = String(options.charkey ?? '');
-		if (forbiddenKeys.includes(attrkey)) {
-			throw new NodeOperationError(
-				this.getNode(),
-				`The "Attribute Key" option value "${attrkey}" is not allowed`,
-			);
+		if (options.attrkey !== undefined) {
+			options.attrkey = String(options.attrkey);
+			if (forbiddenKeys.includes(options.attrkey)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The "Attribute Key" option value "${options.attrkey}" is not allowed`,
+				);
+			}
 		}
-		if (forbiddenKeys.includes(charkey)) {
-			throw new NodeOperationError(
-				this.getNode(),
-				`The "Character Key" option value "${charkey}" is not allowed`,
-			);
+		if (options.charkey !== undefined) {
+			options.charkey = String(options.charkey);
+			if (forbiddenKeys.includes(options.charkey)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The "Character Key" option value "${options.charkey}" is not allowed`,
+				);
+			}
 		}
 
 		let item: INodeExecutionData;
