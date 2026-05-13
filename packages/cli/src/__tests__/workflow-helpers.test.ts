@@ -424,6 +424,18 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
+	it('should throw when a node belongs to multiple groups', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+				],
+			}),
+		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
+	});
+
 	it('should throw when group names are not unique', () => {
 		expect(() =>
 			validateWorkflowNodeGroups({
