@@ -156,16 +156,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	/**
 	 * Per-integration webhook secret derived deterministically from the cluster
-	 * encryption key. Telegram's `setWebhook` accepts one `secret_token` per bot
-	 * and echoes it back in `X-Telegram-Bot-Api-Secret-Token` on every incoming
-	 * update. In multi-main mode the webhook is registered exactly once by the
-	 * leader, but every main must verify incoming POSTs (the load balancer
-	 * doesn't know which main "owns" the bot). HMAC over a domain-separated
+	 * encryption key. In multi-main mode the webhook is registered exactly once by the
+	 * leader, but every main must verify incoming POSTs. HMAC over an
 	 * `(agentId, credentialId)` lets every main reach the identical secret with
-	 * zero coordination — no DB write, no PubSub, no extra column. A rotation
-	 * of `N8N_ENCRYPTION_KEY` will invalidate the registered secret until the
-	 * next `onAfterConnect` re-registers it, same as it invalidates encrypted
-	 * credentials.
+	 * zero coordination.
 	 */
 	private deriveSecretToken(agentId: string, credentialId: string): string {
 		return createHmac('sha256', this.instanceSettings.encryptionKey)

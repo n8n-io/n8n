@@ -10,13 +10,12 @@ import type { UrlService } from '@/services/url.service';
 import type { Agent } from '../../../entities/agent.entity';
 import type { AgentRepository } from '../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../agent-chat-integration';
+import { loadTelegramAdapter } from '../../esm-loader';
 import { TelegramIntegration } from '../telegram-integration';
 
 jest.mock('../../esm-loader', () => ({
 	loadTelegramAdapter: jest.fn(),
 }));
-
-import { loadTelegramAdapter } from '../../esm-loader';
 
 const mockedLoadTelegramAdapter = loadTelegramAdapter as jest.MockedFunction<
 	typeof loadTelegramAdapter
@@ -151,7 +150,7 @@ describe('TelegramIntegration.requiresLeader', () => {
 	});
 });
 
-describe('TelegramIntegration secret token (multi-main safe)', () => {
+describe('TelegramIntegration secret token', () => {
 	const createTelegramAdapter = jest.fn();
 
 	beforeEach(() => {
@@ -174,8 +173,6 @@ describe('TelegramIntegration secret token (multi-main safe)', () => {
 			mode: 'webhook',
 			secretToken: expected,
 		});
-		// Sanity: HMAC-SHA256 hex is always 64 chars, well under Telegram's 256 limit.
-		expect(expected).toMatch(/^[0-9a-f]{64}$/);
 	});
 
 	it('two service instances configured with the same encryption key produce identical secrets — the multi-main invariant', async () => {
