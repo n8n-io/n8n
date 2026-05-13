@@ -166,6 +166,11 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'folder:create',
+	'folder:delete',
+	'folder:read',
+	'folder:update',
+	'folder:list',
 	'insights:read',
 ];
 
