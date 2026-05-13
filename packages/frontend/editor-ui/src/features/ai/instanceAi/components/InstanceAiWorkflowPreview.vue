@@ -12,8 +12,10 @@ const props = withDefaults(
 		workflowId: string | null;
 		/** Incremented to force re-fetch even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
+		/** When true, the embedded canvas runs tidyUp after each (re)load. */
+		tidyUp?: boolean;
 	}>(),
-	{ refreshKey: 0 },
+	{ refreshKey: 0, tidyUp: false },
 );
 
 const emit = defineEmits<{
@@ -136,6 +138,7 @@ defineExpose({ relayPushEvent });
 			:hide-controls="false"
 			:suppress-notifications="true"
 			:allow-error-notifications="false"
+			:tidy-up="props.tidyUp"
 			loader-type="spinner"
 		/>
 

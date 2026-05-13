@@ -1,4 +1,20 @@
 export { MAX_STEPS } from './constants/max-steps';
+export {
+	runIncrementalOrchestrator,
+	isIncrementalBuilderEnabled,
+	HitlBroker,
+	DraftStore,
+	ChecklistStore,
+} from './incremental-builder';
+export type {
+	OrchestratorOptions as IncrementalBuilderOrchestratorOptions,
+	OrchestratorResult as IncrementalBuilderResult,
+	HitlChoiceOption,
+	HitlChoiceRequest,
+	HitlResponse,
+	IncrementalBuilderRunContext,
+	IncrementalBuilderServices,
+} from './incremental-builder';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';

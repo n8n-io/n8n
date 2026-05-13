@@ -24,6 +24,8 @@ const props = withDefaults(
 		suppressNotifications?: boolean;
 		allowErrorNotifications?: boolean;
 		canExecute?: boolean;
+		/** When true, the embedded canvas runs `tidyUp` after importing the workflow. */
+		tidyUp?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -40,6 +42,7 @@ const props = withDefaults(
 		suppressNotifications: false,
 		allowErrorNotifications: false,
 		canExecute: false,
+		tidyUp: false,
 	},
 );
 
@@ -110,6 +113,7 @@ const loadWorkflow = () => {
 				suppressNotifications: props.suppressNotifications,
 				allowErrorNotifications: props.allowErrorNotifications,
 				projectId: projectsStore.currentProjectId,
+				tidyUp: props.tidyUp,
 			}),
 			'*',
 		);

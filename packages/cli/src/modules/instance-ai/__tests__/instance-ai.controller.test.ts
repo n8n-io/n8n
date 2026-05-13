@@ -64,6 +64,7 @@ import type { UrlService } from '@/services/url.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import type { SubAgentEvalService } from '../eval/sub-agent-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
+import type { IncrementalBuilderService } from '../incremental-builder.service';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -100,6 +101,8 @@ describe('InstanceAiController', () => {
 
 	const subAgentEvalService = mock<SubAgentEvalService>();
 
+	const incrementalBuilder = mock<IncrementalBuilderService>();
+
 	const controller = new InstanceAiController(
 		instanceAiService,
 		memoryService,
@@ -110,6 +113,7 @@ describe('InstanceAiController', () => {
 		moduleRegistry,
 		push,
 		urlService,
+		incrementalBuilder,
 		globalConfig,
 	);
 

@@ -33,13 +33,14 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents, isIncrementalBuilderEnabled } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
 import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { IncrementalBuilderService } from './incremental-builder.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -99,6 +100,7 @@ export class InstanceAiController {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
+		private readonly incrementalBuilder: IncrementalBuilderService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -154,8 +156,16 @@ export class InstanceAiController {
 		}
 
 		// One active run per thread
-		if (this.instanceAiService.hasActiveRun(threadId)) {
+		if (
+			this.instanceAiService.hasActiveRun(threadId) ||
+			this.incrementalBuilder.isActive(threadId)
+		) {
 			throw new ConflictError('A run is already active for this thread');
+		}
+
+		if (isIncrementalBuilderEnabled()) {
+			const runId = await this.incrementalBuilder.startRun(req.user, threadId, payload.message);
+			return { runId };
 		}
 
 		const runId = this.instanceAiService.startRun(
@@ -356,6 +366,26 @@ export class InstanceAiController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
+		// Incremental builder: when a HitlBroker owns this requestId, route here first.
+		if (isIncrementalBuilderEnabled() && parseResult.data.kind === 'questions') {
+			const answer = parseResult.data.answers[0];
+			const threadId = this.findThreadForRequest(requestId);
+			if (threadId !== undefined) {
+				// __other__ is the sentinel the frontend sets when the user types
+				// free text — treat as "no choice", let freeText carry the meaning.
+				const firstOption = answer?.selectedOptions?.[0];
+				const isOtherSentinel = firstOption === '__other__';
+				const handled = this.incrementalBuilder.resolveConfirmation(threadId, {
+					requestId,
+					...(firstOption !== undefined && !isOtherSentinel && { selectedLabel: firstOption }),
+					...(answer?.customText !== undefined &&
+						answer.customText.trim().length > 0 && { freeText: answer.customText }),
+					...(answer?.skipped === true && { cancelled: true }),
+				});
+				if (handled) return { ok: true };
+			}
+		}
+
 		const resolved = await this.instanceAiService.resolveConfirmation(
 			req.user.id,
 			requestId,
@@ -367,11 +397,25 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	/**
+	 * Best-effort scan: find the thread whose persisted events most recently
+	 * carried a confirmation-request with the given requestId. Used only by the
+	 * incremental builder path — cheaper than a per-request index for a
+	 * hackathon-grade feature flag.
+	 */
+	private findThreadForRequest(requestId: string): string | undefined {
+		// Iterate active incremental threads only — the registry is small.
+		// Falls back to undefined when nothing matches, letting the legacy
+		// service handle the reply.
+		return this.incrementalBuilder.findThreadForRequestId(requestId);
+	}
+
 	@Post('/chat/:threadId/cancel')
 	@GlobalScope('instanceAi:message')
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		this.incrementalBuilder.cancel(threadId);
 		this.instanceAiService.cancelRun(threadId);
 		return { ok: true };
 	}

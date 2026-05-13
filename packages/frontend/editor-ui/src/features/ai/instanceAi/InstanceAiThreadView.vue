@@ -33,6 +33,8 @@ import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
+import IncrementalChecklistPanel from './components/IncrementalChecklistPanel.vue';
+import { useInstanceAiIncrementalStore } from './instanceAiIncremental.store';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
@@ -98,6 +100,11 @@ provide('openDataTablePreview', preview.openDataTablePreview);
 
 // --- Side panels ---
 const showArtifactsPanel = ref(true);
+const incrementalStore = useInstanceAiIncrementalStore();
+const incrementalActive = computed(() => {
+	const state = incrementalStore.get(props.threadId);
+	return state.phase !== 'idle';
+});
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
@@ -352,6 +359,7 @@ function handleStop() {
 									:agent-node="builder"
 								/>
 							</div>
+							<IncrementalChecklistPanel v-if="incrementalActive" :thread-id="props.threadId" />
 							<InstanceAiConfirmationPanel />
 						</div>
 					</N8nScrollArea>
@@ -454,6 +462,7 @@ function handleStop() {
 						]"
 						:workflow-id="preview.activeWorkflowId.value"
 						:refresh-key="preview.workflowRefreshKey.value"
+						:tidy-up="incrementalActive"
 						@iframe-ready="eventRelay.handleIframeReady"
 						@workflow-loaded="eventRelay.handleWorkflowLoaded"
 					/>

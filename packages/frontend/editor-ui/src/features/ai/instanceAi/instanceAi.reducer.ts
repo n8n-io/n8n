@@ -495,6 +495,13 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 
 		case 'filesystem-request':
 		case 'thread-title-updated':
+		case 'inc-draft-update':
+		case 'inc-checklist-update':
+		case 'inc-scope-update':
+		case 'inc-verifier-report':
+		case 'inc-phase-update':
+			// Incremental builder events are consumed by the dedicated
+			// instanceAiIncremental store, not the main agent-tree reducer.
 			return state.activeRunId;
 
 		case 'run-finish': {

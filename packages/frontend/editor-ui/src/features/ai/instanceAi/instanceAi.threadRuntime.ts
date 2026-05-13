@@ -31,6 +31,7 @@ import {
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
+import { useInstanceAiIncrementalStore } from './instanceAiIncremental.store';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
@@ -371,6 +372,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				},
 				parsed.data,
 			);
+			// Pipe incremental builder events into the dedicated store.
+			useInstanceAiIncrementalStore().ingest(threadId, parsed.data);
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}

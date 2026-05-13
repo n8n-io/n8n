@@ -42,6 +42,12 @@ export const instanceAiEventTypeSchema = z.enum([
 	'thread-title-updated',
 	'status',
 	'error',
+	// ── Incremental builder (hackathon) ──
+	'inc-draft-update',
+	'inc-checklist-update',
+	'inc-scope-update',
+	'inc-verifier-report',
+	'inc-phase-update',
 ]);
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
 
@@ -558,6 +564,171 @@ export const tasksUpdatePayloadSchema = z.object({
 	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
+// ── Incremental builder payloads ─────────────────────────────────────────────
+
+export const incNodeConnectionTypeSchema = z.enum([
+	'main',
+	'ai_agent',
+	'ai_chain',
+	'ai_document',
+	'ai_embedding',
+	'ai_languageModel',
+	'ai_memory',
+	'ai_outputParser',
+	'ai_retriever',
+	'ai_reranker',
+	'ai_textSplitter',
+	'ai_tool',
+	'ai_vectorStore',
+]);
+export type IncNodeConnectionType = z.infer<typeof incNodeConnectionTypeSchema>;
+
+export const incDraftNodeSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	type: z.string(),
+	typeVersion: z.number(),
+	position: z.tuple([z.number(), z.number()]),
+	parameters: z.record(z.unknown()).default({}),
+	disabled: z.boolean().optional(),
+	notes: z.string().optional(),
+});
+export type IncDraftNode = z.infer<typeof incDraftNodeSchema>;
+
+export const incDraftEdgeSchema = z.object({
+	from: z.string(),
+	to: z.string(),
+	port: incNodeConnectionTypeSchema,
+	fromIndex: z.number().default(0),
+	toIndex: z.number().default(0),
+});
+export type IncDraftEdge = z.infer<typeof incDraftEdgeSchema>;
+
+export const incDraftStateSchema = z.object({
+	workflowId: z.string().optional(),
+	name: z.string(),
+	nodes: z.array(incDraftNodeSchema),
+	edges: z.array(incDraftEdgeSchema),
+	revision: z.number().describe('Monotonic counter; bumps on every mutation'),
+});
+export type IncDraftState = z.infer<typeof incDraftStateSchema>;
+
+export const incDraftMutationSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('node_added'), node: incDraftNodeSchema }),
+	z.object({
+		kind: z.literal('node_updated'),
+		name: z.string(),
+		patch: z.object({
+			parameters: z.record(z.unknown()).optional(),
+			position: z.tuple([z.number(), z.number()]).optional(),
+			notes: z.string().optional(),
+			disabled: z.boolean().optional(),
+		}),
+	}),
+	z.object({ kind: z.literal('node_removed'), name: z.string() }),
+	z.object({ kind: z.literal('edge_added'), edge: incDraftEdgeSchema }),
+	z.object({ kind: z.literal('edge_removed'), edge: incDraftEdgeSchema }),
+	z.object({ kind: z.literal('committed'), workflowId: z.string() }),
+]);
+export type IncDraftMutation = z.infer<typeof incDraftMutationSchema>;
+
+export const incDraftUpdatePayloadSchema = z.object({
+	mutation: incDraftMutationSchema,
+	state: incDraftStateSchema,
+});
+
+export const incChecklistItemStatusSchema = z.enum([
+	'pending',
+	'in_progress',
+	'done',
+	'needs_user',
+	'failed',
+	'skipped',
+]);
+export type IncChecklistItemStatus = z.infer<typeof incChecklistItemStatusSchema>;
+
+export const incChecklistItemKindSchema = z.enum([
+	'add-node',
+	'configure',
+	'connect',
+	'verify',
+	'note',
+]);
+export type IncChecklistItemKind = z.infer<typeof incChecklistItemKindSchema>;
+
+export const incChecklistItemSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	intent: z.string().describe('What this step should accomplish; given to the specialist agent'),
+	kind: incChecklistItemKindSchema,
+	suggestedNodeQuery: z.string().optional(),
+	deps: z.array(z.string()).default([]),
+	status: incChecklistItemStatusSchema.default('pending'),
+	confidence: z.enum(['high', 'medium', 'low']).optional(),
+	note: z.string().optional().describe('Specialist or verifier annotation'),
+	verifierNote: z.string().optional(),
+});
+export type IncChecklistItem = z.infer<typeof incChecklistItemSchema>;
+
+export const incChecklistSchema = z.object({
+	items: z.array(incChecklistItemSchema),
+	revision: z.number(),
+});
+export type IncChecklist = z.infer<typeof incChecklistSchema>;
+
+export const incChecklistUpdatePayloadSchema = z.object({
+	checklist: incChecklistSchema,
+	changedItemId: z.string().optional(),
+});
+
+export const incScopeSpecSchema = z.object({
+	trigger: z.string().describe('What kicks the workflow off'),
+	primaryAction: z.string(),
+	destination: z.string().optional(),
+	constraints: z.array(z.string()).default([]),
+	assumptions: z.array(z.string()).default([]),
+	intentBrief: z.string().describe('One-paragraph summary used by the Verifier'),
+});
+export type IncScopeSpec = z.infer<typeof incScopeSpecSchema>;
+
+export const incScopeUpdatePayloadSchema = z.object({
+	scope: incScopeSpecSchema,
+	stage: z.enum(['proposed', 'confirmed']),
+});
+
+export const incVerifierIssueSchema = z.object({
+	nodeName: z.string().optional(),
+	checklistItemId: z.string().optional(),
+	problem: z.string(),
+	severity: z.enum(['blocker', 'warning', 'info']),
+	suggestedFix: z.string().optional(),
+});
+export type IncVerifierIssue = z.infer<typeof incVerifierIssueSchema>;
+
+export const incVerifierReportPayloadSchema = z.object({
+	verdict: z.enum(['verified', 'needs_changes', 'failed']),
+	summary: z.string(),
+	issues: z.array(incVerifierIssueSchema).default([]),
+});
+export type IncVerifierReport = z.infer<typeof incVerifierReportPayloadSchema>;
+
+export const incPhaseSchema = z.enum([
+	'idle',
+	'intake',
+	'planning',
+	'awaiting-plan-approval',
+	'building',
+	'verifying',
+	'done',
+	'blocked',
+]);
+export type IncPhase = z.infer<typeof incPhaseSchema>;
+
+export const incPhaseUpdatePayloadSchema = z.object({
+	phase: incPhaseSchema,
+	message: z.string().optional(),
+});
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
@@ -610,6 +781,31 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: threadTitleUpdatedPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('inc-draft-update'),
+		...eventBase,
+		payload: incDraftUpdatePayloadSchema,
+	}),
+	z.object({
+		type: z.literal('inc-checklist-update'),
+		...eventBase,
+		payload: incChecklistUpdatePayloadSchema,
+	}),
+	z.object({
+		type: z.literal('inc-scope-update'),
+		...eventBase,
+		payload: incScopeUpdatePayloadSchema,
+	}),
+	z.object({
+		type: z.literal('inc-verifier-report'),
+		...eventBase,
+		payload: incVerifierReportPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('inc-phase-update'),
+		...eventBase,
+		payload: incPhaseUpdatePayloadSchema,
+	}),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -643,6 +839,17 @@ export type InstanceAiThreadTitleUpdatedEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'thread-title-updated' }
 >;
+export type InstanceAiIncDraftUpdateEvent = Extract<InstanceAiEvent, { type: 'inc-draft-update' }>;
+export type InstanceAiIncChecklistUpdateEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'inc-checklist-update' }
+>;
+export type InstanceAiIncScopeUpdateEvent = Extract<InstanceAiEvent, { type: 'inc-scope-update' }>;
+export type InstanceAiIncVerifierReportEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'inc-verifier-report' }
+>;
+export type InstanceAiIncPhaseUpdateEvent = Extract<InstanceAiEvent, { type: 'inc-phase-update' }>;
 
 export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesystemResponseDto>;
 
