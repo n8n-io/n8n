@@ -23,6 +23,13 @@ const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
+const REDACTED_VALUE = '[redacted]';
+const SENSITIVE_KEY_PATTERN =
+	/(?:^|[_-])(?:api[-_]?key|authorization|credential|password|secret|token|access[-_]?token|refresh[-_]?token|private[-_]?key|client[-_]?secret|session[-_]?cookie)(?:$|[_-])/i;
+const INLINE_SECRET_PATTERNS = [
+	/\b(authorization\s*[:=]\s*)(bearer\s+)?[^\s"',&]+/gi,
+	/\b((?:api[-_]?key|password|secret|token|access[-_]?token|refresh[-_]?token|client[-_]?secret)\s*[:=]\s*)[^\s"',&]+/gi,
+] as const;
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -261,7 +268,9 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	const maxArrayItems = options.maxArrayItems ?? DEFAULT_MAX_ARRAY_ITEMS;
 	const maxObjectKeys = options.maxObjectKeys ?? DEFAULT_MAX_OBJECT_KEYS;
 
-	if (typeof value === 'string') return truncateString(value, maxStringChars, 'string');
+	if (typeof value === 'string') {
+		return truncateString(redactSensitiveString(value), maxStringChars, 'string');
+	}
 	if (value === null || typeof value !== 'object') return value;
 
 	if (Array.isArray(value)) {
@@ -277,7 +286,9 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	const result: Record<string, unknown> = {};
 	const entries = Object.entries(value as Record<string, unknown>);
 	for (const [key, entryValue] of entries.slice(0, maxObjectKeys)) {
-		if (shouldStripBlob(key, entryValue)) {
+		if (isSensitiveKey(key)) {
+			result[key] = REDACTED_VALUE;
+		} else if (shouldStripBlob(key, entryValue)) {
 			result[key] = '[omitted large blob]';
 		} else {
 			result[key] = compactForObserver(entryValue, options);
@@ -287,6 +298,20 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 		result.__truncatedKeys = entries.length - maxObjectKeys;
 	}
 	return result;
+}
+
+function isSensitiveKey(key: string): boolean {
+	return SENSITIVE_KEY_PATTERN.test(key);
+}
+
+function redactSensitiveString(value: string): string {
+	return INLINE_SECRET_PATTERNS.reduce(
+		(redacted, pattern) =>
+			redacted.replace(pattern, (_match: string, prefix: string, authScheme?: string) =>
+				authScheme ? `${prefix}${authScheme}${REDACTED_VALUE}` : `${prefix}${REDACTED_VALUE}`,
+			),
+		value,
+	);
 }
 
 function shouldStripBlob(key: string, value: unknown): boolean {

@@ -76,6 +76,45 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('tool_result lookup_workflow');
 		expect(transcript).toContain('[truncated');
 	});
+
+	it('redacts credential-looking tool inputs and outputs before serialization', () => {
+		const transcript = renderObserverTranscript([
+			{
+				id: 'a1',
+				createdAt: new Date(1),
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc1',
+						toolName: 'call_api',
+						input: {
+							apiKey: 'sk-live-input-secret',
+							headers: {
+								authorization: 'Bearer input-token',
+								'x-safe-header': 'keep-me',
+							},
+							query: 'password=inline-secret&safe=1',
+						},
+						state: 'resolved',
+						output: {
+							access_token: 'output-access-token',
+							message: 'token: inline-output-token',
+						},
+					},
+				],
+			},
+		]);
+
+		expect(transcript).toContain('[redacted]');
+		expect(transcript).toContain('"x-safe-header":"keep-me"');
+		expect(transcript).toContain('safe=1');
+		expect(transcript).not.toContain('sk-live-input-secret');
+		expect(transcript).not.toContain('input-token');
+		expect(transcript).not.toContain('inline-secret');
+		expect(transcript).not.toContain('output-access-token');
+		expect(transcript).not.toContain('inline-output-token');
+	});
 });
 
 describe('runObservationLogObserver', () => {
