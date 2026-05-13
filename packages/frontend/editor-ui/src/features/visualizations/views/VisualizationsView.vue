@@ -109,7 +109,7 @@ const egressList = computed<EgressEntry[]>(() => {
 	);
 });
 
-const summary = computed(() => {
+const tally = (wfs: ClassifiedWorkflow[]) => {
 	const counts: Record<Bucket, number> = {
 		internal: 0,
 		'external-known': 0,
@@ -117,7 +117,7 @@ const summary = computed(() => {
 		'external-unverified': 0,
 	};
 	let stickyCount = 0;
-	for (const wf of workflows.value) {
+	for (const wf of wfs) {
 		for (const n of wf.nodes) {
 			if (n.type === 'n8n-nodes-base.stickyNote') {
 				stickyCount++;
@@ -127,6 +127,20 @@ const summary = computed(() => {
 		}
 	}
 	return { counts, stickyCount };
+};
+
+// Per-workflow stats when one is selected, fleet-wide otherwise.
+const summary = computed(() => (selected.value ? tally([selected.value]) : tally(workflows.value)));
+
+// Always-available fleet total (shown as a small footer line below the summary).
+const fleetTotal = computed(() => {
+	const t = tally(workflows.value);
+	return (
+		t.counts.internal +
+		t.counts['external-known'] +
+		t.counts['external-dynamic'] +
+		t.counts['external-unverified']
+	);
 });
 
 const fetchData = async () => {
@@ -183,6 +197,28 @@ const STROKE: Record<Bucket, string> = {
 };
 
 const isAiPort = (port: string) => port.startsWith('ai_');
+
+// Reverse index: which egress entry does a given graph node belong to (if any)?
+const nodeIdToEgressKey = computed(() => {
+	const m = new Map<string, string>();
+	for (const entry of egressList.value) {
+		for (const id of entry.nodeIds) m.set(id, entry.key);
+	}
+	return m;
+});
+
+// Set by graph hover; the matching egress card highlights and scrolls into view.
+const hoveredEgressKey = ref<string | null>(null);
+
+const focusEgressCard = (key: string | null) => {
+	hoveredEgressKey.value = key;
+	if (!key) return;
+	// Defer to next tick so the highlight class is on the DOM before we scroll.
+	void nextTick(() => {
+		const el = document.querySelector<HTMLElement>(`[data-egress-key="${CSS.escape(key)}"]`);
+		el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+	});
+};
 
 const highlightNodes = (ids: string[] | null) => {
 	if (!cy) return;
@@ -452,6 +488,15 @@ const renderGraph = () => {
 	}
 
 	cy.fit(undefined, 40);
+
+	// Reverse interaction: hovering a graph node flashes the matching egress card.
+	cy.on('mouseover', 'node', (evt) => {
+		const key = nodeIdToEgressKey.value.get(evt.target.id()) ?? null;
+		focusEgressCard(key);
+	});
+	cy.on('mouseout', 'node', () => {
+		focusEgressCard(null);
+	});
 };
 
 watch(selected, async () => {
@@ -493,6 +538,9 @@ onBeforeUnmount(() => {
 					network calls: {{ summary.counts['external-unverified'] }}
 				</div>
 				<div class="muted">sticky notes hidden: {{ summary.stickyCount }}</div>
+				<div class="muted summary-fleet">
+					{{ selected ? `selected workflow · fleet: ${fleetTotal} nodes` : 'across all workflows' }}
+				</div>
 			</div>
 			<ul class="viz-list">
 				<li
@@ -536,7 +584,8 @@ onBeforeUnmount(() => {
 				<li
 					v-for="entry in egressList"
 					:key="entry.key"
-					class="egress-card"
+					:data-egress-key="entry.key"
+					:class="['egress-card', { 'egress-card--flash': hoveredEgressKey === entry.key }]"
 					@mouseenter="highlightNodes(entry.nodeIds)"
 					@mouseleave="highlightNodes(null)"
 				>
@@ -611,6 +660,11 @@ onBeforeUnmount(() => {
 		border-color: var(--color-text-light, #b0b4bd);
 	}
 }
+.egress-card--flash {
+	background: var(--color-primary-tint-3, #eef2ff);
+	border-color: var(--color-primary, #6366f1);
+	box-shadow: 0 0 0 1px var(--color-primary, #6366f1);
+}
 .egress-card-head {
 	display: flex;
 	align-items: center;
@@ -667,6 +721,14 @@ onBeforeUnmount(() => {
 		gap: 6px;
 		margin-bottom: 4px;
 	}
+}
+.summary-fleet {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-top: 4px;
+	padding-top: 6px;
+	border-top: 1px solid var(--color-foreground-light, #eee);
 }
 .dot {
 	display: inline-block;

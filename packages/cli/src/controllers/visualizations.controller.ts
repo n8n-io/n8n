@@ -72,7 +72,7 @@ const CODE_LIKE_TYPES = new Set<string>([
 ]);
 
 const CODE_EXTERNAL_PATTERN =
-	/\b(fetch|axios|https?:\/\/|require\(['"](?:http|https|net|dns|tls))/i;
+	/\b(fetch|axios|https?:\/\/|require\(['"](?:http|https|net|dns|tls)|(?:import|from)\s+(?:requests|urllib|urllib2|urllib3|httpx|aiohttp|http\.client|socket))\b/i;
 
 const HTTP_TYPES = new Set<string>([
 	'n8n-nodes-base.httpRequest',
