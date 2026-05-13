@@ -167,8 +167,7 @@ import { AddWorkflowVersionToTestRun1778100001000 } from '../common/177810000100
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
-import { AddTokensValidAfterToUser1783200000000 } from '../common/1783200000000-AddTokensValidAfterToUser';
-import { AddLastUsedAtToWebauthnCredential1783300000000 } from '../common/1783300000000-AddLastUsedAtToWebauthnCredential';
+import { AddSessionInvalidationAndWebauthnLastUsedAt1783200000000 } from '../common/1783200000000-AddSessionInvalidationAndWebauthnLastUsedAt';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -341,8 +340,7 @@ const sqliteMigrations: Migration[] = [
 	AddExecutionDeduplicationKey1778000000000,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
-	AddTokensValidAfterToUser1783200000000,
-	AddLastUsedAtToWebauthnCredential1783300000000,
+	AddSessionInvalidationAndWebauthnLastUsedAt1783200000000,
 ];
 
 export { sqliteMigrations };
