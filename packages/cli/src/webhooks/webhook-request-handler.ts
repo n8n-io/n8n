@@ -7,6 +7,7 @@ import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import * as ResponseHelper from '@/response-helper';
 import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher';
 import type {
@@ -249,6 +250,20 @@ export function createWebhookHandlerFor(
 			params.path = params.path.join('/');
 		}
 		res.locals.webhookPath = params.path;
+
+		const startNs = process.hrtime.bigint();
+		res.on('finish', () => {
+			const durationSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
+			const workflowId = (res.locals as { workflowId?: string }).workflowId ?? '';
+			Container.get(PrometheusMetricsService).observeWebhookRequest({
+				method: req.method,
+				statusCode: res.statusCode,
+				webhookPath: params.path,
+				workflowId,
+				durationSeconds,
+			});
+		});
+
 		await handler.handleRequest(webhookRequest, res);
 	};
 }

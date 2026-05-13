@@ -21,8 +21,6 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import type { Includes, MetricCategory, MetricLabel } from './types';
 
-type NormalizePath = (req: express.Request, opts: unknown) => string;
-
 @Service()
 export class PrometheusMetricsService {
 	constructor(
@@ -76,6 +74,7 @@ export class PrometheusMetricsService {
 		this.initCacheMetrics();
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
+		this.initWebhookRequestMetric();
 		this.initQueueMetrics();
 		this.initWorkflowExecutionDurationMetric();
 		this.initActiveWorkflowCountMetric();
@@ -243,7 +242,7 @@ export class PrometheusMetricsService {
 		if (!this.includes.metrics.routes) return;
 
 		const { endpoints } = this.globalConfig;
-		const webhookRoutePrefixes = [
+		const webhookActivityPaths = [
 			`/${endpoints.webhook}/`,
 			`/${endpoints.webhookWaiting}/`,
 			`/${endpoints.webhookTest}/`,
@@ -251,8 +250,7 @@ export class PrometheusMetricsService {
 			`/${endpoints.formWaiting}/`,
 			`/${endpoints.formTest}/`,
 		];
-		const defaultNormalizePath = (promBundle as unknown as { normalizePath: NormalizePath })
-			.normalizePath;
+		const httpMetricPaths = ['/api/', `/${endpoints.rest}/`];
 
 		const metricsMiddleware = promBundle({
 			autoregister: false,
@@ -261,26 +259,6 @@ export class PrometheusMetricsService {
 			includeMethod: this.includes.labels.apiMethod,
 			includeStatusCode: this.includes.labels.apiStatusCode,
 			httpDurationMetricName: this.prefix + 'http_request_duration_seconds',
-			normalizePath: (req, opts) => {
-				const routePath = req.route?.path;
-				if (
-					typeof routePath === 'string' &&
-					webhookRoutePrefixes.some((p) => routePath.startsWith(p))
-				) {
-					// Render Express 5 splat segments (`*name`) as `:name`
-					return routePath.replace(/\*(\w+)/g, ':$1');
-				}
-				return defaultNormalizePath(req, opts);
-			},
-			customLabels: { webhook_path: undefined, workflow_id: undefined },
-			transformLabels: (labels, _req, res) => {
-				const locals = (res as express.Response).locals as {
-					webhookPath?: string;
-					workflowId?: string;
-				};
-				labels.webhook_path = locals.webhookPath ?? '';
-				labels.workflow_id = locals.workflowId ?? '';
-			},
 		});
 
 		const activityGauge = new promClient.Gauge({
@@ -290,22 +268,47 @@ export class PrometheusMetricsService {
 
 		activityGauge.set(DateTime.now().toUnixInteger());
 
-		app.use(
-			[
-				'/api/',
-				`/${this.globalConfig.endpoints.rest}/`,
-				`/${this.globalConfig.endpoints.webhook}/`,
-				`/${this.globalConfig.endpoints.webhookWaiting}/`,
-				`/${this.globalConfig.endpoints.webhookTest}/`,
-				`/${this.globalConfig.endpoints.form}/`,
-				`/${this.globalConfig.endpoints.formWaiting}/`,
-				`/${this.globalConfig.endpoints.formTest}/`,
-			],
-			async (req, res, next) => {
-				activityGauge.set(DateTime.now().toUnixInteger());
+		// Activity gauge updates for every served path, including webhooks.
+		app.use([...httpMetricPaths, ...webhookActivityPaths], (_req, _res, next) => {
+			activityGauge.set(DateTime.now().toUnixInteger());
+			next();
+		});
 
-				await metricsMiddleware(req, res, next);
+		// Webhook traffic is captured by `n8n_webhook_request_duration_seconds`
+		// (see `observeWebhookRequest`), so we exclude webhook paths from the
+		// generic HTTP histogram to avoid double-counting and noisy empty labels.
+		app.use(httpMetricPaths, metricsMiddleware);
+	}
+
+	private initWebhookRequestMetric() {
+		if (!this.includes.metrics.routes) return;
+
+		this.histograms.webhookRequestDuration = new promClient.Histogram({
+			name: this.prefix + 'webhook_request_duration_seconds',
+			help: 'Duration of webhook requests served by n8n, in seconds.',
+			labelNames: ['method', 'status_code', 'webhook_path', 'workflow_id'],
+			buckets: [0.003, 0.03, 0.1, 0.3, 1.5, 10],
+		});
+	}
+
+	observeWebhookRequest(observation: {
+		method: string;
+		statusCode: number;
+		webhookPath: string;
+		workflowId: string;
+		durationSeconds: number;
+	}) {
+		const histogram = this.histograms.webhookRequestDuration;
+		if (!histogram) return;
+
+		histogram.observe(
+			{
+				method: observation.method,
+				status_code: String(observation.statusCode),
+				webhook_path: observation.webhookPath,
+				workflow_id: observation.workflowId,
 			},
+			observation.durationSeconds,
 		);
 	}
 
