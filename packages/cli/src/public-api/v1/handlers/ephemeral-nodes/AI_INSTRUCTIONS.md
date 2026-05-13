@@ -12,9 +12,11 @@ Three Public API endpoints that let you:
 3. Run one node with parameters, credentials, and input data.
 
 The node runs in the API key owner's personal project. No workflow is saved;
-no execution row is written. Same safety rails as n8n's internal agent
-runtime: trigger nodes blocked, only `usableAsTool` nodes (plus a small
-provider whitelist) allowed, `sendAndWait`/`dispatchAndWait` blocked.
+no execution row is written. The public API exposes a curated allowlist —
+smaller than n8n's full node catalogue — and applies the same safety rails
+as the internal agent runtime: trigger / polling / webhook nodes blocked,
+`sendAndWait` / `dispatchAndWait` operations blocked, only `usableAsTool`
+nodes (plus a small provider whitelist) allowed.
 
 ## Auth
 
@@ -39,7 +41,8 @@ credential IDs — read them from the responses below.
 
 ```
 GET /ephemeral-nodes              → pick { nodeType, nodeTypeVersion }
-GET /credentials                  → pick { id, name } per required cred type
+GET /credentials                  → pick { id, name } matching one of the
+                                     node's supportedCredentialTypes
 POST /ephemeral-nodes/execute     → run the node
 ```
 
@@ -60,9 +63,7 @@ Response:
       "displayName": "HTTP Request",
       "description": "Makes an HTTP request and returns the response data",
       "category": "Core Nodes",
-      "exampleParameters": { "url": "https://api.example.com", "method": "GET" },
-      "requiredCredentialTypes": [],
-      "inputDataShape": {}
+      "supportedCredentialTypes": ["httpBearerAuth"]
     }
   ],
   "nextCursor": null
@@ -71,12 +72,17 @@ Response:
 
 Fields:
 
-- `nodeType`, `nodeTypeVersion` — pass through to execute verbatim.
-- `requiredCredentialTypes` — credential `type` values you must resolve via
-  `GET /credentials`.
-- `exampleParameters` — minimum-viable `nodeParameters` payload. Use as a
-  starting shape; mutate values for the task.
-- `inputDataShape` — optional JSON-Schema-like hint for `inputData` rows.
+- `nodeType` — pass through to execute verbatim.
+- `nodeTypeVersion` — the node's `defaultVersion` (or its highest supported
+  version when none is set). Pass through verbatim.
+- `supportedCredentialTypes` — credential `type` values the node accepts.
+  The node typically uses one at a time; pick one that matches a credential
+  from `GET /credentials`.
+- `category` — optional; omitted when the node declares neither codex
+  categories nor a group.
+
+Only nodes returned here are executable. The catalogue is a curated
+allowlist; anything else is rejected with HTTP 400.
 
 ### `GET /api/v1/credentials`
 
@@ -91,8 +97,8 @@ Response (relevant fields):
 }
 ```
 
-Match each `requiredCredentialTypes[i]` to a credential whose `type` equals
-it. Keep `id` and `name`; you need both.
+Pick a credential whose `type` matches one of the node's
+`supportedCredentialTypes`. Keep `id` and `name`; you need both.
 
 ### `POST /api/v1/ephemeral-nodes/execute`
 
@@ -100,16 +106,15 @@ Request body:
 
 ```json
 {
-  "nodeType": "n8n-nodes-base.slack",
-  "nodeTypeVersion": 2.3,
+  "nodeType": "n8n-nodes-base.linear",
+  "nodeTypeVersion": 1,
   "nodeParameters": {
-    "resource": "message",
-    "operation": "post",
-    "channel": "#general",
-    "text": "hello"
+    "resource": "issue",
+    "operation": "get",
+    "issueId": "ABC-123"
   },
   "credentials": {
-    "slackApi": { "id": "R2DjclaysHbqn778", "name": "My Slack" }
+    "linearApi": { "id": "R2DjclaysHbqn778", "name": "My Linear" }
   },
   "inputData": [{ "userId": 1 }]
 }
@@ -117,16 +122,18 @@ Request body:
 
 Field rules:
 
-- `nodeType` (string, required) — from discovery.
-- `nodeTypeVersion` (number, required) — from discovery. Must match what
-  discovery returned; arbitrary versions will be rejected.
-- `nodeParameters` (object, required) — keys depend on the node. Start from
-  `exampleParameters`.
+- `nodeType` (string, required) — from discovery. Must be on the public
+  allowlist or the request is rejected with 400.
+- `nodeTypeVersion` (number, required) — use the value discovery returned.
+- `nodeParameters` (object, required) — keys depend on the node; consult
+  n8n's node documentation for the exact shape.
 - `credentials` (object, optional) — keyed by credential **type** (e.g.
-  `slackApi`), value is `{ id, name }` from `GET /credentials`. Omit if the
-  node has no `requiredCredentialTypes`.
+  `linearApi`), value is `{ id, name }` from `GET /credentials`. Omit if
+  the node has no `supportedCredentialTypes`.
 - `inputData` (array of objects, optional) — rows the node iterates over.
-  Each object becomes one item's `json`. Default: `[]`.
+  Each object becomes one item's `json`. **If omitted, the node fires once
+  against a single empty input item** — fine for most one-shot action
+  calls.
 
 Response (HTTP 200):
 
@@ -148,7 +155,7 @@ error.
 |---|---|---|
 | 200 + `status: "success"` | Node ran, returned data. | — |
 | 200 + `status: "error"` | Node ran but errored. | Bad parameters, upstream API 4xx/5xx. |
-| 400 | Request rejected before execution. | Unknown `nodeType`; trigger node; `sendAndWait`/`dispatchAndWait` operation; credential not accessible; credential type mismatch. |
+| 400 | Request rejected before execution. | `nodeType` not on the allowlist; trigger node; `sendAndWait`/`dispatchAndWait` operation; credential not accessible; credential type mismatch. |
 | 401 | Missing or invalid API key. | — |
 | 403 | API key missing required scope. | Add `ephemeralNode:read`/`ephemeralNode:execute`/`credential:list`. |
 
@@ -166,8 +173,10 @@ error.
   with a different version — pick a listed node.
 - Credentials are scoped to the API key's personal project. A credential not
   returned by `GET /credentials` cannot be used here.
-- One node per request. To chain nodes, call execute multiple times and pass
-  the previous response's `data` as the next `inputData`.
+- The credential's `type` must match one of the node's
+  `supportedCredentialTypes` exactly.
+- One node per request. To chain nodes, call execute multiple times and
+  pass the previous response's `data` as the next `inputData`.
 
 ## Minimal worked example
 
@@ -175,10 +184,11 @@ error.
 # 1. Find a node.
 curl -s -H "X-N8N-API-KEY: $KEY" \
   "$N8N/api/v1/ephemeral-nodes?nodeType=n8n-nodes-base.httpRequest" \
-  | jq '.data[0] | {nodeType, nodeTypeVersion, requiredCredentialTypes}'
-# → { "nodeType": "n8n-nodes-base.httpRequest", "nodeTypeVersion": 4.2, "requiredCredentialTypes": [] }
+  | jq '.data[0] | {nodeType, nodeTypeVersion, supportedCredentialTypes}'
+# → { "nodeType": "n8n-nodes-base.httpRequest", "nodeTypeVersion": 4.2, "supportedCredentialTypes": ["httpBearerAuth"] }
 
-# 2. No credentials needed → run it.
+# 2. No credential needed for this URL → omit `credentials`. `inputData`
+# is also omitted, so the node fires once.
 curl -s -X POST \
   -H "X-N8N-API-KEY: $KEY" -H "Content-Type: application/json" \
   "$N8N/api/v1/ephemeral-nodes/execute" \
