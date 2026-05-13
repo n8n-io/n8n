@@ -1,4 +1,5 @@
 import { WorkerStatus } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -10,11 +11,13 @@ import { Push } from '@/push';
 
 import { JobProcessor } from './job-processor';
 import { Publisher } from './pubsub/publisher.service';
+import { resolveQueueName } from './queue-name';
 
 @Service()
 export class WorkerStatusService {
 	constructor(
 		private readonly jobProcessor: JobProcessor,
+		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly push: Push,
@@ -96,6 +99,11 @@ export class WorkerStatusService {
 				})),
 			),
 			version: N8N_VERSION,
+			poolName: this.globalConfig.queue.workerPool.name,
+			queueName: resolveQueueName(
+				this.instanceSettings.instanceType,
+				this.globalConfig.queue.workerPool.name,
+			),
 		};
 	}
 
