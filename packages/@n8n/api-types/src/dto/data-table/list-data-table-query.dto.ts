@@ -1,6 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { dataTableKindSchema } from '../../schemas/data-table.schema';
 import { Z } from '../../zod-class';
 import { paginationSchema, publicApiPaginationSchema } from '../pagination/pagination.dto';
 
@@ -22,6 +23,7 @@ const filterSchema = z
 		id: z.union([z.string(), z.array(z.string())]).optional(),
 		name: z.union([z.string(), z.array(z.string())]).optional(),
 		projectId: z.union([z.string(), z.array(z.string())]).optional(),
+		kind: z.union([dataTableKindSchema, z.array(dataTableKindSchema)]).optional(),
 		// todo: can probably include others here as well?
 	})
 	.strict();

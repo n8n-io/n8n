@@ -61,6 +61,7 @@ export type DataTableListFilter = {
 	id?: string | string[];
 	projectId?: string | string[];
 	name?: string | string[];
+	kind?: DataTableKind | DataTableKind[];
 };
 
 export type DataTableListOptions = Partial<ListDataTableQueryDto> & {

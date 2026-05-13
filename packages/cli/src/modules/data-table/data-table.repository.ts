@@ -176,11 +176,6 @@ export class DataTableRepository extends Repository<DataTable> {
 		return { count, data };
 	}
 
-	async getMany(options: Partial<ListDataTableQueryDto>) {
-		const query = this.getManyQuery(options);
-		return await query.getMany();
-	}
-
 	private getManyQuery(options: Partial<ListDataTableQueryDto>): SelectQueryBuilder<DataTable> {
 		const query = this.createQueryBuilder('dataTable');
 
@@ -200,6 +195,11 @@ export class DataTableRepository extends Repository<DataTable> {
 		query: SelectQueryBuilder<DataTable>,
 		filter: Partial<ListDataTableQueryDto>['filter'],
 	): void {
+		const kinds = [filter?.kind ?? 'list'].flat();
+		query.andWhere('dataTable.kind IN (:...kinds)', {
+			kinds: kinds.length > 0 ? kinds : ['list'],
+		});
+
 		for (const x of ['id', 'projectId'] as const) {
 			const content = [filter?.[x]].flat().filter((x) => x !== undefined);
 			if (content.length === 0) continue;

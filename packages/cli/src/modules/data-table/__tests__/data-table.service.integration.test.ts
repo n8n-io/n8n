@@ -685,6 +685,57 @@ describe('dataTable', () => {
 	});
 
 	describe('getManyAndCount', () => {
+		it('lists only data tables with kind list', async () => {
+			const listTable = await dataTableService.createDataTable(project1.id, {
+				name: 'listTable',
+				columns: [],
+			});
+			const boardTable = await dataTableService.createDataTable(project1.id, {
+				name: 'boardTable',
+				columns: [],
+			});
+			await dataTableRepository.update({ id: boardTable.id }, { kind: 'board' });
+
+			const result = await dataTableService.getManyAndCount({
+				filter: { projectId: project1.id },
+			});
+
+			expect(result.count).toBe(1);
+			expect(result.data).toHaveLength(1);
+			expect(result.data[0].id).toBe(listTable.id);
+			expect(result.data[0].kind).toBe('list');
+		});
+
+		it('filters data tables by kind when provided', async () => {
+			const listTable = await dataTableService.createDataTable(project1.id, {
+				name: 'listTable',
+				columns: [],
+			});
+			const boardTable = await dataTableService.createDataTable(project1.id, {
+				name: 'boardTable',
+				columns: [],
+			});
+			await dataTableRepository.update({ id: boardTable.id }, { kind: 'board' });
+
+			const boardResult = await dataTableService.getManyAndCount({
+				filter: { projectId: project1.id, kind: 'board' },
+			});
+
+			expect(boardResult.count).toBe(1);
+			expect(boardResult.data).toHaveLength(1);
+			expect(boardResult.data[0].id).toBe(boardTable.id);
+			expect(boardResult.data[0].kind).toBe('board');
+
+			const bothKindsResult = await dataTableService.getManyAndCount({
+				filter: { projectId: project1.id, kind: ['list', 'board'] },
+			});
+
+			expect(bothKindsResult.count).toBe(2);
+			expect(bothKindsResult.data.map((table) => table.id).sort()).toEqual(
+				[listTable.id, boardTable.id].sort(),
+			);
+		});
+
 		it('correctly joins columns', async () => {
 			// ARRANGE
 			const columns: CreateDataTableColumnDto[] = [
