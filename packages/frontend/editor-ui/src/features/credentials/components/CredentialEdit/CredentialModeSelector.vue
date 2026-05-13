@@ -40,7 +40,7 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const i18n = useI18n();
-const { hasManagedOAuthCredentials, isOAuthCredentialType, hasManualCredentialInputFields } =
+const { canOAuthCredentialQuickConnect, isOAuthCredentialType, hasManualCredentialInputFields } =
 	useCredentialOAuth();
 
 const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.activeNode);
@@ -109,7 +109,7 @@ const manualOptions = computed<Option[]>(() => {
 			credential &&
 			props.showManagedOauthOptions &&
 			isOAuthCredentialType(credential.name) &&
-			hasManagedOAuthCredentials(credential.name)
+			canOAuthCredentialQuickConnect(credential.name)
 		) {
 			return getManagedOAuthOptions(authType);
 		}
