@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue';
-import type { ComponentPublicInstance } from 'vue';
-import Draggable from 'vuedraggable';
-import { useI18n } from '@n8n/i18n';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { TIME } from '@/app/constants/durations';
+import { useUIStore } from '@/app/stores/ui.store';
+import AddBoardCardModal from '@/features/core/dataTable/components/AddBoardCardModal.vue';
+import { ADD_BOARD_CARD_MODAL_KEY } from '@/features/core/dataTable/constants';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import type { DataTable, DataTableRow } from '@/features/core/dataTable/dataTable.types';
 import {
 	N8nActionDropdown,
 	N8nButton,
@@ -12,14 +17,10 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
-import { useToast } from '@/app/composables/useToast';
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
-import { useUIStore } from '@/app/stores/ui.store';
-import { ADD_BOARD_CARD_MODAL_KEY } from '@/features/core/dataTable/constants';
-import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import type { DataTable, DataTableRow } from '@/features/core/dataTable/dataTable.types';
-import AddBoardCardModal from '@/features/core/dataTable/components/AddBoardCardModal.vue';
+import { useI18n } from '@n8n/i18n';
+import type { ComponentPublicInstance } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import Draggable from 'vuedraggable';
 
 type Props = {
 	dataTable: DataTable;
@@ -502,6 +503,32 @@ watch(
 
 defineExpose({
 	fetchRows,
+});
+
+const POLL_INTERVAL_MS = 3 * TIME.SECOND;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const startPolling = () => {
+	pollTimer = setInterval(() => {
+		if (!loading.value && !isDraggingCard.value) {
+			void fetchRows();
+		}
+	}, POLL_INTERVAL_MS);
+};
+
+const stopPolling = () => {
+	if (pollTimer !== null) {
+		clearInterval(pollTimer);
+		pollTimer = null;
+	}
+};
+
+onMounted(() => {
+	startPolling();
+});
+
+onBeforeUnmount(() => {
+	stopPolling();
 });
 </script>
 
