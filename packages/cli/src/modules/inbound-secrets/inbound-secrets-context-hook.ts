@@ -9,7 +9,7 @@ import {
 import { InboundSecretsService } from './inbound-secrets.service';
 
 @ContextEstablishmentHook({
-	isGlobal: true,
+	alwaysExecute: true,
 })
 export class InboundSecretContextHook implements IContextEstablishmentHook {
 	constructor(private readonly inboundSecretsService: InboundSecretsService) {}

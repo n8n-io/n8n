@@ -420,8 +420,8 @@ describe('ExecutionContextHookRegistry', () => {
 	});
 
 	describe('global hooks', () => {
-		it('exposes hooks decorated with isGlobal: true via getGlobalHooks()', async () => {
-			@ContextEstablishmentHook({ isGlobal: true })
+		it('exposes hooks decorated with alwaysExecute: true via getGlobalHooks()', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: true })
 			class GlobalHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'test.global' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {

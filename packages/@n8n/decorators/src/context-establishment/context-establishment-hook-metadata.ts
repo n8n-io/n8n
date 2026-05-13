@@ -4,9 +4,10 @@ import { ContextEstablishmentHookClass } from './context-establishment-hook';
 
 type ContextEstablishmentHookOptions = {
 	/**
-	 * If this is true, the hook is executed globally for all workflow executions
+	 * If true, the hook executes on every workflow execution regardless of the
+	 * trigger node type (i.e. `isApplicableToTriggerNode` is not consulted).
 	 */
-	isGlobal: boolean;
+	alwaysExecute: boolean;
 };
 
 /**
@@ -103,7 +104,7 @@ export class ContextEstablishmentHookMetadata {
 
 	getGlobalClasses() {
 		return [...this.contextEstablishmentHooks.values()]
-			.filter((entry) => entry.options?.isGlobal ?? false)
+			.filter((entry) => entry.options?.alwaysExecute ?? false)
 			.map((entry) => entry.class);
 	}
 }
