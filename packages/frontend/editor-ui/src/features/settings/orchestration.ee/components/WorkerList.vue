@@ -10,6 +10,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import WorkerCard from './WorkerCard.vue';
+import WorkerPoolsCard from './WorkerPoolsCard.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
@@ -74,6 +75,9 @@ onBeforeUnmount(() => {
 				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
 					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
 				</div>
+			</div>
+			<div :class="$style.card">
+				<WorkerPoolsCard />
 			</div>
 		</div>
 	</div>

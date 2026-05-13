@@ -34,6 +34,7 @@ export {
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
 export * from './instance-registry-types';
+export type * from './worker-pools';
 export * from './redaction-enforcement';
 export {
 	chatHubConversationModelSchema,
