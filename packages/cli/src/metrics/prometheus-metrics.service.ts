@@ -81,6 +81,7 @@ export class PrometheusMetricsService {
 		this.initActiveWorkflowCountMetric();
 		this.initWorkflowStatisticsMetrics();
 		this.initTokenExchangeMetrics();
+		this.initWorkflowInfoMetric();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -136,6 +137,42 @@ export class PrometheusMetricsService {
 		});
 
 		this.gauges.instanceRoleLeader.set(this.instanceSettings.isLeader ? 1 : 0);
+	}
+
+	/**
+	 * Should be something like this in prometheus:
+	 * n8n_workflow_info{workflow_id="123", workflow_name="My Webhook"} 1
+	 */
+	private initWorkflowInfoMetric() {
+		const workflowRepository = this.workflowRepository;
+		const cacheService = this.cacheService;
+		const cacheKey = 'metrics:workflow-info';
+		const cacheTtl =
+			this.globalConfig.endpoints.metrics.workflowInfoInterval * Time.seconds.toMilliseconds;
+
+		new promClient.Gauge({
+			name: this.prefix + 'workflow_info',
+			help: 'Map of workflow ID to name',
+			labelNames: ['workflow_id', 'workflow_name'],
+			async collect() {
+				this.reset();
+
+				const cachedValue = await cacheService.get<string>(cacheKey);
+
+				let workflows: Array<{ id: string; name: string }>;
+
+				if (cachedValue !== undefined) {
+					workflows = jsonParse(String(cachedValue), { fallbackValue: [] });
+				} else {
+					workflows = await workflowRepository.find({ select: ['id', 'name'] });
+					await cacheService.set(cacheKey, JSON.stringify(workflows), cacheTtl);
+				}
+
+				for (const { id, name } of workflows) {
+					this.labels({ workflow_id: id, workflow_name: name }).set(1);
+				}
+			},
+		});
 	}
 
 	@OnLeaderTakeover()
