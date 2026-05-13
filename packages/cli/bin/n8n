@@ -40,6 +40,37 @@ if (process.env.E2E_TESTS !== 'true') {
 	require('dotenv').config({ quiet: true });
 }
 
+// Headless mode: when invoked as `n8n headless ...`, allocate an ephemeral
+// per-run temp tree and inject env vars BEFORE `dist/config` materialises
+// GlobalConfig, because TypeORM entity decorators in `@n8n/db` read DB type
+// and column shapes at module load time. Users can still override any of
+// these via the environment.
+if (process.argv[2] === 'headless') {
+	const { randomBytes } = require('crypto');
+	const { createTempTree, registerCleanup } = require('../dist/commands/headless/tempdb');
+	const tree = createTempTree();
+	registerCleanup(tree.rootDir);
+
+	const setDefault = (key, value) => {
+		if (process.env[key] === undefined || process.env[key] === '') {
+			process.env[key] = value;
+		}
+	};
+
+	setDefault('DB_TYPE', 'sqlite');
+	setDefault('DB_SQLITE_DATABASE', tree.dbPath);
+	setDefault('N8N_USER_FOLDER', tree.userFolderPath);
+	setDefault('N8N_ENCRYPTION_KEY', randomBytes(24).toString('base64'));
+	setDefault('N8N_RUNNERS_AUTH_TOKEN', randomBytes(24).toString('base64'));
+	setDefault('N8N_PUBLIC_API_DISABLED', 'true');
+	setDefault('N8N_PUBLIC_API_SWAGGERUI_DISABLED', 'true');
+	setDefault('N8N_DIAGNOSTICS_ENABLED', 'false');
+	setDefault('N8N_VERSION_NOTIFICATIONS_ENABLED', 'false');
+	setDefault('N8N_TEMPLATES_ENABLED', 'false');
+	setDefault('N8N_HIRING_BANNER_ENABLED', 'false');
+	setDefault('EXTERNAL_FRONTEND_HOOKS_URLS', '');
+}
+
 // Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
 // _before_ typeorm entities in `@n8n/db` are loaded, as typeorm entity decorators rely on
 // `GlobalConfig.database.type` to decide on column types and timestamp syntax.
