@@ -210,7 +210,8 @@ export class ToolComputerUse implements INodeType {
 		if (!this.getGatewayTools || !this.callGatewayTool) {
 			throw new NodeOperationError(this.getNode(), 'Computer Use requires gateway support');
 		}
-		const { getGatewayTools, callGatewayTool } = this;
+		const getGatewayTools = this.getGatewayTools.bind(this);
+		const callGatewayTool = this.callGatewayTool.bind(this);
 
 		const node = this.getNode();
 		const credentials = await this.getCredentials('deviceConnectionApi');
@@ -309,7 +310,8 @@ export class ToolComputerUse implements INodeType {
 		if (!this.getGatewayTools || !this.callGatewayTool) {
 			throw new NodeOperationError(this.getNode(), 'Computer Use requires gateway support');
 		}
-		const { getGatewayTools, callGatewayTool } = this;
+		const getGatewayTools = this.getGatewayTools.bind(this);
+		const callGatewayTool = this.callGatewayTool.bind(this);
 
 		const node = this.getNode();
 		const items = this.getInputData();
