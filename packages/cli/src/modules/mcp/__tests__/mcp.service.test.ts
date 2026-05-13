@@ -20,6 +20,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -73,6 +74,7 @@ describe('McpService', () => {
 			mockInstance(ExecutionService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
+			mockInstance(EphemeralNodeExecutor),
 		);
 	});
 
@@ -113,6 +115,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(EphemeralNodeExecutor),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -318,6 +321,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(EphemeralNodeExecutor),
 			);
 
 			const server = await service.getServer(user);
@@ -360,6 +364,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(EphemeralNodeExecutor),
 			);
 
 			const server = await service.getServer(user);

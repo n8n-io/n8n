@@ -20,6 +20,9 @@ import {
 export function getMcpInstructions(isBuilderEnabled: boolean): string {
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
+	const EPHEMERAL_NODE_GUIDANCE =
+		'Single-node execution: when the user wants to run one node (test an HTTP request, send a Slack message, query a database) without a workflow, use execute_ephemeral_node. Call list_credentials first to get { id, name } and search_workflow_nodes to confirm nodeType + nodeTypeVersion. For invoking an existing workflow, use execute_workflow instead.';
+
 	const BUILDER_INSTRUCTIONS = `This MCP server provides tools to build n8n workflows programmatically using the n8n Workflow SDK.
 
 To build n8n workflows, follow these steps in order:
@@ -42,5 +45,6 @@ To build n8n workflows, follow these steps in order:
 
 9. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.`;
 
-	return isBuilderEnabled ? `${INTRO}\n\n${BUILDER_INSTRUCTIONS}` : INTRO;
+	const base = `${INTRO}\n\n${EPHEMERAL_NODE_GUIDANCE}`;
+	return isBuilderEnabled ? `${base}\n\n${BUILDER_INSTRUCTIONS}` : base;
 }
