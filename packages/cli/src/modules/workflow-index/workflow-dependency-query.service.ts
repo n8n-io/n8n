@@ -7,6 +7,9 @@ import type {
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
 	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -43,6 +46,9 @@ export class WorkflowDependencyQueryService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async getDependencyCounts(
@@ -106,7 +112,7 @@ export class WorkflowDependencyQueryService {
 			this.filterByAccess([...maps.allDtIds], 'dataTable', user),
 		]);
 
-		const [credentials, workflows, dataTables] = await Promise.all([
+		const [credentials, workflows, dataTables, wfOwners, credOwners] = await Promise.all([
 			accessibleCredIds.length > 0
 				? this.credentialsRepository.find({
 						where: { id: In(accessibleCredIds) },
@@ -122,10 +128,44 @@ export class WorkflowDependencyQueryService {
 			accessibleDtIds.length > 0
 				? this.dataTableRepository.find({
 						where: { id: In(accessibleDtIds) },
-						select: ['id', 'name'],
+						select: ['id', 'name', 'projectId'],
+					})
+				: [],
+			accessibleReferencedWfIds.length > 0
+				? this.sharedWorkflowRepository.find({
+						where: { workflowId: In(accessibleReferencedWfIds), role: 'workflow:owner' },
+						select: ['workflowId', 'projectId'],
+					})
+				: [],
+			accessibleCredIds.length > 0
+				? this.sharedCredentialsRepository.find({
+						where: { credentialsId: In(accessibleCredIds), role: 'credential:owner' },
+						select: ['credentialsId', 'projectId'],
 					})
 				: [],
 		]);
+
+		const wfProjects = new Map<string, string>();
+		const credProjects = new Map<string, string>();
+		const dtProjects = new Map<string, string>();
+		for (const sw of wfOwners) wfProjects.set(sw.workflowId, sw.projectId);
+		for (const sc of credOwners) credProjects.set(sc.credentialsId, sc.projectId);
+		for (const dt of dataTables) dtProjects.set(dt.id, dt.projectId);
+
+		const projectIds = new Set<string>([
+			...wfProjects.values(),
+			...credProjects.values(),
+			...dtProjects.values(),
+		]);
+		const projects =
+			projectIds.size > 0
+				? await this.projectRepository.find({
+						where: { id: In([...projectIds]) },
+						select: ['id', 'name'],
+					})
+				: [];
+		const projectNames = new Map<string, string>();
+		for (const p of projects) projectNames.set(p.id, p.name ?? p.id);
 
 		const wfNames = new Map<string, string>();
 		const credNames = new Map<string, string>();
@@ -134,7 +174,15 @@ export class WorkflowDependencyQueryService {
 		for (const c of credentials) credNames.set(c.id, c.name ?? c.id);
 		for (const dt of dataTables) dtNames.set(dt.id, dt.name ?? dt.id);
 
-		return buildDotGraph(maps, { wfNames, credNames, dtNames });
+		return buildDotGraph(maps, {
+			wfNames,
+			credNames,
+			dtNames,
+			wfProjects,
+			credProjects,
+			dtProjects,
+			projectNames,
+		});
 	}
 
 	/** Return resolved dependencies for each input resource, excluding inaccessible ones. */
@@ -388,18 +436,39 @@ function dotEscape(value: string): string {
 	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+type ResourcePrefix = 'wf' | 'cred' | 'dt';
+
+const RESOURCE_STYLE: Record<ResourcePrefix, { shape: string; fillcolor: string; color: string }> =
+	{
+		// Workflows: blue
+		wf: { shape: 'box', fillcolor: '#DBEAFE', color: '#1D4ED8' },
+		// Credentials: green
+		cred: { shape: 'ellipse', fillcolor: '#DCFCE7', color: '#15803D' },
+		// Data tables: orange
+		dt: { shape: 'cylinder', fillcolor: '#FED7AA', color: '#C2410C' },
+	};
+
+function sanitizeProjectClusterId(projectId: string): string {
+	return projectId.replace(/[^A-Za-z0-9_]/g, '_');
+}
+
 function buildDotGraph(
 	maps: RawDepMaps,
-	names: {
+	info: {
 		wfNames: Map<string, string>;
 		credNames: Map<string, string>;
 		dtNames: Map<string, string>;
+		wfProjects: Map<string, string>;
+		credProjects: Map<string, string>;
+		dtProjects: Map<string, string>;
+		projectNames: Map<string, string>;
 	},
 ): string {
 	const lines: string[] = [];
 	lines.push('digraph WorkflowDependencies {');
 	lines.push('  rankdir=LR;');
-	lines.push('  node [fontname="Helvetica"];');
+	lines.push('  compound=true;');
+	lines.push('  node [fontname="Helvetica", style="filled,rounded"];');
 	lines.push('  edge [fontname="Helvetica", fontsize=10];');
 	lines.push('');
 
@@ -407,7 +476,7 @@ function buildDotGraph(
 	let restrictedCounter = 0;
 	const nodeIdFor = (
 		id: string,
-		prefix: 'wf' | 'cred' | 'dt',
+		prefix: ResourcePrefix,
 		nameMap: Map<string, string>,
 	): { nodeId: string; accessible: boolean } => {
 		if (nameMap.has(id)) return { nodeId: `${prefix}_${id}`, accessible: true };
@@ -419,40 +488,126 @@ function buildDotGraph(
 		return { nodeId: placeholder, accessible: false };
 	};
 
-	const emittedNodes = new Set<string>();
-	const declareNode = (
-		id: string,
-		prefix: 'wf' | 'cred' | 'dt',
-		nameMap: Map<string, string>,
-		shape: string,
-	) => {
-		const { nodeId, accessible } = nodeIdFor(id, prefix, nameMap);
-		if (emittedNodes.has(nodeId)) return nodeId;
-		emittedNodes.add(nodeId);
-
-		if (accessible) {
-			const label = dotEscape(nameMap.get(id)!);
-			lines.push(`  "${nodeId}" [label="${label}", shape=${shape}];`);
-		} else {
-			lines.push(`  "${nodeId}" [label="(restricted)", shape=${shape}, style=dashed, color=gray];`);
-		}
-		return nodeId;
+	const accessibleNodeLine = (nodeId: string, label: string, prefix: ResourcePrefix): string => {
+		const { shape, fillcolor, color } = RESOURCE_STYLE[prefix];
+		return `    "${nodeId}" [label="${dotEscape(label)}", shape=${shape}, fillcolor="${fillcolor}", color="${color}"];`;
+	};
+	const restrictedNodeLine = (nodeId: string, prefix: ResourcePrefix): string => {
+		const { shape } = RESOURCE_STYLE[prefix];
+		return `    "${nodeId}" [label="(restricted)", shape=${shape}, style="filled,dashed,rounded", fillcolor="#F3F4F6", color="#6B7280"];`;
 	};
 
-	for (const id of maps.allWfIds) declareNode(id, 'wf', names.wfNames, 'box');
-	for (const id of maps.allCredIds) declareNode(id, 'cred', names.credNames, 'ellipse');
-	for (const id of maps.allDtIds) declareNode(id, 'dt', names.dtNames, 'cylinder');
+	// Bucket accessible nodes by their owning project; track unprojected/orphans.
+	const byProject = new Map<string, { wfs: Set<string>; creds: Set<string>; dts: Set<string> }>();
+	const orphans = { wfs: new Set<string>(), creds: new Set<string>(), dts: new Set<string>() };
+	const bucket = (set: 'wfs' | 'creds' | 'dts', id: string, projectId: string | undefined) => {
+		if (!projectId) {
+			orphans[set].add(id);
+			return;
+		}
+		let entry = byProject.get(projectId);
+		if (!entry) {
+			entry = { wfs: new Set(), creds: new Set(), dts: new Set() };
+			byProject.set(projectId, entry);
+		}
+		entry[set].add(id);
+	};
+
+	const restrictedWfs = new Set<string>();
+	const restrictedCreds = new Set<string>();
+	const restrictedDts = new Set<string>();
+
+	for (const id of maps.allWfIds) {
+		if (info.wfNames.has(id)) bucket('wfs', id, info.wfProjects.get(id));
+		else restrictedWfs.add(id);
+	}
+	for (const id of maps.allCredIds) {
+		if (info.credNames.has(id)) bucket('creds', id, info.credProjects.get(id));
+		else restrictedCreds.add(id);
+	}
+	for (const id of maps.allDtIds) {
+		if (info.dtNames.has(id)) bucket('dts', id, info.dtProjects.get(id));
+		else restrictedDts.add(id);
+	}
+
+	// Emit one cluster per project (sorted by project name for stable output).
+	const sortedProjectIds = [...byProject.keys()].sort((a, b) => {
+		const na = info.projectNames.get(a) ?? a;
+		const nb = info.projectNames.get(b) ?? b;
+		return na.localeCompare(nb);
+	});
+
+	for (const projectId of sortedProjectIds) {
+		const entry = byProject.get(projectId)!;
+		const projectLabel = dotEscape(info.projectNames.get(projectId) ?? projectId);
+		lines.push(`  subgraph cluster_project_${sanitizeProjectClusterId(projectId)} {`);
+		lines.push(`    label="${projectLabel}";`);
+		lines.push('    style="rounded,filled";');
+		lines.push('    fillcolor="#F9FAFB";');
+		lines.push('    color="#D1D5DB";');
+		for (const id of entry.wfs) {
+			lines.push(accessibleNodeLine(`wf_${id}`, info.wfNames.get(id)!, 'wf'));
+		}
+		for (const id of entry.creds) {
+			lines.push(accessibleNodeLine(`cred_${id}`, info.credNames.get(id)!, 'cred'));
+		}
+		for (const id of entry.dts) {
+			lines.push(accessibleNodeLine(`dt_${id}`, info.dtNames.get(id)!, 'dt'));
+		}
+		lines.push('  }');
+	}
+
+	// Resources we can read but whose owning project we couldn't resolve.
+	if (orphans.wfs.size + orphans.creds.size + orphans.dts.size > 0) {
+		lines.push('  subgraph cluster_project_unassigned {');
+		lines.push('    label="(no project)";');
+		lines.push('    style="rounded,filled";');
+		lines.push('    fillcolor="#F9FAFB";');
+		lines.push('    color="#D1D5DB";');
+		for (const id of orphans.wfs) {
+			lines.push(accessibleNodeLine(`wf_${id}`, info.wfNames.get(id)!, 'wf'));
+		}
+		for (const id of orphans.creds) {
+			lines.push(accessibleNodeLine(`cred_${id}`, info.credNames.get(id)!, 'cred'));
+		}
+		for (const id of orphans.dts) {
+			lines.push(accessibleNodeLine(`dt_${id}`, info.dtNames.get(id)!, 'dt'));
+		}
+		lines.push('  }');
+	}
+
+	// Inaccessible resources: group together so the user sees "this part of the graph is hidden".
+	if (restrictedWfs.size + restrictedCreds.size + restrictedDts.size > 0) {
+		lines.push('  subgraph cluster_restricted {');
+		lines.push('    label="Restricted";');
+		lines.push('    style="rounded,filled,dashed";');
+		lines.push('    fillcolor="#F3F4F6";');
+		lines.push('    color="#9CA3AF";');
+		for (const id of restrictedWfs) {
+			const { nodeId } = nodeIdFor(id, 'wf', info.wfNames);
+			lines.push(restrictedNodeLine(nodeId, 'wf'));
+		}
+		for (const id of restrictedCreds) {
+			const { nodeId } = nodeIdFor(id, 'cred', info.credNames);
+			lines.push(restrictedNodeLine(nodeId, 'cred'));
+		}
+		for (const id of restrictedDts) {
+			const { nodeId } = nodeIdFor(id, 'dt', info.dtNames);
+			lines.push(restrictedNodeLine(nodeId, 'dt'));
+		}
+		lines.push('  }');
+	}
 
 	lines.push('');
 
 	const emitEdges = (
 		sourceMap: Map<string, Set<string>>,
-		targetPrefix: 'wf' | 'cred' | 'dt',
+		targetPrefix: ResourcePrefix,
 		targetNames: Map<string, string>,
 		attrs: string,
 	) => {
 		for (const [sourceId, targets] of sourceMap) {
-			const source = nodeIdFor(sourceId, 'wf', names.wfNames).nodeId;
+			const source = nodeIdFor(sourceId, 'wf', info.wfNames).nodeId;
 			for (const targetId of targets) {
 				const target = nodeIdFor(targetId, targetPrefix, targetNames).nodeId;
 				lines.push(`  "${source}" -> "${target}" [${attrs}];`);
@@ -460,10 +615,10 @@ function buildDotGraph(
 		}
 	};
 
-	emitEdges(maps.subMap, 'wf', names.wfNames, 'label="calls"');
-	emitEdges(maps.errorWfMap, 'wf', names.wfNames, 'label="error", style=dashed');
-	emitEdges(maps.credMap, 'cred', names.credNames, 'label="uses", color="#888888"');
-	emitEdges(maps.dtMap, 'dt', names.dtNames, 'label="uses", color="#888888"');
+	emitEdges(maps.subMap, 'wf', info.wfNames, 'label="calls"');
+	emitEdges(maps.errorWfMap, 'wf', info.wfNames, 'label="error", style=dashed');
+	emitEdges(maps.credMap, 'cred', info.credNames, 'label="uses", color="#888888"');
+	emitEdges(maps.dtMap, 'dt', info.dtNames, 'label="uses", color="#888888"');
 
 	lines.push('}');
 	return lines.join('\n') + '\n';
