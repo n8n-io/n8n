@@ -35,13 +35,12 @@ export function registerCleanup(rootDir: string): () => void {
 	};
 
 	// 'exit' fires on normal termination and after explicit process.exit() calls.
+	// We deliberately do NOT register SIGINT/SIGTERM handlers here — BaseCommand
+	// installs its own (calling stopProcess + shutdownService.shutdown), and a
+	// competing tempdb handler that called process.exit synchronously would
+	// preempt that orderly shutdown. The natural-exit path after BaseCommand's
+	// shutdown completes fires 'exit' and runs cleanup.
 	process.once('exit', cleanup);
-
-	// Signal handlers translate the signal into a normal exit so 'exit' runs cleanup.
-	// Using process.exit (not cleanup directly) lets command-level handlers registered
-	// later via prependOnceListener run their orderly-shutdown logic first.
-	process.once('SIGINT', () => process.exit(130));
-	process.once('SIGTERM', () => process.exit(143));
 
 	process.once('uncaughtException', (error) => {
 		// eslint-disable-next-line no-console

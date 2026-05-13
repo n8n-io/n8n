@@ -10,6 +10,7 @@ import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -58,5 +59,16 @@ export const engineAdapter = {
 		}
 
 		return { status: 'success' };
+	},
+
+	async waitWhileActive(signal: AbortSignal): Promise<void> {
+		if (signal.aborted) return;
+		await new Promise<void>((resolve) => {
+			signal.addEventListener('abort', () => resolve(), { once: true });
+		});
+	},
+
+	async deactivateAll(): Promise<void> {
+		await Container.get(ActiveWorkflowManager).removeAll();
 	},
 };
