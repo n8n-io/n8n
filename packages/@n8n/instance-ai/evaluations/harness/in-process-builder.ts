@@ -638,7 +638,7 @@ function silentLogger(): Logger {
 // In-memory event bus — the stream executor publishes mapped events here.
 // ---------------------------------------------------------------------------
 
-function createInMemoryEventBus(): InstanceAiEventBus {
+export function createInMemoryEventBus(): InstanceAiEventBus {
 	const storeByThread = new Map<string, StoredEvent[]>();
 	const subscribersByThread = new Map<string, Array<(event: StoredEvent) => void>>();
 
@@ -683,7 +683,7 @@ function createInMemoryEventBus(): InstanceAiEventBus {
 	};
 }
 
-function wrapEventBusWithObserver(
+export function wrapEventBusWithObserver(
 	bus: InstanceAiEventBus,
 	observe: (event: InstanceAiEvent) => void,
 ): InstanceAiEventBus {

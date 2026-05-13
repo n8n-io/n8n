@@ -45,16 +45,23 @@ export type {
 	CompactFn,
 	NewObservation,
 	Observation,
+	ObservationCategory,
 	ObservationCursor,
+	ObservationGapContext,
 	ObservationLockHandle,
 	ObservationalMemoryConfig,
+	ObservationalMemoryTrigger,
 	ObserveFn,
 	ScopeKind,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
-export { OBSERVATION_SCHEMA_VERSION } from './types';
+export {
+	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
+	OBSERVATION_CATEGORIES,
+	OBSERVATION_SCHEMA_VERSION,
+} from './types';
 
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
@@ -109,10 +116,11 @@ export type {
 	ModelLimits,
 } from './sdk/catalog';
 export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
+export { WORKING_MEMORY_DEFAULT_INSTRUCTION } from './runtime/working-memory';
 export {
-	UPDATE_WORKING_MEMORY_TOOL_NAME,
-	WORKING_MEMORY_DEFAULT_INSTRUCTION,
-} from './runtime/working-memory';
+	DEFAULT_COMPACTOR_PROMPT,
+	DEFAULT_OBSERVER_PROMPT,
+} from './runtime/observational-cycle';
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
 export type {
