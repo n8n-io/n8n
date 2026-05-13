@@ -1,4 +1,4 @@
-import type { IRAggregateFn, IRFilter, IRHavingFilter, IRSelectItem } from '../ir';
+import type { IRAggregateFn, IRFilter, IRHavingFilter, IROrderBy, IRSelectItem } from '../ir';
 
 export type Dialect = 'postgresdb' | 'sqlite';
 
@@ -125,11 +125,7 @@ export function buildHaving(
 	}
 }
 
-export function buildOrderBy(
-	items: import('../ir').IROrderBy[],
-	dialect: Dialect,
-	columnExpr: ColumnExpr,
-): string {
+export function buildOrderBy(items: IROrderBy[], dialect: Dialect, columnExpr: ColumnExpr): string {
 	return items
 		.map((item) => {
 			const expr =

@@ -4,7 +4,7 @@
 // files. The compiler and executor (when added) may import from @n8n/typeorm
 // — that's the one deliberate, narrow leak. Everything else stays pure.
 
-export * from './ast';
+export type * from './ast';
 export * from './errors';
-export * from './ir';
-export * from './schema-map';
+export type * from './ir';
+export type * from './schema-map';

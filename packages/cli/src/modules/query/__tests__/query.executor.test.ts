@@ -1,11 +1,11 @@
 import type { DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import type { ExecutionStrategy } from '../engine/compiler';
+import type { SqlOnlyStrategy } from '../engine/compiler';
 import { ExecutionError } from '../engine/errors';
 import { QueryExecutor } from '../query.executor';
 
-const makeStrategy = (overrides: Partial<ExecutionStrategy> = {}): ExecutionStrategy => ({
+const makeStrategy = (overrides: Partial<SqlOnlyStrategy> = {}): SqlOnlyStrategy => ({
 	kind: 'sql-only',
 	sql: 'SELECT 1',
 	params: [],
@@ -100,7 +100,7 @@ describe('QueryExecutor', () => {
 	describe('statement timeout', () => {
 		it('throws STATEMENT_TIMEOUT when the query exceeds timeoutMs', async () => {
 			dataSource.query.mockImplementation(
-				() => new Promise((resolve) => setTimeout(() => resolve([]), 200)),
+				async () => await new Promise((resolve) => setTimeout(() => resolve([]), 200)),
 			);
 			let thrown: unknown;
 			try {
@@ -132,7 +132,7 @@ describe('QueryExecutor', () => {
 
 		it('does not re-wrap an ExecutionError thrown internally (e.g. timeout)', async () => {
 			dataSource.query.mockImplementation(
-				() => new Promise((resolve) => setTimeout(() => resolve([]), 200)),
+				async () => await new Promise((resolve) => setTimeout(() => resolve([]), 200)),
 			);
 			let thrown: unknown;
 			try {
@@ -148,7 +148,7 @@ describe('QueryExecutor', () => {
 	describe('custom timeout', () => {
 		it('honors caller-supplied timeoutMs (query finishes in time)', async () => {
 			dataSource.query.mockImplementation(
-				() => new Promise((resolve) => setTimeout(() => resolve([]), 20)),
+				async () => await new Promise((resolve) => setTimeout(() => resolve([]), 20)),
 			);
 			await expect(executor.execute(makeStrategy(), { timeoutMs: 200 })).resolves.toBeDefined();
 		});

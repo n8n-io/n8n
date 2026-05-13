@@ -49,7 +49,7 @@ export function compileForNodeOutput(ir: IRQuery, schema: SchemaMap): ExecutionS
 
 	switch (window.kind) {
 		case 'last':
-			lines.push(`  AND e."status" = 'success'`);
+			lines.push('  AND e."status" = \'success\'');
 			lines.push('ORDER BY e."startedAt" DESC');
 			lines.push(`LIMIT ${window.n}`);
 			break;

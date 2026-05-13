@@ -10,7 +10,7 @@ import {
 	type EngineErrorCode,
 } from '../engine/errors';
 import { QueryController } from '../query.controller';
-import { QueryService } from '../query.service';
+import type { QueryService } from '../query.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

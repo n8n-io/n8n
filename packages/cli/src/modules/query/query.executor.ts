@@ -49,9 +49,7 @@ export class QueryExecutor {
 	private async executePathA(
 		strategy: SqlOnlyStrategy,
 	): Promise<Omit<RunQueryResult, 'durationMs'>> {
-		const rows = (await this.dataSource.query(strategy.sql, strategy.params)) as Array<
-			Record<string, unknown>
-		>;
+		const rows = await this.dataSource.query(strategy.sql, strategy.params);
 		return {
 			columns: strategy.columns,
 			rows,
@@ -62,10 +60,7 @@ export class QueryExecutor {
 	private async executePathB(
 		strategy: SqlPlusJsStrategy,
 	): Promise<Omit<RunQueryResult, 'durationMs'>> {
-		const fetched = (await this.dataSource.query(
-			strategy.fetch.sql,
-			strategy.fetch.params,
-		)) as Array<{ _execution_id: unknown; _executed_at: unknown; _raw: string }>;
+		const fetched = await this.dataSource.query(strategy.fetch.sql, strategy.fetch.params);
 
 		const rows: ItemRow[] = [];
 		let truncated = false;
@@ -115,9 +110,10 @@ export class QueryExecutor {
 /**
  * Parses a flatted-encoded execution data blob and extracts the items emitted
  * by the named node (first run, first output port). Returns an empty array
- * when the node didn't run or produced no output.
+ * when the node didn't run, the blob isn't a string, or it's unparseable.
  */
-function extractNodeItems(raw: string, nodeName: string): Array<Record<string, unknown>> {
+function extractNodeItems(raw: unknown, nodeName: string): Array<Record<string, unknown>> {
+	if (typeof raw !== 'string') return [];
 	let parsed: unknown;
 	try {
 		parsed = flattedParse(raw);

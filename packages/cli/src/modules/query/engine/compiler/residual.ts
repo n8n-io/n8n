@@ -107,9 +107,13 @@ function compare(left: unknown, op: string, right: IRScalar): boolean {
 	return false;
 }
 
+function isNullish(x: unknown): boolean {
+	return x === null || x === undefined;
+}
+
 function looseEq(a: unknown, b: unknown): boolean {
 	if (a === b) return true;
-	if (a == null || b == null) return false;
+	if (isNullish(a) || isNullish(b)) return false;
 	// Coerce numbers ↔ numeric strings for SQL-ish equality.
 	if (typeof a === 'number' && typeof b === 'string') return a === Number(b);
 	if (typeof a === 'string' && typeof b === 'number') return Number(a) === b;
@@ -117,9 +121,9 @@ function looseEq(a: unknown, b: unknown): boolean {
 }
 
 function looseCompare(a: unknown, b: unknown): number {
-	if (a == null && b == null) return 0;
-	if (a == null) return -1;
-	if (b == null) return 1;
+	if (isNullish(a) && isNullish(b)) return 0;
+	if (isNullish(a)) return -1;
+	if (isNullish(b)) return 1;
 	if (typeof a === 'number' && typeof b === 'number') return a - b;
 	const as = String(a);
 	const bs = String(b);
