@@ -5,15 +5,23 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { computed, watch } from 'vue';
 
 import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
-const { compact, value, hasBinaryData, paneType, nodeGeneratesHtml, hasRenderableData } =
-	defineProps<{
-		compact: boolean;
-		value: IRunDataDisplayMode;
-		hasBinaryData: boolean;
-		paneType: NodePanelType;
-		nodeGeneratesHtml: boolean;
-		hasRenderableData: boolean;
-	}>();
+const {
+	compact,
+	value,
+	hasBinaryData,
+	paneType,
+	nodeGeneratesHtml,
+	nodeGeneratesDiff,
+	hasRenderableData,
+} = defineProps<{
+	compact: boolean;
+	value: IRunDataDisplayMode;
+	hasBinaryData: boolean;
+	paneType: NodePanelType;
+	nodeGeneratesHtml: boolean;
+	nodeGeneratesDiff: boolean;
+	hasRenderableData: boolean;
+}>();
 
 const emit = defineEmits<{ change: [IRunDataDisplayMode] }>();
 
@@ -31,6 +39,10 @@ const options = computed(() => {
 
 	if (paneType === 'output' && nodeGeneratesHtml) {
 		defaults.unshift({ label: 'HTML', value: 'html' });
+	}
+
+	if (paneType === 'output' && nodeGeneratesDiff) {
+		defaults.unshift({ label: i18n.baseText('runData.diff'), value: 'diff' });
 	}
 
 	if (hasRenderableData) {
@@ -68,6 +80,7 @@ watch(
 			<N8nIcon v-else-if="option.value === 'schema'" icon="schema" size="small" />
 			<N8nIcon v-else-if="option.value === 'html'" icon="file-code" size="small" />
 			<N8nIcon v-else-if="option.value === 'ai'" icon="text" size="small" />
+			<N8nIcon v-else-if="option.value === 'diff'" icon="file-diff" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>
 	</N8nRadioButtons>

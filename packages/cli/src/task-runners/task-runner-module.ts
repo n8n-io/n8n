@@ -10,6 +10,7 @@ import * as a from 'node:assert/strict';
 import { EventService } from '@/events/event.service';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import type { HarnessTaskRunnerProcess } from '@/task-runners/task-runner-process-harness';
 import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 import type { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
@@ -37,9 +38,13 @@ export class TaskRunnerModule {
 
 	private pyRunnerProcess: PyTaskRunnerProcess | undefined;
 
+	private harnessRunnerProcess: HarnessTaskRunnerProcess | undefined;
+
 	private jsRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
 	private pyRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
+
+	private harnessRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
 	constructor(
 		private readonly logger: Logger,
@@ -81,6 +86,13 @@ export class TaskRunnerModule {
 			}
 		})();
 
+		const stopHarnessRunnerProcessTask = (async () => {
+			if (this.harnessRunnerProcess) {
+				await this.harnessRunnerProcess.stop();
+				this.harnessRunnerProcess = undefined;
+			}
+		})();
+
 		const stopRunnerServerTask = (async () => {
 			if (this.taskBrokerHttpServer) {
 				await this.taskBrokerHttpServer.stop();
@@ -88,7 +100,12 @@ export class TaskRunnerModule {
 			}
 		})();
 
-		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask, stopRunnerServerTask]);
+		await Promise.all([
+			stopRunnerProcessTask,
+			stopPythonRunnerProcessTask,
+			stopHarnessRunnerProcessTask,
+			stopRunnerServerTask,
+		]);
 	}
 
 	private async loadTaskRequester() {
@@ -154,6 +171,22 @@ export class TaskRunnerModule {
 			this.onRunnerRestartLoopDetected,
 		);
 		await this.pyRunnerProcess.start();
+
+		// Start the harness runner if enabled
+		if (this.runnerConfig.harnessEnabled) {
+			const { HarnessTaskRunnerProcess } = await import(
+				'@/task-runners/task-runner-process-harness'
+			);
+			this.harnessRunnerProcess = Container.get(HarnessTaskRunnerProcess);
+			this.harnessRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+				this.harnessRunnerProcess,
+			);
+			this.harnessRunnerProcessRestartLoopDetector.on(
+				'restart-loop-detected',
+				this.onRunnerRestartLoopDetected,
+			);
+			await this.harnessRunnerProcess.start();
+		}
 	}
 
 	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {

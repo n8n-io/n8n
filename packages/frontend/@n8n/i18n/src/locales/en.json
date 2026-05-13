@@ -2769,6 +2769,7 @@
 	"runData.linking.hint": "Link displayed input and output runs",
 	"runData.unlinking.hint": "Unlink displayed input and output runs",
 	"runData.binary": "Binary",
+	"runData.diff": "Diff",
 	"runData.copyItemPath": "Copy Item Path",
 	"runData.copyItemPath.toast": "Item path copied",
 	"runData.copyParameterPath": "Copy Parameter Path",

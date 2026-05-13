@@ -21,6 +21,7 @@ export const LOG_SCOPES = [
 	'task-runner',
 	'task-runner-js',
 	'task-runner-py',
+	'task-runner-harness',
 	'insights',
 	'workflow-activation',
 	'ssh-client',
@@ -136,6 +137,7 @@ export class LoggingConfig {
 	 * - `waiting-executions`
 	 * - `task-runner-js`
 	 * - `task-runner-py`
+	 * - `task-runner-harness`
 	 * - `workflow-activation`
 	 * - `insights`
 	 * - `chat-hub`

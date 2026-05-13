@@ -343,6 +343,12 @@ describe('GlobalConfig', () => {
 			heartbeatInterval: 30,
 			grantTokenTtl: 30,
 			insecureMode: false,
+			harnessEnabled: false,
+			harnessTimeout: 600,
+			harnessMaxConcurrency: 3,
+			harnessMaxOutputSize: 10 * 1024 * 1024,
+			harnessWorkspaceRoot: '',
+			harnessWorkspaceRetention: 0,
 		},
 		sentry: {
 			backendDsn: '',

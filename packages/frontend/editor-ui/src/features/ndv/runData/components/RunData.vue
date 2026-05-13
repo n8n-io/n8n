@@ -32,6 +32,7 @@ import {
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
 	HTML_NODE_TYPE,
+	OPENCODE_HARNESS_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -106,6 +107,7 @@ const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunData
 
 const LazyRunDataSchema = defineAsyncComponent(async () => await import('./VirtualSchema.vue'));
 const LazyRunDataHtml = defineAsyncComponent(async () => await import('./RunDataHtml.vue'));
+const LazyRunDataDiff = defineAsyncComponent(async () => await import('./RunDataDiff.vue'));
 const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('./RunDataParsedAiContent.vue'),
 );
@@ -1432,9 +1434,16 @@ const shouldDisplayHtml = computed(
 		node.value.parameters.operation === 'generateHtmlTemplate',
 );
 
+const shouldDisplayDiff = computed(() => {
+	const type = node.value?.type;
+	return type === OPENCODE_HARNESS_NODE_TYPE;
+});
+
 function setDisplayMode() {
 	if (shouldDisplayHtml.value) {
 		emit('displayModeChange', 'html');
+	} else if (shouldDisplayDiff.value) {
+		emit('displayModeChange', 'diff');
 	}
 }
 
@@ -1549,6 +1558,7 @@ defineExpose({ enterEditMode });
 					:has-binary-data="binaryData.length > 0"
 					:pane-type="paneType"
 					:node-generates-html="shouldDisplayHtml"
+					:node-generates-diff="shouldDisplayDiff"
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
@@ -2159,6 +2169,10 @@ defineExpose({ enterEditMode });
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
 				<LazyRunDataHtml :input-html="inputHtml" />
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'diff'">
+				<LazyRunDataDiff :input-data="inputDataPage" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">

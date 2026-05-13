@@ -55,6 +55,7 @@ export const AI_CATEGORY_MCP_NODES = 'Model Context Protocol';
 export const AI_CATEGORY_HUMAN_IN_THE_LOOP = HITL_SUBCATEGORY;
 export const AI_EVALUATION = 'Evaluation';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
+export const AI_CATEGORY_HARNESS = 'Harness';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const AI_SECTION_RECOMMENDED_TOOLS = 'Recommended Tools';

@@ -78,4 +78,30 @@ export class TaskRunnersConfig {
 	 */
 	@Env('N8N_RUNNERS_INSECURE_MODE')
 	insecureMode: boolean = false;
+
+	// --- Harness runner configuration ---
+
+	/** Whether to enable the harness task runner for executing external CLI tools. */
+	@Env('N8N_RUNNERS_HARNESS_ENABLED')
+	harnessEnabled: boolean = false;
+
+	/** Default timeout in seconds for harness task execution (CLI tool runtime). */
+	@Env('N8N_RUNNERS_HARNESS_TIMEOUT')
+	harnessTimeout: number = 600; // 10 minutes
+
+	/** Maximum number of concurrent harness tasks. */
+	@Env('N8N_RUNNERS_HARNESS_MAX_CONCURRENCY')
+	harnessMaxConcurrency: number = 3;
+
+	/** Maximum stdout/stderr capture size in bytes per harness task. */
+	@Env('N8N_RUNNERS_HARNESS_MAX_OUTPUT_SIZE')
+	harnessMaxOutputSize: number = 10 * 1024 * 1024; // 10 MB
+
+	/** Root directory for harness execution workspaces. Defaults to `<storagePath>/harness-workspaces`. */
+	@Env('N8N_HARNESS_WORKSPACE_ROOT')
+	harnessWorkspaceRoot: string = '';
+
+	/** How long in seconds to retain workspace directories after execution (0 = immediate cleanup). */
+	@Env('N8N_HARNESS_WORKSPACE_RETENTION_SECONDS')
+	harnessWorkspaceRetention: number = 0;
 }

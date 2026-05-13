@@ -1,0 +1,45 @@
+{
+  "name": "@n8n/n8n-nodes-harness",
+  "version": "0.1.0",
+  "description": "n8n Harness Nodes - Execute external AI agents as workflow components",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint nodes credentials src --quiet",
+    "lint:fix": "eslint nodes credentials src --fix",
+    "test": "jest",
+    "test:unit": "jest"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/OpenCodeApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/OpenCode/OpenCode.node.js"
+    ]
+  },
+  "dependencies": {
+    "@n8n/task-runner-harness": "workspace:*",
+    "mime-types": "catalog:",
+    "n8n-workflow": "workspace:*"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
+}

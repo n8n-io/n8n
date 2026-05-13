@@ -38,6 +38,7 @@ export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
+export const OPENCODE_HARNESS_NODE_TYPE = '@n8n/n8n-nodes-harness.openCode';
 export const CHAT_HITL_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatHitlTool';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const AGENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';

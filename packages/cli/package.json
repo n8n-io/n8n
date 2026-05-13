@@ -126,6 +126,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/syslog-client": "workspace:*",
     "@n8n/task-runner": "workspace:*",
+    "@n8n/task-runner-harness": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
