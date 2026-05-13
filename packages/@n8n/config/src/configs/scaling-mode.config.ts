@@ -6,7 +6,7 @@ const workerPoolNameSchema = z
 	.string()
 	.regex(
 		/^([a-z0-9][a-z0-9-]{0,62})?$/,
-		'N8N_WORKER_POOL must be empty or 1-63 chars of lowercase alphanumeric and hyphens, starting with alphanumeric',
+		'N8N_WORKER_POOL_NAME must be empty or 1-63 chars of lowercase alphanumeric and hyphens, starting with alphanumeric',
 	);
 
 @Config
@@ -17,7 +17,7 @@ class WorkerPoolConfig {
 	 * When set, the worker listens to `jobs-<name>` instead.
 	 * Read only on worker instances; ignored on main and webhook.
 	 */
-	@Env('N8N_WORKER_POOL', workerPoolNameSchema)
+	@Env('N8N_WORKER_POOL_NAME', workerPoolNameSchema)
 	name: string = '';
 }
 

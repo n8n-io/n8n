@@ -14,20 +14,20 @@ describe('ScalingModeConfig.workerPool', () => {
 		process.env = originalEnv;
 	});
 
-	test('defaults to empty string when N8N_WORKER_POOL is unset', () => {
+	test('defaults to empty string when N8N_WORKER_POOL_NAME is unset', () => {
 		process.env = {};
 		const config = Container.get(ScalingModeConfig);
 		expect(config.workerPool.name).toBe('');
 	});
 
 	test('accepts a valid label', () => {
-		process.env = { N8N_WORKER_POOL: 'gpu' };
+		process.env = { N8N_WORKER_POOL_NAME: 'gpu' };
 		const config = Container.get(ScalingModeConfig);
 		expect(config.workerPool.name).toBe('gpu');
 	});
 
 	test('accepts lowercase alphanumeric with hyphens', () => {
-		process.env = { N8N_WORKER_POOL: 'a1-b2-c3' };
+		process.env = { N8N_WORKER_POOL_NAME: 'a1-b2-c3' };
 		const config = Container.get(ScalingModeConfig);
 		expect(config.workerPool.name).toBe('a1-b2-c3');
 	});
@@ -42,12 +42,12 @@ describe('ScalingModeConfig.workerPool', () => {
 		['too long', 'a'.repeat(64)],
 	])('falls back to default and warns on invalid label (%s)', (_label, value) => {
 		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-		process.env = { N8N_WORKER_POOL: value };
+		process.env = { N8N_WORKER_POOL_NAME: value };
 
 		const config = Container.get(ScalingModeConfig);
 
 		expect(config.workerPool.name).toBe('');
-		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('N8N_WORKER_POOL'));
+		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('N8N_WORKER_POOL_NAME'));
 
 		consoleWarnSpy.mockRestore();
 	});
