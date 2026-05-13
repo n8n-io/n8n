@@ -352,6 +352,47 @@ describe('enqueueExecution', () => {
 			expect.any(Object),
 		);
 	});
+
+	describe('job priority', () => {
+		it.each([
+			{ name: 'manual/test (realtime)', realtime: true, settingsPriority: 'high', expected: 50 },
+			{ name: 'high-priority production', realtime: false, settingsPriority: 'high', expected: 25 },
+			{
+				name: 'default production',
+				realtime: false,
+				settingsPriority: 'default',
+				expected: 100,
+			},
+			{
+				name: 'production without explicit priority',
+				realtime: false,
+				settingsPriority: undefined,
+				expected: 100,
+			},
+		] as const)(
+			'enqueues $name with priority $expected',
+			async ({ realtime, settingsPriority, expected }) => {
+				const activeExecutions = Container.get(ActiveExecutions);
+				jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+				jest.spyOn(runner, 'processError').mockResolvedValue();
+				const data = mock<IWorkflowExecutionDataProcess>({
+					workflowData: {
+						nodes: [],
+						settings: settingsPriority ? { priority: settingsPriority } : {},
+					},
+					executionData: undefined,
+				});
+				addJob.mockRejectedValueOnce(new Error('stop for test purposes'));
+
+				await expect(
+					// @ts-expect-error Private method
+					runner.enqueueExecution('1', 'workflow-xyz', data, false, realtime),
+				).rejects.toThrow();
+
+				expect(addJob).toHaveBeenCalledWith(expect.any(Object), { priority: expected });
+			},
+		);
+	});
 });
 
 describe('workflow timeout with startedAt', () => {
