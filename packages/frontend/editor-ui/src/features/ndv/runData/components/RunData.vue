@@ -48,6 +48,9 @@ import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEdit
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import RunDataPinButton from './RunDataPinButton.vue';
+import RunDataGenerateSampleButton from './RunDataGenerateSampleButton.vue';
+import { useGenerateSampleData } from '@/features/ndv/runData/composables/useGenerateSampleData';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -256,6 +259,8 @@ const pinnedData = usePinnedData(node, {
 	runIndex: props.runIndex,
 	displayMode: props.displayMode,
 });
+const settingsStore = useSettingsStore();
+const sampleGenerator = useGenerateSampleData(node);
 const { isSubNodeType } = useNodeType({
 	node,
 });
@@ -635,6 +640,18 @@ const showPinButton = computed(
 const pinButtonDisabled = computed(
 	() => hasNoData.value || hasBinaryData.value || isReadOnly.value,
 );
+
+const showGenerateSampleButton = computed(
+	() =>
+		showPinButton.value &&
+		settingsStore.isAskAiEnabled &&
+		!isReadOnlyRoute.value &&
+		!readOnlyEnv.value &&
+		!isExecutionRedacted.value &&
+		sampleGenerator.canGenerate.value,
+);
+
+const generateSampleDisabled = computed(() => pinButtonDisabled.value || pinnedData.hasData.value);
 
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	if (!node.value) return null;
@@ -1570,6 +1587,13 @@ defineExpose({ enterEditMode });
 					icon="pencil"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
+				/>
+
+				<RunDataGenerateSampleButton
+					v-if="showGenerateSampleButton"
+					:disabled="generateSampleDisabled"
+					:loading="sampleGenerator.isGenerating.value"
+					@generate="sampleGenerator.generate()"
 				/>
 
 				<RunDataPinButton
