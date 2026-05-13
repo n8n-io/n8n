@@ -1,10 +1,34 @@
+import type { DataTableSummary, InstanceAiContext } from '../../../types';
 import { createEmptyEvalDataTable } from '../ensure-eval-data-table.service';
+
+const dataTableSummary = (id: string, name: string): DataTableSummary => ({
+	id,
+	name,
+	columns: [],
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-01T00:00:00.000Z',
+});
+
+const createContext = (
+	dataTableService: Pick<InstanceAiContext['dataTableService'], 'create' | 'insertRows'>,
+): InstanceAiContext =>
+	({
+		dataTableService,
+	}) as unknown as InstanceAiContext;
 
 describe('createEmptyEvalDataTable', () => {
 	it('creates a string-typed table with the requested columns', async () => {
-		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'Wf — eval samples' });
-		const insertRows = jest.fn();
-		const ctx = { dataTableService: { create, insertRows } } as any;
+		const create = jest
+			.fn<
+				ReturnType<InstanceAiContext['dataTableService']['create']>,
+				Parameters<InstanceAiContext['dataTableService']['create']>
+			>()
+			.mockResolvedValue(dataTableSummary('dt-1', 'Wf — eval samples'));
+		const insertRows = jest.fn<
+			ReturnType<InstanceAiContext['dataTableService']['insertRows']>,
+			Parameters<InstanceAiContext['dataTableService']['insertRows']>
+		>();
+		const ctx = createContext({ create, insertRows });
 
 		const result = await createEmptyEvalDataTable(ctx, {
 			workflowName: 'Wf',
@@ -26,10 +50,19 @@ describe('createEmptyEvalDataTable', () => {
 
 	it('retries with a nanoid suffix on name collision', async () => {
 		const create = jest
-			.fn()
+			.fn<
+				ReturnType<InstanceAiContext['dataTableService']['create']>,
+				Parameters<InstanceAiContext['dataTableService']['create']>
+			>()
 			.mockRejectedValueOnce(new Error('Data table already exists'))
-			.mockResolvedValueOnce({ id: 'dt-2', name: 'Wf — eval samples (abc12)' });
-		const ctx = { dataTableService: { create, insertRows: jest.fn() } } as any;
+			.mockResolvedValueOnce(dataTableSummary('dt-2', 'Wf — eval samples (abc12)'));
+		const ctx = createContext({
+			create,
+			insertRows: jest.fn<
+				ReturnType<InstanceAiContext['dataTableService']['insertRows']>,
+				Parameters<InstanceAiContext['dataTableService']['insertRows']>
+			>(),
+		});
 
 		const result = await createEmptyEvalDataTable(ctx, {
 			workflowName: 'Wf',
@@ -40,8 +73,19 @@ describe('createEmptyEvalDataTable', () => {
 	});
 
 	it('rethrows non-collision errors', async () => {
-		const create = jest.fn().mockRejectedValueOnce(new Error('database down'));
-		const ctx = { dataTableService: { create, insertRows: jest.fn() } } as any;
+		const create = jest
+			.fn<
+				ReturnType<InstanceAiContext['dataTableService']['create']>,
+				Parameters<InstanceAiContext['dataTableService']['create']>
+			>()
+			.mockRejectedValueOnce(new Error('database down'));
+		const ctx = createContext({
+			create,
+			insertRows: jest.fn<
+				ReturnType<InstanceAiContext['dataTableService']['insertRows']>,
+				Parameters<InstanceAiContext['dataTableService']['insertRows']>
+			>(),
+		});
 		await expect(
 			createEmptyEvalDataTable(ctx, { workflowName: 'Wf', columns: ['x'] }),
 		).rejects.toThrow('database down');

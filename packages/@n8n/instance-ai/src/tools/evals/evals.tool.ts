@@ -6,13 +6,13 @@ import { z } from 'zod';
 
 import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
 import { applyPinData } from './apply-pin-data.service';
-import { detectAgentNamedRefs, type NamedRef } from './detect-agent-named-refs.service';
-import { detectAiNodes } from './detect-ai-nodes';
-import { detectToolRefs } from './detect-tool-refs.service';
 import {
 	describeMetricForWorkflow,
 	recommendedMetricId,
 } from './describe-metric-for-workflow.service';
+import { detectAgentNamedRefs, type NamedRef } from './detect-agent-named-refs.service';
+import { detectAiNodes } from './detect-ai-nodes';
+import { detectToolRefs } from './detect-tool-refs.service';
 import { createEmptyEvalDataTable } from './ensure-eval-data-table.service';
 import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
@@ -39,11 +39,20 @@ const offerAction = z.object({
 	projectId: z.string().optional(),
 });
 
+const recommendMetricAction = z.object({
+	action: z
+		.literal('recommend-metric')
+		.describe(
+			'Opinionated single-metric suggestion. Suspends with an approve/deny widget showing the workflow-specific recommended metric. On approval returns `{ approved: true, metricId }` — pass that single id to `propose` and skip `select-metrics`. On denial returns `{ approved: false }` — fall through to `select-metrics` so the user can pick from the full list.',
+		),
+	workflowId: z.string(),
+});
+
 const selectMetricsAction = z.object({
 	action: z
 		.literal('select-metrics')
 		.describe(
-			'Show the user a multi-select widget listing the canned eval metrics with workflow-aware default-checked entries. Returns chosenMetricIds.',
+			'Multi-select picker over all canned metrics — call this ONLY when `recommend-metric` returned `{ approved: false }`. Returns chosenMetricIds.',
 		),
 	workflowId: z.string(),
 });
@@ -73,6 +82,7 @@ const offerDataPopulationAction = z.object({
 const inputSchema = sanitizeInputSchema(
 	z.discriminatedUnion('action', [
 		offerAction,
+		recommendMetricAction,
 		selectMetricsAction,
 		proposeAction,
 		offerDataPopulationAction,
@@ -127,6 +137,13 @@ const resumeSchema = z.union([confirmResumeSchema, questionsResumeSchema]);
 
 type ConfirmResume = z.infer<typeof confirmResumeSchema>;
 type QuestionsResume = z.infer<typeof questionsResumeSchema>;
+type SuspendPayload = z.infer<typeof suspendSchema>;
+type EvalsToolExecutionContext = {
+	agent?: {
+		resumeData?: unknown;
+		suspend?: (payload: SuspendPayload) => Promise<void>;
+	};
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -137,9 +154,9 @@ function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): stri
 			: `This workflow uses ${aiNodeNames.length} AI nodes.`;
 	const baseMessage =
 		`${subject} AI answers can change unpredictably when you tweak prompts, models, or data — ` +
-		`even small edits can break behavior you weren't planning to change. ` +
-		`Test cases let you re-run your workflow against a fixed set of inputs and check the answers stay correct over time. ` +
-		`Want to add some?`;
+		"even small edits can break behavior you weren't planning to change. " +
+		'Test cases let you re-run your workflow against a fixed set of inputs and check the answers stay correct over time. ' +
+		'Want to add some?';
 
 	if (namedRefs.length === 0) return baseMessage;
 
@@ -155,8 +172,27 @@ function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): stri
 		`${baseMessage}\n\n` +
 		`Setting this up will adjust your workflow slightly: the agent currently reads from ${sourceLabel} ${sourceNodes}, ` +
 		`and I'll route that data through the test inputs (columns ${targetColumns}) using a small Set node. ` +
-		`Your live behavior stays the same.`
+		'Your live behavior stays the same.'
 	);
+}
+
+function hasResumeData(ctx: EvalsToolExecutionContext): boolean {
+	const resumeData = ctx.agent?.resumeData;
+	return resumeData !== undefined && resumeData !== null;
+}
+
+function getConfirmResume(ctx: EvalsToolExecutionContext): ConfirmResume | undefined {
+	const resumeData = ctx.agent?.resumeData;
+	if (resumeData === undefined || resumeData === null) return undefined;
+	const parsed = confirmResumeSchema.safeParse(resumeData);
+	return parsed.success ? parsed.data : undefined;
+}
+
+function getQuestionsResume(ctx: EvalsToolExecutionContext): QuestionsResume | undefined {
+	const resumeData = ctx.agent?.resumeData;
+	if (resumeData === undefined || resumeData === null) return undefined;
+	const parsed = questionsResumeSchema.safeParse(resumeData);
+	return parsed.success ? parsed.data : undefined;
 }
 
 function isMetricId(id: string): id is MetricId {
@@ -200,22 +236,25 @@ export function createEvalsTool(context: InstanceAiContext) {
 		id: 'evals',
 		description:
 			"Eval suite orchestration. action='offer' → eligibility precheck after a fresh build; when eligible, returns a chat message you must output verbatim and then end the turn so the user can reply naturally. " +
-			"action='select-metrics' → multi-select widget for the user to choose canned metrics. " +
+			"action='recommend-metric' → opinionated single-metric suggestion; suspends with approve/deny. Call FIRST when choosing metrics. " +
+			"action='select-metrics' → multi-select picker; call ONLY when `recommend-metric` was denied. " +
 			"action='propose' → build the task spec for the eval-setup sub-agent (creates an empty DataTable by default). " +
 			"action='offer-data-population' → approve/deny widget after eval setup, asking whether to auto-populate the empty DataTable.",
 		inputSchema,
 		suspendSchema,
 		resumeSchema,
-		execute: async (input: Input, ctx: any) => {
+		execute: async (input: Input, ctx: EvalsToolExecutionContext) => {
 			switch (input.action) {
 				case 'offer':
-					return executeOffer(context, input, ctx);
+					return await executeOffer(context, input);
+				case 'recommend-metric':
+					return await executeRecommendMetric(context, input, ctx);
 				case 'select-metrics':
-					return executeSelectMetrics(context, input, ctx);
+					return await executeSelectMetrics(context, input, ctx);
 				case 'propose':
-					return executePropose(context, input);
+					return await executePropose(context, input);
 				case 'offer-data-population':
-					return executeOfferDataPopulation(context, input, ctx);
+					return await executeOfferDataPopulation(context, input, ctx);
 			}
 		},
 	});
@@ -223,11 +262,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 
 // ── action: offer ──────────────────────────────────────────────────────────
 
-async function executeOffer(
-	context: InstanceAiContext,
-	input: z.infer<typeof offerAction>,
-	_ctx: any,
-) {
+async function executeOffer(context: InstanceAiContext, input: z.infer<typeof offerAction>) {
 	const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
 	const detection = detectAiNodes(wf);
 
@@ -246,15 +281,63 @@ async function executeOffer(
 	};
 }
 
+// ── action: recommend-metric ───────────────────────────────────────────────
+
+function composeRecommendMessage(
+	workflow: WorkflowJSON,
+	agentName: string,
+	metricId: string,
+): string {
+	const name = isMetricId(metricId) ? METRIC_CATALOG[metricId].name : metricId;
+	const description = describeMetricForWorkflow(workflow, agentName, metricId);
+	const body = description ? `**${name}** — ${description}.` : `**${name}**.`;
+	return (
+		`Based on this workflow, I'd measure ${body} ` +
+		'Sound good? Approve to use it, or deny to pick a different metric from the full list.'
+	);
+}
+
+async function executeRecommendMetric(
+	context: InstanceAiContext,
+	input: z.infer<typeof recommendMetricAction>,
+	ctx: EvalsToolExecutionContext,
+) {
+	const resumeData = getConfirmResume(ctx);
+	const suspend = ctx.agent?.suspend;
+
+	const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
+	const detection = detectAiNodes(wf);
+	if (!detection.isAiWorkflow) {
+		return { skipped: true as const, reason: 'no-ai-nodes' as const };
+	}
+
+	const agentName = detection.aiNodeNames[0];
+	const metricId = recommendedMetricId(wf, agentName);
+
+	if (hasResumeData(ctx)) {
+		if (resumeData?.approved) {
+			return { approved: true as const, metricId };
+		}
+		return { approved: false as const };
+	}
+
+	await suspend?.({
+		requestId: nanoid(),
+		message: composeRecommendMessage(wf, agentName, metricId),
+		severity: 'info' as const,
+	});
+	return { approved: false as const };
+}
+
 // ── action: select-metrics ─────────────────────────────────────────────────
 
 async function executeSelectMetrics(
 	context: InstanceAiContext,
 	input: z.infer<typeof selectMetricsAction>,
-	ctx: any,
+	ctx: EvalsToolExecutionContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as QuestionsResume | undefined;
-	const suspend = ctx?.agent?.suspend;
+	const resumeData = getQuestionsResume(ctx);
+	const suspend = ctx.agent?.suspend;
 
 	const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
 	const detection = detectAiNodes(wf);
@@ -264,8 +347,8 @@ async function executeSelectMetrics(
 
 	const agentName = detection.aiNodeNames[0];
 
-	if (resumeData !== undefined && resumeData !== null) {
-		if (!resumeData.approved || !resumeData.answers) {
+	if (hasResumeData(ctx)) {
+		if (resumeData === undefined || !resumeData.approved || !resumeData.answers) {
 			return { chosenMetricIds: ['correctness'], answers: resumeData?.answers ?? [] };
 		}
 		const selected = resumeData.answers[0]?.selectedOptions ?? [];
@@ -419,10 +502,10 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 async function executeOfferDataPopulation(
 	context: InstanceAiContext,
 	input: z.infer<typeof offerDataPopulationAction>,
-	ctx: any,
+	ctx: EvalsToolExecutionContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ConfirmResume | undefined;
-	const suspend = ctx?.agent?.suspend;
+	const resumeData = getConfirmResume(ctx);
+	const suspend = ctx.agent?.suspend;
 
 	const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
 	const reqs = analyzeEvalDataRequirements(wf);
@@ -431,8 +514,8 @@ async function executeOfferDataPopulation(
 		return { skipped: true as const, reason: 'no-eval-target' as const };
 	}
 
-	if (resumeData !== undefined && resumeData !== null) {
-		if (!resumeData.approved) {
+	if (hasResumeData(ctx)) {
+		if (!resumeData?.approved) {
 			return { approved: false as const };
 		}
 		return {

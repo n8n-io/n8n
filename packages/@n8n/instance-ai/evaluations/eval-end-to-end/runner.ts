@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
-import { consumeSseStream } from '../clients/sse-client';
 import type { N8nClient, WorkflowCreatePayload, WorkflowResponse } from '../clients/n8n-client';
+import { consumeSseStream } from '../clients/sse-client';
 import type { EvalLogger } from '../harness/logger';
 import type { CapturedEvent } from '../types';
 import { extractToolSelection } from './tool-selection';
@@ -146,7 +146,7 @@ export async function startSseConnection(
 	);
 }
 
-export async function approveConfirmations(input: {
+async function approveConfirmations(input: {
 	client: ConfirmationClient;
 	events: CapturedEvent[];
 	approvedRequestIds: Set<string>;
@@ -682,5 +682,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function throwIfStreamFailed(error: unknown): void {
-	if (error) throw error;
+	if (!error) return;
+	if (error instanceof Error) throw error;
+	if (typeof error === 'string') throw new Error(error);
+	throw new Error('Stream failed');
 }

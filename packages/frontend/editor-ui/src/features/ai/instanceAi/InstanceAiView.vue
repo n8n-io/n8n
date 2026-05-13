@@ -62,14 +62,6 @@ onMounted(() => {
 	void store.loadThreads();
 	void store.fetchCredits();
 	store.startCreditsPushListener();
-	// Auto-submit a message staged by an external trigger (e.g. canvas eval
-	// setup CTA). Runs after the immediate `props.threadId` watch above, so
-	// `clearCurrentThread()` has already prepared a fresh thread id.
-	const pendingMessage = store.consumePendingInitialMessage();
-	if (pendingMessage && !props.threadId) {
-		handleSubmit(pendingMessage);
-	}
-	void nextTick(() => chatInputRef.value?.focus());
 
 	// Subscribe to push + fetch backend gateway state. The backend keeps the
 	// pairing alive across reloads, so the client never contacts the daemon

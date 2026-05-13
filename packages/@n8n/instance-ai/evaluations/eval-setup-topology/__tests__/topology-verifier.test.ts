@@ -1,6 +1,6 @@
 import type { WorkflowResponse } from '../../clients/n8n-client';
-import type { TopologySidecar } from '../types';
 import { verifyEvalSetupTopology } from '../topology-verifier';
+import type { TopologySidecar } from '../types';
 
 const originalWorkflow: WorkflowResponse = {
 	id: 'workflow-1',

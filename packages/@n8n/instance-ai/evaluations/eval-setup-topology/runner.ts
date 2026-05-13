@@ -1,13 +1,5 @@
 import crypto from 'node:crypto';
 
-import type { EvalLogger } from '../harness/logger';
-import { consumeSseStream } from '../clients/sse-client';
-import type { CapturedEvent } from '../types';
-import type {
-	DataTableCreateColumn,
-	N8nClient,
-	WorkflowCreatePayload,
-} from '../clients/n8n-client';
 import { extractToolSelection } from './tool-selection';
 import { verifyEvalSetupTopology } from './topology-verifier';
 import type {
@@ -18,6 +10,14 @@ import type {
 	TopologyFinding,
 	TopologyVerifierResult,
 } from './types';
+import type {
+	DataTableCreateColumn,
+	N8nClient,
+	WorkflowCreatePayload,
+} from '../clients/n8n-client';
+import { consumeSseStream } from '../clients/sse-client';
+import type { EvalLogger } from '../harness/logger';
+import type { CapturedEvent } from '../types';
 
 const SSE_SETTLE_DELAY_MS = 200;
 const POLL_INTERVAL_MS = 1_000;
@@ -106,7 +106,7 @@ export function extractConfirmationRequestId(event: CapturedEvent): string | und
 	return undefined;
 }
 
-export function isWorkflowUpdateConfirmation(event: CapturedEvent): boolean {
+function isWorkflowUpdateConfirmation(event: CapturedEvent): boolean {
 	if (event.type !== 'confirmation-request') {
 		return false;
 	}
@@ -425,7 +425,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function throwIfStreamFailed(error: unknown): void {
-	if (error) {
-		throw error;
-	}
+	if (!error) return;
+	if (error instanceof Error) throw error;
+	if (typeof error === 'string') throw new Error(error);
+	throw new Error('Stream failed');
 }

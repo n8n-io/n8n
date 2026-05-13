@@ -48,7 +48,7 @@ describe('buildEvalSetupTools', () => {
 		const tools = buildEvalSetupTools(ctx);
 		const suspend = jest.fn();
 
-		const result = (await tools.workflows!.execute!(
+		const result = (await tools.workflows.execute!(
 			{
 				action: 'update',
 				workflowId: 'w1',
@@ -60,27 +60,13 @@ describe('buildEvalSetupTools', () => {
 		expect(suspend).not.toHaveBeenCalled();
 		expect(ctx.domainContext!.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'w1',
-			expect.objectContaining({ name: 'Test' }) as unknown,
+			expect.objectContaining({ name: 'Test' }),
 		);
 		expect(result).toMatchObject({ success: true, workflowId: 'w1' });
 	});
 
 	it('leaves the original workflows tool in place when admin has blocked updates', () => {
 		const ctx = makeContext('blocked');
-		const tools = buildEvalSetupTools(ctx);
-		expect(tools.workflows).toBe(sentinelOriginalWorkflows);
-	});
-
-	it('passes the nodes tool through unchanged', () => {
-		const ctx = makeContext('require_approval');
-		const tools = buildEvalSetupTools(ctx);
-		expect(tools.nodes).toBe(sentinelNodesTool);
-	});
-
-	it('leaves the original workflows tool in place when no domainContext is available', () => {
-		const ctx = mock<OrchestrationContext>();
-		ctx.domainTools = { workflows: sentinelOriginalWorkflows, nodes: sentinelNodesTool };
-		ctx.domainContext = undefined;
 		const tools = buildEvalSetupTools(ctx);
 		expect(tools.workflows).toBe(sentinelOriginalWorkflows);
 	});

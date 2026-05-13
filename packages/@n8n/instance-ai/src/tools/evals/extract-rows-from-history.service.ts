@@ -1,7 +1,7 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { InstanceAiContext, NodeOutputResult } from '../../types';
 import { isRecord } from './column-ref-utils';
+import type { InstanceAiContext, NodeOutputResult } from '../../types';
 
 const SCAN_LIMIT = 100;
 const MAX_ROWS = 25;
@@ -108,10 +108,10 @@ export async function extractRowsFromExecutionHistory(
 					maxItems: 1,
 				});
 			}
-		} catch (err) {
+		} catch (error) {
 			ctx.logger?.warn('extract-rows: getNodeOutput failed', {
 				executionId: summary.id,
-				err,
+				error,
 			});
 			continue;
 		}

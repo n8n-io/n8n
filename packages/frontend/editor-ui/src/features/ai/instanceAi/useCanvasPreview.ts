@@ -4,7 +4,6 @@ import {
 	getLatestBuildResult,
 	getLatestWorkflowMutationResult,
 	getLatestExecutionId,
-	getLatestWorkflowSetupResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';

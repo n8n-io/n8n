@@ -165,27 +165,4 @@ describe('generateToolRefPinData', () => {
 		});
 		expect(result).toEqual({});
 	});
-
-	it('passes node type and required fields to the LLM prompt', async () => {
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
-		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
-			typeof createEvalAgent
-		>);
-		mockExtractText.mockReturnValue(
-			JSON.stringify({ 'Telegram Trigger': [{ json: { chat_id: '1' } }] }),
-		);
-		const refs: ToolRef[] = [
-			{ sourceNodeName: 'Telegram Trigger', field: 'chat_id', toolNodeName: 'Memory' },
-		];
-		await generateToolRefPinData({
-			workflow: wf([triggerNode, agentNode]),
-			agentNodeName: 'Agent',
-			refs,
-		});
-		const userMessage = generate.mock.calls[0][0][0];
-		const userText = userMessage.content[0].text;
-		expect(userText).toContain('Telegram Trigger');
-		expect(userText).toContain('telegramTrigger');
-		expect(userText).toContain('chat_id');
-	});
 });

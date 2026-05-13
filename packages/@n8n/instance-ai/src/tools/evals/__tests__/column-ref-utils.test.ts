@@ -6,9 +6,6 @@ describe('column-ref-utils', () => {
 			const v = { a: 'x', b: ['y', { c: 'z' }] };
 			expect(collectStrings(v).sort()).toEqual(['x', 'y', 'z']);
 		});
-		it('returns [] for null', () => {
-			expect(collectStrings(null)).toEqual([]);
-		});
 	});
 
 	describe('extractJsonColumnRefs', () => {

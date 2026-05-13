@@ -4,12 +4,12 @@ import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import pLimit from 'p-limit';
 
-import { N8nClient } from '../clients/n8n-client';
-import { formatRunSummary } from '../harness/format-run-summary';
-import { createLogger } from '../harness/logger';
 import { loadEvalEndToEndCases } from './fixtures';
 import { runEvalEndToEndCase } from './runner';
 import type { EvalEndToEndRunResult } from './types';
+import { N8nClient } from '../clients/n8n-client';
+import { formatRunSummary } from '../harness/format-run-summary';
+import { createLogger } from '../harness/logger';
 
 const DEFAULT_TIMEOUT_MS = 600_000;
 
@@ -110,26 +110,27 @@ async function main(): Promise<void> {
 	const projectId = await client.getPersonalProjectId();
 	const limit = pLimit(args.concurrency);
 	const results = await Promise.all(
-		cases.map((testCase) =>
-			limit(async () => {
-				logger.info(`RUN ${testCase.slug}`);
-				const result = await runEvalEndToEndCase({
-					client,
-					testCase,
-					logger,
-					timeoutMs: args.timeoutMs,
-					keepArtifacts: args.keepArtifacts,
-					projectId,
-				});
+		cases.map(
+			async (testCase) =>
+				await limit(async () => {
+					logger.info(`RUN ${testCase.slug}`);
+					const result = await runEvalEndToEndCase({
+						client,
+						testCase,
+						logger,
+						timeoutMs: args.timeoutMs,
+						keepArtifacts: args.keepArtifacts,
+						projectId,
+					});
 
-				if (result.passed) {
-					logger.success(`PASS ${testCase.slug}`);
-				} else {
-					logger.warn(`FAIL ${testCase.slug}`);
-				}
+					if (result.passed) {
+						logger.success(`PASS ${testCase.slug}`);
+					} else {
+						logger.warn(`FAIL ${testCase.slug}`);
+					}
 
-				return result;
-			}),
+					return result;
+				}),
 		),
 	);
 

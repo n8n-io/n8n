@@ -52,7 +52,7 @@ export interface EvalEndToEndToolSelectionResult {
 	evalsToolCalled: boolean;
 	/**
 	 * Distinct `evals` actions observed across the run, e.g.
-	 * `['offer', 'select-metrics', 'propose', 'offer-data-population']`.
+	 * `['offer', 'recommend-metric', 'propose', 'offer-data-population']`.
 	 * Used to verify orchestration depth, not just that the tool ran.
 	 */
 	evalsActionsCalled: string[];

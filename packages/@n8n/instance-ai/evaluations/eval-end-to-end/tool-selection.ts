@@ -8,7 +8,13 @@ const EVAL_SETUP_TOOL_NAME = 'eval-setup-with-agent';
 const EVAL_DATA_TOOL_NAME = 'eval-data';
 const EVAL_SETUP_AGENT_NAMES = new Set([EVAL_SETUP_TOOL_NAME, 'eval-setup']);
 const EVAL_DATA_AGENT_NAMES = new Set([EVAL_DATA_TOOL_NAME, 'eval-data-generator']);
-const EVALS_ACTIONS = ['offer', 'select-metrics', 'propose', 'offer-data-population'] as const;
+const EVALS_ACTIONS = [
+	'offer',
+	'recommend-metric',
+	'select-metrics',
+	'propose',
+	'offer-data-population',
+] as const;
 const EVALS_PROPOSE_ACTION = 'propose';
 const TOOL_CALL_EVENT_TYPES = new Set(['tool-call']);
 const TOOL_NAME_KEYS = ['toolName', 'tool', 'name'] as const;

@@ -1,6 +1,31 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import * as sampleRowsService from '../../evals/generate-sample-rows.service';
 import { createEvalDataAgentTool } from '../eval-data-agent.tool';
+
+type EvalDataToolResult = {
+	status: 'imported' | 'generated' | 'skipped';
+	source?: 'history' | 'synthetic';
+	rowCount?: number;
+	expectedOutputsNeedUserReview?: boolean;
+	expectedOutputColumns?: string[];
+	table?: {
+		id: string;
+		name: string;
+		projectId?: string;
+		rowCount: number;
+		inputColumns: string[];
+		previewRows: Array<Record<string, unknown>>;
+	};
+};
+
+async function runEvalDataTool(
+	ctx: ReturnType<typeof buildOrchestrationCtx>,
+	input: { workflowId: string; projectId?: string },
+): Promise<EvalDataToolResult> {
+	const tool = createEvalDataAgentTool(ctx as never);
+	return (await tool.execute!(input, { agent: {} } as never)) as EvalDataToolResult;
+}
 
 const evalWf = (): WorkflowJSON =>
 	({
@@ -71,13 +96,21 @@ const evalWfWithMetrics = (): WorkflowJSON =>
 		settings: {},
 	}) as unknown as WorkflowJSON;
 
+const defaultInsertResult = {
+	insertedCount: 0,
+	dataTableId: 'dt-1',
+	tableName: 'eval_dataset',
+	projectId: 'proj-1',
+};
+
 const buildOrchestrationCtx = (overrides: Record<string, unknown>) => ({
 	domainContext: {
 		workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWf()) },
 		dataTableService: {
-			insertRows: jest.fn().mockResolvedValue(undefined),
+			insertRows: jest.fn().mockResolvedValue(defaultInsertResult),
 			getSchema: jest.fn().mockResolvedValue([]),
 			addColumn: jest.fn().mockResolvedValue(undefined),
+			queryRows: jest.fn().mockResolvedValue({ count: 0, data: [] }),
 		},
 		executionService: {
 			list: jest.fn().mockResolvedValue([]),
@@ -95,7 +128,7 @@ describe('eval-data tool', () => {
 
 	it('imports rows from execution history when >= 10 valid rows are available', async () => {
 		const summaries = Array.from({ length: 12 }, (_, i) => ({ id: `e${i}`, status: 'success' }));
-		const insertRows = jest.fn().mockResolvedValue(undefined);
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWf()) },
@@ -106,19 +139,20 @@ describe('eval-data tool', () => {
 				},
 				executionService: {
 					list: jest.fn().mockResolvedValueOnce(summaries).mockResolvedValueOnce([]),
-					getNodeOutput: jest.fn(async (id: string) => ({
-						nodeName: 'EvalTrig',
-						items: [{ json: { user_query: `q-${id}` } }],
-						totalItems: 1,
-						returned: { from: 0, to: 0 },
-					})),
+					getNodeOutput: jest.fn(
+						async (id: string) =>
+							await Promise.resolve({
+								nodeName: 'EvalTrig',
+								items: [{ json: { user_query: `q-${id}` } }],
+								totalItems: 1,
+								returned: { from: 0, to: 0 },
+							}),
+					),
 				},
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
-		const tool = createEvalDataAgentTool(ctx as never);
-
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 
 		expect(result.status).toBe('imported');
 		expect(result.source).toBe('history');
@@ -127,7 +161,7 @@ describe('eval-data tool', () => {
 	});
 
 	it('falls back to synthetic generation when fewer than 10 valid history rows are available', async () => {
-		const insertRows = jest.fn();
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWf()) },
@@ -145,11 +179,10 @@ describe('eval-data tool', () => {
 		});
 
 		jest
-			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
+			.spyOn(sampleRowsService, 'generateSampleRows')
 			.mockResolvedValue(Array.from({ length: 10 }, (_, i) => ({ user_query: `gen-${i}` })));
 
-		const tool = createEvalDataAgentTool(ctx as never);
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 
 		expect(result.status).toBe('generated');
 		expect(result.source).toBe('synthetic');
@@ -171,8 +204,7 @@ describe('eval-data tool', () => {
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
-		const tool = createEvalDataAgentTool(ctx as never);
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 		expect(result.status).toBe('skipped');
 	});
 
@@ -204,7 +236,7 @@ describe('eval-data tool', () => {
 			pinData: {},
 			settings: {},
 		} as unknown as WorkflowJSON;
-		const insertRows = jest.fn().mockResolvedValue(undefined);
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(wf) },
@@ -220,18 +252,15 @@ describe('eval-data tool', () => {
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
-		jest
-			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
-			.mockResolvedValue([{ input: 'sample' }]);
-		const tool = createEvalDataAgentTool(ctx as never);
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		jest.spyOn(sampleRowsService, 'generateSampleRows').mockResolvedValue([{ input: 'sample' }]);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 		expect(result.status).toBe('generated');
 		expect(insertRows).toHaveBeenCalledWith('dt-1', [{ input: 'sample' }], undefined);
 	});
 
 	it('populates expected_* columns from agent output in the history path', async () => {
 		const summaries = Array.from({ length: 12 }, (_, i) => ({ id: `e${i}`, status: 'success' }));
-		const insertRows = jest.fn().mockResolvedValue(undefined);
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWfWithMetrics()) },
@@ -246,36 +275,38 @@ describe('eval-data tool', () => {
 					list: jest.fn().mockResolvedValueOnce(summaries).mockResolvedValueOnce([]),
 					getNodeOutput: jest.fn(async (id: string, nodeName: string) => {
 						if (nodeName === 'EvalTrig') {
-							return {
+							return await Promise.resolve({
 								nodeName,
 								items: [{ json: { user_query: `q-${id}` } }],
 								totalItems: 1,
 								returned: { from: 0, to: 0 },
-							};
+							});
 						}
 						// Agent node
-						return {
+						return await Promise.resolve({
 							nodeName,
 							items: [{ json: { output: `a-${id}` } }],
 							totalItems: 1,
 							returned: { from: 0, to: 0 },
-						};
+						});
 					}),
 				},
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
-		const tool = createEvalDataAgentTool(ctx as never);
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 		expect(result.status).toBe('imported');
 		expect(result.rowCount).toBe(12);
 		expect(insertRows).toHaveBeenCalledWith('dt-1', expect.any(Array), undefined);
-		const insertedRows = insertRows.mock.calls[0][1] as Array<Record<string, string>>;
-		expect(insertedRows[0]).toEqual({ user_query: 'q-e0', expected_response: 'a-e0' });
+		expect(insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			expect.arrayContaining([{ user_query: 'q-e0', expected_response: 'a-e0' }]),
+			undefined,
+		);
 	});
 
 	it('synthetic path generates ONLY input columns and flags expected outputs for user review', async () => {
-		const insertRows = jest.fn();
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWfWithMetrics()) },
@@ -294,10 +325,9 @@ describe('eval-data tool', () => {
 			},
 		});
 		const generateSpy = jest
-			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
+			.spyOn(sampleRowsService, 'generateSampleRows')
 			.mockResolvedValue([{ user_query: 'q' }]);
-		const tool = createEvalDataAgentTool(ctx as never);
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 		expect(generateSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				columns: ['user_query'],
@@ -318,7 +348,7 @@ describe('eval-data tool', () => {
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWfWithMetrics()) },
 				dataTableService: {
-					insertRows: jest.fn().mockResolvedValue(undefined),
+					insertRows: jest.fn().mockResolvedValue(defaultInsertResult),
 					getSchema: jest
 						.fn()
 						.mockResolvedValue([{ name: 'user_query' }, { name: 'expected_response' }]),
@@ -328,26 +358,25 @@ describe('eval-data tool', () => {
 					list: jest.fn().mockResolvedValueOnce(summaries).mockResolvedValueOnce([]),
 					getNodeOutput: jest.fn(async (id: string, nodeName: string) => {
 						if (nodeName === 'EvalTrig') {
-							return {
+							return await Promise.resolve({
 								nodeName,
 								items: [{ json: { user_query: `q-${id}` } }],
 								totalItems: 1,
 								returned: { from: 0, to: 0 },
-							};
+							});
 						}
-						return {
+						return await Promise.resolve({
 							nodeName,
 							items: [{ json: { output: `a-${id}` } }],
 							totalItems: 1,
 							returned: { from: 0, to: 0 },
-						};
+						});
 					}),
 				},
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
-		const tool = createEvalDataAgentTool(ctx as never);
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 		expect(result.source).toBe('history');
 		expect(result.expectedOutputsNeedUserReview).toBeUndefined();
 	});
@@ -357,7 +386,7 @@ describe('eval-data tool', () => {
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWf()) },
 				dataTableService: {
-					insertRows: jest.fn(),
+					insertRows: jest.fn().mockResolvedValue(defaultInsertResult),
 					getSchema: jest.fn().mockResolvedValue([{ name: 'user_query' }]),
 					addColumn: jest.fn(),
 				},
@@ -368,17 +397,14 @@ describe('eval-data tool', () => {
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
-		jest
-			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
-			.mockResolvedValue([{ user_query: 'q' }]);
-		const tool = createEvalDataAgentTool(ctx as never);
-		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		jest.spyOn(sampleRowsService, 'generateSampleRows').mockResolvedValue([{ user_query: 'q' }]);
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 		expect(result.source).toBe('synthetic');
 		expect(result.expectedOutputsNeedUserReview).toBeUndefined();
 	});
 
 	it('adds missing columns to the DataTable before inserting rows', async () => {
-		const insertRows = jest.fn().mockResolvedValue(undefined);
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const addColumn = jest.fn().mockResolvedValue(undefined);
 		// Schema has only the input column; expected_response is missing.
 		const getSchema = jest.fn().mockResolvedValue([{ name: 'user_query' }]);
@@ -394,11 +420,10 @@ describe('eval-data tool', () => {
 			},
 		});
 		jest
-			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
+			.spyOn(sampleRowsService, 'generateSampleRows')
 			.mockResolvedValue([{ user_query: 'q', expected_response: 'r' }]);
 
-		const tool = createEvalDataAgentTool(ctx as never);
-		await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		await runEvalDataTool(ctx, { workflowId: 'w1' });
 
 		expect(getSchema).toHaveBeenCalledWith('dt-1', undefined);
 		expect(addColumn).toHaveBeenCalledTimes(1);
@@ -414,7 +439,7 @@ describe('eval-data tool', () => {
 	});
 
 	it('does not add columns that already exist in the DataTable schema', async () => {
-		const insertRows = jest.fn().mockResolvedValue(undefined);
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const addColumn = jest.fn().mockResolvedValue(undefined);
 		const getSchema = jest
 			.fn()
@@ -431,18 +456,17 @@ describe('eval-data tool', () => {
 			},
 		});
 		jest
-			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
+			.spyOn(sampleRowsService, 'generateSampleRows')
 			.mockResolvedValue([{ user_query: 'q', expected_response: 'r' }]);
 
-		const tool = createEvalDataAgentTool(ctx as never);
-		await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		await runEvalDataTool(ctx, { workflowId: 'w1' });
 
 		expect(addColumn).not.toHaveBeenCalled();
 		expect(insertRows).toHaveBeenCalled();
 	});
 
 	it('forwards projectId to insertRows when present', async () => {
-		const insertRows = jest.fn();
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWf()) },
@@ -458,11 +482,51 @@ describe('eval-data tool', () => {
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
-		jest
-			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
-			.mockResolvedValue([{ user_query: 'q' }]);
-		const tool = createEvalDataAgentTool(ctx as never);
-		await tool.execute!({ workflowId: 'w1', projectId: 'proj-1' }, { agent: {} } as never);
+		jest.spyOn(sampleRowsService, 'generateSampleRows').mockResolvedValue([{ user_query: 'q' }]);
+		await runEvalDataTool(ctx, { workflowId: 'w1', projectId: 'proj-1' });
 		expect(insertRows).toHaveBeenCalledWith('dt-1', expect.any(Array), { projectId: 'proj-1' });
+	});
+
+	it('returns a `table` summary so the agent can recap the populated dataset to the user', async () => {
+		const queryRows = jest.fn().mockResolvedValue({
+			count: 2,
+			data: [
+				{
+					user_query:
+						'first question with a really long body that should be truncated past eighty characters of content easily',
+				},
+				{ user_query: 'second' },
+			],
+		});
+		const ctx = buildOrchestrationCtx({
+			domainContext: {
+				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWf()) },
+				dataTableService: {
+					insertRows: jest.fn().mockResolvedValue(defaultInsertResult),
+					getSchema: jest.fn().mockResolvedValue([{ name: 'user_query' }]),
+					addColumn: jest.fn(),
+					queryRows,
+				},
+				executionService: {
+					list: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
+					getNodeOutput: jest.fn(),
+				},
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+			},
+		});
+		jest.spyOn(sampleRowsService, 'generateSampleRows').mockResolvedValue([{ user_query: 'q' }]);
+
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
+
+		expect(result.table).toMatchObject({
+			id: 'dt-1',
+			name: 'eval_dataset',
+			projectId: 'proj-1',
+			rowCount: 1,
+			inputColumns: ['user_query'],
+		});
+		expect(result.table?.previewRows).toHaveLength(2);
+		// First row's long string should be truncated.
+		expect(String(result.table?.previewRows[0]?.user_query)).toMatch(/…$/);
 	});
 });

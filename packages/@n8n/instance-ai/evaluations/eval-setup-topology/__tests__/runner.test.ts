@@ -1,6 +1,6 @@
-import type { EvalLogger } from '../../harness/logger';
-import { consumeSseStream } from '../../clients/sse-client';
 import type { N8nClient } from '../../clients/n8n-client';
+import { consumeSseStream } from '../../clients/sse-client';
+import type { EvalLogger } from '../../harness/logger';
 import type { CapturedEvent } from '../../types';
 import {
 	approveEvalConfirmations,
@@ -14,8 +14,11 @@ import {
 } from '../runner';
 import type { EvalSetupTopologyCase } from '../types';
 
+type SseMessageHandler = (event: { type: 'message'; data: string }) => void;
+
 jest.mock('../../clients/sse-client', () => ({
-	consumeSseStream: jest.fn(async (_url, _cookie, handler) => {
+	consumeSseStream: jest.fn(async (_url: string, _cookie: string, handler: SseMessageHandler) => {
+		await Promise.resolve();
 		handler({
 			type: 'message',
 			data: JSON.stringify({ type: 'tool-call', payload: { ok: true } }),
@@ -71,14 +74,17 @@ function logger(): EvalLogger {
 
 describe('eval setup topology runner helpers', () => {
 	beforeEach(() => {
-		jest.mocked(consumeSseStream).mockImplementation(async (_url, _cookie, handler) => {
-			handler({
-				type: 'message',
-				data: JSON.stringify({ type: 'tool-call', payload: { ok: true } }),
+		jest
+			.mocked(consumeSseStream)
+			.mockImplementation(async (_url: string, _cookie: string, handler: SseMessageHandler) => {
+				await Promise.resolve();
+				handler({
+					type: 'message',
+					data: JSON.stringify({ type: 'tool-call', payload: { ok: true } }),
+				});
+				handler({ type: 'message', data: '{not-json' });
+				handler({ type: 'message', data: JSON.stringify(['not-record']) });
 			});
-			handler({ type: 'message', data: '{not-json' });
-			handler({ type: 'message', data: JSON.stringify(['not-record']) });
-		});
 	});
 
 	afterEach(() => {
@@ -166,13 +172,12 @@ describe('eval setup topology runner helpers', () => {
 
 		await startSseConnection(client, 'thread-1', events, new AbortController().signal);
 
-		expect(events).toEqual([
-			{
-				timestamp: expect.any(Number),
-				type: 'tool-call',
-				data: { type: 'tool-call', payload: { ok: true } },
-			},
-		]);
+		expect(events).toHaveLength(1);
+		expect(events[0]?.timestamp).toEqual(expect.any(Number));
+		expect(events[0]).toMatchObject({
+			type: 'tool-call',
+			data: { type: 'tool-call', payload: { ok: true } },
+		});
 	});
 
 	it('approves workflow update confirmations from eval setup', async () => {

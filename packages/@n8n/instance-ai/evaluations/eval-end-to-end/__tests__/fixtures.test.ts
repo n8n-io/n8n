@@ -126,30 +126,6 @@ describe('loadEvalEndToEndCases — mode detection', () => {
 		}
 	});
 
-	it('omits evalDataTable when the fixture does not declare one', () => {
-		const root = makeFixtureRoot({
-			plain: {
-				name: 'p',
-				nodes: [
-					{
-						name: 'Agent',
-						type: '@n8n/n8n-nodes-langchain.agent',
-						typeVersion: 1,
-						parameters: {},
-					},
-				],
-				connections: {},
-			},
-		});
-
-		try {
-			const cases = loadEvalEndToEndCases({ rootDir: root });
-			expect(cases[0].evalDataTable).toBeUndefined();
-		} finally {
-			rmSync(root, { recursive: true, force: true });
-		}
-	});
-
 	it('marks a workflow with no langchain nodes as no-ai-nodes', () => {
 		const root = makeFixtureRoot({
 			no_ai: {

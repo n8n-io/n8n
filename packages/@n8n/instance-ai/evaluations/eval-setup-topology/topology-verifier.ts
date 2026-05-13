@@ -1,4 +1,3 @@
-import type { WorkflowNodeResponse, WorkflowResponse } from '../clients/n8n-client';
 import type {
 	TopologyFinding,
 	TopologyTargetExpectation,
@@ -9,6 +8,7 @@ import type {
 	WorkflowConnections,
 } from './types';
 import { toWorkflowConnections } from './types';
+import type { WorkflowNodeResponse, WorkflowResponse } from '../clients/n8n-client';
 
 const EVAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
 const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
@@ -252,7 +252,7 @@ function getAssignments(node: WorkflowNodeResponse): Array<{ name: string; value
 
 function referencesCurrentJsonColumn(value: string, columnName: string): boolean {
 	const escapedColumnName = columnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const currentJsonReferencePrefix = String.raw`(?:^|[^\w$])\$json`;
+	const currentJsonReferencePrefix = '(?:^|[^\\w$])\\$json';
 	const dotReferencePattern = new RegExp(`${currentJsonReferencePrefix}\\.${escapedColumnName}\\b`);
 	const bracketReferencePattern = new RegExp(
 		`${currentJsonReferencePrefix}\\[["']${escapedColumnName}["']\\]`,
@@ -271,7 +271,7 @@ function referencesEvalTrigger(value: unknown): boolean {
 
 function referencesEvalTriggerJsonColumn(value: string, columnName: string): boolean {
 	const escapedColumnName = columnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const evalTriggerReferencePattern = String.raw`\$\((?:"Eval Trigger"|'Eval Trigger')\)\.item\.json`;
+	const evalTriggerReferencePattern = '\\$\\((?:"Eval Trigger"|\'Eval Trigger\')\\)\\.item\\.json';
 	const dotReferencePattern = new RegExp(
 		`${evalTriggerReferencePattern}\\.${escapedColumnName}\\b`,
 	);

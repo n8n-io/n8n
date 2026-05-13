@@ -1,13 +1,12 @@
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { readFileSync, readdirSync } from 'fs';
 import { basename, extname, join } from 'path';
 import { z } from 'zod';
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-
+import type { EvalDataTableSpec, EvalEndToEndCase, EvalEndToEndMode } from './types';
+import { detectAiNodes } from '../../src/tools/evals/detect-ai-nodes';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { toWorkflowConnections } from '../eval-setup-topology/types';
-import { detectAiNodes } from '../../src/tools/evals/detect-ai-nodes';
-import type { EvalDataTableSpec, EvalEndToEndCase, EvalEndToEndMode } from './types';
 
 /**
  * Reuse the workflow JSON fixtures from the eval-setup-topology suite.

@@ -2,7 +2,6 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { basename, extname, join } from 'path';
 import { z } from 'zod';
 
-import type { WorkflowResponse } from '../clients/n8n-client';
 import {
 	datasetRowsSchema,
 	type DatasetRow,
@@ -10,6 +9,7 @@ import {
 	topologySidecarSchema,
 	toWorkflowConnections,
 } from './types';
+import type { WorkflowResponse } from '../clients/n8n-client';
 
 export const DEFAULT_ROOT = join(__dirname, '..', 'data', 'eval-setup-topology');
 

@@ -2,22 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
 	applyCachedSortOrder,
 	applyCachedVisibility,
-	computeDelta,
-	computeDurationMs,
-	formatDeltaPercent,
-	formatDuration,
-	formatMetricLabel,
-	formatMetricPercent,
-	formatMetricRawScore,
-	formatMetricRawScoreSum,
-	formatTokens,
 	getDefaultOrderedColumns,
-	getDeltaTone,
-	getMetricCategory,
 	getTestCasesColumns,
 	getTestTableHeaders,
-	getUserDefinedMetricNames,
-	normalizeMetricValue,
 } from './evaluation.utils';
 import type { TestCaseExecutionRecord } from './evaluation.api';
 

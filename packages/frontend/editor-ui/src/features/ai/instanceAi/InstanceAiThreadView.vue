@@ -443,6 +443,13 @@ onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 	void syncRouteToStore();
 	void nextTick(() => chatInputRef.value?.focus());
+	// Auto-submit a message staged by an external trigger (e.g. canvas eval
+	// setup CTA). Only fires when entering a fresh (no `threadId`) thread,
+	// so a stale staged message can't bleed into an existing conversation.
+	const pendingMessage = store.consumePendingInitialMessage();
+	if (pendingMessage && !props.threadId) {
+		handleSubmit(pendingMessage);
+	}
 });
 
 onUnmounted(() => {

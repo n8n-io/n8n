@@ -1,3 +1,5 @@
+import { jsonParse } from 'n8n-workflow';
+
 import { N8nClient, type DataTableCreatePayload } from '../n8n-client';
 
 const BASE_URL = 'http://localhost:5678';
@@ -132,7 +134,7 @@ describe('N8nClient', () => {
 		const [url, init] = fetchMock.mock.calls[0] as [string, { method: string; body: string }];
 		expect(url).toBe(`${BASE_URL}/rest/projects/project-1/data-tables/dt-1/insert`);
 		expect(init.method).toBe('POST');
-		expect(JSON.parse(init.body)).toMatchObject({ data: rows });
+		expect(jsonParse(init.body)).toMatchObject({ data: rows });
 	});
 
 	it('returns direct thread status responses', async () => {

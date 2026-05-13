@@ -23,7 +23,7 @@ import { applyGrader } from './graders';
 import { findFiles } from './graders/fs';
 import { isContained } from './path-utils';
 import type { GraderResult, Scenario, ScenarioResult, ScenarioTrace } from './types';
-import type { N8nClient } from '../clients/n8n-client';
+import type { N8nClient, WorkflowCreatePayload } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -203,7 +203,7 @@ async function maybeSeedWorkflow(
 
 	const fixturePath = resolveFixture(fixturesDir, path);
 	const raw = await readFile(fixturePath, 'utf-8');
-	const parsed = jsonParse<Record<string, unknown>>(raw, {
+	const parsed = jsonParse<WorkflowCreatePayload>(raw, {
 		errorMessage: `Invalid workflow JSON: ${path}`,
 	});
 

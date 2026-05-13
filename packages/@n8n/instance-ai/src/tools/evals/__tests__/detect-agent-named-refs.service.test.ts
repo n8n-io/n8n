@@ -24,7 +24,7 @@ describe('detectAgentNamedRefs', () => {
 				parameters: { text: '={{ $json.user_query }}' },
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		expect(detectAgentNamedRefs(workflow, 'Agent')).toEqual([]);
 	});
@@ -38,7 +38,7 @@ describe('detectAgentNamedRefs', () => {
 				parameters: { text: "={{ $('Voice or Text').item.json.text }}" },
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = detectAgentNamedRefs(workflow, 'Agent');
 		expect(result).toEqual([
@@ -61,7 +61,7 @@ describe('detectAgentNamedRefs', () => {
 				parameters: { text: '={{ $("Voice or Text").item.json.text }}' },
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = detectAgentNamedRefs(workflow, 'Agent');
 		expect(result).toEqual([
@@ -84,7 +84,7 @@ describe('detectAgentNamedRefs', () => {
 				parameters: { text: '={{ $node["Voice or Text"].json.text }}' },
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = detectAgentNamedRefs(workflow, 'Agent');
 		expect(result[0].nodeName).toBe('Voice or Text');
@@ -105,7 +105,7 @@ describe('detectAgentNamedRefs', () => {
 				},
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = detectAgentNamedRefs(workflow, 'Agent');
 		expect(result).toHaveLength(2);
@@ -128,7 +128,7 @@ describe('detectAgentNamedRefs', () => {
 				},
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = detectAgentNamedRefs(workflow, 'Agent');
 		expect(result).toHaveLength(1);
@@ -148,7 +148,7 @@ describe('detectAgentNamedRefs', () => {
 				},
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = detectAgentNamedRefs(workflow, 'Agent');
 		expect(result).toHaveLength(2);
@@ -173,7 +173,7 @@ describe('detectAgentNamedRefs', () => {
 				},
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = detectAgentNamedRefs(workflow, 'Agent');
 		expect(result).toHaveLength(1);

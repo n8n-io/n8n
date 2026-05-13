@@ -2,7 +2,9 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { analyzeAgentInputColumns } from '../analyze-agent-input-columns.service';
 
-const wf = (nodes: WorkflowJSON['nodes']): WorkflowJSON =>
+type TestNode = Partial<WorkflowJSON['nodes'][number]>;
+
+const wf = (nodes: TestNode[]): WorkflowJSON =>
 	({
 		name: 't',
 		nodes,
@@ -21,7 +23,7 @@ describe('analyzeAgentInputColumns', () => {
 				parameters: { text: '={{ $json.user_query }}' },
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = analyzeAgentInputColumns(workflow, 'Agent');
 		expect(result).toEqual({ agentNodeName: 'Agent', inputColumns: ['user_query'] });
@@ -39,7 +41,7 @@ describe('analyzeAgentInputColumns', () => {
 				},
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = analyzeAgentInputColumns(workflow, 'Agent');
 		expect(result.inputColumns.sort()).toEqual(['system_prompt', 'user_query']);
@@ -54,7 +56,7 @@ describe('analyzeAgentInputColumns', () => {
 				parameters: { text: 'literal prompt with no expressions' },
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = analyzeAgentInputColumns(workflow, 'Agent');
 		expect(result.inputColumns).toEqual(['input']);
@@ -77,7 +79,7 @@ describe('analyzeAgentInputColumns', () => {
 				},
 				position: [0, 0],
 				id: 'a',
-			} as any,
+			},
 		]);
 		const result = analyzeAgentInputColumns(workflow, 'Agent');
 		expect(result.inputColumns.sort()).toEqual(['context', 'q']);

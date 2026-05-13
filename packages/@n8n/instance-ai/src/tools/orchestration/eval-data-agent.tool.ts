@@ -36,6 +36,19 @@ const evalDataInputSchema = z.object({
 	projectId: z.string().optional(),
 });
 
+const PREVIEW_ROW_COUNT = 3;
+const PREVIEW_VALUE_MAX_LEN = 80;
+
+const tableSummarySchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	projectId: z.string().optional(),
+	rowCount: z.number(),
+	inputColumns: z.array(z.string()),
+	expectedOutputColumns: z.array(z.string()),
+	previewRows: z.array(z.record(z.string(), z.unknown())),
+});
+
 const outputSchema = z.object({
 	status: z.enum(['imported', 'generated', 'skipped']),
 	rowCount: z.number().optional(),
@@ -49,7 +62,29 @@ const outputSchema = z.object({
 	 */
 	expectedOutputsNeedUserReview: z.boolean().optional(),
 	expectedOutputColumns: z.array(z.string()).optional(),
+	/**
+	 * Snapshot of the populated DataTable so the agent can show the user what
+	 * was generated alongside the metric setup, without making them dig through
+	 * the data-tables UI to verify. Includes the table id (for deep-linking) and
+	 * a short row preview. Only present on success paths.
+	 */
+	table: tableSummarySchema.optional(),
 });
+
+function truncateForPreview(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	return value.length > PREVIEW_VALUE_MAX_LEN ? `${value.slice(0, PREVIEW_VALUE_MAX_LEN)}…` : value;
+}
+
+function buildPreviewRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+	return rows.slice(0, PREVIEW_ROW_COUNT).map((row) => {
+		const truncated: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(row)) {
+			truncated[key] = truncateForPreview(value);
+		}
+		return truncated;
+	});
+}
 
 export function createEvalDataAgentTool(context: OrchestrationContext) {
 	return createTool({
@@ -144,27 +179,52 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 					extraColumns,
 					dataTableOptions,
 				);
-			} catch (err) {
-				const message = err instanceof Error ? err.message : String(err);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
 				log('error', `ensureColumnsExist-failed error=${j(message)}`);
-				throw err;
+				throw error;
 			}
 
+			let insertResult: Awaited<ReturnType<typeof domain.dataTableService.insertRows>>;
 			try {
-				const result = await domain.dataTableService.insertRows(
+				insertResult = await domain.dataTableService.insertRows(
 					target.dataTableId,
 					rowsToInsert,
 					dataTableOptions,
 				);
-				log('info', `insertRows-ok result=${j(result)}`);
-			} catch (err) {
-				const message = err instanceof Error ? err.message : String(err);
+				log('info', `insertRows-ok result=${j(insertResult)}`);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
 				log('error', `insertRows-failed error=${j(message)}`);
-				throw err;
+				throw error;
+			}
+
+			// Fetch a tiny preview so the agent can recap WHAT was generated, not
+			// just that something was. Treat failures here as non-fatal — the
+			// insert already succeeded; a missing preview is a UX gap, not a bug.
+			let previewRows: Array<Record<string, unknown>> = [];
+			try {
+				const preview = await domain.dataTableService.queryRows(target.dataTableId, {
+					limit: PREVIEW_ROW_COUNT,
+					...(insertResult.projectId ? { projectId: insertResult.projectId } : {}),
+				});
+				previewRows = buildPreviewRows(preview.data);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				log('warn', `preview-query-failed error=${j(message)}`);
 			}
 
 			log('info', `done source=${source} rowCount=${rowsToInsert.length}`);
 			const needsReview = source === 'synthetic' && target.expectedOutputColumns.length > 0;
+			const table = {
+				id: target.dataTableId,
+				name: insertResult.tableName,
+				...(insertResult.projectId ? { projectId: insertResult.projectId } : {}),
+				rowCount: rowsToInsert.length,
+				inputColumns: target.inputColumns,
+				expectedOutputColumns: target.expectedOutputColumns,
+				previewRows,
+			};
 			return {
 				status: source === 'history' ? ('imported' as const) : ('generated' as const),
 				rowCount: rowsToInsert.length,
@@ -175,6 +235,7 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 							expectedOutputColumns: target.expectedOutputColumns,
 						}
 					: {}),
+				table,
 			};
 		},
 	});

@@ -14,7 +14,6 @@ import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
-import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
 const thread = useThread();
@@ -97,8 +96,7 @@ function isApprovalWrapped(item: PendingConfirmationItem): boolean {
 		!conf.credentialRequests?.length &&
 		!conf.setupRequests?.length &&
 		(!conf.inputType || conf.inputType === 'approval') &&
-		!conf.questions &&
-		!conf.evalsPropose
+		!conf.questions
 	) {
 		return true;
 	}

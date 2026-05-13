@@ -76,11 +76,11 @@ describe('extractToolSelection', () => {
 		it('captures actions from confirmation-request events', () => {
 			const result = extractToolSelection({
 				events: [
-					confirmationRequestEvent('evals', 'select-metrics'),
+					confirmationRequestEvent('evals', 'recommend-metric'),
 					confirmationRequestEvent('evals', 'offer-data-population'),
 				],
 			});
-			expect(result.evalsActionsCalled).toEqual(['select-metrics', 'offer-data-population']);
+			expect(result.evalsActionsCalled).toEqual(['recommend-metric', 'offer-data-population']);
 		});
 
 		it('captures actions from rich-message tool calls', () => {
@@ -98,13 +98,13 @@ describe('extractToolSelection', () => {
 			const result = extractToolSelection({
 				events: [
 					toolCallEvent('evals', 'propose'),
-					confirmationRequestEvent('evals', 'select-metrics'),
+					confirmationRequestEvent('evals', 'recommend-metric'),
 				],
 				threadMessages: richMessagesWithToolCalls([
 					{ toolName: 'evals', args: { action: 'propose' } },
 				]),
 			});
-			expect(result.evalsActionsCalled).toEqual(['select-metrics', 'propose']);
+			expect(result.evalsActionsCalled).toEqual(['recommend-metric', 'propose']);
 		});
 
 		it('ignores tool calls from other tools', () => {
@@ -127,7 +127,7 @@ describe('extractToolSelection', () => {
 			const result = extractToolSelection({
 				events: [
 					toolCallEvent('evals', 'offer'),
-					toolCallEvent('evals', 'select-metrics'),
+					toolCallEvent('evals', 'recommend-metric'),
 					toolCallEvent('eval-setup-with-agent'),
 					toolCallEvent('eval-data'),
 				],
@@ -140,11 +140,10 @@ describe('extractToolSelection', () => {
 		it('emits no findings for the Add-evals chain (offer is intentionally skipped)', () => {
 			// The eval-end-to-end test prompt is an explicit "add evals" request,
 			// which routes through the Add-evals flow. That flow skips `offer`
-			// because user intent is explicit — only select-metrics, propose,
-			// and offer-data-population are HITL surfaces.
+			// because user intent is explicit.
 			const result = extractToolSelection({
 				events: [
-					toolCallEvent('evals', 'select-metrics'),
+					toolCallEvent('evals', 'recommend-metric'),
 					toolCallEvent('evals', 'propose'),
 					toolCallEvent('eval-setup-with-agent'),
 					toolCallEvent('evals', 'offer-data-population'),
@@ -153,7 +152,7 @@ describe('extractToolSelection', () => {
 			});
 			expect(result.findings).toEqual([]);
 			expect(result.evalsActionsCalled).toEqual([
-				'select-metrics',
+				'recommend-metric',
 				'propose',
 				'offer-data-population',
 			]);
@@ -166,6 +165,7 @@ describe('extractToolSelection', () => {
 			const result = extractToolSelection({
 				events: [
 					toolCallEvent('evals', 'offer'),
+					toolCallEvent('evals', 'recommend-metric'),
 					toolCallEvent('evals', 'select-metrics'),
 					toolCallEvent('evals', 'propose'),
 					toolCallEvent('eval-setup-with-agent'),
