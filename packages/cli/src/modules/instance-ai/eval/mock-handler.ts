@@ -10,11 +10,11 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
+import { createEvalAgent, extractText, providerTools, Tool } from '@n8n/instance-ai';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { z } from 'zod';
 
-import { fetchApiDocs } from './api-docs';
+import { FALLBACK_INSTRUCTIONS, fetchApiDocs } from './api-docs';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
@@ -156,6 +156,7 @@ async function generateMockResponse(
 		serviceName,
 		`${request.method ?? 'GET'} ${endpoint} response format`,
 	);
+	const apiDocsUnavailable = apiDocs === FALLBACK_INSTRUCTIONS;
 	sections.push('', '## API documentation', apiDocs);
 
 	if (context.nodeConfig) {
@@ -194,6 +195,7 @@ async function generateMockResponse(
 				serviceName,
 				method: requestMethod,
 				pathname: requestPath,
+				enableWebSearch: apiDocsUnavailable,
 			});
 			return materializeSpec(spec);
 		} catch (error) {
@@ -272,7 +274,12 @@ function createQuirksLookupTool(serviceName: string, method: string, pathname: s
 
 async function callLlm(
 	userPrompt: string,
-	requestInfo: { serviceName: string; method: string; pathname: string },
+	requestInfo: {
+		serviceName: string;
+		method: string;
+		pathname: string;
+		enableWebSearch: boolean;
+	},
 ): Promise<MockResponseSpec> {
 	const capture: { spec?: MockResponseSpec } = {};
 
@@ -281,6 +288,13 @@ async function callLlm(
 	})
 		.tool(createQuirksLookupTool(requestInfo.serviceName, requestInfo.method, requestInfo.pathname))
 		.tool(createSubmitResponseTool(capture));
+
+	// Only register web_search when the API docs section was the fallback —
+	// the LLM has training-data knowledge for most well-documented APIs, and
+	// adding the tool on every call regresses overall pass rate.
+	if (requestInfo.enableWebSearch) {
+		agent.providerTool(providerTools.anthropicWebSearch({ maxUses: 3 }));
+	}
 
 	const result = await agent.generate(userPrompt);
 

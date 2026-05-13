@@ -1,8 +1,8 @@
 /** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
-import { Agent, Tool, type GenerateResult } from '@n8n/agents';
+import { Agent, providerTools, Tool, type GenerateResult } from '@n8n/agents';
 
-export { Tool };
+export { providerTools, Tool };
 
 // ---------------------------------------------------------------------------
 // Model constants
