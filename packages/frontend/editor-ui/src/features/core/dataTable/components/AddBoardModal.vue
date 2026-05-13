@@ -5,7 +5,7 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
-import { DATA_TABLE_DETAILS, PROJECT_BOARDS } from '@/features/core/dataTable/constants';
+import { BOARD_DETAILS, PROJECT_BOARDS } from '@/features/core/dataTable/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nButton, N8nIconButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
@@ -104,12 +104,10 @@ const onSubmit = async () => {
 		reset();
 		uiStore.closeModal(props.modalName);
 		void router.push({
-			name: DATA_TABLE_DETAILS,
+			name: BOARD_DETAILS,
 			params: {
+				projectId: newBoard.project?.id ?? (route.params.projectId as string),
 				id: newBoard.id,
-			},
-			query: {
-				kind: 'board',
 			},
 		});
 	} catch (error) {

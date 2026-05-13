@@ -353,6 +353,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return inserted[0];
 	};
 
+	const insertDataTableRow = async (dataTableId: string, projectId: string, row: DataTableRow) => {
+		const inserted = await insertDataTableRowApi(
+			rootStore.restApiContext,
+			dataTableId,
+			row,
+			projectId,
+		);
+		return inserted[0];
+	};
+
 	const updateRow = async (
 		dataTableId: string,
 		projectId: string,
@@ -453,6 +463,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		renameDataTableColumn,
 		fetchDataTableContent,
 		insertEmptyRow,
+		insertDataTableRow,
 		updateRow,
 		deleteRows,
 		downloadDataTableCsv,

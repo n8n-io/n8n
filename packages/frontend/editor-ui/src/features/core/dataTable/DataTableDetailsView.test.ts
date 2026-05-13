@@ -67,6 +67,7 @@ const renderComponent = createComponentRenderer(DataTableDetailsView, {
 		stubs: {
 			DataTableBreadcrumbs: true,
 			DataTableTable: true,
+			BoardKanbanView: true,
 		},
 	},
 });

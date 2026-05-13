@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { BOARD_DETAILS, DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import type { DataTableKind } from '@n8n/api-types';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -33,9 +32,14 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const dataTableRoute = computed(() => {
-	const query: { kind?: DataTableKind } = {};
 	if (props.dataTable.kind === 'board') {
-		query.kind = 'board';
+		return {
+			name: BOARD_DETAILS,
+			params: {
+				projectId: props.dataTable.projectId,
+				id: props.dataTable.id,
+			},
+		};
 	}
 
 	return {
@@ -44,7 +48,6 @@ const dataTableRoute = computed(() => {
 			projectId: props.dataTable.projectId,
 			id: props.dataTable.id,
 		},
-		query,
 	};
 });
 
