@@ -504,15 +504,7 @@
 
 	<body>
 		{{#if canonicalFormUrl}}
-			<input type='hidden' id='form-canonical-url' data-url='{{canonicalFormUrl}}' />
-			<script>
-				(function () {
-					var el = document.getElementById('form-canonical-url');
-					if (el && el.dataset.url) {
-						history.replaceState(null, '', el.dataset.url);
-					}
-				})();
-			</script>
+			<script>history.replaceState(null, '', '{{canonicalFormUrl}}');</script>
 		{{/if}}
 		<div class='container'>
 			<section>

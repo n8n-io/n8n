@@ -18,6 +18,7 @@ import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { OauthFormCallbackRewriter } from '@/webhooks/oauth-form-callback-rewriter';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
@@ -238,8 +239,16 @@ export abstract class AbstractServer {
 		if (this.webhooksEnabled) {
 			const liveWebhooks = Container.get(LiveWebhooks);
 
-			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, createWebhookHandlerFor(liveWebhooks, 'form'));
+			const oauthFormCallbackRewriter = Container.get(OauthFormCallbackRewriter);
+
+			// Register a handler for live forms. The same handler is also mounted at the
+			// stable OAuth callback URL — the rewriter middleware translates that to a
+			// form URL before the handler runs. See `OauthFormCallbackRewriter`.
+			this.app.all(
+				[`/${this.endpointForm}/*path`, `/${this.restEndpoint}/oauth2-credential/form-callback`],
+				oauthFormCallbackRewriter.middleware,
+				createWebhookHandlerFor(liveWebhooks, 'form'),
+			);
 
 			// Register a handler for live webhooks
 			this.app.all(
@@ -267,7 +276,11 @@ export abstract class AbstractServer {
 			const testWebhooks = Container.get(TestWebhooks);
 
 			this.app.all(
-				`/${this.endpointFormTest}/*path`,
+				[
+					`/${this.endpointFormTest}/*path`,
+					`/${this.restEndpoint}/oauth2-credential/test-form-callback`,
+				],
+				Container.get(OauthFormCallbackRewriter).middleware,
 				createWebhookHandlerFor(testWebhooks, 'form'),
 			);
 			this.app.all(

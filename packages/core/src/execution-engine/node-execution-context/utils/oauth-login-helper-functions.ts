@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import { decode } from 'jsonwebtoken';
@@ -11,8 +12,10 @@ import type {
 
 import { InstanceSettings } from '@/instance-settings';
 import {
+	FORM_OAUTH_PRODUCTION_CALLBACK_PATH,
 	FORM_OAUTH_SESSION_JWT_EXPIRY_SEC,
 	FORM_OAUTH_STATE_JWT_EXPIRY_SEC,
+	FORM_OAUTH_TEST_CALLBACK_PATH,
 	generateFormOauthNonce,
 	signFormOauthJwt,
 	verifyFormOauthJwt,
@@ -54,19 +57,32 @@ const pickString = (record: Record<string, unknown>, key: string): string => {
 };
 
 /**
- * Compute the public URL of the webhook the current request was made to. This is
- * the form's own URL (`/form/<path>` or `/form-test/<path>`) — the IDP redirects
- * back here, so the OAuth `redirect_uri` parameter must be exactly this string.
+ * Build the static OAuth `redirect_uri` for the form-login flow. The same path is
+ * mounted twice in the Express app: once as a callback URL that gets rewritten to
+ * the underlying form URL before the form handler runs. Test vs. production is
+ * derived from the current request URL.
+ *
+ * Builders register these two URLs (one each) at their IDP — instead of every
+ * individual form URL.
  */
-function currentWebhookUrl(additionalData: IWorkflowExecuteAdditionalData): string {
+function buildStaticCallbackUrl(additionalData: IWorkflowExecuteAdditionalData): string {
 	const req = additionalData.httpRequest;
 	if (!req) {
 		throw new Error('OAuth login helper invoked without a request context');
 	}
-	const path = (req.originalUrl ?? '').split('?')[0] ?? '';
 	const host = typeof req.get === 'function' ? req.get('host') : req.headers?.host;
 	const protocol = req.protocol ?? 'http';
-	return `${protocol}://${String(host ?? '')}${path}`;
+	const endpoints = Container.get(GlobalConfig).endpoints;
+
+	// Mode detection from the current request URL: form-test prefix => test mode;
+	// callback URL itself => check the path for the test-specific callback.
+	const originalUrl = req.originalUrl ?? '';
+	const isTest =
+		originalUrl.startsWith(`/${endpoints.formTest}/`) ||
+		originalUrl.startsWith(`/${endpoints.rest}${FORM_OAUTH_TEST_CALLBACK_PATH}`);
+
+	const callbackPath = isTest ? FORM_OAUTH_TEST_CALLBACK_PATH : FORM_OAUTH_PRODUCTION_CALLBACK_PATH;
+	return `${protocol}://${String(host ?? '')}/${endpoints.rest}${callbackPath}`;
 }
 
 async function decryptOauthCredential(
@@ -117,7 +133,7 @@ export function getOauthLoginHelperFunctions(
 			const params = new URLSearchParams({
 				response_type: 'code',
 				client_id: clientId,
-				redirect_uri: currentWebhookUrl(additionalData),
+				redirect_uri: buildStaticCallbackUrl(additionalData),
 				state: stateJwt,
 			});
 			if (scope) params.set('scope', scope);
@@ -143,7 +159,7 @@ export function getOauthLoginHelperFunctions(
 				);
 			}
 
-			const redirectUri = currentWebhookUrl(additionalData);
+			const redirectUri = buildStaticCallbackUrl(additionalData);
 
 			const tokenResponse = await axios.post<OauthTokenResponse>(
 				accessTokenUrl,

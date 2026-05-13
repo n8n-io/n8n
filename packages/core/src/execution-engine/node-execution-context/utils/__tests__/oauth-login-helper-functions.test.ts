@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type {
@@ -32,6 +33,9 @@ const decryptedCredential: ICredentialDataDecryptedObject = {
 describe('getOauthLoginHelperFunctions', () => {
 	beforeAll(() => {
 		Container.set(InstanceSettings, { hmacSignatureSecret: HMAC_SECRET } as InstanceSettings);
+		Container.set(GlobalConfig, {
+			endpoints: { rest: 'rest', form: 'form', formTest: 'form-test' },
+		} as GlobalConfig);
 	});
 
 	const workflow = mock<Workflow>({ id: 'wf-123' });
@@ -66,7 +70,9 @@ describe('getOauthLoginHelperFunctions', () => {
 		expect(parsed.origin + parsed.pathname).toBe('https://idp.example.com/authorize');
 		expect(parsed.searchParams.get('response_type')).toBe('code');
 		expect(parsed.searchParams.get('client_id')).toBe('client-id-123');
-		expect(parsed.searchParams.get('redirect_uri')).toBe('http://localhost:5678/form/my-path');
+		expect(parsed.searchParams.get('redirect_uri')).toBe(
+			'http://localhost:5678/rest/oauth2-credential/form-callback',
+		);
 		expect(parsed.searchParams.get('scope')).toBe('openid profile email');
 		expect(parsed.searchParams.get('state')).toBeTruthy();
 	});
