@@ -136,7 +136,7 @@ describe('OauthService', () => {
 				enumerable: true,
 			});
 
-			const promise = service.getCredential(req);
+			const promise = service.getCredentialForUpdate(req);
 			await expect(promise).rejects.toThrow(BadRequestError);
 			await expect(promise).rejects.toThrow('Required credential ID is missing');
 		});
@@ -149,10 +149,10 @@ describe('OauthService', () => {
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await expect(service.getCredential(req)).rejects.toThrow(NotFoundError);
+			await expect(service.getCredentialForUpdate(req)).rejects.toThrow(NotFoundError);
 			expect(logger.error).toHaveBeenCalledWith(
 				'OAuth credential authorization failed because the current user does not have the correct permissions',
-				{ userId: '123' },
+				{ userId: '123', credentialId: 'credential-id' },
 			);
 		});
 
@@ -165,13 +165,13 @@ describe('OauthService', () => {
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 
-			const result = await service.getCredential(req);
+			const result = await service.getCredentialForUpdate(req);
 
 			expect(result).toBe(mockCredential);
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				'credential-id',
 				req.user,
-				['credential:read'],
+				['credential:update'],
 			);
 		});
 	});
@@ -404,20 +404,28 @@ describe('OauthService', () => {
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			const result = await (service as any).decodeCsrfState(encodedState, req);
+			const [decodedState, credential] = await (service as any).decodeCsrfState(encodedState, req);
 
 			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
-			expect(result).toMatchObject({
+			expect(decodedState).toMatchObject({
 				token: 'token',
 				createdAt: timestamp,
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'static-credential',
 			});
+			expect(credential).toBe(mockCredential);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-id',
+				req.user,
+				['credential:update'],
+			);
 		});
 
 		it('should throw error when state format is invalid', async () => {
@@ -529,20 +537,24 @@ describe('OauthService', () => {
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			credentialsRepository.findOneBy.mockResolvedValue(mockCredential as any);
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			const result = await (service as any).decodeCsrfState(encodedState, req);
+			const [decodedState, credential] = await (service as any).decodeCsrfState(encodedState, req);
 
-			expect(result).toMatchObject({
+			expect(decodedState).toMatchObject({
 				token: 'token',
 				createdAt: timestamp,
 				cid: 'credential-id',
 				userId: 'different-user-id',
 				origin: 'dynamic-credential',
 			});
+			expect(credential).toBe(mockCredential);
 			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
 		it('should bypass user validation for dynamic-credential origin even when req.user is undefined', async () => {
@@ -558,19 +570,22 @@ describe('OauthService', () => {
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			credentialsRepository.findOneBy.mockResolvedValue(mockCredential as any);
 			const req = mock<AuthenticatedRequest>({
 				user: undefined,
 			});
 
-			const result = await (service as any).decodeCsrfState(encodedState, req);
+			const [decodedState, credential] = await (service as any).decodeCsrfState(encodedState, req);
 
-			expect(result).toMatchObject({
+			expect(decodedState).toMatchObject({
 				token: 'token',
 				createdAt: timestamp,
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'dynamic-credential',
 			});
+			expect(credential).toBe(mockCredential);
 			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 		});
 
@@ -760,7 +775,7 @@ describe('OauthService', () => {
 			});
 
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
-			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
@@ -781,7 +796,7 @@ describe('OauthService', () => {
 			});
 		});
 
-		it('should throw UnexpectedError when credential is not found', async () => {
+		it('should throw NotFoundError when credential is not found', async () => {
 			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
@@ -800,12 +815,10 @@ describe('OauthService', () => {
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			credentialsRepository.findOneBy.mockResolvedValue(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await expect(service.resolveCredential(req)).rejects.toThrow(UnexpectedError);
-			await expect(service.resolveCredential(req)).rejects.toThrow(
-				'OAuth callback failed because of insufficient permissions',
-			);
+			await expect(service.resolveCredential(req)).rejects.toThrow(NotFoundError);
+			await expect(service.resolveCredential(req)).rejects.toThrow('Credential not found');
 		});
 
 		it('should throw UnexpectedError when CSRF state is invalid', async () => {
@@ -832,7 +845,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
