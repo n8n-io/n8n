@@ -1,0 +1,46 @@
+type: object
+description: >
+  A single node in the ephemeral-execution catalogue. Field values are
+  illustrative; the catalogue currently returns an empty list (population
+  tracked in follow-up).
+required:
+  - nodeType
+  - nodeTypeVersion
+  - displayName
+  - description
+properties:
+  nodeType:
+    type: string
+    description: The canonical node identifier passed to `/ephemeral-nodes/execute`.
+    example: n8n-nodes-base.httpRequest
+  nodeTypeVersion:
+    type: number
+    description: Version of the node type to execute.
+    example: 4.2
+  displayName:
+    type: string
+    description: Human-readable node name.
+    example: HTTP Request
+  description:
+    type: string
+    description: Short description of what the node does.
+  category:
+    type: string
+    description: Top-level node category (e.g. `Core Nodes`, `Communication`).
+  exampleParameters:
+    type: object
+    additionalProperties: true
+    description: An example `nodeParameters` payload demonstrating the minimum viable invocation.
+  requiredCredentialTypes:
+    type: array
+    items:
+      type: string
+    description: >
+      Credential type names this node accepts (matches the `type` field of
+      `GET /credentials` entries). Empty if the node needs no credential.
+  inputDataShape:
+    type: object
+    additionalProperties: true
+    description: >
+      Optional JSON-Schema-like description of the input data the node expects.
+      Present when the node has a strong input contract; omitted otherwise.
