@@ -4,6 +4,8 @@ import {
 	ADD_DATA_TABLE_MODAL_KEY,
 	DATA_TABLE_DETAILS,
 	DATA_TABLE_VIEW,
+	BOARD_VIEW,
+	PROJECT_BOARDS,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
@@ -44,10 +46,29 @@ export const DataTableModule: FrontendModuleDescription = {
 			},
 		},
 		{
+			name: BOARD_VIEW,
+			path: '/home/boards',
+			component: DataTableView,
+			props: { kind: 'board' },
+			meta: {
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
 			name: PROJECT_DATA_TABLES,
 			path: 'datatables/:new(new)?',
 			props: true,
 			component: DataTableView,
+			meta: {
+				projectRoute: true,
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: PROJECT_BOARDS,
+			path: 'boards',
+			component: DataTableView,
+			props: { kind: 'board' },
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
@@ -73,6 +94,13 @@ export const DataTableModule: FrontendModuleDescription = {
 					name: DATA_TABLE_VIEW,
 				},
 			},
+			{
+				label: i18n.baseText('board.boards'),
+				value: BOARD_VIEW,
+				to: {
+					name: BOARD_VIEW,
+				},
+			},
 		],
 		project: [
 			{
@@ -80,6 +108,14 @@ export const DataTableModule: FrontendModuleDescription = {
 				value: PROJECT_DATA_TABLES,
 				dynamicRoute: {
 					name: PROJECT_DATA_TABLES,
+					includeProjectId: true,
+				},
+			},
+			{
+				label: i18n.baseText('board.boards'),
+				value: PROJECT_BOARDS,
+				dynamicRoute: {
+					name: PROJECT_BOARDS,
 					includeProjectId: true,
 				},
 			},

@@ -8,8 +8,9 @@ import type {
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
-import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import { useRouter, useRoute } from 'vue-router';
+import { BOARD_VIEW, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import type { DataTableKind } from '@n8n/api-types';
 import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -40,11 +41,19 @@ const props = defineProps<Props>();
 const toast = useToast();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
 const { fetchDependencyCounts, hasDependencies } = useDependencies();
+
+const dataTableKind = computed<DataTableKind | undefined>(() => {
+	if (route.query.kind === 'board' || route.query.kind === 'list') {
+		return route.query.kind;
+	}
+	return undefined;
+});
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
@@ -63,13 +72,20 @@ const showErrorAndGoBackToList = async (error: unknown) => {
 		error = new Error(String(i18n.baseText('dataTable.getDetails.error')));
 	}
 	toast.showError(error, i18n.baseText('dataTable.getDetails.error'));
-	await router.push({ name: DATA_TABLE_VIEW, params: { projectId: props.projectId } });
+	await router.push({
+		name: dataTableKind.value === 'board' ? BOARD_VIEW : DATA_TABLE_VIEW,
+		params: { projectId: props.projectId },
+	});
 };
 
 const initialize = async () => {
 	loading.value = true;
 	try {
-		const response = await dataTableStore.fetchOrFindDataTable(props.id, props.projectId);
+		const response = await dataTableStore.fetchOrFindDataTable(
+			props.id,
+			props.projectId,
+			dataTableKind.value,
+		);
 		if (response) {
 			dataTable.value = response;
 			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);

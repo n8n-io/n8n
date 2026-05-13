@@ -4,6 +4,8 @@ import { DATA_TABLE_COLUMN_REGEX } from '@n8n/api-types';
 export const DATA_TABLE_VIEW = 'data-tables';
 export const PROJECT_DATA_TABLES = 'project-data-tables';
 export const DATA_TABLE_DETAILS = 'data-table-details';
+export const BOARD_VIEW = 'boards';
+export const PROJECT_BOARDS = 'project-boards';
 export const DATA_TABLE_STORE = 'dataTableStore';
 
 export const DEFAULT_DATA_TABLE_PAGE_SIZE = 10;

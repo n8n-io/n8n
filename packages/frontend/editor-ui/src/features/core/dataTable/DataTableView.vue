@@ -28,6 +28,15 @@ import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
+import type { DataTableKind } from '@n8n/api-types';
+
+type Props = {
+	kind?: DataTableKind;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	kind: 'list',
+});
 
 const i18n = useI18n();
 const route = useRoute();
@@ -60,6 +69,9 @@ const filters = ref<BaseFilters>({
 	search: '',
 	homeProject: '',
 });
+
+const isBoardList = computed(() => props.kind === 'board');
+const resourceKey = computed(() => (isBoardList.value ? 'board' : 'dataTable'));
 
 const dataTableResources = computed<DataTableResource[]>(() =>
 	dataTableStore.dataTables.map((ds) => {
@@ -108,11 +120,15 @@ const fetchDataTables = async () => {
 			{
 				name: filters.value.search === '' ? undefined : filters.value.search,
 				projectId: filters.value.homeProject === '' ? undefined : filters.value.homeProject,
+				kind: props.kind,
 			},
 			currentSort.value,
 		);
 	} catch (error) {
-		toast.showError(error, 'Error loading data tables');
+		toast.showError(
+			error,
+			isBoardList.value ? 'Error loading boards' : 'Error loading data tables',
+		);
 	} finally {
 		delayedLoading.cancel();
 		loading.value = false;
@@ -159,12 +175,15 @@ const onSearchUpdated = async (search: string) => {
 };
 
 onMounted(() => {
-	documentTitle.set(i18n.baseText('dataTable.dataTables'));
+	documentTitle.set(i18n.baseText(isBoardList.value ? 'board.boards' : 'dataTable.dataTables'));
 });
 
 watch(
 	() => route.params.new,
 	() => {
+		if (props.kind !== 'list') {
+			return;
+		}
 		if (route.params.new === 'new') {
 			uiStore.openModal(ADD_DATA_TABLE_MODAL_KEY);
 		} else {
@@ -177,7 +196,7 @@ watch(
 <template>
 	<ResourcesListLayout
 		ref="layout"
-		resource-key="dataTable"
+		:resource-key="resourceKey"
 		type="list-paginated"
 		:resources="dataTableResources"
 		:initialize="fetchDataTables"
@@ -193,13 +212,13 @@ watch(
 			showFiltersDropdown: false,
 			sortEnabled: true,
 		}"
-		tab-key="dataTable"
+		:tab-key="isBoardList ? 'board' : 'dataTable'"
 		:persist-key-exclusions="PERSIST_KEY_EXCLUSIONS"
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
-			<ProjectHeader main-button="dataTable">
+			<ProjectHeader :main-button="isBoardList ? undefined : 'dataTable'">
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -210,6 +229,7 @@ watch(
 		</template>
 		<template #empty>
 			<N8nActionBox
+				v-if="!isBoardList"
 				data-test-id="empty-data-table-action-box"
 				:heading="i18n.baseText('dataTable.empty.label')"
 				:description="i18n.baseText('dataTable.empty.description')"
@@ -223,6 +243,12 @@ watch(
 					{{ i18n.baseText('dataTable.empty.button.disabled.tooltip') }}
 				</template>
 			</N8nActionBox>
+			<N8nActionBox
+				v-else
+				data-test-id="empty-board-action-box"
+				:heading="i18n.baseText('board.empty.label')"
+				:description="i18n.baseText('board.empty.description')"
+			/>
 		</template>
 		<template #item="{ item: data }">
 			<DataTableCard
