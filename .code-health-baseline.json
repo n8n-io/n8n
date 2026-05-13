@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-12T09:37:31.489Z",
-	"totalViolations": 82,
+	"generated": "2026-05-13T10:23:52.870Z",
+	"totalViolations": 87,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -52,13 +52,25 @@
 		"packages/@n8n/nodes-langchain/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 292,
+				"line": 266,
+				"message": "@n8n/typeorm@0.3.20-16 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "a7c1bca1c439"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 267,
+				"message": "mysql2@3.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "2d7d1b715d0c"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 293,
 				"message": "openai@^6.34.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "3c1f53f0afe3"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 299,
+				"line": 300,
 				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "88d67e2ef747"
 			},
@@ -70,25 +82,25 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 274,
+				"line": 275,
 				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8cd029bb871e"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 284,
+				"line": 285,
 				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "26f20ebea4b1"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 289,
+				"line": 290,
 				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "46cb48884e22"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 293,
+				"line": 294,
 				"message": "pdf-parse appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "0c7d44a9c2e4"
 			}
@@ -220,49 +232,49 @@
 		"packages/@n8n/instance-ai/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 80,
+				"line": 81,
 				"message": "@ai-sdk/anthropic appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "5b2153508e47"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 86,
+				"line": 87,
 				"message": "@types/psl appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "56dabb51b433"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 56,
+				"line": 57,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8fa6b9a8fc91"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 64,
+				"line": 65,
 				"message": "csv-parse appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8f082fc2e8b6"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 71,
+				"line": 72,
 				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "9a9d97065952"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 87,
+				"line": 88,
 				"message": "@types/turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "12e346c47b39"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 50,
+				"line": 51,
 				"message": "@joplin/turndown-plugin-gfm appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "a3cf1504b5c2"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 68,
+				"line": 69,
 				"message": "pdf-parse appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "283fa9114c03"
 			}
@@ -290,61 +302,61 @@
 		"packages/nodes-base/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 911,
+				"line": 913,
 				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "2d1fab7a5b05"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 961,
+				"line": 963,
 				"message": "semver appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "2daf37aa14e4"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 966,
+				"line": 968,
 				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "3f93c404ae9c"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 900,
+				"line": 902,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "ca4ac788adc6"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 912,
+				"line": 914,
 				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "1a1b5bbc50c9"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 915,
+				"line": 917,
 				"message": "csv-parse appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "781db4a1e068"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 917,
+				"line": 919,
 				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "9795e6c6d9e9"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 930,
+				"line": 932,
 				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "02341f2b5e3e"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 941,
+				"line": 943,
 				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "f688907d087a"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 892,
+				"line": 894,
 				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "ac254baa61f9"
 			}
@@ -384,19 +396,19 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 90,
+				"line": 91,
 				"message": "prettier appears in 3 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "9e9c7ec09a0b"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 92,
+				"line": 93,
 				"message": "semver appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "d8c606e42c92"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 77,
+				"line": 78,
 				"message": "esprima-next appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "62156c2613b2"
 			}
@@ -491,6 +503,14 @@
 				"hash": "733c3960022e"
 			}
 		],
+		"packages/@n8n/computer-use/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 47,
+				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f50c1eee2ed6"
+			}
+		],
 		"packages/workflow/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -509,14 +529,6 @@
 				"line": 68,
 				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "b660317b5f6f"
-			}
-		],
-		"packages/@n8n/computer-use/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 47,
-				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "f50c1eee2ed6"
 			}
 		],
 		"packages/@n8n/eslint-plugin-community-nodes/package.json": [
@@ -539,6 +551,30 @@
 				"line": 45,
 				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "955f3fe044c7"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1783000000000-CreateAgentTables.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1783000000000-CreateAgentTables.ts is prefixed with a future timestamp (1783000000000, ~50d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "d81428d567aa"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1783000000001-CreateAgentExecutionTables.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1783000000001-CreateAgentExecutionTables.ts is prefixed with a future timestamp (1783000000001, ~50d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "e33a8a794126"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000000-CreateAgentObservationTables.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000000-CreateAgentObservationTables.ts is prefixed with a future timestamp (1784000000000, ~61d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "4bae5ef065ad"
 			}
 		]
 	}

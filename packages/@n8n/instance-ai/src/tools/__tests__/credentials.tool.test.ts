@@ -799,6 +799,43 @@ describe('credentials tool', () => {
 			});
 		});
 
+		it('should return missing_credentials error when credentials is undefined', async () => {
+			const context = createMockContext();
+			const suspendFn = jest.fn();
+
+			const tool = createCredentialsTool(context);
+			const result = await tool.execute!(
+				{ action: 'setup', credentialFlow: { stage: 'finalize' } } as unknown as Parameters<
+					NonNullable<typeof tool.execute>
+				>[0],
+				suspendCtx(suspendFn),
+			);
+
+			expect(result).toEqual({
+				error: 'missing_credentials',
+				message: expect.stringContaining('credentials'),
+			});
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.credentialService.list).not.toHaveBeenCalled();
+		});
+
+		it('should return missing_credentials error when credentials is an empty array', async () => {
+			const context = createMockContext();
+			const suspendFn = jest.fn();
+
+			const tool = createCredentialsTool(context);
+			const result = await tool.execute!(
+				{ action: 'setup', credentials: [] },
+				suspendCtx(suspendFn),
+			);
+
+			expect(result).toEqual({
+				error: 'missing_credentials',
+				message: expect.stringContaining('credentials'),
+			});
+			expect(suspendFn).not.toHaveBeenCalled();
+		});
+
 		it('should default reason when not provided in credential requests', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as jest.Mock).mockResolvedValue([]);

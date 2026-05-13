@@ -57,6 +57,13 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import {
+	attachTemplateTelemetrySession,
+	createTemplateTelemetrySession,
+	createTypedToolObserver,
+	detachTemplateTelemetrySession,
+	type TemplateTelemetrySession,
+} from '../../workspace/template-telemetry';
 import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
 import { buildCredentialSnapshot, type CredentialEntry } from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
@@ -1068,6 +1075,8 @@ export async function startBuildWorkflowAgentTask(
 				await withTraceContextActor(traceContext, async () => {
 					let builderWs: BuilderWorkspace | undefined;
 					let activeBuilderSession: BuilderSandboxSession | undefined = reusedBuilderSession;
+					let telemetrySession: TemplateTelemetrySession | undefined;
+					let telemetryWorkspace: BuilderWorkspace['workspace'] | undefined;
 					const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
 					// Append-only history so a later failed submit for the main path
 					// cannot mask an earlier successful submit during post-error recovery.
@@ -1097,6 +1106,21 @@ export async function startBuildWorkflowAgentTask(
 								workspace = builderWs.workspace;
 								root = await getWorkspaceRoot(workspace);
 							}
+
+							// Bind a template-telemetry session to the workspace so any grep on
+							// examples/index.txt or cat on examples/*.ts gets observed via runInSandbox.
+							telemetrySession = createTemplateTelemetrySession({
+								context,
+								threadId: context.threadId,
+								runId: context.runId,
+								workItemId,
+								userRequestExcerpt: input.task,
+							});
+							telemetryWorkspace = workspace;
+							attachTemplateTelemetrySession(workspace, telemetrySession);
+							// Captures typed `mastra_workspace_grep` / `mastra_workspace_read_file`
+							// calls that never reach `runInSandbox` (shell-channel only).
+							const templateToolObserver = createTypedToolObserver(telemetrySession);
 
 							prompt = createSandboxBuilderAgentPrompt(root);
 							if (!activeBuilderSession && builderWs) {
@@ -1294,6 +1318,7 @@ export async function startBuildWorkflowAgentTask(
 										llmStepTraceHooks,
 										maxSteps: MAX_STEPS.BUILDER,
 										resumeOptions,
+										onStreamEvent: templateToolObserver,
 									});
 								});
 
@@ -1594,6 +1619,16 @@ export async function startBuildWorkflowAgentTask(
 						await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
 						return { text: toolFinalText };
 					} finally {
+						if (telemetrySession && telemetryWorkspace) {
+							try {
+								telemetrySession.flush();
+								detachTemplateTelemetrySession(telemetryWorkspace);
+							} catch (error) {
+								context.logger.warn('build-workflow-agent: failed to flush template telemetry', {
+									error: error instanceof Error ? error.message : String(error),
+								});
+							}
+						}
 						clearFilesystemMutationGuard?.();
 						if (activeBuilderSession && context.builderSandboxSessionRegistry) {
 							await context.builderSandboxSessionRegistry.release(activeBuilderSession.sessionId, {
