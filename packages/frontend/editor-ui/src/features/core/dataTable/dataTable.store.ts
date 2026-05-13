@@ -32,7 +32,7 @@ import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import type { DataTableListSortBy } from '@n8n/api-types';
+import type { DataTableKind, DataTableListSortBy } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -81,6 +81,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			id?: string | string[];
 			name?: string | string[];
 			projectId?: string | string[];
+			kind?: DataTableKind | DataTableKind[];
 		},
 		sortBy?: DataTableListSortBy,
 	) => {
@@ -104,6 +105,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		columns?: DataTableColumnCreatePayload[],
 		fileId?: string,
 		hasHeaders: boolean = true,
+		options?: {
+			kind?: DataTableKind;
+			metadata?: { allowedStatuses?: string[] };
+		},
 	) => {
 		const newTable = await createDataTableApi(
 			rootStore.restApiContext,
@@ -112,6 +117,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			columns,
 			fileId,
 			hasHeaders,
+			options,
 		);
 		if (!newTable.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
@@ -221,10 +227,15 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return updated;
 	};
 
-	const fetchDataTableDetails = async (dataTableId: string, projectId: string) => {
+	const fetchDataTableDetails = async (
+		dataTableId: string,
+		projectId: string,
+		kind?: DataTableKind,
+	) => {
 		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, undefined, {
 			projectId,
 			id: dataTableId,
+			kind,
 		});
 		if (response.data.length > 0) {
 			dataTables.value = response.data;
@@ -233,12 +244,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return null;
 	};
 
-	const fetchOrFindDataTable = async (dataTableId: string, projectId: string) => {
+	const fetchOrFindDataTable = async (
+		dataTableId: string,
+		projectId: string,
+		kind?: DataTableKind,
+	) => {
 		const existingTable = dataTables.value.find((table) => table.id === dataTableId);
 		if (existingTable) {
 			return existingTable;
 		}
-		return await fetchDataTableDetails(dataTableId, projectId);
+		return await fetchDataTableDetails(dataTableId, projectId, kind);
 	};
 
 	const addDataTableColumn = async (

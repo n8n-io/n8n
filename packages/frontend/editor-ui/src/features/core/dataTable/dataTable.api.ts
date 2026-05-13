@@ -1,3 +1,4 @@
+import type { DataTableKind, DataTableListSortBy } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -8,7 +9,6 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import type { DataTablesSizeResult } from 'n8n-workflow';
-import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const fetchDataTablesApi = async (
 	context: IRestApiContext,
@@ -21,6 +21,7 @@ export const fetchDataTablesApi = async (
 		id?: string | string[];
 		name?: string | string[];
 		projectId?: string | string[];
+		kind?: DataTableKind | DataTableKind[];
 	},
 	sortBy?: DataTableListSortBy,
 ) => {
@@ -44,6 +45,10 @@ export const createDataTableApi = async (
 	columns?: DataTableColumnCreatePayload[],
 	fileId?: string,
 	hasHeaders: boolean = true,
+	options?: {
+		kind?: DataTableKind;
+		metadata?: { allowedStatuses?: string[] };
+	},
 ) => {
 	return await makeRestApiRequest<DataTable>(
 		context,
@@ -54,6 +59,8 @@ export const createDataTableApi = async (
 			columns: columns ?? [],
 			hasHeaders,
 			...(fileId ? { fileId } : {}),
+			...(options?.kind ? { kind: options.kind } : {}),
+			...(options?.metadata ? { metadata: options.metadata } : {}),
 		},
 	);
 };

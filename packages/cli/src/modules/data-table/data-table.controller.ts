@@ -37,6 +37,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { DataTableService } from './data-table.service';
+import { DataTableBoardService } from './data-table-board.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
@@ -50,6 +51,7 @@ import { SourceControlPreferencesService } from '@/modules/source-control.ee/sou
 export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
+		private readonly dataTableBoardService: DataTableBoardService,
 		private readonly projectService: ProjectService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
@@ -108,6 +110,23 @@ export class DataTableController {
 	) {
 		this.checkInstanceWriteAccess();
 		try {
+			if (dto.kind === 'board') {
+				if (dto.fileId) {
+					throw new DataTableValidationError('Boards cannot be created from a CSV import');
+				}
+
+				if (dto.columns.length > 0) {
+					throw new DataTableValidationError('Board columns are defined by the system');
+				}
+
+				const result = await this.dataTableBoardService.createBoard(req.params.projectId, {
+					name: dto.name,
+					statuses: dto.metadata?.allowedStatuses ?? [],
+				});
+
+				return result;
+			}
+
 			return await this.dataTableService.createDataTable(req.params.projectId, dto);
 		} catch (e: unknown) {
 			if (!(e instanceof Error)) {

@@ -1,8 +1,10 @@
+import type { DataTableKind } from '@n8n/api-types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
 export type DataTable = {
 	id: string;
 	name: string;
+	kind?: DataTableKind;
 	sizeBytes: number;
 	columns: DataTableColumn[];
 	createdAt: string;

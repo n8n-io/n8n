@@ -10,9 +10,11 @@ import type {
 
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableRowsRepository } from './data-table-rows.repository';
+import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTable, type DataTableMetadata } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
 import { DataTableService } from './data-table.service';
+import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
@@ -47,6 +49,7 @@ export class DataTableBoardService {
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableRowsRepository: DataTableRowsRepository,
 		private readonly dataTableService: DataTableService,
+		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('data-table');
@@ -61,24 +64,27 @@ export class DataTableBoardService {
 
 		this.validateStatusNames(dto.statuses);
 
-		const dataTable = await this.dataTableRepository.createDataTable(
+		const hasNameClash = await this.dataTableRepository.existsBy({
+			name: dto.name,
+			projectId,
+		});
+
+		if (hasNameClash) {
+			throw new DataTableNameConflictError(dto.name);
+		}
+
+		const board = await this.dataTableRepository.createDataTable(
 			projectId,
 			dto.name,
 			BOARD_COLUMNS,
+			undefined,
+			'board',
+			{ allowedStatuses: dto.statuses },
 		);
 
-		await this.dataTableRepository.update(
-			{ id: dataTable.id },
-			{
-				kind: 'board',
-				metadata: { allowedStatuses: dto.statuses },
-			},
-		);
+		this.dataTableSizeValidator.reset();
 
-		return await this.dataTableRepository.findOneOrFail({
-			where: { id: dataTable.id },
-			relations: ['project', 'columns'],
-		});
+		return board;
 	}
 
 	async getBoard(boardId: string, projectId: string): Promise<DataTable> {
