@@ -14,6 +14,7 @@ import { handlesMultipleItems } from './handles-multiple-items';
 import { hasNodes } from './has-nodes';
 import { hasStartNode } from './has-start-node';
 import { hasTrigger } from './has-trigger';
+import { httpGenericAuthTypeMatchesPrompt } from './http-generic-auth-type-matches-prompt';
 import { inboundTriggerAuthDefaults } from './inbound-trigger-auth-defaults';
 import { memoryProperlyConnected } from './memory-properly-connected';
 import { memorySessionKeyExpression } from './memory-session-key-expression';
@@ -50,6 +51,7 @@ export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	toolsHaveParameters,
 	noUnreachableNodes,
 	inboundTriggerAuthDefaults,
+	httpGenericAuthTypeMatchesPrompt,
 	validNodeConfig,
 ];
 

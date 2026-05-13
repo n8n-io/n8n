@@ -161,7 +161,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
+			if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
