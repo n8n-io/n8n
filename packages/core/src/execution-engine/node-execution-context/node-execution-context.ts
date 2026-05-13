@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
+	GatewayToolCallResult,
+	GatewayToolsResult,
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
 	IExecuteData,
@@ -264,6 +266,36 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			return [];
 		}
 		return await this.additionalData.listAgents(this.additionalData.userId);
+	}
+
+	async getGatewayTools(userId?: string): Promise<GatewayToolsResult> {
+		if (!this.additionalData.getGatewayTools) {
+			throw new ApplicationError('Gateway tools not available in this context');
+		}
+		const targetUserId = userId ?? this.additionalData.userId;
+		if (!targetUserId) {
+			throw new ApplicationError(
+				'Cannot determine target user for gateway tools. Provide a userId or run the workflow manually.',
+			);
+		}
+		return await this.additionalData.getGatewayTools(targetUserId);
+	}
+
+	async callGatewayTool(
+		toolName: string,
+		args: Record<string, unknown>,
+		userId?: string,
+	): Promise<GatewayToolCallResult> {
+		if (!this.additionalData.callGatewayTool) {
+			throw new ApplicationError('Gateway tool calls not available in this context');
+		}
+		const targetUserId = userId ?? this.additionalData.userId;
+		if (!targetUserId) {
+			throw new ApplicationError(
+				'Cannot determine target user for gateway tool call. Provide a userId or run the workflow manually.',
+			);
+		}
+		return await this.additionalData.callGatewayTool(targetUserId, toolName, args);
 	}
 
 	getInstanceId() {

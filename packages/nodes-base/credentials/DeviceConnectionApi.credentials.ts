@@ -7,13 +7,21 @@ export class DeviceConnectionApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Device Owner ID',
+			name: 'deviceOwnerId',
+			type: 'hidden',
+			default: '',
+			description:
+				'The user ID of the device owner. Auto-populated on creation. Used to route tool calls to the correct device when the credential is shared.',
+		},
+		{
 			displayName: 'Device Name',
 			name: 'deviceName',
 			type: 'string',
 			default: '',
 			placeholder: "e.g. Bernhard's MacBook",
 			description:
-				'A friendly name to identify this device. When multiple devices are connected, this helps distinguish which one the workflow targets.',
+				'Auto-detected from the connected device. Change to give this device a custom name.',
 		},
 	];
 }

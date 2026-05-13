@@ -4,9 +4,10 @@ import type { JSONSchema7 } from 'json-schema';
 import pick from 'lodash/pick';
 import { StructuredToolkit } from 'n8n-core';
 import {
+	type GatewayToolCallResult,
+	type GatewayToolInfo,
 	type IDataObject,
 	type IExecuteFunctions,
-	type INode,
 	type INodeExecutionData,
 	type INodePropertyOptions,
 	type ILoadOptionsFunctions,
@@ -21,34 +22,14 @@ import { z } from 'zod';
 
 import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
-interface GatewayTool {
-	name: string;
-	description?: string;
-	inputSchema: JSONSchema7;
-	annotations?: Record<string, unknown>;
-}
-
-interface GatewayToolsResponse {
-	tools: GatewayTool[];
-	hostIdentifier: string | null;
-	directory: string | null;
-	toolCategories: Array<{ name: string; enabled: boolean }>;
-}
-
-interface GatewayToolResult {
-	content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
-	structuredContent?: Record<string, unknown>;
-	isError?: boolean;
-}
-
 type ToolIncludeMode = 'all' | 'selected' | 'except';
 
 function getSelectedTools(
-	tools: GatewayTool[],
+	tools: GatewayToolInfo[],
 	mode: ToolIncludeMode,
 	includeTools: string[],
 	excludeTools: string[],
-): GatewayTool[] {
+): GatewayToolInfo[] {
 	switch (mode) {
 		case 'selected': {
 			if (!includeTools.length) return tools;
@@ -75,67 +56,7 @@ function buildToolName(serverName: string, toolName: string): string {
 	return maxPrefix > 0 ? `${sanitized.slice(0, maxPrefix)}_${toolName}` : toolName;
 }
 
-async function parseErrorResponse(response: Response): Promise<string> {
-	const text = await response.text().catch(() => '');
-	try {
-		const parsed = JSON.parse(text) as { message?: string };
-		return parsed.message ?? text;
-	} catch {
-		return text || `Gateway returned ${response.status}`;
-	}
-}
-
-async function fetchGatewayTools(
-	instanceUrl: string,
-	apiKey: string,
-	timeout: number,
-	node: INode,
-): Promise<GatewayToolsResponse> {
-	const url = `${instanceUrl.replace(/\/$/, '')}/rest/instance-ai/gateway/tools`;
-	const response = await fetch(url, {
-		method: 'GET',
-		headers: {
-			'X-Gateway-Key': apiKey,
-			'Content-Type': 'application/json',
-		},
-		signal: AbortSignal.timeout(timeout),
-	});
-
-	if (!response.ok) {
-		throw new NodeOperationError(node, await parseErrorResponse(response));
-	}
-
-	const body = (await response.json()) as { data: GatewayToolsResponse };
-	return body.data;
-}
-
-async function callGatewayTool(
-	instanceUrl: string,
-	apiKey: string,
-	toolName: string,
-	toolArgs: Record<string, unknown>,
-	timeout: number,
-	node: INode,
-): Promise<GatewayToolResult> {
-	const url = `${instanceUrl.replace(/\/$/, '')}/rest/instance-ai/gateway/call-tool`;
-	const response = await fetch(url, {
-		method: 'POST',
-		headers: {
-			'X-Gateway-Key': apiKey,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({ name: toolName, arguments: toolArgs }),
-		signal: AbortSignal.timeout(timeout),
-	});
-
-	if (!response.ok) {
-		throw new NodeOperationError(node, await parseErrorResponse(response));
-	}
-
-	return (await response.json()) as GatewayToolResult;
-}
-
-function extractTextFromResult(result: GatewayToolResult): string {
+function extractTextFromResult(result: GatewayToolCallResult): string {
 	if (result.structuredContent) {
 		return JSON.stringify(result.structuredContent);
 	}
@@ -267,26 +188,33 @@ export class ToolComputerUse implements INodeType {
 	methods = {
 		loadOptions: {
 			async getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials('deviceConnectionApi');
-				const instanceUrl = credentials.instanceUrl as string;
-				const apiKey = credentials.gatewayApiKey as string;
+				if (!this.getGatewayTools) {
+					return [];
+				}
 
-				const { tools } = await fetchGatewayTools(instanceUrl, apiKey, 10_000, this.getNode());
-				return tools.map((tool) => ({
-					name: tool.name,
-					value: tool.name,
-					description: tool.description,
-				}));
+				try {
+					const { tools } = await this.getGatewayTools();
+					return tools.map((tool) => ({
+						name: tool.name,
+						value: tool.name,
+						description: tool.description,
+					}));
+				} catch {
+					return [];
+				}
 			},
 		},
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		if (!this.getGatewayTools || !this.callGatewayTool) {
+			throw new NodeOperationError(this.getNode(), 'Computer Use requires gateway support');
+		}
+		const { getGatewayTools, callGatewayTool } = this;
+
 		const node = this.getNode();
 		const credentials = await this.getCredentials('deviceConnectionApi');
-		const instanceUrl = credentials.instanceUrl as string;
-		const apiKey = credentials.gatewayApiKey as string;
-		const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
+		const deviceOwnerId = (credentials.deviceOwnerId as string) || undefined;
 		const includeMode = this.getNodeParameter('include', itemIndex) as ToolIncludeMode;
 		const includeTools = this.getNodeParameter('includeTools', itemIndex, []) as string[];
 		const excludeTools = this.getNodeParameter('excludeTools', itemIndex, []) as string[];
@@ -296,9 +224,9 @@ export class ToolComputerUse implements INodeType {
 			throw error;
 		};
 
-		let gatewayResponse: GatewayToolsResponse;
+		let gatewayResponse;
 		try {
-			gatewayResponse = await fetchGatewayTools(instanceUrl, apiKey, timeout, node);
+			gatewayResponse = await getGatewayTools(deviceOwnerId);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.logger.error('Computer Use: Failed to connect to device', { error: message });
@@ -325,7 +253,7 @@ export class ToolComputerUse implements INodeType {
 
 		const tools = filteredTools.map((tool) => {
 			const prefixedName = buildToolName(node.name, tool.name);
-			const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
+			const rawSchema = convertJsonSchemaToZod(tool.inputSchema as JSONSchema7);
 			const objectSchema =
 				rawSchema instanceof z.ZodObject ? rawSchema : z.object({ value: rawSchema });
 
@@ -339,12 +267,9 @@ export class ToolComputerUse implements INodeType {
 
 					try {
 						const result = await callGatewayTool(
-							instanceUrl,
-							apiKey,
 							tool.name,
 							args as Record<string, unknown>,
-							timeout,
-							node,
+							deviceOwnerId,
 						);
 						if (result.isError) {
 							const errorText = extractTextFromResult(result);
@@ -381,12 +306,16 @@ export class ToolComputerUse implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		if (!this.getGatewayTools || !this.callGatewayTool) {
+			throw new NodeOperationError(this.getNode(), 'Computer Use requires gateway support');
+		}
+		const { getGatewayTools, callGatewayTool } = this;
+
 		const node = this.getNode();
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const credentials = await this.getCredentials('deviceConnectionApi');
-		const instanceUrl = credentials.instanceUrl as string;
-		const apiKey = credentials.gatewayApiKey as string;
+		const deviceOwnerId = (credentials.deviceOwnerId as string) || undefined;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const signal = this.getExecutionCancelSignal();
@@ -394,7 +323,6 @@ export class ToolComputerUse implements INodeType {
 				throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
 			}
 
-			const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
 			const includeMode = this.getNodeParameter('include', itemIndex) as ToolIncludeMode;
 			const includeTools = this.getNodeParameter('includeTools', itemIndex, []) as string[];
 			const excludeTools = this.getNodeParameter('excludeTools', itemIndex, []) as string[];
@@ -406,7 +334,7 @@ export class ToolComputerUse implements INodeType {
 				});
 			}
 
-			const gatewayResponse = await fetchGatewayTools(instanceUrl, apiKey, timeout, node);
+			const gatewayResponse = await getGatewayTools(deviceOwnerId);
 			const filteredTools = getSelectedTools(
 				gatewayResponse.tools,
 				includeMode,
@@ -422,17 +350,14 @@ export class ToolComputerUse implements INodeType {
 				const { tool: _, ...toolArguments } = item.json;
 				const schema = tool.inputSchema;
 				const sanitizedArgs: IDataObject =
-					schema.additionalProperties !== true
-						? pick(toolArguments, Object.keys(schema.properties ?? {}))
+					(schema as Record<string, unknown>).additionalProperties !== true
+						? pick(toolArguments, Object.keys((schema as { properties?: object }).properties ?? {}))
 						: toolArguments;
 
 				const result = await callGatewayTool(
-					instanceUrl,
-					apiKey,
 					tool.name,
 					sanitizedArgs as Record<string, unknown>,
-					timeout,
-					node,
+					deviceOwnerId,
 				);
 
 				returnData.push({
