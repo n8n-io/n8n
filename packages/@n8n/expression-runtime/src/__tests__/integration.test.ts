@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import * as path from 'node:path';
+
 import { DateTime, Duration, Interval } from 'luxon';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
@@ -646,5 +649,40 @@ describe('Integration: Concurrent execution pooling', () => {
 		expect(result).toBe('replenished');
 
 		await evaluator.release(caller2);
+	});
+});
+
+describe('QuickJsBridge runtimeBundle injection', () => {
+	it('should initialize and evaluate when runtimeBundle is provided as a string', async () => {
+		let dir = __dirname;
+		let bundle: string | undefined;
+		while (dir !== path.dirname(dir)) {
+			try {
+				bundle = await readFile(path.join(dir, 'dist', 'bundle', 'runtime.iife.js'), 'utf-8');
+				break;
+			} catch {}
+			dir = path.dirname(dir);
+		}
+		if (!bundle) throw new Error('runtime bundle not found for test setup');
+
+		const capturedBundle = bundle;
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000, runtimeBundle: capturedBundle }),
+			maxCodeCacheSize: 1024,
+		});
+		await evaluator.initialize();
+		const caller = {};
+		await evaluator.acquire(caller);
+		try {
+			const result = evaluator.evaluate(
+				'{{ $json.name }}',
+				{ $json: { name: 'injected' } },
+				caller,
+			);
+			expect(result).toBe('injected');
+		} finally {
+			await evaluator.release(caller);
+			await evaluator.dispose();
+		}
 	});
 });

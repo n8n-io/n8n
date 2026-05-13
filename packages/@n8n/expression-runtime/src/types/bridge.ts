@@ -76,6 +76,13 @@ export interface BridgeConfig {
 
 	/** Optional logger. Falls back to no-op if not provided. */
 	logger?: Logger;
+
+	/**
+	 * Pre-loaded runtime IIFE bundle source as a string.
+	 * If provided, the bridge skips its own filesystem read.
+	 * Required when running in environments without filesystem access (browser).
+	 */
+	runtimeBundle?: string;
 }
 
 const NO_OP_LOGGER: Logger = {
@@ -90,6 +97,7 @@ export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
 	memoryLimit: 128,
 	timeout: 5000,
 	logger: NO_OP_LOGGER,
+	runtimeBundle: '',
 };
 
 /** Options for a single execute() call. */

@@ -406,7 +406,9 @@ export class QuickJsBridge implements RuntimeBridge {
 	private async loadRuntimeBundle(): Promise<void> {
 		if (!this.vm) throw new Error('Context not initialized');
 
-		const runtimeBundle = await readRuntimeBundle();
+		const runtimeBundle = this.config.runtimeBundle
+			? this.config.runtimeBundle
+			: await readRuntimeBundle();
 
 		const result = this.vm.evalCode(runtimeBundle);
 		if (result.error) {
