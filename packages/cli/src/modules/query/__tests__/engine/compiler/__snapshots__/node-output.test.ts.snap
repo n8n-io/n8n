@@ -1,0 +1,639 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`node-output compiler (postgresdb) permission scope emits 1=0 when accessible list is empty 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND 1=0
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) residual ops passes explicit projection through to residual 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "column",
+        "name": "name",
+      },
+      {
+        "kind": "column",
+        "name": "salary",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) residual ops passes filter through to residual 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": {
+      "field": "salary",
+      "kind": "compare",
+      "op": ">",
+      "value": 70000,
+    },
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) residual ops passes order by through to residual 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": [
+      {
+        "direction": "desc",
+        "field": "salary",
+        "kind": "column",
+      },
+    ],
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) table prefix respects non-empty tablePrefix 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "n8n_execution_entity" AS e
+JOIN "n8n_execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) windows EXECUTION id 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+      "42",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."id" = $4",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) windows SINCE date 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+      "2024-01-01",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."startedAt" > $4
+ORDER BY e."startedAt" DESC",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) windows default LAST 10 when no window specified 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (postgresdb) windows explicit LAST 5 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = $1
+  AND e."workflowId" IN ($2, $3)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 5",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) permission scope emits 1=0 when accessible list is empty 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND 1=0
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) residual ops passes explicit projection through to residual 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "column",
+        "name": "name",
+      },
+      {
+        "kind": "column",
+        "name": "salary",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) residual ops passes filter through to residual 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": {
+      "field": "salary",
+      "kind": "compare",
+      "op": ">",
+      "value": 70000,
+    },
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) residual ops passes order by through to residual 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": [
+      {
+        "direction": "desc",
+        "field": "salary",
+        "kind": "column",
+      },
+    ],
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) table prefix respects non-empty tablePrefix 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "n8n_execution_entity" AS e
+JOIN "n8n_execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) windows EXECUTION id 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+      "42",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."id" = ?",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) windows SINCE date 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+      "2024-01-01",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."startedAt" > ?
+ORDER BY e."startedAt" DESC",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) windows default LAST 10 when no window specified 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 10",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;
+
+exports[`node-output compiler (sqlite) windows explicit LAST 5 1`] = `
+{
+  "fetch": {
+    "params": [
+      "wf-1",
+      "wf-1",
+      "wf-2",
+    ],
+    "sql": "SELECT e."id" AS "_execution_id",
+       e."startedAt" AS "_executed_at",
+       ed."data" AS "_raw"
+FROM "execution_entity" AS e
+JOIN "execution_data" AS ed ON ed."executionId" = e."id"
+WHERE e."workflowId" = ?
+  AND e."workflowId" IN (?, ?)
+  AND e."status" = 'success'
+ORDER BY e."startedAt" DESC
+LIMIT 5",
+  },
+  "kind": "sql+js",
+  "limit": 1000,
+  "residual": {
+    "filter": undefined,
+    "nodeName": "node",
+    "orderBy": undefined,
+    "projection": [
+      {
+        "kind": "star",
+      },
+    ],
+  },
+}
+`;

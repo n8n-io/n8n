@@ -1,15 +1,32 @@
-import type { IRQuery } from '../ir';
+import type { IRFilter, IROrderBy, IRQuery, IRSelectItem } from '../ir';
 import type { SchemaMap } from '../schema-map';
 import { compileForExecutions } from './executions';
+import { compileForNodeOutput } from './node-output';
 import { compileForWorkflows } from './workflows';
 
-export type ExecutionStrategy = {
+export type SqlOnlyStrategy = {
 	kind: 'sql-only';
 	sql: string;
 	params: unknown[];
 	columns: string[];
 	limit: number;
 };
+
+export type ResidualOps = {
+	nodeName: string;
+	projection: IRSelectItem[];
+	filter?: IRFilter;
+	orderBy?: IROrderBy[];
+};
+
+export type SqlPlusJsStrategy = {
+	kind: 'sql+js';
+	fetch: { sql: string; params: unknown[] };
+	residual: ResidualOps;
+	limit: number;
+};
+
+export type ExecutionStrategy = SqlOnlyStrategy | SqlPlusJsStrategy;
 
 export function compile(ir: IRQuery, schema: SchemaMap): ExecutionStrategy {
 	switch (ir.source.kind) {
@@ -18,7 +35,6 @@ export function compile(ir: IRQuery, schema: SchemaMap): ExecutionStrategy {
 		case 'workflows':
 			return compileForWorkflows(ir, schema);
 		case 'nodeOutput':
-			// Path B (node-output streaming) is post-v1 — see plan §6.2 T1.3.
-			throw new Error('Node-output queries are not yet supported');
+			return compileForNodeOutput(ir, schema);
 	}
 }

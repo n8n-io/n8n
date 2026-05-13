@@ -49,7 +49,9 @@ describe('QueryService', () => {
 			expect(executor.execute).toHaveBeenCalledTimes(1);
 			const [strategy] = executor.execute.mock.calls[0];
 			expect(strategy.kind).toBe('sql-only');
-			expect(strategy.sql).toContain('"execution_entity"');
+			if (strategy.kind === 'sql-only') {
+				expect(strategy.sql).toContain('"execution_entity"');
+			}
 		});
 	});
 
@@ -64,11 +66,16 @@ describe('QueryService', () => {
 			);
 		});
 
-		it('passes the workflow name to SchemaMapBuilder.forUser before compile fails', async () => {
-			await expect(service.run("SELECT * FROM 'crm'.'node'", user)).rejects.toThrow(
-				/not yet supported/,
-			);
+		it('passes the workflow name to SchemaMapBuilder.forUser', async () => {
+			await service.run("SELECT * FROM 'crm'.'node'", user);
 			expect(schemaMapBuilder.forUser).toHaveBeenCalledWith(user, ['crm']);
+		});
+
+		it('compiles to a sql+js strategy and calls the executor', async () => {
+			await service.run("SELECT * FROM 'crm'.'node'", user);
+			expect(executor.execute).toHaveBeenCalledTimes(1);
+			const [strategy] = executor.execute.mock.calls[0];
+			expect(strategy.kind).toBe('sql+js');
 		});
 	});
 

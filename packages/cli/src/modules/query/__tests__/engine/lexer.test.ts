@@ -151,6 +151,51 @@ describe('lexer', () => {
 		});
 	});
 
+	describe('double-quoted identifiers', () => {
+		it('lexes a simple double-quoted name as IDENT', () => {
+			expect(lex('"col"')).toEqual([
+				{ kind: 'IDENT', value: 'col', start: 0 },
+				{ kind: 'EOF', start: 5 },
+			]);
+		});
+
+		it('allows spaces inside double-quoted identifiers', () => {
+			expect(lex('"Number Field"')[0]).toEqual({
+				kind: 'IDENT',
+				value: 'Number Field',
+				start: 0,
+			});
+		});
+
+		it('preserves keyword text as IDENT when double-quoted', () => {
+			// SQL standard: "select" is an identifier, not the SELECT keyword
+			expect(lex('"select"')[0]).toEqual({ kind: 'IDENT', value: 'select', start: 0 });
+		});
+
+		it('preserves case inside double-quoted identifiers', () => {
+			expect(lex('"CamelCase"')[0]).toEqual({
+				kind: 'IDENT',
+				value: 'CamelCase',
+				start: 0,
+			});
+		});
+
+		it('unescapes doubled inner double-quotes', () => {
+			expect(lex('"a""b"')[0]).toEqual({ kind: 'IDENT', value: 'a"b', start: 0 });
+		});
+
+		it('throws ParseError on unterminated double-quoted identifier', () => {
+			let thrown: unknown;
+			try {
+				lex('"hello');
+			} catch (error) {
+				thrown = error;
+			}
+			expect(thrown).toBeInstanceOf(ParseError);
+			expect(thrown).toMatchObject({ code: 'PARSE_ERROR', position: 0 });
+		});
+	});
+
 	describe('full statements', () => {
 		it("lexes SELECT * FROM 'executions' WHERE status = 'error'", () => {
 			expect(lex("SELECT * FROM 'executions' WHERE status = 'error'")).toEqual([

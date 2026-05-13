@@ -72,6 +72,34 @@ export function lex(input: string): Token[] {
 
 		const start = i;
 
+		// double-quoted identifier — allows spaces / special chars / keyword shadowing.
+		// SQL doubling (`""` → `"`) for escapes.
+		if (c === '"') {
+			i++;
+			let value = '';
+			let closed = false;
+			while (i < input.length) {
+				if (input[i] === '"') {
+					if (input[i + 1] === '"') {
+						value += '"';
+						i += 2;
+					} else {
+						i++;
+						closed = true;
+						break;
+					}
+				} else {
+					value += input[i];
+					i++;
+				}
+			}
+			if (!closed) {
+				throw new ParseError('Unterminated quoted identifier', start);
+			}
+			tokens.push({ kind: 'IDENT', value, start });
+			continue;
+		}
+
 		// string literal — single-quoted, SQL doubling for escapes
 		if (c === "'") {
 			i++;
