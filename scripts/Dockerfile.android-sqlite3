@@ -1,0 +1,22 @@
+# Builder image for cross-compiling Node native modules to android-arm64.
+# Linux host → Android target is the documented node-gyp cross-compile path;
+# this image exists because doing it from Darwin hits a wall of gypi mismatches
+# (Mac flags, libtool, etc.) that aren't worth fighting for a hackathon spike.
+#
+# Pinned to a specific NDK to keep ABI stable. Bump if Luca's runtime changes.
+FROM --platform=linux/amd64 node:22-bookworm
+
+ENV NDK_VERSION=r26d
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 wget unzip ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN cd /opt && \
+    wget -q https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip && \
+    unzip -q android-ndk-${NDK_VERSION}-linux.zip && \
+    rm android-ndk-${NDK_VERSION}-linux.zip
+
+ENV ANDROID_NDK_HOME=/opt/android-ndk-${NDK_VERSION}
+ENV NDK_TOOLCHAIN=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64
+
+WORKDIR /build
