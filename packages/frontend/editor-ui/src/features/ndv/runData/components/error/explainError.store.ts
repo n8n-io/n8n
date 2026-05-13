@@ -42,6 +42,10 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 	}
 
 	async function run(error: ErrorLike): Promise<void> {
+		// Cancel any in-flight request before starting a new one, otherwise
+		// a late onDone from the previous run could overwrite the new result.
+		abortController.value?.abort();
+
 		const fingerprint = fingerprintError(error);
 		lastFingerprint.value = fingerprint;
 		state.value = 'loading';

@@ -193,4 +193,120 @@ describe('useExplainErrorStore', () => {
 			expect.objectContaining({ outcome: 'error' }),
 		);
 	});
+
+	it('calls the API again for a different error fingerprint', async () => {
+		apiSpy.mockImplementation((_ctx, _payload, onMessage, onDone) => {
+			onMessage({
+				sessionId: 'sid',
+				messages: [{ role: 'assistant', type: 'message', text: fencedJson }],
+			});
+			onDone();
+		});
+
+		const otherError = {
+			name: 'NodeOperationError',
+			message: 'Different failure mode',
+			description: 'Check creds',
+			node: { ...node, id: 'n2', name: 'Slack' },
+		} as unknown as NodeError;
+
+		const store = useExplainErrorStore();
+		await store.explain(sampleError);
+		await store.explain(otherError);
+		expect(apiSpy).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not transition to error state when the API aborts', async () => {
+		apiSpy.mockImplementation((_ctx, _payload, _onMessage, _onDone, onError) => {
+			const aborted = new Error('aborted');
+			aborted.name = 'AbortError';
+			onError(aborted);
+		});
+		const store = useExplainErrorStore();
+		await store.explain(sampleError);
+		expect(store.state).not.toBe('error');
+	});
+
+	it('reset() aborts an in-flight request so its onDone is a no-op', async () => {
+		let capturedOnDone: (() => void) | undefined;
+		apiSpy.mockImplementation((_ctx, _payload, _onMessage, onDone) => {
+			capturedOnDone = onDone;
+			// Intentionally do not call onDone yet — simulate an in-flight stream.
+		});
+
+		const store = useExplainErrorStore();
+		const inFlight = store.explain(sampleError);
+		// Yield once so explain() reaches the API call and registers the controller.
+		await Promise.resolve();
+		expect(store.state).toBe('loading');
+
+		store.reset();
+		expect(store.state).toBe('idle');
+
+		// Now fire the deferred onDone — state must NOT flip to 'ready'.
+		capturedOnDone?.();
+		await inFlight;
+		expect(store.state).toBe('idle');
+		expect(store.result).toBeUndefined();
+	});
+
+	it('aborts a previous in-flight request when explain() is called for a different error', async () => {
+		type Call = {
+			onMessage: (chunk: { sessionId: string; messages: unknown[] }) => void;
+			onDone: () => void;
+		};
+		const calls: Call[] = [];
+		apiSpy.mockImplementation((_ctx, _payload, onMessage, onDone) => {
+			calls.push({ onMessage, onDone });
+		});
+
+		const otherError = {
+			name: 'NodeOperationError',
+			message: 'Different failure mode',
+			description: 'Check creds',
+			node: { ...node, id: 'n2', name: 'Slack' },
+		} as unknown as NodeError;
+
+		const firstResult = [
+			'```json',
+			'{ "summary": "stale", "culprit": "stale", "nextStep": "stale" }',
+			'```',
+		].join('\n');
+		const secondResult = [
+			'```json',
+			'{ "summary": "fresh", "culprit": "fresh", "nextStep": "fresh" }',
+			'```',
+		].join('\n');
+
+		const store = useExplainErrorStore();
+		const firstCall = store.explain(sampleError);
+		await Promise.resolve();
+		const secondCall = store.explain(otherError);
+		await Promise.resolve();
+
+		// Stale first run completes after the second one started — its
+		// controller was aborted, so onDone must NOT publish 'stale'.
+		calls[0].onMessage({
+			sessionId: 'sid',
+			messages: [{ role: 'assistant', type: 'message', text: firstResult }],
+		});
+		calls[0].onDone();
+		await firstCall;
+
+		// Fresh second run completes — its result must win.
+		calls[1].onMessage({
+			sessionId: 'sid',
+			messages: [{ role: 'assistant', type: 'message', text: secondResult }],
+		});
+		calls[1].onDone();
+		await secondCall;
+
+		expect(store.state).toBe('ready');
+		expect(store.result).toEqual({
+			kind: 'structured',
+			summary: 'fresh',
+			culprit: 'fresh',
+			nextStep: 'fresh',
+		});
+	});
 });
