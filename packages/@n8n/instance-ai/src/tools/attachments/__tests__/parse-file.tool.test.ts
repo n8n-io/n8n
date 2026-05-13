@@ -1,5 +1,25 @@
+import * as XLSX from 'xlsx';
+
 import type { InstanceAiContext } from '../../../types';
 import { createParseFileTool } from '../parse-file.tool';
+
+const mockPdfGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
+jest.mock('pdf-parse', () => ({
+	__esModule: true,
+	PDFParse: jest.fn().mockImplementation(() => ({
+		getText: mockPdfGetText,
+		destroy: jest.fn().mockResolvedValue(undefined),
+	})),
+}));
+
+const mockExtractRawText = jest.fn<Promise<{ value: string; messages: unknown[] }>, [unknown]>();
+jest.mock('mammoth', () => ({
+	__esModule: true,
+	default: {
+		extractRawText: async (input: { buffer: Buffer }) => await mockExtractRawText(input),
+	},
+	extractRawText: async (input: { buffer: Buffer }) => await mockExtractRawText(input),
+}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -19,7 +39,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			createFromWorkflowJSON: jest.fn(),
 			updateFromWorkflowJSON: jest.fn(),
 			archive: jest.fn(),
-			delete: jest.fn(),
+			unarchive: jest.fn(),
 			publish: jest.fn(),
 			unpublish: jest.fn(),
 			clearAiTemporary: jest.fn(),
@@ -184,6 +204,183 @@ describe('createParseFileTool', () => {
 
 			// Empty CSV should parse without error — just 0 rows
 			expect(result.totalRows).toBe(0);
+		});
+	});
+
+	describe('with a valid XLSX attachment', () => {
+		it('parses xlsx into tabular rows + columns', async () => {
+			const sheet = XLSX.utils.json_to_sheet([
+				{ name: 'Alice', count: 30 },
+				{ name: 'Bob', count: 25 },
+			]);
+			const wb = XLSX.utils.book_new();
+			XLSX.utils.book_append_sheet(wb, sheet, 'Sheet1');
+			const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						data: buffer.toString('base64'),
+						mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+						fileName: 'sheet.xlsx',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('xlsx');
+			expect(result.totalRows).toBe(2);
+			expect((result.columns as Array<{ name: string }>).map((c) => c.name)).toEqual([
+				'name',
+				'count',
+			]);
+		});
+	});
+
+	describe('with a PDF attachment', () => {
+		beforeEach(() => mockPdfGetText.mockReset());
+
+		it('returns extracted text under the text kind', async () => {
+			mockPdfGetText.mockResolvedValue({ text: 'PDF text body', total: 3 });
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64('pdf-bytes'), mimeType: 'application/pdf', fileName: 'doc.pdf' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('pdf');
+			expect(result.kind).toBe('text');
+			expect(result.text).toBe('PDF text body');
+			expect(result.pages).toBe(3);
+		});
+
+		it('surfaces extraction errors as the tools error field', async () => {
+			mockPdfGetText.mockRejectedValue(new Error('corrupt'));
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64('pdf-bytes'), mimeType: 'application/pdf', fileName: 'doc.pdf' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toContain('Failed to parse PDF');
+			expect(result.format).toBe('pdf');
+		});
+	});
+
+	describe('with an HTML attachment', () => {
+		it('returns extracted markdown under the text kind', async () => {
+			const html =
+				'<!doctype html><html><head><title>P</title></head><body><h1>H</h1><p>Some text.</p></body></html>';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64(html), mimeType: 'text/html', fileName: 'page.html' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('html');
+			expect(result.kind).toBe('text');
+			expect(result.text).toContain('Some text.');
+			expect(result.title).toBe('P');
+		});
+	});
+
+	describe('with a DOCX attachment', () => {
+		beforeEach(() => mockExtractRawText.mockReset());
+
+		it('returns extracted text under the text kind', async () => {
+			mockExtractRawText.mockResolvedValue({ value: 'Doc body', messages: [] });
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						data: toBase64('docx-bytes'),
+						mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+						fileName: 'letter.docx',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('docx');
+			expect(result.kind).toBe('text');
+			expect(result.text).toBe('Doc body');
+		});
+	});
+
+	describe('with a plain text attachment', () => {
+		it('returns the text content under the text kind', async () => {
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64('hello world'), mimeType: 'text/plain', fileName: 'note.txt' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('text');
+			expect(result.kind).toBe('text');
+			expect(result.text).toBe('hello world');
+		});
+	});
+
+	describe('with a markdown attachment', () => {
+		it('returns the markdown content under the text kind', async () => {
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						data: toBase64('# Heading\nbody'),
+						mimeType: 'text/markdown',
+						fileName: 'readme.md',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('markdown');
+			expect(result.kind).toBe('text');
+			expect(result.text).toContain('# Heading');
 		});
 	});
 });

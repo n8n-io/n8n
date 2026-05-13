@@ -91,6 +91,9 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
+	/** Request IDs that have already logged a task-type mismatch warning */
+	private mismatchWarned = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
@@ -114,6 +117,7 @@ export class TaskBroker {
 
 		const request = this.pendingTaskRequests[requestIndex];
 		this.pendingTaskRequests.splice(requestIndex, 1);
+		this.mismatchWarned.delete(requestId);
 
 		clearTimeout(request.timeout);
 
@@ -567,7 +571,6 @@ export class TaskBroker {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
 				clearTimeout(request.timeout);
 				request.timeout = this.createRequestTimeout(request.requestId);
-				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
 				return;
 			}
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
@@ -651,15 +654,28 @@ export class TaskBroker {
 			}
 			const offerIndex = this.pendingTaskOffers.findIndex((o) => o.taskType === request.taskType);
 			if (offerIndex === -1) {
+				this.warnOnTaskTypeMismatch(request);
 				continue;
 			}
 			const offer = this.pendingTaskOffers[offerIndex];
 
 			request.acceptInProgress = true;
 			this.pendingTaskOffers.splice(offerIndex, 1);
+			this.mismatchWarned.delete(request.requestId);
 
 			void this.acceptOffer(offer, request);
 		}
+	}
+
+	private warnOnTaskTypeMismatch(request: TaskRequest) {
+		if (this.pendingTaskOffers.length === 0) return;
+		if (this.mismatchWarned.has(request.requestId)) return;
+
+		const offerTypes = [...new Set(this.pendingTaskOffers.map((o) => o.taskType))];
+		this.logger.warn(
+			`No matching task offer for request "${request.requestId}" (type "${request.taskType}"). Available offer types: [${offerTypes.join(', ')}]`,
+		);
+		this.mismatchWarned.add(request.requestId);
 	}
 
 	taskRequested(request: TaskRequest) {

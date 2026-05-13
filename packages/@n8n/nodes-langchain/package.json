@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.19.0",
+  "version": "2.21.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -34,9 +34,9 @@
     "lint": "eslint nodes credentials utils --quiet",
     "lint:fix": "eslint nodes credentials utils --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "files": [
     "dist"
@@ -140,6 +140,7 @@
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
       "dist/nodes/mcp/McpClient/McpClient.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
+      "dist/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
@@ -204,6 +205,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
@@ -212,9 +214,11 @@
     "@types/pg": "^8.15.6",
     "@types/sanitize-html": "^2.11.0",
     "@types/temp": "^0.9.1",
+    "@vitest/coverage-v8": "catalog:",
     "fast-glob": "catalog:",
-    "jest-mock-extended": "^3.0.4",
-    "n8n-core": "workspace:*"
+    "n8n-core": "workspace:*",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
@@ -223,11 +227,12 @@
     "@getzep/zep-cloud": "1.0.6",
     "@getzep/zep-js": "0.9.0",
     "@google-cloud/resource-manager": "5.3.0",
-    "@google/generative-ai": "0.24.0",
     "@google/genai": "1.19.0",
+    "@google/generative-ai": "0.24.0",
     "@huggingface/inference": "4.0.5",
     "@langchain/anthropic": "catalog:",
     "@langchain/aws": "1.0.3",
+    "@langchain/classic": "1.0.27",
     "@langchain/cohere": "1.0.1",
     "@langchain/community": "catalog:",
     "@langchain/core": "catalog:",
@@ -243,9 +248,9 @@
     "@langchain/redis": "1.0.1",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/weaviate": "1.0.1",
-    "@microsoft/agents-a365-runtime": "0.1.0-preview.113",
     "@microsoft/agents-a365-notifications": "0.1.0-preview.113",
     "@microsoft/agents-a365-observability": "0.1.0-preview.113",
+    "@microsoft/agents-a365-runtime": "0.1.0-preview.113",
     "@microsoft/agents-a365-tooling": "0.1.0-preview.113",
     "@microsoft/agents-a365-tooling-extensions-langchain": "0.1.0-preview.113",
     "@microsoft/agents-activity": "1.2.3",
@@ -258,12 +263,12 @@
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
-    "@n8n/typeorm": "catalog:",
+    "@n8n/typeorm": "0.3.20-16",
+    "mysql2": "3.17.0",
     "@n8n/typescript-config": "workspace:*",
-    "vm2": "catalog:",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",
-    "@supabase/supabase-js": "2.49.9",
+    "@supabase/supabase-js": "catalog:",
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "basic-auth": "catalog:",
@@ -279,9 +284,8 @@
     "js-tiktoken": "catalog:",
     "jsdom": "23.0.1",
     "langchain": "catalog:",
-    "@langchain/classic": "1.0.27",
     "lodash": "catalog:",
-    "mammoth": "1.11.0",
+    "mammoth": "1.12.0",
     "mime-types": "catalog:",
     "mongodb": "^6.17.0",
     "n8n-nodes-base": "workspace:*",
@@ -294,8 +298,9 @@
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
+    "vm2": "catalog:",
     "weaviate-client": "3.9.0",
     "zod": "catalog:",
-    "zod-to-json-schema": "3.23.3"
+    "zod-to-json-schema": "catalog:"
   }
 }

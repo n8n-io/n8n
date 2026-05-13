@@ -10,6 +10,17 @@ export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
+export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
+export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
+export type {
+	DropdownMenuProps,
+	DropdownMenuItemProps,
+	DropdownMenuSlots,
+	DropdownMenuItemSlots,
+	DropdownMenuEmits,
+	DropdownMenuTrigger,
+	DropdownMenuPlacement,
+} from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
@@ -23,8 +34,6 @@ export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nDatatable } from './N8nDatatable';
-export { default as N8nDropdown } from './N8nDropdown';
-export type { N8nDropdownOption } from './N8nDropdown';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';

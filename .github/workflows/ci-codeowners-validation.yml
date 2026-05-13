@@ -1,0 +1,23 @@
+# .github/workflows/ci-codeowners-validation.yml
+name: "CI: Validate CODEOWNERS"
+
+# Only run when CODEOWNERS or packages change
+on:
+  pull_request:
+    paths:
+      - ".github/CODEOWNERS"
+      - "packages/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f #v0.7.4
+        with:
+          # Start with safe checks only. Add "owners" and
+          # experimental_checks: "notowned" once the file has settled
+          # and skip patterns are configured.
+          checks: "files,duppatterns,syntax"
+          github_access_token: "${{ secrets.GITHUB_TOKEN }}"

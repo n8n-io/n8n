@@ -83,6 +83,7 @@ const {
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {

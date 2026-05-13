@@ -125,6 +125,40 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
+/**
+ * Fill in defaults for properties whose visibility depends on sibling values
+ * (e.g. OpenAI v2's per-resource `operation`). A naive single-pass loop picks
+ * the first variant of a duplicated property name, which leaves dependent
+ * properties (like `modelId` for `text`/`response`) out of view of the issue
+ * and credential checkers. `getNodeParameters` walks the dependency graph and
+ * fills only displayed properties.
+ */
+function resolveDisplayedDefaults(
+	nodeProperties: INodeProperties[],
+	parameters: Record<string, unknown>,
+	nodeType: string,
+	typeVersion: number,
+	desc: INodeTypeDescription,
+): INodeParameters {
+	const stubNode: INode = {
+		id: '',
+		name: '',
+		type: nodeType,
+		typeVersion,
+		parameters: parameters as INodeParameters,
+		position: [0, 0],
+	};
+	const resolved = NodeHelpers.getNodeParameters(
+		nodeProperties,
+		parameters as INodeParameters,
+		true,
+		false,
+		stubNode,
+		desc,
+	);
+	return resolved ?? (parameters as INodeParameters);
+}
+
 @Service()
 export class InstanceAiAdapterService {
 	private readonly logger: Logger;
@@ -290,12 +324,14 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				const filter = {
+					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(options?.query ? { query: options.query } : {}),
+				};
+
 				const { workflows } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
-					filter: {
-						isArchived: false,
-						...(options?.query ? { query: options.query } : {}),
-					},
+					filter,
 				});
 
 				return workflows
@@ -306,6 +342,7 @@ export class InstanceAiAdapterService {
 							name: wf.name,
 							versionId: wf.versionId,
 							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
 							createdAt: wf.createdAt.toISOString(),
 							updatedAt: wf.updatedAt.toISOString(),
 						}),
@@ -326,12 +363,18 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.archive(user, workflowId, { skipArchived: true });
+				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
-			async delete(workflowId: string) {
+			async unarchive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.delete(user, workflowId);
+				const result = await workflowService.unarchive(user, workflowId);
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
 			async clearAiTemporary(workflowId: string) {
@@ -381,6 +424,7 @@ export class InstanceAiAdapterService {
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
 						thread_id: threadId,
+						workflow_id: workflowId,
 						executed_by: 'ai',
 					});
 				}
@@ -807,6 +851,19 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+						status,
+					});
+				};
+
 				const executionId = await workflowRunner.run(runData);
 
 				// Wait for completion with timeout protection
@@ -838,30 +895,25 @@ export class InstanceAiAdapterService {
 							} catch {
 								// Execution may have completed between timeout and cancel
 							}
-							return {
+							const result = {
 								executionId,
 								status: 'error',
 								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 							} satisfies ExecutionResult;
+							trackBuilderExecutedWorkflow(result.status);
+							return result;
 						}
 						throw error;
 					}
 				}
 
-				if (threadId) {
-					telemetry.track('Builder executed workflow', {
-						thread_id: threadId,
-						executed_by: 'ai',
-						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
-						exec_type: runData.executionMode,
-					});
-				}
-
-				return await extractExecutionResult(
+				const result = await extractExecutionResult(
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
 				);
+				trackBuilderExecutedWorkflow(result.status);
+				return result;
 			},
 
 			async getStatus(executionId: string) {
@@ -945,6 +997,30 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				// Setup flows scope to a workflow or project so the candidates match what
+				// the save path will accept. `preventTampering` (workflow.service.ee.ts)
+				// uses `getCredentialsAUserCanUseInAWorkflow` for the same intersection,
+				// so the editor's credential picker and the AI's setup card stay aligned.
+				if (options?.workflowId || options?.projectId) {
+					const scoped = options.workflowId
+						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								workflowId: options.workflowId,
+							})
+						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								projectId: options.projectId!,
+							});
+
+					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;
+
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+						}),
+					);
+				}
+
 				const credentials = await credentialsService.getMany(user, {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,
@@ -1626,6 +1702,17 @@ export class InstanceAiAdapterService {
 			return nodes.find((n) => n.name === nodeType);
 		};
 
+		const normalizeNodeVersion = (version?: string): number | undefined => {
+			if (!version) return undefined;
+			const normalized = version.replace(/^v/i, '');
+			if (!/^\d+$/.test(normalized)) return Number(normalized);
+			// Supports v3 and compact decimals like v34 -> 3.4; assumes minor version < 10.
+			if (normalized.length === 2) {
+				return Number(`${normalized[0]}.${normalized[1]}`);
+			}
+			return Number(normalized);
+		};
+
 		return {
 			async listAvailable(options) {
 				const nodes = await getNodes();
@@ -1676,8 +1763,8 @@ export class InstanceAiAdapterService {
 					}
 					if (n.builderHint) {
 						result.builderHint = {};
-						if (n.builderHint.message) {
-							result.builderHint.message = n.builderHint.message;
+						if (n.builderHint.searchHint) {
+							result.builderHint.message = n.builderHint.searchHint;
 						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
@@ -1780,7 +1867,19 @@ export class InstanceAiAdapterService {
 					return { content: '', error: result.error };
 				}
 
-				return { content: result.content, version: result.version };
+				const nodes = await getNodes();
+				const nodeDesc = findNodeByVersion(
+					nodes,
+					nodeType,
+					normalizeNodeVersion(result.version ?? options?.version),
+				);
+				const builderHint = nodeDesc?.builderHint?.searchHint;
+
+				return {
+					content: result.content,
+					version: result.version,
+					...(builderHint ? { builderHint } : {}),
+				};
 			},
 
 			listDiscriminators: async (nodeType) => {
@@ -1793,21 +1892,20 @@ export class InstanceAiAdapterService {
 				if (!desc) return {};
 
 				const nodeProperties = desc.properties;
-
-				// Fill in default values for parameters not explicitly set
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of nodeProperties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					nodeProperties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
 
 				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
 
@@ -1839,7 +1937,7 @@ export class InstanceAiAdapterService {
 						if (
 							prop.displayOptions &&
 							!NodeHelpers.displayParameter(
-								paramsWithDefaults as INodeParameters,
+								paramsWithDefaults,
 								prop,
 								minimalNode,
 								desc as unknown as INodeTypeDescription,
@@ -1863,31 +1961,32 @@ export class InstanceAiAdapterService {
 
 				const credentialTypes = new Set<string>();
 
-				// 1. Displayable credentials from node type description
-				const nodeCredentials = desc.credentials ?? [];
-				// Fill defaults before evaluating display options
-				const paramsWithDefaultsForCreds: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaultsForCreds) && prop.default !== undefined) {
-						paramsWithDefaultsForCreds[prop.name] = prop.default;
-					}
-				}
-				const credCheckNode: INode = {
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					desc.properties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
+				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaultsForCreds as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
+
+				// 1. Displayable credentials from node type description
+				const nodeCredentials = desc.credentials ?? [];
 				for (const cred of nodeCredentials) {
 					// Check if credential is displayable given current parameters
 					if (cred.displayOptions) {
 						if (
 							!NodeHelpers.displayParameter(
-								paramsWithDefaultsForCreds as INodeParameters,
+								paramsWithDefaults,
 								cred,
-								credCheckNode,
+								minimalNode,
 								desc as unknown as INodeTypeDescription,
 							)
 						) {
@@ -1898,20 +1997,6 @@ export class InstanceAiAdapterService {
 				}
 
 				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
-				const minimalNode: INode = {
-					id: '',
-					name: '',
-					type: nodeType,
-					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
-					position: [0, 0],
-				};
 				const issues = NodeHelpers.getNodeParametersIssues(
 					desc.properties,
 					minimalNode,
@@ -2340,7 +2425,7 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.message` of the property that references a given
+ * Find the `builderHint.propertyHint` of the property that references a given
  * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
  * Returns undefined if no matching property is found.
  *
@@ -2383,8 +2468,8 @@ function findBuilderHintForMethod(
 				continue;
 			}
 			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.message) {
-				return item.builderHint.message;
+			if (referencesMethod(item) && item.builderHint?.propertyHint) {
+				return item.builderHint.propertyHint;
 			}
 			const nested = searchProps(item.options);
 			if (nested) return nested;
@@ -2949,6 +3034,7 @@ function toWorkflowDetail(
 		name: workflow.name,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId ?? null,
+		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(

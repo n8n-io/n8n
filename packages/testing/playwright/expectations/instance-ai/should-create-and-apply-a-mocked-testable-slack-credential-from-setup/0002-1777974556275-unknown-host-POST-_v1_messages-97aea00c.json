@@ -1,0 +1,111 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*\\[\\{\"type\":\"text\",\"text\":\"You are the n8n Instance Agent — an AI assistant embedde[\\s\\S]*\"type\"\\s*:\\s*\"tool_use\"[\\s\\S]{0,300}\"name\"\\s*:\\s*\"workflows\"[\\s\\S]{0,500}\"action\"\\s*:\\s*\"setup\"[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "590"
+      ],
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-f2a31e23c17caa48469882f5934cd46d-4f55b71500112ad2-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=vx7p2XTKVCp8ymxCyY1Bf1uDntU.2lsVb5X3TtBBY8A-1777974553.6039832-1.0.1.1-m.FrPJVtR30V6V66YfGzigadwEH.6O1ClMIT7BTAU14; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CajDHmCLnzy9u6DgTCKTa"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-05-05T09:49:13Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26975000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-05-05T09:49:13Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-05-05T09:49:13Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-05-05T09:49:13Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22475000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Tue, 05 May 2026 09:49:14 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "9f6ed5800ca3313f-SOF"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "vx7p2XTKVCp8ymxCyY1Bf1uDntU.2lsVb5X3TtBBY8A-1777974553.6039832-1.0.1.1-m.FrPJVtR30V6V66YfGzigadwEH.6O1ClMIT7BTAU14"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01EsNoXS2Gk17WzZSyi3WX4T\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":539,\"cache_creation_input_tokens\":348,\"cache_read_input_tokens\":13705,\"cache_creation\":{\"ephemeral_5m_input_tokens\":348,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}              }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}    }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"The\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" workflow **\\\"B3 Workflow Setup Slack Credential Test\\\"** has been set up successfully. Here's a summary of what was configured:\\n\\n-\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" **Slack node** — connected to the credential **\\\"B3 Slack\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" Credential Test\\\"** (using access token authentication), configured to send a message to channel\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" `C01234567`.\\n\\nThe workflow is ready to use. Let me know if you'd like to test it or make any changes!\"}         }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0  }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":539,\"cache_creation_input_tokens\":348,\"cache_read_input_tokens\":13705,\"output_tokens\":101}   }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"         }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxRXNOb1hTMkdrMTdXelpTeWkzV1g0VCIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjUzOSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjozNDgsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxMzcwNSwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MzQ4LCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MSwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIn19ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn0gICAgfQoKZXZlbnQ6IHBpbmcKZGF0YTogeyJ0eXBlIjogInBpbmcifQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiJUaGUifSAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB3b3JrZmxvdyAqKlwiQjMgV29ya2Zsb3cgU2V0dXAgU2xhY2sgQ3JlZGVudGlhbCBUZXN0XCIqKiBoYXMgYmVlbiBzZXQgdXAgc3VjY2Vzc2Z1bGx5LiBIZXJlJ3MgYSBzdW1tYXJ5IG9mIHdoYXQgd2FzIGNvbmZpZ3VyZWQ6XG5cbi0ifSAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiAqKlNsYWNrIG5vZGUqKiDigJQgY29ubmVjdGVkIHRvIHRoZSBjcmVkZW50aWFsICoqXCJCMyBTbGFjayJ9ICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiIENyZWRlbnRpYWwgVGVzdFwiKiogKHVzaW5nIGFjY2VzcyB0b2tlbiBhdXRoZW50aWNhdGlvbiksIGNvbmZpZ3VyZWQgdG8gc2VuZCBhIG1lc3NhZ2UgdG8gY2hhbm5lbCJ9ICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiBgQzAxMjM0NTY3YC5cblxuVGhlIHdvcmtmbG93IGlzIHJlYWR5IHRvIHVzZS4gTGV0IG1lIGtub3cgaWYgeW91J2QgbGlrZSB0byB0ZXN0IGl0IG9yIG1ha2UgYW55IGNoYW5nZXMhIn0gICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICB9CgpldmVudDogbWVzc2FnZV9kZWx0YQpkYXRhOiB7InR5cGUiOiJtZXNzYWdlX2RlbHRhIiwiZGVsdGEiOnsic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6NTM5LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjM0OCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjEzNzA1LCJvdXRwdXRfdG9rZW5zIjoxMDF9ICAgfQoKZXZlbnQ6IG1lc3NhZ2Vfc3RvcApkYXRhOiB7InR5cGUiOiJtZXNzYWdlX3N0b3AiICAgICAgICAgfQoK",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0002-1777974556275-unknown-host-POST-_v1_messages-97aea00c.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

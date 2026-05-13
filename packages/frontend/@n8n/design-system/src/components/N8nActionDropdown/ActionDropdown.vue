@@ -1,16 +1,11 @@
-<script lang="ts" setup generic="T extends string">
-// This component is visually similar to the ActionToggle component
-// but it offers more options when it comes to dropdown items styling
-// (supports icons, separators, custom styling and all options provided
-// by Element UI dropdown component).
-// It can be used in different parts of editor UI while ActionToggle
-// is designed to be used in card components.
-import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
-import { ref, useCssModule, useAttrs, computed } from 'vue';
+<script setup lang="ts" generic="T extends string">
+import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
 import N8nBadge from '../N8nBadge';
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
@@ -20,18 +15,20 @@ const { t } = useI18n();
 
 const TRIGGER = ['click', 'hover'] as const;
 
+defineOptions({ inheritAttrs: false });
+
 interface ActionDropdownProps {
 	items: Array<ActionDropdownItem<T>>;
-	placement?: Placement;
+	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	activatorIcon?: IconName;
 	activatorSize?: ButtonSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
-	hideArrow?: boolean;
 	teleported?: boolean;
 	disabled?: boolean;
 	extraPopperClass?: string;
 	maxHeight?: string | number;
+	modal?: boolean;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -40,16 +37,63 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	activatorSize: 'medium',
 	iconSize: 'medium',
 	trigger: 'click',
-	hideArrow: false,
 	teleported: true,
 	disabled: false,
 	maxHeight: '',
+	modal: true,
 });
 
-const attrs = useAttrs();
-const testIdPrefix = attrs['data-test-id'];
-
 const $style = useCssModule();
+const attrs = useAttrs();
+
+const dropdownTestId = computed(() => {
+	const testId = attrs['data-test-id'];
+	return typeof testId === 'string' ? testId : undefined;
+});
+
+const containerAttrs = computed(() => {
+	const { 'data-test-id': _dataTestId, ...rest } = attrs;
+	return rest;
+});
+
+const getItemTestId = (id: T): string => {
+	if (dropdownTestId.value) {
+		return `${dropdownTestId.value}-item-${id}`;
+	}
+
+	return `action-${id}`;
+};
+
+const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
+	return props.items.map((item) => ({
+		id: item.id,
+		testId: item.testId ?? getItemTestId(item.id),
+		label: item.label,
+		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
+		disabled: item.disabled,
+		divided: item.divided,
+		class: getItemClasses(item),
+		data: item,
+	}));
+});
+
+const emit = defineEmits<{
+	select: [action: T];
+	visibleChange: [open: boolean];
+	'badge-click': [action: T];
+}>();
+
+const onSelect = (action: T) => emit('select', action);
+const onOpenChange = (open: boolean) => emit('visibleChange', open);
+const onBadgeClick = (action: T) => emit('badge-click', action);
+
+const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
+const dropdownId = `n8n-action-dropdown-${getCurrentInstance()?.uid ?? 0}`;
+
+const open = () => dropdownRef.value?.open();
+const close = () => dropdownRef.value?.close();
+defineExpose({ open, close });
+
 const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
@@ -58,132 +102,88 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
 	};
 };
-
-const emit = defineEmits<{
-	select: [action: T];
-	visibleChange: [open: boolean];
-	'badge-click': [action: T];
-}>();
-
-defineSlots<{
-	activator: {};
-	menuItem: (props: ActionDropdownItem<T>) => void;
-}>();
-
-const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
-
-const popperClass = computed(
-	() =>
-		`${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''} ${props.extraPopperClass ?? ''}`,
-);
-
-const onSelect = (action: T) => emit('select', action);
-const onVisibleChange = (open: boolean) => emit('visibleChange', open);
-
-const onButtonBlur = (event: FocusEvent) => {
-	// Hide dropdown when clicking outside of current document
-	if (elementDropdown.value?.handleClose && event.relatedTarget === null) {
-		elementDropdown.value.handleClose();
-	}
-};
-
-const open = () => elementDropdown.value?.handleOpen();
-const close = () => elementDropdown.value?.handleClose();
-defineExpose({ open, close });
 </script>
 
 <template>
-	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<ElDropdown
-			ref="elementDropdown"
+	<div
+		v-bind="containerAttrs"
+		:class="['action-dropdown-container', $style.actionDropdownContainer]"
+	>
+		<N8nDropdownMenu
+			:id="dropdownId"
+			ref="dropdownRef"
+			:items="items"
+			:data-test-id="dropdownTestId"
+			:content-test-id="dropdownTestId"
 			:placement="placement"
 			:trigger="trigger"
-			:popper-class="popperClass"
-			:teleported="teleported"
 			:disabled="disabled"
+			:teleported="teleported"
+			:modal="modal"
+			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
-			@command="onSelect"
-			@visible-change="onVisibleChange"
+			@select="onSelect"
+			@update:model-value="onOpenChange"
 		>
-			<slot v-if="$slots.activator" name="activator" />
-			<N8nIconButton
-				variant="ghost"
-				v-else
-				:class="$style.activator"
-				:size="activatorSize"
-				:icon="activatorIcon"
-				:aria-label="t('actionDropdown.activator')"
-				@blur="onButtonBlur"
-			/>
-
-			<template #dropdown>
-				<ElDropdownMenu :class="$style.userActionsMenu">
-					<ElDropdownItem
-						v-for="item in items"
-						:key="item.id"
-						:command="item.id"
-						:disabled="item.disabled"
-						:divided="item.divided"
-						:class="$style.elementItem"
-					>
-						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
-							<span v-if="item.icon" :class="$style.icon">
-								<N8nIcon :icon="item.icon" :size="iconSize" />
-							</span>
-							<span :class="$style.label">
-								<slot name="menuItem" v-bind="item">
-									{{ item.label }}
-								</slot>
-							</span>
-							<N8nIcon
-								v-if="item.checked"
-								:class="$style.checkIcon"
-								icon="check"
-								:size="iconSize"
-							/>
-							<span
-								v-if="item.badge"
-								:class="{ [$style.clickableBadge]: item.disabled }"
-								@click.stop="item.disabled && $emit('badge-click', item.id)"
-							>
-								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
-									{{ item.badge }}
-								</N8nBadge>
-							</span>
-							<N8nKeyboardShortcut
-								v-if="item.shortcut"
-								v-bind="item.shortcut"
-								:class="$style.shortcut"
-							>
-							</N8nKeyboardShortcut>
-						</div>
-					</ElDropdownItem>
-				</ElDropdownMenu>
+			<template #trigger>
+				<slot v-if="$slots.activator" name="activator" />
+				<N8nIconButton
+					v-else
+					variant="ghost"
+					:class="$style.activator"
+					:size="activatorSize"
+					:icon="activatorIcon"
+					:disabled="disabled"
+					:aria-label="t('actionDropdown.activator')"
+					:aria-controls="dropdownId"
+				/>
 			</template>
-		</ElDropdown>
+			<template #item-leading="slotProps">
+				<span
+					v-if="slotProps.item.icon?.type === 'icon'"
+					:class="[slotProps.ui.class, $style.icon]"
+				>
+					<N8nIcon :icon="slotProps.item.icon.value" :size="iconSize" />
+				</span>
+			</template>
+			<template #item-label="slotProps">
+				<span :class="[slotProps.ui.class, $style.label]">
+					<slot name="menuItem" v-bind="slotProps.item.data as ActionDropdownItem<T>">
+						{{ slotProps.item.data?.label ?? slotProps.item.label }}
+					</slot>
+				</span>
+			</template>
+			<template #item-trailing="slotProps">
+				<span :class="slotProps.ui.class">
+					<N8nIcon
+						v-if="slotProps.item.data?.checked"
+						:class="$style.checkIcon"
+						icon="check"
+						:size="iconSize"
+					/>
+					<span
+						v-if="slotProps.item.data?.badge"
+						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
+						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
+					>
+						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
+							{{ slotProps.item.data.badge }}
+						</N8nBadge>
+					</span>
+					<N8nKeyboardShortcut
+						v-if="slotProps.item.data?.shortcut"
+						v-bind="slotProps.item.data.shortcut"
+						:class="$style.shortcut"
+					/>
+				</span>
+			</template>
+		</N8nDropdownMenu>
 	</div>
 </template>
 
 <style lang="scss" module>
-:global(.el-dropdown__list) {
-	.userActionsMenu {
-		min-width: 160px;
-		padding: var(--spacing--4xs) 0;
-	}
-
-	.elementItem {
-		padding: 0;
-	}
-}
-
-:global(.el-popper).hideArrow {
-	:global(.el-popper__arrow) {
-		display: none;
-	}
-}
-
-.shadow {
-	box-shadow: var(--shadow--light);
+.actionDropdownContainer {
+	display: inline-block;
 }
 
 .activator {
@@ -206,6 +206,10 @@ defineExpose({ open, close });
 			opacity: 0.3;
 		}
 	}
+
+	:global([data-disabled]) & {
+		color: inherit;
+	}
 }
 
 .icon {
@@ -214,7 +218,6 @@ defineExpose({ open, close });
 	margin-right: var(--spacing--2xs);
 	flex-grow: 0;
 	flex-shrink: 0;
-	margin-right: calc(-1 * var(--spacing--2xs));
 
 	svg {
 		width: 1.2em !important;
@@ -233,12 +236,6 @@ defineExpose({ open, close });
 
 .shortcut {
 	display: flex;
-}
-
-:global(li.is-disabled) {
-	.hasCustomStyling {
-		color: inherit !important;
-	}
 }
 
 .clickableBadge {
