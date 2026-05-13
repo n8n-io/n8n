@@ -1,0 +1,46 @@
+{
+	"name": "Headless Workflow With Credentials",
+	"nodes": [
+		{
+			"id": "manual-trigger",
+			"name": "When clicking Test Workflow",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 300],
+			"parameters": {}
+		},
+		{
+			"id": "http-request",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [460, 300],
+			"parameters": {
+				"url": "https://api.example.com/echo",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "cred-headless-001",
+					"name": "Headless Test Credential"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking Test Workflow": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"active": false
+}
