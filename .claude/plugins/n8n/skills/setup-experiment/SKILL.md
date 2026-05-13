@@ -1,4 +1,5 @@
 ---
+name: setup-experiment
 description: >-
   Scaffolds new `packages/frontend/editor-ui` experiments using the n8n
   experiment standard. Use when creating a new editor-ui experiment, adding a
