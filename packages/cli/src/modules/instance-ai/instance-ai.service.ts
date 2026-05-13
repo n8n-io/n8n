@@ -111,11 +111,7 @@ import { InstanceAiCompactionService } from './compaction.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
-import {
-	INSTANCE_AI_RUN_TIMEOUT_REASON,
-	InstanceAiLivenessService,
-	type InstanceAiConsumedRunTimeout,
-} from './liveness';
+import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
