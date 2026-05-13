@@ -285,6 +285,7 @@ export class EmailReadImapV2 implements INodeType {
 		let connection: ImapSimple;
 		let closeFunctionWasCalled = false;
 		let isCurrentlyReconnecting = false;
+		let processingPromise: Promise<void> = Promise.resolve();
 
 		// Returns the email text
 
@@ -381,68 +382,73 @@ export class EmailReadImapV2 implements INodeType {
 					tls: credentials.secure,
 					authTimeout: 20000,
 				},
-				onMail: async (numEmails) => {
+				onMail: (numEmails) => {
 					this.logger.debug('New emails received in node "EmailReadImap"', {
 						numEmails,
 					});
 
 					if (connection) {
-						// Create a fresh copy to avoid accumulating filters across calls
-						const currentSearchCriteria = [...searchCriteria];
+						processingPromise = processingPromise
+							.then(async () => {
+								// Create a fresh copy to avoid accumulating filters across calls
+								const currentSearchCriteria = [...searchCriteria];
 
-						/**
-						 * Only process new emails:
-						 * - If we've seen emails before (lastMessageUid is set), fetch messages higher UID.
-						 * - Otherwise, fetch emails received since the workflow activation date.
-						 *
-						 * Note: IMAP 'SINCE' only filters by date (not time),
-						 * so it may include emails from earlier on the activation day.
-						 */
-						if (staticData.lastMessageUid !== undefined) {
-							/**
-							 * A short explanation about UIDs and how they work
-							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
-							 * TL;DR:
-							 * - You cannot filter using ['UID', 'CURRENT ID + 1:*'] because IMAP
-							 * won't return correct results if current id + 1 does not yet exist.
-							 * - UIDs can change but this is not being treated here.
-							 * If the mailbox is recreated (lets say you remove all emails, remove
-							 * the mail box and create another with same name, UIDs will change)
-							 * - You can check if UIDs changed in the above example
-							 * by checking UIDValidity.
-							 */
-							currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
-						} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
-							currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
-						}
+								/**
+								 * Only process new emails:
+								 * - If we've seen emails before (lastMessageUid is set), fetch messages higher UID.
+								 * - Otherwise, fetch emails received since the workflow activation date.
+								 *
+								 * Note: IMAP 'SINCE' only filters by date (not time),
+								 * so it may include emails from earlier on the activation day.
+								 */
+								if (staticData.lastMessageUid !== undefined) {
+									/**
+									 * A short explanation about UIDs and how they work
+									 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
+									 * TL;DR:
+									 * - You cannot filter using ['UID', 'CURRENT ID + 1:*'] because IMAP
+									 * won't return correct results if current id + 1 does not yet exist.
+									 * - UIDs can change but this is not being treated here.
+									 * If the mailbox is recreated (lets say you remove all emails, remove
+									 * the mail box and create another with same name, UIDs will change)
+									 * - You can check if UIDs changed in the above example
+									 * by checking UIDValidity.
+									 */
+									currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+								} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
+									currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
+								}
 
-						this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-							searchCriteria: currentSearchCriteria,
-						});
+								this.logger.debug('Querying for new messages on node "EmailReadImap"', {
+									searchCriteria: currentSearchCriteria,
+								});
 
-						try {
-							await getNewEmails.call(this, {
-								imapConnection: connection,
-								searchCriteria: currentSearchCriteria,
-								postProcessAction,
-								getText,
-								getAttachment,
-								onEmailBatch: async (returnData: INodeExecutionData[]) => {
-									if (returnData.length) {
-										this.emit([returnData]);
-									}
-								},
-							});
-						} catch (error) {
-							this.logger.error('Email Read Imap node encountered an error fetching new emails', {
-								error: error as Error,
-							});
-							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
-							// if it receives an error before the workflow got activated
-							await returnedPromise.promise.then(() => {
-								this.emitError(error as Error);
-							});
-						}
+								try {
+									await getNewEmails.call(this, {
+										imapConnection: connection,
+										searchCriteria: currentSearchCriteria,
+										postProcessAction,
+										getText,
+										getAttachment,
+										onEmailBatch: async (returnData: INodeExecutionData[]) => {
+											if (returnData.length) {
+												this.emit([returnData]);
+											}
+										},
+									});
+								} catch (error) {
+									this.logger.error(
+										'Email Read Imap node encountered an error fetching new emails',
+										{ error: error as Error },
+									);
+									// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
+									// if it receives an error before the workflow got activated
+									await returnedPromise.promise.then(() => {
+										this.emitError(error as Error);
+									});
+								}
+							})
+							.catch(() => {});
 					}
 				},
 				onUpdate: (seqNo: number, info) => {

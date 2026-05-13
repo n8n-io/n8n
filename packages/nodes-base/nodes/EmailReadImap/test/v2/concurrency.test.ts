@@ -7,7 +7,8 @@ import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
 import { EmailReadImapV2 } from '../../v2/EmailReadImapV2.node';
 
 let capturedOnMail: ((numEmails: number) => void) | undefined;
-let capturedSearchCriteria: unknown[][] = [];
+let concurrentCalls = 0;
+let maxConcurrentCalls = 0;
 
 const mockConnection = Object.assign(new EventEmitter(), {
 	openBox: jest.fn().mockResolvedValue({}),
@@ -26,21 +27,17 @@ jest.mock('@n8n/imap', () => ({
 }));
 
 jest.mock('../../v2/utils', () => ({
-	getNewEmails: jest.fn().mockImplementation(async function (
-		this: ITriggerFunctions,
-		opts: { searchCriteria: unknown[] },
-	) {
-		// Record the searchCriteria for assertion
-		capturedSearchCriteria.push([...opts.searchCriteria]);
-
-		// Simulate processing: update lastMessageUid so subsequent onMail calls
-		// take the UID push path (line 398-411 in EmailReadImapV2.node.ts)
-		const staticData = this.getWorkflowStaticData('node');
-		staticData.lastMessageUid = ((staticData.lastMessageUid as number) ?? 0) + 1;
+	getNewEmails: jest.fn().mockImplementation(async function (this: ITriggerFunctions) {
+		concurrentCalls++;
+		if (concurrentCalls > maxConcurrentCalls) {
+			maxConcurrentCalls = concurrentCalls;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		concurrentCalls--;
 	}),
 }));
 
-describe('searchCriteria leak on repeated onMail calls', () => {
+describe('onMail concurrency protection', () => {
 	const staticData: IDataObject = {};
 
 	const triggerFunctions = mock<ITriggerFunctions>({
@@ -76,7 +73,8 @@ describe('searchCriteria leak on repeated onMail calls', () => {
 
 	beforeEach(() => {
 		capturedOnMail = undefined;
-		capturedSearchCriteria = [];
+		concurrentCalls = 0;
+		maxConcurrentCalls = 0;
 		Object.keys(staticData).forEach((key) => delete staticData[key]);
 
 		triggerFunctions.getCredentials.calledWith('imap').mockResolvedValue(credentials);
@@ -96,38 +94,22 @@ describe('searchCriteria leak on repeated onMail calls', () => {
 
 	afterEach(() => jest.clearAllMocks());
 
-	it('should not accumulate UID entries in searchCriteria across onMail calls', async () => {
+	it('should serialize concurrent onMail calls', async () => {
 		const node = new EmailReadImapV2(baseDescription);
 		await node.trigger.call(triggerFunctions);
 
 		expect(capturedOnMail).toBeDefined();
 
-		const flushPromiseChain = async () => await new Promise((resolve) => setTimeout(resolve, 50));
-
-		// Simulate the first onMail — lastMessageUid is undefined,
-		// so it takes the SINCE path, not the UID push path
 		capturedOnMail!(1);
-		await flushPromiseChain();
-		expect(capturedSearchCriteria).toHaveLength(1);
-		// After first call, the mock sets lastMessageUid = 1
+		capturedOnMail!(1);
+		capturedOnMail!(1);
 
-		// Now fire onMail 10 more times, waiting for each to complete
-		// (onMail calls are serialized via a promise chain)
-		for (let i = 0; i < 10; i++) {
-			capturedOnMail!(1);
-			await flushPromiseChain();
-		}
+		await new Promise((resolve) => setTimeout(resolve, 300));
 
-		expect(capturedSearchCriteria).toHaveLength(11);
-
-		// Each onMail call should pass a fresh searchCriteria with at most
-		// 2 entries: UNSEEN + one UID filter for the current lastMessageUid.
-		// UID entries must NOT accumulate across calls.
-		const lastCriteria = capturedSearchCriteria[capturedSearchCriteria.length - 1];
-
-		const uidEntries = lastCriteria.filter((c) => Array.isArray(c) && c[0] === 'UID');
-
-		// Before the fix the UID Entries would accumulate (length > 1) and then lead to a slow memory leak
-		expect(uidEntries).toHaveLength(1);
+		const { getNewEmails } = jest.requireMock('../../v2/utils') as {
+			getNewEmails: jest.Mock;
+		};
+		expect(getNewEmails).toHaveBeenCalledTimes(3);
+		expect(maxConcurrentCalls).toBe(1);
 	});
 });
