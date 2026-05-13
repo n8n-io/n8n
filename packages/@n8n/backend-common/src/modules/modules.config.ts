@@ -16,6 +16,7 @@ export const MODULE_NAMES = [
 	'chat-hub',
 	'sso-oidc',
 	'sso-saml',
+	'sso-chat',
 	'log-streaming',
 	'ldap',
 	'quick-connect',
