@@ -294,7 +294,7 @@ const syncRowsByStatus = (rows: DataTableRow[]) => {
 	}
 };
 
-const fetchRows = async () => {
+const fetchRows = async (silent = false) => {
 	if (statuses.value.length === 0) {
 		for (const status of Object.keys(rowsByStatus)) {
 			delete rowsByStatus[status];
@@ -302,7 +302,9 @@ const fetchRows = async () => {
 		return;
 	}
 
-	loading.value = true;
+	if (!silent) {
+		loading.value = true;
+	}
 	try {
 		const pageSize = 100;
 		let skip = 0;
@@ -511,7 +513,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 const startPolling = () => {
 	pollTimer = setInterval(() => {
 		if (!loading.value && !isDraggingCard.value) {
-			void fetchRows();
+			void fetchRows(true);
 		}
 	}, POLL_INTERVAL_MS);
 };
