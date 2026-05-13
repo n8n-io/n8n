@@ -24,6 +24,7 @@ const showDataTables = ref(true);
 const hideOrphans = ref(false);
 const filterProject = ref<string>('all');
 const viewMode = ref<ViewMode>('projects');
+const focusMode = ref(false);
 
 // Distinct colors per project
 const PROJECT_PALETTE = [
@@ -42,7 +43,7 @@ const PROJECT_PALETTE = [
 ];
 
 const CREDENTIAL_COLORS = { fill: '#DCFCE7', stroke: '#15803D' };
-const DATATABLE_COLORS = { fill: '#FED7AA', stroke: '#C2410C' };
+const DATATABLE_COLORS = { fill: '#FEF3C7', stroke: '#92400E' };
 const RESTRICTED_COLORS = { fill: '#F3F4F6', stroke: '#6B7280' };
 
 const NODE_LABELS: Record<string, string> = {
@@ -233,13 +234,14 @@ function buildWorkflowGraph(): { nodes: SimNode[]; links: SimLink[] } {
 	if (!showDataTables.value) filterNodes((n) => n.type !== 'dataTable');
 	if (searchQuery.value) {
 		const q = searchQuery.value.toLowerCase();
-		const matchIds = new Set(
+		const directMatches = new Set(
 			nodes.filter((n) => n.label.toLowerCase().includes(q)).map((n) => n.id),
 		);
+		const matchIds = new Set(directMatches);
 		for (const link of links) {
 			const { srcId, tgtId } = getLinkIds(link);
-			if (matchIds.has(srcId)) matchIds.add(tgtId);
-			if (matchIds.has(tgtId)) matchIds.add(srcId);
+			if (directMatches.has(srcId)) matchIds.add(tgtId);
+			if (directMatches.has(tgtId)) matchIds.add(srcId);
 		}
 		filterNodes((n) => matchIds.has(n.id));
 	}
@@ -255,6 +257,79 @@ function buildWorkflowGraph(): { nodes: SimNode[]; links: SimLink[] } {
 
 	if (hideOrphans.value) {
 		filterNodes((n) => connected.has(n.id));
+	}
+
+	// Focus mode: show only selected node + direct neighbors, collapse deeper chains
+	if (focusMode.value && selectedNode.value) {
+		const focusId = selectedNode.value.id;
+		const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+		if (nodeMap.has(focusId)) {
+			const directNeighborIds = new Set<string>();
+			for (const link of links) {
+				const { srcId, tgtId } = getLinkIds(link);
+				if (srcId === focusId) directNeighborIds.add(tgtId);
+				if (tgtId === focusId) directNeighborIds.add(srcId);
+			}
+
+			// Build adjacency for BFS beyond direct neighbors
+			const adj = new Map<string, string[]>();
+			for (const link of links) {
+				const { srcId, tgtId } = getLinkIds(link);
+				if (!adj.has(srcId)) adj.set(srcId, []);
+				if (!adj.has(tgtId)) adj.set(tgtId, []);
+				adj.get(srcId)!.push(tgtId);
+				adj.get(tgtId)!.push(srcId);
+			}
+
+			// For each direct neighbor, count how many nodes lie beyond it
+			const aggregateNodes: SimNode[] = [];
+			const aggregateLinks: SimLink[] = [];
+			const visibleIds = new Set([focusId, ...directNeighborIds]);
+
+			for (const neighborId of directNeighborIds) {
+				// BFS from this neighbor, not crossing back through the focus node or other direct neighbors
+				const beyond = new Set<string>();
+				const queue = [neighborId];
+				const visited = new Set([focusId, neighborId]);
+				while (queue.length > 0) {
+					const current = queue.pop()!;
+					for (const next of adj.get(current) ?? []) {
+						if (!visited.has(next)) {
+							visited.add(next);
+							if (!directNeighborIds.has(next)) {
+								beyond.add(next);
+								queue.push(next);
+							}
+						}
+					}
+				}
+				if (beyond.size > 0) {
+					const aggId = `_agg_${neighborId}`;
+					aggregateNodes.push({
+						id: aggId,
+						label: `${beyond.size} more...`,
+						type: 'workflow',
+						restricted: true, // gray styling
+					});
+					aggregateLinks.push({
+						source: neighborId,
+						target: aggId,
+						label: '',
+					});
+					visibleIds.add(aggId);
+				}
+			}
+
+			nodes = [...nodes.filter((n) => visibleIds.has(n.id)), ...aggregateNodes];
+			const visibleSet = new Set(nodes.map((n) => n.id));
+			links = [
+				...links.filter((l) => {
+					const { srcId, tgtId } = getLinkIds(l);
+					return visibleSet.has(srcId) && visibleSet.has(tgtId);
+				}),
+				...aggregateLinks,
+			];
+		}
 	}
 
 	return { nodes, links };
@@ -354,8 +429,17 @@ function renderGraph() {
 				// Click a project node -> drill into workflows mode for that project
 				viewMode.value = 'workflows';
 				filterProject.value = d.projectId;
+			} else if (d.id.startsWith('_agg_')) {
+				// Clicking an aggregate node: focus on the neighbor it's attached to
+				const neighborId = d.id.slice(5);
+				const neighbor = nodes.find((n) => n.id === neighborId);
+				if (neighbor) {
+					selectedNode.value = neighbor;
+					renderGraph();
+				}
 			} else {
 				selectedNode.value = d;
+				renderGraph();
 			}
 		});
 
@@ -407,6 +491,18 @@ function renderGraph() {
 					.attr('fill', colors.stroke)
 					.text(`${d.workflowCount} wf`);
 			}
+		} else if (d.id.startsWith('_agg_')) {
+			// Aggregate "N more..." node — dashed pill
+			el.append('rect')
+				.attr('width', 60)
+				.attr('height', 24)
+				.attr('x', -30)
+				.attr('y', -12)
+				.attr('rx', 12)
+				.attr('fill', '#F3F4F6')
+				.attr('stroke', '#9CA3AF')
+				.attr('stroke-width', 1.5)
+				.attr('stroke-dasharray', '4,3');
 		} else if (d.type === 'workflow') {
 			el.append('rect')
 				.attr('width', 24)
@@ -454,6 +550,31 @@ function renderGraph() {
 		.attr('fill', '#374151')
 		.text((d: SimNode) => (d.label.length > 30 ? d.label.slice(0, 27) + '...' : d.label));
 
+	// Dim non-focused nodes when a node is selected
+	if (selectedNode.value && !isProjectMode) {
+		const focusId = selectedNode.value.id;
+		const neighborIds = new Set<string>();
+		for (const l of links) {
+			const srcId = typeof l.source === 'string' ? l.source : (l.source as SimNode).id;
+			const tgtId = typeof l.target === 'string' ? l.target : (l.target as SimNode).id;
+			if (srcId === focusId) neighborIds.add(tgtId);
+			if (tgtId === focusId) neighborIds.add(srcId);
+		}
+		neighborIds.add(focusId);
+
+		node.attr('opacity', (d: SimNode) => (neighborIds.has(d.id) ? 1 : 0.2));
+		link.attr('opacity', (d: SimLink) => {
+			const srcId = typeof d.source === 'string' ? d.source : (d.source as SimNode).id;
+			const tgtId = typeof d.target === 'string' ? d.target : (d.target as SimNode).id;
+			return neighborIds.has(srcId) && neighborIds.has(tgtId) ? 1 : 0.08;
+		});
+		linkLabel.attr('opacity', (d: SimLink) => {
+			const srcId = typeof d.source === 'string' ? d.source : (d.source as SimNode).id;
+			const tgtId = typeof d.target === 'string' ? d.target : (d.target as SimNode).id;
+			return neighborIds.has(srcId) && neighborIds.has(tgtId) ? 1 : 0.08;
+		});
+	}
+
 	// Simulation
 	if (simulation) simulation.stop();
 	simulation = d3Force
@@ -483,7 +604,13 @@ function renderGraph() {
 		});
 }
 
-watch([showCredentials, showDataTables, hideOrphans, filterProject, searchQuery, viewMode], () => {
+watch([filterProject, viewMode], () => {
+	selectedNode.value = null;
+	focusMode.value = false;
+	renderGraph();
+});
+
+watch([showCredentials, showDataTables, hideOrphans, searchQuery, focusMode], () => {
 	renderGraph();
 });
 
@@ -546,7 +673,11 @@ onUnmounted(() => {
 					<span :class="[$style.legendSwatch, $style.legendDataTable]"></span>
 					Data Tables
 				</label>
-				<label v-if="hasOrphans" :class="[$style.toggle, $style.toggleDivider]">
+				<label v-if="selectedNode" :class="[$style.toggle, $style.toggleDivider]">
+					<input v-model="focusMode" type="checkbox" />
+					Direct neighbors only
+				</label>
+				<label v-if="hasOrphans" :class="$style.toggle">
 					<input v-model="hideOrphans" type="checkbox" />
 					Hide unconnected
 				</label>
@@ -588,9 +719,18 @@ onUnmounted(() => {
 			<div v-if="selectedNode" :class="$style.details">
 				<div :class="$style.detailsHeader">
 					<strong>{{ selectedNode.label }}</strong>
-					<button :class="$style.closeBtn" @click="selectedNode = null">&times;</button>
+					<button
+						:class="$style.closeBtn"
+						@click="
+							selectedNode = null;
+							renderGraph();
+						"
+					>
+						&times;
+					</button>
 				</div>
 				<div :class="$style.detailsBody">
+					<div>Name: {{ selectedNode.label }}</div>
 					<div>Type: {{ NODE_LABELS[selectedNode.type] || selectedNode.type }}</div>
 					<div v-if="selectedNode.projectName">Project: {{ selectedNode.projectName }}</div>
 					<div v-if="selectedNode.restricted" :class="$style.restricted">
@@ -741,8 +881,8 @@ onUnmounted(() => {
 }
 
 .legendDataTable {
-	background: #fed7aa;
-	border-color: #c2410c;
+	background: #fef3c7;
+	border-color: #92400e;
 }
 
 .svg {
