@@ -99,6 +99,7 @@ export type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
 	PendingConfirmation,
+	RunStateTimeoutDetails,
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';

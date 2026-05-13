@@ -1088,6 +1088,12 @@ describe('RunStateRegistry', () => {
 			const result = registry.sweepTimedOut(policy, 30_000);
 
 			expect(result.activeThreadIds).toEqual(['thread-old']);
+			expect(result.activeTimeouts['thread-old']).toMatchObject({
+				reason: 'idle_timeout',
+				surface: 'active-run',
+				timeoutMs: 30_000,
+				idleMs: 30_000,
+			});
 		});
 
 		it('identifies suspended runs older than maxAgeMs', () => {

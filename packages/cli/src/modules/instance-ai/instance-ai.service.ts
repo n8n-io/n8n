@@ -111,7 +111,12 @@ import { InstanceAiCompactionService } from './compaction.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
-import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
+import {
+	INSTANCE_AI_RUN_TIMEOUT_REASON,
+	InstanceAiLivenessService,
+	type InstanceAiConsumedRunTimeout,
+} from './liveness';
+import { buildInstanceAiRunTraceMetadata } from './run-trace-metadata';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -983,6 +988,32 @@ export class InstanceAiService {
 		const tracing = this.getTraceContext(runId);
 		if (!tracing) return;
 		await this.finalizeMessageTraceRoot(runId, tracing, options);
+	}
+
+	private buildMessageTraceMetadata(
+		threadId: string,
+		runId: string,
+		options: {
+			status: MessageTraceFinalization['status'];
+			cancellationReason?: string;
+			runTimeout?: InstanceAiConsumedRunTimeout;
+		},
+	): Record<string, unknown> {
+		const traceOptions = {
+			status: options.status,
+			...(options.cancellationReason !== undefined
+				? { cancellationReason: options.cancellationReason }
+				: {}),
+			...(options.runTimeout !== undefined ? { runTimeout: options.runTimeout } : {}),
+		};
+
+		return {
+			completion_source: 'orchestrator',
+			...buildInstanceAiRunTraceMetadata(
+				this.eventBus.getEventsForRun(threadId, runId),
+				traceOptions,
+			),
+		};
 	}
 
 	private async finalizeRemainingMessageTraceRoots(
@@ -1957,7 +1988,9 @@ export class InstanceAiService {
 		return {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
-			metadata: { completion_source: 'orchestrator' },
+			metadata: this.buildMessageTraceMetadata(args.threadId, args.runId, {
+				status: 'error',
+			}),
 		};
 	}
 
@@ -3284,7 +3317,7 @@ export class InstanceAiService {
 				status: finalStatus,
 				outputText,
 				modelId,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
 			};
 			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
 				threadId,
@@ -3310,7 +3343,8 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (signal.aborted) {
-				const cancellationReason = this.liveness.consumeRunTimedOut(runId)
+				const runTimeout = this.liveness.consumeRunTimeout(runId);
+				const cancellationReason = runTimeout.timedOut
 					? INSTANCE_AI_RUN_TIMEOUT_REASON
 					: getAbortReason(signal);
 				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
@@ -3327,7 +3361,11 @@ export class InstanceAiService {
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: { completion_source: 'orchestrator' },
+					metadata: this.buildMessageTraceMetadata(threadId, runId, {
+						status: 'cancelled',
+						cancellationReason,
+						runTimeout,
+					}),
 				};
 				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
 					threadId,
@@ -3367,7 +3405,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
 			};
 
 			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
@@ -3398,6 +3436,9 @@ export class InstanceAiService {
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(runId, messageTraceFinalization);
+				if (messageTraceFinalization.status !== 'cancelled') {
+					this.liveness.consumeRunTimeout(runId);
+				}
 			}
 			// Post-run planned-task wiring (only when the run is actually ending,
 			// not when it merely suspended for HITL):
@@ -3923,7 +3964,9 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					status: finalStatus,
+				}),
 			};
 			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
 				opts.threadId,
@@ -3946,17 +3989,28 @@ export class InstanceAiService {
 		} catch (error) {
 			if (opts.signal.aborted) {
 				const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+				const runTimeout = this.liveness.consumeRunTimeout(opts.runId);
+				const cancellationReason = runTimeout.timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(opts.signal);
+				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
+					this.liveness.publishRunTimeoutNotice(opts.threadId, opts.runId);
+				}
 				this.evaluateTerminalResponse(opts.threadId, opts.runId, 'cancelled', {
 					messageGroupId,
 				});
 				await this.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'cancelled',
-					reason: 'user_cancelled',
+					reason: cancellationReason,
 				});
 				messageTraceFinalization = {
 					status: 'cancelled',
-					reason: 'user_cancelled',
-					metadata: { completion_source: 'orchestrator' },
+					reason: cancellationReason,
+					metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+						status: 'cancelled',
+						cancellationReason,
+						runTimeout,
+					}),
 				};
 				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
 					opts.threadId,
@@ -3967,7 +4021,7 @@ export class InstanceAiService {
 					opts.threadId,
 					opts.runId,
 					'cancelled',
-					'user_cancelled',
+					cancellationReason,
 					archivedWorkflowIds,
 				);
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
@@ -3994,7 +4048,9 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					status: 'error',
+				}),
 			};
 
 			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
@@ -4019,6 +4075,9 @@ export class InstanceAiService {
 			// post-run planned-task dispatch.
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
+				if (messageTraceFinalization.status !== 'cancelled') {
+					this.liveness.consumeRunTimeout(opts.runId);
+				}
 			}
 			// Post-run planned-task wiring — mirror the executeRun finally.
 			// Resumed ordinary-chat runs also need to drive the scheduler in case
@@ -4362,6 +4421,10 @@ export class InstanceAiService {
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
 	): Promise<void> {
+		const runTimeout =
+			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
+				? this.liveness.consumeRunTimeout(suspended.runId)
+				: undefined;
 		if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
 			this.liveness.publishRunTimeoutNotice(suspended.threadId, suspended.runId);
 		}
@@ -4394,7 +4457,11 @@ export class InstanceAiService {
 		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason,
-			metadata: { completion_source: 'orchestrator' },
+			metadata: this.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
+				status: 'cancelled',
+				cancellationReason: reason,
+				...(runTimeout ? { runTimeout } : {}),
+			}),
 		});
 	}
 
