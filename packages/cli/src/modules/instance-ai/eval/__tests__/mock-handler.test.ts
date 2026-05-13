@@ -22,11 +22,8 @@ const mockGenerate = jest.fn(async (_prompt: string) => {
 
 interface MockAgent {
 	tool: jest.Mock;
-	providerTool: jest.Mock;
 	generate: jest.Mock;
 }
-
-const providerToolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
 
 const mockAgent: MockAgent = {
 	tool: jest.fn(function (this: MockAgent, builtTool: { _name?: string; _handler?: unknown }) {
@@ -37,13 +34,6 @@ const mockAgent: MockAgent = {
 		}
 		return this;
 	}),
-	providerTool: jest.fn(function (
-		this: MockAgent,
-		builtProviderTool: { name: string; args: Record<string, unknown> },
-	) {
-		providerToolCalls.push(builtProviderTool);
-		return this;
-	}),
 	generate: mockGenerate,
 };
 const mockExtractText = jest.fn((result: { _text?: string }) => result._text ?? '');
@@ -51,14 +41,6 @@ const mockExtractText = jest.fn((result: { _text?: string }) => result._text ?? 
 jest.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: jest.fn(() => mockAgent),
 	extractText: mockExtractText,
-	providerTools: {
-		anthropicWebSearch: jest.fn(
-			(config?: { maxUses?: number }): { name: string; args: Record<string, unknown> } => ({
-				name: 'anthropic.web_search_20250305',
-				args: config ? { ...config } : {},
-			}),
-		),
-	},
 	Tool: jest.fn().mockImplementation((name: string) => {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
@@ -74,11 +56,7 @@ jest.mock('@n8n/instance-ai', () => ({
 	}),
 }));
 
-const FALLBACK_INSTRUCTIONS_SENTINEL = '__FALLBACK_INSTRUCTIONS__';
-jest.mock('../api-docs', () => ({
-	fetchApiDocs: jest.fn().mockResolvedValue(''),
-	FALLBACK_INSTRUCTIONS: FALLBACK_INSTRUCTIONS_SENTINEL,
-}));
+jest.mock('../api-docs', () => ({ fetchApiDocs: jest.fn().mockResolvedValue('') }));
 
 jest.mock('../node-config', () => ({
 	extractNodeConfig: jest.fn().mockReturnValue('{}'),
@@ -139,7 +117,6 @@ beforeEach(() => {
 	generateOverride.fn = undefined;
 	submitCapture.handler = undefined;
 	quirksCapture.handler = undefined;
-	providerToolCalls.length = 0;
 });
 
 // ---------------------------------------------------------------------------
@@ -544,37 +521,5 @@ describe('get_endpoint_quirks tool', () => {
 		expect(quirksCapture.handler).toBeDefined();
 		const result = await quirksCapture.handler!();
 		expect(result).toContain('No specific quirks');
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Anthropic web search — provider tool wired so the agent can look up docs
-// when Context7 returns nothing
-// ---------------------------------------------------------------------------
-
-describe('anthropic web search provider tool', () => {
-	it('is registered with a maxUses cap when Context7 returned the fallback', async () => {
-		const { fetchApiDocs } = require('../api-docs') as { fetchApiDocs: jest.Mock };
-		fetchApiDocs.mockResolvedValueOnce(FALLBACK_INSTRUCTIONS_SENTINEL);
-		llmSubmits({ type: 'json', body: {} });
-		const handler = createLlmMockHandler();
-
-		await callHandler(handler);
-
-		const webSearch = providerToolCalls.find((t) => t.name.includes('web_search'));
-		expect(webSearch).toBeDefined();
-		expect(webSearch!.args).toMatchObject({ maxUses: 3 });
-	});
-
-	it('is NOT registered when Context7 returned real docs', async () => {
-		const { fetchApiDocs } = require('../api-docs') as { fetchApiDocs: jest.Mock };
-		fetchApiDocs.mockResolvedValueOnce('Real API docs from Context7: GET /widgets returns { ... }');
-		llmSubmits({ type: 'json', body: {} });
-		const handler = createLlmMockHandler();
-
-		await callHandler(handler);
-
-		const webSearch = providerToolCalls.find((t) => t.name.includes('web_search'));
-		expect(webSearch).toBeUndefined();
 	});
 });
