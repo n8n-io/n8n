@@ -1,6 +1,26 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+
+const workerPoolNameSchema = z
+	.string()
+	.regex(
+		/^([a-z0-9][a-z0-9-]{0,62})?$/,
+		'N8N_WORKER_POOL_NAME must be empty or 1-63 chars of lowercase alphanumeric and hyphens, starting with alphanumeric',
+	);
+
+@Config
+class WorkerPoolConfig {
+	/**
+	 * Label identifying the worker pool this worker belongs to.
+	 * Empty (default) means the worker listens to the unlabeled `jobs` queue.
+	 * When set, the worker listens to `jobs-<name>` instead.
+	 * Read only on worker instances; ignored on main and webhook.
+	 */
+	@Env('N8N_WORKER_POOL_NAME', workerPoolNameSchema)
+	name: string = '';
+}
 
 @Config
 class HealthConfig {
@@ -133,4 +153,7 @@ export class ScalingModeConfig {
 
 	@Nested
 	bull: BullConfig;
+
+	@Nested
+	workerPool: WorkerPoolConfig;
 }

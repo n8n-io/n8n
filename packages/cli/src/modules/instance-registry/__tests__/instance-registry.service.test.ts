@@ -1,6 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionsConfig } from '@n8n/config';
+import type { ExecutionsConfig, ScalingModeConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
@@ -71,6 +71,9 @@ const makeInstanceSettings = (overrides: Partial<InstanceSettings> = {}) =>
 const makeExecutionsConfig = (mode: 'regular' | 'queue' = 'regular') =>
 	mock<ExecutionsConfig>({ mode });
 
+const makeScalingModeConfig = (poolName: string = '') =>
+	mock<ScalingModeConfig>({ workerPool: { name: poolName } });
+
 const makeLogger = () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
@@ -99,10 +102,12 @@ describe('InstanceRegistryService', () => {
 	const createService = (
 		settingsOverrides: Partial<InstanceSettings> = {},
 		executionMode: 'regular' | 'queue' = 'regular',
+		poolName: string = '',
 	) =>
 		new InstanceRegistryService(
 			makeInstanceSettings(settingsOverrides),
 			makeExecutionsConfig(executionMode),
+			makeScalingModeConfig(poolName),
 			logger,
 		);
 
@@ -281,7 +286,12 @@ describe('InstanceRegistryService', () => {
 
 		it('should reflect instanceRole changes in heartbeat', async () => {
 			const settings = makeInstanceSettings({ instanceRole: 'unset' });
-			service = new InstanceRegistryService(settings, makeExecutionsConfig(), logger);
+			service = new InstanceRegistryService(
+				settings,
+				makeExecutionsConfig(),
+				makeScalingModeConfig(),
+				logger,
+			);
 			await service.init();
 
 			// Simulate role change (e.g., leader election completed)
@@ -414,6 +424,44 @@ describe('InstanceRegistryService', () => {
 
 			const removed = await service.cleanupStaleMembers();
 			expect(removed).toBe(0);
+		});
+	});
+
+	describe('poolName', () => {
+		it('records poolName on worker registration when pool is set', async () => {
+			service = createService({ instanceType: 'worker', instanceRole: 'unset' }, 'queue', 'gpu');
+
+			await service.init();
+			const [reg] = await service.getAllInstances();
+
+			expect(reg.poolName).toBe('gpu');
+		});
+
+		it('records empty poolName on worker registration when pool is unset', async () => {
+			service = createService({ instanceType: 'worker', instanceRole: 'unset' }, 'queue');
+
+			await service.init();
+			const [reg] = await service.getAllInstances();
+
+			expect(reg.poolName).toBe('');
+		});
+
+		it('omits poolName on main registration even when config has a pool', async () => {
+			service = createService({ instanceType: 'main', instanceRole: 'leader' }, 'regular', 'gpu');
+
+			await service.init();
+			const [reg] = await service.getAllInstances();
+
+			expect(reg.poolName).toBeUndefined();
+		});
+
+		it('omits poolName on webhook registration even when config has a pool', async () => {
+			service = createService({ instanceType: 'webhook', instanceRole: 'unset' }, 'regular', 'gpu');
+
+			await service.init();
+			const [reg] = await service.getAllInstances();
+
+			expect(reg.poolName).toBeUndefined();
 		});
 	});
 });
