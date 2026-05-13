@@ -113,4 +113,49 @@ describe('useGenerateSampleData', () => {
 		await useGenerateSampleData(empty).generate();
 		expect(generateCodeForPromptMock).not.toHaveBeenCalled();
 	});
+
+	it('strips markdown code fences before parsing', async () => {
+		generateCodeForPromptMock.mockResolvedValue({
+			code: '```json\n[{"id":"a"},{"id":"b"}]\n```',
+		});
+		await useGenerateSampleData(node).generate();
+		expect(setDataMock).toHaveBeenCalledWith(
+			[{ json: { id: 'a' } }, { json: { id: 'b' } }],
+			'pin-icon-click',
+		);
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('ignores a second generate() while one is in flight', async () => {
+		let resolveFirst: (value: { code: string }) => void = () => {};
+		generateCodeForPromptMock.mockImplementationOnce(
+			() =>
+				new Promise<{ code: string }>((resolve) => {
+					resolveFirst = resolve;
+				}),
+		);
+
+		const composable = useGenerateSampleData(node);
+		const first = composable.generate();
+		const second = composable.generate();
+		await second;
+		expect(generateCodeForPromptMock).toHaveBeenCalledTimes(1);
+
+		resolveFirst({ code: '[{"x":1}]' });
+		await first;
+		expect(generateCodeForPromptMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('sends a payload that includes the node type, parameters, and forNode=transform', async () => {
+		generateCodeForPromptMock.mockResolvedValue({ code: '[{"ok":true}]' });
+		await useGenerateSampleData(node).generate();
+
+		expect(generateCodeForPromptMock).toHaveBeenCalledTimes(1);
+		const [, payload] = generateCodeForPromptMock.mock.calls[0];
+		expect(payload.forNode).toBe('transform');
+		expect(payload.context.inputSchema.nodeName).toBe('Slack');
+		expect(payload.question).toContain('n8n-nodes-base.slack');
+		expect(payload.question).toContain('"resource": "message"');
+		expect(payload.question).toContain('JSON array');
+	});
 });
