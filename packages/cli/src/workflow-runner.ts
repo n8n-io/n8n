@@ -47,6 +47,9 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks'
 import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import { poolQueueName } from '@/scaling/constants';
+import { getExecutionCategory } from '@/scaling/execution-category';
+import type { PoolConfigService } from '@/scaling/pool-config.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -73,6 +76,8 @@ function flushResponse(res: { flush?: () => void }) {
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
+
+	private poolConfigService: PoolConfigService;
 
 	constructor(
 		private readonly logger: Logger,
@@ -493,6 +498,22 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		restartExecutionId?: string,
 	): Promise<void> {
+		if (!this.scalingService) {
+			const { ScalingService } = await import('@/scaling/scaling.service');
+			this.scalingService = Container.get(ScalingService);
+			await this.scalingService.setupQueue();
+		}
+
+		if (!this.poolConfigService) {
+			const { PoolConfigService } = await import('@/scaling/pool-config.service');
+			this.poolConfigService = Container.get(PoolConfigService);
+		}
+
+		const category = getExecutionCategory(data.executionMode);
+		const poolAssignment = await this.poolConfigService.getPoolAssignment();
+		const poolName = category ? poolAssignment[category] : undefined;
+		const queueName = poolQueueName(poolName);
+
 		const jobData: JobData = {
 			workflowId,
 			executionId,
@@ -502,6 +523,7 @@ export class WorkflowRunner {
 			restartExecutionId,
 			projectId: data.projectId,
 			projectName: data.projectName,
+			poolName,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
@@ -510,18 +532,12 @@ export class WorkflowRunner {
 			mcpToolCall: data.mcpToolCall,
 		};
 
-		if (!this.scalingService) {
-			const { ScalingService } = await import('@/scaling/scaling.service');
-			this.scalingService = Container.get(ScalingService);
-			await this.scalingService.setupQueue();
-		}
-
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100, queueName });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 

@@ -15,6 +15,10 @@ export type Job = Bull.Job<JobData>;
 
 export type JobId = Job['id'];
 
+export type ExecutionCategory = 'production' | 'manual' | 'evaluation';
+
+export type PoolAssignment = Partial<Record<ExecutionCategory, string>>;
+
 export type JobData = {
 	workflowId: string;
 	executionId: string;
@@ -24,6 +28,7 @@ export type JobData = {
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;
+	poolName?: string;
 
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */

@@ -1,8 +1,8 @@
 import type { InstanceSettings } from 'n8n-core';
 
-type InstanceType = InstanceSettings['instanceType'];
+import { DEFAULT_QUEUE_NAME } from './constants';
 
-const DEFAULT_QUEUE_NAME = 'jobs';
+type InstanceType = InstanceSettings['instanceType'];
 
 export function resolveQueueName(instanceType: InstanceType, poolName: string): string {
 	if (instanceType !== 'worker' || poolName === '') return DEFAULT_QUEUE_NAME;
