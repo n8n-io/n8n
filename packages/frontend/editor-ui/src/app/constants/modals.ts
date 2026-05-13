@@ -41,7 +41,6 @@ export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
 export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
-export const TWO_FACTOR_METHOD_PICKER_MODAL_KEY = 'twoFactorMethodPicker';
 export const TOTP_SETUP_WIZARD_MODAL_KEY = 'totpSetupWizard';
 export const WEBAUTHN_SETUP_WIZARD_MODAL_KEY = 'webauthnSetupWizard';
 export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';

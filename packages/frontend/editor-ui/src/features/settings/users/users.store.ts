@@ -410,6 +410,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await mfaApi.enableMfa(rootStore.restApiContext, data);
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = true;
+			const existing = currentUser.value.availableMfaMethods ?? [];
+			if (!existing.includes('totp')) {
+				currentUser.value.availableMfaMethods = [...existing, 'totp'];
+			}
 		}
 	};
 
@@ -418,6 +422,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = false;
+			currentUser.value.availableMfaMethods = [];
 		}
 	};
 

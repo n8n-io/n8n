@@ -11,7 +11,6 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
-	TWO_FACTOR_METHOD_PICKER_MODAL_KEY,
 	TOTP_SETUP_WIZARD_MODAL_KEY,
 	WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
@@ -99,7 +98,6 @@ import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModa
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
 import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
-import TwoFactorMethodPickerModal from '@/features/core/auth/components/TwoFactorMethodPickerModal.vue';
 import TotpSetupWizardModal from '@/features/core/auth/components/TotpSetupWizardModal.vue';
 import WebAuthnSetupWizardModal from '@/features/core/auth/components/WebAuthnSetupWizardModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
@@ -238,19 +236,9 @@ import InstanceAiCredentialSetupModal, {
 			<ActivationModal />
 		</ModalRoot>
 
-		<ModalRoot :name="TWO_FACTOR_METHOD_PICKER_MODAL_KEY">
-			<template
-				#default="{ data }: { data: { current?: 'totp' | 'passkey' | 'security_key' | null } }"
-			>
-				<TwoFactorMethodPickerModal :data="data" />
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="TOTP_SETUP_WIZARD_MODAL_KEY">
-			<template
-				#default="{ data }: { data: { replacing?: 'totp' | 'passkey' | 'security_key' | null } }"
-			>
-				<TotpSetupWizardModal :data="data" />
+			<template #default>
+				<TotpSetupWizardModal />
 			</template>
 		</ModalRoot>
 
@@ -261,7 +249,6 @@ import InstanceAiCredentialSetupModal, {
 				}: {
 					data: {
 						method: 'passkey' | 'security_key';
-						replacing?: 'totp' | 'passkey' | 'security_key' | null;
 					};
 				}"
 			>

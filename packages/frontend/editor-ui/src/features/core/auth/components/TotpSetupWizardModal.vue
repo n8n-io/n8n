@@ -1,17 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useI18n } from '@n8n/i18n';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
-import {
-	N8nButton,
-	N8nInfoTip,
-	N8nInput,
-	N8nInputLabel,
-	N8nNotice,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
 import {
@@ -25,10 +18,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { twoFactorWizardBus } from '../auth.eventBus';
 import MfaWizardSteps from './MfaWizardSteps.vue';
-
-const props = defineProps<{
-	data?: { replacing?: 'totp' | 'passkey' | 'security_key' | null };
-}>();
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
@@ -45,12 +34,6 @@ const infoTextErrorMessage = ref('');
 const loadingQrCode = ref(true);
 const showRecoveryCodes = ref(false);
 const submitting = ref(false);
-
-const replacing = computed(() => props.data?.replacing ?? null);
-const replaceWarning = computed(() => {
-	if (!replacing.value) return '';
-	return i18n.baseText(`settings.personal.twoFactor.replaceWarning.${replacing.value}` as never);
-});
 
 const onCopySecretToClipboard = () => {
 	void clipboard.copy(secret.value);
@@ -108,7 +91,6 @@ const onBack = () => {
 		showRecoveryCodes.value = false;
 		return;
 	}
-	twoFactorWizardBus.emit('back');
 	uiStore.closeModal(TOTP_SETUP_WIZARD_MODAL_KEY);
 };
 
@@ -181,12 +163,6 @@ onMounted(async () => {
 			</div>
 
 			<div v-if="!showRecoveryCodes" :class="$style.container">
-				<N8nNotice
-					v-if="replaceWarning"
-					theme="warning"
-					:content="replaceWarning"
-					data-test-id="mfa-replace-warning"
-				/>
 				<div :class="$style.textContainer">
 					<N8nText size="large" color="text-dark" :bold="true">{{
 						i18n.baseText('mfa.setup.step1.instruction1.title')

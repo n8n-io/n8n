@@ -25,6 +25,7 @@ export async function verifyRegistration(
 	credentialId: string;
 	label: string;
 	method: 'passkey' | 'security_key';
+	recoveryCodes?: string[];
 }> {
 	return await makeRestApiRequest(context, 'POST', '/mfa/webauthn/registration-verify', data);
 }

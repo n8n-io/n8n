@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nButton,
@@ -8,6 +9,7 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nNotice,
+	N8nText,
 } from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
@@ -21,9 +23,6 @@ import MfaWizardSteps from './MfaWizardSteps.vue';
 const props = defineProps<{
 	data?: {
 		method: 'passkey' | 'security_key';
-		replacing?: 'totp' | 'passkey' | 'security_key' | null;
-		/** When true, the back button closes the wizard without reopening the picker. */
-		standalone?: boolean;
 	};
 }>();
 
@@ -39,6 +38,10 @@ const attachment = computed<'platform' | 'cross-platform'>(() =>
 
 const label = ref('');
 const submitting = ref(false);
+const recoveryCodes = ref<string[]>([]);
+const showRecoveryCodes = computed(() => recoveryCodes.value.length > 0);
+const recoveryCodesDownloaded = ref(false);
+const totalSteps = computed(() => (showRecoveryCodes.value ? 3 : 2));
 
 const title = computed(() =>
 	method.value === 'passkey'
@@ -78,16 +81,7 @@ const submitLabel = computed(() =>
 
 const tone = computed(() => (method.value === 'passkey' ? 'passkey' : 'security_key'));
 
-const replacing = computed(() => props.data?.replacing ?? null);
-const replaceWarning = computed(() => {
-	if (!replacing.value) return '';
-	return i18n.baseText(`settings.personal.twoFactor.replaceWarning.${replacing.value}` as never);
-});
-
 const onBack = () => {
-	if (!props.data?.standalone) {
-		twoFactorWizardBus.emit('back');
-	}
 	uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
 };
 
@@ -98,7 +92,10 @@ const onRegister = async () => {
 	submitting.value = true;
 	inlineError.value = '';
 	try {
-		await usersStore.registerWebAuthnCredential(label.value.trim(), attachment.value);
+		const result = await usersStore.registerWebAuthnCredential(
+			label.value.trim(),
+			attachment.value,
+		);
 		const completed: TwoFactorMethod = method.value;
 		toast.showMessage({
 			type: 'success',
@@ -108,12 +105,12 @@ const onRegister = async () => {
 			),
 		});
 		twoFactorWizardBus.emit('completed', { method: completed });
-		uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
+		if (result.recoveryCodes?.length) {
+			recoveryCodes.value = result.recoveryCodes;
+		} else {
+			uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
+		}
 	} catch (e) {
-		// NotAllowedError covers both user-cancellation and the focus loss that
-		// happens when a password manager (e.g. Bitwarden) intercepts the prompt
-		// and the user picks "use this device" instead. In both cases the
-		// ceremony is recoverable — keep the modal open so the user can retry.
 		const isCancelledOrFocusLoss = e instanceof DOMException && e.name === 'NotAllowedError';
 		if (isCancelledOrFocusLoss) {
 			inlineError.value = i18n.baseText('settings.personal.twoFactor.webauthn.error.cancelled');
@@ -124,66 +121,132 @@ const onRegister = async () => {
 		submitting.value = false;
 	}
 };
+
+const onDownloadRecoveryCodes = () => {
+	const filename = 'n8n-recovery-codes.txt';
+	const el = document.createElement('a');
+	el.setAttribute(
+		'href',
+		'data:text/plain;charset=utf-8,' + encodeURIComponent(recoveryCodes.value.join('\n')),
+	);
+	el.setAttribute('download', filename);
+	el.style.display = 'none';
+	document.body.appendChild(el);
+	el.click();
+	document.body.removeChild(el);
+	recoveryCodesDownloaded.value = true;
+};
+
+const onDone = () => {
+	uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
+};
 </script>
 
 <template>
 	<Modal width="460px" :title="title" :name="WEBAUTHN_SETUP_WIZARD_MODAL_KEY" :center="true">
 		<template #content>
-			<MfaWizardSteps :current="2" :total="2" />
-			<div :class="$style.stepLabel">
-				{{
-					i18n.baseText('settings.personal.twoFactor.passkeyWizard.step', {
-						interpolate: { current: 2, total: 2 },
-					})
-				}}
-			</div>
-			<div :class="[$style.bigIcon, $style[`tone_${tone}`], { [$style.pulse]: submitting }]">
-				<N8nIcon :icon="method === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
-			</div>
-			<div :class="$style.heading">{{ heading }}</div>
-			<div :class="$style.description">{{ description }}</div>
-			<N8nNotice
-				v-if="replaceWarning"
-				theme="warning"
-				:content="replaceWarning"
-				:class="$style.replaceNotice"
-				data-test-id="mfa-replace-warning"
-			/>
-			<N8nInputLabel :label="labelFieldLabel" :class="$style.labelField">
-				<N8nInput
-					v-model="label"
-					:placeholder="labelFieldPlaceholder"
-					data-test-id="mfa-webauthn-label-input"
+			<MfaWizardSteps :current="showRecoveryCodes ? 3 : 2" :total="totalSteps" />
+
+			<!-- Registration step -->
+			<div v-if="!showRecoveryCodes">
+				<div :class="$style.stepLabel">
+					{{
+						i18n.baseText('settings.personal.twoFactor.passkeyWizard.step', {
+							interpolate: { current: 2, total: totalSteps },
+						})
+					}}
+				</div>
+				<div :class="[$style.bigIcon, $style[`tone_${tone}`], { [$style.pulse]: submitting }]">
+					<N8nIcon :icon="method === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
+				</div>
+				<div :class="$style.heading">{{ heading }}</div>
+				<div :class="$style.description">{{ description }}</div>
+				<N8nInputLabel :label="labelFieldLabel" :class="$style.labelField">
+					<N8nInput
+						v-model="label"
+						:placeholder="labelFieldPlaceholder"
+						data-test-id="mfa-webauthn-label-input"
+					/>
+				</N8nInputLabel>
+				<N8nNotice
+					v-if="method === 'security_key'"
+					theme="info"
+					:content="i18n.baseText('settings.personal.twoFactor.securityKeyWizard.info')"
+					:class="$style.infoNotice"
+					data-test-id="mfa-webauthn-pin-info"
 				/>
-			</N8nInputLabel>
-			<N8nNotice
-				v-if="method === 'security_key'"
-				theme="info"
-				:content="i18n.baseText('settings.personal.twoFactor.securityKeyWizard.info')"
-				:class="$style.infoNotice"
-				data-test-id="mfa-webauthn-pin-info"
-			/>
-			<N8nInfoTip
-				v-if="inlineError"
-				theme="danger"
-				:class="$style.errorTip"
-				data-test-id="mfa-webauthn-error"
-			>
-				{{ inlineError }}
-			</N8nInfoTip>
+				<N8nInfoTip
+					v-if="inlineError"
+					theme="danger"
+					:class="$style.errorTip"
+					data-test-id="mfa-webauthn-error"
+				>
+					{{ inlineError }}
+				</N8nInfoTip>
+			</div>
+
+			<!-- Recovery codes step -->
+			<div v-else :class="$style.recoveryContainer">
+				<div :class="$style.stepLabel">
+					{{
+						i18n.baseText('settings.personal.twoFactor.totpWizard.recovery.step', {
+							interpolate: { current: 3, total: 3 },
+						})
+					}}
+				</div>
+				<div>
+					<N8nText size="medium">{{ i18n.baseText('mfa.setup.step2.description') }}</N8nText>
+				</div>
+				<div :class="$style.recoveryCodesContainer">
+					<div v-for="code in recoveryCodes" :key="code">
+						<N8nText size="medium">{{ code }}</N8nText>
+					</div>
+				</div>
+				<N8nInfoTip>
+					<I18nT keypath="mfa.setup.step2.infobox.description" tag="span" scope="global">
+						<template #part1>
+							{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
+						</template>
+						<template #part2>
+							<N8nText size="small" :bold="true" :class="$style.loseAccessText">
+								{{ i18n.baseText('mfa.setup.step2.infobox.description.part2') }}
+							</N8nText>
+						</template>
+					</I18nT>
+				</N8nInfoTip>
+				<div>
+					<N8nButton
+						variant="solid"
+						icon="hard-drive-download"
+						float="right"
+						:label="i18n.baseText('mfa.setup.step2.button.download')"
+						data-test-id="mfa-recovery-codes-button"
+						@click="onDownloadRecoveryCodes"
+					/>
+				</div>
+			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="onBack">
+				<N8nButton v-if="!showRecoveryCodes" variant="subtle" @click="onBack">
 					{{ i18n.baseText('settings.personal.twoFactor.back') }}
 				</N8nButton>
 				<N8nButton
+					v-if="!showRecoveryCodes"
 					:loading="submitting"
 					:disabled="!label.trim()"
 					data-test-id="mfa-webauthn-register-button"
 					@click="onRegister"
 				>
 					{{ submitLabel }}
+				</N8nButton>
+				<N8nButton
+					v-if="showRecoveryCodes"
+					:disabled="!recoveryCodesDownloaded"
+					data-test-id="mfa-webauthn-done-button"
+					@click="onDone"
+				>
+					{{ i18n.baseText('tagsManager.done') }}
 				</N8nButton>
 			</div>
 		</template>
@@ -257,10 +320,6 @@ const onRegister = async () => {
 	margin-bottom: 0;
 }
 
-.replaceNotice {
-	margin-bottom: var(--spacing--xs);
-}
-
 .description {
 	text-align: center;
 	font-size: var(--font-size--xs);
@@ -282,6 +341,34 @@ const onRegister = async () => {
 	&:last-child {
 		margin-bottom: 0;
 	}
+}
+
+.recoveryContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.recoveryCodesContainer {
+	display: flex;
+	flex-direction: column;
+	background-color: var(--mfa--recovery-code--color--background);
+	text-align: center;
+	flex-wrap: nowrap;
+	justify-content: space-between;
+	padding: var(--spacing--xs) 0;
+	gap: var(--spacing--xs);
+}
+
+.recoveryCodesContainer span {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--spacing--md);
+	color: var(--mfa--recovery-code--color);
+}
+
+.loseAccessText {
+	color: var(--mfa--lose-access--color--text);
 }
 
 .footer {

@@ -47,7 +47,20 @@ export function useMfaReverify() {
 			const webauthnResponse = await usersStore.verifyWebAuthnAuthentication(user.email);
 			return { webauthnResponse };
 		} catch {
-			return null;
+			// Authenticator unavailable (lost device, cancelled ceremony) —
+			// fall back to the code/recovery-code prompt so users can still
+			// manage their account with a recovery code.
+			return await new Promise<MfaProof | null>((resolve) => {
+				const handler = (payload: { mfaCode?: string; mfaRecoveryCode?: string } | undefined) => {
+					promptMfaCodeBus.off('closed', handler);
+					if (!payload) return resolve(null);
+					if (payload.mfaCode) return resolve({ mfaCode: payload.mfaCode });
+					if (payload.mfaRecoveryCode) return resolve({ mfaRecoveryCode: payload.mfaRecoveryCode });
+					resolve(null);
+				};
+				promptMfaCodeBus.on('closed', handler);
+				uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+			});
 		}
 	}
 

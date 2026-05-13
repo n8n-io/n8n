@@ -293,6 +293,14 @@ export class MFAController {
 			(transports ?? []).includes('internal') ||
 			verification.registrationInfo.credentialDeviceType === 'multiDevice';
 		const method = isPlatformAuthenticator ? 'passkey' : 'security_key';
+
+		let recoveryCodes: string[] | undefined;
+		const { decryptedRecoveryCodes } = await this.mfaService.getSecretAndRecoveryCodes(userId);
+		if (decryptedRecoveryCodes.length === 0) {
+			recoveryCodes = this.mfaService.generateRecoveryCodes();
+			await this.mfaService.saveRecoveryCodes(userId, recoveryCodes);
+		}
+
 		const updatedUser = await this.mfaService.enableMfa(userId);
 		await this.authService.invalidateOtherSessions(userId);
 		this.authService.issueCookie(res, updatedUser, true, req.browserId);
@@ -302,6 +310,7 @@ export class MFAController {
 			credentialId: savedCredential.credentialId,
 			label: savedCredential.label,
 			method,
+			...(recoveryCodes && { recoveryCodes }),
 		};
 	}
 

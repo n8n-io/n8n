@@ -11,7 +11,6 @@ import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_DOCS_URL,
-	TWO_FACTOR_METHOD_PICKER_MODAL_KEY,
 	TOTP_SETUP_WIZARD_MODAL_KEY,
 	WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
 } from '@/app/constants';
@@ -20,7 +19,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
-import { twoFactorPickerBus, twoFactorWizardBus } from '../auth.eventBus';
+import { twoFactorWizardBus } from '../auth.eventBus';
 import type { TwoFactorMethod } from '../auth.eventBus';
 import { useMfaReverify } from '../composables/useMfaReverify';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -131,12 +130,6 @@ const activeMfaMethods = computed<TwoFactorMethod[]>(() => {
 const has2fa = computed(
 	() => activeMfaMethods.value.includes('totp') || activeMfaMethods.value.includes('security_key'),
 );
-const twoFactorMethod = computed<TwoFactorMethod | null>(() => {
-	if (activeMfaMethods.value.includes('totp')) return 'totp';
-	if (activeMfaMethods.value.includes('security_key')) return 'security_key';
-	return null;
-});
-
 const webauthnCredentials = ref<WebAuthnCredentialResponse[]>([]);
 
 const isPlatformCredential = (c: WebAuthnCredentialResponse) =>
@@ -174,8 +167,6 @@ async function refreshWebauthnCredentials() {
 }
 
 async function removeWebAuthnCredential(credentialId: string) {
-	const proof = await reverify();
-	if (!proof) return;
 	try {
 		await usersStore.deleteWebAuthnCredential(credentialId);
 		showToast({
@@ -358,13 +349,6 @@ function openPasswordModal() {
 	uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 }
 
-async function openMethodPicker(options: { excludeMethods?: TwoFactorMethod[] } = {}) {
-	uiStore.openModalWithData({
-		name: TWO_FACTOR_METHOD_PICKER_MODAL_KEY,
-		data: { current: twoFactorMethod.value, excludeMethods: options.excludeMethods },
-	});
-}
-
 async function canEnableMfaPreCheck(): Promise<boolean> {
 	if (settingsStore.isCloudDeployment && usersStore.isInstanceOwner) {
 		try {
@@ -386,7 +370,7 @@ async function onSetupPasskeyClick() {
 	if (!(await canEnableMfaPreCheck())) return;
 	uiStore.openModalWithData({
 		name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
-		data: { method: 'passkey', replacing: twoFactorMethod.value, standalone: true },
+		data: { method: 'passkey' },
 	});
 }
 
@@ -399,14 +383,11 @@ function isMethodActive(method: 'totp' | 'security_key'): boolean {
 async function onTwoFactorMethodClick(method: 'totp' | 'security_key') {
 	if (!(await canEnableMfaPreCheck())) return;
 	if (method === 'totp') {
-		uiStore.openModalWithData({
-			name: TOTP_SETUP_WIZARD_MODAL_KEY,
-			data: { replacing: twoFactorMethod.value },
-		});
+		uiStore.openModal(TOTP_SETUP_WIZARD_MODAL_KEY);
 	} else {
 		uiStore.openModalWithData({
 			name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
-			data: { method: 'security_key', replacing: twoFactorMethod.value, standalone: true },
+			data: { method: 'security_key' },
 		});
 	}
 }
@@ -432,36 +413,13 @@ async function disableMfa(_intent: 'removedPasskey' | 'disabled2fa') {
 	}
 }
 
-const onPickerSelected = ({ method }: { method: TwoFactorMethod }) => {
-	const replacing = twoFactorMethod.value;
-	if (method === 'totp') {
-		uiStore.openModalWithData({
-			name: TOTP_SETUP_WIZARD_MODAL_KEY,
-			data: { replacing },
-		});
-	} else {
-		uiStore.openModalWithData({
-			name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
-			data: { method, replacing },
-		});
-	}
-};
-
-const onWizardBack = () => {
-	void openMethodPicker();
-};
-
 const onWizardCompleted = () => {
 	void refreshWebauthnCredentials();
 };
 
-twoFactorPickerBus.on('selected', onPickerSelected);
-twoFactorWizardBus.on('back', onWizardBack);
 twoFactorWizardBus.on('completed', onWizardCompleted);
 
 onBeforeUnmount(() => {
-	twoFactorPickerBus.off('selected', onPickerSelected);
-	twoFactorWizardBus.off('back', onWizardBack);
 	twoFactorWizardBus.off('completed', onWizardCompleted);
 });
 </script>

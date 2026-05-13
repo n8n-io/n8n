@@ -135,6 +135,13 @@ export class MfaService {
 		return false;
 	}
 
+	async saveRecoveryCodes(userId: string, recoveryCodes: string[]) {
+		const encryptedRecoveryCodes = await Promise.all(
+			recoveryCodes.map(async (code) => await this.cipher.encryptV2(code)),
+		);
+		await this.userRepository.update(userId, { mfaRecoveryCodes: encryptedRecoveryCodes });
+	}
+
 	async enableMfa(userId: string) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
