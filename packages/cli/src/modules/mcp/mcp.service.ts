@@ -26,6 +26,7 @@ import {
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
 } from './tools/data-table';
+import { createExecuteEphemeralNodeTool } from './tools/execute-ephemeral-node.tool';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
@@ -52,6 +53,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -106,6 +108,7 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 	) {}
 
 	async getServer(user: User) {
@@ -245,6 +248,18 @@ export class McpService {
 			listCredentialsTool.name,
 			listCredentialsTool.config,
 			listCredentialsTool.handler,
+		);
+
+		const executeEphemeralNodeTool = createExecuteEphemeralNodeTool(
+			user,
+			this.ephemeralNodeExecutor,
+			this.projectService,
+			this.telemetry,
+		);
+		server.registerTool(
+			executeEphemeralNodeTool.name,
+			executeEphemeralNodeTool.config,
+			executeEphemeralNodeTool.handler,
 		);
 
 		// Data table tools
