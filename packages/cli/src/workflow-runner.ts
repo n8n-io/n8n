@@ -47,7 +47,7 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks'
 import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
-import { poolQueueName } from '@/scaling/constants';
+import { poolQueueName } from '@/scaling/queue-name';
 import { getExecutionCategory } from '@/scaling/execution-category';
 import type { PoolConfigService } from '@/scaling/pool-config.service';
 import type { ScalingService } from '@/scaling/scaling.service';

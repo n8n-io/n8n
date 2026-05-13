@@ -1,13 +1,6 @@
 import type { PubSub } from './pubsub/pubsub.types';
 
-export const DEFAULT_QUEUE_NAME = 'jobs';
-
 export const JOB_TYPE_NAME = 'job';
-
-export function poolQueueName(poolName: string | undefined): string {
-	if (!poolName) return DEFAULT_QUEUE_NAME;
-	return `${DEFAULT_QUEUE_NAME}-${poolName}`;
-}
 
 /** Pubsub channel for commands sent by a main process to workers or to other main processes. */
 export const COMMAND_PUBSUB_CHANNEL = 'n8n.commands';

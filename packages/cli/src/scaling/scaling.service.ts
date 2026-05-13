@@ -14,9 +14,9 @@ import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { assertNever } from '@/utils';
 
-import { DEFAULT_QUEUE_NAME, JOB_TYPE_NAME } from './constants';
+import { JOB_TYPE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
-import { resolveQueueName } from './queue-name';
+import { DEFAULT_QUEUE_NAME, resolveQueueName } from './queue-name';
 import type {
 	JobQueue,
 	Job,
@@ -260,7 +260,10 @@ export class ScalingService {
 	}
 
 	/** Add a job to the given queue (or the default queue). Priority: `1` (highest) to `MAX_SAFE_INTEGER` (lowest). */
-	async addJob(jobData: JobData, { priority, queueName }: { priority: number; queueName?: string }) {
+	async addJob(
+		jobData: JobData,
+		{ priority, queueName }: { priority: number; queueName?: string },
+	) {
 		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
 
 		const jobOptions: JobOptions = {
@@ -269,9 +272,7 @@ export class ScalingService {
 			removeOnFail: true,
 		};
 
-		const targetQueue = queueName
-			? await this.getOrCreateQueue(queueName)
-			: this.defaultQueue;
+		const targetQueue = queueName ? await this.getOrCreateQueue(queueName) : this.defaultQueue;
 
 		const job = await targetQueue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
