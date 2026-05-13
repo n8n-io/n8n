@@ -1,9 +1,16 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import type { User, TestRun } from '@n8n/db';
-import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import {
+	TestCaseExecutionRepository,
+	TestRun,
+	TestRunRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -1228,14 +1235,30 @@ export class TestRunnerService {
 		// 4. Anything we didn't own locally and that's still flagged as
 		// pending: mark it cancelled in DB as a fallback (matches
 		// `cancelTestRun`'s contract for unreachable instances).
+		//
+		// Race protection: `activeRuns` was sampled before the requestCancellation
+		// loop and before the pubsub broadcast — by now a foreign main may have
+		// completed a run naturally (status → `completed`/`error`). A plain
+		// `markAsCancelled(id)` would clobber that terminal status with
+		// `cancelled` and corrupt the run record. Scope the update by status
+		// so it only fires on rows that are still active; if 0 rows were
+		// affected, the natural completion wins and we skip the test-case
+		// sweep too (its own status filter would no-op anyway, but skipping
+		// makes the "winner takes all" intent explicit).
 		const localSet = new Set(cancelledLocally);
 		const fallbackRunIds = activeRuns.map((r) => r.id).filter((id) => !localSet.has(id));
 		if (fallbackRunIds.length > 0) {
 			const { manager: dbManager } = this.testRunRepository;
 			await dbManager.transaction(async (trx) => {
 				for (const runId of fallbackRunIds) {
-					await this.testRunRepository.markAsCancelled(runId, trx);
-					await this.testCaseExecutionRepository.markAllPendingAsCancelled(runId, trx);
+					const result = await trx.update(
+						TestRun,
+						{ id: runId, status: In(['new', 'running']) },
+						{ status: 'cancelled', completedAt: new Date() },
+					);
+					if (result.affected) {
+						await this.testCaseExecutionRepository.markAllPendingAsCancelled(runId, trx);
+					}
 				}
 			});
 		}
@@ -1264,14 +1287,24 @@ export class TestRunnerService {
 			});
 		}
 
-		// 4. If not running locally, mark as cancelled in DB as a fallback
-		// This handles both single-main (where this is the only instance) and multi-main
-		// (where the running instance may be dead or unreachable via pub/sub)
+		// 4. If not running locally, mark as cancelled in DB as a fallback.
+		// This handles both single-main (where this is the only instance) and
+		// multi-main (where the running instance may be dead or unreachable
+		// via pub/sub). Same race-protection as `cancelCollection`: between
+		// the requestCancellation flag and this update, a foreign main may
+		// have completed the run naturally — scope by status so the
+		// terminal state wins.
 		if (!cancelledLocally) {
 			const { manager: dbManager } = this.testRunRepository;
 			await dbManager.transaction(async (trx) => {
-				await this.testRunRepository.markAsCancelled(testRunId, trx);
-				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
+				const result = await trx.update(
+					TestRun,
+					{ id: testRunId, status: In(['new', 'running']) },
+					{ status: 'cancelled', completedAt: new Date() },
+				);
+				if (result.affected) {
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
+				}
 			});
 		}
 	}

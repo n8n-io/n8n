@@ -2636,20 +2636,104 @@ describe('TestRunnerService', () => {
 				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
 			).abortControllers.set('tr-mine', new AbortController());
 
+			const trxUpdate = jest.fn().mockResolvedValue({ affected: 1 });
 			const dbManager = mock<{ transaction: jest.Mock }>();
-			dbManager.transaction.mockImplementation(async (cb: (trx: unknown) => Promise<void>) => {
-				await cb({});
-			});
+			dbManager.transaction.mockImplementation(
+				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+					await cb({ update: trxUpdate });
+				},
+			);
 			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
 
 			await testRunnerService.cancelCollection('col-2');
 
-			expect(testRunRepository.markAsCancelled).toHaveBeenCalledWith(
-				'tr-foreign',
+			// `tr-foreign` is the run we don't hold locally → fallback fires.
+			// Assert the update is scoped to `id` AND `status: In([...])` so a
+			// run that completed between the initial find and this update is
+			// not clobbered. We don't lock down the exact entity ref — the
+			// shape of the where clause is the contract.
+			expect(trxUpdate).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					id: 'tr-foreign',
+					status: expect.anything(),
+				}),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			// `tr-mine` was held locally → no fallback update should fire.
+			expect(trxUpdate).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ id: 'tr-mine' }),
 				expect.anything(),
 			);
-			expect(testRunRepository.markAsCancelled).not.toHaveBeenCalledWith(
-				'tr-mine',
+		});
+
+		test('fallback update does not clobber a run that completed between find and update', async () => {
+			// `activeRuns` is sampled before the requestCancellation loop and
+			// pubsub broadcast. By the time the fallback transaction runs, a
+			// foreign main may have completed (or errored) the run naturally.
+			// The status-scoped update should affect 0 rows in that case, and
+			// the test-case sweep must be skipped — otherwise we'd silently
+			// re-mark a `completed` run as `cancelled` and corrupt the record.
+			testRunRepository.find.mockResolvedValue([{ id: 'tr-just-finished' } as never]);
+
+			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 }); // race: row no longer 'new'/'running'
+			const dbManager = mock<{ transaction: jest.Mock }>();
+			dbManager.transaction.mockImplementation(
+				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+					await cb({ update: trxUpdate });
+				},
+			);
+			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+
+			await testRunnerService.cancelCollection('col-race');
+
+			// Update was attempted with status filter — the filter is what
+			// makes the in-DB WHERE narrow so the row stays untouched.
+			expect(trxUpdate).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ id: 'tr-just-finished', status: expect.anything() }),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			// Update affected 0 → don't sweep cases. (The sweep has its own
+			// status filter so this is also a redundant check, but it makes
+			// the "winner takes all" intent explicit at the run level.)
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalledWith(
+				'tr-just-finished',
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('cancelTestRun', () => {
+		test('fallback update does not clobber a run that completed between requestCancellation and update', async () => {
+			// Mirrors the collection-level race: between `requestCancellation`
+			// (the DB-flag pass) and this fallback update, a foreign main can
+			// finish the run naturally. The update must be scoped by status
+			// so the terminal state wins.
+			// No abort controller registered → `cancelTestRunLocally` returns
+			// false → fallback path fires.
+			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 });
+			const dbManager = mock<{ transaction: jest.Mock }>();
+			dbManager.transaction.mockImplementation(
+				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+					await cb({ update: trxUpdate });
+				},
+			);
+			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+
+			await testRunnerService.cancelTestRun('tr-just-finished');
+
+			expect(trxUpdate).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					id: 'tr-just-finished',
+					status: expect.anything(),
+				}),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalledWith(
+				'tr-just-finished',
 				expect.anything(),
 			);
 		});

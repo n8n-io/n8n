@@ -477,7 +477,12 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = 'wfv-fresh';
 			workflow.connections = {};
 			workflowRepository.findOneBy.mockResolvedValueOnce(workflow);
+			// First findOne: no existing history row → insert path.
+			// Second findOne: post-save verification that the row now exists.
 			workflowHistoryRepository.findOne.mockResolvedValueOnce(null);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce(
+				getWorkflowHistory(workflow, { versionId: 'wfv-fresh' }),
+			);
 
 			const result = await workflowHistoryService.snapshotCurrent('wf-1');
 
@@ -497,6 +502,31 @@ describe('WorkflowHistoryService', () => {
 			workflowRepository.findOneBy.mockResolvedValueOnce(null);
 			await expect(workflowHistoryService.snapshotCurrent('wf-missing')).rejects.toThrow(
 				'Workflow wf-missing not found',
+			);
+		});
+
+		it('throws when the snapshot insert silently fails (saveVersion swallowed the error)', async () => {
+			// `saveVersion` logs+swallows insert errors so the regular save
+			// flow can never be blocked by a history-row failure. For the
+			// snapshot path that's a footgun: the caller would get back a
+			// `versionId` with no matching row and hit a generic
+			// `findVersion` assert deep inside the test runner. Verify that
+			// `snapshotCurrent` re-fetches and fails loudly when the row did
+			// not materialise.
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = 'wf-1';
+			workflow.versionId = 'wfv-fresh';
+			workflow.connections = {};
+			workflowRepository.findOneBy.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce(null);
+			// Simulate insert failure: saveVersion's try/catch logs the
+			// underlying error and returns normally. The post-save verify
+			// findOne still sees no row.
+			workflowHistoryRepository.insert.mockRejectedValueOnce(new Error('insert blew up'));
+			workflowHistoryRepository.findOne.mockResolvedValueOnce(null);
+
+			await expect(workflowHistoryService.snapshotCurrent('wf-1')).rejects.toThrow(
+				'Failed to persist workflow history snapshot for workflow wf-1',
 			);
 		});
 	});

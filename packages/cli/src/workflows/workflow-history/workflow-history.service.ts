@@ -144,7 +144,24 @@ export class WorkflowHistoryService {
 			workflowId,
 		);
 
-		return { versionId: workflow.versionId };
+		// `saveVersion` deliberately swallows insert errors (it only logs them)
+		// so the regular workflow-save flow can never be blocked by a history
+		// write failure. The snapshot use case is different: callers will
+		// hand this `versionId` to `findVersion()` moments later and assert
+		// the row is non-null. Verify persistence here and fail loudly while
+		// we still have the caller's stack — otherwise the next reader hits
+		// a generic "version not found" deep inside the test runner.
+		const persisted = await this.workflowHistoryRepository.findOne({
+			where: { workflowId, versionId: workflow.versionId },
+			select: ['versionId'],
+		});
+		if (!persisted) {
+			throw new UnexpectedError(
+				`Failed to persist workflow history snapshot for workflow ${workflowId}`,
+			);
+		}
+
+		return { versionId: persisted.versionId };
 	}
 
 	async saveVersion(
