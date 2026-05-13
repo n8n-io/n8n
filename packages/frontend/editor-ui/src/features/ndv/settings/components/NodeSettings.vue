@@ -435,6 +435,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+	} else if (parameterData.name.includes('.') || parameterData.name.includes('[')) {
+		// A nested property on the node itself changed (e.g. a fixedCollection setting
+		// like `customTelemetryTags.tag`). Update the nested path in `nodeValues`,
+		// then persist the whole top-level field back to the node.
+		const topLevelKey = parameterData.name.split(/[.[]/)[0];
+		const valueForSetter = newValue === undefined ? null : newValue;
+		nodeSettingsParameters.setValue(nodeValues, parameterData.name, valueForSetter);
+
+		workflowDocumentStore?.value?.setNodeValue({
+			name: _node.name,
+			key: topLevelKey,
+			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+		});
 	} else {
 		// A property on the node itself changed
 
