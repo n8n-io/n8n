@@ -114,6 +114,27 @@
 				margin-bottom: var(--margin-bottom-card);
 			}
 
+			.logged-in-banner {
+				padding: 12px 16px;
+				background-color: #f0f4ff;
+				border: 1px solid #dbdfe7;
+				border-radius: var(--border-radius-card);
+				margin-bottom: var(--margin-bottom-card);
+				font-size: var(--font-size-paragraph);
+				color: var(--color-label);
+				text-align: left;
+				line-height: 1.5;
+			}
+
+			.logged-in-banner a {
+				color: var(--color-html-link);
+				text-decoration: none;
+			}
+
+			.logged-in-banner a:hover {
+				text-decoration: underline;
+			}
+
 			.card {
 				padding: var(--padding-card);
 				background-color: var(--color-card-bg);
@@ -471,6 +492,17 @@
 	</head>
 
 	<body>
+		{{#if canonicalFormUrl}}
+			<input type='hidden' id='form-canonical-url' data-url='{{canonicalFormUrl}}' />
+			<script>
+				(function () {
+					var el = document.getElementById('form-canonical-url');
+					if (el && el.dataset.url) {
+						history.replaceState(null, '', el.dataset.url);
+					}
+				})();
+			</script>
+		{{/if}}
 		<div class='container'>
 			<section>
 				{{#if testRun}}
@@ -480,7 +512,16 @@
 					<hr>
 				{{/if}}
 
+				{{#if loggedInBanner}}
+					<div class='logged-in-banner'>
+						Logged in as <strong>{{loggedInBanner.displayName}}</strong>{{#if loggedInBanner.email}} ({{loggedInBanner.email}}){{/if}} — not you? <a href='{{loggedInBanner.logoutUrl}}'>Log out</a>
+					</div>
+				{{/if}}
+
 				<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
+					{{#if userClaimsSigned}}
+						<input type='hidden' name='form_auth' value='{{userClaimsSigned}}' />
+					{{/if}}
 					<div class='form-header'>
 						<h1>{{formTitle}}</h1>
 						<p style="white-space: pre-line">{{{formDescription}}} </p>

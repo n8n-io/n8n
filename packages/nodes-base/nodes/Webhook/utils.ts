@@ -1,6 +1,8 @@
+import { Container } from '@n8n/di';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
+import { InstanceSettings, verifyFormOauthJwt, type FormOauthSessionJwtPayload } from 'n8n-core';
 import { WorkflowConfigurationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
@@ -14,7 +16,7 @@ import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BlockList, isIPv6 } from 'node:net';
 
-import { WebhookAuthorizationError } from './error';
+import { WebhookAuthorizationError, WebhookOauthAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
 
 export type WebhookParameters = {
@@ -352,6 +354,33 @@ export async function validateWebhookAuthentication(
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
 		}
+	} else if (authentication === 'oauthLogin') {
+		// Look for the session JWT in the request body (form submission). The
+		// OAuth callback (code+state in GET query) is handled separately in the
+		// Form trigger's webhook, *before* this auth check runs.
+		//
+		// Form submissions arrive as multipart/form-data, parsed into `body.data`
+		// by `createMultiFormDataParser`. Non-multipart callers (JSON / urlencoded)
+		// put fields directly on `body` — accept both for robustness.
+		const body = (req.body ?? {}) as Record<string, unknown>;
+		const data = (body.data ?? {}) as Record<string, unknown>;
+		const token =
+			typeof data.form_auth === 'string'
+				? data.form_auth
+				: typeof body.form_auth === 'string'
+					? body.form_auth
+					: undefined;
+
+		const secret = Container.get(InstanceSettings).hmacSignatureSecret;
+		const verified = token ? verifyFormOauthJwt<FormOauthSessionJwtPayload>(token, secret) : null;
+		if (verified) {
+			return verified as unknown as IDataObject;
+		}
+
+		const query = (req.query ?? {}) as Record<string, unknown>;
+		const reauth = query.reauth === '1';
+		const redirectUrl = await ctx.helpers.getWebhookOauthRedirectUrl({ reauth });
+		throw new WebhookOauthAuthorizationError(redirectUrl);
 	}
 }
 

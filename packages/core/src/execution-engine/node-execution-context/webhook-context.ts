@@ -21,6 +21,7 @@ import { ApplicationError, createDeferredPromise, createEmptyRunExecutionData } 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { getOauthLoginHelperFunctions } from './utils/oauth-login-helper-functions';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
@@ -64,6 +65,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			returnJsonArray,
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getOauthLoginHelperFunctions(workflow, node, additionalData),
 		};
 
 		this.nodeHelpers = {

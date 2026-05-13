@@ -1,8 +1,16 @@
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
-import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import {
+	FORM_OAUTH_SESSION_JWT_EXPIRY_SEC,
+	InstanceSettings,
+	getHtmlSandboxCSP,
+	isFormHtmlSandboxingDisabled,
+	signFormOauthJwt,
+	type FormOauthSessionJwtPayload,
+} from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -26,14 +34,14 @@ import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
-import { WebhookAuthorizationError } from '../../Webhook/error';
+import { WebhookAuthorizationError, WebhookOauthAuthorizationError } from '../../Webhook/error';
 import {
 	generateFormPostBasicAuthToken,
 	isIpAllowed,
 	validateWebhookAuthentication,
 } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import type { FormTriggerData, FormField } from '../interfaces';
+import type { FormLoggedInBanner, FormTriggerData, FormField } from '../interfaces';
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -197,6 +205,9 @@ export function prepareFormData({
 	customCss,
 	nodeVersion,
 	authToken,
+	loggedInBanner,
+	userClaimsSigned,
+	canonicalFormUrl,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -213,6 +224,9 @@ export function prepareFormData({
 	customCss?: string;
 	nodeVersion?: number;
 	authToken?: string;
+	loggedInBanner?: FormLoggedInBanner;
+	userClaimsSigned?: string;
+	canonicalFormUrl?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -235,6 +249,9 @@ export function prepareFormData({
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
 		authToken,
+		loggedInBanner,
+		userClaimsSigned,
+		canonicalFormUrl,
 	};
 
 	if (redirectUrl) {
@@ -403,6 +420,7 @@ export async function prepareFormReturnItem(
 	formFields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
+	oauthClaims?: Record<string, unknown>,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
@@ -492,6 +510,13 @@ export async function prepareFormReturnItem(
 		returnItem.json.formQueryParameters = context.getRequestObject().query;
 	}
 
+	if (oauthClaims) {
+		const userOutputField = context.getNodeParameter('userOutputField', 'user') as string;
+		if (userOutputField) {
+			returnItem.json[userOutputField] = oauthClaims as IDataObject;
+		}
+	}
+
 	return returnItem;
 }
 
@@ -509,6 +534,9 @@ export function renderForm({
 	buttonLabel,
 	customCss,
 	authToken,
+	loggedInBanner,
+	userClaimsSigned,
+	canonicalFormUrl,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -523,6 +551,9 @@ export function renderForm({
 	buttonLabel?: string;
 	customCss?: string;
 	authToken?: string;
+	loggedInBanner?: FormLoggedInBanner;
+	userClaimsSigned?: string;
+	canonicalFormUrl?: string;
 }) {
 	const instanceId = context.getInstanceId();
 
@@ -565,12 +596,37 @@ export function renderForm({
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
 		authToken,
+		loggedInBanner,
+		userClaimsSigned,
+		canonicalFormUrl,
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 	}
 	res.render('form-trigger', data);
+}
+
+function buildLoggedInBanner(
+	claims: Record<string, unknown>,
+	canonicalFormUrl: string,
+): FormLoggedInBanner {
+	const pickString = (...candidates: Array<keyof typeof claims>): string | undefined => {
+		for (const key of candidates) {
+			const value = claims[key];
+			if (typeof value === 'string' && value.length > 0) return value;
+		}
+		return undefined;
+	};
+
+	const displayName = pickString('name', 'preferred_username', 'email', 'sub') ?? 'User';
+	const email = pickString('email');
+	const separator = canonicalFormUrl.includes('?') ? '&' : '?';
+	return {
+		displayName,
+		email,
+		logoutUrl: `${canonicalFormUrl}${separator}reauth=1`,
+	};
 }
 
 export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
@@ -611,17 +667,70 @@ export async function formWebhook(
 		return { noWebhookResponse: true };
 	}
 
+	let sessionClaims: Record<string, unknown> | undefined;
+	let sessionJwtFromOauthExchange: string | undefined;
+
+	// OAuth-login mode uses the form's own URL as the OAuth redirect_uri, so the
+	// IDP redirects back here with `code` + `state` in the query string. Handle
+	// that exchange first; on success, fall through to the normal GET render path
+	// with the resulting claims attached.
+	const oauthCode = typeof req.query?.code === 'string' ? req.query.code : undefined;
+	const oauthState = typeof req.query?.state === 'string' ? req.query.state : undefined;
+	const isOauthCallback =
+		req.method === 'GET' &&
+		oauthCode !== undefined &&
+		oauthState !== undefined &&
+		(context.getNodeParameter(authProperty, '') as string) === 'oauthLogin';
+
 	try {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (node.typeVersion > 1) {
-			await validateWebhookAuthentication(context, authProperty);
+
+		if (isOauthCallback && oauthCode && oauthState) {
+			const result = await context.helpers.exchangeWebhookOauthCode({
+				code: oauthCode,
+				state: oauthState,
+			});
+			sessionClaims = result.claims;
+			sessionJwtFromOauthExchange = result.sessionJwt;
+		} else if (node.typeVersion > 1) {
+			const authResult = await validateWebhookAuthentication(context, authProperty);
+			if (authResult && typeof authResult === 'object' && 'claims' in authResult) {
+				const claims = (authResult as unknown as FormOauthSessionJwtPayload).claims;
+				if (claims && typeof claims === 'object') {
+					sessionClaims = claims;
+				}
+			}
 		}
 	} catch (error) {
+		if (error instanceof WebhookOauthAuthorizationError) {
+			// Browser GET → redirect to IDP; POST without valid session → 401 so the
+			// form client can decide to reload (which restarts the redirect dance).
+			if (req.method === 'GET') {
+				res.redirect(302, error.redirectUrl);
+			} else {
+				res.status(401).send();
+			}
+			return { noWebhookResponse: true };
+		}
 		if (error instanceof WebhookAuthorizationError) {
 			res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
 			res.status(401).send();
+			return { noWebhookResponse: true };
+		}
+		// OAuth callback exchange failure (invalid state, token exchange failed, etc.) —
+		// neutral error so the user can retry without leaking IDP details.
+		if (isOauthCallback) {
+			const baseUrl = req.originalUrl.split('?')[0] ?? req.originalUrl;
+			if (!isFormHtmlSandboxingDisabled()) {
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			}
+			res.status(400).render('form-trigger-auth-error', {
+				title: 'Sign-in failed',
+				message: 'Could not complete sign-in. Please try again.',
+				retryUrl: baseUrl,
+			});
 			return { noWebhookResponse: true };
 		}
 		throw error;
@@ -644,7 +753,10 @@ export async function formWebhook(
 
 	validateResponseModeConfiguration(context);
 
-	//Show the form on GET request
+	// Show the form on GET request. For OAuth-login mode, GET fires twice:
+	// (a) the initial visit (no token, redirected to IDP above) and
+	// (b) the IDP callback (`?code=&state=` already exchanged into sessionClaims
+	//     in the auth block above) — both flow through this same render path.
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = handleNewlines(
@@ -693,6 +805,33 @@ export async function formWebhook(
 			authToken = await generateFormPostBasicAuthToken(context, authProperty);
 		}
 
+		// OAuth login mode — refresh the session JWT so subsequent submissions get
+		// a fresh exp window, build the banner, and pass the canonical form URL so
+		// the rendered page can `history.replaceState` the visible URL.
+		let loggedInBanner: FormLoggedInBanner | undefined;
+		let userClaimsSigned: string | undefined;
+		let canonicalFormUrl: string | undefined;
+		if (sessionClaims) {
+			canonicalFormUrl = req.originalUrl.split('?')[0] ?? req.originalUrl;
+			const showBanner = context.getNodeParameter('showLoggedInBanner', true) as boolean;
+			if (showBanner) {
+				loggedInBanner = buildLoggedInBanner(sessionClaims, canonicalFormUrl);
+			}
+			// Prefer the JWT just minted by the OAuth exchange (fresh from the IDP);
+			// otherwise re-sign with the current claims so each render refreshes exp.
+			userClaimsSigned =
+				sessionJwtFromOauthExchange ??
+				signFormOauthJwt(
+					{
+						wf: context.getWorkflow().id ?? '',
+						node: node.id,
+						claims: sessionClaims,
+					},
+					Container.get(InstanceSettings).hmacSignatureSecret,
+					FORM_OAUTH_SESSION_JWT_EXPIRY_SEC,
+				);
+		}
+
 		renderForm({
 			context,
 			res,
@@ -707,6 +846,9 @@ export async function formWebhook(
 			buttonLabel,
 			customCss: options.customCss,
 			authToken,
+			loggedInBanner,
+			userClaimsSigned,
+			canonicalFormUrl,
 		});
 
 		return {
@@ -720,7 +862,13 @@ export async function formWebhook(
 		useWorkflowTimezone = true;
 	}
 
-	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone);
+	const returnItem = await prepareFormReturnItem(
+		context,
+		formFields,
+		mode,
+		useWorkflowTimezone,
+		sessionClaims,
+	);
 
 	return {
 		webhookResponse: { status: 200 },

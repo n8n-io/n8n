@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang='en'>
+	<head>
+		<meta charset='UTF-8' />
+		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
+		<title>{{title}}</title>
+		<link href='https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap' rel='stylesheet'>
+		<style>
+			body {
+				font-family: 'Open Sans', sans-serif;
+				max-width: 480px;
+				margin: 80px auto;
+				padding: 24px;
+				background-color: #fbfcfe;
+				color: #555;
+				line-height: 1.5;
+			}
+			h1 {
+				font-size: 20px;
+				font-weight: 400;
+				color: #525356;
+				margin-bottom: 12px;
+			}
+			p {
+				font-size: 14px;
+				margin-top: 12px;
+			}
+			a {
+				color: #ff6d5a;
+				text-decoration: none;
+				font-weight: 600;
+			}
+			a:hover {
+				text-decoration: underline;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>{{title}}</h1>
+		<p>{{message}}</p>
+		{{#if retryUrl}}
+			<p><a href='{{retryUrl}}'>Try again</a></p>
+		{{/if}}
+	</body>
+</html>

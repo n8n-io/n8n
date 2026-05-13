@@ -92,6 +92,16 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+			name: 'oAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['oauthLogin'],
+				},
+			},
+		},
 	],
 	properties: [
 		{
@@ -107,11 +117,55 @@ const descriptionV2: INodeTypeDescription = {
 					name: 'None',
 					value: 'none',
 				},
+				{
+					name: 'OAuth2 / OIDC Login',
+					value: 'oauthLogin',
+				},
 			],
 			default: 'none',
 			builderHint: {
 				propertyHint:
 					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
+		},
+		{
+			displayName: 'User Info URL',
+			name: 'userInfoUrl',
+			type: 'string',
+			default: '',
+			placeholder: 'https://example.com/userinfo',
+			description:
+				'Optional OIDC userinfo endpoint. If set, claims returned by this endpoint are merged into the user data. Leave empty to use only ID token claims.',
+			displayOptions: {
+				show: {
+					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['oauthLogin'],
+				},
+			},
+		},
+		{
+			displayName: 'User Output Field',
+			name: 'userOutputField',
+			type: 'string',
+			default: 'user',
+			description:
+				'Name of the field on the trigger output where the authenticated user claims will be placed. Leave empty to omit user data from the workflow output.',
+			displayOptions: {
+				show: {
+					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['oauthLogin'],
+				},
+			},
+		},
+		{
+			displayName: 'Show "Logged in As" Banner',
+			name: 'showLoggedInBanner',
+			type: 'boolean',
+			default: true,
+			description:
+				'Whether to show a banner above the form indicating the signed-in user, with a link to sign out',
+			displayOptions: {
+				show: {
+					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['oauthLogin'],
+				},
 			},
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },

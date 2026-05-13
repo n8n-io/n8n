@@ -34,6 +34,12 @@ export type FormField = {
 	hiddenValue?: GenericValue;
 };
 
+export type FormLoggedInBanner = {
+	displayName: string;
+	email?: string;
+	logoutUrl: string;
+};
+
 export type FormTriggerData = {
 	testRun: boolean;
 	formTitle: string;
@@ -49,6 +55,9 @@ export type FormTriggerData = {
 	buttonLabel?: string;
 	dangerousCustomCss?: string;
 	authToken?: string;
+	loggedInBanner?: FormLoggedInBanner;
+	userClaimsSigned?: string;
+	canonicalFormUrl?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

@@ -745,6 +745,31 @@ export interface BaseHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
+/**
+ * Helpers available to webhook nodes that opt into OAuth2 / OIDC login for their
+ * trigger URL. Initial consumer: the Form trigger. The helpers are generic so
+ * other webhook-triggered nodes can adopt the same auth mode without duplicating
+ * credential-access logic — see `validateWebhookAuthentication`'s `oauthLogin`
+ * branch in `packages/nodes-base/nodes/Webhook/utils.ts`.
+ *
+ * Flow:
+ * - On the first GET, the node has no session token → `validateWebhookAuthentication`
+ *   uses `getWebhookOauthRedirectUrl` to build an IDP authorize URL with
+ *   `redirect_uri = <the current webhook URL>` and throws a
+ *   `WebhookOauthAuthorizationError` so the caller can 302.
+ * - The IDP redirects back to that same webhook URL with `code`+`state` query
+ *   params. The node detects this and calls `exchangeWebhookOauthCode` which
+ *   performs the token exchange and userinfo fetch, then returns the user claims
+ *   plus a signed session JWT to embed in the rendered HTML.
+ */
+export interface WebhookOauthHelperFunctions {
+	getWebhookOauthRedirectUrl(opts?: { reauth?: boolean }): Promise<string>;
+	exchangeWebhookOauthCode(opts: {
+		code: string;
+		state: string;
+	}): Promise<{ claims: Record<string, unknown>; sessionJwt: string }>;
+}
+
 const __brand = Symbol('resolvedFilePath');
 
 export type ResolvedFilePath = string & {
@@ -1346,7 +1371,10 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<void>;
 	nodeHelpers: NodeHelperFunctions;
-	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		WebhookOauthHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {

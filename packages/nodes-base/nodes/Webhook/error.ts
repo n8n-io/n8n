@@ -16,3 +16,18 @@ export class WebhookAuthorizationError extends ApplicationError {
 		super(message);
 	}
 }
+
+/**
+ * Thrown by `validateWebhookAuthentication` when the `oauthLogin` auth mode has no
+ * valid session JWT in the request. Carries the IDP authorize URL so the caller can
+ * redirect the visitor.
+ *
+ * Subclass of `WebhookAuthorizationError`, so existing `instanceof
+ * WebhookAuthorizationError` catch sites continue to emit 401. Callers that want the
+ * 302-redirect behaviour must check for this subclass *before* the base class.
+ */
+export class WebhookOauthAuthorizationError extends WebhookAuthorizationError {
+	constructor(readonly redirectUrl: string) {
+		super(401, 'OAuth login required');
+	}
+}
