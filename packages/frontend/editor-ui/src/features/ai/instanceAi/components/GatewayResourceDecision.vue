@@ -6,41 +6,53 @@ import { computed } from 'vue';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
+
+type InstanceGatewayResourceDecision = 'denyOnce' | 'allowOnce' | 'allowForSession';
+
+const INSTANCE_GATEWAY_RESOURCE_DECISIONS = [
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+] as const satisfies readonly InstanceGatewayResourceDecision[];
+
+function isInstanceGatewayResourceDecision(
+	value: string,
+): value is InstanceGatewayResourceDecision {
+	return (INSTANCE_GATEWAY_RESOURCE_DECISIONS as readonly string[]).includes(value);
+}
 
 const props = defineProps<{
 	requestId: string;
 	resource: string;
 	description: string;
-	options: string[];
+	options: InstanceGatewayResourceDecision[];
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const store = useInstanceAiStore();
+const thread = useThread();
 
 interface OptionEntry {
-	decision: string;
+	decision: InstanceGatewayResourceDecision;
 	label: string;
 }
 
-const DECISION_LABELS: Record<string, string> = {
+const DECISION_LABELS: Record<InstanceGatewayResourceDecision, string> = {
 	allowOnce: i18n.baseText('instanceAi.gatewayConfirmation.allowOnce'),
 	allowForSession: i18n.baseText('instanceAi.gatewayConfirmation.allowForSession'),
 	denyOnce: i18n.baseText('instanceAi.gatewayConfirmation.denyOnce'),
 };
 
-const KNOWN_DECISIONS = new Set(['allowOnce', 'allowForSession', 'denyOnce']);
-
-function getDecisionLabel(decision: string): string {
-	return DECISION_LABELS[decision] ?? decision;
+function getDecisionLabel(decision: InstanceGatewayResourceDecision): string {
+	return DECISION_LABELS[decision];
 }
 
-function optionEntry(decision: string): OptionEntry {
+function optionEntry(decision: InstanceGatewayResourceDecision): OptionEntry {
 	return { decision, label: getDecisionLabel(decision) };
 }
 
@@ -53,21 +65,17 @@ const approvePrimary = computed(() =>
 );
 
 const approveDropdownItems = computed(() => {
-	const items: Array<ActionDropdownItem<string>> = [];
+	const items: Array<ActionDropdownItem<InstanceGatewayResourceDecision>> = [];
 	if (props.options.includes('allowForSession'))
 		items.push({ id: 'allowForSession', label: getDecisionLabel('allowForSession') });
 	return items;
 });
 
-const otherOptions = computed<OptionEntry[]>(() =>
-	props.options.filter((d) => !KNOWN_DECISIONS.has(d)).map(optionEntry),
-);
-
-async function confirm(decision: string) {
-	const tc = store.findToolCallByRequestId(props.requestId);
+async function confirm(decision: InstanceGatewayResourceDecision) {
+	const tc = thread.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const eventProps = {
-		thread_id: store.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',
@@ -75,7 +83,7 @@ async function confirm(decision: string) {
 		skipped_inputs: [],
 	};
 	telemetry.track('User finished providing input', eventProps);
-	await store.confirmResourceDecision(props.requestId, decision);
+	await thread.confirmResourceDecision(props.requestId, decision);
 }
 </script>
 
@@ -93,16 +101,6 @@ async function confirm(decision: string) {
 		</div>
 
 		<ConfirmationFooter>
-			<!-- Unknown options not in the standard set -->
-			<N8nButton
-				v-for="opt in otherOptions"
-				:key="opt.decision"
-				variant="outline"
-				size="medium"
-				:label="opt.label"
-				@click="confirm(opt.decision)"
-			/>
-
 			<!-- Deny side -->
 			<N8nButton
 				v-if="denyPrimary"
@@ -122,7 +120,7 @@ async function confirm(decision: string) {
 					data-test-id="gateway-decision-approve"
 					caret-aria-label="More approve options"
 					@click="confirm(approvePrimary.decision)"
-					@select="confirm"
+					@select="(id: string) => isInstanceGatewayResourceDecision(id) && confirm(id)"
 				/>
 			</template>
 		</ConfirmationFooter>

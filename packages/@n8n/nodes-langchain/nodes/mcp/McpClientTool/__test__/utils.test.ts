@@ -1,7 +1,7 @@
 import { buildMcpToolName } from '../utils';
 
-jest.mock('@utils/schemaParsing', () => ({
-	convertJsonSchemaToZod: jest.fn(),
+vi.mock('@utils/schemaParsing', () => ({
+	convertJsonSchemaToZod: vi.fn(),
 }));
 
 describe('buildMcpToolName', () => {

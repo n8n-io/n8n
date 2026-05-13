@@ -77,7 +77,7 @@ export class LmChatMinimax implements INodeType {
 				],
 				default: 'MiniMax-M2.7',
 				builderHint: {
-					message:
+					propertyHint:
 						'Default to the latest MiniMax-M2.x flagship (MiniMax-M2.7). Avoid MiniMax-M2 and earlier.',
 				},
 			},

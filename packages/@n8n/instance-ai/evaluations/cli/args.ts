@@ -14,19 +14,33 @@ import { z } from 'zod';
 export interface CliArgs {
 	/** TimeoutMs is defined per iteration, not as the total timeout for all iterations */
 	timeoutMs: number;
-	baseUrl: string;
+	/** One or more n8n base URLs. Multi-lane runs use a work-stealing allocator
+	 *  that dispatches each build to a lane that isn't already running its
+	 *  prompt, capped per-lane at MAX_CONCURRENT_BUILDS=4. Pass comma-separated
+	 *  to `--base-url`. */
+	baseUrls: string[];
 	email?: string;
 	password?: string;
 	verbose: boolean;
-	/** Filter workflow test cases by filename substring (e.g. "contact-form") */
+	/** Filter workflow test cases by filename substring(s). Accepts a comma-separated
+	 *  list with OR semantics, e.g. "contact-form,deduplication". */
 	filter?: string;
+	/** Exclude workflow test cases whose filename matches any of the substring(s).
+	 *  Same comma-separated shape as --filter; applied after --filter. */
+	exclude?: string;
+	/** Path to a JSON manifest mapping test-case file slugs to one or more
+	 *  pre-built workflow IDs. When set, the harness skips the orchestrator
+	 *  build for matched test cases and verifies the existing workflow instead.
+	 *  See evaluations/harness/prebuilt-workflows.ts for the schema. */
+	prebuiltWorkflows?: string;
 	/** Keep built workflows after evaluation instead of deleting them */
 	keepWorkflows: boolean;
 	/** Directory to write eval-results.json (defaults to cwd) */
 	outputDir?: string;
 	/** LangSmith dataset name (synced from JSON test cases before each run) */
 	dataset: string;
-	/** Max concurrent scenarios in evaluate(). Builds are separately limited to 4 by semaphore. */
+	/** Max concurrent target() calls in LangSmith evaluate(). Build concurrency is
+	 *  enforced separately by the LaneAllocator (cap=4 per lane). */
 	concurrency: number;
 	/** LangSmith experiment name prefix (auto-generated if not set) */
 	experimentName?: string;
@@ -40,12 +54,14 @@ export interface CliArgs {
 // ---------------------------------------------------------------------------
 
 const cliArgsSchema = z.object({
-	timeoutMs: z.number().int().positive().default(600_000),
-	baseUrl: z.string().url().default('http://localhost:5678'),
+	timeoutMs: z.number().int().positive().default(900_000),
+	baseUrls: z.array(z.string().url()).min(1).default(['http://localhost:5678']),
 	email: z.string().optional(),
 	password: z.string().optional(),
 	verbose: z.boolean().default(false),
 	filter: z.string().optional(),
+	exclude: z.string().optional(),
+	prebuiltWorkflows: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
 	dataset: z.string().default('instance-ai-workflow-evals'),
@@ -64,11 +80,13 @@ export function parseCliArgs(argv: string[]): CliArgs {
 
 	return {
 		timeoutMs: validated.timeoutMs,
-		baseUrl: validated.baseUrl,
+		baseUrls: validated.baseUrls,
 		email: validated.email,
 		password: validated.password,
 		verbose: validated.verbose,
 		filter: validated.filter,
+		exclude: validated.exclude,
+		prebuiltWorkflows: validated.prebuiltWorkflows,
 		keepWorkflows: validated.keepWorkflows,
 		outputDir: validated.outputDir,
 		dataset: validated.dataset,
@@ -84,11 +102,13 @@ export function parseCliArgs(argv: string[]): CliArgs {
 
 interface RawArgs {
 	timeoutMs: number;
-	baseUrl: string;
+	baseUrls: string[];
 	email?: string;
 	password?: string;
 	verbose: boolean;
 	filter?: string;
+	exclude?: string;
+	prebuiltWorkflows?: string;
 	keepWorkflows: boolean;
 	outputDir?: string;
 	dataset: string;
@@ -99,8 +119,8 @@ interface RawArgs {
 
 function parseRawArgs(argv: string[]): RawArgs {
 	const result: RawArgs = {
-		timeoutMs: 600_000,
-		baseUrl: 'http://localhost:5678',
+		timeoutMs: 900_000,
+		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
 		outputDir: undefined,
@@ -119,10 +139,15 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 
-			case '--base-url':
-				result.baseUrl = nextArg(argv, i, '--base-url');
+			case '--base-url': {
+				const raw = nextArg(argv, i, '--base-url');
+				result.baseUrls = raw
+					.split(',')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0);
 				i++;
 				break;
+			}
 
 			case '--email':
 				result.email = nextArg(argv, i, '--email');
@@ -140,6 +165,16 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--filter':
 				result.filter = nextArg(argv, i, '--filter');
+				i++;
+				break;
+
+			case '--exclude':
+				result.exclude = nextArg(argv, i, '--exclude');
+				i++;
+				break;
+
+			case '--prebuilt-workflows':
+				result.prebuiltWorkflows = nextArg(argv, i, '--prebuilt-workflows');
 				i++;
 				break;
 

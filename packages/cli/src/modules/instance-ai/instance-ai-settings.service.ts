@@ -7,11 +7,12 @@ import type {
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -19,6 +20,7 @@ import { jsonParse } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
 
@@ -77,7 +79,6 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
-	optinModalDismissed?: boolean;
 }
 
 @Service()
@@ -99,8 +100,6 @@ export class InstanceAiSettingsService {
 
 	private adminSearchCredentialId: string | null = null;
 
-	private optinModalDismissed: boolean = false;
-
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
@@ -109,6 +108,7 @@ export class InstanceAiSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -126,6 +126,11 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
+		const envSnapshot = {
+			sandboxEnabled: this.config.sandboxEnabled,
+			sandboxProvider: this.config.sandboxProvider,
+		};
+
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
 		if (row) {
 			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
@@ -133,6 +138,21 @@ export class InstanceAiSettingsService {
 			});
 			this.applyAdminSettings(persisted);
 		}
+
+		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
+		// or a persisted DB setting are in effect — these can silently disagree.
+		const c = this.config;
+		const overridden =
+			c.sandboxEnabled !== envSnapshot.sandboxEnabled ||
+			c.sandboxProvider !== envSnapshot.sandboxProvider;
+		Container.get(Logger)
+			.scoped('instance-ai')
+			.info(
+				`Sandbox: enabled=${c.sandboxEnabled} provider=${c.sandboxProvider}` +
+					(overridden
+						? ` (DB override; env was enabled=${envSnapshot.sandboxEnabled} provider=${envSnapshot.sandboxProvider})`
+						: ' (from env)'),
+			);
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -156,7 +176,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
-			optinModalDismissed: this.optinModalDismissed,
 		};
 	}
 
@@ -177,6 +196,8 @@ export class InstanceAiSettingsService {
 			);
 		}
 		const c = this.config;
+		const previousMcpServers = c.mcpServers;
+		const previousBrowserMcp = c.browserMcp;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
@@ -199,9 +220,13 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.optinModalDismissed !== undefined)
-			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
+
+		this.eventService.emit('instance-ai-settings-updated', {
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || c.browserMcp !== previousBrowserMcp,
+		});
+
 		return this.getAdminSettings();
 	}
 
@@ -557,8 +582,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
-		if (persisted.optinModalDismissed !== undefined)
-			this.optinModalDismissed = persisted.optinModalDismissed;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -584,7 +607,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
-			optinModalDismissed: this.optinModalDismissed,
 		};
 
 		await this.settingsRepository.upsert(

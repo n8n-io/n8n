@@ -104,4 +104,48 @@ describe('DomainAccessTracker', () => {
 			expect(tracker.isHostAllowed('site-b.com', 'run-2')).toBe(true);
 		});
 	});
+
+	describe('web-search approvals', () => {
+		it('isWebSearchAllowed defaults to false', () => {
+			const tracker = createDomainAccessTracker();
+			expect(tracker.isWebSearchAllowed()).toBe(false);
+			expect(tracker.isWebSearchAllowed('any-run')).toBe(false);
+		});
+
+		it('approveWebSearch grants persistent thread-level approval', () => {
+			const tracker = createDomainAccessTracker();
+			tracker.approveWebSearch();
+			expect(tracker.isWebSearchAllowed()).toBe(true);
+			expect(tracker.isWebSearchAllowed('run-1')).toBe(true);
+		});
+
+		it('approveWebSearchOnce grants transient run-scoped approval', () => {
+			const tracker = createDomainAccessTracker();
+			tracker.approveWebSearchOnce('run-1');
+			expect(tracker.isWebSearchAllowed('run-1')).toBe(true);
+			expect(tracker.isWebSearchAllowed('run-2')).toBe(false);
+			expect(tracker.isWebSearchAllowed()).toBe(false);
+		});
+
+		it('clearRun removes transient web-search approval', () => {
+			const tracker = createDomainAccessTracker();
+			tracker.approveWebSearchOnce('run-1');
+			tracker.clearRun('run-1');
+			expect(tracker.isWebSearchAllowed('run-1')).toBe(false);
+		});
+
+		it('clearRun does not affect persistent web-search approval', () => {
+			const tracker = createDomainAccessTracker();
+			tracker.approveWebSearch();
+			tracker.approveWebSearchOnce('run-1');
+			tracker.clearRun('run-1');
+			expect(tracker.isWebSearchAllowed()).toBe(true);
+		});
+
+		it('approveAllDomains does not implicitly grant web-search', () => {
+			const tracker = createDomainAccessTracker();
+			tracker.approveAllDomains();
+			expect(tracker.isWebSearchAllowed()).toBe(false);
+		});
+	});
 });

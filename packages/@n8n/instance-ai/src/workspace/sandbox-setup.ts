@@ -4,12 +4,11 @@
  * Handles first-time initialization of the sandbox workspace for the workflow
  * builder agent. Lazy and idempotent — checks for marker file before running.
  *
- * File I/O uses sandbox command execution (works for both Daytona and Local).
- * All files are bundled and sent in a single base64-encoded shell script to
- * minimize round-trips to the sandbox API.
+ * File I/O uses the workspace filesystem when available, with a sandbox command
+ * fallback for providers that do not expose one.
  *
- * Workspace layout (relative to $HOME):
- *   ~/workspace/
+ * Workspace layout:
+ *   <workspace-root>/
  *     package.json                    # @n8n/workflow-sdk dependency
  *     tsconfig.json                   # strict, noEmit, skipLibCheck
  *     node_modules/@n8n/workflow-sdk/ # full SDK with .d.ts types
@@ -23,8 +22,10 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
+import { getExampleFiles } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
 
+import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
 import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-fs';
@@ -65,8 +66,23 @@ function resolveHostDepVersion(name: string): string {
  *      `npm install` RUN layer's hash changes, and the sandbox service
  *      rebuilds the image. Floating `'*'` never changes the bytes, so stale
  *      images are reused indefinitely.
+ *
+ * When `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1` is set we deliberately fall
+ * back to `latest` instead of the host version. The image's npm install
+ * runs *before* the host SDK can be packed and uploaded, so a host version
+ * that has not been published yet (e.g., a dev's freshly-bumped workspace
+ * version) would otherwise fail the image build with `npm install` non-zero.
+ * Both invariants above are intentionally relaxed in this mode: cache
+ * stability is irrelevant for dev iteration, and the post-creation
+ * `--force` install overrides whichever `latest` resolved to.
  */
-const SANDBOX_SDK_VERSION = resolveHostDepVersion('@n8n/workflow-sdk');
+const SANDBOX_SDK_VERSION = resolveSandboxSdkVersion();
+
+function resolveSandboxSdkVersion(): string {
+	const linkFlag = process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+	if (linkFlag === '1' || linkFlag === 'true') return 'latest';
+	return resolveHostDepVersion('@n8n/workflow-sdk');
+}
 const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
 
 /**
@@ -155,7 +171,7 @@ try {
     process.exit(1);
   }
   const validation = wf.validate();
-  const json = wf.toJSON();
+  const json = wf.toJSON({ tidyUp: true });
   const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
@@ -207,16 +223,19 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 	return parts.join(' | ');
 }
 
+/** Dirs the agent's `list_files` may probe; some providers 404 on missing dirs. */
+const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows'];
+
 /**
  * Build a shell script that writes all files at once.
  * Each file is base64-encoded and decoded in-place.
- * This sends everything in a single executeCommand call.
+ * This fallback is only used when the workspace has no filesystem adapter.
  */
 function buildBatchWriteScript(root: string, files: Map<string, string>): string {
 	const lines: string[] = ['#!/bin/bash', 'set -e'];
 
 	// Collect all unique directories
-	const dirs = new Set<string>();
+	const dirs = new Set<string>(ALWAYS_PRESENT_DIRS);
 	for (const path of files.keys()) {
 		const lastSlash = path.lastIndexOf('/');
 		if (lastSlash > 0) {
@@ -226,15 +245,7 @@ function buildBatchWriteScript(root: string, files: Map<string, string>): string
 
 	// Create all directories in one mkdir call (single-quoted + escaped to prevent shell injection)
 	const dirList = [...dirs].map((d) => `'${escapeSingleQuotes(`${root}/${d}`)}'`).join(' ');
-	if (dirList) {
-		lines.push(
-			`mkdir -p '${escapeSingleQuotes(`${root}/src`)}' '${escapeSingleQuotes(`${root}/chunks`)}' ${dirList}`,
-		);
-	} else {
-		lines.push(
-			`mkdir -p '${escapeSingleQuotes(`${root}/src`)}' '${escapeSingleQuotes(`${root}/chunks`)}'`,
-		);
-	}
+	lines.push(`mkdir -p ${dirList}`);
 
 	// Write each file via base64 decode (single-quoted paths to prevent shell injection)
 	for (const [path, content] of files) {
@@ -245,15 +256,60 @@ function buildBatchWriteScript(root: string, files: Map<string, string>): string
 	return lines.join('\n');
 }
 
+async function writeWorkspaceFiles(
+	workspace: Workspace,
+	root: string,
+	files: Map<string, string>,
+): Promise<void> {
+	const filesystem = workspace.filesystem;
+	if (filesystem) {
+		// `writeFile` only creates parent dirs as a side-effect of writing a file.
+		await Promise.all(
+			ALWAYS_PRESENT_DIRS.map(
+				async (dir) => await filesystem.mkdir(`${root}/${dir}`, { recursive: true }),
+			),
+		);
+		await Promise.all(
+			[...files].map(async ([path, content]) => {
+				await filesystem.writeFile(`${root}/${path}`, content, { recursive: true });
+			}),
+		);
+		return;
+	}
+
+	const script = buildBatchWriteScript(root, files);
+	const scriptB64 = Buffer.from(script, 'utf-8').toString('base64');
+
+	const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`);
+	if (result.exitCode !== 0) {
+		throw new Error(`Sandbox setup failed: ${result.stderr}`);
+	}
+}
+
 /**
  * Resolve the absolute workspace root by querying $HOME from the sandbox.
  * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
  */
 const workspaceRootCache = new WeakMap<Workspace, string>();
 
+function getLocalFilesystemRoot(workspace: Workspace): string | null {
+	const filesystem = workspace.filesystem;
+	if (!filesystem || filesystem.provider !== 'local') return null;
+
+	const basePath = Reflect.get(filesystem, 'basePath');
+	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
+}
+
 export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
+
+	const localRoot = getLocalFilesystemRoot(workspace);
+	if (localRoot) {
+		workspaceRootCache.set(workspace, localRoot);
+		return localRoot;
+	}
+
 	const result = await runInSandbox(workspace, 'echo $HOME');
 	const home = result.stdout.trim() || '/home/daytona';
 	const root = `${home}/${WORKSPACE_DIR}`;
@@ -262,11 +318,39 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
 }
 
 /**
+ * Write the curated workflow examples bundle into `${root}/examples/`.
+ *
+ * Used by `setupSandboxWorkspace` (local provider) and by the Daytona /
+ * n8n-sandbox factory paths, which skip the full setup but still need the
+ * curated reference material the builder agent greps against.
+ *
+ * No-op when the loader returns an empty bundle (e.g. running against a
+ * workspace where the manifest hasn't been fetched).
+ */
+export async function writeCuratedExamples(workspace: Workspace, logger?: Logger): Promise<void> {
+	const start = Date.now();
+	const { files: exampleFiles, indexTxt } = getExampleFiles();
+	if (exampleFiles.length === 0) return;
+
+	const root = await getWorkspaceRoot(workspace);
+	const fileMap = new Map<string, string>();
+	fileMap.set('examples/index.txt', indexTxt);
+	for (const example of exampleFiles) {
+		fileMap.set(`examples/${example.filename}`, example.content);
+	}
+	await writeWorkspaceFiles(workspace, root, fileMap);
+
+	logger?.debug('[sandbox-setup] prepared curated examples', {
+		count: exampleFiles.length,
+		durationMs: Date.now() - start,
+	});
+}
+
+/**
  * Initialize the sandbox workspace for the workflow builder agent.
  * Idempotent — skips if already initialized (checks marker file).
  *
- * Bundles all config files, workflow JSONs, and the node catalog into a single
- * shell script that runs in one sandbox command to minimize API round-trips.
+ * Writes config files, workflow JSONs, and the node catalog into the workspace.
  *
  * @returns true if initialization ran, false if already initialized
  */
@@ -316,24 +400,22 @@ export async function setupSandboxWorkspace(
 		// Workflow listing failed — continue without syncing
 	}
 
-	// Marker file
-	files.set('.sandbox-initialized', new Date().toISOString());
+	// ── Write workspace files ──────────────────────────────────────────────
 
-	// ── Send everything in one command ─────────────────────────────────────
-
-	const script = buildBatchWriteScript(root, files);
-	const scriptB64 = Buffer.from(script, 'utf-8').toString('base64');
-
-	const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`);
-	if (result.exitCode !== 0) {
-		throw new Error(`Sandbox setup failed: ${result.stderr}`);
-	}
+	await writeWorkspaceFiles(workspace, root, files);
+	await writeCuratedExamples(workspace, context.logger);
 
 	// npm install (must run after package.json is in place)
 	const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
 	if (npmResult.exitCode !== 0) {
 		throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
 	}
+
+	await writeWorkspaceFiles(
+		workspace,
+		root,
+		new Map([['.sandbox-initialized', new Date().toISOString()]]),
+	);
 
 	return true;
 }

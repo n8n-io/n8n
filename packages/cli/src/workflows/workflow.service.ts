@@ -51,6 +51,7 @@ import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -92,6 +93,7 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {}
 
 	async getMany(
@@ -338,6 +340,11 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
+		this.redactionEnforcementService.assertPolicyChangeAllowed(
+			workflow.settings?.redactionPolicy,
+			workflowUpdateData.settings?.redactionPolicy,
+		);
+
 		if (!forceSave && expectedChecksum) {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
@@ -374,6 +381,10 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
+		WorkflowHelpers.validateWorkflowStructure({
+			nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			connections: workflowUpdateData.connections ?? workflow.connections,
+		});
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (

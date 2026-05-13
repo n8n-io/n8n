@@ -37,6 +37,8 @@ interface TestWorkflow {
 	expectedErrors?: ExpectedError[];
 	/** Warnings expected from validateWorkflow when run with a nodeTypesProvider. */
 	expectedValidationWarnings?: ExpectedWarning[];
+	/** Errors expected from WorkflowBuilder.validate() (plugin validator pipeline). */
+	expectedBuilderErrors?: ExpectedError[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -56,6 +58,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			expectedWarnings?: ExpectedWarning[];
 			expectedErrors?: ExpectedError[];
 			expectedValidationWarnings?: ExpectedWarning[];
+			expectedBuilderErrors?: ExpectedError[];
 		}>;
 	};
 
@@ -74,6 +77,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				expectedWarnings: entry.expectedWarnings,
 				expectedErrors: entry.expectedErrors,
 				expectedValidationWarnings: entry.expectedValidationWarnings,
+				expectedBuilderErrors: entry.expectedBuilderErrors,
 			});
 		}
 	}
@@ -157,6 +161,60 @@ describe('parseWorkflowCode', () => {
 		// Verify connections
 		expect(parsedJson.connections['Manual Trigger']).toBeDefined();
 		expect(parsedJson.connections['Manual Trigger'].main[0]![0].node).toBe('HTTP Request');
+	});
+
+	it('should round-trip non-ASCII characters (em-dash, en-dash, curly quotes, ellipsis) in workflow name, node names, and string parameters', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'unicode-test',
+			name: 'EM — DASH · EN – DASH … "curly"',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour — Run',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'set-1',
+					name: 'Greeting — Hello',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'a',
+									name: 'msg',
+									type: 'string',
+									value: 'hello — world · café "quoted" …',
+								},
+							],
+						},
+					},
+				},
+			],
+			connections: {
+				'Every Hour — Run': {
+					main: [[{ node: 'Greeting — Hello', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		expect(parsedJson.name).toBe('EM — DASH · EN – DASH … "curly"');
+		const names = parsedJson.nodes.map((n) => n.name);
+		expect(names).toContain('Every Hour — Run');
+		expect(names).toContain('Greeting — Hello');
+		const setNode = parsedJson.nodes.find((n) => n.name === 'Greeting — Hello')!;
+		const value = (setNode.parameters as { assignments: { assignments: Array<{ value: string }> } })
+			.assignments.assignments[0].value;
+		expect(value).toBe('hello — world · café "quoted" …');
+		expect(parsedJson.connections['Every Hour — Run'].main[0]![0].node).toBe('Greeting — Hello');
 	});
 
 	it('should parse workflow with settings', () => {
@@ -2629,6 +2687,39 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
 					}
 				});
+			});
+		});
+	}
+});
+
+describe('Committed workflows — builder validator errors', () => {
+	const normalizeError = (e: ExpectedError): string => `${e.code}:${e.nodeName ?? ''}`;
+
+	const workflowsWithExpectedBuilderErrors = workflows.filter(
+		(w) => w.expectedBuilderErrors && w.expectedBuilderErrors.length > 0,
+	);
+
+	if (workflowsWithExpectedBuilderErrors.length === 0) {
+		it('has at least one fixture with expectedBuilderErrors declared', () => {
+			expect(workflowsWithExpectedBuilderErrors.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedBuilderErrors.forEach(({ id, name, json, expectedBuilderErrors }) => {
+			it(`emits expected builder validation errors for workflow ${id}: "${name}"`, () => {
+				const code = generateWorkflowCode(json);
+				const builder = parseWorkflowCodeToBuilder(code);
+				const result = builder.validate({ allowDisconnectedNodes: true });
+
+				const actualErrors: ExpectedError[] = result.errors
+					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				const expected = (expectedBuilderErrors ?? [])
+					.slice()
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				expect(actualErrors).toEqual(expected);
+				expect(result.valid).toBe(false);
 			});
 		});
 	}

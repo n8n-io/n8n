@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.19.0",
+  "version": "2.21.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -70,6 +70,7 @@
     "chart.js": "^4.4.0",
     "comlink": "^4.4.1",
     "core-js": "^3.40.0",
+    "cron": "catalog:",
     "curlconverter": "^4.12.0",
     "dateformat": "^3.0.3",
     "element-plus": "catalog:frontend",
