@@ -32,6 +32,19 @@ export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
 	};
 }
 
+function validateObservationalMemoryConfig(config: ObservationalMemoryConfig): void {
+	if (config.observe && config.observerThresholdTokens === undefined) {
+		throw new Error(
+			'Observational memory observe callback requires observerThresholdTokens. Add observerThresholdTokens or remove observe.',
+		);
+	}
+	if (config.reflect && config.reflectorThresholdTokens === undefined) {
+		throw new Error(
+			'Observational memory reflect callback requires reflectorThresholdTokens. Add reflectorThresholdTokens or remove reflect.',
+		);
+	}
+}
+
 /**
  * Builder for configuring conversation memory.
  *
@@ -151,6 +164,7 @@ export class Memory {
 				"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
 			);
 		}
+		validateObservationalMemoryConfig(this.observationalMemoryConfig);
 
 		return normalizeMemoryConfig({
 			...baseConfig,

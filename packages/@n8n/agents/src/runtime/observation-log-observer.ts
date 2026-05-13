@@ -56,7 +56,7 @@ export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservat
 	getMessagesForScope(
 		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
-		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
 	): Promise<AgentDbMessage[]>;
 	getCursor(scopeKind: ObservationLogScopeKind, scopeId: string): Promise<ObservationCursor | null>;
 	setCursor(cursor: ObservationCursor & { scopeKind: ObservationLogScopeKind }): Promise<void>;
@@ -71,6 +71,7 @@ export interface RunObservationLogObserverOpts {
 	observe: ObservationLogObserveFn;
 	tokenCounter?: TokenCounter;
 	now?: Date;
+	messageSource?: { threadId: string; resourceId?: string };
 	onMalformedLine?: (line: string) => void;
 }
 
@@ -158,17 +159,24 @@ export async function runObservationLogObserver(
 ): Promise<RunObservationLogObserverResult> {
 	const { memory, scopeKind, scopeId } = opts;
 	const cursor = await memory.getCursor(scopeKind, scopeId);
+	const messageScopeKind = opts.messageSource ? 'thread' : scopeKind;
+	const messageScopeId = opts.messageSource?.threadId ?? scopeId;
 	const deltaMessages = await memory.getMessagesForScope(
-		scopeKind,
-		scopeId,
+		messageScopeKind,
+		messageScopeId,
 		cursor
 			? {
+					...(opts.messageSource?.resourceId !== undefined && {
+						resourceId: opts.messageSource.resourceId,
+					}),
 					since: {
 						sinceCreatedAt: cursor.lastObservedAt,
 						sinceMessageId: cursor.lastObservedMessageId,
 					},
 				}
-			: undefined,
+			: opts.messageSource?.resourceId !== undefined
+				? { resourceId: opts.messageSource.resourceId }
+				: undefined,
 	);
 	if (deltaMessages.length === 0) return { status: 'skipped', reason: 'no-delta' };
 

@@ -29,6 +29,26 @@ describe('Memory builder — observation log memory', () => {
 		});
 	});
 
+	it('rejects observer callbacks without an observer threshold', () => {
+		expect(() =>
+			new Memory()
+				.observationalMemory({
+					observe: async () => await Promise.resolve(''),
+				})
+				.build(),
+		).toThrow(/observerThresholdTokens/);
+	});
+
+	it('rejects reflector callbacks without a reflector threshold', () => {
+		expect(() =>
+			new Memory()
+				.observationalMemory({
+					reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+				})
+				.build(),
+		).toThrow(/reflectorThresholdTokens/);
+	});
+
 	it('rejects backends that do not implement the observation-log store', () => {
 		const minimalBackend = {
 			getThread: jest.fn().mockResolvedValue(null),

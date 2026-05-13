@@ -2,7 +2,10 @@ import { normalizeObservationLogReflection } from './observation-log-reflector';
 import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
 import type { AgentDbMessage } from '../types/sdk/message';
 import type { ObservationCursor } from '../types/sdk/observation';
-import { estimateObservationTokens } from '../types/sdk/observation-log';
+import {
+	createObservationLogThreadScopePrefix,
+	estimateObservationTokens,
+} from '../types/sdk/observation-log';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -92,10 +95,23 @@ export class InMemoryMemory
 	async deleteThread(threadId: string): Promise<void> {
 		this.threads.delete(threadId);
 		this.messagesByThread.delete(threadId);
-		const key = scopeKey('thread', threadId);
-		this.observationLogByScope.delete(key);
-		this.cursorsByScope.delete(key);
-		this.locksByScope.delete(key);
+		const legacyKey = scopeKey('thread', threadId);
+		const resourceScopePrefix = scopeKey('thread', createObservationLogThreadScopePrefix(threadId));
+		for (const key of this.observationLogByScope.keys()) {
+			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
+				this.observationLogByScope.delete(key);
+			}
+		}
+		for (const key of this.cursorsByScope.keys()) {
+			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
+				this.cursorsByScope.delete(key);
+			}
+		}
+		for (const key of this.locksByScope.keys()) {
+			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
+				this.locksByScope.delete(key);
+			}
+		}
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -104,9 +120,13 @@ export class InMemoryMemory
 		opts?: {
 			limit?: number;
 			before?: Date;
+			resourceId?: string;
 		},
 	): Promise<AgentDbMessage[]> {
 		let stored = this.messagesByThread.get(threadId) ?? [];
+		if (opts?.resourceId !== undefined) {
+			stored = stored.filter((s) => s.resourceId === opts.resourceId);
+		}
 		if (opts?.before) {
 			const cutoff = opts.before.getTime();
 			stored = stored.filter((s) => s.createdAt.getTime() < cutoff);
@@ -289,18 +309,20 @@ export class InMemoryMemory
 	async getMessagesForScope(
 		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
-		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
 	): Promise<AgentDbMessage[]> {
 		if (scopeKind !== 'thread') {
 			throw new Error(`getMessagesForScope: scopeKind='${scopeKind}' is not supported in v1`);
 		}
 		const candidates = this.messagesByThread.get(scopeId) ?? [];
-		let rows = [...candidates].sort((a, b) =>
-			compareKeyset(
-				{ createdAt: a.createdAt, id: a.message.id },
-				{ createdAt: b.createdAt, id: b.message.id },
-			),
-		);
+		let rows = candidates
+			.filter((s) => opts?.resourceId === undefined || s.resourceId === opts.resourceId)
+			.sort((a, b) =>
+				compareKeyset(
+					{ createdAt: a.createdAt, id: a.message.id },
+					{ createdAt: b.createdAt, id: b.message.id },
+				),
+			);
 		if (opts?.since) {
 			const { sinceCreatedAt, sinceMessageId } = opts.since;
 			rows = rows.filter(

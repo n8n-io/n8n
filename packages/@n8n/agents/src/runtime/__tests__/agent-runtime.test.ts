@@ -3,8 +3,10 @@ import { z } from 'zod';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
+import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
+import { createObservationLogThreadScopeId } from '../../types/sdk/observation-log';
 import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
@@ -2265,7 +2267,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const observations = await memory.getActiveObservationLog({
 			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
 		});
 		expect(observations).toMatchObject([
 			{
@@ -2274,7 +2276,10 @@ describe('AgentRuntime — observation log jobs', () => {
 				parentId: null,
 			},
 		]);
-		const cursor = await memory.getCursor('thread', 'thread-1');
+		const cursor = await memory.getCursor(
+			'thread',
+			createObservationLogThreadScopeId('thread-1', 'resource-1'),
+		);
 		expect(typeof cursor?.lastObservedMessageId).toBe('string');
 	});
 
@@ -2305,7 +2310,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const observations = await memory.getActiveObservationLog({
 			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
 		});
 		expect(observations).toMatchObject([
 			{
@@ -2344,6 +2349,127 @@ describe('AgentRuntime — observation log jobs', () => {
 			}),
 		).toEqual([]);
 		expect(await memory.getCursor('thread', 'thread-1')).toBeNull();
+	});
+
+	it('isolates history and observation-log memory by resource on shared threads', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async ({ transcript }) =>
+					await Promise.resolve(
+						transcript.includes('resource-one')
+							? '* 🔴 (14:30) Resource one memory.'
+							: '* 🔴 (14:30) Resource two memory.',
+					),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('remember resource-one preference', {
+			persistence: { threadId: 'shared-thread', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+		await runtime.generate('remember resource-two preference', {
+			persistence: { threadId: 'shared-thread', resourceId: 'resource-2' },
+		});
+		await runtime.dispose();
+
+		generateText.mockClear();
+		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
+
+		await runtime.generate('what is my memory?', {
+			persistence: { threadId: 'shared-thread', resourceId: 'resource-2' },
+		});
+
+		const generateTextMock = generateText as jest.MockedFunction<
+			(input: {
+				messages: Array<{
+					role: string;
+					content: unknown;
+				}>;
+			}) => unknown
+		>;
+		const [{ messages }] = generateTextMock.mock.calls[0];
+		const systemPrompt = messages[0].content;
+		expect(systemPrompt).toContain('Resource two memory.');
+		expect(systemPrompt).not.toContain('Resource one memory.');
+		expect(JSON.stringify(messages)).toContain('remember resource-two preference');
+		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
+
+		await runtime.dispose();
+	});
+
+	it('emits an error event when an observer background task fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const error = new Error('observer failed');
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () => await Promise.reject(error),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('please remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(errorEvents).toEqual(
+			expect.arrayContaining([expect.objectContaining({ error, source: 'observer' })]),
+		);
+	});
+
+	it('emits an error event when a reflector background task fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const error = new Error('reflector failed');
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve(`* 🔴 (14:30) ${'Large observation. '.repeat(20)}`),
+				reflect: async () => await Promise.reject(error),
+			},
+		});
+
+		await runtime.generate('please remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(errorEvents).toEqual(
+			expect.arrayContaining([expect.objectContaining({ error, source: 'reflector' })]),
+		);
 	});
 });
 

@@ -44,8 +44,11 @@ src/
     tool-adapter.ts     # Tool execution, branded suspend detection
     stream.ts           # Streaming helpers
     model-factory.ts    # Model instantiation
-    memory-store.ts     # Conversation / working-memory persistence hooks
-    working-memory.ts   # In-run working memory
+    memory-store.ts     # In-memory conversation and observation-log storage
+    observation-log-observer.ts
+    observation-log-reflector.ts
+    observation-log-renderer.ts
+    scoped-memory-task-runner.ts
     message-list.ts     # Message list + serialization for agent loop
     messages.ts         # Message normalization
     mcp-connection.ts   # MCP connection lifecycle

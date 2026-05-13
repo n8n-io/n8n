@@ -52,6 +52,24 @@ describe('InMemoryMemory — message keyset reads', () => {
 		expect(textOf(all[0])).toBe('edited');
 	});
 
+	it('filters messages by resourceId when provided', async () => {
+		const mem = new InMemoryMemory();
+		await mem.saveMessages({
+			threadId: 't-1',
+			resourceId: 'u-1',
+			messages: [makeMsg('user', 'one')],
+		});
+		await mem.saveMessages({
+			threadId: 't-1',
+			resourceId: 'u-2',
+			messages: [makeMsg('user', 'two')],
+		});
+
+		const messages = await mem.getMessages('t-1', { resourceId: 'u-2' });
+
+		expect(messages.map(textOf)).toEqual(['two']);
+	});
+
 	it('filters observation-scope messages by since (createdAt, id) keyset', async () => {
 		const mem = new InMemoryMemory();
 		const t = Date.now();
@@ -91,5 +109,23 @@ describe('InMemoryMemory — message keyset reads', () => {
 		});
 		expect(tail).toHaveLength(1);
 		expect(tail[0].id).toBe(high.id);
+	});
+
+	it('filters observation-scope messages by resourceId when provided', async () => {
+		const mem = new InMemoryMemory();
+		await mem.saveMessages({
+			threadId: 't-1',
+			resourceId: 'u-1',
+			messages: [makeMsg('user', 'one')],
+		});
+		await mem.saveMessages({
+			threadId: 't-1',
+			resourceId: 'u-2',
+			messages: [makeMsg('user', 'two')],
+		});
+
+		const messages = await mem.getMessagesForScope('thread', 't-1', { resourceId: 'u-2' });
+
+		expect(messages.map(textOf)).toEqual(['two']);
 	});
 });

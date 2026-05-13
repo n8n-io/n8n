@@ -97,6 +97,8 @@ export type {
 	TokenCounter,
 } from './sdk/observation-log';
 export {
+	createObservationLogThreadScopeId,
+	createObservationLogThreadScopePrefix,
 	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,

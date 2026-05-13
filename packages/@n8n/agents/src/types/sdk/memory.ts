@@ -40,6 +40,7 @@ export interface BuiltMemory {
 		opts?: {
 			limit?: number; // last N messages
 			before?: Date; // pagination cursor
+			resourceId?: string; // per-resource isolation for shared threads
 		},
 	): Promise<AgentDbMessage[]>;
 	/**

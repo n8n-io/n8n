@@ -35,6 +35,7 @@ import type {
 import { BackgroundTaskTracker } from './background-task-tracker';
 import { AgentEventBus } from './event-bus';
 import { toJsonValue } from './json-value';
+import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
@@ -76,6 +77,8 @@ import type {
 	ToolResultEntry,
 } from '../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
+import { createObservationLogThreadScopeId } from '../types/sdk/observation-log';
+import type { ObservationLogScope } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
@@ -186,6 +189,7 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 20;
+const logger = createFilteredLogger();
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -543,6 +547,7 @@ export class AgentRuntime {
 		if (this.config.memory && options?.persistence?.threadId) {
 			const memMessages = await this.config.memory.getMessages(options.persistence.threadId, {
 				limit: this.config.lastMessages ?? 10,
+				resourceId: options.persistence.resourceId,
 			});
 			if (memMessages.length > 0) {
 				list.addHistory(stripOrphanedToolMessages(memMessages));
@@ -1386,7 +1391,7 @@ export class AgentRuntime {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
 
-		const scope = { scopeKind: 'thread' as const, scopeId: persistence.threadId };
+		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory);
 		const observe = observationalMemory.observe;
 		const observerThresholdTokens = observationalMemory.observerThresholdTokens;
@@ -1405,6 +1410,10 @@ export class AgentRuntime {
 						observerThresholdTokens,
 						observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 						observe,
+						messageSource: {
+							threadId: persistence.threadId,
+							resourceId: persistence.resourceId,
+						},
 					}),
 			);
 		}
@@ -1433,8 +1442,26 @@ export class AgentRuntime {
 			tracker: this.backgroundTasks,
 			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
 			lockTtlMs: observationalMemory.lockTtlMs,
+			onEvent: (event) => {
+				if (event.type !== 'failed') return;
+				const source = event.task.taskKind;
+				const message = `Observation log ${source} task failed`;
+				logger.warn(message, {
+					error: event.error,
+					scopeKind: event.task.scopeKind,
+					scopeId: event.task.scopeId,
+				});
+				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
+			},
 		});
 		return this.memoryTasks;
+	}
+
+	private getObservationLogScope(persistence: AgentPersistenceOptions): ObservationLogScope {
+		return {
+			scopeKind: 'thread',
+			scopeId: createObservationLogThreadScopeId(persistence.threadId, persistence.resourceId),
+		};
 	}
 
 	private async saveEmbeddingsForMessages(
@@ -2091,9 +2118,9 @@ export class AgentRuntime {
 	) {
 		const memory = this.config.memory;
 		if (!memory || !options?.threadId || !hasObservationLogStore(memory)) return;
+		const scope = this.getObservationLogScope(options);
 		const observations = await memory.getActiveObservationLog({
-			scopeKind: 'thread',
-			scopeId: options.threadId,
+			...scope,
 			order: 'asc',
 		});
 		list.observationLogMemory =

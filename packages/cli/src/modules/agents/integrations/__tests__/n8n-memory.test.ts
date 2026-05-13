@@ -234,19 +234,37 @@ describe('N8nMemory', () => {
 			expect(result.map((m) => m.id)).toEqual(['m2']);
 		});
 
+		it('filters thread-scoped messages by resourceId when provided', async () => {
+			messageRepository.find.mockResolvedValue([]);
+
+			await memory.getMessagesForScope('thread', 'thread-1', { resourceId: 'user-2' });
+
+			expect(messageRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: [{ threadId: 'thread-1', resourceId: 'user-2' }],
+				}),
+			);
+		});
+
 		it('applies the cursor keyset for thread scopes', async () => {
 			const sinceCreatedAt = new Date('2026-01-01T00:00:01.000Z');
 			messageRepository.find.mockResolvedValue([]);
 
 			await memory.getMessagesForScope('thread', 'thread-1', {
+				resourceId: 'user-2',
 				since: { sinceCreatedAt, sinceMessageId: 'm1' },
 			});
 
 			expect(messageRepository.find).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: [
-						{ threadId: 'thread-1', createdAt: MoreThan(sinceCreatedAt) },
-						{ threadId: 'thread-1', createdAt: Equal(sinceCreatedAt), id: MoreThan('m1') },
+						{ threadId: 'thread-1', resourceId: 'user-2', createdAt: MoreThan(sinceCreatedAt) },
+						{
+							threadId: 'thread-1',
+							resourceId: 'user-2',
+							createdAt: Equal(sinceCreatedAt),
+							id: MoreThan('m1'),
+						},
 					],
 				}),
 			);
@@ -359,12 +377,31 @@ describe('N8nMemory', () => {
 		it('deletes thread-scoped observation state and the thread row in one transaction', async () => {
 			await memory.deleteThread('thread-1');
 
-			const scope = { scopeKind: 'thread' as const, scopeId: 'thread-1' };
+			const legacyScope = { scopeKind: 'thread' as const, scopeId: 'thread-1' };
+			const resourceScope = {
+				scopeKind: 'thread' as const,
+				scopeId: Like('thread:thread-1:resource:%'),
+			};
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
-			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(2, AgentObservationCursorEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, { id: 'thread-1' });
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				2,
+				AgentObservationCursorEntity,
+				legacyScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentObservationEntity, resourceScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				5,
+				AgentObservationCursorEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				6,
+				AgentObservationLockEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(7, AgentThreadEntity, { id: 'thread-1' });
 			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
@@ -374,12 +411,31 @@ describe('N8nMemory', () => {
 		it('deletes thread-scoped observation state by thread id prefix in one transaction', async () => {
 			await memory.deleteThreadsByPrefix('test-agent-1');
 
-			const scope = { scopeKind: 'thread' as const, scopeId: Like('test-agent-1%') };
+			const legacyScope = { scopeKind: 'thread' as const, scopeId: Like('test-agent-1%') };
+			const resourceScope = {
+				scopeKind: 'thread' as const,
+				scopeId: Like('thread:test-agent-1:resource:%'),
+			};
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
-			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(2, AgentObservationCursorEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				2,
+				AgentObservationCursorEntity,
+				legacyScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentObservationEntity, resourceScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				5,
+				AgentObservationCursorEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				6,
+				AgentObservationLockEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(7, AgentThreadEntity, {
 				id: Like('test-agent-1%'),
 			});
 			expect(observationRepository.delete).not.toHaveBeenCalled();

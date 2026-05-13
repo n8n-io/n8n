@@ -1,5 +1,6 @@
 import {
 	normalizeObservationLogReflection,
+	createObservationLogThreadScopePrefix,
 	type AgentDbMessage,
 	type AgentMessage,
 	type BuiltMemory,
@@ -103,21 +104,32 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 
 	async deleteThread(threadId: string): Promise<void> {
 		await this.threadRepository.manager.transaction(async (trx) => {
-			const scope = { scopeKind: 'thread' as const, scopeId: threadId };
-			await trx.delete(AgentObservationEntity, scope);
-			await trx.delete(AgentObservationCursorEntity, scope);
-			await trx.delete(AgentObservationLockEntity, scope);
+			const legacyScope = { scopeKind: 'thread' as const, scopeId: threadId };
+			const resourceScope = {
+				scopeKind: 'thread' as const,
+				scopeId: Like(`${createObservationLogThreadScopePrefix(threadId)}%`),
+			};
+			for (const scope of [legacyScope, resourceScope]) {
+				await trx.delete(AgentObservationEntity, scope);
+				await trx.delete(AgentObservationCursorEntity, scope);
+				await trx.delete(AgentObservationLockEntity, scope);
+			}
 			await trx.delete(AgentThreadEntity, { id: threadId });
 		});
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
 		const scopeId = Like(`${threadIdPrefix}%`);
+		const resourceScopeId = Like(`${createObservationLogThreadScopePrefix(threadIdPrefix)}%`);
 		await this.threadRepository.manager.transaction(async (trx) => {
-			const scope = { scopeKind: 'thread' as const, scopeId };
-			await trx.delete(AgentObservationEntity, scope);
-			await trx.delete(AgentObservationCursorEntity, scope);
-			await trx.delete(AgentObservationLockEntity, scope);
+			for (const scope of [
+				{ scopeKind: 'thread' as const, scopeId },
+				{ scopeKind: 'thread' as const, scopeId: resourceScopeId },
+			]) {
+				await trx.delete(AgentObservationEntity, scope);
+				await trx.delete(AgentObservationCursorEntity, scope);
+				await trx.delete(AgentObservationLockEntity, scope);
+			}
 			await trx.delete(AgentThreadEntity, { id: scopeId });
 		});
 	}
@@ -248,7 +260,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	async getMessagesForScope(
 		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
-		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
 	): Promise<AgentDbMessage[]> {
 		if (scopeKind !== 'thread') {
 			throw new UnexpectedError(
@@ -256,7 +268,10 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			);
 		}
 
-		const baseWhere: FindOptionsWhere<AgentMessageEntity> = { threadId: scopeId };
+		const baseWhere: FindOptionsWhere<AgentMessageEntity> = {
+			threadId: scopeId,
+			...(opts?.resourceId !== undefined && { resourceId: opts.resourceId }),
+		};
 		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
 			? [
 					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
