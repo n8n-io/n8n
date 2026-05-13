@@ -2,12 +2,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 
 import { RunQueryDto } from './dto/run-query.dto';
-import { EngineError } from './engine/errors';
+import { mapEngineErrorToHttp } from './error-mapper';
 import { QueryService } from './query.service';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 @RestController('/query')
 export class QueryController {
@@ -20,23 +16,7 @@ export class QueryController {
 				timeoutMs: body.timeoutMs,
 			});
 		} catch (error) {
-			throw mapToHttpError(error);
+			throw mapEngineErrorToHttp(error);
 		}
-	}
-}
-
-function mapToHttpError(error: unknown): unknown {
-	if (!(error instanceof EngineError)) return error;
-	const message = `${error.code}: ${error.message}`;
-	switch (error.code) {
-		case 'FORBIDDEN_WORKFLOW':
-			return new ForbiddenError(message);
-		case 'DB_UNSUPPORTED':
-		case 'STATEMENT_TIMEOUT':
-		case 'EXECUTION_FAILED':
-		case 'RESULT_TOO_LARGE':
-			return new InternalServerError(message);
-		default:
-			return new BadRequestError(message);
 	}
 }

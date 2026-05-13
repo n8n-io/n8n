@@ -2,13 +2,18 @@
 
 Companion to [README.md](./README.md) (internals). This doc is for whoever's wiring the dashboard UI (or any other consumer) to the `/rest/query` endpoint.
 
-## Endpoint
+## Endpoints
 
-```
-POST /rest/query
-```
+Two routes, same engine, slightly different wire format:
 
-Authenticated. Scoped by the requesting user's `workflow:read` access — queries can only return data from workflows the user can read. No additional scope/header needed beyond standard n8n auth (cookie or API key).
+| Endpoint | Auth | Response wrap |
+| --- | --- | --- |
+| `POST /rest/query` | Session cookie (`n8n-auth` + `browser-id` header) | `{"data": {columns, rows, ...}}` |
+| `POST /api/v1/query` | `X-N8N-API-KEY` header | `{columns, rows, ...}` (bare) |
+
+Both are scoped by the user's `workflow:read` access — queries can only return data from workflows the user can read.
+
+The dashboard UI should use `/rest/query` (cookie auth is already there). External integrations (the N8n node, third-party scripts) use `/api/v1/query` with an API key.
 
 ## Request
 

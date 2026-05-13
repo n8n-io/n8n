@@ -75,6 +75,26 @@ export const workflowOperations: INodeProperties[] = [
 				action: 'Get a workflow version',
 			},
 			{
+				name: 'Query',
+				value: 'query',
+				action: 'Run a SQL query against workflow and execution data',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/query',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								enabled: '={{$parameter["simple"]}}',
+								properties: { property: 'rows' },
+							},
+						],
+					},
+				},
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update a workflow',
@@ -448,6 +468,48 @@ const updateOperation: INodeProperties[] = [
 	},
 ];
 
+const queryOperation: INodeProperties[] = [
+	{
+		displayName: 'Query',
+		name: 'sql',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'SELECT id, name FROM workflows LIMIT 10',
+		typeOptions: {
+			rows: 6,
+		},
+		displayOptions: {
+			show: {
+				resource: ['workflow'],
+				operation: ['query'],
+			},
+		},
+		description:
+			'SQL to run against execution and workflow data. Only <code>SELECT</code> is supported. See the n8n query module documentation for the full grammar.',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'query',
+			},
+		},
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: ['workflow'],
+				operation: ['query'],
+			},
+		},
+		description:
+			'Whether to emit one item per row (recommended), or one item containing the full response with columns, durationMs, and truncated metadata',
+	},
+];
+
 export const workflowFields: INodeProperties[] = [
 	...activateOperation,
 	...createOperation,
@@ -456,5 +518,6 @@ export const workflowFields: INodeProperties[] = [
 	...getAllOperation,
 	...getOperation,
 	...getVersionOperation,
+	...queryOperation,
 	...updateOperation,
 ];
