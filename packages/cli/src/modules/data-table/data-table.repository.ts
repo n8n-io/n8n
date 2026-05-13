@@ -1,6 +1,7 @@
 import {
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
+	type DataTableKind,
 	type ListDataTableQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -13,7 +14,7 @@ import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableDDLService } from './data-table-ddl.service';
-import { DataTable } from './data-table.entity';
+import { DataTable, type DataTableMetadata } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
@@ -50,13 +51,21 @@ export class DataTableRepository extends Repository<DataTable> {
 		name: string,
 		columns: DataTableCreateColumnSchema[],
 		trx?: EntityManager,
+		kind: DataTableKind = 'list',
+		metadata?: DataTableMetadata,
 	) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
 				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 			}
 
-			const dataTable = em.create(DataTable, { name, columns, projectId });
+			const dataTable = em.create(DataTable, {
+				name,
+				columns,
+				projectId,
+				kind,
+				metadata: metadata ?? {},
+			});
 
 			await em.insert(DataTable, dataTable);
 			const dataTableId = dataTable.id;

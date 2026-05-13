@@ -1,6 +1,7 @@
 import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import {
+	ADD_BOARD_MODAL_KEY,
 	ADD_DATA_TABLE_MODAL_KEY,
 	DATA_TABLE_DETAILS,
 	DATA_TABLE_VIEW,
@@ -25,6 +26,11 @@ export const DataTableModule: FrontendModuleDescription = {
 		{
 			key: ADD_DATA_TABLE_MODAL_KEY,
 			component: async () => await import('./components/AddDataTableModal.vue'),
+			initialState: { open: false },
+		},
+		{
+			key: ADD_BOARD_MODAL_KEY,
+			component: async () => await import('./components/AddBoardModal.vue'),
 			initialState: { open: false },
 		},
 	],
@@ -66,9 +72,12 @@ export const DataTableModule: FrontendModuleDescription = {
 		},
 		{
 			name: PROJECT_BOARDS,
-			path: 'boards',
+			path: 'boards/:new(new)?',
 			component: DataTableView,
-			props: { kind: 'board' },
+			props: (route) => ({
+				kind: 'board',
+				...route.params,
+			}),
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],

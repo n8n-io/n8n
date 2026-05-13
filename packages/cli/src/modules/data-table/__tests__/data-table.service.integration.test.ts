@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import type { DataTableRow } from 'n8n-workflow';
 
 import { DataTableRowsRepository } from '../data-table-rows.repository';
+import { DataTableBoardService } from '../data-table-board.service';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { mockDataTableSizeValidator } from './test-helpers';
@@ -32,11 +33,13 @@ afterAll(async () => {
 
 describe('dataTable', () => {
 	let dataTableService: DataTableService;
+	let dataTableBoardService: DataTableBoardService;
 	let dataTableRepository: DataTableRepository;
 	let dataTableRowsRepository: DataTableRowsRepository;
 
 	beforeAll(() => {
 		dataTableService = Container.get(DataTableService);
+		dataTableBoardService = Container.get(DataTableBoardService);
 		dataTableRepository = Container.get(DataTableRepository);
 		dataTableRowsRepository = Container.get(DataTableRowsRepository);
 	});
@@ -157,6 +160,32 @@ describe('dataTable', () => {
 
 			// ASSERT
 			await expect(result).rejects.toThrow(DataTableNameConflictError);
+		});
+	});
+
+	describe('createBoard', () => {
+		it('should create a board with system columns, kind, and metadata', async () => {
+			const board = await dataTableBoardService.createBoard(project1.id, {
+				name: 'My Board',
+				statuses: ['Open', 'Done'],
+			});
+
+			expect(board.kind).toBe('board');
+			expect(board.metadata).toEqual({ allowedStatuses: ['Open', 'Done'] });
+			await expect(dataTableService.getColumns(board.id, project1.id)).resolves.toEqual([
+				expect.objectContaining({ name: 'status', type: 'string', index: 0 }),
+				expect.objectContaining({ name: 'name', type: 'string', index: 1 }),
+				expect.objectContaining({ name: 'description', type: 'string', index: 2 }),
+			]);
+		});
+
+		it('should reject board creation without allowed statuses', async () => {
+			await expect(
+				dataTableBoardService.createBoard(project1.id, {
+					name: 'My Board',
+					statuses: [],
+				}),
+			).rejects.toThrow(DataTableValidationError);
 		});
 	});
 

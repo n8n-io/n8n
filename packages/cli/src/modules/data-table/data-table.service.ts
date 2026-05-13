@@ -87,7 +87,14 @@ export class DataTableService {
 
 		await this.validateUniqueName(dto.name, projectId);
 
-		const result = await this.dataTableRepository.createDataTable(projectId, dto.name, dto.columns);
+		const result = await this.dataTableRepository.createDataTable(
+			projectId,
+			dto.name,
+			dto.columns,
+			undefined,
+			dto.kind ?? 'list',
+			dto.metadata,
+		);
 
 		if (dto.fileId) {
 			try {

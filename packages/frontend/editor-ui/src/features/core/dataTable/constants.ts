@@ -31,6 +31,7 @@ export const DATA_TABLE_CARD_ACTIONS = {
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';
+export const ADD_BOARD_MODAL_KEY = 'addBoardModal';
 export const DOWNLOAD_DATA_TABLE_MODAL_KEY = 'downloadDataTableModal';
 export const IMPORT_CSV_MODAL_KEY = 'importCsvModal';
 

@@ -45,6 +45,10 @@ export const createDataTableApi = async (
 	columns?: DataTableColumnCreatePayload[],
 	fileId?: string,
 	hasHeaders: boolean = true,
+	options?: {
+		kind?: DataTableKind;
+		metadata?: { allowedStatuses?: string[] };
+	},
 ) => {
 	return await makeRestApiRequest<DataTable>(
 		context,
@@ -55,6 +59,8 @@ export const createDataTableApi = async (
 			columns: columns ?? [],
 			hasHeaders,
 			...(fileId ? { fileId } : {}),
+			...(options?.kind ? { kind: options.kind } : {}),
+			...(options?.metadata ? { metadata: options.metadata } : {}),
 		},
 	);
 };

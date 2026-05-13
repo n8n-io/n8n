@@ -7,8 +7,10 @@ import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';
 import {
+	ADD_BOARD_MODAL_KEY,
 	ADD_DATA_TABLE_MODAL_KEY,
 	DEFAULT_DATA_TABLE_PAGE_SIZE,
+	PROJECT_BOARDS,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
@@ -157,7 +159,7 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 
 const onAddModalClick = () => {
 	void router.push({
-		name: PROJECT_DATA_TABLES,
+		name: isBoardList.value ? PROJECT_BOARDS : PROJECT_DATA_TABLES,
 		params: { projectId: currentProject.value?.id, new: 'new' },
 	});
 };
@@ -181,13 +183,10 @@ onMounted(() => {
 watch(
 	() => route.params.new,
 	() => {
-		if (props.kind !== 'list') {
-			return;
-		}
 		if (route.params.new === 'new') {
-			uiStore.openModal(ADD_DATA_TABLE_MODAL_KEY);
+			uiStore.openModal(isBoardList.value ? ADD_BOARD_MODAL_KEY : ADD_DATA_TABLE_MODAL_KEY);
 		} else {
-			uiStore.closeModal(ADD_DATA_TABLE_MODAL_KEY);
+			uiStore.closeModal(isBoardList.value ? ADD_BOARD_MODAL_KEY : ADD_DATA_TABLE_MODAL_KEY);
 		}
 	},
 	{ immediate: true },
@@ -218,7 +217,7 @@ watch(
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
-			<ProjectHeader :main-button="isBoardList ? undefined : 'dataTable'">
+			<ProjectHeader :main-button="isBoardList ? 'board' : 'dataTable'">
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -248,7 +247,16 @@ watch(
 				data-test-id="empty-board-action-box"
 				:heading="i18n.baseText('board.empty.label')"
 				:description="i18n.baseText('board.empty.description')"
-			/>
+				:button-text="i18n.baseText('board.add.button.label')"
+				button-type="secondary"
+				:button-disabled="!dataTableStore.projectPermissions.dataTable.create"
+				:button-icon="!dataTableStore.projectPermissions.dataTable.create ? 'lock' : undefined"
+				@click:button="onAddModalClick"
+			>
+				<template #disabledButtonTooltip>
+					{{ i18n.baseText('board.empty.button.disabled.tooltip') }}
+				</template>
+			</N8nActionBox>
 		</template>
 		<template #item="{ item: data }">
 			<DataTableCard

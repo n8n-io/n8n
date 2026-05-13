@@ -105,6 +105,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		columns?: DataTableColumnCreatePayload[],
 		fileId?: string,
 		hasHeaders: boolean = true,
+		options?: {
+			kind?: DataTableKind;
+			metadata?: { allowedStatuses?: string[] };
+		},
 	) => {
 		const newTable = await createDataTableApi(
 			rootStore.restApiContext,
@@ -113,6 +117,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			columns,
 			fileId,
 			hasHeaders,
+			options,
 		);
 		if (!newTable.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);

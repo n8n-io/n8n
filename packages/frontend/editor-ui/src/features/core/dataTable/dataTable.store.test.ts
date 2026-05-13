@@ -135,6 +135,7 @@ describe('dataTable.store', () => {
 				undefined,
 				undefined,
 				true,
+				undefined,
 			);
 			expect(dataTableStore.dataTables[0]).toEqual(mockTable);
 			expect(dataTableStore.totalCount).toBe(1);
@@ -165,6 +166,7 @@ describe('dataTable.store', () => {
 				columns,
 				fileId,
 				false,
+				undefined,
 			);
 			expect(dataTableStore.dataTables[0]).toEqual(mockTable);
 			expect(result).toBe(mockTable);

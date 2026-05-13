@@ -19,7 +19,7 @@ import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { PROJECT_BOARDS, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
@@ -151,6 +151,7 @@ const ACTION_TYPES = {
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
 	DATA_TABLE: 'dataTable',
+	BOARD: 'board',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
 } as const;
@@ -179,6 +180,16 @@ const createCredentialButton = computed(() => ({
 const createDataTableButton = computed(() => ({
 	value: ACTION_TYPES.DATA_TABLE,
 	label: i18n.baseText('dataTable.add.button.label'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
+}));
+
+const createBoardButton = computed(() => ({
+	value: ACTION_TYPES.BOARD,
+	label: i18n.baseText('board.add.button.label'),
 	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
@@ -218,6 +229,8 @@ const mainButtonConfig = computed(() => {
 			return createCredentialButton.value;
 		case ACTION_TYPES.DATA_TABLE:
 			return createDataTableButton.value;
+		case ACTION_TYPES.BOARD:
+			return createBoardButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
 		case ACTION_TYPES.AGENT:
@@ -284,6 +297,19 @@ const menu = computed(() => {
 		items.push({
 			value: ACTION_TYPES.DATA_TABLE,
 			label: i18n.baseText('dataTable.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
+		});
+	}
+
+	if (
+		settingsStore.isDataTableFeatureEnabled &&
+		selectedMainButtonType.value !== ACTION_TYPES.BOARD
+	) {
+		items.push({
+			value: ACTION_TYPES.BOARD,
+			label: i18n.baseText('board.add.button.label'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
@@ -374,6 +400,12 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	[ACTION_TYPES.DATA_TABLE]: (projectId: string) => {
 		void router.push({
 			name: PROJECT_DATA_TABLES,
+			params: { projectId, new: 'new' },
+		});
+	},
+	[ACTION_TYPES.BOARD]: (projectId: string) => {
+		void router.push({
+			name: PROJECT_BOARDS,
 			params: { projectId, new: 'new' },
 		});
 	},
