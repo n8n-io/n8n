@@ -10,6 +10,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
+import type { BuiltTool } from '@n8n/agents';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -128,6 +129,64 @@ function createBuilderCredentialsTool(context: InstanceAiContext) {
 		descriptionPrefix: 'Inspect credentials during build',
 		descriptionSuffix: 'Setup is handled after workflow verification.',
 	});
+}
+
+function isZodSchema(schema: unknown): schema is z.ZodTypeAny {
+	return (
+		typeof schema === 'object' &&
+		schema !== null &&
+		'safeParse' in schema &&
+		typeof schema.safeParse === 'function'
+	);
+}
+
+function toMastraSchema(
+	schema: BuiltTool['inputSchema'],
+	toolName: string,
+	schemaKind: 'input' | 'output',
+): z.ZodTypeAny | undefined {
+	if (!schema) return undefined;
+	if (isZodSchema(schema)) return schema;
+
+	throw new UserError(
+		`Workspace tool "${toolName}" cannot be adapted because its ${schemaKind} schema is not a Zod schema.`,
+	);
+}
+
+function createMastraWorkspaceTool(tool: BuiltTool) {
+	if (!tool.handler) {
+		throw new UserError(
+			`Workspace tool "${tool.name}" cannot be adapted because it has no handler.`,
+		);
+	}
+	if (tool.suspendSchema || tool.resumeSchema) {
+		throw new UserError(
+			`Workspace tool "${tool.name}" cannot be adapted because interruptible tools are not supported in the Mastra bridge.`,
+		);
+	}
+
+	const handler = tool.handler;
+
+	return createTool({
+		id: `mastra_${tool.name}`,
+		description: tool.description,
+		inputSchema: toMastraSchema(tool.inputSchema, tool.name, 'input'),
+		outputSchema: toMastraSchema(tool.outputSchema, tool.name, 'output'),
+		execute: async (input: unknown, context?: { agent?: { toolCallId?: string } }) =>
+			await handler(input, { toolCallId: context?.agent?.toolCallId }),
+		toModelOutput: tool.toModelOutput,
+		providerOptions: tool.providerOptions,
+		requireApproval: tool.withDefaultApproval,
+	});
+}
+
+function addMastraWorkspaceTools(
+	builderTools: ToolsInput,
+	workspace: BuilderWorkspace['workspace'],
+): void {
+	for (const tool of workspace.getTools()) {
+		builderTools[`mastra_${tool.name}`] = createMastraWorkspaceTool(tool);
+	}
 }
 
 export function buildWarmBuilderFollowUp(input: {
@@ -1123,6 +1182,10 @@ export async function startBuildWorkflowAgentTask(
 							const templateToolObserver = createTypedToolObserver(telemetrySession);
 
 							prompt = createSandboxBuilderAgentPrompt(root);
+							const workspaceInstructions = workspace.getInstructions();
+							if (workspaceInstructions) {
+								prompt = `${prompt}\n\n${workspaceInstructions}`;
+							}
 							if (!activeBuilderSession && builderWs) {
 								activeBuilderSession = context.builderSandboxSessionRegistry?.create({
 									threadId: context.threadId,
@@ -1236,6 +1299,8 @@ export async function startBuildWorkflowAgentTask(
 								},
 							});
 
+							addMastraWorkspaceTools(builderTools, workspace);
+
 							const tracedBuilderTools = traceSubAgentTools(
 								context,
 								builderTools,
@@ -1257,7 +1322,6 @@ export async function startBuildWorkflowAgentTask(
 								},
 								model: context.modelId,
 								tools: tracedBuilderTools,
-								workspace: workspace as never,
 								memory: shouldUseBuilderMemory ? context.memory : undefined,
 							});
 							mergeTraceRunInputs(

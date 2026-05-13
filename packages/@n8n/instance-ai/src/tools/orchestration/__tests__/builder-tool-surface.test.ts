@@ -30,6 +30,7 @@ jest.mock('../../../stream/consume-with-hitl', () => ({
 
 import { Agent } from '@mastra/core/agent';
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import { z } from 'zod';
 
 import type { InstanceAiContext, OrchestrationContext } from '../../../types';
 import { createBuildWorkflowAgentTool } from '../build-workflow-agent.tool';
@@ -45,6 +46,8 @@ type SpawnedTool = {
 
 type SpawnedAgentConfig = {
 	tools: Record<string, SpawnedTool>;
+	workspace?: unknown;
+	instructions?: { content?: string };
 };
 
 type BuildExecutable = {
@@ -119,9 +122,14 @@ function createContext(spawnBackgroundTask: jest.Mock): OrchestrationContext {
 }
 
 function getSpawnedToolSchemas(): Record<string, SpawnedTool> {
+	const agentConfig = getSpawnedAgentConfig();
+	return agentConfig.tools;
+}
+
+function getSpawnedAgentConfig(): SpawnedAgentConfig {
 	const agentConfig = jest.mocked(Agent).mock.calls.at(-1)?.[0] as SpawnedAgentConfig | undefined;
 	if (!agentConfig) throw new Error('Builder agent was not constructed');
-	return agentConfig.tools;
+	return agentConfig;
 }
 
 describe('builder sub-agent tool surface', () => {
@@ -174,5 +182,71 @@ describe('builder sub-agent tool surface', () => {
 				credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
 			}).success,
 		).toBe(false);
+	});
+
+	it('adapts native workspace tools instead of passing the workspace to Mastra', async () => {
+		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
+		let capturedRun: BackgroundTaskInput['run'] | undefined;
+		const spawnBackgroundTask = jest.fn((input: BackgroundTaskInput) => {
+			capturedRun = input.run;
+			return { status: 'started', taskId: 'build-task', agentId: 'agent-builder' };
+		});
+		const context = createContext(spawnBackgroundTask);
+		const workspaceToolHandler = jest.fn().mockResolvedValue({ content: '// workflow' });
+		const workspace = {
+			filesystem: {
+				provider: 'local',
+				basePath: '/tmp/builder-workspace',
+				writeFile: jest.fn(),
+				mkdir: jest.fn(),
+			},
+			sandbox: {
+				executeCommand: jest.fn().mockResolvedValue({
+					exitCode: 1,
+					stdout: '',
+					stderr: '',
+				}),
+			},
+			getInstructions: jest.fn(() => 'Workspace instructions.'),
+			getTools: jest.fn(() => [
+				{
+					name: 'workspace_read_file',
+					description: 'Read a workspace file.',
+					inputSchema: z.object({ path: z.string() }),
+					outputSchema: z.object({ content: z.string() }),
+					handler: workspaceToolHandler,
+				},
+			]),
+		};
+		context.builderSandboxFactory = {
+			create: jest.fn().mockResolvedValue({
+				workspace,
+				cleanup: jest.fn(),
+			}),
+		} as unknown as OrchestrationContext['builderSandboxFactory'];
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute({ task: 'Build a Slack notifier' });
+		expect(capturedRun).toBeDefined();
+
+		await capturedRun?.(
+			new AbortController().signal,
+			() => [],
+			async () => {},
+		);
+		const agentConfig = getSpawnedAgentConfig();
+
+		expect(agentConfig).not.toHaveProperty('workspace');
+		expect(agentConfig.instructions?.content).toContain('Workspace instructions.');
+		expect(Object.keys(agentConfig.tools)).toContain('mastra_workspace_read_file');
+
+		const output = await agentConfig.tools.mastra_workspace_read_file?.execute?.({
+			path: 'src/workflow.ts',
+		});
+		expect(output).toEqual({ content: '// workflow' });
+		expect(workspaceToolHandler).toHaveBeenCalledWith(
+			{ path: 'src/workflow.ts' },
+			{ toolCallId: undefined },
+		);
 	});
 });

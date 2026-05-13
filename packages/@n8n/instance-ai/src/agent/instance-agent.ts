@@ -6,15 +6,15 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
-import { getSystemPrompt } from './system-prompt';
-import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions } from '../types';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { getSystemPrompt } from './system-prompt';
+import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
+import type { CreateInstanceAgentOptions } from '../types';
 
 let cachedMastra: Mastra | null = null;
 let cachedMastraStorageKey = '';
