@@ -1,5 +1,6 @@
 import {
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
 } from '@n8n/api-types';
@@ -77,6 +78,10 @@ function columnToWildcardAndType(
 
 export function isValidColumnName(name: string) {
 	return dataTableColumnNameSchema.safeParse(name).success;
+}
+
+export function isValidDataTableId(id: string) {
+	return dataTableIdSchema.safeParse(id).success;
 }
 
 export function addColumnQuery(
@@ -187,8 +192,16 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
+// Convert 0/1 or '0'/'1' to booleans, leaving other values unchanged
+function normalizeBoolean<T>(value: T): T | boolean {
+	if (typeof value === 'boolean') return value;
+	if (value === 1 || value === '1') return true;
+	if (value === 0 || value === '0') return false;
+	return value;
+}
+
 // Convert date objects or strings to dates in UTC
-function normalizeDate(value: DataTableColumnJsType): Date | null {
+export function normalizeDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
 
 	if (typeof value === 'string') {
@@ -229,14 +242,7 @@ export function normalizeRows(
 			const type = typeMap[key];
 
 			if (type === 'boolean') {
-				// Convert boolean values to true/false
-				if (typeof value === 'boolean') {
-					normalized[key] = value;
-				} else if (value === 1 || value === '1') {
-					normalized[key] = true;
-				} else if (value === 0 || value === '0') {
-					normalized[key] = false;
-				}
+				normalized[key] = normalizeBoolean(value);
 			}
 
 			if (type === 'date' && value !== null && value !== undefined) {
@@ -291,6 +297,32 @@ export function normalizeValueForDatabase(
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
 		return formatDateForDatabase(value, dbType);
+	}
+
+	return value;
+}
+
+/**
+ * Normalize a raw value coming from a cross-database data-table export so it can
+ * be inserted into the destination database. Differs from `normalizeValueForDatabase`
+ * by also handling booleans (SQLite stores them as 0/1 INTEGER, Postgres as BOOLEAN)
+ * and SQLite-style date strings without timezone info (treated as UTC).
+ */
+export function normalizeUserRowValueForDatabase(
+	value: unknown,
+	columnType: string | undefined,
+	dbType?: DataSourceOptions['type'],
+): unknown {
+	if (value === null || value === undefined) return null;
+
+	if (columnType === 'boolean') {
+		return normalizeBoolean(value);
+	}
+
+	if (columnType === 'date') {
+		const date = normalizeDate(value);
+		if (date === null) return value;
+		return normalizeValueForDatabase(date, columnType, dbType);
 	}
 
 	return value;

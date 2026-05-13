@@ -3,7 +3,8 @@
  *
  * Creates an ephemeral sandbox + workspace per builder invocation.
  * - Daytona mode: creates from pre-warmed Image (config + deps baked in),
- *   then writes the node-types catalog post-creation via filesystem API.
+ *   then writes the node-types catalog and curated examples post-creation
+ *   via filesystem API.
  * - Local mode: per-builder subdirectory with full setup (development only)
  */
 
@@ -27,7 +28,12 @@ import {
 import { runInSandbox, writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
 import type { InstanceAiContext } from '../types';
-import { formatNodeCatalogLine, getWorkspaceRoot, setupSandboxWorkspace } from './sandbox-setup';
+import {
+	formatNodeCatalogLine,
+	getWorkspaceRoot,
+	setupSandboxWorkspace,
+	writeCuratedExamples,
+} from './sandbox-setup';
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -266,6 +272,10 @@ export class BuilderSandboxFactory {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
 
+			// Curated examples — also too large to bake into the image, written
+			// post-creation. Without this the builder sees an empty examples/ dir.
+			await writeCuratedExamples(workspace, this.logger);
+
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 
 			return {
@@ -319,6 +329,8 @@ export class BuilderSandboxFactory {
 			} else {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
+
+			await writeCuratedExamples(workspace, this.logger);
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 
