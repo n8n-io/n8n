@@ -185,7 +185,8 @@ Transcript:
 
 BAD: 🟡 (14:30) User is getting Claude Code.
 
-GOOD: 🟡 (14:30) User is purchasing Claude Code subscriptions for their team.
+GOOD:
+* 🟡 (14:30) User is purchasing Claude Code subscriptions for their team.
 (Use specific verbs: purchased, subscribed, enrolled, received, picked up. "Got" and "getting" are vague.)
 
 Preserving identifiers vs paraphrasing them
