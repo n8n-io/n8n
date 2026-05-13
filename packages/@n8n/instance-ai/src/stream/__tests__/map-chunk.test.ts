@@ -1013,6 +1013,62 @@ describe('mapMastraChunkToEvent', () => {
 				},
 			});
 		});
+
+		// hubActionExecution
+
+		it('forwards a valid hubActionExecution payload', () => {
+			const hubActionExecution = {
+				actionId: 'slack.message.send',
+				nodeType: 'n8n-nodes-base.slack',
+				actionDisplayName: 'Slack — Send a message',
+				nodeDisplayName: 'Slack',
+				operationDisplayName: 'Send a message',
+				parameters: [{ label: 'channel', value: '"C123"' }],
+				credential: { id: 'cred-1', name: 'Acme Slack', type: 'slackOAuth2Api' },
+			};
+			const chunk = {
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					toolName: 'actions',
+					suspendPayload: { hubActionExecution },
+				},
+			};
+			const result = mapMastraChunkToEvent(runId, agentId, chunk);
+			if (result?.type === 'confirmation-request') {
+				expect(result.payload.hubActionExecution).toEqual(hubActionExecution);
+			}
+		});
+
+		it('omits hubActionExecution when invalid', () => {
+			const chunk = {
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					suspendPayload: {
+						hubActionExecution: { actionId: 'a' /* missing required fields */ },
+					},
+				},
+			};
+			const result = mapMastraChunkToEvent(runId, agentId, chunk);
+			if (result?.type === 'confirmation-request') {
+				expect(result.payload).not.toHaveProperty('hubActionExecution');
+			}
+		});
+
+		it('omits hubActionExecution when not a record', () => {
+			const chunk = {
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					suspendPayload: { hubActionExecution: 'not-an-object' },
+				},
+			};
+			const result = mapMastraChunkToEvent(runId, agentId, chunk);
+			if (result?.type === 'confirmation-request') {
+				expect(result.payload).not.toHaveProperty('hubActionExecution');
+			}
+		});
 	});
 
 	// -----------------------------------------------------------------------

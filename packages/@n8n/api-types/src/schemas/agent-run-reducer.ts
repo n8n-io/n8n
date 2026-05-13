@@ -344,6 +344,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					introMessage: event.payload.introMessage,
 					tasks: event.payload.tasks,
 					resourceDecision: event.payload.resourceDecision,
+					hubActionExecution: event.payload.hubActionExecution,
 				};
 			}
 			break;

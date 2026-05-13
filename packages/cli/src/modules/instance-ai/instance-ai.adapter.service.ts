@@ -34,6 +34,11 @@ import type {
 	FolderSummary,
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
+	HubActionCredentialSummary,
+	HubActionDescriptor,
+	HubActionExecutionResult,
+	HubActionSearchItem,
+	InstanceAiActionService,
 } from '@n8n/instance-ai';
 import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -103,12 +108,16 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
+import { ExecuteNodeService, type ExecuteNodeCaller } from '@/executions/execute-node.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { parseToolId } from '@/modules/mcp/tools/n8n-execute-tool.tool';
+import { searchN8nTools } from '@/modules/mcp/tools/n8n-search-tools.tool';
+import { NodeCatalogService } from '@/node-catalog';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -124,6 +133,31 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
+
+const MAX_ACTION_CREDENTIALS = 200;
+
+type ActionListCredentialsOptions = {
+	nodeType?: string;
+	actionId?: string;
+};
+
+type ActionExecuteInput = Parameters<InstanceAiActionService['execute']>[0];
+
+type SafeActionCredentialRecord = {
+	id: string;
+	name: string;
+	type: string;
+};
+
+function isSafeActionCredentialRecord(value: unknown): value is SafeActionCredentialRecord {
+	if (typeof value !== 'object' || value === null) return false;
+	const record: Record<string, unknown> = { ...value };
+	return (
+		typeof record.id === 'string' &&
+		typeof record.name === 'string' &&
+		typeof record.type === 'string'
+	);
+}
 
 @Service()
 export class InstanceAiAdapterService {
@@ -192,6 +226,8 @@ export class InstanceAiAdapterService {
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly nodeCatalogService: NodeCatalogService,
+		private readonly executeNodeService: ExecuteNodeService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -208,6 +244,7 @@ export class InstanceAiAdapterService {
 		const { searchProxyConfig, pushRef, threadId } = options ?? {};
 		return {
 			userId: user.id,
+			actionService: this.createActionAdapter(user, threadId),
 			workflowService: this.createWorkflowAdapter(user, threadId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user),
@@ -218,6 +255,236 @@ export class InstanceAiAdapterService {
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+		};
+	}
+
+	private createActionAdapter(user: User, threadId?: string): InstanceAiActionService {
+		return {
+			search: async ({ query, hasCredential }) => {
+				const payload = await searchN8nTools(
+					user,
+					this.credentialsService,
+					this.nodeCatalogService,
+					{
+						query,
+						filters: { hasCredential },
+					},
+				);
+
+				const results: HubActionSearchItem[] = payload.results.map((item) => {
+					const parsed = parseToolId(item.id, this.nodeCatalogService);
+					return {
+						id: item.id,
+						nodeId: parsed.nodeType,
+						...(parsed.resource ? { resource: parsed.resource } : {}),
+						...(parsed.operation ? { operation: parsed.operation } : {}),
+						displayName: item.displayName,
+						description: item.description,
+						inputSchema: item.inputSchema,
+						userCredentials: item.userCredentials.map((credential) => ({
+							id: credential.id,
+							name: credential.name,
+						})),
+					};
+				});
+
+				return { results };
+			},
+
+			describe: async (nodeId: string) => await this.nodeCatalogService.getNodeSchema(nodeId),
+
+			resolveAction: async (actionId: string) => {
+				const parsed = parseToolId(actionId, this.nodeCatalogService);
+				const schema = await this.nodeCatalogService.getNodeSchema(parsed.nodeType);
+				if (!schema) return null;
+
+				const canonicalActionId = this.buildCanonicalActionId(
+					parsed.nodeType,
+					parsed.resource,
+					parsed.operation,
+				);
+				const matchedOperation =
+					schema.operations.find((operation) => operation.id === actionId) ??
+					schema.operations.find((operation) => operation.id === canonicalActionId) ??
+					schema.operations.find(
+						(operation) =>
+							operation.resource === parsed.resource && operation.operation === parsed.operation,
+					) ??
+					schema.operations.find(
+						(operation) =>
+							parsed.resource === undefined &&
+							parsed.operation !== undefined &&
+							operation.operation === parsed.operation,
+					) ??
+					schema.operations.find(
+						(operation) =>
+							parsed.resource === undefined &&
+							parsed.operation === undefined &&
+							operation.resource === undefined &&
+							operation.operation === undefined,
+					);
+
+				const operationDisplayName =
+					matchedOperation &&
+					(matchedOperation.resource !== undefined || matchedOperation.operation !== undefined)
+						? matchedOperation.displayName
+						: undefined;
+
+				const descriptor: HubActionDescriptor = {
+					id: actionId,
+					nodeId: parsed.nodeType,
+					displayName: operationDisplayName
+						? `${schema.displayName} — ${operationDisplayName}`
+						: schema.displayName,
+					nodeDisplayName: schema.displayName,
+					...(operationDisplayName ? { operationDisplayName } : {}),
+					inputSchema: matchedOperation?.inputSchema ?? { type: 'object', properties: {} },
+				};
+
+				return descriptor;
+			},
+
+			listCredentials: async (options?: ActionListCredentialsOptions) => {
+				const { nodeType, actionId } = options ?? {};
+				const resolvedNodeType = actionId
+					? parseToolId(actionId, this.nodeCatalogService).nodeType
+					: nodeType
+						? parseToolId(nodeType, this.nodeCatalogService).nodeType
+						: undefined;
+
+				const credentials = resolvedNodeType
+					? await this.getSafeActionCredentialsForNodeType(user, resolvedNodeType)
+					: await this.getAllSafeActionCredentials(user);
+
+				return { credentials };
+			},
+
+			execute: async (input: ActionExecuteInput): Promise<HubActionExecutionResult> => {
+				const parsed = parseToolId(input.id, this.nodeCatalogService);
+				const parameters: INodeParameters = {
+					...(parsed.resource ? { resource: parsed.resource } : {}),
+					...(parsed.operation ? { operation: parsed.operation } : {}),
+					...(input.params ?? {}),
+				};
+				const caller: ExecuteNodeCaller = {
+					kind: 'instance-ai',
+					name: 'Instance AI',
+					...(threadId ? { clientId: threadId } : {}),
+				};
+
+				const result = await this.executeNodeService.execute({
+					user,
+					nodeType: parsed.nodeType,
+					parameters,
+					...(input.credentialId ? { credentialId: input.credentialId } : {}),
+					...(input.dryRun === true ? { dryRun: true } : {}),
+					caller,
+				});
+
+				if (input.dryRun === true) {
+					return {
+						executionId: result.executionId,
+						status: 'dry_run',
+						wouldExecute: result.wouldExecute,
+						executionUrl: result.executionUrl,
+					};
+				}
+
+				const sanitized = await extractExecutionResult(
+					this.executionRepository,
+					result.executionId,
+					this.allowSendingParameterValues,
+				);
+
+				this.telemetry.track('Instance AI executed action', {
+					thread_id: threadId,
+					action_id: input.id,
+					node_type: parsed.nodeType,
+					status: sanitized.status,
+					has_credential: Boolean(input.credentialId),
+				});
+
+				return { ...sanitized, executionUrl: result.executionUrl };
+			},
+		};
+	}
+
+	private buildCanonicalActionId(
+		nodeType: string,
+		resource: string | undefined,
+		operation: string | undefined,
+	): string {
+		const parts = [nodeType];
+		if (resource) parts.push(resource);
+		if (operation) parts.push(operation);
+		return parts.join('.');
+	}
+
+	private async getSafeActionCredentialsForNodeType(
+		user: User,
+		nodeType: string,
+	): Promise<HubActionCredentialSummary[]> {
+		const schema = await this.nodeCatalogService.getNodeSchema(nodeType);
+		if (!schema) return [];
+
+		const credentialTypes = [...new Set(schema.credentials.map((credential) => credential.name))];
+		if (credentialTypes.length === 0) return [];
+
+		const results = await Promise.all(
+			credentialTypes.map(async (type) => {
+				const fetchedCredentials: unknown = await this.credentialsService.getMany(user, {
+					listQueryOptions: {
+						take: MAX_ACTION_CREDENTIALS,
+						filter: { type },
+					},
+					includeScopes: false,
+					includeData: false,
+					includeGlobal: true,
+					onlySharedWithMe: false,
+				});
+
+				const credentials: unknown[] = Array.isArray(fetchedCredentials) ? fetchedCredentials : [];
+				return credentials
+					.filter(isSafeActionCredentialRecord)
+					.filter((credential) => credential.type === type)
+					.map((credential) => this.projectSafeActionCredential(credential));
+			}),
+		);
+
+		const seen = new Set<string>();
+		const projected: HubActionCredentialSummary[] = [];
+		for (const credential of results.flat()) {
+			if (seen.has(credential.id)) continue;
+			seen.add(credential.id);
+			projected.push(credential);
+		}
+		return projected;
+	}
+
+	private async getAllSafeActionCredentials(user: User): Promise<HubActionCredentialSummary[]> {
+		const fetchedCredentials: unknown = await this.credentialsService.getMany(user, {
+			listQueryOptions: {
+				take: MAX_ACTION_CREDENTIALS,
+			},
+			includeScopes: false,
+			includeData: false,
+			includeGlobal: true,
+			onlySharedWithMe: false,
+		});
+
+		const credentials: unknown[] = Array.isArray(fetchedCredentials) ? fetchedCredentials : [];
+		return credentials
+			.filter(isSafeActionCredentialRecord)
+			.map((credential) => this.projectSafeActionCredential(credential));
+	}
+
+	private projectSafeActionCredential(
+		credential: SafeActionCredentialRecord,
+	): HubActionCredentialSummary {
+		return {
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
 		};
 	}
 

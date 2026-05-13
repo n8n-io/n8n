@@ -11,6 +11,19 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function createMockActionService(): InstanceAiContext['actionService'] {
+	return {
+		search: jest.fn().mockResolvedValue({ results: [] }),
+		describe: jest.fn().mockResolvedValue(null),
+		resolveAction: jest.fn().mockResolvedValue(null),
+		listCredentials: jest.fn().mockResolvedValue({ credentials: [] }),
+		execute: jest.fn().mockResolvedValue({
+			executionId: 'execution-1',
+			status: 'success',
+		}),
+	};
+}
+
 function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 	return {
 		userId: 'test-user',
@@ -26,6 +39,7 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 			delete: jest.fn(),
 			test: jest.fn(),
 		},
+		actionService: createMockActionService(),
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
 	};

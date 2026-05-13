@@ -3,6 +3,19 @@ import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type { InstanceAiContext, PlannedTaskKind } from '../../types';
 import { applyPlannedTaskPermissions } from '../planned-task-permissions';
 
+function createMockActionService(): InstanceAiContext['actionService'] {
+	return {
+		search: jest.fn().mockResolvedValue({ results: [] }),
+		describe: jest.fn().mockResolvedValue(null),
+		resolveAction: jest.fn().mockResolvedValue(null),
+		listCredentials: jest.fn().mockResolvedValue({ credentials: [] }),
+		execute: jest.fn().mockResolvedValue({
+			executionId: 'execution-1',
+			status: 'success',
+		}),
+	};
+}
+
 function makeContext(
 	permissionOverrides: Partial<typeof DEFAULT_INSTANCE_AI_PERMISSIONS> = {},
 ): InstanceAiContext {
@@ -11,6 +24,7 @@ function makeContext(
 		permissions: { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...permissionOverrides },
 		workflowService: {} as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
+		actionService: createMockActionService(),
 		credentialService: {} as InstanceAiContext['credentialService'],
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],

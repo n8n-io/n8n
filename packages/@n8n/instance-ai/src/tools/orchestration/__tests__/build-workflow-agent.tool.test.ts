@@ -45,6 +45,19 @@ type BuildExecutable = {
 	) => Promise<{ result: string; taskId: string }>;
 };
 
+function createMockActionService(): InstanceAiContext['actionService'] {
+	return {
+		search: jest.fn().mockResolvedValue({ results: [] }),
+		describe: jest.fn().mockResolvedValue(null),
+		resolveAction: jest.fn().mockResolvedValue(null),
+		listCredentials: jest.fn().mockResolvedValue({ credentials: [] }),
+		execute: jest.fn().mockResolvedValue({
+			executionId: 'execution-1',
+			status: 'success',
+		}),
+	};
+}
+
 function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
 	return {
 		threadId: 'test-thread',
@@ -80,6 +93,7 @@ function createMockDomainContext(
 			get: jest.fn().mockResolvedValue({ name: workflowName }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
+		actionService: createMockActionService(),
 		credentialService: {} as InstanceAiContext['credentialService'],
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],

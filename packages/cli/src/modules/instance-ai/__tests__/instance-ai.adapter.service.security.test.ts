@@ -29,10 +29,12 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { ExecuteNodeService } from '@/executions/execute-node.service';
 import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
+import type { NodeCatalogService } from '@/node-catalog';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -129,6 +131,8 @@ const service = new InstanceAiAdapterService(
 	telemetry,
 	aiBuilderTemporaryWorkflowRepository,
 	mock<SsrfProtectionService>(),
+	mock<NodeCatalogService>(),
+	mock<ExecuteNodeService>(),
 );
 
 const user = mock<User>({

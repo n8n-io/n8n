@@ -231,13 +231,13 @@ describe('ExecuteNodeService', () => {
 				user: mockUser,
 				nodeType: 'n8n-nodes-base.set',
 				parameters: { values: {} },
-				caller: { kind: 'mcp', name: 'mcp-server', clientId: 'abc' },
+				caller: { kind: 'instance-ai', name: 'Instance AI', clientId: 'thread-1' },
 			});
 
 			expect(executionMetadataService.save).toHaveBeenCalledWith('exec-42', {
-				'caller.kind': 'mcp',
-				'caller.name': 'mcp-server',
-				'caller.clientId': 'abc',
+				'caller.kind': 'instance-ai',
+				'caller.name': 'Instance AI',
+				'caller.clientId': 'thread-1',
 				nodeType: 'n8n-nodes-base.set',
 				actionId: 'n8n-nodes-base.set',
 				actionDisplayName: 'Test Node',

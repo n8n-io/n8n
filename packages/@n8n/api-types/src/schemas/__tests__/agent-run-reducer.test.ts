@@ -532,6 +532,37 @@ describe('agent-run-reducer', () => {
 				projectId: 'proj-456',
 			});
 		});
+
+		it('confirmation-request passes through hubActionExecution when present', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'actions'));
+			const hubActionExecution = {
+				actionId: 'slack.message.send',
+				nodeType: 'n8n-nodes-base.slack',
+				actionDisplayName: 'Slack — Send a message',
+				nodeDisplayName: 'Slack',
+				operationDisplayName: 'Send a message',
+				parameters: [{ label: 'channel', value: '"C123"' }],
+				credential: { id: 'cred-1', name: 'Acme Slack', type: 'slackOAuth2Api' },
+			};
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-hub',
+					toolCallId: 'tc-1',
+					toolName: 'actions',
+					args: { action: 'execute', id: 'slack.message.send' },
+					severity: 'warning',
+					message: 'Execute Slack — Send a message?',
+					hubActionExecution,
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation?.hubActionExecution).toEqual(hubActionExecution);
+		});
 	});
 
 	describe('tasks-update', () => {

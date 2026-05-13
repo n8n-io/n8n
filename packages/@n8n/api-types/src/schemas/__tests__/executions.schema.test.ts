@@ -15,6 +15,19 @@ describe('executions.schema', () => {
 			expect(parsed).toEqual({ kind: 'mcp', name: 'mcp-server', clientId: 'abc' });
 		});
 
+		it('accepts an Instance AI caller', () => {
+			const parsed = ExecutionCallerSchema.parse({
+				kind: 'instance-ai',
+				name: 'Instance AI',
+				clientId: 'thread-1',
+			});
+			expect(parsed).toEqual({
+				kind: 'instance-ai',
+				name: 'Instance AI',
+				clientId: 'thread-1',
+			});
+		});
+
 		it('accepts a caller without clientId', () => {
 			const parsed = ExecutionCallerSchema.parse({ kind: 'cli', name: 'n8n-cli@host' });
 			expect(parsed).toEqual({ kind: 'cli', name: 'n8n-cli@host' });

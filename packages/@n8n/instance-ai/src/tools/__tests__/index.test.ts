@@ -9,6 +9,10 @@ jest.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: jest.fn(() => ({ id: 'parse-file' })),
 }));
 
+jest.mock('../actions.tool', () => ({
+	createActionsTool: jest.fn(() => ({ id: 'actions' })),
+}));
+
 jest.mock('../credentials.tool', () => ({
 	createCredentialsTool: jest.fn(() => ({ id: 'credentials' })),
 }));
@@ -124,6 +128,7 @@ describe('domain tool construction', () => {
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			nodes: { id: 'nodes' },
+			actions: { id: 'actions' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
@@ -142,6 +147,7 @@ describe('domain tool construction', () => {
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			nodes: { id: 'nodes-orchestrator' },
+			actions: { id: 'actions' },
 			'ask-user': { id: 'ask-user' },
 		});
 	});

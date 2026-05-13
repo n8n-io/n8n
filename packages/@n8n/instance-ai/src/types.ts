@@ -10,6 +10,7 @@ import type {
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
+	NodeSchemaShape,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { GenericValue, INodeTypes } from 'n8n-workflow';
@@ -243,6 +244,66 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { startIndex?: number; maxItems?: number },
 	): Promise<NodeOutputResult>;
+}
+
+export interface HubActionCredentialSummary {
+	id: string;
+	name: string;
+	type?: string;
+}
+
+export interface HubActionSearchItem {
+	id: string;
+	nodeId: string;
+	resource?: string;
+	operation?: string;
+	displayName: string;
+	description: string;
+	inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] };
+	userCredentials: Array<Pick<HubActionCredentialSummary, 'id' | 'name'>>;
+}
+
+/** Re-export the canonical catalog node schema for action tool consumers. */
+export type HubActionNodeSchema = NodeSchemaShape;
+
+export interface HubActionDescriptor {
+	id: string;
+	nodeId: string;
+	displayName: string;
+	nodeDisplayName: string;
+	operationDisplayName?: string;
+	inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] };
+}
+
+export interface HubActionExecutionResult {
+	executionId: string;
+	status: ExecutionResult['status'] | 'dry_run';
+	data?: Record<string, unknown>;
+	error?: string;
+	startedAt?: string;
+	finishedAt?: string;
+	actionId?: string;
+	actionDisplayName?: string;
+	executionUrl?: string;
+	wouldExecute?: unknown;
+}
+
+export interface InstanceAiActionService {
+	search(options: { query: string; hasCredential?: boolean }): Promise<{
+		results: HubActionSearchItem[];
+	}>;
+	describe(nodeId: string): Promise<HubActionNodeSchema | null>;
+	resolveAction(actionId: string): Promise<HubActionDescriptor | null>;
+	listCredentials(options?: {
+		nodeType?: string;
+		actionId?: string;
+	}): Promise<{ credentials: HubActionCredentialSummary[] }>;
+	execute(input: {
+		id: string;
+		params?: Record<string, unknown>;
+		credentialId?: string;
+		dryRun?: boolean;
+	}): Promise<HubActionExecutionResult>;
 }
 
 export interface CredentialTypeSearchResult {
@@ -567,6 +628,7 @@ export interface InstanceAiContext {
 	userId: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
+	actionService: InstanceAiActionService;
 	credentialService: InstanceAiCredentialService;
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;

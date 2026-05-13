@@ -18,6 +18,32 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+vi.mock('../../composables/useExecutionHelpers', () => ({
+	useExecutionHelpers: () => ({
+		isExecutionRetriable: (execution: Pick<ExecutionSummary, 'status' | 'retrySuccessId'>) =>
+			['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId,
+	}),
+}));
+
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		activeExecutionId: '123',
+	}),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({
+		formWaitingUrl: 'http://localhost:5678/form-waiting',
+		webhookWaitingUrl: 'http://localhost:5678/webhook-waiting',
+	}),
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: () => null,
+	}),
+}));
+
 const globalExecutionsListItemQueuedTooltipRenderSpy = vi.fn();
 
 const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
@@ -193,6 +219,7 @@ describe('GlobalExecutionsListItem', () => {
 			['mcp', 'bot'],
 			['cli', 'terminal'],
 			['sdk', 'code'],
+			['instance-ai', 'bot'],
 		])('renders the %s icon for caller.kind = %s', async (kind, icon) => {
 			const { container } = renderComponent({
 				props: {

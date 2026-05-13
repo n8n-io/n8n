@@ -15,7 +15,22 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function createMockActionService(): InstanceAiContext['actionService'] {
+	return {
+		search: jest.fn().mockResolvedValue({ results: [] }),
+		describe: jest.fn().mockResolvedValue(null),
+		resolveAction: jest.fn().mockResolvedValue(null),
+		listCredentials: jest.fn().mockResolvedValue({ credentials: [] }),
+		execute: jest.fn().mockResolvedValue({
+			executionId: 'execution-1',
+			status: 'success',
+		}),
+	};
+}
+
 function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiContext {
+	const { actionService = createMockActionService(), ...rest } = overrides ?? {};
+
 	return {
 		userId: 'test-user',
 		workflowService: {
@@ -64,7 +79,8 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			updateRows: jest.fn(),
 			deleteRows: jest.fn(),
 		},
-		...overrides,
+		...rest,
+		actionService,
 	};
 }
 

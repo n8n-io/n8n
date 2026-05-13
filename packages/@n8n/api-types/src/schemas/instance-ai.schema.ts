@@ -318,6 +318,41 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const hubActionParameterEntrySchema = z.object({
+	label: z.string().describe('Schema-derived, sentence-cased parameter label'),
+	value: z
+		.string()
+		.describe('Pre-formatted display value (quoted strings, raw scalars, truncated)'),
+});
+export type HubActionParameterEntry = z.infer<typeof hubActionParameterEntrySchema>;
+
+export const hubActionCredentialReferenceSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	type: z.string().optional(),
+});
+export type HubActionCredentialReference = z.infer<typeof hubActionCredentialReferenceSchema>;
+
+export const hubActionExecutionPayloadSchema = z.object({
+	actionId: z.string().describe('Hub action ID being executed'),
+	nodeType: z
+		.string()
+		.describe('Fully qualified n8n node type (e.g. n8n-nodes-base.slack) — used for icon lookup'),
+	actionDisplayName: z
+		.string()
+		.describe('Combined display name, e.g. "Slack — Search for messages"'),
+	nodeDisplayName: z.string().describe('Node display name, e.g. "Slack"'),
+	operationDisplayName: z
+		.string()
+		.optional()
+		.describe('Operation label, e.g. "Search for messages"'),
+	parameters: z.array(hubActionParameterEntrySchema),
+	credential: hubActionCredentialReferenceSchema.optional(),
+});
+export type HubActionExecutionPayload = z.infer<typeof hubActionExecutionPayloadSchema>;
+
+// ---------------------------------------------------------------------------
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -392,6 +427,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	hubActionExecution: hubActionExecutionPayloadSchema
+		.optional()
+		.describe('Structured Hub action execution context — enables the rich approval card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -711,6 +749,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	hubActionExecution?: HubActionExecutionPayload;
 }
 
 export interface InstanceAiToolCallState {

@@ -209,6 +209,35 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('direct actions guidance', () => {
+		it('explains when to use actions instead of workflows', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('## Direct Actions');
+			expect(prompt).toContain(
+				'Use the `actions` tool for one-off credential-backed service calls that do not need a saved workflow',
+			);
+			expect(prompt).toContain(
+				'Do not use `actions` to build, patch, verify, publish, or manage workflows',
+			);
+			expect(prompt).toContain(
+				'For repeatable automations, multi-step flows, triggers, schedules, branching, or anything the user should keep and run again, create or edit a workflow instead.',
+			);
+		});
+
+		it('requires safe credential lookup and disambiguation before executing actions', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain(
+				'When executing an action that needs credentials, search or list credentials first.',
+			);
+			expect(prompt).toContain(
+				'If more than one matching credential exists and the user did not name one, ask the user to choose.',
+			);
+			expect(prompt).toContain('Never expose credential secrets.');
+		});
+	});
+
 	describe('trigger URL patterns', () => {
 		const webhookBaseUrl = 'http://localhost:5678/webhook';
 		const formBaseUrl = 'http://localhost:5678/form';

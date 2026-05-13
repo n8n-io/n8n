@@ -10,6 +10,7 @@ import { useToolLabel } from '../toolLabels';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
+import HubActionApprovalCard from './HubActionApprovalCard.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
@@ -491,12 +492,21 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						<div v-else>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nText size="medium" bold>
-										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
-									</N8nText>
-									<ConfirmationPreview>{{
-										item.toolCall.confirmation!.message
-									}}</ConfirmationPreview>
+									<HubActionApprovalCard
+										v-if="
+											item.toolCall.toolName === 'actions' &&
+											item.toolCall.confirmation.hubActionExecution
+										"
+										:hub-action-execution="item.toolCall.confirmation.hubActionExecution"
+									/>
+									<template v-else>
+										<N8nText size="medium" bold>
+											{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
+										</N8nText>
+										<ConfirmationPreview>{{
+											item.toolCall.confirmation!.message
+										}}</ConfirmationPreview>
+									</template>
 								</div>
 
 								<ConfirmationFooter>

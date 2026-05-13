@@ -5,9 +5,9 @@ import { z } from 'zod';
  *
  * Stored as `caller.kind` / `caller.name` / `caller.clientId` rows in
  * `ExecutionMetadata` and surfaced on the executions DTO so the UI can attribute
- * single-node calls back to the MCP / SDK / CLI client that triggered them.
+ * single-node calls back to the MCP / SDK / CLI / Instance AI client that triggered them.
  */
-export const ExecutionCallerKindSchema = z.enum(['mcp', 'sdk', 'cli']);
+export const ExecutionCallerKindSchema = z.enum(['mcp', 'sdk', 'cli', 'instance-ai']);
 
 export const ExecutionCallerSchema = z.object({
 	kind: ExecutionCallerKindSchema,

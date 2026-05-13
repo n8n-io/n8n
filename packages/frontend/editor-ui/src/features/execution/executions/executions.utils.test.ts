@@ -1059,10 +1059,11 @@ import {
 
 describe('n8n Hub UI helpers', () => {
 	describe('CALLER_SOURCE_LABEL', () => {
-		it('maps the three known kinds to brand-cased labels', () => {
+		it('maps the known kinds to brand-cased labels', () => {
 			expect(CALLER_SOURCE_LABEL.mcp).toBe('MCP');
 			expect(CALLER_SOURCE_LABEL.cli).toBe('CLI');
 			expect(CALLER_SOURCE_LABEL.sdk).toBe('SDK');
+			expect(CALLER_SOURCE_LABEL['instance-ai']).toBe('Instance AI');
 		});
 	});
 
@@ -1081,6 +1082,10 @@ describe('n8n Hub UI helpers', () => {
 			expect(getCallerDisplay({ kind: 'cli', name: 'CLI' })).toBe('CLI');
 		});
 
+		it('returns "Instance AI" for instance-ai callers', () => {
+			expect(getCallerDisplay({ kind: 'instance-ai', name: 'Instance AI' })).toBe('Instance AI');
+		});
+
 		it('falls back to UPPERCASED kind for unknown future kinds', () => {
 			expect(getCallerDisplay({ kind: 'browser', name: 'Web' } as unknown as ExecutionCaller)).toBe(
 				'BROWSER (Web)',
@@ -1096,6 +1101,11 @@ describe('n8n Hub UI helpers', () => {
 		it('prepends "via " to the caller display', () => {
 			const caller: ExecutionCaller = { kind: 'mcp', name: 'Claude Desktop' };
 			expect(getCallerLabel(caller, i18n)).toBe('via MCP (Claude Desktop)');
+		});
+
+		it('formats instance-ai callers using the existing label style', () => {
+			const caller: ExecutionCaller = { kind: 'instance-ai', name: 'Instance AI' };
+			expect(getCallerLabel(caller, i18n)).toBe('via Instance AI');
 		});
 	});
 

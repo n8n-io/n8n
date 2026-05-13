@@ -78,6 +78,7 @@ const SOURCE_ICON: Record<string, IconName> = {
 	mcp: 'bot',
 	cli: 'terminal',
 	sdk: 'code',
+	'instance-ai': 'bot',
 };
 
 const sourceIconName = computed<IconName>(() => {
