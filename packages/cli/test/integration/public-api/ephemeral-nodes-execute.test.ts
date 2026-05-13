@@ -1,4 +1,3 @@
-
 import { mockInstance, getPersonalProject } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
