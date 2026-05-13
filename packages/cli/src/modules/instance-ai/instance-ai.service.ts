@@ -41,7 +41,7 @@ import {
 	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
-	isStructuredAttachment,
+	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
 	InstanceAiTerminalResponseGuard,
 	PlannedTaskCoordinator,
@@ -2974,7 +2974,7 @@ export class InstanceAiService {
 			if (attachments && attachments.length > 0) {
 				const classifiedAttachments = classifyAttachments(attachments);
 				nonStructuredAttachments = attachments.filter(
-					(attachment) => !isStructuredAttachment(attachment),
+					(attachment) => !isParseableAttachment(attachment),
 				);
 				hasParseableAttachment = classifiedAttachments.some(
 					(attachment: { parseable: boolean }) => attachment.parseable,
