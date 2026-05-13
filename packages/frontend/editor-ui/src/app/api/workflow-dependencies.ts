@@ -2,6 +2,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	DependenciesBatchResponse,
 	DependencyCountsBatchResponse,
+	DependencyGraphResponse,
 	DependencyResourceType,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -29,6 +30,16 @@ export async function getResourceDependencies(
 		'POST',
 		'/workflow-dependencies/details',
 		{ resourceIds, resourceType },
+	);
+}
+
+export async function getDependencyGraphJson(
+	context: IRestApiContext,
+): Promise<DependencyGraphResponse> {
+	return await makeRestApiRequest<DependencyGraphResponse>(
+		context,
+		'GET',
+		'/workflow-dependencies/graph.json',
 	);
 }
 

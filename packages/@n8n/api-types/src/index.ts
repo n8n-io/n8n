@@ -167,6 +167,15 @@ export type {
 } from './schemas/dependency-counts.schema';
 
 export type {
+	DependencyNode,
+	DependencyNodeKind,
+	DependencyEdge,
+	DependencyEdgeKind,
+	DependencyProject,
+	DependencyGraphResponse,
+} from './schemas/dependency-graph.schema';
+
+export type {
 	ProjectType,
 	ProjectIcon,
 	ProjectRelation,

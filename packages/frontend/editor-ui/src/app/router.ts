@@ -110,6 +110,11 @@ const SettingsAiGatewayView = async () =>
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 
+const DependencyVisualizationsView = async () =>
+	await import(
+		'@/features/workflows/dependencyVisualizations/components/DependencyVisualizationsView.vue'
+	);
+
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
 
@@ -324,6 +329,14 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 
+	{
+		path: '/visualizations',
+		name: VIEWS.DEPENDENCY_VISUALIZATIONS,
+		component: DependencyVisualizationsView,
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
 	{
 		path: '/workflow/:workflowId/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,

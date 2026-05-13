@@ -1,6 +1,10 @@
 import type {
 	DependenciesBatchResponse,
 	DependencyCountsBatchResponse,
+	DependencyEdge,
+	DependencyGraphResponse,
+	DependencyNode,
+	DependencyProject,
 	DependencyResourceType,
 	ResolvedDependency,
 } from '@n8n/api-types';
@@ -83,11 +87,31 @@ export class WorkflowDependencyQueryService {
 	 */
 	async getDependencyGraph(user: User, opts: { layout?: 'lr' | 'tb' } = {}): Promise<string> {
 		const layout = opts.layout ?? 'lr';
+		const loaded = await this.loadFullDependencyGraph(user);
+		if (!loaded) return emptyDotGraph(layout);
+		return buildDotGraph(loaded.maps, loaded.info, layout);
+	}
+
+	/**
+	 * Structured JSON version of the dependency graph for in-app visualizations.
+	 * Restricted resources show up as nodes with `restricted: true` and a
+	 * stable synthetic id so the graph topology is preserved without leaking
+	 * names of resources the user cannot read.
+	 */
+	async getDependencyGraphJson(user: User): Promise<DependencyGraphResponse> {
+		const loaded = await this.loadFullDependencyGraph(user);
+		if (!loaded) return { projects: [], nodes: [], edges: [] };
+		return buildJsonGraph(loaded.maps, loaded.info);
+	}
+
+	private async loadFullDependencyGraph(
+		user: User,
+	): Promise<{ maps: RawDepMaps; info: GraphInfo } | null> {
 		const accessibleWfIds = await this.workflowFinderService.findAllWorkflowIdsForUser(user, [
 			'workflow:read',
 		]);
 
-		if (accessibleWfIds.length === 0) return emptyDotGraph(layout);
+		if (accessibleWfIds.length === 0) return null;
 
 		const rawDeps = await this.dependencyRepository.find({
 			where: [
@@ -103,7 +127,7 @@ export class WorkflowDependencyQueryService {
 			select: ['workflowId', 'dependencyType', 'dependencyKey'],
 		});
 
-		if (rawDeps.length === 0) return emptyDotGraph(layout);
+		if (rawDeps.length === 0) return null;
 
 		const maps = this.buildDepMaps(rawDeps);
 
@@ -175,9 +199,9 @@ export class WorkflowDependencyQueryService {
 		for (const c of credentials) credNames.set(c.id, c.name ?? c.id);
 		for (const dt of dataTables) dtNames.set(dt.id, dt.name ?? dt.id);
 
-		return buildDotGraph(
+		return {
 			maps,
-			{
+			info: {
 				wfNames,
 				credNames,
 				dtNames,
@@ -186,8 +210,7 @@ export class WorkflowDependencyQueryService {
 				dtProjects,
 				projectNames,
 			},
-			layout,
-		);
+		};
 	}
 
 	/** Return resolved dependencies for each input resource, excluding inaccessible ones. */
@@ -445,6 +468,16 @@ function dotEscape(value: string): string {
 	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+interface GraphInfo {
+	wfNames: Map<string, string>;
+	credNames: Map<string, string>;
+	dtNames: Map<string, string>;
+	wfProjects: Map<string, string>;
+	credProjects: Map<string, string>;
+	dtProjects: Map<string, string>;
+	projectNames: Map<string, string>;
+}
+
 type ResourcePrefix = 'wf' | 'cred' | 'dt';
 
 const RESOURCE_STYLE: Record<ResourcePrefix, { shape: string; fillcolor: string; color: string }> =
@@ -461,19 +494,7 @@ function sanitizeProjectClusterId(projectId: string): string {
 	return projectId.replace(/[^A-Za-z0-9_]/g, '_');
 }
 
-function buildDotGraph(
-	maps: RawDepMaps,
-	info: {
-		wfNames: Map<string, string>;
-		credNames: Map<string, string>;
-		dtNames: Map<string, string>;
-		wfProjects: Map<string, string>;
-		credProjects: Map<string, string>;
-		dtProjects: Map<string, string>;
-		projectNames: Map<string, string>;
-	},
-	layout: 'lr' | 'tb' = 'lr',
-): string {
+function buildDotGraph(maps: RawDepMaps, info: GraphInfo, layout: 'lr' | 'tb' = 'lr'): string {
 	const lines: string[] = [];
 	lines.push('digraph WorkflowDependencies {');
 	lines.push(`  rankdir=${rankdirFor(layout)};`);
@@ -636,4 +657,90 @@ function buildDotGraph(
 
 	lines.push('}');
 	return lines.join('\n') + '\n';
+}
+
+function buildJsonGraph(maps: RawDepMaps, info: GraphInfo): DependencyGraphResponse {
+	const nodes: DependencyNode[] = [];
+	const edges: DependencyEdge[] = [];
+
+	// Stable synthetic ids for restricted resources so the topology survives
+	// without leaking the underlying ids.
+	const restrictedIds = new Map<string, string>();
+	let restrictedCounter = 0;
+	const resolveNodeId = (
+		id: string,
+		kind: DependencyNode['kind'],
+		nameMap: Map<string, string>,
+	): { nodeId: string; restricted: boolean } => {
+		if (nameMap.has(id)) return { nodeId: `${kind}:${id}`, restricted: false };
+		const key = `${kind}:${id}`;
+		let placeholder = restrictedIds.get(key);
+		if (!placeholder) {
+			placeholder = `restricted:${kind}:${++restrictedCounter}`;
+			restrictedIds.set(key, placeholder);
+		}
+		return { nodeId: placeholder, restricted: true };
+	};
+
+	const emitNode = (
+		id: string,
+		kind: DependencyNode['kind'],
+		nameMap: Map<string, string>,
+		projectMap: Map<string, string>,
+	) => {
+		const { nodeId, restricted } = resolveNodeId(id, kind, nameMap);
+		nodes.push({
+			id: nodeId,
+			kind,
+			name: restricted ? '(restricted)' : (nameMap.get(id) ?? id),
+			projectId: restricted ? undefined : projectMap.get(id),
+			restricted,
+		});
+		return nodeId;
+	};
+
+	const nodeIdByResource = new Map<string, string>();
+	for (const id of maps.allWfIds) {
+		nodeIdByResource.set(`wf:${id}`, emitNode(id, 'workflow', info.wfNames, info.wfProjects));
+	}
+	for (const id of maps.allCredIds) {
+		nodeIdByResource.set(
+			`cred:${id}`,
+			emitNode(id, 'credential', info.credNames, info.credProjects),
+		);
+	}
+	for (const id of maps.allDtIds) {
+		nodeIdByResource.set(`dt:${id}`, emitNode(id, 'dataTable', info.dtNames, info.dtProjects));
+	}
+
+	const pushEdges = (
+		sourceMap: Map<string, Set<string>>,
+		targetKind: 'wf' | 'cred' | 'dt',
+		edgeKind: DependencyEdge['kind'],
+	) => {
+		for (const [src, targets] of sourceMap) {
+			const sourceId = nodeIdByResource.get(`wf:${src}`);
+			if (!sourceId) continue;
+			for (const tgt of targets) {
+				const targetId = nodeIdByResource.get(`${targetKind}:${tgt}`);
+				if (!targetId) continue;
+				edges.push({ source: sourceId, target: targetId, kind: edgeKind });
+			}
+		}
+	};
+
+	pushEdges(maps.subMap, 'wf', 'workflowCall');
+	pushEdges(maps.errorWfMap, 'wf', 'errorWorkflow');
+	pushEdges(maps.credMap, 'cred', 'credentialId');
+	pushEdges(maps.dtMap, 'dt', 'dataTableId');
+
+	const projects: DependencyProject[] = [];
+	const projectIds = new Set<string>();
+	for (const projectId of info.projectNames.keys()) projectIds.add(projectId);
+	for (const id of projectIds) {
+		projects.push({ id, name: info.projectNames.get(id) ?? id });
+	}
+	projects.sort((a, b) => a.name.localeCompare(b.name));
+
+	return { projects, nodes, edges };
 }

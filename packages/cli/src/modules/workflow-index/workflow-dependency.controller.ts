@@ -1,3 +1,4 @@
+import type { DependencyGraphResponse } from '@n8n/api-types';
 import { GetResourceDependenciesDto, GetResourceDependencyCountsDto } from '@n8n/api-types';
 import { WorkflowsConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -50,9 +51,15 @@ export class WorkflowDependencyController {
 		this.assertIndexingEnabled();
 
 		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user, {
-			layout: parseLayout(req.query.layout),
+			layout: parseLayout((req.query as { layout?: unknown }).layout),
 		});
 		return { dot };
+	}
+
+	@Get('/graph.json')
+	async getDependencyGraphJson(req: AuthenticatedRequest): Promise<DependencyGraphResponse> {
+		this.assertIndexingEnabled();
+		return await this.workflowDependencyQueryService.getDependencyGraphJson(req.user);
 	}
 
 	@Get('/graph.dot')
@@ -60,7 +67,7 @@ export class WorkflowDependencyController {
 		this.assertIndexingEnabled();
 
 		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user, {
-			layout: parseLayout(req.query.layout),
+			layout: parseLayout((req.query as { layout?: unknown }).layout),
 		});
 		res.setHeader('Content-Type', 'text/vnd.graphviz; charset=utf-8');
 		res.setHeader('Content-Disposition', 'attachment; filename="workflow-dependencies.dot"');
