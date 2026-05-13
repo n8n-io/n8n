@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue';
-import { onBeforeRouteLeave, RouterView } from 'vue-router';
+import { onBeforeRouteLeave, RouterView, useRoute } from 'vue-router';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +15,7 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const route = useRoute();
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
@@ -90,7 +91,7 @@ watch(
 );
 
 onUnmounted(() => {
-	store.closeSSE();
+	store.disposeRuntimes();
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
 });
@@ -116,7 +117,9 @@ onUnmounted(() => {
 		</Transition>
 
 		<!-- Inner route — Empty for `/instance-ai`, Thread for `/instance-ai/:threadId` -->
-		<RouterView />
+		<RouterView v-slot="{ Component }">
+			<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
+		</RouterView>
 	</div>
 </template>
 

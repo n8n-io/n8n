@@ -34,6 +34,7 @@ export {
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
 export * from './instance-registry-types';
+export * from './redaction-enforcement';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -220,6 +221,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
 export type {
@@ -440,6 +442,7 @@ export {
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
+export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,
