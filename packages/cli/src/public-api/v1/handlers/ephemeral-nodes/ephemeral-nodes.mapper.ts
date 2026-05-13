@@ -65,7 +65,13 @@ function toCredentialDetails(
 }
 
 function toInputData(items: ExecuteEphemeralNodeRequestDto['inputData']): INodeExecutionData[] {
-	return (items ?? []).map((item) => ({ json: item as IDataObject }));
+	// Action nodes (HTTP Request, Linear, etc.) iterate input items to produce
+	// output items — zero input means zero output. Match n8n's "Manual Trigger"
+	// convention: when no input is supplied, fire the node once with one empty
+	// item so callers omitting `inputData` get a meaningful response instead of
+	// a misleading `{status: success, data: []}`.
+	const provided = (items ?? []).map((item) => ({ json: item as IDataObject }));
+	return provided.length > 0 ? provided : [{ json: {} }];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

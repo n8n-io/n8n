@@ -82,13 +82,25 @@ describe('toInlineRequest', () => {
 		expect(result.inputData).toEqual([{ json: { foo: 'bar' } }, { json: { baz: 1 } }]);
 	});
 
-	it('returns an empty inputData array when the DTO omits it', () => {
+	it('fires the node once with an empty item when the DTO omits inputData', () => {
+		// Action nodes iterate input items to produce output items, so zero
+		// input means zero output. We mirror n8n's Manual Trigger convention:
+		// missing `inputData` becomes a single empty item to make the call
+		// meaningful for one-shot callers.
 		const result = toInlineRequest(
 			makeDto({ inputData: undefined as unknown as ExecuteEphemeralNodeRequestDto['inputData'] }),
 			'project-1',
 		);
 
-		expect(result.inputData).toEqual([]);
+		expect(result.inputData).toEqual([{ json: {} }]);
+	});
+
+	it('preserves an explicitly empty inputData array as a single empty item', () => {
+		// Same reasoning as the `undefined` case — an explicit `[]` from the
+		// caller is treated as "no upstream data" rather than "do nothing".
+		const result = toInlineRequest(makeDto({ inputData: [] }), 'project-1');
+
+		expect(result.inputData).toEqual([{ json: {} }]);
 	});
 });
 
