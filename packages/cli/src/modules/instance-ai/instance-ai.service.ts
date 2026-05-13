@@ -116,7 +116,10 @@ import {
 	InstanceAiLivenessService,
 	type InstanceAiConsumedRunTimeout,
 } from './liveness';
-import { buildInstanceAiRunTraceMetadata } from './run-trace-metadata';
+import {
+	buildInstanceAiRunTraceMetadata,
+	type InstanceAiRunTraceMetadataOptions,
+} from './run-trace-metadata';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -993,11 +996,7 @@ export class InstanceAiService {
 	private buildMessageTraceMetadata(
 		threadId: string,
 		runId: string,
-		options: {
-			status: MessageTraceFinalization['status'];
-			cancellationReason?: string;
-			runTimeout?: InstanceAiConsumedRunTimeout;
-		},
+		options: InstanceAiRunTraceMetadataOptions,
 	): Record<string, unknown> {
 		const traceOptions = {
 			status: options.status,
