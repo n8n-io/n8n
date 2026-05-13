@@ -1,14 +1,37 @@
 /**
- * Browser stub for @n8n/expression-runtime.
- * The real implementation uses isolated-vm (a Node.js-only native module).
- * IS_FRONTEND guards in expression.ts prevent these from ever being instantiated.
+ * Browser shim for @n8n/expression-runtime.
+ *
+ * IsolatedVmBridge depends on isolated-vm (a Node.js-only native module),
+ * so we stub it with a throwing class. QuickJsBridge runs on WASM and works
+ * in the browser, so we re-export the real implementation from source.
  */
 
-export class ExpressionEvaluator {
-	constructor(_config?: unknown) {
-		throw new Error('ExpressionEvaluator is not available in browser environments');
-	}
-}
+// Real exports from source — vite resolves these relative paths at build time.
+// The @n8n/expression-runtime alias in vite.config.mts points to THIS file,
+// so the relative paths here are relative to vite/expression-runtime-stub.ts,
+// not to the original package consumers' viewpoint.
+export { QuickJsBridge } from '../../../@n8n/expression-runtime/src/bridge/quickjs-bridge';
+export { ExpressionEvaluator } from '../../../@n8n/expression-runtime/src/evaluator/expression-evaluator';
+
+export {
+	ExpressionError,
+	MemoryLimitError,
+	TimeoutError,
+	SecurityViolationError,
+	SyntaxError,
+} from '../../../@n8n/expression-runtime/src/types';
+
+export {
+	extend,
+	extendOptional,
+	EXTENSION_OBJECTS,
+} from '../../../@n8n/expression-runtime/src/extensions/extend';
+export { ExpressionExtensionError } from '../../../@n8n/expression-runtime/src/extensions/expression-extension-error';
+export { NoOpProvider } from '../../../@n8n/expression-runtime/src/observability/noop-provider';
+export { EXPRESSION_METRICS } from '../../../@n8n/expression-runtime/src/observability/metrics';
+export { classifyExpressionError } from '../../../@n8n/expression-runtime/src/evaluator/error-classification';
+
+export { DEFAULT_BRIDGE_CONFIG, RuntimeError } from '../../../@n8n/expression-runtime/src/types';
 
 export class IsolatedVmBridge {
 	constructor(_config?: unknown) {
@@ -16,39 +39,20 @@ export class IsolatedVmBridge {
 	}
 }
 
-export class ExpressionError extends Error {
-	constructor(
-		message: string,
-		public context: Record<string, unknown> = {},
-	) {
-		super(message);
-	}
-}
-export class MemoryLimitError extends Error {}
-export class TimeoutError extends Error {}
-export class SecurityViolationError extends Error {}
-// Note: SyntaxError not re-exported to avoid shadowing built-in
-
-export class RuntimeError extends Error {}
-
-export function extend() {}
-export function extendOptional() {}
-export const EXTENSION_OBJECTS: unknown[] = [];
-export class ExpressionExtensionError extends Error {}
-export class IsolateError extends Error {}
-
-export const DEFAULT_BRIDGE_CONFIG = {};
+export { IsolateError } from '../../../@n8n/errors/src/isolate.error';
 
 // Type-only exports (resolved by TypeScript, erased at runtime)
-export type IExpressionEvaluator = never;
-export type EvaluatorConfig = never;
-export type WorkflowData = Record<string, unknown>;
-export type EvaluateOptions = never;
-export type RuntimeBridge = never;
-export type BridgeConfig = never;
-export type ObservabilityProvider = never;
-export type MetricsAPI = never;
-export type TracesAPI = never;
-export type Span = never;
-export type LogsAPI = never;
-export type ExecuteOptions = never;
+export type {
+	IExpressionEvaluator,
+	EvaluatorConfig,
+	WorkflowData,
+	EvaluateOptions,
+	RuntimeBridge,
+	BridgeConfig,
+	ObservabilityProvider,
+	MetricsAPI,
+	TracesAPI,
+	Span,
+	LogsAPI,
+	ExecuteOptions,
+} from '../../../@n8n/expression-runtime/src/types';
