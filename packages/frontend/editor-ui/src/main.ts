@@ -31,6 +31,22 @@ import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer'
 
 import type { VueScanOptions } from 'z-vue-scan';
 
+import { Expression } from 'n8n-workflow';
+
+// Load the runtime bundle as a string asset so the bridge can run in browser
+// (no node:fs available). The runtime-bundle.iife.js sub-path is aliased in
+// vite.config.mts to the built file in @n8n/expression-runtime.
+import runtimeBundle from '@n8n/expression-runtime/runtime-bundle.iife.js?raw';
+
+await Expression.initExpressionEngine({
+	engine: 'quickjs',
+	bridgeTimeout: 5000,
+	bridgeMemoryLimit: 128,
+	poolSize: 1,
+	maxCodeCacheSize: 1024,
+	runtimeBundle,
+});
+
 const pinia = createPinia();
 
 const app = createApp(App);

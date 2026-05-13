@@ -29,10 +29,11 @@ const alias = [
 	{ find: 'stream', replacement: 'stream-browserify' },
 	// Allow direct import of the runtime IIFE bundle (for ?raw use in editor-ui).
 	// This must come BEFORE the @n8n/expression-runtime stub alias below or it
-	// would be intercepted by the stub.
+	// would be intercepted by the stub. The regex preserves the ?raw query suffix
+	// so rolldown treats the import as a raw string asset correctly.
 	{
-		find: '@n8n/expression-runtime/runtime-bundle.iife.js',
-		replacement: resolve(packagesDir, '@n8n', 'expression-runtime', 'dist', 'bundle', 'runtime.iife.js'),
+		find: /^@n8n\/expression-runtime\/runtime-bundle\.iife\.js(\?.*)?$/,
+		replacement: `${resolve(packagesDir, '@n8n', 'expression-runtime', 'dist', 'bundle', 'runtime.iife.js')}$1`,
 	},
 	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
 	{
