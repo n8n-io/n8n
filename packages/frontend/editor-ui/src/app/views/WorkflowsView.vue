@@ -61,6 +61,7 @@ import type {
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useExtractWebhookId } from '@/app/composables/useExtractWebhookId';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -139,6 +140,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
+const extractWebhookId = useExtractWebhookId();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
@@ -1734,16 +1736,6 @@ function onNameToggle() {
 			renameInput.value.forceFocus();
 		}
 	}, 0);
-}
-
-function extractWebhookId(value: string): string {
-	try {
-		const url = new URL(value);
-		const pathParts = url.pathname.split('/').filter(Boolean);
-		return pathParts[pathParts.length - 1] ?? value;
-	} catch {
-		return value;
-	}
 }
 
 const onNameSubmit = async (name: string) => {
