@@ -136,14 +136,18 @@ const {
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
-const workerPoolOptions = ref<Array<{ key: string; value: string }>>([]);
+const workerPoolNames = ref<string[]>([]);
+const globalPoolAssignment = ref<Partial<Record<'production' | 'manual' | 'evaluation', string>>>(
+	{},
+);
 
 const instanceRegistryStore = useInstanceRegistryStore();
 
 const loadWorkerPoolOptions = async () => {
 	await instanceRegistryStore.fetchClusterInfo();
 
-	const instances = instanceRegistryStore.clusterInfo?.instances ?? [];
+	const clusterInfo = instanceRegistryStore.clusterInfo;
+	const instances = clusterInfo?.instances ?? [];
 	const poolNames = new Set<string>();
 
 	for (const instance of instances) {
@@ -152,11 +156,22 @@ const loadWorkerPoolOptions = async () => {
 		}
 	}
 
-	workerPoolOptions.value = [
-		{ key: 'DEFAULT', value: i18n.baseText('workflowSettings.workerPool.default') },
-		...Array.from(poolNames)
-			.sort()
-			.map((name) => ({ key: name, value: name })),
+	workerPoolNames.value = Array.from(poolNames).sort();
+
+	if (clusterInfo?.poolAssignment) {
+		globalPoolAssignment.value = clusterInfo.poolAssignment;
+	}
+};
+
+const workerPoolOptionsForCategory = (category: 'production' | 'manual' | 'evaluation') => {
+	const globalPool = globalPoolAssignment.value[category];
+	const defaultLabel = globalPool
+		? `${i18n.baseText('workflowSettings.workerPool.default')} - ${globalPool}`
+		: i18n.baseText('workflowSettings.workerPool.default');
+
+	return [
+		{ key: 'DEFAULT', value: defaultLabel },
+		...workerPoolNames.value.map((name) => ({ key: name, value: name })),
 	];
 };
 
@@ -1467,7 +1482,7 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<template v-if="settingsStore.isQueueModeEnabled && workerPoolOptions.length > 1">
+				<template v-if="settingsStore.isQueueModeEnabled && workerPoolNames.length > 0">
 					<ElRow>
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.workerPool.production') }}
@@ -1489,7 +1504,7 @@ onBeforeUnmount(() => {
 								@update:model-value="(val: string) => onWorkerPoolChange('production', val)"
 							>
 								<N8nOption
-									v-for="option of workerPoolOptions"
+									v-for="option of workerPoolOptionsForCategory('production')"
 									:key="option.key"
 									:label="option.value"
 									:value="option.key"
@@ -1516,7 +1531,7 @@ onBeforeUnmount(() => {
 								@update:model-value="(val: string) => onWorkerPoolChange('manual', val)"
 							>
 								<N8nOption
-									v-for="option of workerPoolOptions"
+									v-for="option of workerPoolOptionsForCategory('manual')"
 									:key="option.key"
 									:label="option.value"
 									:value="option.key"
@@ -1545,7 +1560,7 @@ onBeforeUnmount(() => {
 								@update:model-value="(val: string) => onWorkerPoolChange('evaluation', val)"
 							>
 								<N8nOption
-									v-for="option of workerPoolOptions"
+									v-for="option of workerPoolOptionsForCategory('evaluation')"
 									:key="option.key"
 									:label="option.value"
 									:value="option.key"

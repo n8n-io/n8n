@@ -67,9 +67,14 @@ export type ClusterCheckWarning = z.infer<typeof ClusterCheckWarningSchema>;
 const ClusterCheckSummarySchema = z.record(z.string(), ClusterCheckResultSchema);
 export type ClusterCheckSummary = z.infer<typeof ClusterCheckSummarySchema>;
 
+const PoolAssignmentSchema = z.record(z.enum(['production', 'manual', 'evaluation']), z.string());
+
+export type PoolAssignment = z.infer<typeof PoolAssignmentSchema>;
+
 const ClusterInfoResponseSchema = z.object({
 	instances: z.array(instanceRegistrationSchema),
 	checks: ClusterCheckSummarySchema,
+	poolAssignment: PoolAssignmentSchema.optional(),
 });
 
 // REST API response type
