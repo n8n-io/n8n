@@ -31,6 +31,7 @@ export class ModuleRegistry {
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
+		'query',
 		'insights',
 		'external-secrets',
 		'community-packages',

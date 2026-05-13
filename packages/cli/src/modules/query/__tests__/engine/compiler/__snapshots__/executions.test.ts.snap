@@ -1,0 +1,1629 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`executions compiler (postgresdb) GROUP BY + HAVING GROUP BY multiple columns 1`] = `
+{
+  "columns": [
+    "status",
+    "mode",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", e."mode" AS "mode", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+GROUP BY e."status", e."mode"
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) GROUP BY + HAVING GROUP BY single column 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+GROUP BY e."status"
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) GROUP BY + HAVING HAVING aggregate compare 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    5,
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+GROUP BY e."status"
+HAVING COUNT(*) > $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) LIMIT default LIMIT applied when omitted 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) LIMIT explicit LIMIT 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+LIMIT 10",
+}
+`;
+
+exports[`executions compiler (postgresdb) ORDER BY ASC default 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+ORDER BY e."startedAt" ASC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) ORDER BY DESC explicit 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+ORDER BY e."startedAt" DESC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) ORDER BY by aggregate 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+GROUP BY e."status"
+ORDER BY COUNT(*) DESC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) ORDER BY multiple items 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+ORDER BY e."startedAt" DESC, EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 ASC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) SELECT projection COUNT(*) 1`] = `
+{
+  "columns": [
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) SELECT projection SELECT * 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) SELECT projection explicit columns 1`] = `
+{
+  "columns": [
+    "id",
+    "status",
+    "duration_ms",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."status" AS "status", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) SELECT projection mixed projection with GROUP BY 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+GROUP BY e."status"
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE comparisons operator != 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 != $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE comparisons operator < 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 < $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE comparisons operator <= 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 <= $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE comparisons operator <> 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 <> $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE comparisons operator = 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 = $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE comparisons operator > 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 > $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE comparisons operator >= 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 >= $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE composition AND 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "webhook",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND (e."status" = $3 AND e."mode" = $4)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE composition NOT 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "success",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND NOT (e."status" = $3)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE composition OR 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "crashed",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND (e."status" = $3 OR e."status" = $4)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE composition nested parens 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "crashed",
+    "webhook",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND ((e."status" = $3 OR e."status" = $4) AND e."mode" = $5)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE special predicates IN 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "crashed",
+    "failed",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND e."status" IN ($3, $4, $5)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE special predicates IS NOT NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND e."retryOf" IS NOT NULL
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE special predicates IS NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND e."retryOf" IS NULL
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) WHERE special predicates LIKE 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND w."name" LIKE $3
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) full integration realistic complex query 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+    5,
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2) AND e."startedAt" > $3
+GROUP BY e."status"
+HAVING COUNT(*) > $4
+ORDER BY COUNT(*) DESC
+LIMIT 10",
+}
+`;
+
+exports[`executions compiler (postgresdb) permission scope emits 1=0 when accessible list is empty 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE 1=0
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (postgresdb) permission scope respects non-empty tablePrefix 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", EXTRACT(EPOCH FROM (e."stoppedAt" - e."startedAt")) * 1000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "n8n_execution_entity" AS e
+LEFT JOIN "n8n_workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) GROUP BY + HAVING GROUP BY multiple columns 1`] = `
+{
+  "columns": [
+    "status",
+    "mode",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", e."mode" AS "mode", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+GROUP BY e."status", e."mode"
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) GROUP BY + HAVING GROUP BY single column 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+GROUP BY e."status"
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) GROUP BY + HAVING HAVING aggregate compare 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    5,
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+GROUP BY e."status"
+HAVING COUNT(*) > ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) LIMIT default LIMIT applied when omitted 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) LIMIT explicit LIMIT 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+LIMIT 10",
+}
+`;
+
+exports[`executions compiler (sqlite) ORDER BY ASC default 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+ORDER BY e."startedAt" ASC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) ORDER BY DESC explicit 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+ORDER BY e."startedAt" DESC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) ORDER BY by aggregate 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+GROUP BY e."status"
+ORDER BY COUNT(*) DESC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) ORDER BY multiple items 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+ORDER BY e."startedAt" DESC, (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 ASC
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) SELECT projection COUNT(*) 1`] = `
+{
+  "columns": [
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) SELECT projection SELECT * 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) SELECT projection explicit columns 1`] = `
+{
+  "columns": [
+    "id",
+    "status",
+    "duration_ms",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."status" AS "status", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) SELECT projection mixed projection with GROUP BY 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+GROUP BY e."status"
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE comparisons operator != 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 != ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE comparisons operator < 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 < ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE comparisons operator <= 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 <= ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE comparisons operator <> 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 <> ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE comparisons operator = 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 = ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE comparisons operator > 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 > ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE comparisons operator >= 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    1000,
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 >= ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE composition AND 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "webhook",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (e."status" = ? AND e."mode" = ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE composition NOT 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "success",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND NOT (e."status" = ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE composition OR 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "crashed",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND (e."status" = ? OR e."status" = ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE composition nested parens 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "crashed",
+    "webhook",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND ((e."status" = ? OR e."status" = ?) AND e."mode" = ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE special predicates IN 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "error",
+    "crashed",
+    "failed",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND e."status" IN (?, ?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE special predicates IS NOT NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND e."retryOf" IS NOT NULL
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE special predicates IS NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND e."retryOf" IS NULL
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) WHERE special predicates LIKE 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND w."name" LIKE ?
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) full integration realistic complex query 1`] = `
+{
+  "columns": [
+    "status",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+    5,
+  ],
+  "sql": "SELECT e."status" AS "status", COUNT(*) AS "count"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?) AND e."startedAt" > ?
+GROUP BY e."status"
+HAVING COUNT(*) > ?
+ORDER BY COUNT(*) DESC
+LIMIT 10",
+}
+`;
+
+exports[`executions compiler (sqlite) permission scope emits 1=0 when accessible list is empty 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "execution_entity" AS e
+LEFT JOIN "workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE 1=0
+LIMIT 1000",
+}
+`;
+
+exports[`executions compiler (sqlite) permission scope respects non-empty tablePrefix 1`] = `
+{
+  "columns": [
+    "id",
+    "workflowId",
+    "workflowName",
+    "status",
+    "mode",
+    "startedAt",
+    "stoppedAt",
+    "duration_ms",
+    "retryOf",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT e."id" AS "id", e."workflowId" AS "workflowId", w."name" AS "workflowName", e."status" AS "status", e."mode" AS "mode", e."startedAt" AS "startedAt", e."stoppedAt" AS "stoppedAt", (julianday(e."stoppedAt") - julianday(e."startedAt")) * 86400000 AS "duration_ms", e."retryOf" AS "retryOf"
+FROM "n8n_execution_entity" AS e
+LEFT JOIN "n8n_workflow_entity" AS w ON w."id" = e."workflowId"
+WHERE e."workflowId" IN (?, ?)
+LIMIT 1000",
+}
+`;
