@@ -534,7 +534,9 @@ export class WorkflowRunner {
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100, queueName });
+			const isHighPriorityProduction = !realtime && data.workflowData.settings?.priority === 'high';
+			const jobPriority = realtime ? 50 : isHighPriorityProduction ? 25 : 100;
+			job = await this.scalingService.addJob(jobData, { priority: jobPriority, queueName });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 
