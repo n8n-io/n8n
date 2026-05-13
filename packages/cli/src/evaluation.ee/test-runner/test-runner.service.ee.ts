@@ -1169,10 +1169,20 @@ export class TestRunnerService {
 	}
 
 	private async cancelCollectionLocally(collectionId: string): Promise<string[]> {
-		// Cheap join: only need running rows for this collection. The result
-		// set is bounded by the collection size (≤ a handful in practice).
+		// Match the active-status filter `cancelCollection` uses for DB-flag
+		// cancellation. `executeTestRun` registers the abort controller in
+		// `abortControllers` *before* `markAsRunning` flips status from `new`
+		// to `running`, so a freshly-kicked-off run is locally abortable
+		// while still showing as `new` in DB. Querying only `running` here
+		// would silently skip that window on every main — both the
+		// initiator (called from `cancelCollection`) and foreign mains
+		// (called from `handleCancelCollectionCommand`). The result set is
+		// still bounded by the collection size (≤ a handful in practice).
 		const runs = await this.testRunRepository.find({
-			where: { collectionId, status: 'running' },
+			where: [
+				{ collectionId, status: 'running' },
+				{ collectionId, status: 'new' },
+			],
 			select: ['id'],
 		});
 		const cancelledLocally: string[] = [];

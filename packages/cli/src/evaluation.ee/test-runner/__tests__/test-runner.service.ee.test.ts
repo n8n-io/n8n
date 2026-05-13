@@ -2577,6 +2577,56 @@ describe('TestRunnerService', () => {
 			});
 		});
 
+		test('aborts a locally-held `new`-status run (pre-`markAsRunning` window)', async () => {
+			// `executeTestRun` registers the abort controller in
+			// `abortControllers` *before* it flips status from `new` to
+			// `running`. A `cancel-collection` arriving in that window must
+			// still abort the local controller — querying only `running`
+			// runs would silently skip these on every main, leaving the
+			// freshly-kicked run to drain via DB-poll instead of stopping
+			// immediately.
+			//
+			// Critically: drive the mock from the `where` clause so we
+			// actually exercise the status filter. With a plain
+			// `mockResolvedValue([...])` the mock would return the seeded
+			// row regardless of which statuses the caller queried, and the
+			// test would pass against both pre-fix (`status:'running'`-only)
+			// and post-fix code — proving nothing.
+			const seeded = [{ id: 'tr-new-local', status: 'new' as const }];
+			testRunRepository.find.mockImplementation(async (opts: unknown) => {
+				const where = (opts as { where: unknown }).where;
+				const clauses = (Array.isArray(where) ? where : [where]) as Array<{
+					status?: string;
+				}>;
+				const statuses = new Set(clauses.map((c) => c.status));
+				return seeded.filter((r) => statuses.has(r.status)) as never;
+			});
+
+			const newRunAbort = new AbortController();
+			(
+				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
+			).abortControllers.set('tr-new-local', newRunAbort);
+
+			// Provide a no-op dbManager so the DB-fallback path doesn't throw
+			// on the pre-fix code path that *would* take it for this run.
+			// Without this, the test would fail on a transaction TypeError
+			// before reaching the abort assertions, hiding the actual bug.
+			const dbManager = mock<{ transaction: jest.Mock }>();
+			dbManager.transaction.mockImplementation(async (cb: (trx: unknown) => Promise<void>) => {
+				await cb({});
+			});
+			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+
+			await testRunnerService.cancelCollection('col-new-window');
+
+			expect(newRunAbort.signal.aborted).toBe(true);
+			// Local abort wins — no DB-cancel fallback needed for this run.
+			expect(testRunRepository.markAsCancelled).not.toHaveBeenCalledWith(
+				'tr-new-local',
+				expect.anything(),
+			);
+		});
+
 		test('falls back to DB cancel for runs not held locally', async () => {
 			testRunRepository.find.mockResolvedValue([
 				{ id: 'tr-foreign' } as never,
