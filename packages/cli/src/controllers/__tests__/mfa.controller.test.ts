@@ -170,4 +170,159 @@ describe('MFAController', () => {
 			).rejects.toThrow(BadRequestError);
 		});
 	});
+
+	describe('getWebAuthnRegistrationOptions', () => {
+		const mkReq = (attachment: unknown) =>
+			({
+				user: { id: 'user-1', email: 'u@example.com', firstName: 'A', lastName: 'B' },
+				query: { attachment },
+			}) as never;
+
+		it('rejects when attachment query param is missing', async () => {
+			await expect(controller.getWebAuthnRegistrationOptions(mkReq(undefined))).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(webauthnService.generateRegistrationOptions).not.toHaveBeenCalled();
+		});
+
+		it('rejects when attachment is not "platform" or "cross-platform"', async () => {
+			await expect(controller.getWebAuthnRegistrationOptions(mkReq('hybrid'))).rejects.toThrow(
+				BadRequestError,
+			);
+		});
+
+		it('passes a valid attachment through to the service', async () => {
+			webauthnService.generateRegistrationOptions.mockResolvedValue({ challenge: 'c' } as never);
+			await controller.getWebAuthnRegistrationOptions(mkReq('platform'));
+			expect(webauthnService.generateRegistrationOptions).toHaveBeenCalledWith(
+				'user-1',
+				'u@example.com',
+				'A B',
+				'platform',
+			);
+		});
+	});
+
+	describe('verifyWebAuthnRegistration', () => {
+		const mkReq = (body: Partial<{ label: string; response: unknown; attachment: string }>) =>
+			({
+				user: { id: 'user-1' },
+				body,
+				browserId: 'browser-1',
+			}) as never;
+
+		it('rejects when label is missing', async () => {
+			await expect(
+				controller.verifyWebAuthnRegistration(
+					mkReq({ response: {}, attachment: 'platform' }),
+					mock<Response>(),
+				),
+			).rejects.toThrow(BadRequestError);
+			expect(webauthnService.verifyRegistrationResponse).not.toHaveBeenCalled();
+		});
+
+		it('rejects when attachment is invalid', async () => {
+			await expect(
+				controller.verifyWebAuthnRegistration(
+					mkReq({ label: 'x', response: {}, attachment: 'hybrid' }),
+					mock<Response>(),
+				),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('throws when the library reports verified: false', async () => {
+			webauthnService.verifyRegistrationResponse.mockResolvedValue({ verified: false } as never);
+			await expect(
+				controller.verifyWebAuthnRegistration(
+					mkReq({ label: 'x', response: {}, attachment: 'platform' }),
+					mock<Response>(),
+				),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('throws when registrationInfo is missing despite verified: true', async () => {
+			// Defensive branch — should never happen if the library is well-formed,
+			// but the controller treats it the same as a failed verify.
+			webauthnService.verifyRegistrationResponse.mockResolvedValue({
+				verified: true,
+				registrationInfo: null,
+			} as never);
+			await expect(
+				controller.verifyWebAuthnRegistration(
+					mkReq({ label: 'x', response: {}, attachment: 'platform' }),
+					mock<Response>(),
+				),
+			).rejects.toThrow(BadRequestError);
+		});
+	});
+
+	describe('getWebAuthnAuthenticationOptions', () => {
+		const mkReq = (body: { email?: string; kind?: string }) => ({ body }) as never;
+
+		it('rejects when email is missing', async () => {
+			await expect(controller.getWebAuthnAuthenticationOptions(mkReq({}))).rejects.toThrow(
+				BadRequestError,
+			);
+		});
+
+		it('throws an MFA 998 error when the user has no MFA enabled', async () => {
+			userRepository.findOne.mockResolvedValue({ mfaEnabled: false } as never);
+			await expect(
+				controller.getWebAuthnAuthenticationOptions(mkReq({ email: 'u@example.com' })),
+			).rejects.toMatchObject({ errorCode: 998 });
+		});
+
+		it('throws an MFA 998 error when the user does not exist (no enumeration)', async () => {
+			userRepository.findOne.mockResolvedValue(null);
+			await expect(
+				controller.getWebAuthnAuthenticationOptions(mkReq({ email: 'missing@example.com' })),
+			).rejects.toMatchObject({ errorCode: 998 });
+		});
+
+		it('ignores an unknown kind value and treats it as undefined', async () => {
+			userRepository.findOne.mockResolvedValue({ id: 'user-1', mfaEnabled: true } as never);
+			webauthnService.generateAuthenticationOptions.mockResolvedValue({ challenge: 'c' } as never);
+			await controller.getWebAuthnAuthenticationOptions(
+				mkReq({ email: 'u@example.com', kind: 'totp' }),
+			);
+			expect(webauthnService.generateAuthenticationOptions).toHaveBeenCalledWith(
+				'user-1',
+				undefined,
+			);
+		});
+
+		it('forwards a valid kind to the service', async () => {
+			userRepository.findOne.mockResolvedValue({ id: 'user-1', mfaEnabled: true } as never);
+			webauthnService.generateAuthenticationOptions.mockResolvedValue({ challenge: 'c' } as never);
+			await controller.getWebAuthnAuthenticationOptions(
+				mkReq({ email: 'u@example.com', kind: 'passkey' }),
+			);
+			expect(webauthnService.generateAuthenticationOptions).toHaveBeenCalledWith(
+				'user-1',
+				'passkey',
+			);
+		});
+	});
+
+	describe('updateWebAuthnCredential', () => {
+		it('rejects when label is missing', async () => {
+			const req = { user: { id: 'user-1' }, params: { id: 'c1' }, body: {} } as never;
+			await expect(controller.updateWebAuthnCredential(req)).rejects.toThrow(BadRequestError);
+			expect(webauthnService.updateCredentialLabel).not.toHaveBeenCalled();
+		});
+
+		it('trims the label before persisting', async () => {
+			const req = {
+				user: { id: 'user-1' },
+				params: { id: 'c1' },
+				body: { label: '  new label  ' },
+			} as never;
+			await controller.updateWebAuthnCredential(req);
+			expect(webauthnService.updateCredentialLabel).toHaveBeenCalledWith(
+				'c1',
+				'user-1',
+				'new label',
+			);
+		});
+	});
 });

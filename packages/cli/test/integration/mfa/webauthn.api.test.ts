@@ -595,3 +595,63 @@ describe('POST /login/webauthn/verify (passwordless, real crypto)', () => {
 			.expect(401);
 	});
 });
+
+describe('POST /mfa/webauthn/authentication-options (kind filter)', () => {
+	const fetchOptions = async (email: string, kind?: 'passkey' | 'security_key') => {
+		const res = await testServer.authlessAgent
+			.post('/mfa/webauthn/authentication-options')
+			.send({ email, ...(kind ? { kind } : {}) })
+			.expect(200);
+		return res.body.data as { allowCredentials: Array<{ id: string }> };
+	};
+
+	const credentialIdOf = async (rowId: string): Promise<string> =>
+		(await credentialRepo.findOneByOrFail({ id: rowId })).credentialId;
+
+	test('with no kind, allowCredentials lists all registered credentials', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		const securityKey = await registerCredentialFor(owner, 'cross-platform', 'yubikey');
+
+		const options = await fetchOptions(owner.email);
+		const ids = options.allowCredentials.map((c) => c.id);
+		expect(ids).toContain(await credentialIdOf(passkey.credentialRowId));
+		expect(ids).toContain(await credentialIdOf(securityKey.credentialRowId));
+	});
+
+	test('with kind=passkey, allowCredentials lists only platform credentials', async () => {
+		const passkey = await registerCredentialFor(owner, 'platform', 'passkey');
+		await registerCredentialFor(owner, 'cross-platform', 'yubikey');
+
+		const options = await fetchOptions(owner.email, 'passkey');
+		expect(options.allowCredentials).toHaveLength(1);
+		expect(options.allowCredentials[0].id).toBe(await credentialIdOf(passkey.credentialRowId));
+	});
+
+	test('with kind=security_key, allowCredentials lists only roaming credentials', async () => {
+		await registerCredentialFor(owner, 'platform', 'passkey');
+		const securityKey = await registerCredentialFor(owner, 'cross-platform', 'yubikey');
+
+		const options = await fetchOptions(owner.email, 'security_key');
+		expect(options.allowCredentials).toHaveLength(1);
+		expect(options.allowCredentials[0].id).toBe(await credentialIdOf(securityKey.credentialRowId));
+	});
+
+	test('rejects requests without an email', async () => {
+		await testServer.authlessAgent
+			.post('/mfa/webauthn/authentication-options')
+			.send({})
+			.expect(400);
+	});
+
+	test('returns the MFA Error (998) when the user does not have MFA enabled', async () => {
+		// Owner exists with `mfaEnabled: false` until a credential is registered.
+		const res = await testServer.authlessAgent
+			.post('/mfa/webauthn/authentication-options')
+			.send({ email: owner.email });
+
+		// Controller throws BadRequestError('MFA Error', 998); n8n's error
+		// handler surfaces the numeric code separately from the HTTP status.
+		expect(res.status).toBe(400);
+		expect(res.body.code).toBe(998);
+	});
+});
