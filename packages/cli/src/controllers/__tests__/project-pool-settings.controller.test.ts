@@ -22,6 +22,8 @@ describe('ProjectPoolSettingsController', () => {
 			poolConfigService.getProjectPoolSettings.mockResolvedValue({
 				assignment: { production: 'gpu' },
 				allowedPools: ['gpu', 'cpu'],
+				availablePools: ['gpu', 'cpu'],
+				instanceDefaults: {},
 			});
 
 			const result = await controller.getPoolSettings(req, res, projectId);
@@ -30,6 +32,8 @@ describe('ProjectPoolSettingsController', () => {
 			expect(result).toEqual({
 				assignment: { production: 'gpu' },
 				allowedPools: ['gpu', 'cpu'],
+				availablePools: ['gpu', 'cpu'],
+				instanceDefaults: {},
 			});
 		});
 	});
@@ -43,6 +47,8 @@ describe('ProjectPoolSettingsController', () => {
 			poolConfigService.setProjectPoolSettings.mockResolvedValue({
 				assignment: { production: 'gpu' },
 				allowedPools: ['gpu'],
+				availablePools: ['gpu'],
+				instanceDefaults: {},
 			});
 
 			const result = await controller.updatePoolSettings(req, res, dto, projectId);
@@ -51,6 +57,8 @@ describe('ProjectPoolSettingsController', () => {
 			expect(result).toEqual({
 				assignment: { production: 'gpu' },
 				allowedPools: ['gpu'],
+				availablePools: ['gpu'],
+				instanceDefaults: {},
 			});
 		});
 	});

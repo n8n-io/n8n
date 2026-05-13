@@ -15,6 +15,7 @@ import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
+import type { PoolAssignment } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -26,6 +27,7 @@ import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import {
@@ -74,11 +76,19 @@ const resourceCounts = ref<ResourceCounts>({
 	dataTables: -1,
 	workflows: -1,
 });
-const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
+const formData = ref<
+	Pick<Project, 'name' | 'description' | 'relations'> & {
+		assignment: PoolAssignment;
+		allowedPools: string[];
+	}
+>({
 	name: '',
 	description: '',
 	relations: [],
+	assignment: {},
+	allowedPools: [],
 });
+const isWorkerPoolsValid = ref(true);
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
 
@@ -264,6 +274,26 @@ const resetFormData = () => {
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+	formData.value.assignment = projectsStore.currentProjectPoolSettings
+		? { ...projectsStore.currentProjectPoolSettings.assignment }
+		: {};
+	formData.value.allowedPools = projectsStore.currentProjectPoolSettings
+		? [...projectsStore.currentProjectPoolSettings.allowedPools]
+		: [];
+};
+
+const hasWorkerPoolsChanges = (): boolean => {
+	const stored = projectsStore.currentProjectPoolSettings;
+	if (!stored) {
+		// No row exists; consider any non-default formData as a change
+		return (
+			Object.keys(formData.value.assignment).length > 0 || formData.value.allowedPools.length > 0
+		);
+	}
+	return (
+		JSON.stringify(formData.value.assignment) !== JSON.stringify(stored.assignment) ||
+		JSON.stringify(formData.value.allowedPools) !== JSON.stringify(stored.allowedPools)
+	);
 };
 
 const onCancel = () => {
@@ -338,10 +368,32 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name ?? '',
-			description: formData.value.description ?? '',
-		});
+		const projectId = projectsStore.currentProject.id;
+		const tasks: Array<Promise<void>> = [];
+
+		const projectInfoChanged =
+			formData.value.name !== projectsStore.currentProject.name ||
+			formData.value.description !== projectsStore.currentProject.description;
+
+		if (projectInfoChanged) {
+			tasks.push(
+				projectsStore.updateProject(projectId, {
+					name: formData.value.name ?? '',
+					description: formData.value.description ?? '',
+				}),
+			);
+		}
+
+		if (hasWorkerPoolsChanges()) {
+			tasks.push(
+				projectsStore.updateCurrentProjectPoolSettings(projectId, {
+					assignment: formData.value.assignment,
+					allowedPools: formData.value.allowedPools,
+				}),
+			);
+		}
+
+		await Promise.all(tasks);
 		isDirty.value = false;
 	} catch (error) {
 		showSaveError(error);
@@ -350,7 +402,7 @@ const updateProject = async () => {
 };
 
 const onSubmit = async () => {
-	if (!isDirty.value) {
+	if (!isDirty.value || !isWorkerPoolsValid.value) {
 		return;
 	}
 	try {
@@ -536,9 +588,30 @@ const searchUsers = async (query: string) => {
 
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
+const resetPoolSettingsFormData = () => {
+	formData.value.assignment = projectsStore.currentProjectPoolSettings
+		? { ...projectsStore.currentProjectPoolSettings.assignment }
+		: {};
+	formData.value.allowedPools = projectsStore.currentProjectPoolSettings
+		? [...projectsStore.currentProjectPoolSettings.allowedPools]
+		: [];
+};
+
 onBeforeMount(async () => {
 	if (!canUpdateProject.value) return;
-	await searchUsers('');
+	const projectId = projectsStore.currentProjectId;
+	const tasks: Array<Promise<unknown>> = [searchUsers('')];
+	if (projectId) {
+		tasks.push(
+			projectsStore
+				.fetchProjectPoolSettings(projectId)
+				.then(resetPoolSettingsFormData)
+				.catch(() => {
+					// Non-fatal; leave defaults and let the user retry by reloading.
+				}),
+		);
+	}
+	await Promise.all(tasks);
 });
 
 const isProjectRoleProvisioningEnabled = computed(
@@ -578,7 +651,7 @@ onMounted(async () => {
 						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
 					>
 					<N8nButton
-						:disabled="!isValid || !isDirty"
+						:disabled="!isValid || !isDirty || !isWorkerPoolsValid"
 						variant="solid"
 						data-test-id="project-settings-save-button"
 						@click.stop.prevent="onSubmit"
@@ -709,6 +782,26 @@ onMounted(async () => {
 						/>
 					</div>
 				</fieldset>
+				<ProjectWorkerPoolsSection
+					:assignment="formData.assignment"
+					:allowed-pools="formData.allowedPools"
+					:available-pools="projectsStore.currentProjectPoolSettings?.availablePools ?? []"
+					:instance-defaults="projectsStore.currentProjectPoolSettings?.instanceDefaults ?? {}"
+					@update:assignment="
+						(v) => {
+							formData.assignment = v;
+							onTextInput();
+						}
+					"
+					@update:allowed-pools="
+						(v) => {
+							formData.allowedPools = v;
+							onTextInput();
+						}
+					"
+					@update:is-valid="isWorkerPoolsValid = $event"
+				/>
+
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{
