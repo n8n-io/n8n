@@ -62,10 +62,12 @@ import {
 	isVersionCardMessage,
 	isWebFetchApprovalCustomMessage,
 	isCollapsedGroupMessage,
+	isEvaluationImproveMessage,
 	createCollapsedGroupMessage,
 	type PlanMode,
 } from '../../assistant.types';
 import CollapsedMessagesGroup from './CollapsedMessagesGroup.vue';
+import EvaluationImproveMessage from '@/features/ai/evaluation.ee/components/EvaluationImproveMessage.vue';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
@@ -831,6 +833,10 @@ defineExpose({
 					:data="message.data"
 					:disabled="builderStore.streaming"
 					@decision="onWebFetchDecision"
+				/>
+				<EvaluationImproveMessage
+					v-else-if="isEvaluationImproveMessage(message)"
+					:metric-names="message.data.metricNames"
 				/>
 			</template>
 			<template

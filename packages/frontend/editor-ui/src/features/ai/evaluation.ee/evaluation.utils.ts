@@ -35,12 +35,29 @@ export type MetricSource = {
 export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
 const LONG_TABLE_CELL_MIN_WIDTH = 250;
 
-const PREDEFINED_METRIC_KEYS: ReadonlySet<string> = new Set([
+export const PREDEFINED_METRIC_KEYS: ReadonlySet<string> = new Set([
 	'promptTokens',
 	'completionTokens',
 	'totalTokens',
 	'executionTime',
 ]);
+
+const PREDEFINED_METRIC_LABELS: Record<string, string> = {
+	promptTokens: 'Prompt Tokens',
+	completionTokens: 'Completion Tokens',
+	totalTokens: 'Total Tokens',
+	executionTime: 'Execution Time',
+};
+
+export function getMetricDisplayLabel(key: string): string {
+	return PREDEFINED_METRIC_LABELS[key] ?? key;
+}
+
+// Returns all metric names present in the run output.
+export function getAllMetricNames(metrics: Record<string, number> | null | undefined): string[] {
+	if (!metrics) return [];
+	return Object.keys(metrics);
+}
 
 // Excludes predefined keys (token counts, execution time) emitted by every run.
 export function getUserDefinedMetricNames(

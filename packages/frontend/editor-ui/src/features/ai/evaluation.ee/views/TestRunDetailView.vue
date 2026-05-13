@@ -6,11 +6,25 @@ import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useEvaluationStore } from '../evaluation.store';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { composeImprovementPrompt } from '../evaluation.improve';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
-import { N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
-import { getUserDefinedMetricNames } from '../evaluation.utils';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nLoading,
+	N8nPopover,
+	N8nText,
+} from '@n8n/design-system';
+import {
+	getUserDefinedMetricNames,
+	getAllMetricNames,
+	getMetricDisplayLabel,
+} from '../evaluation.utils';
 import MetricSummaryStrip from '../components/RunDetail/MetricSummaryStrip.vue';
 import RunStatusPill from '../components/RunDetail/RunStatusPill.vue';
 import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
@@ -18,10 +32,32 @@ import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
+const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 const locale = useI18n();
 const telemetry = useTelemetry();
 
 const isLoading = ref(true);
+const isImproving = ref(false);
+const isMetricPickerOpen = ref(false);
+const selectedMetrics = ref(new Set<string>());
+
+const allMetrics = computed(() => getAllMetricNames(run.value?.metrics));
+
+function initSelectedMetrics() {
+	const userDefined = getUserDefinedMetricNames(run.value?.metrics);
+	selectedMetrics.value = new Set(userDefined);
+}
+
+function toggleMetric(name: string) {
+	const next = new Set(selectedMetrics.value);
+	if (next.has(name)) {
+		next.delete(name);
+	} else {
+		next.add(name);
+	}
+	selectedMetrics.value = next;
+}
 
 // Reads from the store so polling updates flow into the view automatically.
 const testCases = computed<TestCaseExecutionRecord[]>(() =>
@@ -167,6 +203,68 @@ const trackViewedRunDetail = () => {
 	});
 };
 
+const canImproveWithAI = computed(
+	() =>
+		builderStore.isAIBuilderEnabled &&
+		run.value?.status === 'completed' &&
+		testCases.value.length > 0,
+);
+
+const improveWithAI = async () => {
+	if (!workflowId.value || isImproving.value || selectedMetrics.value.size === 0) return;
+	isImproving.value = true;
+	isMetricPickerOpen.value = false;
+
+	try {
+		const metrics = selectedMetrics.value;
+		const prompt = composeImprovementPrompt(
+			run.value,
+			testCases.value,
+			evaluationStore.metricSourceByKey,
+			metrics,
+		);
+
+		await router.push({
+			name: VIEWS.WORKFLOW,
+			params: { name: workflowId.value },
+		});
+		await nextTick();
+
+		builderStore.chatMessages = [
+			...builderStore.chatMessages,
+			{
+				id: `eval-improve-${Date.now()}`,
+				role: 'user',
+				type: 'custom',
+				customType: 'evaluation_improve',
+				data: { metricNames: [...metrics] },
+			},
+		];
+
+		const stopWatching = watch(
+			() => builderStore.streaming,
+			(isStreaming, wasStreaming) => {
+				if (wasStreaming && !isStreaming) {
+					toast.showMessage({
+						title: locale.baseText('evaluation.runDetail.improveWithAI.rerunToast'),
+						type: 'info',
+					});
+					stopWatching();
+				}
+			},
+		);
+
+		await chatPanelStore.open({ mode: 'builder' });
+		await builderStore.sendChatMessage({
+			text: prompt,
+			source: 'canvas',
+			skipUserMessage: true,
+		});
+	} finally {
+		isImproving.value = false;
+	}
+};
+
 // `router.back()` no-ops on shared links with no prior history; nav explicitly.
 const navigateBackToRuns = async () => {
 	if (!workflowId.value) return;
@@ -197,7 +295,58 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 						})
 					}}
 				</h1>
-				<RunStatusPill v-if="run" :status="run.status" />
+				<div :class="$style.headingActions">
+					<RunStatusPill v-if="run" :status="run.status" />
+					<N8nPopover
+						v-if="canImproveWithAI"
+						:open="isMetricPickerOpen"
+						side="bottom"
+						align="end"
+						width="260px"
+						:enable-scrolling="false"
+						@update:open="isMetricPickerOpen = $event"
+						@before-enter="initSelectedMetrics"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:loading="isImproving"
+								data-test-id="improve-with-ai-button"
+							>
+								<template #icon>
+									<N8nIcon icon="sparkles" size="small" />
+								</template>
+								{{ locale.baseText('evaluation.runDetail.improveWithAI') }}
+							</N8nButton>
+						</template>
+						<template #content>
+							<div :class="$style.metricPicker">
+								<N8nText :class="$style.metricPickerTitle" size="small" :bold="true">
+									{{ locale.baseText('evaluation.runDetail.improveWithAI.pickMetrics') }}
+								</N8nText>
+								<div :class="$style.metricPickerList">
+									<N8nCheckbox
+										v-for="name in allMetrics"
+										:key="name"
+										:model-value="selectedMetrics.has(name)"
+										:label="getMetricDisplayLabel(name)"
+										@update:model-value="toggleMetric(name)"
+									/>
+								</div>
+								<N8nButton
+									:class="$style.metricPickerAction"
+									size="small"
+									:disabled="selectedMetrics.size === 0"
+									data-test-id="improve-with-ai-run-button"
+									@click="improveWithAI"
+								>
+									{{ locale.baseText('evaluation.runDetail.improveWithAI.run') }}
+								</N8nButton>
+							</div>
+						</template>
+					</N8nPopover>
+				</div>
 			</div>
 		</div>
 
@@ -250,6 +399,12 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 	gap: var(--spacing--md);
 }
 
+.headingActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
 .backButton {
 	display: inline-flex;
 	align-items: center;
@@ -294,5 +449,28 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+}
+
+.metricPicker {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs);
+}
+
+.metricPickerTitle {
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+}
+
+.metricPickerList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
+}
+
+.metricPickerAction {
+	margin-top: var(--spacing--3xs);
 }
 </style>

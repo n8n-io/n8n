@@ -486,6 +486,31 @@ export function isPlanModeMessage(msg: ChatUI.AssistantMessage): msg is PlanMode
 	);
 }
 
+// ============================================================================
+// Evaluation Improve Message (compact banner for AI-driven improvement)
+// ============================================================================
+
+export interface EvaluationImproveMessageData {
+	metricNames: string[];
+}
+
+export type EvaluationImproveMessage = ChatUI.CustomMessage & {
+	role: 'user';
+	customType: 'evaluation_improve';
+	data: EvaluationImproveMessageData;
+};
+
+export function isEvaluationImproveMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is EvaluationImproveMessage {
+	return (
+		msg.type === 'custom' &&
+		msg.role === 'user' &&
+		'customType' in msg &&
+		msg.customType === 'evaluation_improve'
+	);
+}
+
 export type AssistantProcessOptions = {
 	excludeParameterValues?: boolean;
 };
