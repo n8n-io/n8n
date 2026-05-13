@@ -143,7 +143,9 @@ export function renderObserverTranscript(
 					`[${timestamp}] tool_result ${toolCall.toolName} output=${serializeForObserver(toolCall.output, options)}`,
 				);
 			} else if (toolCall.state === 'rejected') {
-				lines.push(`[${timestamp}] tool_result ${toolCall.toolName} error=${toolCall.error}`);
+				lines.push(
+					`[${timestamp}] tool_result ${toolCall.toolName} error=${serializeErrorForObserver(toolCall.error, options)}`,
+				);
 			}
 		}
 	}
@@ -250,6 +252,17 @@ function serializeForObserver(value: unknown, options: RenderObserverTranscriptO
 		serialized,
 		options.maxSerializedChars ?? DEFAULT_MAX_SERIALIZED_CHARS,
 		'serialized',
+	);
+}
+
+function serializeErrorForObserver(
+	error: string,
+	options: RenderObserverTranscriptOptions,
+): string {
+	return truncateString(
+		redactSensitiveString(error),
+		options.maxStringChars ?? DEFAULT_MAX_STRING_CHARS,
+		'string',
 	);
 }
 

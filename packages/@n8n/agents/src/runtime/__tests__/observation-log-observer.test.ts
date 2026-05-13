@@ -118,6 +118,38 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).not.toContain('inline-output-token');
 		expect(transcript).not.toMatch(/password=\d+\[redacted\]/);
 	});
+
+	it('redacts credential-looking rejected tool errors before serialization', () => {
+		const transcript = renderObserverTranscript(
+			[
+				{
+					id: 'a1',
+					createdAt: new Date(1),
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc1',
+							toolName: 'call_api',
+							input: { url: 'https://example.test' },
+							state: 'rejected',
+							error:
+								'Request failed: Authorization: Bearer rejected-token; api_key=rejected-key; password=rejected-password',
+						},
+					],
+				},
+			],
+			{ maxStringChars: 200 },
+		);
+
+		expect(transcript).toContain('tool_result call_api error=');
+		expect(transcript).toContain('Authorization: [redacted]');
+		expect(transcript).toContain('api_key=[redacted]');
+		expect(transcript).toContain('password=[redacted]');
+		expect(transcript).not.toContain('rejected-token');
+		expect(transcript).not.toContain('rejected-key');
+		expect(transcript).not.toContain('rejected-password');
+	});
 });
 
 describe('runObservationLogObserver', () => {

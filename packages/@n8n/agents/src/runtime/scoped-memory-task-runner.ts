@@ -121,15 +121,13 @@ export class ScopedMemoryTaskRunner {
 		const scopeKey = this.scopeKey(descriptor.scopeKind, descriptor.scopeId);
 		const previous = this.queuesByScope.get(scopeKey) ?? Promise.resolve();
 		const done = previous.catch(() => undefined).then(async () => await this.runTask(info, task));
-		this.queuesByScope.set(
-			scopeKey,
-			done.finally(() => {
-				if (this.queuesByScope.get(scopeKey) === done) {
-					this.queuesByScope.delete(scopeKey);
-				}
-			}),
-		);
-		this.tracker.track(done);
+		const queued = done.finally(() => {
+			if (this.queuesByScope.get(scopeKey) === queued) {
+				this.queuesByScope.delete(scopeKey);
+			}
+		});
+		this.queuesByScope.set(scopeKey, queued);
+		this.tracker.track(queued);
 
 		return { ...descriptor, id, done };
 	}
