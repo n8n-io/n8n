@@ -32,7 +32,7 @@ export interface ObservationLogReflectorInput {
 
 export type ObservationLogReflectFn = (input: ObservationLogReflectorInput) => Promise<string>;
 
-export interface ObservationLogReflectorMemory extends BuiltObservationLogStore {}
+export type ObservationLogReflectorMemory = BuiltObservationLogStore;
 
 export interface ObservationLogReflectorWarning {
 	message: string;
@@ -65,7 +65,12 @@ export type RunObservationLogReflectorResult =
 	  };
 
 export function parseObservationLogReflectionJson(output: string): ObservationLogReflection {
-	const parsed: unknown = JSON.parse(extractJsonObject(output));
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(extractJsonObject(output));
+	} catch {
+		throw new Error('Reflector output must be valid JSON');
+	}
 	if (!isRecord(parsed)) throw new Error('Reflector output must be a JSON object');
 
 	return {
@@ -165,12 +170,14 @@ function extractJsonObject(output: string): string {
 
 function readStringArray(value: unknown, fieldName: string): string[] {
 	if (!Array.isArray(value)) throw new Error(`Reflector field "${fieldName}" must be an array`);
+	const strings: string[] = [];
 	for (const item of value) {
 		if (typeof item !== 'string') {
 			throw new Error(`Reflector field "${fieldName}" must contain only strings`);
 		}
+		strings.push(item);
 	}
-	return value;
+	return strings;
 }
 
 function readMergeArray(value: unknown): ObservationLogMerge[] {
