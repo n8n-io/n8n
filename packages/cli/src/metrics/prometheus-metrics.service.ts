@@ -21,6 +21,8 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import type { Includes, MetricCategory, MetricLabel } from './types';
 
+type NormalizePath = (req: express.Request, opts: unknown) => string;
+
 @Service()
 export class PrometheusMetricsService {
 	constructor(
@@ -203,6 +205,18 @@ export class PrometheusMetricsService {
 	private initRouteMetrics(app: express.Application) {
 		if (!this.includes.metrics.routes) return;
 
+		const { endpoints } = this.globalConfig;
+		const webhookRoutePrefixes = [
+			`/${endpoints.webhook}/`,
+			`/${endpoints.webhookWaiting}/`,
+			`/${endpoints.webhookTest}/`,
+			`/${endpoints.form}/`,
+			`/${endpoints.formWaiting}/`,
+			`/${endpoints.formTest}/`,
+		];
+		const defaultNormalizePath = (promBundle as unknown as { normalizePath: NormalizePath })
+			.normalizePath;
+
 		const metricsMiddleware = promBundle({
 			autoregister: false,
 			includeUp: false,
@@ -210,6 +224,17 @@ export class PrometheusMetricsService {
 			includeMethod: this.includes.labels.apiMethod,
 			includeStatusCode: this.includes.labels.apiStatusCode,
 			httpDurationMetricName: this.prefix + 'http_request_duration_seconds',
+			normalizePath: (req, opts) => {
+				const routePath = req.route?.path;
+				if (
+					typeof routePath === 'string' &&
+					webhookRoutePrefixes.some((p) => routePath.startsWith(p))
+				) {
+					// Render Express 5 splat segments (`*name`) as `:name`
+					return routePath.replace(/\*(\w+)/g, ':$1');
+				}
+				return defaultNormalizePath(req, opts);
+			},
 			customLabels: { webhook_path: undefined, workflow_id: undefined },
 			transformLabels: (labels, _req, res) => {
 				const locals = (res as express.Response).locals as {
