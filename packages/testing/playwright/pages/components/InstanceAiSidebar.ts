@@ -16,7 +16,7 @@ export class InstanceAiSidebar {
 	}
 
 	getThreadByHref(path: string): Locator {
-		return this.getThreadItems().filter({ has: this.root.locator(`a[href="${path}"]`) });
+		return this.root.locator(`a[href="${path}"]`);
 	}
 
 	getRenameInput(): Locator {

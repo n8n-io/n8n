@@ -116,7 +116,14 @@ test.describe(
 				await n8n.instanceAi.sendMessage(prompt);
 				await n8n.instanceAi.waitForResponseComplete();
 				await expect(n8n.instanceAi.getAssistantMessageText(/has been restored/i)).toBeVisible();
-				await expect(n8n.instanceAi.getToolCallsButton('2 tool calls')).toBeVisible();
+				await expect
+					.poll(async () => {
+						const restoredWorkflow = (await n8n.api.workflows.getWorkflow(
+							workflow.id,
+						)) as WorkflowWithArchiveState;
+						return restoredWorkflow.isArchived;
+					})
+					.toBe(false);
 			} finally {
 				// Settings are merged, not replaced — reset deleteWorkflow so the
 				// override does not leak into later tests in this describe block.

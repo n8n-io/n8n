@@ -40,7 +40,9 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 
 			// Create first thread with a unique message
-			await n8n.instanceAi.sendMessage('Message in first thread');
+			await n8n.instanceAi.sendMessage(
+				'For this thread switch test, reply with exactly: first thread ready',
+			);
 			await n8n.instanceAi.waitForResponseComplete();
 			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
 			const firstThreadPath = new URL(n8n.page.url()).pathname;
@@ -53,7 +55,9 @@ test.describe(
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
-			await n8n.instanceAi.sendMessage('Message in second thread');
+			await n8n.instanceAi.sendMessage(
+				'For this thread switch test, reply with exactly: second thread ready',
+			);
 			await n8n.instanceAi.waitForResponseComplete();
 
 			const firstThread = n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath);
@@ -61,10 +65,9 @@ test.describe(
 			await firstThread.click();
 
 			// Should show the first thread's user message (messages load async)
-			await expect(n8n.instanceAi.getUserMessages().first()).toContainText(
-				'Message in first thread',
-				{ timeout: 30_000 },
-			);
+			await expect(n8n.instanceAi.getUserMessages().first()).toContainText('first thread ready', {
+				timeout: 30_000,
+			});
 		});
 
 		test('should rename thread via double-click', async ({ n8n }) => {

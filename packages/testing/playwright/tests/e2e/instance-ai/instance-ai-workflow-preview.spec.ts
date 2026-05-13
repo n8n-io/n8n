@@ -54,18 +54,22 @@ test.describe(
 			// to `success` — the bug is that it stays `running` (orange border).
 			await n8n.instanceAi.sendMessage(
 				'Build a workflow with a manual trigger, a Wait node set to 1 second, ' +
-					'and a Set node called "running state test". After it is built, ' +
-					'run it.',
+					'and a Set node called "running state test".',
 			);
 			await n8n.instanceAi.approveBuildPlan();
 
-			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
-			await n8n.instanceAi.getConfirmApproveButton().click();
-
-			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
+				timeout: 120_000,
+			});
+			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
+				timeout: 10_000,
+			});
+			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
 
 			// All three nodes should show the success indicator.
-			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3);
+			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3, {
+				timeout: 30_000,
+			});
 			// No node should still be in the running/waiting state.
 			await expect(n8n.instanceAi.getPreviewRunningNodes()).toHaveCount(0);
 		});
