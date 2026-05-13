@@ -853,7 +853,6 @@ describe('Integration: Concurrent execution pooling', () => {
 	});
 });
 
-<<<<<<< HEAD
 describe(`Integration: nested evaluation time budget (${engineName})`, () => {
 	const TIMEOUT_MS = 400;
 	const BURN_MS = 150;
