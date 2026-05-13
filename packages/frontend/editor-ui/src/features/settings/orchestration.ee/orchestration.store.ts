@@ -10,6 +10,7 @@ import {
 
 export const WORKER_HISTORY_LENGTH = 100;
 const STALE_SECONDS = 120 * 1000;
+const WORKER_POOLS_POLL_INTERVAL_MS = 10_000;
 
 export interface IOrchestrationStoreState {
 	initialStatusReceived: boolean;
@@ -21,6 +22,7 @@ export interface IOrchestrationStoreState {
 	statusInterval: NodeJS.Timeout | null;
 	availablePools: string[];
 	poolAssignment: PoolAssignment | null;
+	workerPoolsInterval: NodeJS.Timeout | null;
 }
 
 export interface IWorkerHistoryItem {
@@ -37,6 +39,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		statusInterval: null,
 		availablePools: [],
 		poolAssignment: null,
+		workerPoolsInterval: null,
 	}),
 	actions: {
 		updateWorkerStatus(data: WorkerStatus) {
@@ -90,6 +93,23 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 			const response = await getWorkerPools(rootStore.restApiContext);
 			this.availablePools = response.pools;
 			this.poolAssignment = response.assignment;
+		},
+		startWorkerPoolsPolling() {
+			if (this.workerPoolsInterval) return;
+			this.workerPoolsInterval = setInterval(async () => {
+				try {
+					await this.fetchWorkerPools();
+				} catch {
+					// Swallow errors during polling — surfacing a toast every 10s would be noisy.
+					// The initial fetch on mount surfaces errors to the user.
+				}
+			}, WORKER_POOLS_POLL_INTERVAL_MS);
+		},
+		stopWorkerPoolsPolling() {
+			if (this.workerPoolsInterval) {
+				clearInterval(this.workerPoolsInterval);
+				this.workerPoolsInterval = null;
+			}
 		},
 		async updateWorkerPoolAssignment(dto: UpdateWorkerPoolAssignmentDto) {
 			const rootStore = useRootStore();
