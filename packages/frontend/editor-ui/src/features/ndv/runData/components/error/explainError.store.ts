@@ -5,6 +5,7 @@ import type { NodeError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { chatWithAssistant } from '@/features/ai/assistant/assistant.api';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import {
 	buildExplainErrorQuestion,
@@ -30,6 +31,7 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 	const abortController = ref<AbortController | undefined>(undefined);
 
 	const rootStore = useRootStore();
+	const telemetry = useTelemetry();
 
 	function reset(): void {
 		abortController.value?.abort();
@@ -80,6 +82,11 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 						return;
 					}
 					result.value = parseExplainErrorResponse(buffer);
+					telemetry.track('User used Explain this error', {
+						node_type: error.node?.type ?? 'unknown',
+						result_kind: result.value?.kind ?? 'unknown',
+						outcome: 'success',
+					});
 					state.value = 'ready';
 					resolve();
 				},
@@ -88,6 +95,10 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 						resolve();
 						return;
 					}
+					telemetry.track('User used Explain this error', {
+						node_type: error.node?.type ?? 'unknown',
+						outcome: 'error',
+					});
 					state.value = 'error';
 					result.value = undefined;
 					resolve();

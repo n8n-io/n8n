@@ -4,6 +4,7 @@ import type { Mock } from 'vitest';
 import type { NodeError } from 'n8n-workflow';
 
 const apiSpy: Mock = vi.fn();
+const telemetryTrack: Mock = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	chatWithAssistant: (...args: unknown[]) => apiSpy(...args),
@@ -13,6 +14,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: { baseUrl: '', sessionId: 's', pushRef: 'p' },
 	}),
+}));
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
 import { useExplainErrorStore } from './explainError.store';
@@ -43,6 +48,7 @@ describe('useExplainErrorStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		apiSpy.mockReset();
+		telemetryTrack.mockReset();
 	});
 
 	it('starts idle', () => {
@@ -158,5 +164,33 @@ describe('useExplainErrorStore', () => {
 		store.reset();
 		expect(store.state).toBe('idle');
 		expect(store.result).toBeUndefined();
+	});
+
+	it('emits a telemetry event with outcome=success on a structured response', async () => {
+		apiSpy.mockImplementation((_ctx, _payload, onMessage, onDone) => {
+			onMessage({
+				sessionId: 'sid',
+				messages: [{ role: 'assistant', type: 'message', text: fencedJson }],
+			});
+			onDone();
+		});
+		const store = useExplainErrorStore();
+		await store.explain(sampleError);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'User used Explain this error',
+			expect.objectContaining({ outcome: 'success', result_kind: 'structured' }),
+		);
+	});
+
+	it('emits a telemetry event with outcome=error on failure', async () => {
+		apiSpy.mockImplementation((_ctx, _payload, _onMessage, _onDone, onError) => {
+			onError(new Error('boom'));
+		});
+		const store = useExplainErrorStore();
+		await store.explain(sampleError);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'User used Explain this error',
+			expect.objectContaining({ outcome: 'error' }),
+		);
 	});
 });
