@@ -10,6 +10,7 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { isApiKeyScope } from '@n8n/permissions';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
@@ -235,8 +236,19 @@ export class ControllerRegistry {
 			if (!req.user) throw new UnauthenticatedError();
 
 			const { scope, globalOnly } = accessScope;
+			const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
 
 			try {
+				if (apiKeyScopes) {
+					if (!isApiKeyScope(scope) || !apiKeyScopes.includes(scope)) {
+						res.status(403).json({
+							status: 'error',
+							message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+						});
+						return;
+					}
+				}
+
 				if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
 					res.status(403).json({
 						status: 'error',

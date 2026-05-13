@@ -70,6 +70,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
+	'instanceAi:message',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
@@ -120,6 +121,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
+	'instanceAi:message',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];

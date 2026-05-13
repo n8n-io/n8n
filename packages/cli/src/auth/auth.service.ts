@@ -15,6 +15,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { UrlService } from '@/services/url.service';
 
 interface AuthJwtPayload {
@@ -66,6 +67,7 @@ export class AuthService {
 		private readonly logger: Logger,
 		private readonly license: License,
 		private readonly jwtService: JwtService,
+		private readonly authStrategyRegistry: AuthStrategyRegistry,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
@@ -150,6 +152,10 @@ export class AuthService {
 						throw error;
 					}
 				}
+			}
+
+			if (!req.user) {
+				await this.authStrategyRegistry.authenticate(req);
 			}
 
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';

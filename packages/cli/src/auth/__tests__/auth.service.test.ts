@@ -16,6 +16,7 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
+import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { UrlService } from '@/services/url.service';
 import type { License } from '@/license';
 
@@ -35,6 +36,7 @@ describe('AuthService', () => {
 		userManagement: { jwtSecret: 'random-secret' },
 	});
 	const jwtService = new JwtService(mock(), globalConfig);
+	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
@@ -46,6 +48,7 @@ describe('AuthService', () => {
 		logger,
 		license,
 		jwtService,
+		authStrategyRegistry,
 		urlService,
 		userRepository,
 		invalidAuthTokenRepository,
