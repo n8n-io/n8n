@@ -908,6 +908,85 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return executions.map((execution) => this.toSummary(execution));
 	}
 
+	/**
+	 * Find executions that used a given credential. Joins `execution_metadata`
+	 * on `key='credentialId' AND value=:credentialId`, so only single-node (hub)
+	 * executions surface here — regular workflow runs do not persist a
+	 * `credentialId` row on metadata.
+	 *
+	 * No workflow-access filter: callers must enforce access at a higher layer
+	 * (the credentials controller uses `@ProjectScope('credential:read')`). The
+	 * credential-detail audit log is a credential-scoped surface, not a
+	 * workflow-scoped one.
+	 */
+	async findManyByCredentialId(
+		credentialId: string,
+		range: { limit: number; lastId?: string },
+	): Promise<ExecutionSummary[]> {
+		const fields = Object.keys(this.summaryFields)
+			.map((key) => `execution.${key} AS "${key}"`)
+			.concat('workflow.name AS "workflowName"');
+
+		const qb = this.createQueryBuilder('execution')
+			.select(fields)
+			.innerJoin('execution.workflow', 'workflow')
+			.innerJoin(
+				ExecutionMetadata,
+				'md',
+				'md.executionId = execution.id AND md.key = :key AND md.value = :value',
+				{ key: 'credentialId', value: credentialId },
+			)
+			.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' })
+			.limit(range.limit);
+
+		if (range.lastId) qb.andWhere('execution.id < :lastId', { lastId: range.lastId });
+
+		const raw: Array<{
+			id: number | string;
+			createdAt?: Date | string;
+			startedAt: Date | string | null;
+			stoppedAt?: Date | string;
+		}> = await qb.getRawMany();
+
+		return raw.map((execution) => this.toSummary(execution));
+	}
+
+	/**
+	 * Counts of executions that used a given credential, bucketed for the
+	 * credential-detail header line. `succeeded` is `status='success'`;
+	 * `failed` covers `error` and `crashed`. Other statuses (running, waiting,
+	 * canceled, new) contribute to `total` but not to the success/failure
+	 * buckets.
+	 */
+	async countByCredentialId(
+		credentialId: string,
+	): Promise<{ total: number; succeeded: number; failed: number }> {
+		const rows: Array<{ status: ExecutionStatus; count: string | number }> =
+			await this.createQueryBuilder('execution')
+				.select('execution.status', 'status')
+				.addSelect('COUNT(*)', 'count')
+				.innerJoin(
+					ExecutionMetadata,
+					'md',
+					'md.executionId = execution.id AND md.key = :key AND md.value = :value',
+					{ key: 'credentialId', value: credentialId },
+				)
+				.groupBy('execution.status')
+				.getRawMany();
+
+		let total = 0;
+		let succeeded = 0;
+		let failed = 0;
+		for (const row of rows) {
+			const n = typeof row.count === 'number' ? row.count : parseInt(row.count, 10);
+			total += n;
+			if (row.status === 'success') succeeded += n;
+			else if (row.status === 'error' || row.status === 'crashed') failed += n;
+		}
+
+		return { total, succeeded, failed };
+	}
+
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;

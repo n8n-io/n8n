@@ -21,6 +21,7 @@ import { useRoute } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
 import type { SingleNodeExecutionSummaryExtras } from '../../executions.types';
 import { getSingleNodeHeadline, getCallerDisplay } from '../../executions.utils';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
@@ -96,6 +97,23 @@ const singleNodeHeader = computed(() => {
 		});
 	}
 	return locale.baseText('executionDetails.singleNode.fallbackHeader');
+});
+
+const credentialsStore = useCredentialsStore();
+
+/**
+ * Cross-link back to the credential used by this hub call. Falls back through
+ * three states: known credential → link, deleted/inaccessible → plain text id,
+ * no `credentialId` on the summary → omit entirely.
+ */
+const credentialInfo = computed<{ id: string; name?: string; deleted: boolean } | null>(() => {
+	if (!isSingleNodeExecution.value || !props.execution?.credentialId) return null;
+	const credential = credentialsStore.getCredentialById(props.execution.credentialId);
+	return {
+		id: props.execution.credentialId,
+		name: credential?.name,
+		deleted: !credential,
+	};
 });
 
 const isAnnotationEnabled = computed(
@@ -290,6 +308,30 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					>
 						{{ singleNodeHeader }}
 					</N8nText>
+					<div
+						v-if="credentialInfo"
+						:class="$style.singleNodeCredential"
+						data-test-id="execution-preview-credential"
+					>
+						<N8nText size="medium" color="text-base">
+							{{ locale.baseText('executionDetails.singleNode.credentialLabel') }}:
+						</N8nText>
+						{{ ' ' }}
+						<N8nText v-if="credentialInfo.deleted" size="medium" color="text-light">
+							{{ locale.baseText('executionDetails.singleNode.credentialDeleted') }}
+							({{ credentialInfo.id }})
+						</N8nText>
+						<RouterLink
+							v-else
+							:to="{
+								name: VIEWS.CREDENTIALS,
+								params: { credentialId: credentialInfo.id },
+							}"
+							:class="$style.credentialLink"
+						>
+							{{ credentialInfo.name ?? credentialInfo.id }}
+						</RouterLink>
+					</div>
 				</div>
 				<div v-else :class="$style.executionTitle">
 					<N8nText size="large" color="text-dark" :bold="true" data-test-id="execution-time">{{
@@ -512,6 +554,21 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.singleNodeCredential {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--3xs);
+}
+
+.credentialLink {
+	color: var(--color--primary);
+	text-decoration: none;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .voteButtons {

@@ -282,6 +282,77 @@ describe('ExecutionService', () => {
 		});
 	});
 
+	describe('findManyByCredentialId', () => {
+		it('returns enriched summaries and aggregate counts', async () => {
+			const summaries = [
+				{ id: 'exec-a', mode: 'single-node', workflowId: 'w-1' },
+				{ id: 'exec-b', mode: 'single-node', workflowId: 'w-2' },
+			] as unknown as ExecutionSummary[];
+
+			executionRepository.findManyByCredentialId.mockResolvedValue(summaries);
+			executionRepository.countByCredentialId.mockResolvedValue({
+				total: 5,
+				succeeded: 4,
+				failed: 1,
+			});
+			executionMetadataRepository.createQueryBuilder.mockReturnValue({
+				where: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([
+					{ id: 1, executionId: 'exec-a', key: 'caller.kind', value: 'mcp' },
+					{ id: 2, executionId: 'exec-a', key: 'caller.name', value: 'Claude Desktop' },
+				]),
+			} as never);
+
+			const result = await executionService.findManyByCredentialId('cred_abc', { limit: 20 });
+
+			expect(executionRepository.findManyByCredentialId).toHaveBeenCalledWith('cred_abc', {
+				limit: 20,
+			});
+			expect(executionRepository.countByCredentialId).toHaveBeenCalledWith('cred_abc');
+			expect(result.total).toBe(5);
+			expect(result.succeeded).toBe(4);
+			expect(result.failed).toBe(1);
+			expect((result.results[0] as ExecutionSummary & { caller?: ExecutionCaller }).caller).toEqual(
+				{ kind: 'mcp', name: 'Claude Desktop' },
+			);
+		});
+
+		it('passes lastId through for pagination', async () => {
+			executionRepository.findManyByCredentialId.mockResolvedValue([]);
+			executionRepository.countByCredentialId.mockResolvedValue({
+				total: 0,
+				succeeded: 0,
+				failed: 0,
+			});
+
+			await executionService.findManyByCredentialId('cred_xyz', {
+				limit: 50,
+				lastId: 'exec-99',
+			});
+
+			expect(executionRepository.findManyByCredentialId).toHaveBeenCalledWith('cred_xyz', {
+				limit: 50,
+				lastId: 'exec-99',
+			});
+		});
+
+		it('returns zero counts when the credential has no executions', async () => {
+			executionRepository.findManyByCredentialId.mockResolvedValue([]);
+			executionRepository.countByCredentialId.mockResolvedValue({
+				total: 0,
+				succeeded: 0,
+				failed: 0,
+			});
+
+			const result = await executionService.findManyByCredentialId('cred_unused', { limit: 20 });
+
+			expect(result.results).toHaveLength(0);
+			expect(result.total).toBe(0);
+			expect(result.succeeded).toBe(0);
+			expect(result.failed).toBe(0);
+		});
+	});
+
 	describe('retry', () => {
 		it('should error on retrying a execution that was aborted before starting', async () => {
 			/**

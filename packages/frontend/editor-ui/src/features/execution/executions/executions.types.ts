@@ -92,6 +92,9 @@ export type SingleNodeExecutionSummaryExtras = {
 	actionId?: string;
 	/** Human-friendly label, e.g. `Slack - Post Message`. Preferred for display. */
 	actionDisplayName?: string;
+	/** Credential id used by this hub call. Used by the execution detail view to
+	 * cross-link back to the credential page. */
+	credentialId?: string;
 };
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & {

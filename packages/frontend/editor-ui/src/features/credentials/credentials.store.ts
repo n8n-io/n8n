@@ -333,6 +333,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return await credentialsApi.getCredentialData(rootStore.restApiContext, id);
 	};
 
+	const fetchCredentialExecutions = async (
+		credentialId: string,
+		options: { limit?: number; lastId?: string } = {},
+	): Promise<credentialsApi.CredentialExecutionsResponse> => {
+		return await credentialsApi.getCredentialExecutions(
+			rootStore.restApiContext,
+			credentialId,
+			options,
+		);
+	};
+
 	const getCredentialTypesNodeDescriptions: (
 		overrideCredType: NodeParameterValueType,
 		nodeType: INodeTypeDescription | null,
@@ -514,6 +525,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		createNewCredential,
 		updateCredential,
 		getCredentialData,
+		fetchCredentialExecutions,
 		getCredentialTypesNodeDescriptions,
 		oAuth1Authorize,
 		oAuth2Authorize,
