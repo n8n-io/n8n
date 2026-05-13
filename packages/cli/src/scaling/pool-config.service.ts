@@ -1,3 +1,4 @@
+import type { ProjectPoolSettingsResponse } from '@n8n/api-types';
 import { ProjectPoolSettingsRepository, SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
@@ -77,5 +78,25 @@ export class PoolConfigService {
 
 		void this.cacheService.set(cacheKey, poolName ?? '');
 		return poolName;
+	}
+
+	async getProjectPoolSettings(projectId: string): Promise<ProjectPoolSettingsResponse> {
+		const cacheKey = `projectPoolSettings:${projectId}`;
+
+		const cached = await this.cacheService.get<string>(cacheKey);
+		if (cached !== undefined) {
+			return jsonParse<ProjectPoolSettingsResponse>(cached, {
+				fallbackValue: { assignment: {}, allowedPools: [] },
+			});
+		}
+
+		const settings = await this.projectPoolSettingsRepository.getSettings(projectId);
+		const result: ProjectPoolSettingsResponse = settings ?? {
+			assignment: {},
+			allowedPools: [],
+		};
+
+		void this.cacheService.set(cacheKey, JSON.stringify(result));
+		return result;
 	}
 }
