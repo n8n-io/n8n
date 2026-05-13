@@ -3032,6 +3032,9 @@ export interface IWorkflowBase {
 	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+	/** Optional here because IWorkflowBase is used in contexts where node groups
+	 * are irrelevant (executions, telemetry, tests). The DB column is NOT NULL
+	 * with default `[]` and `WorkflowEntity` has this as required. */
 	nodeGroups?: IWorkflowGroup[];
 }
 
