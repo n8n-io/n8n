@@ -1,10 +1,10 @@
-import { ScopedMemoryTaskRunner } from '../scoped-memory-task-runner';
 import type {
 	BuiltObservationLogTaskLockStore,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 	ObservationLogScopeKind,
 } from '../../types/sdk/observation-log';
+import { ScopedMemoryTaskRunner } from '../scoped-memory-task-runner';
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
 	let resolve!: () => void;
@@ -56,6 +56,7 @@ describe('ScopedMemoryTaskRunner', () => {
 			{ taskKind: 'reflector', scopeKind: 'thread', scopeId: 'thread-1' },
 			async () => {
 				events.push('reflector:start');
+				await Promise.resolve();
 			},
 		);
 
@@ -100,7 +101,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		const handle = runner.schedule(
 			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
 			async () => {
-				throw error;
+				await Promise.reject(error);
 			},
 		);
 
@@ -111,7 +112,10 @@ describe('ScopedMemoryTaskRunner', () => {
 	});
 
 	it('acquires and releases a store lock around the task', async () => {
-		const acquire = jest.fn(
+		const acquire = jest.fn<
+			ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>,
+			Parameters<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+		>(
 			async (scopeKind, scopeId, taskKind, opts) =>
 				await Promise.resolve(lockHandle(scopeKind, scopeId, taskKind, opts.holderId)),
 		);
@@ -120,7 +124,7 @@ describe('ScopedMemoryTaskRunner', () => {
 
 		const handle = runner.schedule(
 			{ taskKind: 'reflector', scopeKind: 'resource', scopeId: 'user-1' },
-			async () => 'done',
+			async () => await Promise.resolve('done'),
 		);
 
 		await expect(handle.done).resolves.toMatchObject({ status: 'completed', value: 'done' });

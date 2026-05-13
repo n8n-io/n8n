@@ -1,10 +1,10 @@
+import type { AgentDbMessage } from '../../types/sdk/message';
 import { InMemoryMemory } from '../memory-store';
 import {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from '../observation-log-observer';
-import type { AgentDbMessage } from '../../types/sdk/message';
 
 function message(
 	id: string,
@@ -123,10 +123,12 @@ describe('runObservationLogObserver', () => {
 			tokenCounter: () => 10,
 			now: new Date(2026, 4, 12, 14, 31),
 			observe: async () =>
-				[
-					'* 🔴 (14:31) User needs the current request remembered.',
-					'  * ✅ (14:31) Observer pipeline parsed the child row.',
-				].join('\n'),
+				await Promise.resolve(
+					[
+						'* 🔴 (14:31) User needs the current request remembered.',
+						'  * ✅ (14:31) Observer pipeline parsed the child row.',
+					].join('\n'),
+				),
 		});
 
 		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2 });

@@ -221,16 +221,18 @@ describe('runObservationLogReflector', () => {
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			reflect: async (input) => {
 				expect(input.renderedObservationLog).toContain(`[${stale.id}] 🟢`);
-				return JSON.stringify({
-					drop: [stale.id],
-					merge: [
-						{
-							supersedes: [oldA.id, oldB.id],
-							marker: '🟡',
-							text: 'User compared old plan A and old plan B.',
-						},
-					],
-				});
+				return await Promise.resolve(
+					JSON.stringify({
+						drop: [stale.id],
+						merge: [
+							{
+								supersedes: [oldA.id, oldB.id],
+								marker: '🟡',
+								text: 'User compared old plan A and old plan B.',
+							},
+						],
+					}),
+				);
 			},
 		});
 
@@ -288,7 +290,7 @@ describe('runObservationLogReflector', () => {
 			scopeKind: 'thread',
 			scopeId: 'thread-1',
 			reflectorThresholdTokens: 10,
-			reflect: async () => JSON.stringify({ drop: [stale.id], merge: [] }),
+			reflect: async () => await Promise.resolve(JSON.stringify({ drop: [stale.id], merge: [] })),
 			onWarning: (warning) => warnings.push(warning.message),
 		});
 
