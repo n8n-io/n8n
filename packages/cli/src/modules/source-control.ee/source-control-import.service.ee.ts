@@ -49,6 +49,7 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
+import { validateWorkflowNodeGroups } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -727,6 +728,15 @@ export class SourceControlImportService {
 		const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
 		importedWorkflow.nodeGroups ??= [];
+
+		try {
+			validateWorkflowNodeGroups(importedWorkflow);
+		} catch {
+			this.logger.warn(
+				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,
+			);
+			importedWorkflow.nodeGroups = [];
+		}
 
 		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
 
