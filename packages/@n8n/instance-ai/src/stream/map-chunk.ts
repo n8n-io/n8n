@@ -4,6 +4,7 @@ import {
 	taskListSchema,
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	hubActionExecutionPayloadSchema,
 } from '@n8n/api-types';
 import type {
 	InstanceAiCredentialRequest,
@@ -12,6 +13,7 @@ import type {
 	PlannedTaskArg,
 	TaskList,
 	GatewayConfirmationRequiredPayload,
+	HubActionExecutionPayload,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -299,6 +301,15 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
+		// Extract optional hubActionExecution for rich Hub action approval card
+		let hubActionExecution: HubActionExecutionPayload | undefined;
+		if (isRecord(suspendPayload.hubActionExecution)) {
+			const parsed = hubActionExecutionPayloadSchema.safeParse(suspendPayload.hubActionExecution);
+			if (parsed.success) {
+				hubActionExecution = parsed.data;
+			}
+		}
+
 		return {
 			type: 'confirmation-request',
 			...base,
@@ -325,6 +336,7 @@ export function mapMastraChunkToEvent(
 				...(tasks ? { tasks } : {}),
 				...(planItems ? { planItems } : {}),
 				...(resourceDecision ? { resourceDecision } : {}),
+				...(hubActionExecution ? { hubActionExecution } : {}),
 			},
 		};
 	}

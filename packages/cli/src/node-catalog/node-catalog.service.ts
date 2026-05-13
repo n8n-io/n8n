@@ -1,4 +1,5 @@
 import type { NodeTypeParser } from '@n8n/ai-workflow-builder';
+import type { NodeOperation, NodeOperationInput, NodeSchemaShape } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
@@ -39,35 +40,9 @@ export interface StructuredNodeSearchResult {
 	description: string;
 }
 
-export interface NodeOperationInputSchema {
-	type: 'object';
-	properties: Record<string, unknown>;
-	required?: string[];
-}
-
-export interface NodeOperationSchema {
-	/**
-	 * Stable identifier:
-	 * - `<nodeId>.<resource>.<operation>` when the node has both discriminators
-	 * - `<nodeId>.<operation>` when there is only an operation discriminator
-	 * - `<nodeId>` when the node has no resource/operation discriminators
-	 */
-	id: string;
-	resource?: string;
-	/** Omitted for nodes without an operation discriminator. */
-	operation?: string;
-	displayName: string;
-	description?: string;
-	inputSchema: NodeOperationInputSchema;
-}
-
-export interface NodeSchema {
-	nodeId: string;
-	displayName: string;
-	description: string;
-	credentials: Array<{ name: string }>;
-	operations: NodeOperationSchema[];
-}
+export type NodeOperationInputSchema = NodeOperationInput;
+export type NodeOperationSchema = NodeOperation;
+export type NodeSchema = NodeSchemaShape;
 
 /** Default per-query result limit; matches the LLM-facing search tool. */
 const STRUCTURED_SEARCH_LIMIT = 5;
@@ -153,10 +128,16 @@ function extractStringOptions(property: INodeProperties): StringOption[] {
 		const value = (opt as { value: unknown }).value;
 		if (typeof value !== 'string') continue;
 		const name = (opt as { name: unknown }).name;
+		const action = (opt as { action?: unknown }).action;
 		const description = (opt as { description?: unknown }).description;
 		result.push({
 			value,
-			displayName: typeof name === 'string' ? name : value,
+			displayName:
+				typeof action === 'string' && action.length > 0
+					? action
+					: typeof name === 'string'
+						? name
+						: value,
 			...(typeof description === 'string' ? { description } : {}),
 		});
 	}

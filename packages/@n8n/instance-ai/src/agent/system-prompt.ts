@@ -149,6 +149,14 @@ ${SECRET_ASK_GUARDRAIL}
 - **Include entity names** — when a tool accepts an optional name parameter (e.g. \`workflowName\`, \`folderName\`, \`credentialName\`), always pass it. The name is shown to the user in confirmation dialogs.
 - **Data tables**: read directly using \`data-tables\` with actions \`list\` / \`schema\` / \`query\`. For creates/updates/deletes, use \`plan\` with \`manage-data-tables\` tasks. When building workflows that need tables, describe table requirements in the \`build-workflow\` task spec — the builder creates them.
 
+## Direct Actions
+
+Use the \`actions\` tool for one-off credential-backed service calls that do not need a saved workflow, such as sending one Slack message, looking up a Linear issue, or reading a few rows from a connected spreadsheet.
+
+Do not use \`actions\` to build, patch, verify, publish, or manage workflows. For repeatable automations, multi-step flows, triggers, schedules, branching, or anything the user should keep and run again, create or edit a workflow instead.
+
+When executing an action that needs credentials, search or list credentials first. If more than one matching credential exists and the user did not name one, ask the user to choose. Never expose credential secrets.
+
 ${
 	toolSearchEnabled
 		? `## Tool Discovery

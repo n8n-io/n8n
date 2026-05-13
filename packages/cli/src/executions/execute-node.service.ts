@@ -31,7 +31,7 @@ import { ExecutionMetadataService } from '@/services/execution-metadata.service'
 import { WorkflowRunner } from '@/workflow-runner';
 
 export type ExecuteNodeCaller = {
-	kind: 'mcp' | 'sdk' | 'cli';
+	kind: 'mcp' | 'sdk' | 'cli' | 'instance-ai';
 	name: string;
 	clientId?: string;
 };
@@ -476,7 +476,7 @@ export class ExecuteNodeService {
 
 		// Persist caller / node identity into ExecutionMetadata so n8n Hub
 		// observability (and the executions DTO) can attribute single-node runs
-		// back to the MCP / SDK / CLI invocation. Failures here must not bubble
+		// back to the MCP / SDK / CLI / Instance AI invocation. Failures here must not bubble
 		// up — the execution itself already succeeded and we don't want metadata
 		// loss to look like an execution failure to the caller.
 		await this.persistCallerMetadata(executionId, req, description);

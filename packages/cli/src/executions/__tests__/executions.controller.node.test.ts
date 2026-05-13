@@ -151,6 +151,15 @@ describe('ExecuteNodeRequestDto (Zod schema)', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it('accepts an Instance AI caller', async () => {
+		const { ExecuteNodeRequestDto } = await import('@/executions/dto/execute-node-request.dto');
+		const result = ExecuteNodeRequestDto.safeParse({
+			nodeType: 'n8n-nodes-base.set',
+			caller: { kind: 'instance-ai', name: 'Instance AI' },
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('rejects a non-numeric nodeVersion', async () => {
 		const { ExecuteNodeRequestDto } = await import('@/executions/dto/execute-node-request.dto');
 		const result = ExecuteNodeRequestDto.safeParse({

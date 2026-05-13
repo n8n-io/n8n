@@ -9,7 +9,11 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
-import type { ExecutionError, IRunExecutionData, ITaskData } from 'n8n-workflow';
+jest.mock('@/modules/mcp/tools/n8n-search-tools.tool', () => ({
+	searchN8nTools: jest.fn(),
+}));
+
+import type { ExecutionError, INode, IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import {
 	extractExecutionResult,
@@ -945,11 +949,476 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { NodeCatalogService } from '@/node-catalog';
+import type { ExecuteNodeService } from '@/executions/execute-node.service';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { searchN8nTools } from '@/modules/mcp/tools/n8n-search-tools.tool';
 
 const mockedUserHasScopes = jest.mocked(userHasScopes);
+const mockedSearchN8nTools = jest.mocked(searchN8nTools);
+
+const actionInputSchema = {
+	type: 'object' as const,
+	properties: {
+		text: { type: 'string' },
+	},
+	required: ['text'],
+};
+
+function makeActionDryRunPreview(type = 'n8n-nodes-base.slack') {
+	return {
+		node: {
+			id: 'node-1',
+			name: 'Action',
+			type,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		},
+	} satisfies { node: INode };
+}
+
+function createActionAdapterForTests(options?: {
+	threadId?: string;
+	allowSendingParameterValues?: boolean;
+}) {
+	const schemas = {
+		'n8n-nodes-base.slack': {
+			nodeId: 'n8n-nodes-base.slack',
+			displayName: 'Slack',
+			description: 'Use Slack',
+			credentials: [{ name: 'slackApi' }, { name: 'slackOAuth2Api' }],
+			operations: [
+				{
+					id: 'n8n-nodes-base.slack.message.send',
+					resource: 'message',
+					operation: 'send',
+					displayName: 'Send a message',
+					description: 'Send a message',
+					inputSchema: actionInputSchema,
+				},
+			],
+		},
+		'n8n-nodes-base.gmail': {
+			nodeId: 'n8n-nodes-base.gmail',
+			displayName: 'Gmail',
+			description: 'Use Gmail',
+			credentials: [{ name: 'gmailOAuth2' }],
+			operations: [
+				{
+					id: 'n8n-nodes-base.gmail.message.send',
+					resource: 'message',
+					operation: 'send',
+					displayName: 'Send an email',
+					inputSchema: actionInputSchema,
+				},
+			],
+		},
+		'n8n-nodes-base.set': {
+			nodeId: 'n8n-nodes-base.set',
+			displayName: 'Set',
+			description: 'Set data',
+			credentials: [],
+			operations: [
+				{
+					id: 'n8n-nodes-base.set',
+					displayName: 'Set',
+					description: 'Set data',
+					inputSchema: {
+						type: 'object' as const,
+						properties: {},
+					},
+				},
+			],
+		},
+	};
+
+	const getNodeType = jest.fn((nodeId: string) =>
+		Object.prototype.hasOwnProperty.call(schemas, nodeId) ? { name: nodeId } : null,
+	);
+
+	const mockNodeCatalogService = {
+		getNodeSchema: jest.fn(async (nodeId: string) => {
+			if (Object.prototype.hasOwnProperty.call(schemas, nodeId)) {
+				return schemas[nodeId as keyof typeof schemas];
+			}
+			return null;
+		}),
+		getNodeTypeParser: jest.fn(() => ({ getNodeType })),
+	};
+
+	const credentials = [
+		{
+			id: 'slack-api',
+			name: 'Slack API',
+			type: 'slackApi',
+			data: { token: 'secret' },
+			scopes: ['credential:read'],
+		},
+		{
+			id: 'slack-oauth',
+			name: 'Slack OAuth',
+			type: 'slackOAuth2Api',
+			data: { token: 'secret' },
+		},
+		{
+			id: 'gmail-oauth',
+			name: 'Gmail OAuth',
+			type: 'gmailOAuth2',
+			data: { token: 'secret' },
+		},
+	];
+
+	const mockCredentialsService = {
+		getMany: jest.fn(
+			async (_user: User, getManyOptions?: Parameters<CredentialsService['getMany']>[1]) => {
+				const filter = getManyOptions?.listQueryOptions?.filter as { type?: string } | undefined;
+				if (!filter?.type) return credentials;
+				return credentials.filter((credential) => credential.type.includes(filter.type ?? ''));
+			},
+		),
+	};
+
+	const mockExecuteNodeService = {
+		execute: jest.fn(),
+	};
+
+	const mockExecutionRepository = {
+		findSingleExecution: jest.fn(),
+	};
+
+	const mockTelemetry = {
+		track: jest.fn(),
+	};
+
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	const service = new InstanceAiAdapterService(
+		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[0],
+		{
+			ai: { allowSendingParameterValues: options?.allowSendingParameterValues ?? false },
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
+		mockExecutionRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
+		mockCredentialsService as unknown as CredentialsService,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
+		{
+			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{
+			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[25],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		mockNodeCatalogService as unknown as NodeCatalogService,
+		mockExecuteNodeService as unknown as ExecuteNodeService,
+	);
+
+	const context = service.createContext(mockUser, { threadId: options?.threadId });
+
+	return {
+		actionService: context.actionService,
+		mockCredentialsService,
+		mockNodeCatalogService: mockNodeCatalogService as unknown as NodeCatalogService,
+		mockExecuteNodeService: mockExecuteNodeService as unknown as jest.Mocked<
+			Pick<ExecuteNodeService, 'execute'>
+		>,
+		mockExecutionRepository,
+		mockTelemetry,
+		mockUser,
+	};
+}
+
+describe('createActionAdapter', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('delegates search to searchN8nTools and maps action metadata safely', async () => {
+		const { actionService, mockCredentialsService, mockNodeCatalogService, mockUser } =
+			createActionAdapterForTests();
+		mockedSearchN8nTools.mockResolvedValue({
+			results: [
+				{
+					id: 'slack.message.send',
+					displayName: 'Slack: Send a message',
+					description: 'Send a Slack message',
+					inputSchema: actionInputSchema,
+					userCredentials: [
+						{
+							id: 'slack-api',
+							name: 'Slack API',
+						},
+					],
+				},
+			],
+		} as Awaited<ReturnType<typeof searchN8nTools>>);
+
+		const result = await actionService.search({ query: 'send slack', hasCredential: true });
+
+		expect(mockedSearchN8nTools).toHaveBeenCalledWith(
+			mockUser,
+			mockCredentialsService,
+			mockNodeCatalogService,
+			{
+				query: 'send slack',
+				filters: { hasCredential: true },
+			},
+		);
+		expect(result.results).toEqual([
+			{
+				id: 'slack.message.send',
+				nodeId: 'n8n-nodes-base.slack',
+				resource: 'message',
+				operation: 'send',
+				displayName: 'Slack: Send a message',
+				description: 'Send a Slack message',
+				inputSchema: actionInputSchema,
+				userCredentials: [{ id: 'slack-api', name: 'Slack API' }],
+			},
+		]);
+		expect(result.results[0].userCredentials[0]).not.toHaveProperty('type');
+	});
+
+	it('describes a node using NodeCatalogService.getNodeSchema()', async () => {
+		const { actionService, mockNodeCatalogService } = createActionAdapterForTests();
+
+		const result = await actionService.describe('n8n-nodes-base.slack');
+
+		expect(mockNodeCatalogService.getNodeSchema).toHaveBeenCalledWith('n8n-nodes-base.slack');
+		expect(result).toMatchObject({
+			nodeId: 'n8n-nodes-base.slack',
+			displayName: 'Slack',
+		});
+	});
+
+	it('resolves an operation action id to a human-readable descriptor', async () => {
+		const { actionService } = createActionAdapterForTests();
+
+		const result = await actionService.resolveAction('slack.message.send');
+
+		expect(result).toEqual({
+			id: 'slack.message.send',
+			nodeId: 'n8n-nodes-base.slack',
+			displayName: 'Slack — Send a message',
+			nodeDisplayName: 'Slack',
+			operationDisplayName: 'Send a message',
+			inputSchema: actionInputSchema,
+		});
+	});
+
+	it('resolves a bare node action id to the node display name', async () => {
+		const { actionService } = createActionAdapterForTests();
+
+		const result = await actionService.resolveAction('set');
+
+		expect(result).toEqual({
+			id: 'set',
+			nodeId: 'n8n-nodes-base.set',
+			displayName: 'Set',
+			nodeDisplayName: 'Set',
+			inputSchema: {
+				type: 'object',
+				properties: {},
+			},
+		});
+	});
+
+	it('lists safe credential summaries for a node type', async () => {
+		const { actionService } = createActionAdapterForTests();
+
+		const result = await actionService.listCredentials({
+			nodeType: 'n8n-nodes-base.slack',
+		});
+
+		expect(result.credentials).toEqual([
+			{ id: 'slack-api', name: 'Slack API', type: 'slackApi' },
+			{ id: 'slack-oauth', name: 'Slack OAuth', type: 'slackOAuth2Api' },
+		]);
+		expect(result.credentials[0]).not.toHaveProperty('data');
+		expect(result.credentials[0]).not.toHaveProperty('scopes');
+	});
+
+	it('lists safe credential summaries for an action id', async () => {
+		const { actionService, mockNodeCatalogService } = createActionAdapterForTests();
+
+		const result = await actionService.listCredentials({
+			actionId: 'slack.message.send',
+		});
+
+		expect(mockNodeCatalogService.getNodeSchema).toHaveBeenCalledWith('n8n-nodes-base.slack');
+		expect(result.credentials).toEqual([
+			{ id: 'slack-api', name: 'Slack API', type: 'slackApi' },
+			{ id: 'slack-oauth', name: 'Slack OAuth', type: 'slackOAuth2Api' },
+		]);
+	});
+
+	it("lists all of the user's credentials when no node or action filter is provided", async () => {
+		const { actionService, mockCredentialsService } = createActionAdapterForTests();
+
+		const result = await actionService.listCredentials({});
+
+		expect(mockCredentialsService.getMany).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				listQueryOptions: expect.objectContaining({ take: expect.any(Number) }),
+			}),
+		);
+		expect(result.credentials).toEqual([
+			{ id: 'slack-api', name: 'Slack API', type: 'slackApi' },
+			{ id: 'slack-oauth', name: 'Slack OAuth', type: 'slackOAuth2Api' },
+			{ id: 'gmail-oauth', name: 'Gmail OAuth', type: 'gmailOAuth2' },
+		]);
+	});
+
+	it('uses actionId over nodeType when listing credentials with both filters', async () => {
+		const { actionService, mockNodeCatalogService } = createActionAdapterForTests();
+
+		const result = await actionService.listCredentials({
+			nodeType: 'n8n-nodes-base.slack',
+			actionId: 'gmail.message.send',
+		});
+
+		expect(mockNodeCatalogService.getNodeSchema).toHaveBeenCalledWith('n8n-nodes-base.gmail');
+		expect(mockNodeCatalogService.getNodeSchema).not.toHaveBeenCalledWith('n8n-nodes-base.slack');
+		expect(result.credentials).toEqual([
+			{ id: 'gmail-oauth', name: 'Gmail OAuth', type: 'gmailOAuth2' },
+		]);
+	});
+
+	it('delegates dry-run execution with Instance AI caller metadata and returns the dry-run payload', async () => {
+		const { actionService, mockExecuteNodeService, mockTelemetry, mockUser } =
+			createActionAdapterForTests({ threadId: 'thread-1' });
+		const wouldExecute = makeActionDryRunPreview();
+		mockExecuteNodeService.execute.mockResolvedValue({
+			executionId: '',
+			status: 'dry_run',
+			wouldExecute,
+			executionUrl: undefined,
+		});
+
+		const result = await actionService.execute({
+			id: 'slack.message.send',
+			params: { text: 'hello' },
+			credentialId: 'slack-api',
+			dryRun: true,
+		});
+
+		expect(mockExecuteNodeService.execute).toHaveBeenCalledWith({
+			user: mockUser,
+			nodeType: 'n8n-nodes-base.slack',
+			parameters: {
+				resource: 'message',
+				operation: 'send',
+				text: 'hello',
+			},
+			credentialId: 'slack-api',
+			dryRun: true,
+			caller: { kind: 'instance-ai', name: 'Instance AI', clientId: 'thread-1' },
+		});
+		expect(result).toEqual({
+			executionId: '',
+			status: 'dry_run',
+			wouldExecute,
+			executionUrl: undefined,
+		});
+		expect(mockTelemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('includes Instance AI caller metadata when no thread id is available', async () => {
+		const { actionService, mockExecuteNodeService } = createActionAdapterForTests();
+		mockExecuteNodeService.execute.mockResolvedValue({
+			executionId: '',
+			status: 'dry_run',
+			wouldExecute: makeActionDryRunPreview(),
+			executionUrl: undefined,
+		});
+
+		await actionService.execute({
+			id: 'slack.message.send',
+			dryRun: true,
+		});
+
+		expect(mockExecuteNodeService.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				caller: { kind: 'instance-ai', name: 'Instance AI' },
+			}),
+		);
+	});
+
+	it('returns sanitized live execution data and emits telemetry', async () => {
+		const { actionService, mockExecuteNodeService, mockExecutionRepository, mockTelemetry } =
+			createActionAdapterForTests({
+				threadId: 'thread-1',
+				allowSendingParameterValues: true,
+			});
+		mockExecuteNodeService.execute.mockResolvedValue({
+			executionId: 'exec-1',
+			status: 'success',
+			output: [{ raw: 'ignore me' }],
+			executionUrl: '/executions/exec-1',
+		});
+		mockExecutionRepository.findSingleExecution.mockResolvedValue(
+			makeExecution({
+				status: 'success',
+				runData: {
+					Action: [makeTaskData([{ sanitized: 'from repository' }])],
+				},
+			}),
+		);
+
+		const result = await actionService.execute({
+			id: 'slack.message.send',
+			params: { text: 'hello' },
+			credentialId: 'slack-api',
+		});
+
+		expect(result).toMatchObject({
+			executionId: 'exec-1',
+			status: 'success',
+			executionUrl: '/executions/exec-1',
+		});
+		expect(result).not.toHaveProperty('output');
+		expect(result.data?.Action).toContain('from repository');
+		expect(JSON.stringify(result)).not.toContain('ignore me');
+		expect(mockTelemetry.track).toHaveBeenCalledWith('Instance AI executed action', {
+			thread_id: 'thread-1',
+			action_id: 'slack.message.send',
+			node_type: 'n8n-nodes-base.slack',
+			status: 'success',
+			has_credential: true,
+		});
+	});
+});
 
 function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -997,6 +1466,8 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 	);
 
 	(
@@ -1128,6 +1599,8 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -1413,6 +1886,8 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 	);
 
 	const context = service.createContext(mockUser, { threadId: 'thread-1' });
@@ -1828,6 +2303,8 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2096,6 +2573,8 @@ function createRunAdapterForTests(
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;

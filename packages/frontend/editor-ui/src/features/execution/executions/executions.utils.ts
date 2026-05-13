@@ -582,6 +582,7 @@ export const CALLER_SOURCE_LABEL: Record<ExecutionCallerKind | string, string> =
 	mcp: 'MCP',
 	cli: 'CLI',
 	sdk: 'SDK',
+	'instance-ai': 'Instance AI',
 };
 
 /**

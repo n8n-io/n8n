@@ -2,6 +2,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
+import { createActionsTool } from './actions.tool';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
@@ -41,6 +42,7 @@ export function createAllTools(context: InstanceAiContext): ToolsInput {
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context),
+		actions: createActionsTool(context),
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
@@ -61,6 +63,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Tools
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),
+		actions: createActionsTool(context),
 		'ask-user': createAskUserTool(),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),

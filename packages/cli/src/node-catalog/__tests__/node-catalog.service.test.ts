@@ -520,7 +520,12 @@ describe('NodeCatalogService', () => {
 						default: 'send',
 						displayOptions: { show: { resource: ['message'] } },
 						options: [
-							{ name: 'Send', value: 'send', description: 'Send a message' },
+							{
+								name: 'Send',
+								value: 'send',
+								action: 'Send a message',
+								description: 'Send a message',
+							},
 							{ name: 'Update', value: 'update' },
 						],
 					},
@@ -543,7 +548,7 @@ describe('NodeCatalogService', () => {
 						id: 'n8n-nodes-base.slack.message.send',
 						resource: 'message',
 						operation: 'send',
-						displayName: 'Send',
+						displayName: 'Send a message',
 						description: 'Send a message',
 						inputSchema: expect.objectContaining({ type: 'object' }),
 					}),

@@ -293,6 +293,15 @@ export {
 } from './schemas/community-package.schema';
 
 export {
+	NodeOperationInputSchema,
+	NodeOperationSchema,
+	NodeSchema,
+	type NodeOperationInput,
+	type NodeOperation,
+	type NodeSchemaShape,
+} from './schemas/node-catalog.schema';
+
+export {
 	publicApiCredentialResponseSchema,
 	type PublicApiCredentialResponse,
 } from './schemas/credential-response.schema';
@@ -336,6 +345,9 @@ export {
 	credentialFlowSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	hubActionExecutionPayloadSchema,
+	hubActionParameterEntrySchema,
+	hubActionCredentialReferenceSchema,
 	instanceGatewayResourceDecisionSchema,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
@@ -416,6 +428,9 @@ export type {
 	InstanceAiCredentialFlow,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
+	HubActionExecutionPayload,
+	HubActionParameterEntry,
+	HubActionCredentialReference,
 	InstanceGatewayResourceDecision,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,

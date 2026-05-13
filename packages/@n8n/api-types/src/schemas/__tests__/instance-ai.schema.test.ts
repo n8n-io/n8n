@@ -1,6 +1,8 @@
 import {
 	applyBranchReadOnlyOverrides,
+	confirmationRequestPayloadSchema,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	hubActionExecutionPayloadSchema,
 	isDisplayableConfirmationRequest,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
@@ -230,5 +232,80 @@ describe('isDisplayableConfirmationRequest', () => {
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
+	});
+});
+
+describe('hubActionExecutionPayloadSchema', () => {
+	it('accepts a minimal payload with required fields only', () => {
+		const result = hubActionExecutionPayloadSchema.safeParse({
+			actionId: 'slack.message.send',
+			nodeType: 'n8n-nodes-base.slack',
+			actionDisplayName: 'Slack — Send a message',
+			nodeDisplayName: 'Slack',
+			parameters: [],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a fully-populated payload', () => {
+		const result = hubActionExecutionPayloadSchema.safeParse({
+			actionId: 'slack.message.send',
+			nodeType: 'n8n-nodes-base.slack',
+			actionDisplayName: 'Slack — Send a message',
+			nodeDisplayName: 'Slack',
+			operationDisplayName: 'Send a message',
+			parameters: [
+				{ label: 'channel', value: '"C123"' },
+				{ label: 'text', value: '"hello"' },
+			],
+			credential: { id: 'cred-1', name: 'Acme Slack', type: 'slackOAuth2Api' },
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects payloads missing required fields', () => {
+		const result = hubActionExecutionPayloadSchema.safeParse({
+			actionId: 'slack.message.send',
+			nodeType: 'n8n-nodes-base.slack',
+			actionDisplayName: 'Slack — Send a message',
+			// missing nodeDisplayName
+			parameters: [],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects parameter entries with non-string label or value', () => {
+		const result = hubActionExecutionPayloadSchema.safeParse({
+			actionId: 'a',
+			nodeType: 'n',
+			actionDisplayName: 'a',
+			nodeDisplayName: 'n',
+			parameters: [{ label: 'limit', value: 10 }],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('confirmationRequestPayloadSchema accepts the optional hubActionExecution field', () => {
+		const result = confirmationRequestPayloadSchema.safeParse({
+			requestId: 'req-1',
+			toolCallId: 'tc-1',
+			toolName: 'actions',
+			args: {},
+			severity: 'warning',
+			message: 'Execute Slack — Send a message?',
+			hubActionExecution: {
+				actionId: 'slack.message.send',
+				nodeType: 'n8n-nodes-base.slack',
+				actionDisplayName: 'Slack — Send a message',
+				nodeDisplayName: 'Slack',
+				parameters: [],
+			},
+		});
+
+		expect(result.success).toBe(true);
 	});
 });
