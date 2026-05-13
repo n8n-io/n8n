@@ -175,9 +175,8 @@ const loadWorkerPoolOptions = async () => {
 
 const workerPoolOptionsForCategory = (category: WorkerPoolCategory) => {
 	const globalPool = globalPoolAssignment.value[category];
-	const defaultLabel = globalPool
-		? `${i18n.baseText('workflowSettings.workerPool.default')} - ${globalPool}`
-		: i18n.baseText('workflowSettings.workerPool.default');
+	const poolLabel = globalPool || 'default';
+	const defaultLabel = `${i18n.baseText('workflowSettings.workerPool.default')} - '${poolLabel}' pool`;
 
 	return [
 		{ key: 'DEFAULT', value: defaultLabel },
