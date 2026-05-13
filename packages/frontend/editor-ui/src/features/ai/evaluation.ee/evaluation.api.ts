@@ -30,6 +30,7 @@ interface DeleteTestRunParams {
 export type TestCaseExecutionStatus =
 	| 'new'
 	| 'running'
+	| 'evaluation_running'
 	| 'success'
 	| 'error'
 	| 'warning'
@@ -43,6 +44,7 @@ export interface TestCaseExecutionRecord {
 	createdAt: string;
 	updatedAt: string;
 	runAt: string | null;
+	runIndex?: number | null;
 	metrics?: Record<string, number>;
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
@@ -88,7 +90,7 @@ export const startTestRun = async (
 		data: options?.concurrency !== undefined ? { concurrency: options.concurrency } : undefined,
 	});
 	// CLI is returning the response without wrapping it in `data` key
-	return response as { success: boolean };
+	return response as { success: boolean; testRunId: string };
 };
 
 export const cancelTestRun = async (
@@ -128,5 +130,19 @@ export const getTestCaseExecutions = async (
 		context,
 		'GET',
 		getRunExecutionsEndpoint(workflowId, runId),
+	);
+};
+
+// Pre-emptively cancel a single pending test case (status === 'new').
+export const cancelTestCase = async (
+	context: IRestApiContext,
+	workflowId: string,
+	runId: string,
+	caseId: string,
+) => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'POST',
+		`${getRunExecutionsEndpoint(workflowId, runId)}/${caseId}/cancel`,
 	);
 };

@@ -5,7 +5,7 @@ import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 
@@ -63,17 +63,41 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 
 describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+	let thread: ThreadRuntime;
 
 	beforeEach(() => {
 		// Default `stubActions: true` — every store action becomes a no-op spy.
-		// Necessary because the store's actions delegate internally to the
-		// thread runtime (e.g. `switchThread` calls `runtime.connectSSE`),
-		// which would try to construct a real `EventSource` in jsdom.
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
+		thread = {
+			id: 'thread-1',
+			messages: [],
+			sseState: 'connected',
+			isStreaming: false,
+			isSendingMessage: false,
+			isAwaitingConfirmation: false,
+			amendContext: null,
+			contextualSuggestion: null,
+			currentTasks: null,
+			producedArtifacts: new Map(),
+			resourceNameIndex: new Map(),
+			feedbackByResponseId: {},
+			rateableResponseId: null,
+			pendingConfirmations: [],
+			debugEvents: [],
+			loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
+			loadThreadStatus: vi.fn().mockResolvedValue(undefined),
+			connectSSE: vi.fn(),
+			closeSSE: vi.fn(),
+			sendMessage: vi.fn().mockResolvedValue(undefined),
+			cancelRun: vi.fn().mockResolvedValue(undefined),
+			copyFullTrace: vi.fn(),
+			submitFeedback: vi.fn(),
+		} as unknown as ThreadRuntime;
+
 		store = mockedStore(useInstanceAiStore);
-		store.currentThreadId = 'thread-1';
+		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.threads = [
 			{
 				id: 'thread-1',
@@ -82,7 +106,6 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
-		store.loadHistoricalMessages.mockResolvedValue('applied');
 
 		// `useExecutionPushEvents` (consumed by ThreadView) registers a push
 		// listener and stores the returned removeListener; it gets invoked on
@@ -102,30 +125,30 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('reconnects on same-thread re-entry when SSE is disconnected', async () => {
-		store.sseState = 'disconnected';
-		store.hasMessages = true;
-		store.messages = [
+		thread.sseState = 'disconnected';
+		thread.messages = [
 			{
 				id: 'msg-history',
 				role: 'assistant',
 				content: 'already loaded',
+				reasoning: '',
 				isStreaming: false,
 				createdAt: '2026-04-01T00:00:00.000Z',
 			},
-		] as typeof store.messages;
-		store.loadHistoricalMessages.mockResolvedValue('skipped');
+		];
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 
 		renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(store.loadHistoricalMessages).toHaveBeenCalledWith('thread-1');
+			expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 		});
-		expect(store.loadThreadStatus).toHaveBeenCalledWith('thread-1');
-		expect(store.connectSSE).toHaveBeenCalledWith('thread-1');
+		expect(thread.loadThreadStatus).toHaveBeenCalledWith();
+		expect(thread.connectSSE).toHaveBeenCalledWith();
 	});
 
-	it('switches threads when navigating to a known but inactive thread', async () => {
-		store.currentThreadId = 'thread-1';
+	it('connects the route thread when navigating to a known thread', async () => {
+		thread.sseState = 'disconnected';
 		store.threads = [
 			...store.threads,
 			{
@@ -139,7 +162,8 @@ describe('InstanceAiThreadView', () => {
 		renderView({ props: { threadId: 'thread-2' } });
 
 		await vi.waitFor(() => {
-			expect(store.switchThread).toHaveBeenCalledWith('thread-2');
+			expect(store.getOrCreateRuntime).toHaveBeenCalledWith('thread-2');
 		});
+		expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 	});
 });

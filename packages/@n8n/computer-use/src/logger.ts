@@ -259,6 +259,13 @@ export function printAuthFailure(): void {
 	logger.error(`  ${pc.red('✗')} Authentication failed — waiting for new pairing token`);
 }
 
+export function printInvalidToken(url: string): void {
+	logger.error(`  ${pc.red('✗')} Connection token invalid`);
+	logger.error(
+		`    ${pc.dim(`Go to ${url} and reconnect n8n Computer Use using a new connection token`)}`,
+	);
+}
+
 export function printReinitializing(): void {
 	logger.info(`  ${pc.magenta('▸')} Re-initializing gateway connection`);
 }

@@ -193,6 +193,14 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		}),
 	);
 
+	const aiNodes = computed<INodeUi[]>(() =>
+		nodes.value.filter(
+			(node) =>
+				node.type.includes('langchain') ||
+				(node.type === 'n8n-nodes-base.evaluation' && node.parameters?.operation === 'setMetrics'),
+		),
+	);
+
 	function getNodeById(id: string): INodeUi | undefined {
 		return nodes.value.find((node) => node.id === id);
 	}
@@ -469,6 +477,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		nodesByName,
 		canvasNames,
 		workflowTriggerNodes,
+		aiNodes,
 		getNodeById,
 		getNodeByName,
 		findNodeByPartialId,
