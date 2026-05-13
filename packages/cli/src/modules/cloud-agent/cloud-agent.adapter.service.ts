@@ -2,9 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { readFile } from 'fs/promises';
+import { InstanceSettings } from 'n8n-core';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import path from 'path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -17,14 +21,45 @@ import { WorkflowService } from '@/workflows/workflow.service';
  */
 @Service()
 export class CloudAgentAdapter {
+	private nodesCache: {
+		promise: Promise<INodeTypeDescription[]>;
+		expiresAt: number;
+	} | null = null;
+
+	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly credentialsService: CredentialsService,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
+
+	/**
+	 * Returns the full set of node-type descriptions. Reads from the static
+	 * JSON cache `${staticCacheDir}/types/nodes.json` that FrontendService
+	 * writes at startup, and caches the promise in memory for 5 minutes.
+	 *
+	 * Why not `loadNodesAndCredentials.loadedNodes`: that map is populated
+	 * lazily as nodes are instantiated, so on a fresh n8n it is nearly empty
+	 * and node search/details return no results.
+	 */
+	private async getNodeDescriptions(): Promise<INodeTypeDescription[]> {
+		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
+			return await this.nodesCache.promise;
+		}
+		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+		const promise = readFile(filePath, 'utf-8').then((json) =>
+			jsonParse<INodeTypeDescription[]>(json),
+		);
+		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
+		promise.catch(() => {
+			this.nodesCache = null;
+		});
+		return await promise;
+	}
 
 	async dispatchWorkflows(args: WorkflowsArgs, user: User): Promise<DispatchResult> {
 		switch (args.action) {
@@ -202,38 +237,60 @@ export class CloudAgentAdapter {
 		switch (args.action) {
 			case 'search': {
 				if (!args.query) return this.argError('nodes.search requires query');
-				const q = args.query.toLowerCase();
-				const limit = args.limit ?? 10;
-				const matches: Array<{ type: string; name: string; displayName: string }> = [];
-
-				for (const [type, loaded] of Object.entries(this.loadNodesAndCredentials.loadedNodes)) {
-					if (matches.length >= limit) break;
-					const description = (loaded as { description?: { name?: string; displayName?: string } })
-						.description;
-					const displayName = description?.displayName ?? '';
-					const name = description?.name ?? type;
-					if (
-						displayName.toLowerCase().includes(q) ||
-						type.toLowerCase().includes(q) ||
-						name.toLowerCase().includes(q)
-					) {
-						matches.push({ type, name, displayName });
+				try {
+					const nodes = await this.getNodeDescriptions();
+					const q = args.query.toLowerCase();
+					const limit = args.limit ?? 10;
+					const matches: Array<{
+						type: string;
+						displayName: string;
+						description: string;
+					}> = [];
+					for (const node of nodes) {
+						if (matches.length >= limit) break;
+						const description = node.description ?? '';
+						if (
+							node.displayName?.toLowerCase().includes(q) ||
+							node.name?.toLowerCase().includes(q) ||
+							description.toLowerCase().includes(q)
+						) {
+							matches.push({
+								type: node.name,
+								displayName: node.displayName,
+								description,
+							});
+						}
 					}
+					return { output: { matches }, isError: false };
+				} catch (err) {
+					return this.toError(err);
 				}
-				return { output: { matches }, isError: false };
 			}
 
 			case 'get-type-definition': {
 				if (!args.nodeType) return this.argError('nodes.get-type-definition requires nodeType');
-				const loaded = this.loadNodesAndCredentials.loadedNodes[args.nodeType];
-				if (!loaded) {
-					return {
-						output: { error: `Unknown node type: ${args.nodeType}` },
-						isError: true,
-					};
+				try {
+					const nodes = await this.getNodeDescriptions();
+					const wanted = args.nodeType;
+					const version = args.nodeVersion;
+					let match: INodeTypeDescription | undefined;
+					if (version !== undefined) {
+						match = nodes.find((n) => {
+							if (n.name !== wanted) return false;
+							return Array.isArray(n.version) ? n.version.includes(version) : n.version === version;
+						});
+					}
+					if (!match) match = nodes.find((n) => n.name === wanted);
+					if (!match) {
+						return {
+							output: { error: `Unknown node type: ${wanted}` },
+							isError: true,
+						};
+					}
+					return { output: match, isError: false };
+				} catch (err) {
+					return this.toError(err);
 				}
-				const description = (loaded as { description?: unknown }).description;
-				return { output: description ?? loaded, isError: false };
 			}
 
 			default:
