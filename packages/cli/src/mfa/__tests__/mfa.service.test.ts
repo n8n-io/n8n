@@ -7,9 +7,45 @@ import type { Cipher } from 'n8n-core';
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { MFA_ENFORCE_SETTING } from '../constants';
-import { MFA_CACHE_KEY, MfaService } from '../mfa.service';
+import { countMfaProofs, MFA_CACHE_KEY, MfaService } from '../mfa.service';
 import type { TOTPService } from '../totp.service';
 import type { WebAuthnService } from '../webauthn.service';
+
+describe('countMfaProofs', () => {
+	it('returns 0 when no proof is provided', () => {
+		expect(countMfaProofs({})).toBe(0);
+	});
+
+	it('treats empty strings as missing proofs', () => {
+		expect(countMfaProofs({ mfaCode: '', mfaRecoveryCode: '' })).toBe(0);
+	});
+
+	it('treats null webauthnResponse as missing', () => {
+		expect(countMfaProofs({ webauthnResponse: null })).toBe(0);
+	});
+
+	it('counts a single TOTP code as one proof', () => {
+		expect(countMfaProofs({ mfaCode: '123456' })).toBe(1);
+	});
+
+	it('counts a single recovery code as one proof', () => {
+		expect(countMfaProofs({ mfaRecoveryCode: 'abc-def-ghi' })).toBe(1);
+	});
+
+	it('counts a webauthn response object as one proof', () => {
+		expect(countMfaProofs({ webauthnResponse: { id: 'x' } })).toBe(1);
+	});
+
+	it('counts multiple simultaneous proofs', () => {
+		expect(
+			countMfaProofs({
+				mfaCode: '123456',
+				mfaRecoveryCode: 'abc',
+				webauthnResponse: { id: 'x' },
+			}),
+		).toBe(3);
+	});
+});
 
 describe('MfaService', () => {
 	let mfaService: MfaService;
@@ -19,6 +55,7 @@ describe('MfaService', () => {
 	let mockLicense: jest.Mocked<LicenseState>;
 	let mockTotpService: jest.Mocked<TOTPService>;
 	let mockCipher: jest.Mocked<Cipher>;
+	let mockWebAuthnService: jest.Mocked<WebAuthnService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -29,6 +66,7 @@ describe('MfaService', () => {
 		mockLicense = mock<LicenseState>();
 		mockTotpService = mock<TOTPService>();
 		mockCipher = mock<Cipher>();
+		mockWebAuthnService = mock<WebAuthnService>();
 
 		mfaService = new MfaService(
 			mockUserRepository,
@@ -36,7 +74,7 @@ describe('MfaService', () => {
 			mockCacheService,
 			mockLicense,
 			mockTotpService,
-			mock<WebAuthnService>(),
+			mockWebAuthnService,
 			mockCipher,
 			mockLogger(),
 		);
@@ -215,6 +253,64 @@ describe('MfaService', () => {
 				['key'],
 			);
 			expect(mockCacheService.set).toHaveBeenCalledWith(MFA_CACHE_KEY, 'false');
+		});
+	});
+
+	describe('validateProof', () => {
+		const userId = 'user-1';
+
+		it('routes a webauthn response to the webauthn verifier', async () => {
+			mockWebAuthnService.verifyAuthenticationResponse.mockResolvedValue(true);
+
+			const result = await mfaService.validateProof(userId, {
+				webauthnResponse: { id: 'cred-1' },
+			});
+
+			expect(result).toBe(true);
+			expect(mockWebAuthnService.verifyAuthenticationResponse).toHaveBeenCalledWith(userId, {
+				id: 'cred-1',
+			});
+		});
+
+		it('routes a TOTP code to validateMfa', async () => {
+			mockUserRepository.findOneByOrFail.mockResolvedValue({
+				mfaSecret: 'encrypted-secret',
+			} as never);
+			mockCipher.decryptV2.mockResolvedValue('decrypted-secret');
+			mockTotpService.verifySecret.mockReturnValue(true);
+
+			const result = await mfaService.validateProof(userId, { mfaCode: '123456' });
+
+			expect(result).toBe(true);
+			expect(mockWebAuthnService.verifyAuthenticationResponse).not.toHaveBeenCalled();
+			expect(mockTotpService.verifySecret).toHaveBeenCalledWith({
+				secret: 'decrypted-secret',
+				mfaCode: '123456',
+			});
+		});
+
+		it('prefers webauthn when both proofs are supplied', async () => {
+			mockWebAuthnService.verifyAuthenticationResponse.mockResolvedValue(true);
+
+			await mfaService.validateProof(userId, {
+				mfaCode: '123456',
+				webauthnResponse: { id: 'cred-1' },
+			});
+
+			expect(mockWebAuthnService.verifyAuthenticationResponse).toHaveBeenCalled();
+			expect(mockTotpService.verifySecret).not.toHaveBeenCalled();
+		});
+
+		it('returns false when no proof is supplied', async () => {
+			mockUserRepository.findOneByOrFail.mockResolvedValue({
+				mfaSecret: null,
+				mfaRecoveryCodes: [],
+			} as never);
+
+			const result = await mfaService.validateProof(userId, {});
+
+			expect(result).toBe(false);
+			expect(mockWebAuthnService.verifyAuthenticationResponse).not.toHaveBeenCalled();
 		});
 	});
 });

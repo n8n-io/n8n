@@ -71,11 +71,11 @@ export class SettingsPersonalPage extends BasePage {
 	}
 
 	getEnableMfaButton(): Locator {
-		return this.page.getByTestId('enable-mfa-button');
+		return this.page.getByTestId('mfa-method-totp-setup');
 	}
 
 	getDisableMfaButton(): Locator {
-		return this.page.getByTestId('disable-mfa-button');
+		return this.page.getByTestId('mfa-method-totp-disable');
 	}
 
 	getMfaCodeOrRecoveryCodeInput(): Locator {
@@ -87,7 +87,7 @@ export class SettingsPersonalPage extends BasePage {
 	}
 
 	async clickEnableMfa(): Promise<void> {
-		await this.clickByTestId('enable-mfa-button');
+		await this.getEnableMfaButton().click();
 	}
 
 	async clickDisableMfa(): Promise<void> {

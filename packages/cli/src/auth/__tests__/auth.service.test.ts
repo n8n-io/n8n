@@ -14,10 +14,10 @@ import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
-import type { License } from '@/license';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -74,6 +74,44 @@ describe('AuthService', () => {
 				user.id,
 				expect.objectContaining({ tokensValidAfter: expect.any(Date) }),
 			);
+		});
+	});
+
+	describe('rotateSession', () => {
+		it('should invalidate other sessions before issuing a fresh cookie', async () => {
+			const res = mock<Response>();
+			const callOrder: string[] = [];
+			userRepository.update.mockImplementation(async () => {
+				callOrder.push('invalidate');
+				return await mock();
+			});
+			res.cookie.mockImplementation(() => {
+				callOrder.push('issueCookie');
+				return res;
+			});
+
+			await authService.rotateSession(res, user, true, { browserId });
+
+			expect(callOrder).toEqual(['invalidate', 'issueCookie']);
+			expect(userRepository.update).toHaveBeenCalledWith(
+				user.id,
+				expect.objectContaining({ tokensValidAfter: expect.any(Date) }),
+			);
+			expect(res.cookie).toHaveBeenCalledWith(
+				AUTH_COOKIE_NAME,
+				expect.any(String),
+				expect.objectContaining({ httpOnly: true }),
+			);
+		});
+
+		it('should pass usedMfa through to the issued JWT', async () => {
+			const res = mock<Response>();
+
+			await authService.rotateSession(res, user, true, { browserId });
+
+			const [, token] = res.cookie.mock.calls[0];
+			const decoded = jwt.decode(token as string) as { usedMfa: boolean };
+			expect(decoded.usedMfa).toBe(true);
 		});
 	});
 
