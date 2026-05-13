@@ -1,0 +1,56 @@
+{
+	"name": "Headless Schedule Workflow",
+	"nodes": [
+		{
+			"id": "schedule-trigger",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.1,
+			"position": [240, 300],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes",
+							"minutesInterval": 5
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "set-node",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [460, 300],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "marker",
+							"name": "marker",
+							"value": "scheduled-fired",
+							"type": "string"
+						}
+					]
+				}
+			}
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"active": false
+}

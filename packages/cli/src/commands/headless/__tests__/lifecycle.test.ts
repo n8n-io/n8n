@@ -13,6 +13,8 @@ import { NodeTypes } from '@/node-types';
 jest.mock('../engine-adapter', () => ({
 	engineAdapter: {
 		runOnce: jest.fn(),
+		waitWhileActive: jest.fn(),
+		deactivateAll: jest.fn(),
 	},
 }));
 
@@ -135,7 +137,7 @@ describe('manual lifecycle run()', () => {
 		jest.mocked(engineAdapter.runOnce).mockResolvedValue({ status: 'success' });
 
 		const lifecycle = detectLifecycle([a, b], owner);
-		await lifecycle.run({ port: 5678, host: '127.0.0.1' });
+		await lifecycle.run({ port: 5678, host: '127.0.0.1', signal: new AbortController().signal });
 
 		expect(engineAdapter.runOnce).toHaveBeenCalledTimes(2);
 		expect(engineAdapter.runOnce).toHaveBeenNthCalledWith(1, owner, 'id-A');
@@ -151,7 +153,9 @@ describe('manual lifecycle run()', () => {
 			.mockResolvedValueOnce({ status: 'error', errorMessage: 'boom' });
 
 		const lifecycle = detectLifecycle([a, b], owner);
-		const error = await lifecycle.run({ port: 5678, host: '127.0.0.1' }).catch((e: unknown) => e);
+		const error = await lifecycle
+			.run({ port: 5678, host: '127.0.0.1', signal: new AbortController().signal })
+			.catch((e: unknown) => e);
 
 		expect(error).toBeInstanceOf(UnexpectedError);
 		expect((error as Error).message).toMatch(/workflow "B"/);
@@ -159,16 +163,40 @@ describe('manual lifecycle run()', () => {
 });
 
 describe('long-lived lifecycle run()', () => {
-	test('throws UnexpectedError indicating Task 8 deferral', async () => {
+	test('awaits the signal then deactivates all workflows', async () => {
 		stubNodeType('n8n-nodes-base.scheduleTrigger', { group: ['trigger'] });
 		const workflow = wf('Schedule', [
 			node({ type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1 }),
 		]);
 
 		const lifecycle = detectLifecycle([workflow], owner);
-		const error = await lifecycle.run({ port: 5678, host: '127.0.0.1' }).catch((e: unknown) => e);
+		const controller = new AbortController();
 
-		expect(error).toBeInstanceOf(UnexpectedError);
-		expect((error as Error).message).toMatch(/Task 8/);
+		const running = lifecycle.run({ port: 5678, host: '127.0.0.1', signal: controller.signal });
+		setTimeout(() => controller.abort(), 15);
+		await running;
+
+		expect(engineAdapter.waitWhileActive).toHaveBeenCalledTimes(1);
+		expect(engineAdapter.deactivateAll).toHaveBeenCalledTimes(1);
+	});
+
+	test('still calls deactivateAll when waitWhileActive rejects', async () => {
+		stubNodeType('n8n-nodes-base.scheduleTrigger', { group: ['trigger'] });
+		const workflow = wf('Schedule', [
+			node({ type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1 }),
+		]);
+		jest.mocked(engineAdapter.waitWhileActive).mockRejectedValueOnce(new Error('boom'));
+
+		const lifecycle = detectLifecycle([workflow], owner);
+
+		await expect(
+			lifecycle.run({
+				port: 5678,
+				host: '127.0.0.1',
+				signal: new AbortController().signal,
+			}),
+		).rejects.toThrow('boom');
+
+		expect(engineAdapter.deactivateAll).toHaveBeenCalledTimes(1);
 	});
 });

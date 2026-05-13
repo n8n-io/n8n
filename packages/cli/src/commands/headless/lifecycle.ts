@@ -13,9 +13,20 @@ const MANUAL_TYPES = new Set([
 	'n8n-nodes-base.start', // legacy pre-Manual-Trigger node, still considered manual-style.
 ]);
 
+export interface LifecycleRunOptions {
+	port: number;
+	host: string;
+	/**
+	 * Aborting this signal triggers an orderly shutdown of the long-lived
+	 * branch. Ignored by the manual branch, which always runs each workflow
+	 * to natural completion.
+	 */
+	signal: AbortSignal;
+}
+
 export interface Lifecycle {
 	kind: 'manual' | 'long-lived';
-	run(opts: { port: number; host: string }): Promise<void>;
+	run(opts: LifecycleRunOptions): Promise<void>;
 }
 
 function isLongLivedNode(node: INode, nodeTypes: NodeTypes): boolean {
@@ -43,10 +54,12 @@ export function detectLifecycle(workflows: CreatedWorkflow[], owner: User): Life
 	if (longLived) {
 		return {
 			kind: 'long-lived',
-			async run() {
-				throw new UnexpectedError(
-					'Long-lived workflow execution is not yet implemented — Task 8 of the headless implementation plan adds the webhook listener and graceful shutdown wiring.',
-				);
+			async run({ signal }) {
+				try {
+					await engineAdapter.waitWhileActive(signal);
+				} finally {
+					await engineAdapter.deactivateAll();
+				}
 			},
 		};
 	}

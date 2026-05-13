@@ -41,6 +41,10 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsTaskRunner = true;
 
+	private readonly shutdownController = new AbortController();
+
+	private lifecyclePromise?: Promise<void>;
+
 	async run() {
 		if (this.flags.credentials) {
 			throw new UserError(
@@ -60,6 +64,29 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.info(
 			`headless: ${lifecycle.kind} workflow set ready (${imported.length} workflow${imported.length === 1 ? '' : 's'})`,
 		);
-		await lifecycle.run({ port: this.flags.port, host: this.flags.host });
+
+		this.lifecyclePromise = lifecycle.run({
+			port: this.flags.port,
+			host: this.flags.host,
+			signal: this.shutdownController.signal,
+		});
+
+		await this.lifecyclePromise;
+	}
+
+	// Invoked by BaseCommand.onTerminationSignal when SIGTERM/SIGINT arrives.
+	// Aborts the lifecycle controller, then waits for lifecycle.run's finally
+	// block (deactivateAll) to settle so the BaseCommand's graceful-shutdown
+	// timer guards the full teardown, not just the abort signal.
+	override async stopProcess() {
+		if (!this.shutdownController.signal.aborted) {
+			this.shutdownController.abort();
+		}
+		if (this.lifecyclePromise) {
+			await this.lifecyclePromise.catch(() => {
+				// Errors from lifecycle.run surface via the normal awaiter in run();
+				// stopProcess only cares that the teardown drained.
+			});
+		}
 	}
 }
