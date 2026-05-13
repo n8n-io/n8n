@@ -5,10 +5,11 @@ import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useRouter } from 'vue-router';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
-import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { PROJECT_BOARDS, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useToast } from '@/app/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
+import type { DataTableKind } from '@n8n/api-types';
 
 import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
@@ -17,6 +18,7 @@ const BREADCRUMBS_SEPARATOR = '/';
 type Props = {
 	dataTable: DataTable;
 	readOnly: boolean;
+	kind?: DataTableKind;
 };
 
 const props = defineProps<Props>();
@@ -43,15 +45,29 @@ const project = computed(() => {
 	return props.dataTable.project ?? null;
 });
 
+const listKind = computed<DataTableKind>(() => {
+	if (props.kind === 'board' || props.kind === 'list') {
+		return props.kind;
+	}
+
+	if (props.dataTable.kind === 'board' || props.dataTable.kind === 'list') {
+		return props.dataTable.kind;
+	}
+
+	return 'list';
+});
+
+const isBoard = computed(() => listKind.value === 'board');
+
 const breadcrumbs = computed<PathItem[]>(() => {
 	if (!project.value) {
 		return [];
 	}
 	return [
 		{
-			id: 'datatables',
-			label: i18n.baseText('dataTable.dataTables'),
-			href: `/projects/${project.value.id}/datatables`,
+			id: isBoard.value ? 'boards' : 'datatables',
+			label: i18n.baseText(isBoard.value ? 'board.boards' : 'dataTable.dataTables'),
+			href: `/projects/${project.value.id}/${isBoard.value ? 'boards' : 'datatables'}`,
 		},
 	];
 });
@@ -64,7 +80,7 @@ const onItemClicked = async (item: PathItem) => {
 
 const onDelete = async () => {
 	await router.push({
-		name: PROJECT_DATA_TABLES,
+		name: isBoard.value ? PROJECT_BOARDS : PROJECT_DATA_TABLES,
 		params: { projectId: props.dataTable.projectId },
 	});
 };

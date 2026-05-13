@@ -67,6 +67,10 @@ const searchQuery = ref('');
 
 const { debounce } = useDebounce();
 
+const listLabel = computed(() =>
+	i18n.baseText(dataTableKind.value === 'board' ? 'board.boards' : 'dataTable.dataTables'),
+);
+
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {
 		error = new Error(String(i18n.baseText('dataTable.getDetails.error')));
@@ -88,7 +92,7 @@ const initialize = async () => {
 		);
 		if (response) {
 			dataTable.value = response;
-			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
+			documentTitle.set(`${listLabel.value} > ${response.name}`);
 		} else {
 			await showErrorAndGoBackToList(new Error(i18n.baseText('dataTable.notFound')));
 		}
@@ -145,7 +149,7 @@ const handleSourceControlPull = async () => {
 		const response = await dataTableStore.fetchDataTableDetails(props.id, props.projectId);
 		if (response) {
 			dataTable.value = response;
-			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
+			documentTitle.set(`${listLabel.value} > ${response.name}`);
 		} else {
 			await showErrorAndGoBackToList(new Error(i18n.baseText('dataTable.notFound')));
 		}
@@ -164,7 +168,7 @@ watch(
 );
 
 onMounted(async () => {
-	documentTitle.set(i18n.baseText('dataTable.dataTables'));
+	documentTitle.set(listLabel.value);
 	await initialize();
 
 	sourceControlEventBus.on('pull', handleSourceControlPull);
@@ -191,6 +195,7 @@ onBeforeUnmount(() => {
 			<div :class="$style.header">
 				<DataTableBreadcrumbs
 					:data-table="dataTable"
+					:kind="dataTableKind"
 					:read-only="readOnlyEnv"
 					@imported="onCsvImported"
 				/>
