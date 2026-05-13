@@ -17,6 +17,7 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
+import CredentialExecutions from './CredentialExecutions.vue';
 import CredentialInfo from './CredentialInfo.vue';
 import CredentialSharing from './CredentialSharing.ee.vue';
 import Modal from '@/app/components/Modal.vue';
@@ -371,6 +372,16 @@ const sidebarItems = computed(() => {
 			position: 'top',
 		},
 	];
+
+	// Only available for saved credentials — there's no execution history to
+	// query until the credential has an id the backend can match against.
+	if (credentialId.value) {
+		menuItems.push({
+			id: 'executions',
+			label: i18n.baseText('credentialEdit.credentialEdit.executions'),
+			position: 'top',
+		});
+	}
 
 	return menuItems;
 });
@@ -1529,6 +1540,9 @@ const { width } = useElementSize(credNameRef);
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo :current-credential="currentCredential" />
+				</div>
+				<div v-else-if="activeTab === 'executions' && credentialId" :class="$style.mainContent">
+					<CredentialExecutions :credential-id="credentialId" />
 				</div>
 			</div>
 		</template>

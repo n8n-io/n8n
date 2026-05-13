@@ -73,6 +73,8 @@ describe('CredentialsController', () => {
 	);
 	const emitSpy = jest.spyOn(eventService, 'emit');
 
+	const executionService = mock<ConstructorParameters<typeof CredentialsController>[11]>();
+
 	const credentialsController = new CredentialsController(
 		mock(),
 		credentialsService,
@@ -85,6 +87,7 @@ describe('CredentialsController', () => {
 		mock(),
 		eventService,
 		credentialsFinderService,
+		executionService,
 	);
 
 	let req: AuthenticatedRequest;
@@ -516,6 +519,45 @@ describe('CredentialsController', () => {
 				decryptedExistingData: { apiKey: 'regular-key' },
 			});
 			expect(updateSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getExecutions', () => {
+		const credentialId = 'cred_abc';
+
+		it('delegates to ExecutionService with the parsed query', async () => {
+			const expected = { results: [], total: 0, succeeded: 0, failed: 0 };
+			executionService.findManyByCredentialId.mockResolvedValue(expected);
+
+			const result = await credentialsController.getExecutions(req, res, credentialId, {
+				limit: 20,
+				lastId: undefined,
+			});
+
+			expect(executionService.findManyByCredentialId).toHaveBeenCalledWith(credentialId, {
+				limit: 20,
+				lastId: undefined,
+			});
+			expect(result).toBe(expected);
+		});
+
+		it('passes lastId through for pagination', async () => {
+			executionService.findManyByCredentialId.mockResolvedValue({
+				results: [],
+				total: 0,
+				succeeded: 0,
+				failed: 0,
+			});
+
+			await credentialsController.getExecutions(req, res, credentialId, {
+				limit: 50,
+				lastId: 'exec_99',
+			});
+
+			expect(executionService.findManyByCredentialId).toHaveBeenCalledWith(credentialId, {
+				limit: 50,
+				lastId: 'exec_99',
+			});
 		});
 	});
 });

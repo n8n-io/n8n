@@ -1,7 +1,9 @@
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from './credentials.types';
+import type { SingleNodeExecutionSummaryExtras } from '@/features/execution/executions/executions.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type {
+	ExecutionSummary,
 	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
@@ -11,6 +13,15 @@ import type {
 import axios from 'axios';
 import { sleep } from 'n8n-workflow';
 import type { CreateCredentialDto } from '@n8n/api-types';
+
+export type CredentialExecutionSummary = ExecutionSummary & SingleNodeExecutionSummaryExtras;
+
+export interface CredentialExecutionsResponse {
+	results: CredentialExecutionSummary[];
+	total: number;
+	succeeded: number;
+	failed: number;
+}
 
 async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
 	for (let attempt = 0; attempt < retries; attempt++) {
@@ -150,5 +161,22 @@ export async function testCredential(
 		'POST',
 		'/credentials/test',
 		data as unknown as IDataObject,
+	);
+}
+
+export async function getCredentialExecutions(
+	context: IRestApiContext,
+	credentialId: string,
+	options: { limit?: number; lastId?: string } = {},
+): Promise<CredentialExecutionsResponse> {
+	const params: IDataObject = {};
+	if (options.limit !== undefined) params.limit = options.limit;
+	if (options.lastId !== undefined) params.lastId = options.lastId;
+
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/credentials/${encodeURIComponent(credentialId)}/executions`,
+		params,
 	);
 }

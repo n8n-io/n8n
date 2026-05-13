@@ -1,5 +1,6 @@
 import {
 	CreateCredentialDto,
+	CredentialExecutionsRequestQuery,
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
@@ -41,6 +42,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
@@ -62,6 +64,7 @@ export class CredentialsController {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly executionService: ExecutionService,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -135,6 +138,29 @@ export class CredentialsController {
 		);
 
 		return { ...credential, scopes };
+	}
+
+	/**
+	 * List single-node (hub) executions that used this credential, plus
+	 * `{total, succeeded, failed}` counts for the credential-detail header.
+	 *
+	 * Gated by `credential:read`: anyone who can read the credential sees the
+	 * full audit log — including calls triggered by other users. Detail-view
+	 * auth stays separate (clicking a row hits `GET /executions/:id`, which
+	 * enforces its own check).
+	 */
+	@Get('/:credentialId/executions')
+	@ProjectScope('credential:read')
+	async getExecutions(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+		@Query query: CredentialExecutionsRequestQuery,
+	) {
+		return await this.executionService.findManyByCredentialId(credentialId, {
+			limit: query.limit,
+			lastId: query.lastId,
+		});
 	}
 
 	// TODO: Write at least test cases for the failure paths.

@@ -494,6 +494,28 @@ export class ExecutionService {
 	}
 
 	/**
+	 * Find single-node (hub) executions that used a given credential. Returns
+	 * caller-enriched summaries plus `{total, succeeded, failed}` for the
+	 * credential-detail header line.
+	 *
+	 * Auth is enforced at the controller (`@ProjectScope('credential:read')`);
+	 * this method assumes the caller has already established access to the
+	 * credential. The list itself is purely credential-scoped — workflow access
+	 * does not filter rows, so a credential owner sees every hub call against
+	 * their credential regardless of which user triggered it.
+	 */
+	async findManyByCredentialId(credentialId: string, range: { limit: number; lastId?: string }) {
+		const [results, counts] = await Promise.all([
+			this.executionRepository.findManyByCredentialId(credentialId, range),
+			this.executionRepository.countByCredentialId(credentialId),
+		]);
+
+		await this.attachCallerToSummaries(results);
+
+		return { results, ...counts };
+	}
+
+	/**
 	 * Enrich summaries with `caller` derived from ExecutionMetadata. Only loads
 	 * metadata for executions whose mode is `'single-node'`; regular workflow
 	 * executions are skipped so we don't pay the lookup cost for them.
@@ -509,6 +531,7 @@ export class ExecutionService {
 				nodeType?: string;
 				actionId?: string;
 				actionDisplayName?: string;
+				credentialId?: string;
 			}
 		>,
 	): Promise<void> {
@@ -545,6 +568,8 @@ export class ExecutionService {
 				if (actionId) summary.actionId = actionId;
 				const actionDisplayName = metadata?.[EXECUTION_CALLER_METADATA_KEYS.actionDisplayName];
 				if (actionDisplayName) summary.actionDisplayName = actionDisplayName;
+				const credentialId = metadata?.[EXECUTION_CALLER_METADATA_KEYS.credentialId];
+				if (credentialId) summary.credentialId = credentialId;
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
