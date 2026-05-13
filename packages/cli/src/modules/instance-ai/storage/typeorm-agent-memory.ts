@@ -5,6 +5,7 @@ import type {
 	Thread,
 	ThreadPatch,
 } from '@n8n/instance-ai';
+import { Logger } from '@n8n/backend-common';
 import type { MemoryDescriptor } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { In, LessThan } from '@n8n/typeorm';
@@ -110,7 +111,12 @@ export class TypeORMAgentMemory implements BuiltMemory {
 		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly messageRepo: InstanceAiMessageRepository,
 		private readonly resourceRepo: InstanceAiResourceRepository,
-	) {}
+		logger: Logger,
+	) {
+		this.logger = logger.scoped('instance-ai');
+	}
+
+	private readonly logger: Logger;
 
 	describe(): MemoryDescriptor {
 		return {
@@ -214,7 +220,7 @@ export class TypeORMAgentMemory implements BuiltMemory {
 
 		const ordered = opts?.limit ? entities.reverse() : entities;
 		return ordered.flatMap((entity) => {
-			const message = toAgentMessage(entity);
+			const message = this.toAgentMessage(entity);
 			return message ? [message] : [];
 		});
 	}
@@ -235,7 +241,7 @@ export class TypeORMAgentMemory implements BuiltMemory {
 
 		return {
 			messages: entities.reverse().flatMap((entity) => {
-				const message = toAgentMessage(entity);
+				const message = this.toAgentMessage(entity);
 				return message ? [message] : [];
 			}),
 		};
@@ -314,5 +320,19 @@ export class TypeORMAgentMemory implements BuiltMemory {
 				this.threadMutationQueues.delete(threadId);
 			}
 		}
+	}
+
+	private toAgentMessage(entity: InstanceAiMessage): AgentDbMessage | undefined {
+		const message = toAgentMessage(entity);
+		if (!message) {
+			this.logger.warn('Skipping invalid Instance AI message row', {
+				messageId: entity.id,
+				threadId: entity.threadId,
+				resourceId: entity.resourceId,
+				role: entity.role,
+				type: entity.type,
+			});
+		}
+		return message;
 	}
 }

@@ -76,6 +76,7 @@ interface ValidateJsonSchemaOptions {
 	maxObjectProperties?: number;
 	maxUnionOptions?: number;
 	toolName?: string;
+	path?: string;
 }
 
 interface JsonSchemaValidationContext {
@@ -191,7 +192,7 @@ export function assertMcpJsonSchemaWithinLimits(
 	schema: unknown,
 	options: ValidateJsonSchemaOptions = {},
 ): void {
-	validateJsonSchemaNode(schema, '$.inputSchema', 0, {
+	validateJsonSchemaNode(schema, options.path ?? '$.inputSchema', 0, {
 		toolName: options.toolName,
 		maxDepth: options.maxDepth ?? MCP_SCHEMA_MAX_DEPTH,
 		maxNodes: options.maxNodes ?? MCP_SCHEMA_MAX_NODES,
@@ -713,6 +714,7 @@ export function sanitizeMcpToolSchemas<TTools extends Record<string, unknown>>(
 						maxObjectProperties: options.maxObjectProperties,
 						maxUnionOptions: options.maxUnionOptions,
 						toolName: name,
+						path: '$.outputSchema',
 					});
 				}
 			}

@@ -117,6 +117,10 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
+const INSTANCE_AI_CHECKPOINT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const INSTANCE_AI_CHECKPOINT_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
+
 function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
 	return (
 		typeof part === 'object' &&
@@ -437,6 +441,10 @@ export class InstanceAiService {
 
 	private readonly logger: Logger;
 
+	private checkpointPruneTimer: NodeJS.Timeout | undefined;
+
+	private checkpointPruningStopped = true;
+
 	constructor(
 		logger: Logger,
 		globalConfig: GlobalConfig,
@@ -481,9 +489,8 @@ export class InstanceAiService {
 			this.instanceAiConfig.builderSandboxTtlMs,
 		);
 		this.defaultTimeZone = globalConfig.generic.timezone;
-		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
-		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
+		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl().replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
@@ -507,6 +514,7 @@ export class InstanceAiService {
 		});
 
 		this.liveness.start();
+		this.startCheckpointPruning();
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -1192,6 +1200,7 @@ export class InstanceAiService {
 		timeZone?: string,
 		pushRef?: string,
 	): string {
+		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
@@ -1633,6 +1642,7 @@ export class InstanceAiService {
 	}
 
 	async shutdown(): Promise<void> {
+		this.stopCheckpointPruning();
 		this.liveness.shutdown();
 
 		const { activeRuns, suspendedRuns } = this.runState.shutdown();
@@ -1682,6 +1692,44 @@ export class InstanceAiService {
 		this.eventBus.clear();
 		await this.mcpClientManager.disconnect();
 		this.logger.debug('Instance AI service shut down');
+	}
+
+	private startCheckpointPruning(): void {
+		this.checkpointPruningStopped = false;
+		this.scheduleCheckpointPrune(0);
+	}
+
+	private stopCheckpointPruning(): void {
+		this.checkpointPruningStopped = true;
+		clearTimeout(this.checkpointPruneTimer);
+		this.checkpointPruneTimer = undefined;
+	}
+
+	private scheduleCheckpointPrune(delayMs = INSTANCE_AI_CHECKPOINT_PRUNE_INTERVAL_MS): void {
+		if (this.checkpointPruningStopped) return;
+		this.checkpointPruneTimer = setTimeout(() => {
+			void this.pruneStaleCheckpoints();
+		}, delayMs);
+		this.checkpointPruneTimer.unref();
+	}
+
+	private async pruneStaleCheckpoints(now = Date.now()): Promise<void> {
+		const olderThan = new Date(now - INSTANCE_AI_CHECKPOINT_RETENTION_MS);
+
+		try {
+			const count = await this.checkpointStore.deleteOlderThan(olderThan);
+			if (count > 0) {
+				this.logger.info('Deleted stale Instance AI checkpoints', { count });
+			} else {
+				this.logger.debug('No stale Instance AI checkpoints to delete');
+			}
+			this.scheduleCheckpointPrune();
+		} catch (error: unknown) {
+			this.logger.warn('Failed to delete stale Instance AI checkpoints', {
+				error: getErrorMessage(error),
+			});
+			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
 	}
 
 	private createAgentMemoryOptions() {
@@ -3566,8 +3614,21 @@ export class InstanceAiService {
 		request: InstanceAiConfirmRequest,
 	): Promise<boolean> {
 		const data = toConfirmationData(request);
+		const freshUser = await this.revalidateActiveUser(requestingUserId);
+		if (!freshUser) {
+			this.runState.rejectPendingConfirmation(requestId);
+			const suspended = this.runState.findSuspendedByRequestId(requestId);
+			if (suspended?.user.id === requestingUserId) {
+				this.cancelRun(suspended.threadId);
+			}
+			this.logger.warn('Rejecting confirmation: user no longer authorized for AI Assistant', {
+				userId: requestingUserId,
+				requestId,
+			});
+			return false;
+		}
 
-		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
+		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
@@ -3581,6 +3642,25 @@ export class InstanceAiService {
 		});
 
 		return await this.resumeSuspendedRun(requestingUserId, requestId, data);
+	}
+
+	private async revalidateActiveUser(userId: string): Promise<User | null> {
+		try {
+			const user = await this.userRepository.findOne({
+				where: { id: userId },
+				relations: ['role'],
+			});
+			if (!user || user.disabled) return null;
+			const hasInstanceAiMessageScope =
+				user.role?.scopes?.some((scope) => scope.slug === 'instanceAi:message') ?? false;
+			return hasInstanceAiMessageScope ? user : null;
+		} catch (error: unknown) {
+			this.logger.warn('Failed to revalidate user', {
+				userId,
+				error: getErrorMessage(error),
+			});
+			return null;
+		}
 	}
 
 	private async resumeSuspendedRun(

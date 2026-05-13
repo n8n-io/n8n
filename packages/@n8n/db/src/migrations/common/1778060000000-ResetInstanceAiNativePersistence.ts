@@ -1,6 +1,6 @@
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
-const persistedRuntimeTables = [
+const runtimeTables = [
 	'ai_builder_temporary_workflow',
 	'instance_ai_checkpoints',
 	'instance_ai_iteration_logs',
@@ -10,19 +10,10 @@ const persistedRuntimeTables = [
 	'instance_ai_threads',
 ] as const;
 
-const obsoleteTables = [
-	'instance_ai_workflow_snapshots',
-	'instance_ai_observational_memory',
-] as const;
-
 export class ResetInstanceAiNativePersistence1778060000000 implements IrreversibleMigration {
-	async up({ queryRunner, escape, schemaBuilder: { dropTable } }: MigrationContext) {
-		for (const table of persistedRuntimeTables) {
+	async up({ queryRunner, escape }: MigrationContext) {
+		for (const table of runtimeTables) {
 			await queryRunner.query(`DELETE FROM ${escape.tableName(table)}`);
-		}
-
-		for (const table of obsoleteTables) {
-			await dropTable(table);
 		}
 	}
 }

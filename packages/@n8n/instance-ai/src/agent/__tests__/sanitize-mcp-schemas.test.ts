@@ -453,6 +453,31 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(onErrorCalls[0]?.[0].details.limitType).toBe('nodes');
 			expect(onErrorCalls[0]?.[0].details.limit).toBe(2);
 		});
+
+		it('reports raw JSON output schema limit errors under the output schema path', () => {
+			const onError = jest.fn();
+			const tools: Record<string, { inputSchema: unknown; outputSchema: unknown }> = {
+				outputTool: {
+					inputSchema: { type: 'object' },
+					outputSchema: {
+						type: 'object',
+						properties: {
+							first: { type: 'string' },
+							second: { type: 'string' },
+						},
+					},
+				},
+			};
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxObjectProperties: 1,
+				onError,
+			});
+
+			expect(Object.keys(result)).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.path).toBe('$.outputSchema.properties');
+		});
 	});
 
 	describe('strict mode', () => {

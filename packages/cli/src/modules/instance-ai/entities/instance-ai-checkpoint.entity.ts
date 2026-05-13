@@ -1,5 +1,7 @@
 import { WithTimestamps } from '@n8n/db';
-import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+
+import { InstanceAiThread } from './instance-ai-thread.entity';
 
 @Entity({ name: 'instance_ai_checkpoints' })
 export class InstanceAiCheckpoint extends WithTimestamps {
@@ -10,9 +12,13 @@ export class InstanceAiCheckpoint extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	runId: string | null;
 
+	@ManyToOne(() => InstanceAiThread, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'threadId' })
+	thread: InstanceAiThread;
+
 	@Index()
-	@Column({ type: 'uuid', nullable: true })
-	threadId: string | null;
+	@Column({ type: 'uuid' })
+	threadId: string;
 
 	@Index()
 	@Column({ type: 'varchar', length: 255, nullable: true })

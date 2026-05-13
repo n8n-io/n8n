@@ -389,6 +389,31 @@ function createCheckpointService(): ServiceInternals {
 	return service;
 }
 
+type CheckpointPruneServiceInternals = {
+	pruneStaleCheckpoints: (now?: number) => Promise<void>;
+	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
+	checkpointStore: {
+		deleteOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
+	};
+	logger: { info: jest.Mock; debug: jest.Mock; warn: jest.Mock };
+};
+
+function createCheckpointPruneService(): CheckpointPruneServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as CheckpointPruneServiceInternals;
+	service.scheduleCheckpointPrune = jest.fn();
+	service.checkpointStore = {
+		deleteOlderThan: jest.fn(async (_olderThan: Date) => 0),
+	};
+	service.logger = {
+		info: jest.fn(),
+		debug: jest.fn(),
+		warn: jest.fn(),
+	};
+	return service;
+}
+
 function createTemporaryCleanupService({
 	runningTaskCount = 0,
 	markedWorkflows = [],
@@ -819,6 +844,20 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 
 			expect(service.reenterCheckpointById).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — checkpoint pruning', () => {
+	it('deletes checkpoints older than the retention window', async () => {
+		const service = createCheckpointPruneService();
+		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
+
+		await service.pruneStaleCheckpoints(now);
+
+		expect(service.checkpointStore.deleteOlderThan).toHaveBeenCalledWith(
+			new Date('2026-05-06T12:00:00.000Z'),
+		);
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
 	});
 });
 

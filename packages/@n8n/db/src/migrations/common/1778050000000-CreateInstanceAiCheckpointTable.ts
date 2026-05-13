@@ -8,12 +8,17 @@ export class CreateInstanceAiCheckpointTable1778050000000 implements ReversibleM
 			.withColumns(
 				column('key').varchar(255).primary.notNull,
 				column('runId').varchar(255),
-				column('threadId').uuid,
+				column('threadId').uuid.notNull,
 				column('resourceId').varchar(255),
 				column('state').text.notNull,
 			)
 			.withIndexOn('runId')
 			.withIndexOn('threadId')
+			.withForeignKey('threadId', {
+				tableName: 'instance_ai_threads',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
 			.withIndexOn('resourceId').withTimestamps;
 	}
 

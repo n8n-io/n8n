@@ -372,6 +372,12 @@ export class BuilderSandboxFactory {
 		builderId: string,
 		context: InstanceAiContext,
 	): Promise<BuilderWorkspace> {
+		if (process.env.NODE_ENV === 'production') {
+			throw new Error(
+				'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" or "n8n-sandbox" provider for isolated sandbox execution.',
+			);
+		}
+
 		const dir = `./workspace-builders/${builderId}`;
 		const sandbox = new LocalSandbox({ workingDirectory: dir });
 		const guardedFilesystem = createGuardedFilesystem(new LocalFilesystem({ basePath: dir }));

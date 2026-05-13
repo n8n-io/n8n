@@ -148,6 +148,29 @@ function makeN8nSandboxConfig(): SandboxConfig {
 	} as SandboxConfig;
 }
 
+function makeLocalConfig(): SandboxConfig {
+	return {
+		enabled: true,
+		provider: 'local',
+	} as SandboxConfig;
+}
+
+describe('BuilderSandboxFactory createLocal production guard', () => {
+	it('rejects the local provider in production', async () => {
+		const originalEnv = process.env.NODE_ENV;
+		process.env.NODE_ENV = 'production';
+		try {
+			const factory = new BuilderSandboxFactory(makeLocalConfig(), undefined);
+
+			await expect(factory.create('builder-1', makeContext())).rejects.toThrow(
+				'LocalSandbox (provider: "local") is not allowed in production',
+			);
+		} finally {
+			process.env.NODE_ENV = originalEnv;
+		}
+	});
+});
+
 describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 	beforeEach(() => {
 		daytonaCreateMock.mockReset();

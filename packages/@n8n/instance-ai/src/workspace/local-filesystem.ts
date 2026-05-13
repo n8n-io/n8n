@@ -14,9 +14,11 @@ import {
 	access,
 	copyFile,
 	cp,
+	lstat,
 	mkdir,
 	readdir,
 	readFile,
+	realpath,
 	rename,
 	rm,
 	stat,
@@ -41,6 +43,13 @@ function isPathInside(childPath: string, parentPath: string): boolean {
 	return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
+function isNotFoundError(error: unknown): boolean {
+	if (typeof error !== 'object' || error === null) return false;
+	return Reflect.get(error, 'code') === 'ENOENT';
+}
+
+class PathEscapesWorkspaceError extends Error {}
+
 export class LocalFilesystem extends BaseFilesystem {
 	readonly id: string;
 	readonly name = 'LocalFilesystem';
@@ -51,6 +60,7 @@ export class LocalFilesystem extends BaseFilesystem {
 
 	private readonly contained: boolean;
 	private readonly instructions?: string;
+	private realBasePath: string | undefined;
 
 	constructor(options: LocalFilesystemOptions) {
 		super();
@@ -63,18 +73,19 @@ export class LocalFilesystem extends BaseFilesystem {
 
 	override async init(): Promise<void> {
 		await mkdir(this.basePath, { recursive: true });
+		this.realBasePath = await realpath(this.basePath);
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
 		await this.ensureReady();
-		const content = await readFile(this.resolvePath(path));
+		const content = await readFile(await this.resolveExistingPath(path));
 		return options?.encoding ? content.toString(options.encoding) : content;
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
 		await this.ensureReady();
 		this.assertWritable();
-		const filePath = this.resolvePath(path);
+		const filePath = await this.resolveWritablePath(path);
 		if (options?.recursive) {
 			await mkdir(dirname(filePath), { recursive: true });
 		}
@@ -87,14 +98,17 @@ export class LocalFilesystem extends BaseFilesystem {
 	async appendFile(path: string, content: FileContent): Promise<void> {
 		await this.ensureReady();
 		this.assertWritable();
-		const filePath = this.resolvePath(path);
+		const filePath = await this.resolveWritablePath(path);
 		await writeFile(filePath, toBuffer(content), { flag: 'a' });
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
 		await this.ensureReady();
 		this.assertWritable();
-		await rm(this.resolvePath(path), {
+		const filePath = options?.force
+			? await this.resolveWritablePath(path)
+			: await this.resolveExistingPath(path);
+		await rm(filePath, {
 			recursive: options?.recursive ?? false,
 			force: options?.force ?? false,
 		});
@@ -103,8 +117,8 @@ export class LocalFilesystem extends BaseFilesystem {
 	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
 		await this.ensureReady();
 		this.assertWritable();
-		const srcPath = this.resolvePath(src);
-		const destPath = this.resolvePath(dest);
+		const srcPath = await this.resolveExistingPath(src);
+		const destPath = await this.resolveWritablePath(dest);
 		const srcStat = await stat(srcPath);
 		if (options?.recursive || srcStat.isDirectory()) {
 			await cp(srcPath, destPath, {
@@ -124,18 +138,19 @@ export class LocalFilesystem extends BaseFilesystem {
 	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
 		await this.ensureReady();
 		this.assertWritable();
-		const destPath = this.resolvePath(dest);
+		const srcPath = await this.resolveExistingPath(src);
+		const destPath = await this.resolveWritablePath(dest);
 		if (options?.overwrite === false && (await this.exists(dest))) {
 			throw new Error(`Path already exists: ${dest}`);
 		}
 		await mkdir(dirname(destPath), { recursive: true });
-		await rename(this.resolvePath(src), destPath);
+		await rename(srcPath, destPath);
 	}
 
 	async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
 		await this.ensureReady();
 		this.assertWritable();
-		await mkdir(this.resolvePath(path), { recursive: options?.recursive ?? false });
+		await mkdir(await this.resolveWritablePath(path), { recursive: options?.recursive ?? false });
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
@@ -144,7 +159,10 @@ export class LocalFilesystem extends BaseFilesystem {
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
 		await this.ensureReady();
-		const entries = await this.readDirectory(this.resolvePath(path), options?.recursive ?? false);
+		const entries = await this.readDirectory(
+			await this.resolveExistingPath(path),
+			options?.recursive ?? false,
+		);
 		const extension = options?.extension
 			? options.extension.startsWith('.')
 				? options.extension
@@ -159,16 +177,17 @@ export class LocalFilesystem extends BaseFilesystem {
 	async exists(path: string): Promise<boolean> {
 		await this.ensureReady();
 		try {
-			await access(this.resolvePath(path));
+			await access(await this.resolveExistingPath(path));
 			return true;
-		} catch {
+		} catch (error) {
+			if (error instanceof PathEscapesWorkspaceError) throw error;
 			return false;
 		}
 	}
 
 	async stat(path: string): Promise<FileStat> {
 		await this.ensureReady();
-		const filePath = this.resolvePath(path);
+		const filePath = await this.resolveExistingPath(path);
 		const info = await stat(filePath);
 		return {
 			name: basename(filePath),
@@ -191,7 +210,7 @@ export class LocalFilesystem extends BaseFilesystem {
 		);
 	}
 
-	private resolvePath(inputPath: string): string {
+	private resolvePathLexically(inputPath: string): string {
 		const filePath = isAbsolute(inputPath)
 			? resolve(inputPath)
 			: resolve(join(this.basePath, inputPath));
@@ -199,6 +218,63 @@ export class LocalFilesystem extends BaseFilesystem {
 			throw new Error(`Path escapes local workspace root: ${inputPath}`);
 		}
 		return filePath;
+	}
+
+	private async resolveExistingPath(inputPath: string): Promise<string> {
+		const filePath = this.resolvePathLexically(inputPath);
+		await this.assertExistingPathContained(filePath, inputPath);
+		return filePath;
+	}
+
+	private async resolveWritablePath(inputPath: string): Promise<string> {
+		const filePath = this.resolvePathLexically(inputPath);
+		if (!this.contained) return filePath;
+
+		try {
+			await this.assertExistingPathContained(filePath, inputPath);
+			return filePath;
+		} catch (error) {
+			if (!isNotFoundError(error)) throw error;
+		}
+
+		await this.assertNearestExistingParentContained(filePath, inputPath);
+		return filePath;
+	}
+
+	private async assertExistingPathContained(filePath: string, inputPath: string): Promise<void> {
+		if (!this.contained) return;
+		const [realFilePath, realBasePath] = await Promise.all([
+			realpath(filePath),
+			this.getRealBasePath(),
+		]);
+		if (!isPathInside(realFilePath, realBasePath)) {
+			throw new PathEscapesWorkspaceError(`Path escapes local workspace root: ${inputPath}`);
+		}
+	}
+
+	private async assertNearestExistingParentContained(
+		filePath: string,
+		inputPath: string,
+	): Promise<void> {
+		let parentPath = dirname(filePath);
+		while (true) {
+			try {
+				await this.assertExistingPathContained(parentPath, inputPath);
+				return;
+			} catch (error) {
+				if (!isNotFoundError(error)) throw error;
+			}
+
+			const nextParentPath = dirname(parentPath);
+			if (nextParentPath === parentPath)
+				throw new Error(`Path has no existing parent: ${inputPath}`);
+			parentPath = nextParentPath;
+		}
+	}
+
+	private async getRealBasePath(): Promise<string> {
+		this.realBasePath ??= await realpath(this.basePath);
+		return this.realBasePath;
 	}
 
 	private assertWritable(): void {
@@ -212,13 +288,16 @@ export class LocalFilesystem extends BaseFilesystem {
 		const entries: FileEntry[] = [];
 		for (const dirent of dirents) {
 			const entryPath = join(path, dirent.name);
+			await this.assertExistingPathContained(entryPath, entryPath);
+			const linkInfo = await lstat(entryPath);
 			const info = await stat(entryPath);
+			const isDirectory = info.isDirectory();
 			entries.push({
 				name: dirent.name,
-				type: dirent.isDirectory() ? 'directory' : 'file',
+				type: isDirectory ? 'directory' : 'file',
 				size: info.size,
 			});
-			if (recursive && dirent.isDirectory()) {
+			if (recursive && isDirectory && !linkInfo.isSymbolicLink()) {
 				const nested = await this.readDirectory(entryPath, true);
 				entries.push(
 					...nested.map((entry) => ({
