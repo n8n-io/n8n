@@ -1,3 +1,11 @@
+## [1.123.43](https://github.com/n8n-io/n8n/compare/n8n@1.123.42...n8n@1.123.43) (2026-05-13)
+
+
+### Bug Fixes
+
+* Fix 16 security issues in fast-xml-builder, fast-uri, langsmith and 3 more ([#30168](https://github.com/n8n-io/n8n/issues/30168)) ([6642f30](https://github.com/n8n-io/n8n/commit/6642f30c1b2d3625399cc78bbf8f4ed806317606))
+
+
 ## [1.123.42](https://github.com/n8n-io/n8n/compare/n8n@1.123.41...n8n@1.123.42) (2026-05-08)
 
 
