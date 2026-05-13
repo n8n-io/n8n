@@ -9,6 +9,7 @@ import type {
 import { confirmationRequestPayloadSchema } from '@n8n/api-types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import readline from 'node:readline/promises';
+import picocolors from 'picocolors';
 import prompts from 'prompts';
 import { z } from 'zod';
 
@@ -36,6 +37,19 @@ type RunSyncFrame = {
 	runId?: string;
 	runIds: string[];
 	messageGroupId?: string;
+};
+
+type ParsedInstanceAiEvent = {
+	type: string;
+	runId?: string;
+	payload?: unknown;
+};
+
+type RunEventObserver = {
+	onEvent?: (event: ParsedInstanceAiEvent) => void;
+	onTextDelta?: (text: string) => void;
+	onBeforeBlockingPrompt?: () => void;
+	onAfterBlockingPrompt?: () => void;
 };
 
 type ThreadStatusResponse = {
@@ -104,7 +118,7 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.restBaseUrl = `${removeTrailingSlash(flags.baseUrl)}/rest/instance-ai`;
 
 		const threadId = await this.ensureThread(flags.threadId);
-		if (flags.threadId) {
+		if (flags.threadId && flags.prompt) {
 			await this.loadAndPrintThreadHistory(threadId);
 		}
 
@@ -167,6 +181,7 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		threadId: string,
 		runId: string,
 		timeoutMs: number,
+		observer?: RunEventObserver,
 	): Promise<'completed' | 'cancelled' | 'failed' | 'confirmation-required'> {
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -238,14 +253,28 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 					if (!event.runId || !trackedRunIds.has(event.runId)) continue;
 
+					observer?.onEvent?.(event);
+
 					if (event.type === 'text-delta') {
 						const text = this.getTextDelta(event);
-						if (text) process.stdout.write(text);
+						if (text) {
+							if (observer?.onTextDelta) {
+								observer.onTextDelta(text);
+							} else {
+								process.stdout.write(text);
+							}
+						}
 						continue;
 					}
 
 					if (event.type === 'confirmation-request') {
-						const resolution = await this.resolveConfirmationRequest(threadId, event.payload);
+						observer?.onBeforeBlockingPrompt?.();
+						let resolution: 'resolved' | 'resolve-in-ui';
+						try {
+							resolution = await this.resolveConfirmationRequest(threadId, event.payload);
+						} finally {
+							observer?.onAfterBlockingPrompt?.();
+						}
 						if (resolution === 'resolve-in-ui') {
 							return 'confirmation-required';
 						}
@@ -303,15 +332,23 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		prompt: string,
 		researchMode: boolean | undefined,
 		timeoutMs: number,
+		observer?: RunEventObserver,
+		ui?: FullscreenChatUi,
 	): Promise<void> {
 		const runId = await this.startRun(threadId, prompt, researchMode);
-		const result = await this.waitForRun(threadId, runId, timeoutMs);
+		const result = await this.waitForRun(threadId, runId, timeoutMs, observer);
 
 		if (result === 'confirmation-required') {
-			this.logger.info('');
-			this.logger.info('Run paused: user confirmation is required in the n8n UI.');
-			this.logger.info(`Thread ID: ${threadId}`);
-			this.logger.info(`Run ID: ${runId}`);
+			if (ui) {
+				ui.addEntry('system', 'Run paused: user confirmation is required in the n8n UI.');
+				ui.addEntry('system', `Thread ID: ${threadId}`);
+				ui.addEntry('system', `Run ID: ${runId}`);
+			} else {
+				this.logger.info('');
+				this.logger.info('Run paused: user confirmation is required in the n8n UI.');
+				this.logger.info(`Thread ID: ${threadId}`);
+				this.logger.info(`Run ID: ${runId}`);
+			}
 			return;
 		}
 
@@ -319,7 +356,9 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 			throw new UserError(`Instance AI run finished with status: ${result}`);
 		}
 
-		process.stdout.write('\n');
+		if (!observer?.onTextDelta) {
+			process.stdout.write('\n');
+		}
 	}
 
 	private async runInteractiveShell(
@@ -339,43 +378,125 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		});
 
 		let threadId = startingThreadId;
-		this.logger.info('');
-		this.logger.info(`Interactive mode started (thread: ${threadId}).`);
-		this.logger.info('Commands: /exit, /quit, /new, /thread, /thread <thread-id>');
+		const ui = new FullscreenChatUi(threadId);
+		const seenAssistantMessages = new Set<string>();
+		let monitorThreadId = threadId;
+		let monitorActive = false;
+		let monitorInFlight = false;
+
+		const monitorTimer = setInterval(async () => {
+			if (!monitorActive || monitorInFlight) return;
+			monitorInFlight = true;
+
+			try {
+				const status = await this.getThreadStatus(monitorThreadId);
+				if (!status) return;
+
+				const hasRunningBackgroundTasks = status.backgroundTasks.some(
+					(task) => task.status === 'running',
+				);
+				monitorActive = status.hasActiveRun || status.isSuspended || hasRunningBackgroundTasks;
+
+				if (hasRunningBackgroundTasks) {
+					ui.setBackgroundNotice('Working in background... you can keep chatting');
+				} else {
+					ui.clearBackgroundNotice();
+				}
+
+				await this.syncNewAssistantMessagesToUi(monitorThreadId, ui, seenAssistantMessages);
+			} catch {
+				// Best effort background refresh
+			} finally {
+				monitorInFlight = false;
+			}
+		}, 1500);
+
+		ui.enter();
+		await this.loadAndPrintThreadHistory(threadId, ui);
+		await this.seedSeenAssistantMessages(threadId, seenAssistantMessages);
 
 		try {
 			while (true) {
-				const input = (await terminal.question('You: ')).trim();
+				const input = (await ui.prompt(terminal)).trim();
 				if (!input) continue;
 
 				const [command, ...args] = input.split(/\s+/);
 				const normalized = command.toLowerCase();
 				if (normalized === '/exit' || normalized === '/quit') {
+					ui.addEntry('system', 'Closing interactive mode');
 					break;
 				}
 
 				if (normalized === '/new') {
 					threadId = await this.ensureThread();
-					this.logger.info(`Started new thread: ${threadId}`);
+					monitorThreadId = threadId;
+					monitorActive = false;
+					seenAssistantMessages.clear();
+					ui.clearBackgroundNotice();
+					ui.setThreadId(threadId);
+					ui.addEntry('system', `Started new thread: ${threadId}`);
+					await this.seedSeenAssistantMessages(threadId, seenAssistantMessages);
 					continue;
 				}
 
 				if (normalized === '/thread') {
 					if (args.length > 0) {
 						threadId = await this.ensureThread(args[0]);
-						this.logger.info(`Switched thread: ${threadId}`);
-						await this.loadAndPrintThreadHistory(threadId);
+						monitorThreadId = threadId;
+						monitorActive = false;
+						seenAssistantMessages.clear();
+						ui.clearBackgroundNotice();
+						ui.setThreadId(threadId);
+						ui.addEntry('system', `Switched thread: ${threadId}`);
+						await this.loadAndPrintThreadHistory(threadId, ui);
+						await this.seedSeenAssistantMessages(threadId, seenAssistantMessages);
 						continue;
 					}
 
-					this.logger.info(`Current thread: ${threadId}`);
+					ui.addEntry('system', `Current thread: ${threadId}`);
 					continue;
 				}
 
-				process.stdout.write('AI: ');
-				await this.executePrompt(threadId, input, researchMode, timeoutMs);
+				ui.addEntry('user', input);
+				ui.beginAssistantRun();
+				monitorActive = false;
+				ui.clearBackgroundNotice();
+
+				await this.executePrompt(
+					threadId,
+					input,
+					researchMode,
+					timeoutMs,
+					{
+						onEvent: (event) => {
+							ui.handleEvent(event);
+						},
+						onTextDelta: (text) => {
+							ui.appendAssistantText(text);
+						},
+						onBeforeBlockingPrompt: () => {
+							ui.suspendForPrompt();
+						},
+						onAfterBlockingPrompt: () => {
+							ui.resumeAfterPrompt();
+						},
+					},
+					ui,
+				);
+
+				const completedAssistantMessage = ui.endAssistantRun();
+				if (completedAssistantMessage) {
+					seenAssistantMessages.add(this.threadMessageKey('assistant', completedAssistantMessage));
+				}
+
+				monitorActive = await this.updateBackgroundActivityNotice(threadId, ui);
+				if (monitorActive) {
+					await this.syncNewAssistantMessagesToUi(threadId, ui, seenAssistantMessages);
+				}
 			}
 		} finally {
+			clearInterval(monitorTimer);
+			ui.exit();
 			terminal.close();
 		}
 	}
@@ -403,7 +524,7 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.printConfirmationContext(parsedPayload.data);
 		const request = await this.promptConfirmationRequest(parsedPayload.data);
 		if (!request) {
-			this.logger.info('Confirmation left unresolved in CLI. Continue in n8n UI.');
+			this.logger.info('Confirmation deferred to later. Continue in n8n UI.');
 			return 'resolve-in-ui';
 		}
 
@@ -512,20 +633,28 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		payload: InstanceAiConfirmationRequestPayload,
 	): Promise<InstanceAiConfirmRequest | null> {
 		if (payload.inputType === 'continue') {
-			const decision = await this.promptSelect('Choose confirmation action', [
-				{ title: 'Continue', value: 'continue' },
-				{ title: 'Resolve in UI', value: 'ui' },
-			]);
+			const decision = await this.promptSelect(
+				'Choose confirmation action',
+				[
+					{ title: 'Continue', value: 'continue' },
+					{ title: 'Resolve in UI', value: 'ui' },
+				],
+				{ defaultValue: 'ui' },
+			);
 
 			if (!decision || decision === 'ui') return null;
 			return { kind: 'approval', approved: true };
 		}
 
-		const decision = await this.promptSelect('Choose confirmation action', [
-			{ title: 'Approve', value: 'approve' },
-			{ title: 'Deny', value: 'deny' },
-			{ title: 'Resolve in UI', value: 'ui' },
-		]);
+		const decision = await this.promptSelect(
+			'Choose confirmation action',
+			[
+				{ title: 'Approve', value: 'approve' },
+				{ title: 'Deny', value: 'deny' },
+				{ title: 'Resolve in UI', value: 'ui' },
+			],
+			{ defaultValue: 'ui' },
+		);
 
 		if (!decision || decision === 'ui') return null;
 
@@ -623,6 +752,7 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 					})),
 					{ title: 'Resolve in UI', value: 'ui' },
 				],
+				{ defaultValue: 'ui' },
 			);
 
 			if (!selectedCredential || selectedCredential === 'ui') return null;
@@ -636,13 +766,17 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		payload: InstanceAiConfirmationRequestPayload,
 	): Promise<InstanceAiConfirmRequest | null> {
 		const host = payload.domainAccess?.host ?? 'unknown host';
-		const decision = await this.promptSelect(`Choose domain access policy for ${host}`, [
-			{ title: 'Allow once', value: 'allow_once' },
-			{ title: 'Allow domain', value: 'allow_domain' },
-			{ title: 'Allow all', value: 'allow_all' },
-			{ title: 'Deny', value: 'deny' },
-			{ title: 'Resolve in UI', value: 'ui' },
-		]);
+		const decision = await this.promptSelect(
+			`Choose domain access policy for ${host}`,
+			[
+				{ title: 'Allow once', value: 'allow_once' },
+				{ title: 'Allow domain', value: 'allow_domain' },
+				{ title: 'Allow all', value: 'allow_all' },
+				{ title: 'Deny', value: 'deny' },
+				{ title: 'Resolve in UI', value: 'ui' },
+			],
+			{ defaultValue: 'ui' },
+		);
 
 		if (!decision || decision === 'ui') return null;
 		if (decision === 'deny') return { kind: 'domainAccessDeny' };
@@ -659,13 +793,17 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 			'allowOnce',
 			'allowForSession',
 		];
-		const decision = await this.promptSelect('Choose resource access decision', [
-			...options.map((option) => ({
-				title: this.resourceDecisionLabel(option),
-				value: option,
-			})),
-			{ title: 'Resolve in UI', value: 'ui' },
-		]);
+		const decision = await this.promptSelect(
+			'Choose resource access decision',
+			[
+				...options.map((option) => ({
+					title: this.resourceDecisionLabel(option),
+					value: option,
+				})),
+				{ title: 'Resolve in UI', value: 'ui' },
+			],
+			{ defaultValue: 'ui' },
+		);
 
 		if (!decision || decision === 'ui') return null;
 		if (!this.isResourceDecision(decision)) return null;
@@ -721,14 +859,18 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 			.filter((request) => request.isTrigger && request.isTestable)
 			.map((request) => request.node.name);
 
-		const action = await this.promptSelect('Choose setup action', [
-			{ title: 'Apply configuration', value: 'apply' },
-			...(testableTriggerNodes.length > 0
-				? [{ title: 'Apply and test a trigger', value: 'test-trigger' }]
-				: []),
-			{ title: 'Do this later', value: 'defer' },
-			{ title: 'Resolve in UI', value: 'ui' },
-		]);
+		const action = await this.promptSelect(
+			'Choose setup action',
+			[
+				{ title: 'Apply configuration', value: 'apply' },
+				...(testableTriggerNodes.length > 0
+					? [{ title: 'Apply and test a trigger', value: 'test-trigger' }]
+					: []),
+				{ title: 'Do this later', value: 'defer' },
+				{ title: 'Resolve in UI', value: 'ui' },
+			],
+			{ defaultValue: 'defer' },
+		);
 
 		if (!action || action === 'ui') return null;
 		if (action === 'defer') return { kind: 'approval', approved: false };
@@ -836,12 +978,22 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private async promptSelect(
 		message: string,
 		choices: Array<{ title: string; value: string }>,
+		options?: { defaultValue?: string },
 	): Promise<string | null> {
+		const initial =
+			typeof options?.defaultValue === 'string'
+				? Math.max(
+						choices.findIndex((choice) => choice.value === options.defaultValue),
+						0,
+					)
+				: 0;
+
 		const answer = await this.runPrompt({
 			type: 'select',
 			name: 'value',
 			message,
 			choices,
+			initial,
 		});
 
 		return this.readAnswerString(answer, 'value');
@@ -954,13 +1106,22 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		return option;
 	}
 
-	private async loadAndPrintThreadHistory(threadId: string): Promise<void> {
+	private async loadAndPrintThreadHistory(threadId: string, ui?: FullscreenChatUi): Promise<void> {
 		const history = await this.requestJson<ThreadMessagesResponse>(
 			'GET',
 			`/threads/${encodeURIComponent(threadId)}/messages?limit=100`,
 		);
 
 		if (!history.messages.length) return;
+
+		if (ui) {
+			for (const message of history.messages) {
+				if (!message.content || message.content.trim().length === 0) continue;
+				ui.addEntry(message.role === 'assistant' ? 'assistant' : 'user', message.content);
+			}
+
+			return;
+		}
 
 		this.logger.info('');
 		this.logger.info(
@@ -975,6 +1136,48 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		this.logger.info('');
+	}
+
+	private threadMessageKey(role: string, content: string): string {
+		return `${role}\u0000${content}`;
+	}
+
+	private async seedSeenAssistantMessages(
+		threadId: string,
+		seenAssistantMessages: Set<string>,
+	): Promise<void> {
+		const history = await this.requestJson<ThreadMessagesResponse>(
+			'GET',
+			`/threads/${encodeURIComponent(threadId)}/messages?limit=100`,
+		);
+
+		for (const message of history.messages) {
+			if (message.role !== 'assistant') continue;
+			if (!message.content || message.content.trim().length === 0) continue;
+			seenAssistantMessages.add(this.threadMessageKey('assistant', message.content));
+		}
+	}
+
+	private async syncNewAssistantMessagesToUi(
+		threadId: string,
+		ui: FullscreenChatUi,
+		seenAssistantMessages: Set<string>,
+	): Promise<void> {
+		const history = await this.requestJson<ThreadMessagesResponse>(
+			'GET',
+			`/threads/${encodeURIComponent(threadId)}/messages?limit=100`,
+		);
+
+		for (const message of history.messages) {
+			if (message.role !== 'assistant') continue;
+			if (!message.content || message.content.trim().length === 0) continue;
+
+			const key = this.threadMessageKey('assistant', message.content);
+			if (seenAssistantMessages.has(key)) continue;
+
+			seenAssistantMessages.add(key);
+			ui.addEntry('assistant', message.content);
+		}
 	}
 
 	private parseSseFrame(rawFrame: string): SseFrame {
@@ -999,7 +1202,7 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		};
 	}
 
-	private tryParseEvent(value: string): { type: string; runId?: string; payload?: unknown } | null {
+	private tryParseEvent(value: string): ParsedInstanceAiEvent | null {
 		try {
 			const parsed: unknown = JSON.parse(value);
 			if (!parsed || typeof parsed !== 'object') return null;
@@ -1058,8 +1261,8 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async hasPendingFollowUpActivity(
 		threadId: string,
-		trackedRunIds: Set<string>,
-		trackedMessageGroupId?: string,
+		_trackedRunIds: Set<string>,
+		_trackedMessageGroupId?: string,
 	): Promise<boolean> {
 		try {
 			const status = await this.requestJson<ThreadStatusResponse>(
@@ -1069,18 +1272,6 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			if (status.hasActiveRun || status.isSuspended) {
 				return true;
-			}
-
-			for (const task of status.backgroundTasks) {
-				if (task.status !== 'running') continue;
-
-				if (trackedMessageGroupId && task.messageGroupId === trackedMessageGroupId) {
-					return true;
-				}
-
-				if (!trackedMessageGroupId && task.runId && trackedRunIds.has(task.runId)) {
-					return true;
-				}
 			}
 
 			return false;
@@ -1125,6 +1316,39 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 			: null;
 	}
 
+	private async getThreadStatus(threadId: string): Promise<ThreadStatusResponse | null> {
+		try {
+			return await this.requestJson<ThreadStatusResponse>(
+				'GET',
+				`/threads/${encodeURIComponent(threadId)}/status`,
+			);
+		} catch {
+			return null;
+		}
+	}
+
+	private async updateBackgroundActivityNotice(
+		threadId: string,
+		ui: FullscreenChatUi,
+	): Promise<boolean> {
+		const status = await this.getThreadStatus(threadId);
+		if (!status) {
+			ui.clearBackgroundNotice();
+			return false;
+		}
+
+		const hasRunningBackgroundTasks = status.backgroundTasks.some(
+			(task) => task.status === 'running',
+		);
+		if (hasRunningBackgroundTasks) {
+			ui.setBackgroundNotice('Working in background... you can keep chatting');
+		} else {
+			ui.clearBackgroundNotice();
+		}
+
+		return status.hasActiveRun || status.isSuspended || hasRunningBackgroundTasks;
+	}
+
 	private authHeaders(contentType = false): Record<string, string> {
 		return {
 			'x-n8n-api-key': this.apiKey,
@@ -1165,5 +1389,317 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 				hint ? ` ${hint}` : ''
 			}${responseText ? ` Response: ${responseText}` : ''}`,
 		);
+	}
+}
+
+type UiEntryKind = 'user' | 'assistant' | 'system' | 'error';
+
+type UiEntry = {
+	kind: UiEntryKind;
+	text: string;
+};
+
+class FullscreenChatUi {
+	private readonly entries: UiEntry[] = [];
+
+	private activeAssistantIndex: number | null = null;
+
+	private isBusy = false;
+
+	private spinnerIndex = 0;
+
+	private spinner: NodeJS.Timeout | null = null;
+
+	private activityText = 'Thinking';
+
+	private threadId: string;
+
+	private readonly spinnerFrames = ['-', '\\', '|', '/'];
+
+	private isSuspended = false;
+
+	private backgroundNotice: string | null = null;
+
+	private startNewAssistantMessageOnNextDelta = false;
+
+	constructor(threadId: string) {
+		this.threadId = threadId;
+	}
+
+	enter() {
+		if (!process.stdout.isTTY) return;
+		process.stdout.write('\u001b[?1049h\u001b[?25l');
+		this.render();
+	}
+
+	exit() {
+		this.stopSpinner();
+		this.isSuspended = false;
+		if (!process.stdout.isTTY) return;
+		process.stdout.write('\u001b[?25h\u001b[?1049l');
+	}
+
+	suspendForPrompt() {
+		if (!process.stdout.isTTY || this.isSuspended) return;
+		this.stopSpinner();
+		this.isSuspended = true;
+		process.stdout.write('\u001b[?25h');
+	}
+
+	resumeAfterPrompt() {
+		if (!process.stdout.isTTY || !this.isSuspended) return;
+		this.isSuspended = false;
+		process.stdout.write('\u001b[?25l');
+		if (this.isBusy) this.startSpinner();
+		this.render();
+	}
+
+	setThreadId(threadId: string) {
+		this.threadId = threadId;
+		this.render();
+	}
+
+	addEntry(kind: UiEntryKind, text: string) {
+		this.entries.push({ kind, text });
+		if (this.entries.length > 500) {
+			this.entries.splice(0, this.entries.length - 500);
+		}
+		this.render();
+	}
+
+	beginAssistantRun() {
+		this.isBusy = true;
+		this.activityText = 'Thinking';
+		this.backgroundNotice = null;
+		this.startNewAssistantMessageOnNextDelta = false;
+		this.activeAssistantIndex = this.entries.length;
+		this.entries.push({ kind: 'assistant', text: '' });
+		this.startSpinner();
+		this.render();
+	}
+
+	endAssistantRun(): string | null {
+		let completedMessage: string | null = null;
+		if (this.activeAssistantIndex !== null) {
+			const current = this.entries[this.activeAssistantIndex];
+			if (current && current.kind === 'assistant' && current.text.trim().length > 0) {
+				completedMessage = current.text;
+			}
+		}
+
+		this.isBusy = false;
+		this.stopSpinner();
+		this.activityText = 'Ready';
+		this.startNewAssistantMessageOnNextDelta = false;
+		this.activeAssistantIndex = null;
+		this.render();
+
+		return completedMessage;
+	}
+
+	setBackgroundNotice(message: string) {
+		this.backgroundNotice = message;
+		this.render();
+	}
+
+	clearBackgroundNotice() {
+		if (!this.backgroundNotice) return;
+		this.backgroundNotice = null;
+		this.render();
+	}
+
+	appendAssistantText(text: string) {
+		if (this.startNewAssistantMessageOnNextDelta) {
+			this.activeAssistantIndex = this.entries.length;
+			this.entries.push({ kind: 'assistant', text: '' });
+			this.startNewAssistantMessageOnNextDelta = false;
+		}
+
+		if (this.activeAssistantIndex === null) {
+			this.activeAssistantIndex = this.entries.length;
+			this.entries.push({ kind: 'assistant', text: '' });
+		}
+
+		const current = this.entries[this.activeAssistantIndex];
+		if (!current || current.kind !== 'assistant') return;
+
+		current.text += text;
+		this.render();
+	}
+
+	handleEvent(event: ParsedInstanceAiEvent) {
+		if (event.type === 'run-start') {
+			this.activityText = 'Thinking';
+			this.render();
+			return;
+		}
+
+		if (event.type === 'reasoning-delta') {
+			this.activityText = 'Thinking';
+			this.render();
+			return;
+		}
+
+		if (event.type === 'status') {
+			const text = this.readPayloadString(event.payload, 'message');
+			if (text && text.trim().length > 0) {
+				this.activityText = text;
+			}
+			this.render();
+			return;
+		}
+
+		if (event.type === 'tool-call') {
+			const toolName = this.readPayloadString(event.payload, 'toolName') ?? 'unknown-tool';
+			this.activityText = `Using ${toolName}`;
+			this.render();
+			return;
+		}
+
+		if (event.type === 'tool-result') {
+			this.activityText = 'Thinking';
+			this.render();
+			return;
+		}
+
+		if (event.type === 'tool-error') {
+			const error = this.readPayloadString(event.payload, 'error') ?? 'Tool failed';
+			this.addEntry('error', `Tool error: ${error}`);
+			this.activityText = 'Tool error';
+			this.render();
+			return;
+		}
+
+		if (event.type === 'confirmation-request') {
+			this.startNewAssistantMessageOnNextDelta = true;
+			this.activityText = 'Waiting for confirmation';
+			this.render();
+			return;
+		}
+
+		if (event.type === 'run-finish') {
+			this.activityText = 'Done';
+			this.render();
+		}
+	}
+
+	async prompt(terminal: readline.Interface): Promise<string> {
+		this.render();
+		const rows = process.stdout.rows ?? 40;
+		process.stdout.write(`\u001b[${String(rows)};1H\u001b[2K`);
+		return await terminal.question(`${picocolors.bold(picocolors.cyan('You'))} > `);
+	}
+
+	private startSpinner() {
+		if (this.spinner) return;
+		this.spinner = setInterval(() => {
+			this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length;
+			this.render();
+		}, 120);
+	}
+
+	private stopSpinner() {
+		if (!this.spinner) return;
+		clearInterval(this.spinner);
+		this.spinner = null;
+	}
+
+	private render() {
+		if (!process.stdout.isTTY || this.isSuspended) return;
+
+		const cols = process.stdout.columns ?? 100;
+		const rows = process.stdout.rows ?? 40;
+		const transcriptHeight = Math.max(5, rows - 5);
+
+		const header = [
+			picocolors.bold('Instance AI - Interactive Shell'),
+			picocolors.dim(`Thread: ${this.threadId}`),
+		];
+
+		const transcriptLines = this.entries.flatMap((entry) => this.formatEntry(entry, cols));
+		const visibleTranscript = transcriptLines.slice(
+			Math.max(0, transcriptLines.length - transcriptHeight),
+		);
+
+		const separator = picocolors.dim('-'.repeat(Math.max(10, cols)));
+		const frame = this.spinnerFrames[this.spinnerIndex] ?? '-';
+		const footer = this.isBusy
+			? `${picocolors.yellow(`[AI ${frame}]`)} ${this.trimToWidth(this.activityText, cols - 8)}`
+			: this.backgroundNotice
+				? `${picocolors.yellow('[BACKGROUND]')} ${this.trimToWidth(this.backgroundNotice, cols - 13)}`
+				: `${picocolors.green('[READY]')} Type a message (/new, /thread, /quit)`;
+
+		const out: string[] = [];
+		out.push('\u001b[2J\u001b[H');
+		out.push(...header);
+		out.push(separator);
+		out.push(...visibleTranscript);
+		out.push(separator);
+		out.push(footer);
+
+		process.stdout.write(out.join('\n'));
+	}
+
+	private formatEntry(entry: UiEntry, width: number): string[] {
+		const labels: Record<UiEntryKind, string> = {
+			user: 'YOU',
+			assistant: 'AI ',
+			system: 'SYS',
+			error: 'ERR',
+		};
+
+		const plainPrefix = `[${labels[entry.kind]}] `;
+		const wrapped = this.wrapText(
+			entry.text.length > 0 ? entry.text : '(streaming...)',
+			width - plainPrefix.length,
+		);
+
+		const coloredPrefix =
+			entry.kind === 'user'
+				? picocolors.cyan(plainPrefix)
+				: entry.kind === 'assistant'
+					? picocolors.blue(plainPrefix)
+					: entry.kind === 'error'
+						? picocolors.red(plainPrefix)
+						: picocolors.dim(plainPrefix);
+
+		return wrapped.map((line, index) =>
+			index === 0 ? `${coloredPrefix}${line}` : `${' '.repeat(plainPrefix.length)}${line}`,
+		);
+	}
+
+	private wrapText(text: string, width: number): string[] {
+		const safeWidth = Math.max(20, width);
+		const lines: string[] = [];
+		for (const paragraph of text.split('\n')) {
+			let remaining = paragraph;
+			if (remaining.length === 0) {
+				lines.push('');
+				continue;
+			}
+
+			while (remaining.length > safeWidth) {
+				let boundary = remaining.lastIndexOf(' ', safeWidth);
+				if (boundary <= 0) boundary = safeWidth;
+				lines.push(remaining.slice(0, boundary));
+				remaining = remaining.slice(boundary).trimStart();
+			}
+			lines.push(remaining);
+		}
+
+		return lines;
+	}
+
+	private readPayloadString(payload: unknown, key: string): string | null {
+		if (!payload || typeof payload !== 'object') return null;
+		const value = Reflect.get(payload, key);
+		return typeof value === 'string' ? value : null;
+	}
+
+	private trimToWidth(text: string, width: number): string {
+		if (width <= 0) return '';
+		if (text.length <= width) return text;
+		if (width <= 3) return text.slice(0, width);
+		return `${text.slice(0, width - 3)}...`;
 	}
 }
