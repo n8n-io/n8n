@@ -8,6 +8,7 @@ import type { User, WorkflowEntity as WorkflowEntityType } from '@n8n/db';
 import {
 	AuthRolesService,
 	BinaryDataRepository,
+	CredentialsEntity,
 	DbConnection,
 	GLOBAL_OWNER_ROLE,
 	Project,
@@ -27,6 +28,7 @@ import { resolve } from 'node:path';
 import { Headless } from '../headless';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -37,6 +39,7 @@ import { License } from '@/license';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { saveCredential as publicApiSaveCredential } from '@/public-api/v1/handlers/credentials/credentials.service';
 import { createWorkflow as publicApiCreateWorkflow } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -47,6 +50,10 @@ jest.mock('@/public-api/v1/handlers/workflows/workflows.service', () => ({
 	createWorkflow: jest.fn(),
 }));
 
+jest.mock('@/public-api/v1/handlers/credentials/credentials.service', () => ({
+	saveCredential: jest.fn(),
+}));
+
 mockInstance(TaskRunnerModule);
 const workflowRepository = mockInstance(WorkflowRepository);
 const userRepository = mockInstance(UserRepository);
@@ -55,6 +62,7 @@ mockInstance(ProjectRelationRepository);
 const settingsRepository = mockInstance(SettingsRepository);
 const workflowRunner = mockInstance(WorkflowRunner);
 const activeExecutions = mockInstance(ActiveExecutions);
+mockInstance(ActiveWorkflowManager);
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 const shutdownService = mockInstance(ShutdownService);
 const deprecationService = mockInstance(DeprecationService);
@@ -77,7 +85,11 @@ mockInstance(BinaryDataRepository);
 
 const WORKFLOW_FIXTURE = resolve(
 	__dirname,
-	'../../../test/commands/headless/fixtures/workflow-manual.json',
+	'../../../test/commands/headless/fixtures/workflow-with-creds.json',
+);
+const CREDENTIALS_FIXTURE = resolve(
+	__dirname,
+	'../../../test/commands/headless/fixtures/credentials.json',
 );
 
 const buildOwner = (): User => {
@@ -99,18 +111,29 @@ const buildPersonalProject = (creatorId: string): Project => {
 	return project;
 };
 
-test('headless command imports, activates, and runs a manual workflow to completion', async () => {
-	// arrange ----------------------------------------------------------------
+beforeEach(() => {
+	jest.clearAllMocks();
+});
 
+test('headless command imports credentials, rewires the workflow to use them, and runs the workflow', async () => {
 	const owner = buildOwner();
 	userRepository.findOne.mockResolvedValue(owner);
 	projectRepository.getPersonalProjectForUser.mockResolvedValue(buildPersonalProject(owner.id));
 	settingsRepository.upsert.mockResolvedValue({} as never);
 
-	// public-API createWorkflow returns a persisted entity
+	// The persisted credential gets a freshly-issued DB id, distinct from the
+	// id baked into the fixture — verifying id→id rewrite via id-match.
+	jest.mocked(publicApiSaveCredential).mockResolvedValue(
+		Object.assign(new CredentialsEntity(), {
+			id: 'cred-headless-001',
+			name: 'Headless Test Credential',
+			type: 'httpHeaderAuth',
+		}),
+	);
+
 	const importedWorkflow = mock<WorkflowEntityType>({
 		id: 'wf-1',
-		name: 'Headless Manual Workflow',
+		name: 'Headless Workflow With Credentials',
 		nodes: [
 			{
 				id: 'manual-trigger',
@@ -123,20 +146,16 @@ test('headless command imports, activates, and runs a manual workflow to complet
 		],
 	});
 	jest.mocked(publicApiCreateWorkflow).mockResolvedValue(importedWorkflow);
-
-	// activate is a no-op for the test
 	workflowService.activateWorkflow.mockResolvedValue(
 		mock<WorkflowEntityType>({ id: 'wf-1', active: true }),
 	);
-
-	// engine-adapter path: workflow lookup, runner run, post-execute promise
 	workflowRepository.findOneBy.mockResolvedValue(importedWorkflow);
+
 	workflowRunner.run.mockResolvedValue('exec-1');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(
 		mock<IRun>({ data: { resultData: { error: undefined } } }),
 	);
 
-	// init-time mocks
 	loadNodesAndCredentials.init.mockResolvedValue(undefined);
 	shutdownService.shutdown.mockReturnValue();
 	deprecationService.warn.mockReturnValue();
@@ -156,24 +175,119 @@ test('headless command imports, activates, and runs a manual workflow to complet
 	// @ts-expect-error Protected property
 	cmd.flags = {
 		workflow: WORKFLOW_FIXTURE,
-		credentials: undefined,
+		credentials: CREDENTIALS_FIXTURE,
 		port: 5678,
 		host: '127.0.0.1',
 		logLevel: 'silent',
 	};
 
-	// act --------------------------------------------------------------------
+	await cmd.init();
+	await cmd.run();
+
+	// Credential persisted
+	expect(publicApiSaveCredential).toHaveBeenCalledTimes(1);
+	expect(publicApiSaveCredential).toHaveBeenCalledWith(
+		expect.objectContaining({
+			name: 'Headless Test Credential',
+			type: 'httpHeaderAuth',
+			data: { apiKey: 'test-key-value' },
+		}),
+		owner,
+	);
+
+	// Workflow created with the credential reference left pointing at the
+	// imported credential.
+	const createCall = jest.mocked(publicApiCreateWorkflow).mock.calls[0];
+	const workflowBody = createCall[1] as WorkflowEntityType;
+	const httpNode = workflowBody.nodes.find((n) => n.name === 'HTTP Request');
+	expect(httpNode?.credentials).toEqual({
+		httpHeaderAuth: {
+			id: 'cred-headless-001',
+			name: 'Headless Test Credential',
+		},
+	});
+
+	// Manual lifecycle ran one execution
+	expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+});
+
+test('headless command rewrites credential ids when the fixture id is stale but the name matches', async () => {
+	const owner = buildOwner();
+	userRepository.findOne.mockResolvedValue(owner);
+	projectRepository.getPersonalProjectForUser.mockResolvedValue(buildPersonalProject(owner.id));
+	settingsRepository.upsert.mockResolvedValue({} as never);
+
+	// Service returns a fresh id, different from the one in the fixture.
+	jest.mocked(publicApiSaveCredential).mockResolvedValue(
+		Object.assign(new CredentialsEntity(), {
+			id: 'cred-fresh-from-db',
+			name: 'Headless Test Credential',
+			type: 'httpHeaderAuth',
+		}),
+	);
+
+	const importedWorkflow = mock<WorkflowEntityType>({
+		id: 'wf-1',
+		name: 'Headless Workflow With Credentials',
+		nodes: [
+			{
+				id: 'manual-trigger',
+				name: 'When clicking Test Workflow',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		],
+	});
+	jest.mocked(publicApiCreateWorkflow).mockResolvedValue(importedWorkflow);
+	workflowService.activateWorkflow.mockResolvedValue(
+		mock<WorkflowEntityType>({ id: 'wf-1', active: true }),
+	);
+	workflowRepository.findOneBy.mockResolvedValue(importedWorkflow);
+
+	workflowRunner.run.mockResolvedValue('exec-1');
+	activeExecutions.getPostExecutePromise.mockResolvedValue(
+		mock<IRun>({ data: { resultData: { error: undefined } } }),
+	);
+
+	loadNodesAndCredentials.init.mockResolvedValue(undefined);
+	shutdownService.shutdown.mockReturnValue();
+	deprecationService.warn.mockReturnValue();
+	posthogClient.init.mockResolvedValue();
+	telemetryEventRelay.init.mockResolvedValue();
+	externalHooks.init.mockResolvedValue();
+
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+		}),
+	);
+
+	const cmd = new Headless();
+	// @ts-expect-error Protected property
+	cmd.flags = {
+		workflow: WORKFLOW_FIXTURE,
+		credentials: CREDENTIALS_FIXTURE,
+		port: 5678,
+		host: '127.0.0.1',
+		logLevel: 'silent',
+	};
 
 	await cmd.init();
 	await cmd.run();
 
-	// assert -----------------------------------------------------------------
-
-	expect(publicApiCreateWorkflow).toHaveBeenCalledTimes(1);
-	expect(publicApiCreateWorkflow).toHaveBeenCalledWith(
-		owner,
-		expect.objectContaining({ name: 'Headless Manual Workflow' }),
-	);
-	expect(workflowService.activateWorkflow).toHaveBeenCalledWith(owner, 'wf-1', { source: 'api' });
-	expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+	const createCall = jest.mocked(publicApiCreateWorkflow).mock.calls[0];
+	const workflowBody = createCall[1] as WorkflowEntityType;
+	const httpNode = workflowBody.nodes.find((n) => n.name === 'HTTP Request');
+	// The fixture's id ("cred-headless-001") doesn't match the DB's fresh id;
+	// resolution falls back to name-match and rewrites the id.
+	expect(httpNode?.credentials).toEqual({
+		httpHeaderAuth: {
+			id: 'cred-fresh-from-db',
+			name: 'Headless Test Credential',
+		},
+	});
 });

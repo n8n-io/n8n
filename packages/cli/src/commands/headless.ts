@@ -1,14 +1,16 @@
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BaseCommand } from './base-command';
+import type { CreatedCredential } from './headless/crud-adapter';
 import { crudAdapter } from './headless/crud-adapter';
+import { warnOnMissingEnvRefs } from './headless/env-scan';
 import { HeadlessWebhookServer } from './headless/headless-webhook-server';
 import { detectLifecycle } from './headless/lifecycle';
 import { ensureOwner } from './headless/owner';
-import { parseWorkflowSource } from './headless/parse';
+import { parseCredentialsFile, parseWorkflowSource } from './headless/parse';
+import { signalReady } from './headless/ready-signal';
 
 const flagsSchema = z.object({
 	workflow: z.string().describe('Path to a workflow JSON file or directory of workflow JSON files'),
@@ -50,16 +52,18 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private webhookServer?: HeadlessWebhookServer;
 
 	async run() {
-		if (this.flags.credentials) {
-			throw new UserError(
-				'--credentials is not yet implemented — Task 10 of the headless implementation plan adds this.',
-			);
-		}
-
 		const owner = await ensureOwner();
 
-		const parsed = await parseWorkflowSource(this.flags.workflow);
-		const imported = await crudAdapter.createWorkflows(owner, parsed);
+		const parsedWorkflows = await parseWorkflowSource(this.flags.workflow);
+		warnOnMissingEnvRefs(parsedWorkflows);
+
+		let createdCredentials: CreatedCredential[] = [];
+		if (this.flags.credentials) {
+			const parsedCredentials = await parseCredentialsFile(this.flags.credentials);
+			createdCredentials = await crudAdapter.createCredentials(owner, parsedCredentials);
+		}
+
+		const imported = await crudAdapter.createWorkflows(owner, parsedWorkflows, createdCredentials);
 		for (const wf of imported) {
 			await crudAdapter.activateWorkflow(owner, wf.id);
 		}
@@ -78,6 +82,8 @@ export class Headless extends BaseCommand<z.infer<typeof flagsSchema>> {
 				`headless: webhook listener on http://${this.flags.host}:${this.flags.port}`,
 			);
 		}
+
+		signalReady();
 
 		this.lifecyclePromise = lifecycle.run({
 			port: this.flags.port,
