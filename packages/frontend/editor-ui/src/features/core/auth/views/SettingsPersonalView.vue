@@ -38,6 +38,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import MessengerPlatformsSection from '@/features/core/auth/components/MessengerPlatformsSection.vue';
 type UserBasicDetailsForm = {
 	firstName: string;
 	lastName: string;
@@ -401,7 +402,7 @@ onBeforeUnmount(() => {
 					}}</N8nLink>
 				</N8nInputLabel>
 			</div>
-			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
+			<div v-if="isMfaFeatureEnabled" class="mb-s" data-test-id="mfa-section">
 				<div class="mb-xs">
 					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
 					<N8nText :bold="false" :class="$style.infoText">
@@ -437,6 +438,7 @@ onBeforeUnmount(() => {
 					@click="onMfaDisableClick"
 				/>
 			</div>
+			<MessengerPlatformsSection />
 		</div>
 		<div>
 			<div class="mb-s">

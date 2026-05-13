@@ -259,3 +259,11 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export {
+	MESSENGER_PLATFORMS,
+	messengerPlatformSchema,
+	type MessengerPlatform,
+} from './messenger/messenger-platform';
+export type { MessengerAccountDto } from './messenger/messenger-account.dto';
+export { VerifyMessengerCodeRequestDto } from './messenger/verify-messenger-code-request.dto';
