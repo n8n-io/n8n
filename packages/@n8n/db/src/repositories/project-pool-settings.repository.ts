@@ -1,3 +1,4 @@
+import type { PoolAssignment } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
@@ -25,5 +26,19 @@ export class ProjectPoolSettingsRepository extends Repository<ProjectPoolSetting
 			select: [column],
 		});
 		return row?.[column] ?? undefined;
+	}
+
+	async getSettings(
+		projectId: string,
+	): Promise<{ assignment: PoolAssignment; allowedPools: string[] } | undefined> {
+		const row = await this.findOneBy({ projectId });
+		if (!row) return undefined;
+
+		const assignment: PoolAssignment = {};
+		if (row.productionPool) assignment.production = row.productionPool;
+		if (row.manualPool) assignment.manual = row.manualPool;
+		if (row.evaluationPool) assignment.evaluation = row.evaluationPool;
+
+		return { assignment, allowedPools: row.allowedPools };
 	}
 }

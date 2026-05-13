@@ -3928,6 +3928,7 @@
 	"workflowSettings.workerPool.manual.tooltip": "Override which worker pool handles manual and retry executions for this workflow.",
 	"workflowSettings.workerPool.evaluation": "Worker Pool (Evaluation)",
 	"workflowSettings.workerPool.evaluation.tooltip": "Override which worker pool handles evaluation executions for this workflow.",
+	"workflowSettings.workerPool.notAllowed": "not in allowed pools",
 	"workflowSettings.priority": "Execution priority",
 	"workflowSettings.priority.tooltip": "Production executions of high-priority workflows are picked up before default-priority ones when workers are busy. Manual and test executions are unaffected.",
 	"workflowSettings.priority.options.default": "Default",
