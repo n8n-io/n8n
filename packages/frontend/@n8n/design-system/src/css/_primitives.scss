@@ -291,6 +291,9 @@
 
 	--duration--snappy: 200ms;
 	--duration--base: 400ms;
+	--duration--slow: 1000ms;
+	--duration--slowest: 1500ms;
+
 	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
 	--easing--ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
 	--easing--ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
@@ -298,7 +301,7 @@
 	--shadow-color: var(--color--black-alpha-100);
 
 	/* box-shadow: var(--shadow--xs), inset var(--shadow--outline); */
-	--shadow--outline: 0 0 0 1px var(--shadow-color);
+	--shadow--outline: 0 0 0 1px light-dark(var(--shadow-color), var(--color--white-alpha-100));
 	--shadow--2xs: 0 1px var(--shadow-color);
 	--shadow--xs: 0 1px 3px -1px var(--shadow-color);
 	--shadow--sm: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);

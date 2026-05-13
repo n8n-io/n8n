@@ -60,6 +60,72 @@ describe('getConnection', () => {
 		expect(connection2).toBe(connectionType);
 	});
 
+	test('creates different pools for different poolKeyExtras', async () => {
+		// ARRANGE
+		const connectionType1 = {};
+		const fallBackHandler1 = jest.fn(async () => {
+			return connectionType1;
+		});
+
+		const connectionType2 = {};
+		const fallBackHandler2 = jest.fn(async () => {
+			return connectionType2;
+		});
+
+		// ACT
+		const connection1 = await cpm.getConnection({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			poolKeyExtras: { largeNumbersOutput: 'text' },
+			fallBackHandler: fallBackHandler1,
+			wasUsed: jest.fn(),
+		});
+		const connection2 = await cpm.getConnection({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			poolKeyExtras: { largeNumbersOutput: 'numbers' },
+			fallBackHandler: fallBackHandler2,
+			wasUsed: jest.fn(),
+		});
+
+		// ASSERT
+		expect(fallBackHandler1).toHaveBeenCalledTimes(1);
+		expect(connection1).toBe(connectionType1);
+
+		expect(fallBackHandler2).toHaveBeenCalledTimes(1);
+		expect(connection2).toBe(connectionType2);
+
+		expect(connection1).not.toBe(connection2);
+	});
+
+	test('reuses pool when poolKeyExtras are identical', async () => {
+		// ARRANGE
+		const connectionType = {};
+		const fallBackHandler = jest.fn(async () => {
+			return connectionType;
+		});
+
+		const options = {
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			poolKeyExtras: { largeNumbersOutput: 'numbers' },
+			fallBackHandler,
+			wasUsed: jest.fn(),
+		};
+
+		// ACT
+		const connection1 = await cpm.getConnection(options);
+		const connection2 = await cpm.getConnection(options);
+
+		// ASSERT
+		expect(fallBackHandler).toHaveBeenCalledTimes(1);
+		expect(connection1).toBe(connectionType);
+		expect(connection2).toBe(connectionType);
+	});
+
 	test('creates different pools for different node versions', async () => {
 		// ARRANGE
 		const connectionType1 = {};

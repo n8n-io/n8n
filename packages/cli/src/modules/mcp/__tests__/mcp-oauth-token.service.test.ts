@@ -261,7 +261,7 @@ describe('McpOAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user });
+			expect(result).toEqual({ user, authType: 'oauth' });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],

@@ -105,6 +105,13 @@ ${prefix} AssignmentType = 'string' | 'number' | 'boolean' | 'array' | 'object' 
 ${prefix} AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: AssignmentType }> };`;
 }
 
+function generateResourceMapperTypeDeclaration(exported: boolean): string {
+	const prefix = exported ? 'export type' : 'type';
+	return `${prefix} ResourceMapperField = { id?: string; displayName?: string; required?: boolean; defaultMatch?: boolean; display?: boolean; type?: string; canBeUsedToMatch?: boolean; [key: string]: unknown };
+${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?: string; [key: string]: unknown };
+${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
+}
+
 function isCustomApiCall(operation: string): boolean {
 	return operation === CUSTOM_API_CALL_KEY;
 }
@@ -243,8 +250,22 @@ const AI_TYPE_TO_SUBNODE_FIELD: Record<
 // Type Definitions
 // =============================================================================
 
+/**
+ * One variation of `extraTypeDefContent`, optionally gated by `displayOptions`.
+ * Variations with `displayOptions` are emitted only in narrowed discriminator
+ * types (e.g. per-mode or per-resource/operation files) whose combo matches.
+ * Variations without `displayOptions` are emitted unconditionally.
+ */
+export interface BuilderHintVariation {
+	content: string;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
 export interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -341,6 +362,117 @@ export interface JsonSchema {
 	enum?: unknown[];
 	const?: unknown;
 	$ref?: string;
+}
+
+// =============================================================================
+// JSDoc emission helpers
+// =============================================================================
+
+/**
+ * Emit `@builderHint` JSDoc plus optional multi-line `extraTypeDefContent` lines.
+ *
+ * `message` is HTML-escaped (`<` / `>` → entities) because it round-trips through
+ * the search engine's `<builder_hint>...</builder_hint>` XML envelope, where bare
+ * angle brackets would corrupt the wrapping tag.
+ *
+ * `extraTypeDefContent` does NOT escape angle brackets — author-written tags such
+ * as `<patterns>` must round-trip into the `.d.ts` verbatim so the LLM sees them
+ * as structural cues. Only `*\/` is escaped to keep the JSDoc block well-formed.
+ */
+/**
+ * Determines whether a variation should be emitted in the current scope.
+ *
+ * The two scopes are mutually exclusive so unconditional variations are
+ * NOT duplicated across narrowed types:
+ *
+ * - File-level header (no `combo`): emit ONLY unconditional variations
+ *   (those with no `displayOptions`). They appear once at the top of the
+ *   generated `.d.ts` and cover every narrowed type.
+ *
+ * - Narrowed config block (per `combo`): emit ONLY gated variations
+ *   whose `displayOptions` match the combo. Unconditional variations are
+ *   skipped here — they were already emitted at the file header.
+ */
+function variationApplies(
+	variation: BuilderHintVariation,
+	combo: DiscriminatorCombination | undefined,
+): boolean {
+	const opts = variation.displayOptions;
+
+	// File-level scope: only unconditional variations.
+	if (!combo) return !opts;
+
+	// Narrowed scope: only gated variations whose displayOptions match.
+	if (!opts) return false;
+
+	if (opts.show) {
+		for (const [key, conditions] of Object.entries(opts.show)) {
+			const value = combo[key];
+			if (value === undefined) return false;
+			if (!checkConditions(conditions, [value])) return false;
+		}
+	}
+	if (opts.hide) {
+		for (const [key, conditions] of Object.entries(opts.hide)) {
+			const value = combo[key];
+			if (value === undefined) continue;
+			if (checkConditions(conditions, [value])) return false;
+		}
+	}
+	return true;
+}
+
+function emitBuilderHint(
+	lines: string[],
+	indent: string,
+	hint: { propertyHint?: string; extraTypeDefContent?: BuilderHintVariation[] },
+	combo?: DiscriminatorCombination,
+): void {
+	if (hint.propertyHint) {
+		const safePropertyHint = hint.propertyHint
+			.replace(/\*\//g, '*\\/')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+		lines.push(`${indent} * @builderHint ${safePropertyHint}`);
+	}
+
+	if (!hint.extraTypeDefContent) return;
+
+	for (const variation of hint.extraTypeDefContent) {
+		if (!variationApplies(variation, combo)) continue;
+		const safe = variation.content.replace(/\*\//g, '*\\/');
+		for (const line of safe.split('\n')) {
+			lines.push(`${indent} * ${line}`);
+		}
+	}
+}
+
+/**
+ * `builderHint` is an extended n8n property not part of the upstream
+ * `NodeTypeDescription`. Centralized cast keeps the rest of the file clean.
+ */
+function getNodeBuilderHint(node: NodeTypeDescription): NodeBuilderHint | undefined {
+	return (node as NodeTypeDescription & { builderHint?: NodeBuilderHint }).builderHint;
+}
+
+/**
+ * Emit a JSDoc block for the node-level builderHint scoped to a single
+ * discriminator combination — only variations whose `displayOptions` match the
+ * combo are rendered. The `propertyHint` is intentionally not re-emitted per combo
+ * (it already lands in the file-level node header).
+ */
+function emitNodeHintForCombo(
+	lines: string[],
+	node: NodeTypeDescription,
+	combo: DiscriminatorCombination,
+): void {
+	const hint = getNodeBuilderHint(node);
+	if (!hint?.extraTypeDefContent?.some((v) => variationApplies(v, combo))) return;
+
+	const hintLines: string[] = [`${INDENT}/**`];
+	emitBuilderHint(hintLines, INDENT, { extraTypeDefContent: hint.extraTypeDefContent }, combo);
+	hintLines.push(`${INDENT} */`);
+	lines.push(...hintLines);
 }
 
 // =============================================================================
@@ -733,6 +865,8 @@ function mapNestedPropertyTypeInner(
 				return 'string[]';
 			case 'resourceLocator':
 				return generateResourceLocatorType(prop);
+			case 'resourceMapper':
+				return 'ResourceMapperValue | Expression<string>';
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -743,11 +877,9 @@ function mapNestedPropertyTypeInner(
 	}
 
 	switch (prop.type) {
-		case 'string':
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+		case 'string': {
+			return 'string | Expression<string>';
+		}
 		case 'number':
 			return 'number | Expression<number>';
 		case 'boolean':
@@ -791,6 +923,8 @@ function mapNestedPropertyTypeInner(
 			return 'IDataObject | string | Expression<string>';
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
+		case 'resourceMapper':
+			return 'ResourceMapperValue | Expression<string>';
 		case 'filter':
 			return 'FilterValue';
 		case 'assignmentCollection':
@@ -874,11 +1008,13 @@ function generateNestedPropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(`${indent} * @builderHint ${safeBuilderHint}`);
+		emitBuilderHint(lines, indent, prop.builderHint);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(`${indent} * @placeholderSupported false`);
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -1040,14 +1176,10 @@ function generateFixedCollectionType(
 				groupJsDocLines.push(`${INDENT.repeat(2)}/** ${desc}`);
 			}
 			if (group.builderHint) {
-				const safeBuilderHint = group.builderHint.message
-					.replace(/\*\//g, '*\\/')
-					.replace(/</g, '&lt;')
-					.replace(/>/g, '&gt;');
 				if (groupJsDocLines.length === 0) {
 					groupJsDocLines.push(`${INDENT.repeat(2)}/**`);
 				}
-				groupJsDocLines.push(`${INDENT.repeat(2)} * @builderHint ${safeBuilderHint}`);
+				emitBuilderHint(groupJsDocLines, INDENT.repeat(2), group.builderHint);
 			}
 			if (isMultipleValues && hasMinRequired) {
 				if (groupJsDocLines.length === 0) {
@@ -1374,14 +1506,11 @@ function generateCollectionType(
 }
 
 /**
- * Strip Expression<...> and PlaceholderValue from a type string.
+ * Strip Expression<...> from a type string.
  * Used when noDataExpression is true to produce plain types.
  */
 function stripExpressionFromType(typeStr: string): string {
-	return typeStr
-		.replace(/\s*\|\s*Expression<[^>]+>/g, '')
-		.replace(/\s*\|\s*PlaceholderValue/g, '')
-		.trim();
+	return typeStr.replace(/\s*\|\s*Expression<[^>]+>/g, '').trim();
 }
 
 /**
@@ -1424,6 +1553,8 @@ function mapPropertyTypeInner(
 				return 'string[]';
 			case 'resourceLocator':
 				return generateResourceLocatorType(prop);
+			case 'resourceMapper':
+				return 'ResourceMapperValue | Expression<string>';
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -1434,11 +1565,9 @@ function mapPropertyTypeInner(
 	}
 
 	switch (prop.type) {
-		case 'string':
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+		case 'string': {
+			return 'string | Expression<string>';
+		}
 
 		case 'number':
 			return 'number | Expression<number>';
@@ -1489,6 +1618,9 @@ function mapPropertyTypeInner(
 
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
+
+		case 'resourceMapper':
+			return 'ResourceMapperValue | Expression<string>';
 
 		case 'filter':
 			return 'FilterValue';
@@ -1844,7 +1976,9 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 
 		lines.push(`export type ${configName} = {`);
 
-		// Add discriminator fields
+		emitNodeHintForCombo(lines, node, combo);
+
+		// Discriminator literal fields for this combo.
 		for (const [key, value] of Object.entries(combo)) {
 			if (value !== undefined) {
 				lines.push(`${INDENT}${key}: '${value}';`);
@@ -1899,11 +2033,13 @@ export function generatePropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(` * @builderHint ${safeBuilderHint}`);
+		emitBuilderHint(lines, '', prop.builderHint);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(' * @placeholderSupported false');
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -2002,6 +2138,18 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 	const subnodeType = getSubnodeOutputType(node);
 	if (subnodeType) {
 		lines.push(` * @subnodeType ${subnodeType}`);
+	}
+
+	// Node-level builder hint — searchHint and unconditional extraTypeDefContent.
+	// `relatedNodes` and `inputs` are consumed elsewhere (search engine, subnode
+	// extraction). Variations with `displayOptions` are skipped here — they're
+	// emitted per-combo in narrowed config types via `emitNodeHintForCombo`.
+	const nodeHint = getNodeBuilderHint(node);
+	if (nodeHint && (nodeHint.searchHint || nodeHint.extraTypeDefContent?.length)) {
+		emitBuilderHint(lines, '', {
+			propertyHint: nodeHint.searchHint,
+			extraTypeDefContent: nodeHint.extraTypeDefContent,
+		});
 	}
 
 	lines.push(' */');
@@ -2325,14 +2473,18 @@ export function generateSharedFile(
 	// Helper types
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(true));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(true));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(true));
 		}
 		lines.push('');
 	}
@@ -2443,15 +2595,19 @@ export function generateDiscriminatorFile(
 	// Check what helper types we need
 	const needsFilter = props.some((p) => p.type === 'filter');
 	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = props.some((p) => p.type === 'resourceMapper');
 
 	// Inline helper types (only the ones needed)
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -2504,7 +2660,9 @@ export function generateDiscriminatorFile(
 	}
 	lines.push(`export type ${configName} = {`);
 
-	// Add discriminator fields
+	emitNodeHintForCombo(lines, node, combo);
+
+	// Discriminator literal fields for this combo.
 	for (const [key, value] of Object.entries(combo)) {
 		if (value !== undefined) {
 			lines.push(`${INDENT}${key}: '${value}';`);
@@ -2887,14 +3045,18 @@ export function generateSingleVersionTypeFile(
 	// Helper types (if needed) based on filtered properties
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -3153,14 +3315,18 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	// Helper types (if needed) - only add if they'll actually be used in output
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -3361,7 +3527,9 @@ function generateDiscriminatedUnionForEntry(
 
 		lines.push(`export type ${configName} = {`);
 
-		// Add discriminator fields
+		emitNodeHintForCombo(lines, node, combo);
+
+		// Discriminator literal fields for this combo.
 		for (const [key, value] of Object.entries(combo)) {
 			if (value !== undefined) {
 				lines.push(`${INDENT}${key}: '${value}';`);
@@ -3531,7 +3699,18 @@ interface BuilderHintInput {
 }
 
 interface NodeBuilderHint {
+	searchHint?: string;
+	relatedNodes?: Array<{ nodeType: string; relationHint: string }>;
 	inputs?: Record<string, BuilderHintInput>;
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * emitted into the generated `.d.ts` but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type. Variations with no `displayOptions` emit
+	 * once at the file-level node header.
+	 */
+	extraTypeDefContent?: BuilderHintVariation[];
 }
 
 /**
