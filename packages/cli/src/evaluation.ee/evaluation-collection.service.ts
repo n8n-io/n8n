@@ -232,6 +232,14 @@ export class EvaluationCollectionService {
 		workflowId: string,
 		collectionId: string,
 	): Promise<{ runsUnlinked: number }> {
+		// Verify the collection belongs to this workflow *before* any
+		// cancellation side effects. Otherwise a caller with `workflow:update`
+		// on workflow A could pass a known collection id from workflow B and
+		// trigger cancellation (abort + pubsub fan-out + DB writes) before
+		// receiving the eventual 404 from `deleteByIdAndWorkflowId`.
+		const owned = await this.collectionRepo.findByIdAndWorkflowId(collectionId, workflowId);
+		if (!owned) throw new NotFoundError('Collection not found');
+
 		// If any runs in this collection are still active, broadcast a
 		// collection-level cancel first so workers stop touching rows we're
 		// about to unlink. The FK is SET NULL anyway, but cancelling avoids
@@ -279,6 +287,14 @@ export class EvaluationCollectionService {
 		if (run.evaluationConfigId !== collection.evaluationConfigId) {
 			throw new BadRequestError(
 				'Test run is not compatible with this collection (different evaluation config)',
+			);
+		}
+		// Mirror the create-path invariant: an unpinned legacy run could have
+		// executed against any historical workflow state, so it breaks the
+		// comparability promise the collection exists to provide.
+		if (!run.workflowVersionId) {
+			throw new BadRequestError(
+				'Test run has no pinned workflow version and cannot be added to a collection',
 			);
 		}
 

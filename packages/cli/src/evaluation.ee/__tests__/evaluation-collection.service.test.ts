@@ -298,6 +298,7 @@ describe('EvaluationCollectionService', () => {
 
 	describe('deleteCollection', () => {
 		it('emits Eval collection deleted telemetry with runs_unlinked', async () => {
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(makeCollection());
 			collectionRepo.deleteByIdAndWorkflowId.mockResolvedValueOnce({
 				deleted: true,
 				runsUnlinked: 3,
@@ -312,6 +313,7 @@ describe('EvaluationCollectionService', () => {
 		});
 
 		it('broadcasts cancel-collection when any run is still active', async () => {
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(makeCollection());
 			testRunRepo.find.mockResolvedValueOnce([{ id: 'tr-active' } as TestRun]);
 			collectionRepo.deleteByIdAndWorkflowId.mockResolvedValueOnce({
 				deleted: true,
@@ -324,11 +326,24 @@ describe('EvaluationCollectionService', () => {
 		});
 
 		it('throws NotFoundError when collection does not exist', async () => {
-			collectionRepo.deleteByIdAndWorkflowId.mockResolvedValueOnce({
-				deleted: false,
-				runsUnlinked: 0,
-			});
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(null);
 			await expect(service.deleteCollection(user, 'wf-1', 'col-x')).rejects.toThrow(NotFoundError);
+		});
+
+		it('does not cancel runs when the collection belongs to a different workflow', async () => {
+			// A caller with `workflow:update` on wf-1 must not be able to
+			// trigger cancellation side effects on a collection owned by
+			// wf-other just by guessing its id — ownership has to be verified
+			// before the active-runs query reaches the cancel path.
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(null);
+
+			await expect(
+				service.deleteCollection(user, 'wf-1', 'col-from-other-workflow'),
+			).rejects.toThrow(NotFoundError);
+
+			expect(testRunRepo.find).not.toHaveBeenCalled();
+			expect(testRunnerService.cancelCollection).not.toHaveBeenCalled();
+			expect(collectionRepo.deleteByIdAndWorkflowId).not.toHaveBeenCalled();
 		});
 	});
 
@@ -339,6 +354,20 @@ describe('EvaluationCollectionService', () => {
 			await expect(service.addRunToCollection('wf-1', 'col-1', 'tr-bad')).rejects.toThrow(
 				BadRequestError,
 			);
+		});
+
+		it('rejects when the run is unpinned (legacy run with no workflowVersionId)', async () => {
+			// Mirrors the create-path invariant: an unpinned run could have
+			// executed against any historical workflow state and therefore
+			// cannot satisfy the collection's comparability promise.
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(makeCollection());
+			testRunRepo.findOneBy.mockResolvedValueOnce(makeTestRun({ workflowVersionId: null }));
+
+			await expect(service.addRunToCollection('wf-1', 'col-1', 'tr-legacy')).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(collectionRepo.addRunsToCollection).not.toHaveBeenCalled();
 		});
 	});
 

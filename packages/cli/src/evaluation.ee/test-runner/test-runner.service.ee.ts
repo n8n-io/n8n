@@ -592,8 +592,13 @@ export class TestRunnerService {
 				options.workflowVersionId,
 			);
 			assert(history, `Workflow version ${options.workflowVersionId} not found`);
+			// `ExecutionPersistence` records `workflowData.versionId` on the
+			// execution row; keeping `baseWorkflow.versionId` here would tag
+			// historical-canvas executions with the *current* live version
+			// and break the comparability promise of the pinned run.
 			workflow = {
 				...baseWorkflow,
+				versionId: history.versionId,
 				nodes: history.nodes,
 				connections: history.connections,
 			} as typeof baseWorkflow;

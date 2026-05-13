@@ -2466,6 +2466,59 @@ describe('TestRunnerService', () => {
 			);
 		});
 
+		test('overwrites workflowData.versionId with the pinned history versionId', async () => {
+			// `ExecutionPersistence` reads `workflowData.versionId` and stores
+			// it on the execution row. If the live workflow's `versionId` leaks
+			// through the spread, every pinned-collection execution would be
+			// recorded under the wrong version and break compare-view fidelity.
+			// We capture the workflow object handed to `executeTestRun`'s first
+			// consumer (`validateWorkflowConfiguration`) to assert the pinned
+			// versionId rather than the live one is what flows downstream.
+			workflowRepository.findById.mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Live',
+				versionId: 'wfv-live-current',
+				nodes: [{ name: 'LiveNode' }],
+				connections: {},
+				settings: {},
+			} as never);
+			workflowHistoryService.findVersion.mockResolvedValueOnce({
+				versionId: 'wfv-pinned',
+				nodes: [{ name: 'SnapshotNode' } as never],
+				connections: { SnapshotNode: {} } as never,
+			} as never);
+			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-pin-v' }));
+
+			let capturedWorkflow: { versionId?: string } | undefined;
+			const validateSpy = jest
+				.spyOn(
+					testRunnerService as unknown as {
+						validateWorkflowConfiguration: (wf: { versionId?: string }) => void;
+					},
+					'validateWorkflowConfiguration',
+				)
+				.mockImplementation((wf) => {
+					capturedWorkflow = wf;
+					// Short-circuit the rest of executeTestRun via a `TestRunError`
+					// path so the detached promise settles cleanly (markAsError)
+					// instead of running the dataset trigger against bogus JSON.
+					throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+				});
+
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, false, {
+				collectionId: 'col-1',
+				workflowVersionId: 'wfv-pinned',
+				evaluationConfigId: 'cfg-1',
+			});
+			await finished.catch(() => undefined);
+
+			expect(validateSpy).toHaveBeenCalledTimes(1);
+			expect(capturedWorkflow?.versionId).toBe('wfv-pinned');
+			expect(capturedWorkflow?.versionId).not.toBe('wfv-live-current');
+
+			validateSpy.mockRestore();
+		});
+
 		test('does not call workflowHistoryService.findVersion when workflowVersionId is omitted', async () => {
 			workflowHistoryService.findVersion.mockClear();
 			workflowRepository.findById.mockResolvedValueOnce({
