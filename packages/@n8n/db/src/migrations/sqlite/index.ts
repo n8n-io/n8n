@@ -196,6 +196,7 @@ import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../comm
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
 import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
+import { CreateProjectPoolSettings1785000000000 } from '../common/1785000000000-CreateProjectPoolSettings';
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
@@ -405,6 +406,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentChatSubscriptions1784000000030,
 	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
 	AllowAzureStoredAt1784000000034,
+	CreateProjectPoolSettings1785000000000,
 ];
 
 export { sqliteMigrations };

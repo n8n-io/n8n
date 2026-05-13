@@ -208,6 +208,7 @@ import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } fr
 import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
 import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
 import { AllowAzureStoredAt1784000000034 } from '../common/1784000000034-AllowAzureStoredAt';
+import { CreateProjectPoolSettings1785000000000 } from '../common/1785000000000-CreateProjectPoolSettings';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -421,4 +422,5 @@ export const postgresMigrations: Migration[] = [
 	AddExecutionEntityWorkflowStatusIndex1784000000031,
 	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
 	AllowAzureStoredAt1784000000034,
+	CreateProjectPoolSettings1785000000000,
 ];
