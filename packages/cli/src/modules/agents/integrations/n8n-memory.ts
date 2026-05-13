@@ -394,7 +394,6 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	): Promise<ObservationLogTaskLockHandle | null> {
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
-		const taskKind = 'observer';
 
 		const updateResult = await this.observationLockRepository
 			.createQueryBuilder()
@@ -438,7 +437,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		await this.observationLockRepository.delete({
 			scopeKind: handle.scopeKind,
 			scopeId: handle.scopeId,
-			taskKind: 'observer',
+			taskKind: handle.taskKind,
 			holderId: handle.holderId,
 		});
 	}

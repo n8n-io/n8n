@@ -75,7 +75,10 @@ export class ScopedMemoryTaskRunner {
 		this.tracker = options.tracker ?? new BackgroundTaskTracker();
 		this.lockStore = options.lockStore;
 		this.lockTtlMs = options.lockTtlMs ?? DEFAULT_LOCK_TTL_MS;
-		this.maxCapturedErrors = options.maxCapturedErrors ?? DEFAULT_MAX_CAPTURED_ERRORS;
+		this.maxCapturedErrors = Math.max(
+			0,
+			Math.floor(options.maxCapturedErrors ?? DEFAULT_MAX_CAPTURED_ERRORS),
+		);
 		this.onEvent = options.onEvent;
 	}
 
@@ -199,7 +202,11 @@ export class ScopedMemoryTaskRunner {
 	}
 
 	private emit(event: ScopedMemoryTaskEvent): void {
-		this.onEvent?.(event);
+		try {
+			this.onEvent?.(event);
+		} catch (error) {
+			this.captureError(event.task, error);
+		}
 	}
 
 	private cloneTaskInfo(info: ScopedMemoryTaskInfo): ScopedMemoryTaskInfo {

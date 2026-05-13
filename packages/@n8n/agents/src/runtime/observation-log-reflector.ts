@@ -73,11 +73,12 @@ export function parseObservationLogReflectionJson(output: string): ObservationLo
 
 export function renderObservationLogForReflection(entries: ObservationLogEntry[]): string {
 	const activeEntries = entries.filter((entry) => entry.status === 'active').sort(compareEntries);
+	const activeIds = new Set(activeEntries.map((entry) => entry.id));
 	const childrenByParent = new Map<string, ObservationLogEntry[]>();
 	const roots: ObservationLogEntry[] = [];
 
 	for (const entry of activeEntries) {
-		if (entry.parentId) {
+		if (entry.parentId && activeIds.has(entry.parentId)) {
 			const children = childrenByParent.get(entry.parentId) ?? [];
 			children.push(entry);
 			childrenByParent.set(entry.parentId, children);
