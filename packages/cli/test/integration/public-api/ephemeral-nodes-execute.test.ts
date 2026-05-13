@@ -1,4 +1,9 @@
-import { mockInstance, getPersonalProject } from '@n8n/backend-test-utils';
+import {
+	mockInstance,
+	getPersonalProject,
+	createTeamProject,
+	linkUserToProject,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
@@ -12,7 +17,11 @@ import * as utils from '../shared/utils/';
 
 const mockExecutor = mockInstance(EphemeralNodeExecutor);
 
-const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['publicApi'],
+	enabledFeatures: ['feat:projectRole:admin', 'feat:projectRole:editor', 'feat:projectRole:viewer'],
+	quotas: { 'quota:maxTeamProjects': -1 },
+});
 
 let owner: User;
 let member: User;
@@ -149,6 +158,52 @@ describe('POST /ephemeral-nodes/execute', () => {
 			expect(mockExecutor.executeInline).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: ownerPersonalProjectId }),
 			);
+		});
+
+		test('forwards an explicit projectId the caller has workflow:execute on', async () => {
+			const teamProject = await createTeamProject('Editable team');
+			await linkUserToProject(member, teamProject, 'project:editor');
+
+			await authMemberAgent
+				.post('/ephemeral-nodes/execute')
+				.send({ ...validPayload, projectId: teamProject.id })
+				.expect(200);
+
+			expect(mockExecutor.executeInline).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: teamProject.id }),
+			);
+		});
+
+		test('returns 404 when projectId points to a project the caller cannot access', async () => {
+			const otherTeamProject = await createTeamProject('Inaccessible team');
+
+			await authMemberAgent
+				.post('/ephemeral-nodes/execute')
+				.send({ ...validPayload, projectId: otherTeamProject.id })
+				.expect(404);
+
+			expect(mockExecutor.executeInline).not.toHaveBeenCalled();
+		});
+
+		test('returns 404 when caller has the project but lacks workflow:execute (viewer role)', async () => {
+			const teamProject = await createTeamProject('Viewer-only team');
+			await linkUserToProject(member, teamProject, 'project:viewer');
+
+			await authMemberAgent
+				.post('/ephemeral-nodes/execute')
+				.send({ ...validPayload, projectId: teamProject.id })
+				.expect(404);
+
+			expect(mockExecutor.executeInline).not.toHaveBeenCalled();
+		});
+
+		test('returns 404 when projectId does not exist', async () => {
+			await authOwnerAgent
+				.post('/ephemeral-nodes/execute')
+				.send({ ...validPayload, projectId: 'does-not-exist' })
+				.expect(404);
+
+			expect(mockExecutor.executeInline).not.toHaveBeenCalled();
 		});
 
 		test('returns 200 with status:error when node execution fails at runtime', async () => {

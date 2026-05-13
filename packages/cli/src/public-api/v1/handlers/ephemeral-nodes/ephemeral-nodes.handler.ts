@@ -5,9 +5,11 @@ import { Container } from '@n8n/di';
 import type { INodeParameters } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import type { PaginatedRequest } from '@/public-api/types';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { isNodeTypeAllowlisted } from './ephemeral-nodes.allowlist';
 import {
@@ -48,9 +50,22 @@ const ephemeralNodesHandlers: EphemeralNodesHandlers = {
 				throw new BadRequestError(`Node type "${dto.nodeType}" is not available for execution`);
 			}
 
-			const projectId = (
-				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(req.user.id)
-			).id;
+			let projectId: string;
+			if (dto.projectId) {
+				const project = await Container.get(ProjectService).getProjectWithScope(
+					req.user,
+					dto.projectId,
+					['workflow:execute'],
+				);
+				if (!project) {
+					throw new NotFoundError('Project not found');
+				}
+				projectId = project.id;
+			} else {
+				projectId = (
+					await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(req.user.id)
+				).id;
+			}
 
 			const executor = Container.get(EphemeralNodeExecutor);
 

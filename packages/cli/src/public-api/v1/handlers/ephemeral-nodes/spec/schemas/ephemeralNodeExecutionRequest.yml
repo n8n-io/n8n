@@ -45,3 +45,10 @@ properties:
     example:
       - id: 1
         name: Alice
+  projectId:
+    type: string
+    description: >
+      ID of the project to execute the node in. The authenticated user must
+      have access to this project with the `workflow:execute` scope. If
+      omitted, the caller's personal project is used.
+    example: bcU7tnwBwoIO4MaP
