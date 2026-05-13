@@ -15,6 +15,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { resolveQueueName } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
@@ -193,9 +194,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			workerServer.markAsReady();
 		}
 
+		const poolName = this.globalConfig.queue.workerPool.name;
+		const queueName = resolveQueueName('worker', poolName);
+
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		this.logger.info(` * Pool: ${poolName === '' ? '(default)' : poolName}`);
+		this.logger.info(` * Queue: ${queueName}`);
 		this.logger.info('');
 
 		if (!inTest && process.stdout.isTTY) {
