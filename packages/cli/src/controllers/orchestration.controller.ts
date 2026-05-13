@@ -1,12 +1,12 @@
-import type { WorkerPoolDefaults, WorkerPoolsResponse } from '@n8n/api-types';
-import { UpdateWorkerPoolDefaultsDto } from '@n8n/api-types';
+import type { PoolAssignment, WorkerPoolsResponse } from '@n8n/api-types';
+import { UpdateWorkerPoolAssignmentDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Patch, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { License } from '@/license';
-import { WorkerPoolDefaultsService } from '@/scaling/worker-pool-defaults.service';
+import { PoolConfigService } from '@/scaling/pool-config.service';
 import { WorkerPoolsService } from '@/scaling/worker-pools.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
@@ -16,7 +16,7 @@ export class OrchestrationController {
 		private readonly licenseService: License,
 		private readonly workerStatusService: WorkerStatusService,
 		private readonly workerPoolsService: WorkerPoolsService,
-		private readonly workerPoolDefaultsService: WorkerPoolDefaultsService,
+		private readonly poolConfigService: PoolConfigService,
 	) {}
 
 	/**
@@ -40,12 +40,12 @@ export class OrchestrationController {
 
 	@Licensed(LICENSE_FEATURES.WORKER_VIEW)
 	@GlobalScope('orchestration:manage')
-	@Patch('/worker/pools/defaults')
-	async updateWorkerPoolDefaults(
+	@Patch('/worker/pools/assignment')
+	async updateWorkerPoolAssignment(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: UpdateWorkerPoolDefaultsDto,
-	): Promise<WorkerPoolDefaults> {
-		return await this.workerPoolDefaultsService.setDefaults(dto);
+		@Body dto: UpdateWorkerPoolAssignmentDto,
+	): Promise<PoolAssignment> {
+		return await this.poolConfigService.setPoolAssignment(dto);
 	}
 }

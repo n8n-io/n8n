@@ -1,11 +1,11 @@
 import type { WorkerPoolsResponse } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { WorkerPoolDefaultsService } from './worker-pool-defaults.service';
+import { PoolConfigService } from './pool-config.service';
 
 @Service()
 export class WorkerPoolsService {
-	constructor(private readonly poolDefaultsService: WorkerPoolDefaultsService) {}
+	constructor(private readonly poolConfigService: PoolConfigService) {}
 
 	async getAvailablePools(): Promise<string[]> {
 		// TODO: read pool names from cluster state store once workers register their pool
@@ -13,11 +13,11 @@ export class WorkerPoolsService {
 	}
 
 	async getPoolsState(): Promise<WorkerPoolsResponse> {
-		const [pools, defaults] = await Promise.all([
+		const [pools, assignment] = await Promise.all([
 			this.getAvailablePools(),
-			this.poolDefaultsService.getDefaults(),
+			this.poolConfigService.getPoolAssignment(),
 		]);
 
-		return { pools, defaults };
+		return { pools, assignment };
 	}
 }

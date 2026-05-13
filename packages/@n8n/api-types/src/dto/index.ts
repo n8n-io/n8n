@@ -219,7 +219,7 @@ export {
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
 
-export { UpdateWorkerPoolDefaultsDto } from './worker-pools/update-worker-pool-defaults.dto';
+export { UpdateWorkerPoolAssignmentDto } from './worker-pools/update-worker-pool-assignment.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';

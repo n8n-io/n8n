@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import type { ExecutionPoolType, WorkerPoolDefaults } from '@n8n/api-types';
+import type { ExecutionCategory, PoolAssignment } from '@n8n/api-types';
 import {
 	N8nBadge,
 	N8nButton,
@@ -15,26 +15,41 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useOrchestrationStore } from '../orchestration.store';
 
+const DEFAULT_POOL_VALUE = '';
+
 const i18n = useI18n();
 const toast = useToast();
 const orchestrationStore = useOrchestrationStore();
 
-const formState = ref<WorkerPoolDefaults>({
-	production: 'default',
-	manual: 'default',
-	evaluation: 'default',
+const executionCategories: ExecutionCategory[] = ['production', 'manual', 'evaluation'];
+
+const formState = ref<Record<ExecutionCategory, string>>({
+	production: DEFAULT_POOL_VALUE,
+	manual: DEFAULT_POOL_VALUE,
+	evaluation: DEFAULT_POOL_VALUE,
 });
 const isLoading = ref(true);
 const isSaving = ref(false);
 
-const executionTypes: ExecutionPoolType[] = ['production', 'manual', 'evaluation'];
-
 const availablePools = computed(() => orchestrationStore.availablePools);
 
+const poolOptions = computed(() => [
+	{ label: i18n.baseText('workerList.pools.defaults.unassigned'), value: DEFAULT_POOL_VALUE },
+	...availablePools.value.map((pool) => ({ label: pool, value: pool })),
+]);
+
+const persistedFormState = computed<Record<ExecutionCategory, string>>(() => {
+	const assignment = orchestrationStore.poolAssignment ?? {};
+	return {
+		production: assignment.production ?? DEFAULT_POOL_VALUE,
+		manual: assignment.manual ?? DEFAULT_POOL_VALUE,
+		evaluation: assignment.evaluation ?? DEFAULT_POOL_VALUE,
+	};
+});
+
 const hasChanges = computed(() => {
-	const persisted = orchestrationStore.poolDefaults;
-	if (!persisted) return false;
-	return executionTypes.some((type) => formState.value[type] !== persisted[type]);
+	const persisted = persistedFormState.value;
+	return executionCategories.some((category) => formState.value[category] !== persisted[category]);
 });
 
 const saveDisabled = computed(() => !hasChanges.value || isSaving.value);
@@ -42,9 +57,7 @@ const saveDisabled = computed(() => !hasChanges.value || isSaving.value);
 onMounted(async () => {
 	try {
 		await orchestrationStore.fetchWorkerPools();
-		if (orchestrationStore.poolDefaults) {
-			formState.value = { ...orchestrationStore.poolDefaults };
-		}
+		formState.value = { ...persistedFormState.value };
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workerList.pools.loading.error'));
 	} finally {
@@ -53,22 +66,19 @@ onMounted(async () => {
 });
 
 async function onSave() {
-	const persisted = orchestrationStore.poolDefaults;
-	if (!persisted) return;
+	const persisted = persistedFormState.value;
 
-	const dto: Partial<WorkerPoolDefaults> = {};
-	for (const type of executionTypes) {
-		if (formState.value[type] !== persisted[type]) {
-			dto[type] = formState.value[type];
+	const dto: PoolAssignment = {};
+	for (const category of executionCategories) {
+		if (formState.value[category] !== persisted[category]) {
+			dto[category] = formState.value[category];
 		}
 	}
 
 	isSaving.value = true;
 	try {
-		await orchestrationStore.updatePoolDefaults(dto);
-		if (orchestrationStore.poolDefaults) {
-			formState.value = { ...orchestrationStore.poolDefaults };
-		}
+		await orchestrationStore.updateWorkerPoolAssignment(dto);
+		formState.value = { ...persistedFormState.value };
 		toast.showMessage({
 			title: i18n.baseText('workerList.pools.defaults.saved.success'),
 			type: 'success',
@@ -121,21 +131,36 @@ async function onSave() {
 			<div :class="$style.field" data-test-id="worker-pool-default-production">
 				<label>{{ i18n.baseText('workerList.pools.defaults.production') }}</label>
 				<N8nSelect v-model="formState.production" size="medium">
-					<N8nOption v-for="pool in availablePools" :key="pool" :label="pool" :value="pool" />
+					<N8nOption
+						v-for="option in poolOptions"
+						:key="option.value"
+						:label="option.label"
+						:value="option.value"
+					/>
 				</N8nSelect>
 			</div>
 
 			<div :class="$style.field" data-test-id="worker-pool-default-manual">
 				<label>{{ i18n.baseText('workerList.pools.defaults.manual') }}</label>
 				<N8nSelect v-model="formState.manual" size="medium">
-					<N8nOption v-for="pool in availablePools" :key="pool" :label="pool" :value="pool" />
+					<N8nOption
+						v-for="option in poolOptions"
+						:key="option.value"
+						:label="option.label"
+						:value="option.value"
+					/>
 				</N8nSelect>
 			</div>
 
 			<div :class="$style.field" data-test-id="worker-pool-default-evaluation">
 				<label>{{ i18n.baseText('workerList.pools.defaults.evaluation') }}</label>
 				<N8nSelect v-model="formState.evaluation" size="medium">
-					<N8nOption v-for="pool in availablePools" :key="pool" :label="pool" :value="pool" />
+					<N8nOption
+						v-for="option in poolOptions"
+						:key="option.value"
+						:label="option.label"
+						:value="option.value"
+					/>
 				</N8nSelect>
 			</div>
 

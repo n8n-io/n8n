@@ -1,8 +1,8 @@
-export type ExecutionPoolType = 'production' | 'manual' | 'evaluation';
+export type ExecutionCategory = 'production' | 'manual' | 'evaluation';
 
-export type WorkerPoolDefaults = Record<ExecutionPoolType, string>;
+export type PoolAssignment = Partial<Record<ExecutionCategory, string>>;
 
 export type WorkerPoolsResponse = {
 	pools: string[];
-	defaults: WorkerPoolDefaults;
+	assignment: PoolAssignment;
 };

@@ -1,11 +1,11 @@
 import { mock } from 'jest-mock-extended';
 
-import { WorkerPoolDefaultsService } from '@/scaling/worker-pool-defaults.service';
+import { PoolConfigService } from '@/scaling/pool-config.service';
 import { WorkerPoolsService } from '@/scaling/worker-pools.service';
 
 describe('WorkerPoolsService', () => {
-	const poolDefaultsService = mock<WorkerPoolDefaultsService>();
-	const service = new WorkerPoolsService(poolDefaultsService);
+	const poolConfigService = mock<PoolConfigService>();
+	const service = new WorkerPoolsService(poolConfigService);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -18,24 +18,16 @@ describe('WorkerPoolsService', () => {
 	});
 
 	describe('getPoolsState', () => {
-		it('should return pools and defaults together', async () => {
-			poolDefaultsService.getDefaults.mockResolvedValue({
-				production: 'default',
-				manual: 'default',
-				evaluation: 'default',
-			});
+		it('should return pools and assignment together', async () => {
+			poolConfigService.getPoolAssignment.mockResolvedValue({ production: 'gpu' });
 
 			const result = await service.getPoolsState();
 
 			expect(result).toEqual({
 				pools: ['default'],
-				defaults: {
-					production: 'default',
-					manual: 'default',
-					evaluation: 'default',
-				},
+				assignment: { production: 'gpu' },
 			});
-			expect(poolDefaultsService.getDefaults).toHaveBeenCalledTimes(1);
+			expect(poolConfigService.getPoolAssignment).toHaveBeenCalledTimes(1);
 		});
 	});
 });

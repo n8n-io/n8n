@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
-import type { UpdateWorkerPoolDefaultsDto, WorkerPoolDefaults, WorkerStatus } from '@n8n/api-types';
+import type { PoolAssignment, UpdateWorkerPoolAssignmentDto, WorkerStatus } from '@n8n/api-types';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	getWorkerPools,
 	sendGetWorkerStatus,
-	updateWorkerPoolDefaults,
+	updateWorkerPoolAssignment,
 } from '@n8n/rest-api-client/api/orchestration';
 
 export const WORKER_HISTORY_LENGTH = 100;
@@ -20,7 +20,7 @@ export interface IOrchestrationStoreState {
 	workersLastUpdated: { [id: string]: number };
 	statusInterval: NodeJS.Timeout | null;
 	availablePools: string[];
-	poolDefaults: WorkerPoolDefaults | null;
+	poolAssignment: PoolAssignment | null;
 }
 
 export interface IWorkerHistoryItem {
@@ -36,7 +36,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		workersLastUpdated: {},
 		statusInterval: null,
 		availablePools: [],
-		poolDefaults: null,
+		poolAssignment: null,
 	}),
 	actions: {
 		updateWorkerStatus(data: WorkerStatus) {
@@ -89,11 +89,11 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 			const rootStore = useRootStore();
 			const response = await getWorkerPools(rootStore.restApiContext);
 			this.availablePools = response.pools;
-			this.poolDefaults = response.defaults;
+			this.poolAssignment = response.assignment;
 		},
-		async updatePoolDefaults(dto: UpdateWorkerPoolDefaultsDto) {
+		async updateWorkerPoolAssignment(dto: UpdateWorkerPoolAssignmentDto) {
 			const rootStore = useRootStore();
-			this.poolDefaults = await updateWorkerPoolDefaults(rootStore.restApiContext, dto);
+			this.poolAssignment = await updateWorkerPoolAssignment(rootStore.restApiContext, dto);
 		},
 	},
 });
