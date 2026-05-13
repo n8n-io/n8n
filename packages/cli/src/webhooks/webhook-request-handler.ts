@@ -248,6 +248,7 @@ export function createWebhookHandlerFor(
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
+		res.locals.webhookPath = params.path;
 		await handler.handleRequest(webhookRequest, res);
 	};
 }

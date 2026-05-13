@@ -210,6 +210,15 @@ export class PrometheusMetricsService {
 			includeMethod: this.includes.labels.apiMethod,
 			includeStatusCode: this.includes.labels.apiStatusCode,
 			httpDurationMetricName: this.prefix + 'http_request_duration_seconds',
+			customLabels: { webhook_path: undefined, workflow_id: undefined },
+			transformLabels: (labels, _req, res) => {
+				const locals = (res as express.Response).locals as {
+					webhookPath?: string;
+					workflowId?: string;
+				};
+				labels.webhook_path = locals.webhookPath ?? '';
+				labels.workflow_id = locals.workflowId ?? '';
+			},
 		});
 
 		const activityGauge = new promClient.Gauge({

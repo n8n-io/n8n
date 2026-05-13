@@ -110,6 +110,16 @@ export abstract class AbstractServer {
 		// Additional configuration in derived classes
 	}
 
+	/**
+	 * Hook for derived classes to register middlewares that must run before
+	 * webhook route handlers. Webhook handlers respond and short-circuit the
+	 * middleware chain, so anything mounted after them (e.g. in `configure()`)
+	 * will not observe webhook traffic.
+	 */
+	protected async setupPreWebhookMiddlewares(): Promise<void> {
+		// override in derived classes
+	}
+
 	private async setupErrorHandlers() {
 		const { app } = this;
 
@@ -233,6 +243,10 @@ export abstract class AbstractServer {
 		}
 
 		this.setupCommonMiddlewares();
+
+		// Mount middlewares that need to observe webhook traffic before the
+		// webhook route handlers short-circuit the chain.
+		await this.setupPreWebhookMiddlewares();
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {

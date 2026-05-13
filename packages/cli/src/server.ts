@@ -154,12 +154,14 @@ export class Server extends AbstractServer {
 		}
 	}
 
-	async configure(): Promise<void> {
+	protected async setupPreWebhookMiddlewares(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
 			await Container.get(PrometheusMetricsService).init(this.app);
 		}
+	}
 
+	async configure(): Promise<void> {
 		const { frontendService } = this;
 		if (frontendService) {
 			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
