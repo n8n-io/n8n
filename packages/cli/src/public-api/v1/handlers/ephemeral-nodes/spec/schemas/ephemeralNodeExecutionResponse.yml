@@ -1,0 +1,26 @@
+type: object
+required:
+  - status
+  - data
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+    description: >
+      Indicates whether the node executed successfully. A value of "error"
+      means the node ran but produced an error (e.g. a remote API call failed).
+      HTTP 400 is returned instead for invalid node types or blacklisted operations.
+    example: success
+  data:
+    type: array
+    description: Output items produced by the node. Each item is the JSON payload of one output row.
+    items: {}
+    example:
+      - statusCode: 200
+        body: '{"ok":true}'
+  error:
+    type: string
+    description: Error message when status is "error".
+    example: Request failed with status code 404

@@ -46,6 +46,8 @@ tags:
     description: Operations about folders
   - name: EphemeralNode
     description: Operations about nodes runnable via single-node ephemeral execution
+  - name: EphemeralNodeExecution
+    description: Operations about ephemeral node execution
 
 paths:
   /audit:
@@ -144,6 +146,8 @@ paths:
     $ref: './handlers/folders/spec/paths/folders.folderId.yml'
   /ephemeral-nodes:
     $ref: './handlers/ephemeral-nodes/spec/paths/ephemeral-nodes-list.yml'
+  /ephemeral-nodes/execute:
+    $ref: './handlers/ephemeral-nodes/spec/paths/ephemeral-nodes-execute.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

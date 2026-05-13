@@ -1,0 +1,34 @@
+post:
+  operationId: executeEphemeralNode
+  x-eov-operation-id: executeEphemeralNode
+  x-eov-operation-handler: v1/handlers/ephemeral-nodes/ephemeral-nodes.handler
+  tags:
+    - EphemeralNode
+  summary: Execute a node
+  description: >
+    Execute a single node inline without persisting a workflow or execution record.
+    The node runs in the caller's personal project context.
+    Only nodes that are usable as agent tools are supported; trigger nodes and
+    sendAndWait/dispatchAndWait operations are rejected with 400.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/ephemeralNodeExecutionRequest.yml'
+  responses:
+    '200':
+      description: >
+        Execution completed. Check the status field — "success" or "error".
+        An "error" status means the node ran but failed (e.g. a remote API returned an error);
+        it is not an HTTP-level error.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/ephemeralNodeExecutionResponse.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
