@@ -13,6 +13,12 @@ describe('n8n observation-log observer policy', () => {
 		expect(DEFAULT_OBSERVER_PROMPT).toContain('🔴 CRITICAL');
 	});
 
+	it('uses parseable markdown bullets for good output examples', () => {
+		expect(DEFAULT_OBSERVER_PROMPT).toContain(
+			'GOOD:\n* 🟡 (14:30) User is purchasing Claude Code subscriptions for their team.',
+		);
+	});
+
 	it('builds the observer prompt from log tail and transcript delta', () => {
 		const prompt = buildN8nObservationLogObserverPrompt({
 			scopeKind: 'thread',

@@ -125,6 +125,20 @@ describe('ScopedMemoryTaskRunner', () => {
 		expect(runner.getCapturedErrors()).toEqual([]);
 	});
 
+	it('treats NaN maxCapturedErrors as zero', async () => {
+		const runner = new ScopedMemoryTaskRunner({ maxCapturedErrors: Number.NaN });
+
+		const handle = runner.schedule(
+			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			async () => {
+				await Promise.reject(new Error('observer failed'));
+			},
+		);
+
+		await expect(handle.done).resolves.toMatchObject({ status: 'failed' });
+		expect(runner.getCapturedErrors()).toEqual([]);
+	});
+
 	it('captures onEvent failures without failing the task lifecycle', async () => {
 		const eventError = new Error('event sink failed');
 		const task = jest.fn(async () => await Promise.resolve('done'));
