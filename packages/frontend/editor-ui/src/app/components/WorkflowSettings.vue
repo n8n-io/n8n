@@ -52,6 +52,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -135,6 +136,40 @@ const {
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
+const workerPoolOptions = ref<Array<{ key: string; value: string }>>([]);
+
+const instanceRegistryStore = useInstanceRegistryStore();
+
+const loadWorkerPoolOptions = async () => {
+	await instanceRegistryStore.fetchClusterInfo();
+
+	const instances = instanceRegistryStore.clusterInfo?.instances ?? [];
+	const poolNames = new Set<string>();
+
+	for (const instance of instances) {
+		if ('poolName' in instance && typeof instance.poolName === 'string' && instance.poolName) {
+			poolNames.add(instance.poolName);
+		}
+	}
+
+	workerPoolOptions.value = [
+		{ key: 'DEFAULT', value: i18n.baseText('workflowSettings.workerPool.default') },
+		...Array.from(poolNames)
+			.sort()
+			.map((name) => ({ key: name, value: name })),
+	];
+};
+
+const onWorkerPoolChange = (category: 'production' | 'manual' | 'evaluation', value: string) => {
+	if (!workflowSettings.value.workerPoolOverrides) {
+		workflowSettings.value.workerPoolOverrides = {};
+	}
+	if (value === 'DEFAULT') {
+		delete workflowSettings.value.workerPoolOverrides[category];
+	} else {
+		workflowSettings.value.workerPoolOverrides[category] = value;
+	}
+};
 
 const isSelectedResolverEditable = computed(() => {
 	const resolverId = workflowSettings.value.credentialResolverId;
@@ -589,6 +624,13 @@ const saveSettings = async () => {
 	}
 	delete data.settings.maxExecutionTimeout;
 
+	if (
+		data.settings.workerPoolOverrides &&
+		Object.keys(data.settings.workerPoolOverrides).length === 0
+	) {
+		delete data.settings.workerPoolOverrides;
+	}
+
 	isLoading.value = true;
 	data.versionId = workflowDocumentStore.value.versionId;
 	data.expectedChecksum = workflowDocumentStore.value.checksum;
@@ -725,6 +767,10 @@ onMounted(async () => {
 				}),
 				loadCredentialResolverTypes(),
 			);
+		}
+
+		if (settingsStore.isQueueModeEnabled) {
+			promises.push(loadWorkerPoolOptions());
 		}
 
 		await Promise.all(promises);
@@ -1421,6 +1467,93 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
+				<template v-if="settingsStore.isQueueModeEnabled && workerPoolOptions.length > 1">
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.workerPool.production') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									<div
+										v-text="i18n.baseText('workflowSettings.workerPool.production.tooltip')"
+									></div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14" class="ignore-key-press-canvas">
+							<N8nSelect
+								:model-value="workflowSettings.workerPoolOverrides?.production ?? 'DEFAULT'"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:limit-popper-width="true"
+								data-test-id="workflow-settings-worker-pool-production"
+								@update:model-value="(val: string) => onWorkerPoolChange('production', val)"
+							>
+								<N8nOption
+									v-for="option of workerPoolOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key"
+								/>
+							</N8nSelect>
+						</ElCol>
+					</ElRow>
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.workerPool.manual') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									<div v-text="i18n.baseText('workflowSettings.workerPool.manual.tooltip')"></div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14" class="ignore-key-press-canvas">
+							<N8nSelect
+								:model-value="workflowSettings.workerPoolOverrides?.manual ?? 'DEFAULT'"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:limit-popper-width="true"
+								data-test-id="workflow-settings-worker-pool-manual"
+								@update:model-value="(val: string) => onWorkerPoolChange('manual', val)"
+							>
+								<N8nOption
+									v-for="option of workerPoolOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key"
+								/>
+							</N8nSelect>
+						</ElCol>
+					</ElRow>
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.workerPool.evaluation') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									<div
+										v-text="i18n.baseText('workflowSettings.workerPool.evaluation.tooltip')"
+									></div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14" class="ignore-key-press-canvas">
+							<N8nSelect
+								:model-value="workflowSettings.workerPoolOverrides?.evaluation ?? 'DEFAULT'"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:limit-popper-width="true"
+								data-test-id="workflow-settings-worker-pool-evaluation"
+								@update:model-value="(val: string) => onWorkerPoolChange('evaluation', val)"
+							>
+								<N8nOption
+									v-for="option of workerPoolOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key"
+								/>
+							</N8nSelect>
+						</ElCol>
+					</ElRow>
+				</template>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						<label for="timeSavedPerExecution">

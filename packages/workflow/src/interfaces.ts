@@ -3287,6 +3287,7 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	workerPoolOverrides?: Partial<Record<'production' | 'manual' | 'evaluation', string>>;
 }
 
 export interface WorkflowFEMeta {
