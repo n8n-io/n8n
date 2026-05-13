@@ -35,16 +35,15 @@ test.describe(
 			services,
 			backendUrl,
 		}, testInfo) => {
-			const handle = setupWebhook({
-				scenario: {
-					nodeCount: 1,
-					payloadSize: '1KB',
-					nodeOutputSize: 'noop',
-					responseMode: 'onReceived',
-				},
-			});
 			await runWebhookThroughputTest({
-				handle,
+				handle: setupWebhook({
+					scenario: {
+						nodeCount: 1,
+						payloadSize: '1KB',
+						nodeOutputSize: 'noop',
+						responseMode: 'onReceived',
+					},
+				}),
 				api,
 				services,
 				testInfo,
