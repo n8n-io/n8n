@@ -238,6 +238,12 @@ export {
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
+export { ExecuteEphemeralNodeRequestDto } from './ephemeral-nodes/execute-ephemeral-node-request.dto';
+export {
+	executeEphemeralNodeResponseSchema,
+	type ExecuteEphemeralNodeResponse,
+} from './ephemeral-nodes/execute-ephemeral-node-response.dto';
+
 export { CreateAgentDto } from './agents/create-agent.dto';
 export { UpdateAgentDto } from './agents/update-agent.dto';
 export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';

@@ -4,7 +4,7 @@ import handlers from '@/public-api/v1/handlers/ephemeral-nodes/ephemeral-nodes.h
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils';
+import * as utils from '../shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 

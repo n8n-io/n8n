@@ -1,0 +1,47 @@
+type: object
+required:
+  - nodeType
+  - nodeTypeVersion
+  - nodeParameters
+properties:
+  nodeType:
+    type: string
+    description: The node type identifier.
+    example: n8n-nodes-base.httpRequest
+  nodeTypeVersion:
+    type: number
+    description: The version of the node type to execute.
+    example: 4.2
+  nodeParameters:
+    type: object
+    description: Node-specific parameters as key-value pairs.
+    additionalProperties: true
+    example:
+      url: https://api.example.com/data
+      method: GET
+  credentials:
+    type: object
+    description: >
+      Map of credential type name to a resolved credential { id, name }.
+      Use GET /credentials to discover available credential ids and names.
+    additionalProperties:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          example: R2DjclaysHbqn778
+        name:
+          type: string
+          example: My HTTP credential
+  inputData:
+    type: array
+    description: Items to pass as input to the node. Each item is a plain JSON object.
+    items:
+      type: object
+      additionalProperties: true
+    example:
+      - id: 1
+        name: Alice

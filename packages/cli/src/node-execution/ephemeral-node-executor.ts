@@ -206,7 +206,7 @@ export class EphemeralNodeExecutor {
 		return verified;
 	}
 
-	private validateNodeForExecution(
+	validateNodeForExecution(
 		nodeType: string,
 		typeVersion: number,
 		nodeParameters: INodeParameters,
