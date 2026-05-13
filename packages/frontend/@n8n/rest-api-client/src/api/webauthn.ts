@@ -30,9 +30,14 @@ export async function verifyRegistration(
 	return await makeRestApiRequest(context, 'POST', '/mfa/webauthn/registration-verify', data);
 }
 
-export async function getAuthenticationOptions(context: IRestApiContext, email: string) {
+export async function getAuthenticationOptions(
+	context: IRestApiContext,
+	email: string,
+	kind?: 'passkey' | 'security_key',
+) {
 	return await makeRestApiRequest(context, 'POST', '/mfa/webauthn/authentication-options', {
 		email,
+		...(kind ? { kind } : {}),
 	});
 }
 
@@ -42,8 +47,18 @@ export async function getCredentials(
 	return await makeRestApiRequest(context, 'GET', '/mfa/webauthn/credentials');
 }
 
-export async function deleteCredential(context: IRestApiContext, id: string): Promise<void> {
-	return await makeRestApiRequest(context, 'DELETE', `/mfa/webauthn/credentials/${id}`);
+export type DeleteCredentialProof = {
+	mfaCode?: string;
+	mfaRecoveryCode?: string;
+	webauthnResponse?: unknown;
+};
+
+export async function deleteCredential(
+	context: IRestApiContext,
+	id: string,
+	proof: DeleteCredentialProof,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'POST', `/mfa/webauthn/credentials/${id}/remove`, proof);
 }
 
 export async function updateCredential(

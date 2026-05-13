@@ -8,7 +8,8 @@ import {
 	MFA_FORM,
 } from '@/app/constants';
 import { mfaEventBus } from '../auth.eventBus';
-import { onMounted, ref } from 'vue';
+import { LAST_2FA_METHOD_KEY } from '../auth.constants';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -27,8 +28,54 @@ import {
 const props = defineProps<{
 	reportError: boolean;
 	email: string;
-	mfaMethod: MfaMethod;
+	availableMethods: MfaMethod[];
 }>();
+
+const readLastMethod = (): MfaMethod | null => {
+	try {
+		const v = localStorage.getItem(LAST_2FA_METHOD_KEY);
+		if (v === 'totp' || v === 'security_key' || v === 'passkey') return v;
+	} catch {
+		// localStorage unavailable
+	}
+	return null;
+};
+
+// Pick the method the user used last on this device, falling back to a
+// security key when registered (passkey/security_key share the same WebAuthn
+// ceremony) and finally to TOTP.
+const computeInitialMethod = (): MfaMethod => {
+	const last = readLastMethod();
+	if (last && props.availableMethods.includes(last)) return last;
+	if (props.availableMethods.includes('security_key')) return 'security_key';
+	if (props.availableMethods.includes('passkey')) return 'passkey';
+	return 'totp';
+};
+
+const webauthnMethod = computed<'passkey' | 'security_key'>(() =>
+	props.availableMethods.includes('security_key') ? 'security_key' : 'passkey',
+);
+const currentMethod = ref<MfaMethod>(computeInitialMethod());
+const showSwitcher = computed(() => {
+	const hasTotp = props.availableMethods.includes('totp');
+	const hasWebauthn =
+		props.availableMethods.includes('security_key') || props.availableMethods.includes('passkey');
+	return hasTotp && hasWebauthn;
+});
+const switcherTarget = computed<MfaMethod>(() =>
+	currentMethod.value === 'totp' ? webauthnMethod.value : 'totp',
+);
+const switcherLabelKey = computed(() =>
+	switcherTarget.value === 'totp'
+		? 'mfa.login.switcher.useTotp'
+		: switcherTarget.value === 'passkey'
+			? 'mfa.login.switcher.usePasskey'
+			: 'mfa.login.switcher.useSecurityKey',
+);
+const switcherIcon = computed(() => (switcherTarget.value === 'totp' ? 'shield' : 'key-round'));
+const onSwitcherClick = () => {
+	currentMethod.value = switcherTarget.value;
+};
 
 const hasAnyChanges = ref(false);
 const formBus = ref(mfaEventBus);
@@ -194,9 +241,20 @@ const {
 } = useSettingsStore();
 
 onMounted(() => {
-	if (props.mfaMethod === 'totp') {
+	if (currentMethod.value === 'totp') {
 		formInputs.value = [mfaCodeFieldWithDefaults()];
 		focusMfaCodeAfterPasswordManager();
+	}
+});
+
+// When the user toggles between methods via the switcher, swap form inputs so
+// the new method's primary input is auto-focused.
+watch(currentMethod, (next) => {
+	if (next === 'totp') {
+		formInputs.value = [mfaCodeFieldWithDefaults()];
+		focusMfaCodeAfterPasswordManager();
+	} else {
+		formInputs.value = null;
 	}
 });
 </script>
@@ -207,7 +265,7 @@ onMounted(() => {
 		<N8nCard>
 			<div :class="$style.headerContainer">
 				<N8nHeading size="xlarge" color="text-dark">
-					<template v-if="mfaMethod === 'totp'">{{
+					<template v-if="currentMethod === 'totp'">{{
 						showRecoveryCodeForm
 							? i18.baseText('mfa.recovery.modal.title')
 							: i18.baseText('mfa.code.modal.title')
@@ -217,7 +275,7 @@ onMounted(() => {
 			</div>
 
 			<!-- TOTP flow -->
-			<template v-if="mfaMethod === 'totp'">
+			<template v-if="currentMethod === 'totp'">
 				<div :class="[$style.formContainer, reportError ? $style.formError : '']">
 					<N8nFormInputs
 						v-if="formInputs"
@@ -272,6 +330,16 @@ onMounted(() => {
 						@click="onSaveClick"
 					/>
 				</div>
+				<div
+					v-if="showSwitcher && !showRecoveryCodeForm"
+					:class="$style.switcher"
+					data-test-id="mfa-switcher"
+				>
+					<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
+						<N8nIcon :icon="switcherIcon" size="xsmall" />
+						{{ i18.baseText(switcherLabelKey as never) }}
+					</button>
+				</div>
 			</template>
 
 			<!-- WebAuthn flow (passkey or security key) -->
@@ -280,31 +348,31 @@ onMounted(() => {
 					<div
 						:class="[
 							$style.bigIcon,
-							$style[`tone_${mfaMethod}`],
+							$style[`tone_${currentMethod}`],
 							{ [$style.pulse]: webauthnWaiting },
 						]"
 					>
-						<N8nIcon :icon="mfaMethod === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
+						<N8nIcon :icon="currentMethod === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
 					</div>
 					<N8nHeading tag="h3" size="medium" color="text-dark" :class="$style.promptTitle">
 						<template v-if="!webauthnWaiting">{{
-							i18.baseText(`mfa.login.${mfaMethod}.title` as never)
+							i18.baseText(`mfa.login.${currentMethod}.title` as never)
 						}}</template>
 						<template v-else>{{
-							i18.baseText(`mfa.login.${mfaMethod}.waiting.title` as never)
+							i18.baseText(`mfa.login.${currentMethod}.waiting.title` as never)
 						}}</template>
 					</N8nHeading>
 					<N8nText size="small" color="text-base" :class="$style.promptDescription">
 						<template v-if="!webauthnWaiting">{{
-							i18.baseText(`mfa.login.${mfaMethod}.description` as never)
+							i18.baseText(`mfa.login.${currentMethod}.description` as never)
 						}}</template>
 						<template v-else>{{
-							i18.baseText(`mfa.login.${mfaMethod}.waiting.description` as never)
+							i18.baseText(`mfa.login.${currentMethod}.waiting.description` as never)
 						}}</template>
 					</N8nText>
 				</div>
 				<N8nNotice
-					v-if="mfaMethod === 'security_key' && !webauthnWaiting"
+					v-if="currentMethod === 'security_key' && !webauthnWaiting"
 					theme="info"
 					:content="i18.baseText('mfa.login.security_key.info')"
 					:class="$style.infoNotice"
@@ -314,7 +382,7 @@ onMounted(() => {
 				</N8nText>
 				<N8nButton
 					v-if="!webauthnWaiting"
-					:label="i18.baseText(`mfa.login.${mfaMethod}.button` as never)"
+					:label="i18.baseText(`mfa.login.${currentMethod}.button` as never)"
 					size="large"
 					:class="$style.fullWidthButton"
 					data-test-id="mfa-webauthn-button"
@@ -329,6 +397,16 @@ onMounted(() => {
 						size="large"
 						@click="onWebAuthnCancel"
 					/>
+				</div>
+				<div
+					v-if="showSwitcher && !webauthnWaiting"
+					:class="$style.switcher"
+					data-test-id="mfa-switcher"
+				>
+					<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
+						<N8nIcon :icon="switcherIcon" size="xsmall" />
+						{{ i18.baseText(switcherLabelKey as never) }}
+					</button>
 				</div>
 			</template>
 		</N8nCard>
@@ -462,5 +540,25 @@ body {
 	display: flex;
 	justify-content: flex-start;
 	margin-top: var(--spacing--3xs);
+}
+
+.switcher {
+	margin-top: var(--spacing--xs);
+	padding-top: var(--spacing--xs);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	text-align: center;
+}
+
+.switcherLink {
+	color: var(--color--primary);
+	font-size: var(--font-size--xs);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.switcherLink:hover {
+	text-decoration: underline;
 }
 </style>

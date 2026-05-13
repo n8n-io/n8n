@@ -18,6 +18,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { twoFactorWizardBus, type TwoFactorMethod } from '../auth.eventBus';
+import { suggestCredentialLabel } from '../utils/suggest-label';
 import MfaWizardSteps from './MfaWizardSteps.vue';
 
 const props = defineProps<{
@@ -36,7 +37,7 @@ const attachment = computed<'platform' | 'cross-platform'>(() =>
 	method.value === 'passkey' ? 'platform' : 'cross-platform',
 );
 
-const label = ref('');
+const label = ref(suggestCredentialLabel(navigator.userAgent, props.data?.method ?? 'passkey'));
 const submitting = ref(false);
 const recoveryCodes = ref<string[]>([]);
 const showRecoveryCodes = computed(() => recoveryCodes.value.length > 0);

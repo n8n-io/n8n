@@ -7,4 +7,5 @@ export interface WebAuthnCredentialResponse {
 	transports: string[] | null;
 	aaguid: string | null;
 	createdAt: string;
+	lastUsedAt: string | null;
 }

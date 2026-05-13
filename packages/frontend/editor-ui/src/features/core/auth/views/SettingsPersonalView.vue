@@ -148,14 +148,41 @@ const formatSetupDate = (iso: string) => {
 	return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
 };
 
-const formatCredentialDetail = (c: WebAuthnCredentialResponse) => {
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const formatRelativeTime = (iso: string | null) => {
+	if (!iso) return null;
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return null;
+	const diffSec = Math.round((date.getTime() - Date.now()) / 1000);
+	const abs = Math.abs(diffSec);
+	if (abs < 60) return relativeTimeFormatter.format(Math.round(diffSec), 'second');
+	if (abs < 3600) return relativeTimeFormatter.format(Math.round(diffSec / 60), 'minute');
+	if (abs < 86400) return relativeTimeFormatter.format(Math.round(diffSec / 3600), 'hour');
+	if (abs < 86400 * 30) return relativeTimeFormatter.format(Math.round(diffSec / 86400), 'day');
+	if (abs < 86400 * 365)
+		return relativeTimeFormatter.format(Math.round(diffSec / (86400 * 30)), 'month');
+	return relativeTimeFormatter.format(Math.round(diffSec / (86400 * 365)), 'year');
+};
+
+const formatCredentialMeta = (c: WebAuthnCredentialResponse) => {
+	const parts: string[] = [];
 	const setupDate = formatSetupDate(c.createdAt);
-	const setupSuffix = setupDate
-		? i18n.baseText('settings.personal.method.detail.setUpOn', {
+	if (setupDate) {
+		parts.push(
+			i18n.baseText('settings.personal.method.detail.addedOn', {
 				interpolate: { date: setupDate },
-			})
-		: '';
-	return [c.label, setupSuffix].filter(Boolean).join(' · ');
+			}),
+		);
+	}
+	const lastUsed = formatRelativeTime(c.lastUsedAt);
+	parts.push(
+		lastUsed
+			? i18n.baseText('settings.personal.method.detail.lastUsed', {
+					interpolate: { when: lastUsed },
+				})
+			: i18n.baseText('settings.personal.method.detail.neverUsed'),
+	);
+	return parts.join(' · ');
 };
 
 async function refreshWebauthnCredentials() {
@@ -166,9 +193,16 @@ async function refreshWebauthnCredentials() {
 	}
 }
 
-async function removeWebAuthnCredential(credentialId: string) {
+async function removeWebAuthnCredential(credential: WebAuthnCredentialResponse) {
+	// Re-verify with the same kind of authenticator the user is removing:
+	// `reverify` filters `allowCredentials` server-side so the OS picker can
+	// only satisfy the ceremony with a matching credential. Falls back to
+	// TOTP / recovery-code when the device is unavailable.
+	const kind = isPlatformCredential(credential) ? 'passkey' : 'security_key';
+	const proof = await reverify(kind);
+	if (!proof) return;
 	try {
-		await usersStore.deleteWebAuthnCredential(credentialId);
+		await usersStore.deleteWebAuthnCredential(credential.id, proof);
 		showToast({
 			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
 			message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
@@ -488,38 +522,8 @@ onBeforeUnmount(() => {
 							{{ i18n.baseText('settings.personal.passkey.description') }}
 						</N8nText>
 					</div>
-					<div :class="$style.methodCards">
-						<div
-							v-for="cred in passkeyCredentials"
-							:key="cred.id"
-							:class="[$style.methodCard]"
-							:data-test-id="`passkey-card-${cred.id}`"
-						>
-							<div :class="[$style.activeMethodIcon, $style.tone_passkey]">
-								<N8nIcon icon="fingerprint" />
-							</div>
-							<div :class="$style.methodCardContent">
-								<div :class="$style.methodCardLabel">
-									<N8nText :bold="true">{{ cred.label }}</N8nText>
-									<N8nBadge theme="success">{{
-										i18n.baseText('settings.personal.mfa.status.enabled')
-									}}</N8nBadge>
-								</div>
-								<span :class="$style.methodDetail">{{ formatCredentialDetail(cred) }}</span>
-							</div>
-							<N8nButton
-								variant="subtle"
-								size="small"
-								:label="i18n.baseText('settings.personal.method.button.remove')"
-								:data-test-id="`remove-passkey-${cred.id}`"
-								@click="removeWebAuthnCredential(cred.id)"
-							/>
-						</div>
-						<div
-							v-if="passkeyCredentials.length === 0"
-							:class="[$style.methodCard]"
-							data-test-id="passkey-card-disabled"
-						>
+					<div :class="$style.methodCard" data-test-id="passkey-card">
+						<div :class="$style.methodCardHeader">
 							<div :class="[$style.activeMethodIcon, $style.tone_passkey]">
 								<N8nIcon icon="fingerprint" />
 							</div>
@@ -528,7 +532,14 @@ onBeforeUnmount(() => {
 									<N8nText :bold="true">{{
 										i18n.baseText('settings.personal.twoFactor.method.passkey.name')
 									}}</N8nText>
-									<N8nBadge theme="default">{{
+									<N8nBadge v-if="passkeyCredentials.length > 0" theme="success">{{
+										passkeyCredentials.length === 1
+											? i18n.baseText('settings.personal.method.badge.registeredOne')
+											: i18n.baseText('settings.personal.method.badge.registeredMany', {
+													interpolate: { count: String(passkeyCredentials.length) },
+												})
+									}}</N8nBadge>
+									<N8nBadge v-else theme="default">{{
 										i18n.baseText('settings.personal.method.status.notSetUp')
 									}}</N8nBadge>
 								</div>
@@ -537,6 +548,7 @@ onBeforeUnmount(() => {
 								}}</span>
 							</div>
 							<N8nButton
+								v-if="passkeyCredentials.length === 0"
 								variant="subtle"
 								size="small"
 								:label="i18n.baseText('settings.personal.method.button.setUp')"
@@ -544,14 +556,40 @@ onBeforeUnmount(() => {
 								@click="onSetupPasskeyClick"
 							/>
 						</div>
-						<N8nLink
-							v-if="passkeyCredentials.length > 0"
-							size="small"
-							data-test-id="add-passkey-button"
-							@click="onSetupPasskeyClick"
-						>
-							+ {{ i18n.baseText('settings.personal.method.button.addAnother' as never) }}
-						</N8nLink>
+						<div v-if="passkeyCredentials.length > 0" :class="$style.credList">
+							<div
+								v-for="cred in passkeyCredentials"
+								:key="cred.id"
+								:class="$style.credItem"
+								:data-test-id="`passkey-cred-${cred.id}`"
+							>
+								<div :class="$style.credIconSm">
+									<N8nIcon icon="fingerprint" size="xsmall" />
+								</div>
+								<div :class="$style.credMeta">
+									<div :class="$style.credName">{{ cred.label }}</div>
+									<div :class="$style.credSub">{{ formatCredentialMeta(cred) }}</div>
+								</div>
+								<button
+									type="button"
+									:class="$style.credTrash"
+									:aria-label="i18n.baseText('settings.personal.method.button.remove')"
+									:data-test-id="`remove-passkey-${cred.id}`"
+									@click="removeWebAuthnCredential(cred)"
+								>
+									<N8nIcon icon="trash-2" size="small" />
+								</button>
+							</div>
+							<button
+								type="button"
+								:class="$style.addAnotherBtn"
+								data-test-id="add-passkey-button"
+								@click="onSetupPasskeyClick"
+							>
+								<N8nIcon icon="plus" size="xsmall" />
+								{{ i18n.baseText('settings.personal.method.button.addAnother.passkey') }}
+							</button>
+						</div>
 					</div>
 				</div>
 
@@ -571,110 +609,116 @@ onBeforeUnmount(() => {
 					/>
 					<div :class="$style.methodCards">
 						<!-- TOTP card -->
-						<div :class="[$style.methodCard]" data-test-id="mfa-method-totp">
-							<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
-								<N8nIcon icon="shield" />
-							</div>
-							<div :class="$style.methodCardContent">
-								<div :class="$style.methodCardLabel">
-									<N8nText :bold="true">{{
-										i18n.baseText('settings.personal.twoFactor.method.totp.name')
-									}}</N8nText>
-									<N8nBadge v-if="isMethodActive('totp')" theme="success">{{
-										i18n.baseText('settings.personal.mfa.status.enabled')
-									}}</N8nBadge>
-									<N8nBadge v-else theme="default">{{
-										i18n.baseText('settings.personal.method.status.notSetUp')
-									}}</N8nBadge>
+						<div :class="$style.methodCard" data-test-id="mfa-method-totp">
+							<div :class="$style.methodCardHeader">
+								<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
+									<N8nIcon icon="shield" />
 								</div>
-								<span :class="$style.methodDetail">{{
-									i18n.baseText('settings.personal.twoFactor.picker.totp.description')
-								}}</span>
+								<div :class="$style.methodCardContent">
+									<div :class="$style.methodCardLabel">
+										<N8nText :bold="true">{{
+											i18n.baseText('settings.personal.twoFactor.method.totp.name')
+										}}</N8nText>
+										<N8nBadge v-if="isMethodActive('totp')" theme="success">{{
+											i18n.baseText('settings.personal.mfa.status.enabled')
+										}}</N8nBadge>
+										<N8nBadge v-else theme="default">{{
+											i18n.baseText('settings.personal.method.status.notSetUp')
+										}}</N8nBadge>
+									</div>
+									<span :class="$style.methodDetail">{{
+										i18n.baseText('settings.personal.twoFactor.picker.totp.description')
+									}}</span>
+								</div>
+								<N8nButton
+									v-if="isMethodActive('totp')"
+									variant="destructive"
+									size="small"
+									:label="i18n.baseText('settings.personal.method.button.disable')"
+									data-test-id="mfa-method-totp-disable"
+									@click="onDisable2faClick"
+								/>
+								<N8nButton
+									v-else
+									variant="subtle"
+									size="small"
+									:label="i18n.baseText('settings.personal.method.button.setUp')"
+									data-test-id="mfa-method-totp-setup"
+									@click="onTwoFactorMethodClick('totp')"
+								/>
 							</div>
-							<N8nButton
-								v-if="isMethodActive('totp')"
-								variant="destructive"
-								size="small"
-								:label="i18n.baseText('settings.personal.method.button.disable')"
-								data-test-id="mfa-method-totp-disable"
-								@click="onDisable2faClick"
-							/>
-							<N8nButton
-								v-else
-								variant="subtle"
-								size="small"
-								:label="i18n.baseText('settings.personal.method.button.setUp')"
-								data-test-id="mfa-method-totp-setup"
-								@click="onTwoFactorMethodClick('totp')"
-							/>
 						</div>
 
-						<!-- Security key credentials -->
-						<div
-							v-for="cred in securityKeyCredentials"
-							:key="cred.id"
-							:class="[$style.methodCard]"
-							:data-test-id="`security-key-card-${cred.id}`"
-						>
-							<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
-								<N8nIcon icon="key-round" />
-							</div>
-							<div :class="$style.methodCardContent">
-								<div :class="$style.methodCardLabel">
-									<N8nText :bold="true">{{ cred.label }}</N8nText>
-									<N8nBadge theme="success">{{
-										i18n.baseText('settings.personal.mfa.status.enabled')
-									}}</N8nBadge>
+						<!-- Security key card with optional credential list -->
+						<div :class="$style.methodCard" data-test-id="mfa-method-security_key">
+							<div :class="$style.methodCardHeader">
+								<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
+									<N8nIcon icon="key-round" />
 								</div>
-								<span :class="$style.methodDetail">{{ formatCredentialDetail(cred) }}</span>
-							</div>
-							<N8nButton
-								variant="subtle"
-								size="small"
-								:label="i18n.baseText('settings.personal.method.button.remove')"
-								:data-test-id="`remove-security-key-${cred.id}`"
-								@click="removeWebAuthnCredential(cred.id)"
-							/>
-						</div>
-
-						<!-- Security key setup card (when none registered) -->
-						<div
-							v-if="securityKeyCredentials.length === 0"
-							:class="[$style.methodCard]"
-							data-test-id="mfa-method-security_key"
-						>
-							<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
-								<N8nIcon icon="key-round" />
-							</div>
-							<div :class="$style.methodCardContent">
-								<div :class="$style.methodCardLabel">
-									<N8nText :bold="true">{{
-										i18n.baseText('settings.personal.twoFactor.method.security_key.name')
-									}}</N8nText>
-									<N8nBadge theme="default">{{
-										i18n.baseText('settings.personal.method.status.notSetUp')
-									}}</N8nBadge>
+								<div :class="$style.methodCardContent">
+									<div :class="$style.methodCardLabel">
+										<N8nText :bold="true">{{
+											i18n.baseText('settings.personal.twoFactor.method.security_key.name')
+										}}</N8nText>
+										<N8nBadge v-if="securityKeyCredentials.length > 0" theme="success">{{
+											securityKeyCredentials.length === 1
+												? i18n.baseText('settings.personal.method.badge.registeredOne')
+												: i18n.baseText('settings.personal.method.badge.registeredMany', {
+														interpolate: { count: String(securityKeyCredentials.length) },
+													})
+										}}</N8nBadge>
+										<N8nBadge v-else theme="default">{{
+											i18n.baseText('settings.personal.method.status.notSetUp')
+										}}</N8nBadge>
+									</div>
+									<span :class="$style.methodDetail">{{
+										i18n.baseText('settings.personal.twoFactor.picker.security_key.description')
+									}}</span>
 								</div>
-								<span :class="$style.methodDetail">{{
-									i18n.baseText('settings.personal.twoFactor.picker.security_key.description')
-								}}</span>
+								<N8nButton
+									v-if="securityKeyCredentials.length === 0"
+									variant="subtle"
+									size="small"
+									:label="i18n.baseText('settings.personal.method.button.setUp')"
+									data-test-id="mfa-method-security_key-setup"
+									@click="onTwoFactorMethodClick('security_key')"
+								/>
 							</div>
-							<N8nButton
-								variant="subtle"
-								size="small"
-								:label="i18n.baseText('settings.personal.method.button.setUp')"
-								data-test-id="mfa-method-security_key-setup"
-								@click="onTwoFactorMethodClick('security_key')"
-							/>
+							<div v-if="securityKeyCredentials.length > 0" :class="$style.credList">
+								<div
+									v-for="cred in securityKeyCredentials"
+									:key="cred.id"
+									:class="$style.credItem"
+									:data-test-id="`security-key-cred-${cred.id}`"
+								>
+									<div :class="$style.credIconSm">
+										<N8nIcon icon="key-round" size="xsmall" />
+									</div>
+									<div :class="$style.credMeta">
+										<div :class="$style.credName">{{ cred.label }}</div>
+										<div :class="$style.credSub">{{ formatCredentialMeta(cred) }}</div>
+									</div>
+									<button
+										type="button"
+										:class="$style.credTrash"
+										:aria-label="i18n.baseText('settings.personal.method.button.remove')"
+										:data-test-id="`remove-security-key-${cred.id}`"
+										@click="removeWebAuthnCredential(cred)"
+									>
+										<N8nIcon icon="trash-2" size="small" />
+									</button>
+								</div>
+								<button
+									type="button"
+									:class="$style.addAnotherBtn"
+									data-test-id="add-security-key-button"
+									@click="onTwoFactorMethodClick('security_key')"
+								>
+									<N8nIcon icon="plus" size="xsmall" />
+									{{ i18n.baseText('settings.personal.method.button.addAnother.security_key') }}
+								</button>
+							</div>
 						</div>
-						<N8nLink
-							v-if="securityKeyCredentials.length > 0"
-							size="small"
-							data-test-id="add-security-key-button"
-							@click="onTwoFactorMethodClick('security_key')"
-						>
-							+ {{ i18n.baseText('settings.personal.method.button.addAnother' as never) }}
-						</N8nLink>
 					</div>
 				</div>
 			</div>
@@ -808,16 +852,106 @@ onBeforeUnmount(() => {
 
 .methodCard {
 	display: flex;
-	gap: var(--spacing--xs);
+	flex-direction: column;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	background: var(--background--surface);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--md);
+}
+
+.methodCardHeader {
+	display: flex;
+	gap: var(--spacing--xs);
 	align-items: center;
 }
 
 .methodCardMuted {
 	opacity: 0.85;
+}
+
+.credList {
+	margin-top: var(--spacing--2xs);
+	padding-top: var(--spacing--2xs);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	display: flex;
+	flex-direction: column;
+}
+
+.credItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) 0;
+}
+
+.credItem + .credItem {
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.credIconSm {
+	width: var(--spacing--m);
+	height: var(--spacing--m);
+	border-radius: var(--radius--xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--text-color--subtle);
+	background: var(--color--background--light-2);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.credMeta {
+	flex: 1;
+	min-width: 0;
+}
+
+.credName {
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+	color: var(--text-color);
+	margin-bottom: var(--spacing--5xs);
+}
+
+.credSub {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+}
+
+.credTrash {
+	flex-shrink: 0;
+	background: transparent;
+	border: none;
+	color: var(--text-color--subtle);
+	cursor: pointer;
+	padding: var(--spacing--3xs);
+	border-radius: var(--radius--xs);
+}
+
+.credTrash:hover {
+	color: var(--color--danger);
+	background: var(--color--background--light-2);
+}
+
+.addAnotherBtn {
+	margin-top: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	font-size: var(--font-size--xs);
+	border-radius: var(--radius--sm);
+	border: 1px dashed var(--color--foreground);
+	background: transparent;
+	color: var(--text-color--subtle);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--3xs);
+}
+
+.addAnotherBtn:hover {
+	border-style: solid;
+	border-color: var(--color--primary);
+	color: var(--color--primary);
 }
 
 .methodCardContent {

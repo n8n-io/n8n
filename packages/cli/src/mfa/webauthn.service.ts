@@ -158,12 +158,23 @@ export class WebAuthnService {
 		);
 	}
 
-	async generateAuthenticationOptions(userId: string) {
+	async generateAuthenticationOptions(userId: string, kind?: 'passkey' | 'security_key') {
 		const { generateAuthenticationOptions } = await import('@simplewebauthn/server');
 
-		const credentials = await this.webauthnCredentialRepository.find({
+		const allCredentials = await this.webauthnCredentialRepository.find({
 			where: { userId },
 		});
+
+		// When the caller asks for a specific kind (e.g. re-verify with a passkey
+		// when removing one) we narrow `allowCredentials` so the browser/OS can
+		// only satisfy the ceremony with a matching credential.
+		const filterByKind = (c: (typeof allCredentials)[number]) => {
+			if (!kind) return true;
+			const isPlatform =
+				(c.transports ?? []).includes('internal') || c.deviceType === 'multiDevice';
+			return kind === 'passkey' ? isPlatform : !isPlatform;
+		};
+		const credentials = allCredentials.filter(filterByKind);
 
 		const options = await generateAuthenticationOptions({
 			rpID: this.getRpId(),
@@ -231,6 +242,7 @@ export class WebAuthnService {
 		if (verification.verified && verification.authenticationInfo) {
 			await this.webauthnCredentialRepository.update(credential.id, {
 				counter: verification.authenticationInfo.newCounter,
+				lastUsedAt: new Date(),
 			});
 		}
 
@@ -307,6 +319,7 @@ export class WebAuthnService {
 
 		await this.webauthnCredentialRepository.update(credential.id, {
 			counter: verification.authenticationInfo.newCounter,
+			lastUsedAt: new Date(),
 		});
 		await this.cacheService.delete(cacheKey);
 

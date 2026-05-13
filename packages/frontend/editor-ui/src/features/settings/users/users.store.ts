@@ -461,17 +461,21 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await webauthnApi.getCredentials(rootStore.restApiContext);
 	};
 
-	const deleteWebAuthnCredential = async (id: string) => {
-		await webauthnApi.deleteCredential(rootStore.restApiContext, id);
+	const deleteWebAuthnCredential = async (id: string, proof: webauthnApi.DeleteCredentialProof) => {
+		await webauthnApi.deleteCredential(rootStore.restApiContext, id, proof);
 	};
 
 	const updateWebAuthnCredentialLabel = async (id: string, label: string) => {
 		await webauthnApi.updateCredential(rootStore.restApiContext, id, { label });
 	};
 
-	const verifyWebAuthnAuthentication = async (email: string) => {
+	const verifyWebAuthnAuthentication = async (email: string, kind?: 'passkey' | 'security_key') => {
 		const { startAuthentication } = await import('@simplewebauthn/browser');
-		const options = await webauthnApi.getAuthenticationOptions(rootStore.restApiContext, email);
+		const options = await webauthnApi.getAuthenticationOptions(
+			rootStore.restApiContext,
+			email,
+			kind,
+		);
 		const assertionResponse = await startAuthentication({
 			optionsJSON: options as Parameters<typeof startAuthentication>[0]['optionsJSON'],
 		});

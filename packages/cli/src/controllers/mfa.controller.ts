@@ -3,7 +3,6 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest, UserRepository } from '@n8n/db';
 import {
 	createUserKeyedRateLimiter,
-	Delete,
 	Get,
 	GlobalScope,
 	Patch,
@@ -317,8 +316,10 @@ export class MFAController {
 	@Post('/webauthn/authentication-options', {
 		skipAuth: true,
 	})
-	async getWebAuthnAuthenticationOptions(req: AuthenticatedRequest<{}, {}, { email: string }>) {
-		const { email } = req.body;
+	async getWebAuthnAuthenticationOptions(
+		req: AuthenticatedRequest<{}, {}, { email: string; kind?: 'passkey' | 'security_key' }>,
+	) {
+		const { email, kind } = req.body;
 		if (!email) {
 			throw new BadRequestError('Email is required');
 		}
@@ -329,7 +330,8 @@ export class MFAController {
 			throw new BadRequestError('MFA Error', 998);
 		}
 
-		return await this.mfaService.webauthn.generateAuthenticationOptions(user.id);
+		const narrowedKind = kind === 'passkey' || kind === 'security_key' ? kind : undefined;
+		return await this.mfaService.webauthn.generateAuthenticationOptions(user.id, narrowedKind);
 	}
 
 	@Get('/webauthn/credentials')
@@ -344,25 +346,73 @@ export class MFAController {
 			transports: c.transports,
 			aaguid: c.aaguid ?? null,
 			createdAt: c.createdAt.toISOString(),
+			lastUsedAt: c.lastUsedAt ? c.lastUsedAt.toISOString() : null,
 		}));
 	}
 
-	@Delete('/webauthn/credentials/:id')
-	async deleteWebAuthnCredential(req: AuthenticatedRequest<{ id: string }>, res: Response) {
+	// Use POST (not DELETE) so the proof body reliably reaches the server —
+	// our rest-api-client routes DELETE data through query params, which
+	// can't carry a structured webauthn assertion.
+	@Post('/webauthn/credentials/:id/remove')
+	async deleteWebAuthnCredential(
+		req: AuthenticatedRequest<
+			{ id: string },
+			{},
+			{ mfaCode?: string; mfaRecoveryCode?: string; webauthnResponse?: unknown }
+		>,
+		res: Response,
+	) {
 		const { id } = req.params;
+		const { mfaCode, mfaRecoveryCode, webauthnResponse } = req.body;
 		const userId = req.user.id;
+
+		// Removing a credential is security-sensitive — re-verify the user's
+		// active 2FA method (TOTP code, recovery code, or a fresh webauthn
+		// assertion) before we touch the credential row.
+		const provided = [mfaCode, mfaRecoveryCode, webauthnResponse].filter(
+			(v) => v !== undefined && v !== null && v !== '',
+		);
+		if (provided.length !== 1) {
+			throw new BadRequestError(
+				'Exactly one of mfaCode, mfaRecoveryCode, or webauthnResponse is required to remove this credential',
+			);
+		}
+
+		let proofValid: boolean;
+		if (webauthnResponse !== undefined && webauthnResponse !== null) {
+			proofValid = await this.mfaService.validateWebAuthn(userId, webauthnResponse);
+		} else {
+			proofValid = await this.mfaService.validateMfa(userId, mfaCode, mfaRecoveryCode);
+		}
+		if (!proofValid) {
+			throw new BadRequestError('Invalid two-factor proof');
+		}
+
+		const [credentialsBefore, isMFAEnforced, { decryptedSecret }] = await Promise.all([
+			this.mfaService.webauthn.getUserCredentials(userId),
+			this.mfaService.isMFAEnforced(),
+			this.mfaService.getSecretAndRecoveryCodes(userId),
+		]);
+		const remainingWebauthn = credentialsBefore.filter((c) => c.id !== id).length;
+		const hasTotpSecret = !!decryptedSecret;
+
+		// Refuse if removing this credential would leave the user with no
+		// authentication factor on an instance that enforces MFA.
+		if (isMFAEnforced && remainingWebauthn === 0 && !hasTotpSecret) {
+			throw new BadRequestError(
+				'You can’t remove your last MFA credential while two-factor authentication is required on this instance',
+			);
+		}
 
 		const deleted = await this.mfaService.webauthn.deleteCredential(id, userId);
 		if (!deleted) {
 			throw new BadRequestError('Credential not found');
 		}
 
-		// Check if user has any remaining MFA methods
-		const hasWebauthnCredentials = await this.mfaService.webauthn.hasCredentials(userId);
-		const { decryptedSecret } = await this.mfaService.getSecretAndRecoveryCodes(userId);
-		const hasTotpSecret = !!decryptedSecret;
-
-		if (!hasWebauthnCredentials && !hasTotpSecret) {
+		// If this was the last MFA factor, mirror disable-MFA semantics so the
+		// user's session reflects the new state. The pre-delete read above
+		// already told us what's left — no need to re-query.
+		if (remainingWebauthn === 0 && !hasTotpSecret) {
 			await this.userRepository.update(userId, {
 				mfaEnabled: false,
 				mfaSecret: null,

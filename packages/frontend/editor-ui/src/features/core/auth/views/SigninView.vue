@@ -16,6 +16,7 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
 import type { LoginRequestDto, MfaMethod } from '@n8n/api-types';
+import { LAST_2FA_METHOD_KEY } from '../auth.constants';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -38,7 +39,6 @@ const telemetry = useTelemetry();
 const loading = ref(false);
 const showMfaView = ref(false);
 const availableMfaMethods = ref<MfaMethod[]>(['totp']);
-const mfaMethod = computed<MfaMethod>(() => availableMfaMethods.value[0] ?? 'totp');
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
@@ -134,6 +134,18 @@ const getRedirectQueryParameter = () => {
 	return redirect;
 };
 
+const persistLastMethodOnSuccess = (form: LoginRequestDto) => {
+	let method: MfaMethod | null = null;
+	if (form.mfaCode) method = 'totp';
+	else if (form.webauthnResponse) method = 'security_key';
+	if (!method) return;
+	try {
+		localStorage.setItem(LAST_2FA_METHOD_KEY, method);
+	} catch {
+		// localStorage unavailable
+	}
+};
+
 const login = async (form: LoginRequestDto) => {
 	try {
 		loading.value = true;
@@ -145,6 +157,7 @@ const login = async (form: LoginRequestDto) => {
 			webauthnResponse: form.webauthnResponse,
 		});
 		loading.value = false;
+		persistLastMethodOnSuccess(form);
 		await settingsStore.getSettings();
 
 		toast.clearAllStickyNotifications();
@@ -277,7 +290,7 @@ onMounted(async () => {
 			v-if="showMfaView"
 			:report-error="reportError"
 			:email="emailOrLdapLoginId"
-			:mfa-method="mfaMethod"
+			:available-methods="availableMfaMethods"
 			@submit="onMFASubmitted"
 			@webauthn-submit="onWebAuthnSubmitted"
 			@on-back-click="onBackClick"

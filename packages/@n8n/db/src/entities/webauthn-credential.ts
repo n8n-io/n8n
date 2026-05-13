@@ -39,4 +39,7 @@ export class WebauthnCredential extends WithTimestampsAndStringId {
 
 	@Column({ type: String, length: 255 })
 	label: string;
+
+	@Column({ type: 'datetime', nullable: true })
+	lastUsedAt: Date | null;
 }
