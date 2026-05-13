@@ -111,6 +111,42 @@ describe('ScopedMemoryTaskRunner', () => {
 		expect(seenEvents).toEqual(['started', 'failed']);
 	});
 
+	it('treats negative maxCapturedErrors as zero', async () => {
+		const runner = new ScopedMemoryTaskRunner({ maxCapturedErrors: -1 });
+
+		const handle = runner.schedule(
+			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			async () => {
+				await Promise.reject(new Error('observer failed'));
+			},
+		);
+
+		await expect(handle.done).resolves.toMatchObject({ status: 'failed' });
+		expect(runner.getCapturedErrors()).toEqual([]);
+	});
+
+	it('captures onEvent failures without failing the task lifecycle', async () => {
+		const eventError = new Error('event sink failed');
+		const task = jest.fn(async () => await Promise.resolve('done'));
+		const runner = new ScopedMemoryTaskRunner({
+			onEvent: () => {
+				throw eventError;
+			},
+		});
+
+		const handle = runner.schedule(
+			{ taskKind: 'reflector', scopeKind: 'thread', scopeId: 'thread-1' },
+			task,
+		);
+
+		await expect(handle.done).resolves.toMatchObject({ status: 'completed', value: 'done' });
+		expect(task).toHaveBeenCalled();
+		expect(runner.getInFlightTasks()).toEqual([]);
+		expect(runner.getCapturedErrors()).toEqual(
+			expect.arrayContaining([expect.objectContaining({ error: eventError })]),
+		);
+	});
+
 	it('acquires and releases a store lock around the task', async () => {
 		const acquire = jest.fn<
 			ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>,

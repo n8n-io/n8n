@@ -65,6 +65,25 @@ describe('renderObservationLogForReflection', () => {
 		expect(rendered).toContain('* [parent] 🔴 2026-05-12T14:30:00.000Z User chose');
 		expect(rendered).toContain('  * [child] ✅ 2026-05-12T14:31:00.000Z Plan 7');
 	});
+
+	it('renders active orphan children as top-level observations', () => {
+		const rendered = renderObservationLogForReflection([
+			{
+				id: 'orphan',
+				scopeKind: 'thread',
+				scopeId: 'thread-1',
+				marker: 'important',
+				text: 'Orphaned active observation remains relevant.',
+				parentId: 'missing-parent',
+				tokenCount: 4,
+				status: 'active',
+				supersededBy: null,
+				createdAt: new Date('2026-05-12T14:32:00.000Z'),
+			},
+		]);
+
+		expect(rendered).toContain('* [orphan] 🟡 2026-05-12T14:32:00.000Z Orphaned active');
+	});
 });
 
 describe('runObservationLogReflector', () => {
