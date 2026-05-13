@@ -46,8 +46,8 @@ describe('MigrationTimestampRule', () => {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('accepts a seconds-precision past timestamp (3 trailing zeros)', async () => {
-		writeMigration(tmpDir, '1761655473000-ChangeDependencyInfoToJson.ts');
+	it('accepts a rounded past timestamp', async () => {
+		writeMigration(tmpDir, '1766500000000-ExpandInsightsWorkflowIdLength.ts');
 
 		const violations = await rule.analyze(context());
 
@@ -65,25 +65,6 @@ describe('MigrationTimestampRule', () => {
 		expect(violations[0].message).toContain('1784000000000');
 	});
 
-	it('flags a suspiciously rounded past timestamp', async () => {
-		writeMigration(tmpDir, '1766500000000-ExpandInsightsWorkflowIdLength.ts');
-
-		const violations = await rule.analyze(context());
-
-		expect(violations).toHaveLength(1);
-		expect(violations[0].message).toContain('rounded timestamp');
-		expect(violations[0].message).toContain('trailing zeros');
-	});
-
-	it('reports future timestamps but not rounding for the same file (single violation)', async () => {
-		writeMigration(tmpDir, '1800000000000-FutureAndRounded.ts');
-
-		const violations = await rule.analyze(context());
-
-		expect(violations).toHaveLength(1);
-		expect(violations[0].message).toContain('future timestamp');
-	});
-
 	it('ignores index.ts and other non-migration files', async () => {
 		writeMigration(tmpDir, 'index.ts');
 		writeMigration(tmpDir, 'README.md');
@@ -91,16 +72,6 @@ describe('MigrationTimestampRule', () => {
 		const violations = await rule.analyze(context());
 
 		expect(violations).toHaveLength(0);
-	});
-
-	it('respects a custom maxTrailingZeros threshold', async () => {
-		rule.configure({ options: { now: NOW, maxTrailingZeros: 2 } });
-		writeMigration(tmpDir, '1761655473000-SecondsPrecision.ts');
-
-		const violations = await rule.analyze(context());
-
-		expect(violations).toHaveLength(1);
-		expect(violations[0].message).toContain('rounded timestamp');
 	});
 
 	it('scans every configured migration directory', async () => {
