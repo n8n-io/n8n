@@ -81,12 +81,13 @@ export class WorkflowDependencyQueryService {
 	 * anonymized "(restricted)" nodes so the graph structure is preserved
 	 * without leaking resource identifiers.
 	 */
-	async getDependencyGraph(user: User): Promise<string> {
+	async getDependencyGraph(user: User, opts: { layout?: 'lr' | 'tb' } = {}): Promise<string> {
+		const layout = opts.layout ?? 'lr';
 		const accessibleWfIds = await this.workflowFinderService.findAllWorkflowIdsForUser(user, [
 			'workflow:read',
 		]);
 
-		if (accessibleWfIds.length === 0) return emptyDotGraph();
+		if (accessibleWfIds.length === 0) return emptyDotGraph(layout);
 
 		const rawDeps = await this.dependencyRepository.find({
 			where: [
@@ -102,7 +103,7 @@ export class WorkflowDependencyQueryService {
 			select: ['workflowId', 'dependencyType', 'dependencyKey'],
 		});
 
-		if (rawDeps.length === 0) return emptyDotGraph();
+		if (rawDeps.length === 0) return emptyDotGraph(layout);
 
 		const maps = this.buildDepMaps(rawDeps);
 
@@ -174,15 +175,19 @@ export class WorkflowDependencyQueryService {
 		for (const c of credentials) credNames.set(c.id, c.name ?? c.id);
 		for (const dt of dataTables) dtNames.set(dt.id, dt.name ?? dt.id);
 
-		return buildDotGraph(maps, {
-			wfNames,
-			credNames,
-			dtNames,
-			wfProjects,
-			credProjects,
-			dtProjects,
-			projectNames,
-		});
+		return buildDotGraph(
+			maps,
+			{
+				wfNames,
+				credNames,
+				dtNames,
+				wfProjects,
+				credProjects,
+				dtProjects,
+				projectNames,
+			},
+			layout,
+		);
 	}
 
 	/** Return resolved dependencies for each input resource, excluding inaccessible ones. */
@@ -428,8 +433,12 @@ function addToSet(map: Map<string, Set<string>>, key: string, val: string) {
 	set.add(val);
 }
 
-function emptyDotGraph(): string {
-	return 'digraph WorkflowDependencies {\n  rankdir=LR;\n}\n';
+function rankdirFor(layout: 'lr' | 'tb'): string {
+	return layout === 'tb' ? 'TB' : 'LR';
+}
+
+function emptyDotGraph(layout: 'lr' | 'tb' = 'lr'): string {
+	return `digraph WorkflowDependencies {\n  rankdir=${rankdirFor(layout)};\n}\n`;
 }
 
 function dotEscape(value: string): string {
@@ -463,11 +472,16 @@ function buildDotGraph(
 		dtProjects: Map<string, string>;
 		projectNames: Map<string, string>;
 	},
+	layout: 'lr' | 'tb' = 'lr',
 ): string {
 	const lines: string[] = [];
 	lines.push('digraph WorkflowDependencies {');
-	lines.push('  rankdir=LR;');
+	lines.push(`  rankdir=${rankdirFor(layout)};`);
 	lines.push('  compound=true;');
+	// newrank=true makes dot honor cluster constraints across the rank assignment,
+	// so nodes stay inside their declared cluster even when they have many
+	// edges crossing to other clusters.
+	lines.push('  newrank=true;');
 	lines.push('  node [fontname="Helvetica", style="filled,rounded"];');
 	lines.push('  edge [fontname="Helvetica", fontsize=10];');
 	lines.push('');

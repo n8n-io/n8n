@@ -1,0 +1,45 @@
+get:
+  x-eov-operation-id: getWorkflowDependencyGraph
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Retrieve the workflow dependency graph
+  description: Retrieve a graph of workflow-to-workflow dependencies visible to the caller.
+  parameters:
+    - name: format
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - dot
+          - json
+        default: json
+      description: 'Response format. json returns an object containing a dot field; dot returns the raw Graphviz DOT body.'
+    - name: layout
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - lr
+          - tb
+        default: lr
+      description: 'Graph orientation. lr (default) lays the graph out left-to-right; tb lays it top-to-bottom, which often produces tighter project clusters when there are many cross-project edges.'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              dot:
+                type: string
+        text/vnd.graphviz:
+          schema:
+            type: string
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '503':
+      description: Workflow dependency indexing is not enabled.

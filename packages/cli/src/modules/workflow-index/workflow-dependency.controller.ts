@@ -49,7 +49,9 @@ export class WorkflowDependencyController {
 	async getDependencyGraph(req: AuthenticatedRequest): Promise<{ dot: string }> {
 		this.assertIndexingEnabled();
 
-		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user);
+		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user, {
+			layout: parseLayout(req.query.layout),
+		});
 		return { dot };
 	}
 
@@ -57,7 +59,9 @@ export class WorkflowDependencyController {
 	async downloadDependencyGraph(req: AuthenticatedRequest, res: Response) {
 		this.assertIndexingEnabled();
 
-		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user);
+		const dot = await this.workflowDependencyQueryService.getDependencyGraph(req.user, {
+			layout: parseLayout(req.query.layout),
+		});
 		res.setHeader('Content-Type', 'text/vnd.graphviz; charset=utf-8');
 		res.setHeader('Content-Disposition', 'attachment; filename="workflow-dependencies.dot"');
 		res.send(dot);
@@ -68,4 +72,8 @@ export class WorkflowDependencyController {
 			throw new ServiceUnavailableError('Workflow dependency indexing is not enabled');
 		}
 	}
+}
+
+function parseLayout(value: unknown): 'lr' | 'tb' | undefined {
+	return value === 'tb' || value === 'lr' ? value : undefined;
 }

@@ -466,7 +466,10 @@ const workflowHandlers: WorkflowHandlers = {
 				throw new ServiceUnavailableError('Workflow dependency indexing is not enabled');
 			}
 
-			const dot = await Container.get(WorkflowDependencyQueryService).getDependencyGraph(req.user);
+			const layout = req.query.layout === 'tb' ? 'tb' : 'lr';
+			const dot = await Container.get(WorkflowDependencyQueryService).getDependencyGraph(req.user, {
+				layout,
+			});
 
 			if (req.query.format === 'dot') {
 				res.setHeader('Content-Type', 'text/vnd.graphviz; charset=utf-8');
