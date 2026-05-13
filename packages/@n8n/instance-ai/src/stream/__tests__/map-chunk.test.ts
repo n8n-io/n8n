@@ -71,6 +71,12 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('ignores malformed native message chunks', () => {
+		expect(map({ type: 'message', message: null })).toBeNull();
+		expect(map({ type: 'message', message: { role: 'tool' } })).toBeNull();
+		expect(map({ type: 'message', message: { role: 'tool', content: null } })).toBeNull();
+	});
+
 	it('maps native tool result messages', () => {
 		expect(
 			map({
@@ -187,7 +193,7 @@ describe('mapAgentChunkToEvent', () => {
 						toolGroup: 'Local Gateway',
 						resource: '/tmp/file.txt',
 						description: 'Read /tmp/file.txt',
-						options: ['allow', 'deny'],
+						options: ['allowForSession', 'denyOnce'],
 					},
 				},
 			}),
@@ -240,7 +246,7 @@ describe('mapAgentChunkToEvent', () => {
 					toolGroup: 'Local Gateway',
 					resource: '/tmp/file.txt',
 					description: 'Read /tmp/file.txt',
-					options: ['allow', 'deny'],
+					options: ['allowForSession', 'denyOnce'],
 				},
 			},
 		});

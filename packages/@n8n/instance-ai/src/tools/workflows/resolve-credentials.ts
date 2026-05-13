@@ -20,7 +20,7 @@ export interface CredentialEntry {
  * Credential map passed from the orchestrator.
  * Keyed by credential type (e.g., "openAiApi", "gmailOAuth2", "slackApi").
  */
-export type CredentialMap = Map<string, { id: string; name: string }>;
+export type CredentialMap = Map<string, CredentialEntry[]>;
 
 /**
  * Paired credential snapshot produced from a single `credentialService.list()`
@@ -61,7 +61,9 @@ export async function buildCredentialMap(
 	try {
 		const allCreds = await credentialService.list();
 		for (const cred of allCreds) {
-			map.set(cred.type, { id: cred.id, name: cred.name });
+			const entries = map.get(cred.type) ?? [];
+			entries.push({ id: cred.id, name: cred.name, type: cred.type });
+			map.set(cred.type, entries);
 		}
 	} catch {
 		// Non-fatal — credentials will be unresolved
@@ -183,10 +185,11 @@ export async function resolveCredentials(
 				continue;
 			}
 
-			const fromMap =
+			const credentialsForType =
 				availableCredentials instanceof Map ? availableCredentials.get(key) : undefined;
-			if (fromMap) {
-				creds[key] = fromMap;
+			if (credentialsForType?.length === 1) {
+				const [credential] = credentialsForType;
+				creds[key] = { id: credential.id, name: credential.name };
 				cleanupMockPinData(json, node.name);
 				continue;
 			}
@@ -232,8 +235,9 @@ function isKnownCredentialForType(
 	if (!id) return false;
 
 	if (availableCredentials instanceof Map) {
-		const credential = availableCredentials.get(credentialType);
-		return credential?.id === id;
+		return (
+			availableCredentials.get(credentialType)?.some((credential) => credential.id === id) ?? false
+		);
 	}
 
 	return availableCredentials.some(

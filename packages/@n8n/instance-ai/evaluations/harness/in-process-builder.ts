@@ -376,8 +376,10 @@ export async function buildInProcess(
 		// Pull stream-level totals when the underlying stream source exposes
 		// them. `finishReason === 'length'` / 'tool-calls' pinpoints
 		// maxSteps exhaustion, and `totalUsage` is our only cost signal.
-		const usage = streamSource.usage;
-		const finishReason = streamSource.finishReason;
+		const usage = await Promise.resolve(streamSource.totalUsage ?? streamSource.usage).catch(
+			() => undefined,
+		);
+		const finishReason = await Promise.resolve(streamSource.finishReason).catch(() => undefined);
 		chunkLog?.write({
 			kind: 'stream-finish',
 			status: result.status,

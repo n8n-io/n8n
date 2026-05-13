@@ -1,15 +1,15 @@
 import { Agent } from '@n8n/agents';
 
-import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
-import { getSystemPrompt } from './system-prompt';
-import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { getSystemPrompt } from './system-prompt';
+import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
+import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
+import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 

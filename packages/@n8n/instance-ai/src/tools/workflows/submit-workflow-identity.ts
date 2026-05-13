@@ -127,6 +127,31 @@ export function wrapSubmitExecuteWithIdentity(
 ): SubmitExecute {
 	const pending = new Map<string, Promise<string>>();
 
+	function recordTerminalRemediation(
+		workflowId: string | undefined,
+		remediation: RemediationMetadata | undefined,
+	): void {
+		if (!remediation || remediation.shouldEdit) return;
+
+		options.onTerminalRemediation?.(remediation);
+		options.onGuardFired?.({
+			workflowId,
+			category: remediation.category,
+			attemptCount: remediation.attemptCount,
+			reason: remediation.reason,
+		});
+	}
+
+	function applyOutputGuards(
+		path: string,
+		output: SubmitWorkflowOutput,
+		fallbackWorkflowId?: string,
+	): SubmitWorkflowOutput {
+		const guarded = options.budgetTracker?.applyToOutput(path, output) ?? output;
+		recordTerminalRemediation(guarded.workflowId ?? fallbackWorkflowId, guarded.remediation);
+		return guarded;
+	}
+
 	async function blockedByTerminalRemediation(
 		workflowId: string | undefined,
 	): Promise<SubmitWorkflowOutput | undefined> {
@@ -161,6 +186,9 @@ export function wrapSubmitExecuteWithIdentity(
 			try {
 				boundId = await existing;
 			} catch (error) {
+				const terminalAfterFailure = await blockedByTerminalRemediation(input.workflowId);
+				if (terminalAfterFailure) return terminalAfterFailure;
+
 				const message = error instanceof Error ? error.message : String(error);
 				return {
 					success: false,
@@ -178,7 +206,7 @@ export function wrapSubmitExecuteWithIdentity(
 			if (terminalAfterWait) return terminalAfterWait;
 
 			const result = await underlying({ ...input, workflowId: boundId });
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return applyOutputGuards(resolvedPath, result, boundId);
 		}
 
 		let resolveFn: ((id: string) => void) | undefined;
@@ -194,13 +222,14 @@ export function wrapSubmitExecuteWithIdentity(
 
 		try {
 			const result = await underlying(input);
-			if (result.success && typeof result.workflowId === 'string') {
-				resolveFn?.(result.workflowId);
+			const guarded = applyOutputGuards(resolvedPath, result, input.workflowId);
+			if (guarded.success && typeof guarded.workflowId === 'string') {
+				resolveFn?.(guarded.workflowId);
 			} else {
-				rejectFn?.(new Error(result.errors?.join(' ') ?? 'submit-workflow failed'));
+				rejectFn?.(new Error(guarded.errors?.join(' ') ?? 'submit-workflow failed'));
 				pending.delete(resolvedPath);
 			}
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return guarded;
 		} catch (error) {
 			rejectFn?.(error);
 			pending.delete(resolvedPath);

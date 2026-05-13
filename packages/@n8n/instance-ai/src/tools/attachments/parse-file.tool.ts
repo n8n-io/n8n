@@ -9,7 +9,7 @@
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
-import { parseStructuredFile } from '../../parsers/structured-file-parser';
+import { detectFormat, parseStructuredFile } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
 
 export const parseFileInputSchema = z.object({
@@ -66,7 +66,7 @@ export const parseFileOutputSchema = z.object({
 	attachmentIndex: z.number(),
 	fileName: z.string(),
 	mimeType: z.string(),
-	format: z.enum(['csv', 'tsv', 'json', 'xlsx']),
+	format: z.enum(['csv', 'tsv', 'json', 'xlsx', 'unknown']),
 	columns: z.array(columnMetaSchema),
 	rows: z.array(z.record(z.union([z.string(), z.number(), z.boolean(), z.null()]))),
 	totalRows: z.number(),
@@ -76,6 +76,30 @@ export const parseFileOutputSchema = z.object({
 	warnings: z.array(z.string()).optional(),
 	error: z.string().optional(),
 });
+
+type ParseFileOutputFormat = z.infer<typeof parseFileOutputSchema>['format'];
+
+function toOutputFormat(format: string | undefined): ParseFileOutputFormat {
+	switch (format) {
+		case 'csv':
+		case 'tsv':
+		case 'json':
+		case 'xlsx':
+			return format;
+		default:
+			return 'unknown';
+	}
+}
+
+function errorFormatFor(
+	inputFormat: z.infer<typeof parseFileInputSchema>['format'],
+	attachment?: { fileName: string; mimeType: string },
+): ParseFileOutputFormat {
+	return (
+		inputFormat ??
+		toOutputFormat(attachment && detectFormat(attachment.fileName, attachment.mimeType))
+	);
+}
 
 export function createParseFileTool(context: InstanceAiContext) {
 	return (
@@ -98,7 +122,7 @@ export function createParseFileTool(context: InstanceAiContext) {
 						attachmentIndex: input.attachmentIndex,
 						fileName: '',
 						mimeType: '',
-						format: 'csv' as const,
+						format: errorFormatFor(input.format),
 						columns: [],
 						rows: [],
 						totalRows: 0,
@@ -113,7 +137,7 @@ export function createParseFileTool(context: InstanceAiContext) {
 						attachmentIndex: input.attachmentIndex,
 						fileName: '',
 						mimeType: '',
-						format: 'csv' as const,
+						format: errorFormatFor(input.format),
 						columns: [],
 						rows: [],
 						totalRows: 0,
@@ -138,7 +162,7 @@ export function createParseFileTool(context: InstanceAiContext) {
 						attachmentIndex: input.attachmentIndex,
 						fileName: attachment.fileName,
 						mimeType: attachment.mimeType,
-						format: input.format ?? 'csv',
+						format: errorFormatFor(input.format, attachment),
 						columns: [],
 						rows: [],
 						totalRows: 0,

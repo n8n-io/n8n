@@ -171,6 +171,27 @@ describe('createParseFileTool', () => {
 			);
 
 			expect(result.error).toContain('Unsupported format');
+			expect(result.format).toBe('unknown');
+		});
+	});
+
+	describe('with malformed JSON', () => {
+		it('reports the detected format in the error result', async () => {
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64('not json'), mimeType: 'application/json', fileName: 'data.json' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			);
+
+			expect(result.error).toContain('Invalid JSON');
+			expect(result.format).toBe('json');
 		});
 	});
 

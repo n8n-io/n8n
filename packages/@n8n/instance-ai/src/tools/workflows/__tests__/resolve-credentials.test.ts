@@ -1,7 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
-import { resolveCredentials, type CredentialEntry } from '../resolve-credentials';
+import {
+	buildCredentialMap,
+	resolveCredentials,
+	type CredentialEntry,
+} from '../resolve-credentials';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -281,6 +285,34 @@ describe('resolveCredentials', () => {
 				createMockContext(),
 				availableCredentials,
 			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: 'slack-1', name: 'Team Slack' },
+			});
+		});
+
+		it('keeps a raw credential id from a type with multiple available credentials', async () => {
+			const ctx = createMockContext();
+			(ctx.credentialService.list as jest.Mock).mockResolvedValueOnce([
+				{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
+				{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
+			]);
+			const credentialMap = await buildCredentialMap(ctx.credentialService);
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'slack-1', name: 'Team Slack' } },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, ctx, credentialMap);
 
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(json.nodes[0].credentials).toEqual({

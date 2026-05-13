@@ -27,6 +27,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
+	const value = record[key];
+	return Array.isArray(value) ? value : undefined;
+}
+
+function getRecordProperty(value: unknown, key: string): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	const recordValue = value[key];
+	return isRecord(recordValue) ? recordValue : undefined;
+}
+
 const agentStreamChunkTypes = new Set<string>([
 	'finish',
 	'text-delta',
@@ -300,16 +311,46 @@ export function mapAgentChunkToEvent(
 		};
 	}
 
-	if (chunk.type === 'message' && 'role' in chunk.message && chunk.message.role === 'tool') {
-		const toolCall = chunk.message.content.find((part) => part.type === 'tool-call');
-		if (toolCall?.type === 'tool-call') {
+	if (chunk.type === 'message') {
+		const message = getRecordProperty(chunk, 'message');
+		if (message?.role !== 'tool') return null;
+
+		const content = getArrayProperty(message, 'content');
+		if (!content) return null;
+
+		const toolCall = content.find((part) => isRecord(part) && part.type === 'tool-call');
+		if (isRecord(toolCall) && toolCall.type === 'tool-call') {
 			return {
 				type: 'tool-call',
 				...base,
 				payload: {
 					toolCallId: typeof toolCall.toolCallId === 'string' ? toolCall.toolCallId : '',
-					toolName: toolCall.toolName,
+					toolName: typeof toolCall.toolName === 'string' ? toolCall.toolName : '',
 					args: isRecord(toolCall.input) ? toolCall.input : {},
+				},
+			};
+		}
+
+		const toolResult = content.find((part) => isRecord(part) && part.type === 'tool-result');
+		if (isRecord(toolResult) && toolResult.type === 'tool-result') {
+			if (toolResult.isError === true) {
+				return {
+					type: 'tool-error',
+					...base,
+					payload: {
+						toolCallId: typeof toolResult.toolCallId === 'string' ? toolResult.toolCallId : '',
+						error:
+							typeof toolResult.result === 'string' ? toolResult.result : 'Tool execution failed',
+					},
+				};
+			}
+
+			return {
+				type: 'tool-result',
+				...base,
+				payload: {
+					toolCallId: typeof toolResult.toolCallId === 'string' ? toolResult.toolCallId : '',
+					result: toolResult.result,
 				},
 			};
 		}

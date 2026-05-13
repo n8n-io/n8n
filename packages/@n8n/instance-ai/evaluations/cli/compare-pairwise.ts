@@ -694,8 +694,7 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 		case 'workspace_grep':
 			return trunc(`${str(a.pattern)}${a.path ? ` in ${str(a.path)}` : ''}`);
 		case 'workspace_file_stat': {
-			const line = typeof a.line === 'number' ? String(a.line) : '?';
-			return trunc(`${str(a.path)}:${line} ${str(a.match)}`);
+			return trunc(str(a.path));
 		}
 		case 'workspace_mkdir':
 			return trunc(str(a.path));
