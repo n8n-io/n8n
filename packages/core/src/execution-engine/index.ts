@@ -2,6 +2,7 @@ import type {
 	BoardProxyProvider,
 	DataTableProxyProvider,
 	DynamicCredentialCheckProxyProvider,
+	IBoardEventEmitter,
 	IExecutionContext,
 	IHttpRequestOptions,
 	INode,
@@ -66,6 +67,7 @@ declare module 'n8n-workflow' {
 		'data-table'?: {
 			dataTableProxyProvider: DataTableProxyProvider;
 			boardProxyProvider?: BoardProxyProvider;
+			boardEventEmitter?: IBoardEventEmitter;
 		};
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };

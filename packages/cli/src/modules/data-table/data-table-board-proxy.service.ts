@@ -18,6 +18,7 @@ const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTableTool',
 	'n8n-nodes-base.board',
 	'n8n-nodes-base.boardTool',
+	'n8n-nodes-base.boardTrigger',
 ] as const;
 
 type AllowedNode = (typeof ALLOWED_NODES)[number];
@@ -145,6 +146,19 @@ export class DataTableBoardProxyService implements BoardProxyProvider {
 			async reorderStatuses(orderedStatuses: string[]) {
 				checkWrite();
 				return await boardService.reorderStatuses(boardId, projectId, orderedStatuses);
+			},
+
+			// Trigger helpers
+			async ensureStatusTracking() {
+				return await boardService.ensureStatusChangedAtColumn(boardId, projectId);
+			},
+
+			async getItemsChangedSince(options: {
+				status?: string;
+				since: Date;
+				take?: number;
+			}) {
+				return await boardService.getItemsChangedSince(boardId, projectId, options);
 			},
 		};
 	}

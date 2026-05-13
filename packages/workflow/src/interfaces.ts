@@ -22,6 +22,7 @@ import type {
 } from './constants';
 
 import type {
+	IBoardEventEmitter,
 	IBoardProjectService,
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
@@ -1045,6 +1046,7 @@ export type DataTableProxyFunctions = {
 	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 	getBoardProxy?(boardId: string): Promise<IBoardProjectService>;
+	getBoardEventEmitter?(): IBoardEventEmitter;
 };
 
 export type CredentialCheckStatus = {
@@ -1281,7 +1283,8 @@ export interface IPollFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
-		SchedulingFunctions;
+		SchedulingFunctions &
+		DataTableProxyFunctions;
 }
 
 export interface ITriggerFunctions
@@ -1319,7 +1322,8 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions;
+		SchedulingFunctions &
+		DataTableProxyFunctions;
 }
 
 export interface IHookFunctions

@@ -8,6 +8,7 @@ import type {
 	DataTableRows,
 } from 'n8n-workflow';
 
+import { BoardEventEmitter } from './data-table-board-event.service';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
@@ -40,6 +41,7 @@ const BOARD_COLUMNS = [
 	{ name: 'status', type: 'string' as const, index: 0 },
 	{ name: 'name', type: 'string' as const, index: 1 },
 	{ name: 'description', type: 'string' as const, index: 2 },
+	{ name: 'statusChangedAt', type: 'date' as const, index: 3 },
 ];
 
 @Service()
@@ -50,6 +52,7 @@ export class DataTableBoardService {
 		private readonly dataTableRowsRepository: DataTableRowsRepository,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
+		private readonly boardEventEmitter: BoardEventEmitter,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('data-table');
@@ -121,10 +124,19 @@ export class DataTableBoardService {
 				status: item.status,
 				name: item.name,
 				description: item.description ?? '',
+				statusChangedAt: new Date(),
 			},
 		];
 
-		return await this.dataTableService.insertRows(boardId, projectId, rows, 'all');
+		const result = await this.dataTableService.insertRows(boardId, projectId, rows, 'all');
+
+		this.boardEventEmitter.emit({
+			boardId,
+			items: result,
+			newStatus: item.status,
+		});
+
+		return result;
 	}
 
 	async getItems(
@@ -182,16 +194,25 @@ export class DataTableBoardService {
 			this.validateItemStatus(dto.status, board.metadata);
 		}
 
+		let previousStatus: string | undefined;
+		if (dto.status !== undefined) {
+			const existingItem = await this.getItemById(boardId, projectId, itemId);
+			previousStatus = existingItem?.status as string | undefined;
+		}
+
 		const data: DataTableRow = {};
 		if (dto.name !== undefined) data.name = dto.name;
-		if (dto.status !== undefined) data.status = dto.status;
+		if (dto.status !== undefined) {
+			data.status = dto.status;
+			data.statusChangedAt = new Date();
+		}
 		if (dto.description !== undefined) data.description = dto.description;
 
 		if (Object.keys(data).length === 0) {
 			throw new DataTableValidationError('At least one field must be provided to update');
 		}
 
-		return await this.dataTableService.updateRows(
+		const result = await this.dataTableService.updateRows(
 			boardId,
 			projectId,
 			{
@@ -203,6 +224,17 @@ export class DataTableBoardService {
 			},
 			true,
 		);
+
+		if (dto.status !== undefined && Array.isArray(result)) {
+			this.boardEventEmitter.emit({
+				boardId,
+				items: result as DataTableRowReturn[],
+				newStatus: dto.status,
+				previousStatus,
+			});
+		}
+
+		return result;
 	}
 
 	async deleteItem(
@@ -270,7 +302,7 @@ export class DataTableBoardService {
 		await this.updateMetadataStatuses(boardId, updatedStatuses);
 
 		if (oldStatus !== newStatus) {
-			await this.dataTableService.updateRows(
+			const renamedItems = await this.dataTableService.updateRows(
 				boardId,
 				projectId,
 				{
@@ -278,10 +310,19 @@ export class DataTableBoardService {
 						type: 'and',
 						filters: [{ columnName: 'status', condition: 'eq', value: oldStatus }],
 					},
-					data: { status: newStatus },
+					data: { status: newStatus, statusChangedAt: new Date() },
 				},
-				false,
+				true,
 			);
+
+			if (Array.isArray(renamedItems) && renamedItems.length > 0) {
+				this.boardEventEmitter.emit({
+					boardId,
+					items: renamedItems as DataTableRowReturn[],
+					newStatus,
+					previousStatus: oldStatus,
+				});
+			}
 		}
 
 		return updatedStatuses;
@@ -311,7 +352,7 @@ export class DataTableBoardService {
 				);
 			}
 
-			await this.dataTableService.updateRows(
+			const migratedItems = await this.dataTableService.updateRows(
 				boardId,
 				projectId,
 				{
@@ -319,10 +360,19 @@ export class DataTableBoardService {
 						type: 'and',
 						filters: [{ columnName: 'status', condition: 'eq', value: status }],
 					},
-					data: { status: migrateTo },
+					data: { status: migrateTo, statusChangedAt: new Date() },
 				},
-				false,
+				true,
 			);
+
+			if (Array.isArray(migratedItems) && migratedItems.length > 0) {
+				this.boardEventEmitter.emit({
+					boardId,
+					items: migratedItems as DataTableRowReturn[],
+					newStatus: migrateTo,
+					previousStatus: status,
+				});
+			}
 		} else {
 			await this.dataTableService.deleteRows(
 				boardId,
@@ -361,6 +411,54 @@ export class DataTableBoardService {
 
 		await this.updateMetadataStatuses(boardId, orderedStatuses);
 		return orderedStatuses;
+	}
+
+	// ─── Trigger Helpers ──────────────────────────────────────────────────────────
+
+	async ensureStatusChangedAtColumn(boardId: string, projectId: string): Promise<void> {
+		const board = await this.validateBoardExists(boardId, projectId);
+		const hasColumn = board.columns.some((c) => c.name === 'statusChangedAt');
+
+		if (!hasColumn) {
+			await this.dataTableService.addColumn(boardId, projectId, {
+				name: 'statusChangedAt',
+				type: 'date',
+			});
+
+			await this.dataTableService.updateRows(
+				boardId,
+				projectId,
+				{
+					filter: { type: 'and', filters: [] },
+					data: { statusChangedAt: new Date() },
+				},
+				false,
+			);
+		}
+	}
+
+	async getItemsChangedSince(
+		boardId: string,
+		projectId: string,
+		options: { status?: string; since: Date; take?: number },
+	): Promise<{ data: DataTableRowReturn[] }> {
+		await this.validateBoardExists(boardId, projectId);
+
+		const filters: DataTableFilter['filters'] = [
+			{ columnName: 'statusChangedAt', condition: 'gt', value: options.since },
+		];
+
+		if (options.status !== undefined) {
+			filters.push({ columnName: 'status', condition: 'eq', value: options.status });
+		}
+
+		const result = await this.dataTableService.getManyRowsAndCount(boardId, projectId, {
+			filter: { type: 'and', filters },
+			sortBy: ['statusChangedAt', 'ASC'],
+			take: options.take,
+		});
+
+		return { data: result.data };
 	}
 
 	// ─── Private Helpers ──────────────────────────────────────────────────────────

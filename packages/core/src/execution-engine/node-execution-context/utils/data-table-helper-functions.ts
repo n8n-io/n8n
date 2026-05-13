@@ -12,6 +12,7 @@ export function getDataTableHelperFunctions(
 ): Partial<DataTableProxyFunctions> {
 	const dataTableProxyProvider = additionalData['data-table']?.dataTableProxyProvider;
 	const boardProxyProvider = additionalData['data-table']?.boardProxyProvider;
+	const boardEventEmitter = additionalData['data-table']?.boardEventEmitter;
 
 	const helpers: Partial<DataTableProxyFunctions> = {};
 
@@ -39,6 +40,10 @@ export function getDataTableHelperFunctions(
 				boardId,
 				additionalData.dataTableProjectId,
 			);
+	}
+
+	if (boardEventEmitter) {
+		helpers.getBoardEventEmitter = () => boardEventEmitter;
 	}
 
 	return helpers;

@@ -463,6 +463,7 @@
       "dist/nodes/Bitly/Bitly.node.js",
       "dist/nodes/Bitwarden/Bitwarden.node.js",
       "dist/nodes/Board/Board.node.js",
+      "dist/nodes/Board/BoardTrigger.node.js",
       "dist/nodes/Box/Box.node.js",
       "dist/nodes/Box/BoxTrigger.node.js",
       "dist/nodes/Brandfetch/Brandfetch.node.js",

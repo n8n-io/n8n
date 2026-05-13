@@ -100,6 +100,7 @@ export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataTableColumnTy
 	id: 'number',
 	createdAt: 'date',
 	updatedAt: 'date',
+	statusChangedAt: 'date',
 };
 
 export const DATA_TABLE_SYSTEM_COLUMNS = Object.keys(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP);
@@ -110,12 +111,14 @@ export type DataTableRawRowReturnBase = {
 	id: number;
 	createdAt: string | number | Date;
 	updatedAt: string | number | Date;
+	statusChangedAt?: string | number | Date | null;
 };
 
 export type DataTableRowReturnBase = {
 	id: number;
 	createdAt: Date;
 	updatedAt: Date;
+	statusChangedAt?: Date | null;
 };
 
 export type DataTableRow = Record<string, DataTableColumnJsType>;
@@ -262,4 +265,29 @@ export interface IBoardProjectService {
 	renameStatus(oldStatus: string, newStatus: string): Promise<string[]>;
 	deleteStatus(status: string, migrateTo?: string): Promise<string[]>;
 	reorderStatuses(orderedStatuses: string[]): Promise<string[]>;
+
+	// Trigger helpers
+	ensureStatusTracking(): Promise<void>;
+	getItemsChangedSince(options: {
+		status?: string;
+		since: Date;
+		take?: number;
+	}): Promise<{ data: DataTableRowReturn[] }>;
+}
+
+// ─── Board Event Types ────────────────────────────────────────────────────────
+
+export interface BoardStatusChangedEvent {
+	boardId: string;
+	items: DataTableRowReturn[];
+	newStatus: string;
+	previousStatus?: string;
+}
+
+export interface IBoardEventEmitter {
+	onStatusChanged(
+		boardId: string,
+		status: string | undefined,
+		listener: (event: BoardStatusChangedEvent) => void,
+	): () => void;
 }

@@ -11,6 +11,7 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getSchedulingFunctions } from './utils/scheduling-helper-functions';
@@ -43,6 +44,7 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getSchedulingFunctions(workflow.id, workflow.timezone, node.id),
+			...getDataTableHelperFunctions(additionalData, workflow, node),
 		};
 	}
 

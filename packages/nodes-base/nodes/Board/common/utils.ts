@@ -3,13 +3,16 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
+	ITriggerFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { BOARD_ID_FIELD } from './fields';
 
+type BoardContext = IExecuteFunctions | ILoadOptionsFunctions | ITriggerFunctions;
+
 export async function resolveBoardId(
-	ctx: IExecuteFunctions | ILoadOptionsFunctions,
+	ctx: BoardContext,
 	resourceLocator: { mode: 'list' | 'id' | 'name'; value: string },
 ): Promise<string> {
 	if (resourceLocator.mode === 'name') {
@@ -53,14 +56,12 @@ export async function getBoardProxyExecute(
 	return await ctx.helpers.getBoardProxy(boardId);
 }
 
-export async function getBoardAggregateProxy(
-	ctx: IExecuteFunctions | ILoadOptionsFunctions,
-): Promise<IBoardProjectService> {
+export async function getBoardAggregateProxy(ctx: BoardContext): Promise<IBoardProjectService> {
 	return await getBoardProxyForCtx(ctx, '');
 }
 
 async function getBoardProxyForCtx(
-	ctx: IExecuteFunctions | ILoadOptionsFunctions,
+	ctx: BoardContext,
 	boardId: string,
 ): Promise<IBoardProjectService> {
 	if (ctx.helpers.getBoardProxy === undefined) {

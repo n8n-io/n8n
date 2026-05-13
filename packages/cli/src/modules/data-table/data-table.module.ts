@@ -41,10 +41,12 @@ export class DataTableModule implements ModuleInterface {
 	async context() {
 		const { DataTableProxyService } = await import('./data-table-proxy.service');
 		const { DataTableBoardProxyService } = await import('./data-table-board-proxy.service');
+		const { BoardEventEmitter } = await import('./data-table-board-event.service');
 
 		return {
 			dataTableProxyProvider: Container.get(DataTableProxyService),
 			boardProxyProvider: Container.get(DataTableBoardProxyService),
+			boardEventEmitter: Container.get(BoardEventEmitter),
 		};
 	}
 }
