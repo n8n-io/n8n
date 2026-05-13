@@ -92,7 +92,15 @@ function validateSource(astSource: Source, schema: SchemaMap): IRSource {
 			astSource.position,
 		);
 	}
-	return { kind: 'nodeOutput', workflowId, nodeName: astSource.node };
+	const nodeName = schema.resolveNodeName(workflowId, astSource.node);
+	if (nodeName === null) {
+		throw new ValidationError(
+			'UNKNOWN_NODE',
+			`Unknown node '${astSource.node}' on workflow '${astSource.workflow}'`,
+			astSource.position,
+		);
+	}
+	return { kind: 'nodeOutput', workflowId, nodeName };
 }
 
 function makeColumnCheck(source: IRSource): ColumnCheck {

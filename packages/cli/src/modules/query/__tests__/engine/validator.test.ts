@@ -7,6 +7,7 @@ import { validate } from '../../engine/validator';
 const baseSchema = (overrides: Partial<SchemaMap> = {}): SchemaMap => ({
 	dialect: 'postgresdb',
 	resolveWorkflowId: () => null,
+	resolveNodeName: () => null,
 	hasReadAccess: () => false,
 	accessibleWorkflowIds: [],
 	tablePrefix: '',
@@ -114,6 +115,7 @@ describe('validator', () => {
 	describe('nodeOutput source', () => {
 		const wfSchema = baseSchema({
 			resolveWorkflowId: (name) => (name === 'crm-sync' ? 'wf-123' : null),
+			resolveNodeName: (_, name) => name,
 			hasReadAccess: (id) => id === 'wf-123',
 		});
 
@@ -125,6 +127,46 @@ describe('validator', () => {
 			});
 		});
 
+		it('resolves workflow by id when input matches an accessible id', () => {
+			const schema = baseSchema({
+				resolveWorkflowId: (nameOrId) => (nameOrId === 'wf-123' ? 'wf-123' : null),
+				resolveNodeName: (_, name) => name,
+				hasReadAccess: (id) => id === 'wf-123',
+			});
+			expect(v("SELECT * FROM 'wf-123'.'Get users'", schema).source).toEqual({
+				kind: 'nodeOutput',
+				workflowId: 'wf-123',
+				nodeName: 'Get users',
+			});
+		});
+
+		it('resolves node by id and returns its canonical name in the IR', () => {
+			const schema = baseSchema({
+				resolveWorkflowId: () => 'wf-123',
+				resolveNodeName: (_, nameOrId) =>
+					nameOrId === 'node-uuid-1' ? 'Get users' : nameOrId === 'Get users' ? 'Get users' : null,
+				hasReadAccess: () => true,
+			});
+			expect(v("SELECT * FROM 'crm-sync'.'node-uuid-1'", schema).source).toEqual({
+				kind: 'nodeOutput',
+				workflowId: 'wf-123',
+				nodeName: 'Get users',
+			});
+		});
+
+		it('rejects when node does not resolve (UNKNOWN_NODE)', () => {
+			const strictSchema = baseSchema({
+				resolveWorkflowId: (name) => (name === 'crm-sync' ? 'wf-123' : null),
+				resolveNodeName: (_, name) => (name === 'Get users' ? 'Get users' : null),
+				hasReadAccess: () => true,
+			});
+			expectError(
+				() => v("SELECT * FROM 'crm-sync'.'bogus-node'", strictSchema),
+				'UNKNOWN_NODE',
+				14,
+			);
+		});
+
 		it('rejects when workflow does not resolve', () => {
 			expectError(() => v("SELECT * FROM 'unknown'.'Get users'", wfSchema), 'UNKNOWN_WORKFLOW', 14);
 		});
@@ -132,6 +174,7 @@ describe('validator', () => {
 		it('rejects when user lacks read access', () => {
 			const schema = baseSchema({
 				resolveWorkflowId: () => 'wf-123',
+				resolveNodeName: (_, name) => name,
 				hasReadAccess: () => false,
 			});
 			expectError(() => v("SELECT * FROM 'crm-sync'.'Get users'", schema), 'FORBIDDEN_WORKFLOW');
@@ -178,6 +221,7 @@ describe('validator', () => {
 		it('accepts aggregate of arbitrary field on nodeOutput', () => {
 			const wfSchema = baseSchema({
 				resolveWorkflowId: () => 'wf-123',
+				resolveNodeName: (_, name) => name,
 				hasReadAccess: () => true,
 			});
 			expect(() => v("SELECT SUM(anything) FROM 'crm-sync'.'Get users'", wfSchema)).not.toThrow();
@@ -206,6 +250,7 @@ describe('validator', () => {
 	describe('window placement', () => {
 		const wfSchema = baseSchema({
 			resolveWorkflowId: () => 'wf-123',
+			resolveNodeName: (_, name) => name,
 			hasReadAccess: () => true,
 		});
 
@@ -272,6 +317,7 @@ describe('validator', () => {
 		it('produces correct IR for a nodeOutput query', () => {
 			const wfSchema = baseSchema({
 				resolveWorkflowId: (name) => (name === 'crm-sync' ? 'wf-123' : null),
+				resolveNodeName: (_, name) => name,
 				hasReadAccess: () => true,
 			});
 

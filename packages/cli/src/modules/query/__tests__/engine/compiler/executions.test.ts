@@ -7,6 +7,7 @@ import { validate } from '../../../engine/validator';
 const baseSchema = (overrides: Partial<SchemaMap> = {}): SchemaMap => ({
 	dialect: 'postgresdb',
 	resolveWorkflowId: () => null,
+	resolveNodeName: () => null,
 	hasReadAccess: (id) => ['wf-1', 'wf-2'].includes(id),
 	accessibleWorkflowIds: ['wf-1', 'wf-2'],
 	tablePrefix: '',
@@ -184,6 +185,7 @@ describe.each(['postgresdb', 'sqlite'] as const)('executions compiler (%s)', (di
 	describe('permission scope', () => {
 		it('always includes workflowId filter', () => {
 			const result = compileSql('SELECT * FROM executions', schema());
+			if (result.kind !== 'sql-only') throw new Error('expected sql-only');
 			expect(result.sql).toMatch(/e\."workflowId" IN \(/);
 		});
 

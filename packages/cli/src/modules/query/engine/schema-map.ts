@@ -1,5 +1,6 @@
 export type SchemaMap = {
-	resolveWorkflowId(name: string): string | null;
+	resolveWorkflowId(nameOrId: string): string | null;
+	resolveNodeName(workflowId: string, nameOrId: string): string | null;
 	hasReadAccess(workflowId: string): boolean;
 	accessibleWorkflowIds: readonly string[];
 	tablePrefix: string;

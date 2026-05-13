@@ -78,7 +78,8 @@ const detail = rest.join(': ');
 | 400 | `ALIASES_NOT_SUPPORTED` | `AS alias` on a column or source — not in v1. |
 | 400 | `UNKNOWN_FIELD` | Column not in the source's whitelist (only fires for system tables). |
 | 400 | `UNKNOWN_SOURCE` | Bare name in `FROM` that isn't `executions` or `workflows`. |
-| 400 | `UNKNOWN_WORKFLOW` | Quoted workflow name doesn't resolve (or the user can't read it — no info leak). |
+| 400 | `UNKNOWN_WORKFLOW` | Quoted workflow input doesn't match any accessible workflow's name *or* id. |
+| 400 | `UNKNOWN_NODE` | The node input doesn't match any node's name *or* id in the resolved workflow. |
 | 400 | `AGGREGATE_IN_WHERE` | `COUNT(*)`/`SUM(...)`/etc. in `WHERE` — use `HAVING`. |
 | 400 | `INVALID_WINDOW` | `LAST`/`SINCE`/`EXECUTION` on a system table — windows only on node-output. |
 | 403 | `FORBIDDEN_WORKFLOW` | Defense-in-depth; in practice the validator collapses this into `UNKNOWN_WORKFLOW`. |
@@ -171,6 +172,17 @@ WHERE  name LIKE 'crm%'
 ### Node-output queries
 
 These read items emitted by a specific node in a workflow's recent successful executions. **Default window is `LAST 10` successful executions** — explicitly set otherwise if you need more or fewer.
+
+**Workflow and node identifiers are interchangeable.** Either form works on either side:
+
+```sql
+FROM 'crm-sync'.'Get users'                              -- both names
+FROM 'Qotay16YZDo4UPQF'.'Get users'                       -- workflow by id
+FROM 'crm-sync'.'f0ee817b-2747-46e3-a59a-8dadffb1c854'    -- node by id
+FROM 'Qotay16YZDo4UPQF'.'f0ee817b-2747-46e3-a59a-8dad...' -- both ids
+```
+
+Resolution tries each input as a name first, then as an id. The engine normalises to canonical form internally. Typos on either side throw 400 (`UNKNOWN_WORKFLOW` or `UNKNOWN_NODE`) instead of silently returning empty rows.
 
 ```sql
 -- Latest 10 form submissions from a single node
@@ -323,6 +335,17 @@ FROM 'crm-sync'.'Get users'               -- node output (two single-quoted stri
 ```
 
 Anything else → `UNKNOWN_SOURCE`. Quoting is single-quote-only — `"executions"` is an identifier, not a string, so `FROM "executions"` doesn't work.
+
+For the node-output form, **either side accepts a name or an id**:
+
+```sql
+FROM 'crm-sync'.'Get users'                           -- name + name
+FROM 'Qotay16YZDo4UPQF'.'Get users'                    -- workflow id + node name
+FROM 'crm-sync'.'f0ee817b-2747-46e3-a59a-8dad...'      -- workflow name + node id
+FROM 'Qotay16YZDo4UPQF'.'f0ee817b-2747-46e3-a59a-...'  -- both ids
+```
+
+Resolution: name lookup first, then id lookup. A typo on either side yields a 400 (`UNKNOWN_WORKFLOW` or `UNKNOWN_NODE`) rather than empty rows.
 
 ### Window clauses (node-output only)
 
@@ -492,7 +515,8 @@ The last set (`JOIN LEFT RIGHT INNER FULL CROSS OUTER ON AS`) is recognised only
 | Window on `executions` / `workflows` | `INVALID_WINDOW` |
 | Unknown column on a system table | `UNKNOWN_FIELD` |
 | Bare table name other than `executions` / `workflows` | `UNKNOWN_SOURCE` |
-| Quoted workflow name not in user's accessible set | `UNKNOWN_WORKFLOW` |
+| Quoted workflow input — no accessible workflow by that name or id | `UNKNOWN_WORKFLOW` |
+| Quoted node input — no node by that name or id on the workflow | `UNKNOWN_NODE` |
 
 ### Not in v1 (future scope)
 
@@ -551,10 +575,12 @@ The validator rejects unknown columns on system tables with `UNKNOWN_FIELD`. Use
 2. **`truncated: true` doesn't always mean "data was lost".** It only means `rows.length >= LIMIT`. If your widget asked for `LIMIT 50` and got 50 rows, treat the flag as soft.
 3. **Permission scope is invisible.** If the user has zero accessible workflows, every query returns no rows (the SQL `WHERE workflowId IN (...)` becomes `WHERE 1=0`). Show an empty-state UI; don't say "your query is wrong."
 4. **Workflow-not-found and forbidden return the same `UNKNOWN_WORKFLOW`.** This is deliberate (no info leak). The UI shouldn't claim the workflow exists.
-5. **Field names are case-sensitive on node-output sources.** `"Number Field"` ≠ `"number field"`. Bare identifiers preserve case too.
-6. **Boolean values on sqlite are `0` / `1`.** If you need true booleans for the UI, normalize client-side: `Boolean(row.active)`.
-7. **Date values come back as strings** in whatever format the driver returns. Don't compare them as numbers; use `Date.parse` or pass them through a date library.
-8. **Statement timeout is server-best-effort.** If a query times out, the DB-side work may still be running until the connection pool reaps it. Don't hammer-retry timed-out queries.
+5. **Workflow and node inputs accept either name or id.** Internally each input is tried as a name first, then as an id (against the user's accessible set / the workflow's nodes list). The result is the same — pick whichever form is more convenient. No need for the UI to convert.
+6. **`UNKNOWN_NODE` only fires after the workflow resolves.** If you get `UNKNOWN_WORKFLOW`, the node side wasn't even checked yet. Sequence the inline UI hints accordingly.
+7. **Field names are case-sensitive on node-output sources.** `"Number Field"` ≠ `"number field"`. Bare identifiers preserve case too.
+8. **Boolean values on sqlite are `0` / `1`.** If you need true booleans for the UI, normalize client-side: `Boolean(row.active)`.
+9. **Date values come back as strings** in whatever format the driver returns. Don't compare them as numbers; use `Date.parse` or pass them through a date library.
+10. **Statement timeout is server-best-effort.** If a query times out, the DB-side work may still be running until the connection pool reaps it. Don't hammer-retry timed-out queries.
 
 ---
 

@@ -9,6 +9,7 @@ import { SchemaMapBuilder } from '../schema-map.builder';
 const fakeSchemaMap = (overrides: Partial<SchemaMap> = {}): SchemaMap => ({
 	dialect: 'postgresdb',
 	resolveWorkflowId: () => null,
+	resolveNodeName: (_, name) => name,
 	hasReadAccess: (id) => id === 'wf-1',
 	accessibleWorkflowIds: ['wf-1'],
 	tablePrefix: '',

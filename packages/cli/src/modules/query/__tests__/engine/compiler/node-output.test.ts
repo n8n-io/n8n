@@ -7,6 +7,7 @@ import { validate } from '../../../engine/validator';
 const baseSchema = (overrides: Partial<SchemaMap> = {}): SchemaMap => ({
 	dialect: 'postgresdb',
 	resolveWorkflowId: (n) => (n === 'crm' ? 'wf-1' : null),
+	resolveNodeName: (_, name) => name,
 	hasReadAccess: (id) => id === 'wf-1' || id === 'wf-2',
 	accessibleWorkflowIds: ['wf-1', 'wf-2'],
 	tablePrefix: '',

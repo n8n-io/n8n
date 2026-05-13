@@ -17,8 +17,11 @@ const makeConfig = (
 	tablePrefix = '',
 ): GlobalConfig => ({ database: { type: dialect, tablePrefix } }) as unknown as GlobalConfig;
 
-const makeWorkflow = (id: string, name: string): WorkflowEntity =>
-	({ id, name }) as unknown as WorkflowEntity;
+const makeWorkflow = (
+	id: string,
+	name: string,
+	nodes: Array<{ id: string; name: string }> = [],
+): WorkflowEntity => ({ id, name, nodes }) as unknown as WorkflowEntity;
 
 describe('SchemaMapBuilder', () => {
 	const workflowRepository = mock<WorkflowRepository>();
@@ -173,16 +176,108 @@ describe('SchemaMapBuilder', () => {
 
 	// ---------------------------------------------------------------- Group 9
 	describe('workflow lookup query', () => {
-		it('filters by both accessible ids and referenced names', async () => {
+		it('uses one WHERE branch when no input matches an accessible id', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
 			workflowRepository.find.mockResolvedValue([]);
 			await builder.forUser(user, ['crm-sync']);
 
-			expect(workflowRepository.find).toHaveBeenCalledTimes(1);
-			const args = workflowRepository.find.mock.calls[0][0];
-			expect(args).toBeDefined();
-			expect(args).toHaveProperty('where.id');
-			expect(args).toHaveProperty('where.name');
+			const args = workflowRepository.find.mock.calls[0][0]!;
+			expect(Array.isArray(args.where)).toBe(true);
+			expect(args.where).toHaveLength(1);
+		});
+
+		it('adds a second WHERE branch when any input matches an accessible id', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			workflowRepository.find.mockResolvedValue([]);
+			await builder.forUser(user, ['crm-sync', 'wf-1']);
+
+			const args = workflowRepository.find.mock.calls[0][0]!;
+			expect(Array.isArray(args.where)).toBe(true);
+			expect(args.where).toHaveLength(2);
+		});
+
+		it("includes 'nodes' in the select so node ids/names can be resolved", async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			workflowRepository.find.mockResolvedValue([]);
+			await builder.forUser(user, ['crm-sync']);
+
+			const args = workflowRepository.find.mock.calls[0][0]!;
+			expect(args.select).toEqual(expect.arrayContaining(['id', 'name', 'nodes']));
+		});
+	});
+
+	// ---------------------------------------------------------------- Group 10
+	describe('workflow lookup by id', () => {
+		it('resolves a workflow when the input matches its accessible id', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			workflowRepository.find.mockResolvedValue([makeWorkflow('wf-1', 'crm-sync')]);
+
+			const map = await builder.forUser(user, ['wf-1']);
+			expect(map.resolveWorkflowId('wf-1')).toBe('wf-1');
+		});
+
+		it('does not resolve ids outside the accessible set', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			workflowRepository.find.mockResolvedValue([makeWorkflow('wf-1', 'crm-sync')]);
+
+			const map = await builder.forUser(user, ['wf-1']);
+			expect(map.resolveWorkflowId('wf-99')).toBeNull();
+		});
+
+		it('still resolves a workflow by name when the id is also queryable', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			workflowRepository.find.mockResolvedValue([makeWorkflow('wf-1', 'crm-sync')]);
+
+			const map = await builder.forUser(user, ['crm-sync']);
+			expect(map.resolveWorkflowId('crm-sync')).toBe('wf-1');
+		});
+	});
+
+	// ---------------------------------------------------------------- Group 11
+	describe('resolveNodeName', () => {
+		const nodes = [
+			{ id: 'node-uuid-1', name: 'Get users' },
+			{ id: 'node-uuid-2', name: 'Send email' },
+		];
+
+		beforeEach(() => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			workflowRepository.find.mockResolvedValue([makeWorkflow('wf-1', 'crm-sync', nodes)]);
+		});
+
+		it('resolves a node by name (identity)', async () => {
+			const map = await builder.forUser(user, ['crm-sync']);
+			expect(map.resolveNodeName('wf-1', 'Get users')).toBe('Get users');
+		});
+
+		it('resolves a node by id to its canonical name', async () => {
+			const map = await builder.forUser(user, ['crm-sync']);
+			expect(map.resolveNodeName('wf-1', 'node-uuid-1')).toBe('Get users');
+			expect(map.resolveNodeName('wf-1', 'node-uuid-2')).toBe('Send email');
+		});
+
+		it('returns null for unknown node inputs', async () => {
+			const map = await builder.forUser(user, ['crm-sync']);
+			expect(map.resolveNodeName('wf-1', 'bogus')).toBeNull();
+		});
+
+		it('returns null for unknown workflow ids', async () => {
+			const map = await builder.forUser(user, ['crm-sync']);
+			expect(map.resolveNodeName('wf-99', 'Get users')).toBeNull();
+		});
+
+		it('isolates node resolution per workflow', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-2']);
+			workflowRepository.find.mockResolvedValue([
+				makeWorkflow('wf-1', 'crm-sync', [{ id: 'a', name: 'NodeA' }]),
+				makeWorkflow('wf-2', 'billing', [{ id: 'b', name: 'NodeB' }]),
+			]);
+			const map = await builder.forUser(user, ['crm-sync', 'billing']);
+			expect(map.resolveNodeName('wf-1', 'NodeA')).toBe('NodeA');
+			expect(map.resolveNodeName('wf-1', 'NodeB')).toBeNull();
+			expect(map.resolveNodeName('wf-1', 'b')).toBeNull();
+			expect(map.resolveNodeName('wf-2', 'NodeB')).toBe('NodeB');
+			expect(map.resolveNodeName('wf-2', 'a')).toBeNull();
 		});
 	});
 });
