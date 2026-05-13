@@ -40,7 +40,11 @@ export class DataTableModule implements ModuleInterface {
 
 	async context() {
 		const { DataTableProxyService } = await import('./data-table-proxy.service');
+		const { DataTableBoardProxyService } = await import('./data-table-board-proxy.service');
 
-		return { dataTableProxyProvider: Container.get(DataTableProxyService) };
+		return {
+			dataTableProxyProvider: Container.get(DataTableProxyService),
+			boardProxyProvider: Container.get(DataTableBoardProxyService),
+		};
 	}
 }

@@ -214,3 +214,52 @@ export interface IDataTableProjectService {
 
 	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]>;
 }
+
+// ─── Board Types ──────────────────────────────────────────────────────────────
+
+export interface BoardItem {
+	name: string;
+	status: string;
+	description?: string;
+}
+
+export interface CreateBoardOptions {
+	name: string;
+	statuses: string[];
+}
+
+export interface UpdateBoardItemOptions {
+	name?: string;
+	status?: string;
+	description?: string;
+}
+
+export interface IBoardProjectService {
+	// Board CRUD
+	createBoard(dto: CreateBoardOptions): Promise<DataTable>;
+	getBoard(): Promise<DataTable>;
+	updateBoard(dto: { name: string }): Promise<boolean>;
+	deleteBoard(): Promise<boolean>;
+	listBoards(): Promise<{ count: number; data: DataTable[] }>;
+
+	// Item CRUD
+	createItem(item: BoardItem): Promise<DataTableRowReturn[]>;
+	getItems(options?: {
+		status?: string;
+		skip?: number;
+		take?: number;
+	}): Promise<{ count: number; data: DataTableRowReturn[] }>;
+	getItemById(itemId: string): Promise<DataTableRowReturn | undefined>;
+	updateItem(
+		itemId: string,
+		dto: UpdateBoardItemOptions,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
+	deleteItem(itemId: string): Promise<DataTableRowReturn[]>;
+
+	// Status CRUD
+	getStatuses(): Promise<string[]>;
+	addStatus(status: string): Promise<string[]>;
+	renameStatus(oldStatus: string, newStatus: string): Promise<string[]>;
+	deleteStatus(status: string, migrateTo?: string): Promise<string[]>;
+	reorderStatuses(orderedStatuses: string[]): Promise<string[]>;
+}

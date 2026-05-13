@@ -22,6 +22,7 @@ import type {
 } from './constants';
 
 import type {
+	IBoardProjectService,
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
@@ -1030,10 +1031,20 @@ export type DataTableProxyProvider = {
 	): Promise<IDataTableProjectService>;
 };
 
+export type BoardProxyProvider = {
+	getBoardProxy(
+		workflow: Workflow,
+		node: INode,
+		boardId: string,
+		projectId?: string,
+	): Promise<IBoardProjectService>;
+};
+
 export type DataTableProxyFunctions = {
 	// These are optional to account for situations where the data-table module is disabled
 	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
+	getBoardProxy?(boardId: string): Promise<IBoardProjectService>;
 };
 
 export type CredentialCheckStatus = {

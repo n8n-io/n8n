@@ -1,11 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type {
-	DataTableRowReturn,
-	DataTableRowReturnWithState,
-	INode,
-	Workflow,
-} from 'n8n-workflow';
+import type { BoardProxyProvider, IBoardProjectService, INode, Workflow } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
@@ -17,7 +12,6 @@ import {
 	type CreateBoardDto,
 	type UpdateBoardItemDto,
 } from './data-table-board.service';
-import type { DataTable } from './data-table.entity';
 
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',
@@ -32,38 +26,8 @@ function isAllowedNode(s: string): s is AllowedNode {
 	return ALLOWED_NODES.includes(s as AllowedNode);
 }
 
-export interface IBoardProxyOperations {
-	// Board CRUD
-	createBoard(dto: CreateBoardDto): Promise<DataTable>;
-	getBoard(): Promise<DataTable>;
-	updateBoard(dto: { name: string }): Promise<boolean>;
-	deleteBoard(): Promise<boolean>;
-	listBoards(): Promise<{ count: number; data: DataTable[] }>;
-
-	// Item CRUD
-	createItem(item: BoardItem): Promise<DataTableRowReturn[]>;
-	getItems(options?: {
-		status?: string;
-		skip?: number;
-		take?: number;
-	}): Promise<{ count: number; data: DataTableRowReturn[] }>;
-	getItemById(itemId: string): Promise<DataTableRowReturn | undefined>;
-	updateItem(
-		itemId: string,
-		dto: UpdateBoardItemDto,
-	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
-	deleteItem(itemId: string): Promise<DataTableRowReturn[]>;
-
-	// Status CRUD
-	getStatuses(): Promise<string[]>;
-	addStatus(status: string): Promise<string[]>;
-	renameStatus(oldStatus: string, newStatus: string): Promise<string[]>;
-	deleteStatus(status: string, migrateTo?: string): Promise<string[]>;
-	reorderStatuses(orderedStatuses: string[]): Promise<string[]>;
-}
-
 @Service()
-export class DataTableBoardProxyService {
+export class DataTableBoardProxyService implements BoardProxyProvider {
 	constructor(
 		private readonly boardService: DataTableBoardService,
 		private readonly ownershipService: OwnershipService,
@@ -98,14 +62,14 @@ export class DataTableBoardProxyService {
 		node: INode,
 		boardId: string,
 		projectId?: string,
-	): Promise<IBoardProxyOperations> {
+	): Promise<IBoardProjectService> {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeBoardOperations(projectId, boardId);
 	}
 
-	private makeBoardOperations(projectId: string, boardId: string): IBoardProxyOperations {
+	private makeBoardOperations(projectId: string, boardId: string): IBoardProjectService {
 		const boardService = this.boardService;
 		const checkWrite = () => this.checkInstanceWriteAccess();
 
