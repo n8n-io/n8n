@@ -10,7 +10,7 @@ export class CreateProjectPoolSettings1785000000000 implements ReversibleMigrati
 				column('productionPool').varchar(63),
 				column('manualPool').varchar(63),
 				column('evaluationPool').varchar(63),
-				column('allowedPools').json.notNull,
+				column('allowedPools').json.notNull.default("'[]'"),
 			)
 			.withForeignKey('projectId', {
 				tableName: 'project',
