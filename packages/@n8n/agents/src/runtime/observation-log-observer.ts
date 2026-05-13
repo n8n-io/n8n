@@ -26,10 +26,9 @@ const DEFAULT_MAX_OBJECT_KEYS = 40;
 const REDACTED_VALUE = '[redacted]';
 const SENSITIVE_KEY_PATTERN =
 	/(?:^|[_-])(?:api[-_]?key|authorization|credential|password|secret|token|access[-_]?token|refresh[-_]?token|private[-_]?key|client[-_]?secret|session[-_]?cookie)(?:$|[_-])/i;
-const INLINE_SECRET_PATTERNS = [
-	/\b(authorization\s*[:=]\s*)(bearer\s+)?[^\s"',&]+/gi,
-	/\b((?:api[-_]?key|password|secret|token|access[-_]?token|refresh[-_]?token|client[-_]?secret)\s*[:=]\s*)[^\s"',&]+/gi,
-] as const;
+const INLINE_AUTHORIZATION_PATTERN = /\b(authorization\s*[:=]\s*)(?:[a-z][\w.-]*\s+)?[^\s"',&;]+/gi;
+const INLINE_SECRET_ASSIGNMENT_PATTERN =
+	/\b((?:api[-_]?key|password|secret|token|access[-_]?token|refresh[-_]?token|client[-_]?secret)\s*[:=]\s*)[^\s"',&;]+/gi;
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -305,13 +304,15 @@ function isSensitiveKey(key: string): boolean {
 }
 
 function redactSensitiveString(value: string): string {
-	return INLINE_SECRET_PATTERNS.reduce(
-		(redacted, pattern) =>
-			redacted.replace(pattern, (_match: string, prefix: string, authScheme?: string) =>
-				authScheme ? `${prefix}${authScheme}${REDACTED_VALUE}` : `${prefix}${REDACTED_VALUE}`,
-			),
-		value,
-	);
+	return value
+		.replace(
+			INLINE_AUTHORIZATION_PATTERN,
+			(_match: string, prefix: string) => `${prefix}${REDACTED_VALUE}`,
+		)
+		.replace(
+			INLINE_SECRET_ASSIGNMENT_PATTERN,
+			(_match: string, prefix: string) => `${prefix}${REDACTED_VALUE}`,
+		);
 }
 
 function shouldStripBlob(key: string, value: unknown): boolean {

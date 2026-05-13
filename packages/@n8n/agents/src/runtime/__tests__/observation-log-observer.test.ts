@@ -94,12 +94,12 @@ describe('renderObserverTranscript', () => {
 								authorization: 'Bearer input-token',
 								'x-safe-header': 'keep-me',
 							},
-							query: 'password=inline-secret&safe=1',
+							query: 'safe=1&password=inline-secret',
 						},
 						state: 'resolved',
 						output: {
 							access_token: 'output-access-token',
-							message: 'token: inline-output-token',
+							message: 'Authorization: Basic output-basic-token; token: inline-output-token',
 						},
 					},
 				],
@@ -109,11 +109,14 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('[redacted]');
 		expect(transcript).toContain('"x-safe-header":"keep-me"');
 		expect(transcript).toContain('safe=1');
+		expect(transcript).toContain('password=[redacted]');
 		expect(transcript).not.toContain('sk-live-input-secret');
 		expect(transcript).not.toContain('input-token');
 		expect(transcript).not.toContain('inline-secret');
 		expect(transcript).not.toContain('output-access-token');
+		expect(transcript).not.toContain('output-basic-token');
 		expect(transcript).not.toContain('inline-output-token');
+		expect(transcript).not.toMatch(/password=\d+\[redacted\]/);
 	});
 });
 
