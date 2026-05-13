@@ -144,6 +144,14 @@ export class ComputerUse implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Auto-Approve Permissions',
+						name: 'autoApprovePermissions',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to automatically approve resource access requests from the device. When disabled, tool calls requiring confirmation will fail.',
+					},
+					{
 						displayName: 'Convert to Binary',
 						name: 'convertToBinary',
 						type: 'boolean',
@@ -189,6 +197,7 @@ export class ComputerUse implements INodeType {
 			try {
 				const toolName = this.getNodeParameter('tool.value', itemIndex) as string;
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const autoApprovePermissions = (options.autoApprovePermissions as boolean) ?? true;
 
 				let parameters: IDataObject = {};
 				if (inputMode === 'manual') {
@@ -206,11 +215,10 @@ export class ComputerUse implements INodeType {
 					);
 				}
 
-				const result = await callGatewayTool(
-					toolName,
-					parameters as Record<string, unknown>,
-					deviceOwnerId,
-				);
+				const callArgs = autoApprovePermissions
+					? { ...(parameters as Record<string, unknown>), _confirmation: 'allowForSession' }
+					: (parameters as Record<string, unknown>);
+				const result = await callGatewayTool(toolName, callArgs, deviceOwnerId);
 
 				if (result.isError) {
 					const errorText = result.content

@@ -173,6 +173,14 @@ export class ToolComputerUse implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Auto-Approve Permissions',
+						name: 'autoApprovePermissions',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to automatically approve resource access requests from the device. When disabled, tool calls requiring confirmation will fail.',
+					},
+					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						type: 'number',
@@ -219,6 +227,8 @@ export class ToolComputerUse implements INodeType {
 		const includeMode = this.getNodeParameter('include', itemIndex) as ToolIncludeMode;
 		const includeTools = this.getNodeParameter('includeTools', itemIndex, []) as string[];
 		const excludeTools = this.getNodeParameter('excludeTools', itemIndex, []) as string[];
+		const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+		const autoApprovePermissions = (options.autoApprovePermissions as boolean) ?? true;
 
 		const setError = (error: NodeOperationError): SupplyData => {
 			this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
@@ -267,11 +277,11 @@ export class ToolComputerUse implements INodeType {
 					if (signal?.aborted) return 'Execution was cancelled';
 
 					try {
-						const result = await callGatewayTool(
-							tool.name,
-							args as Record<string, unknown>,
-							deviceOwnerId,
-						);
+						const callArgs = autoApprovePermissions
+							? { ...(args as Record<string, unknown>), _confirmation: 'allowForSession' }
+							: (args as Record<string, unknown>);
+						const result = await callGatewayTool(tool.name, callArgs, deviceOwnerId);
+
 						if (result.isError) {
 							const errorText = extractTextFromResult(result);
 							const callError = new NodeOperationError(node, errorText, { itemIndex });
@@ -318,6 +328,8 @@ export class ToolComputerUse implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const credentials = await this.getCredentials('deviceConnectionApi');
 		const deviceOwnerId = (credentials.deviceOwnerId as string) || undefined;
+		const execOptions = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const autoApprovePermissions = (execOptions.autoApprovePermissions as boolean) ?? true;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const signal = this.getExecutionCancelSignal();
@@ -356,11 +368,10 @@ export class ToolComputerUse implements INodeType {
 						? pick(toolArguments, Object.keys((schema as { properties?: object }).properties ?? {}))
 						: toolArguments;
 
-				const result = await callGatewayTool(
-					tool.name,
-					sanitizedArgs as Record<string, unknown>,
-					deviceOwnerId,
-				);
+				const callArgs = autoApprovePermissions
+					? { ...(sanitizedArgs as Record<string, unknown>), _confirmation: 'allowForSession' }
+					: (sanitizedArgs as Record<string, unknown>);
+				const result = await callGatewayTool(tool.name, callArgs, deviceOwnerId);
 
 				returnData.push({
 					json: {
