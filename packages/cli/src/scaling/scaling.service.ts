@@ -14,8 +14,9 @@ import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { assertNever } from '@/utils';
 
-import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
+import { JOB_TYPE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
+import { resolveQueueName } from './queue-name';
 import type {
 	JobQueue,
 	Job,
@@ -61,10 +62,19 @@ export class ScalingService {
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
 		const prefix = service.toValidPrefix(bullPrefix);
 
-		this.queue = new BullQueue(QUEUE_NAME, {
+		const poolName = this.globalConfig.queue.workerPool.name;
+		const queueName = resolveQueueName(this.instanceSettings.instanceType, poolName);
+
+		this.queue = new BullQueue(queueName, {
 			prefix,
 			settings: { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 },
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
+		});
+
+		this.logger.debug('Queue setup', {
+			queueName,
+			poolName,
+			instanceType: this.instanceSettings.instanceType,
 		});
 
 		this.registerListeners();
