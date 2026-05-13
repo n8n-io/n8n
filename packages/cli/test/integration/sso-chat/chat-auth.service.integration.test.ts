@@ -269,28 +269,36 @@ describe('ChatAuthenticationService', () => {
 			expect(await service.getChatProvidersForUser(user.id)).toEqual([]);
 		});
 
-		it('returns deduped providers for a user linked to telegram and slack', async () => {
+		it('returns identity records for a user linked to telegram and slack', async () => {
 			const user = await createUser();
 			await authIdentityRepo.save([
 				{ userId: user.id, providerId: 'tg-1', providerType: 'telegram' },
 				{ userId: user.id, providerId: 'sl-1', providerType: 'slack' },
 			]);
 
-			const providers = await service.getChatProvidersForUser(user.id);
-			expect(providers.sort()).toEqual(['slack', 'telegram']);
+			const identities = await service.getChatProvidersForUser(user.id);
+			expect(identities).toHaveLength(2);
+			expect(identities.map((i) => i.providerType).sort()).toEqual(['slack', 'telegram']);
+			expect(identities.find((i) => i.providerType === 'telegram')?.providerId).toBe('tg-1');
+			expect(identities.find((i) => i.providerType === 'slack')?.providerId).toBe('sl-1');
+			for (const i of identities) {
+				expect(i.linkedAt).toBeInstanceOf(Date);
+			}
 		});
 
-		it('dedupes when the user has multiple identities under the same provider', async () => {
+		it('returns one row per identity when the user has multiple under the same provider', async () => {
 			const user = await createUser();
 			await authIdentityRepo.save([
 				{ userId: user.id, providerId: 'tg-a', providerType: 'telegram' },
 				{ userId: user.id, providerId: 'tg-b', providerType: 'telegram' },
 			]);
 
-			expect(await service.getChatProvidersForUser(user.id)).toEqual(['telegram']);
+			const identities = await service.getChatProvidersForUser(user.id);
+			expect(identities).toHaveLength(2);
+			expect(identities.map((i) => i.providerId).sort()).toEqual(['tg-a', 'tg-b']);
 		});
 
-		it('only returns providers belonging to the requested user', async () => {
+		it('only returns identities belonging to the requested user', async () => {
 			const userA = await createUser();
 			const userB = await createUser();
 			await authIdentityRepo.save([
@@ -298,8 +306,12 @@ describe('ChatAuthenticationService', () => {
 				{ userId: userB.id, providerId: 'sl-b', providerType: 'slack' },
 			]);
 
-			expect(await service.getChatProvidersForUser(userA.id)).toEqual(['telegram']);
-			expect(await service.getChatProvidersForUser(userB.id)).toEqual(['slack']);
+			expect((await service.getChatProvidersForUser(userA.id)).map((i) => i.providerType)).toEqual([
+				'telegram',
+			]);
+			expect((await service.getChatProvidersForUser(userB.id)).map((i) => i.providerType)).toEqual([
+				'slack',
+			]);
 		});
 	});
 

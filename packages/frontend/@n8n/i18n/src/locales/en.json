@@ -4853,7 +4853,7 @@
 	"settings.personal.messenger.link.modal.title": "Link a messenger account",
 	"settings.personal.messenger.link.modal.description": "Enter the device code shown by your messenger app to link it to your account.",
 	"settings.personal.messenger.link.modal.codeLabel": "Device code",
-	"settings.personal.messenger.link.modal.codePlaceholder": "6-digit code",
+	"settings.personal.messenger.link.modal.codePlaceholder": "9-digit code",
 	"settings.personal.messenger.link.modal.verify": "Verify",
 	"settings.personal.messenger.link.modal.cancel": "Cancel",
 	"settings.personal.messenger.link.modal.success": "Account linked successfully.",

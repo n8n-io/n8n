@@ -1,7 +1,11 @@
 import type { StreamChunk } from '@n8n/agents';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-workflow';
+
+import { ChatAuthenticationProxyService } from '@/services/chat-authentication-proxy.service';
+import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -85,6 +89,20 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Streaming';
 	readonly displayIcon = 'circle';
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
+class AuthGatedTestIntegration extends AgentChatIntegration {
+	readonly type = 'telegram';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: string[] = [];
+	readonly description = '';
+	readonly displayLabel = 'Test Auth Gated';
+	readonly displayIcon = 'circle';
+	readonly disableStreaming = true;
+	readonly requiresUserAuth = true;
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -226,5 +244,165 @@ describe('AgentChatBridge — consumeStream', () => {
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
 			expect(received).toBe('Hello world');
 		});
+	});
+});
+
+describe('AgentChatBridge — auth gate', () => {
+	const componentMapper = mock<ComponentMapper>();
+	const logger = mock<Logger>();
+	const chatAuth = mock<ChatAuthenticationProxyService>();
+	const urlService = mock<UrlService>();
+	const fakeUser = mock<User>();
+
+	beforeEach(() => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new AuthGatedTestIntegration());
+		registry.register(new BufferingTestIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(ChatAuthenticationProxyService, chatAuth);
+		Container.set(UrlService, urlService);
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+	});
+
+	afterEach(() => {
+		Container.reset();
+		jest.clearAllMocks();
+	});
+
+	function makeAgentExecutor() {
+		return {
+			executeForChatPublished: jest.fn(async function* () {
+				yield { type: 'finish', finishReason: 'stop' } as StreamChunk;
+			}),
+			resumeForChat: jest.fn(async function* () {
+				yield { type: 'finish', finishReason: 'stop' } as StreamChunk;
+			}),
+		};
+	}
+
+	it('lets linked users through to executeForChatPublished', async () => {
+		chatAuth.getUserByChatUserId.mockResolvedValue(fakeUser);
+		const { bot, handlers } = makeBot();
+		const thread = makeThread();
+		const agentExecutor = makeAgentExecutor();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			agentExecutor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			'telegram',
+		);
+
+		await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+
+		expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		expect(thread.subscribe).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops unlinked onNewMention events and posts a linking code', async () => {
+		chatAuth.getUserByChatUserId.mockResolvedValue(null);
+		chatAuth.createVerificationCode.mockResolvedValue('123456789');
+		const { bot, handlers } = makeBot();
+		const thread = makeThread();
+		const agentExecutor = makeAgentExecutor();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			agentExecutor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			'telegram',
+		);
+
+		await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+
+		expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		expect(thread.subscribe).not.toHaveBeenCalled();
+		expect(thread.post).toHaveBeenCalledTimes(1);
+		const arg = thread.post.mock.calls[0][0] as { markdown: string };
+		expect(arg.markdown).toContain('123456789');
+		expect(arg.markdown).toContain('https://n8n.example.com/settings/personal');
+	});
+
+	it('drops unlinked onSubscribedMessage events', async () => {
+		chatAuth.getUserByChatUserId.mockResolvedValue(null);
+		chatAuth.createVerificationCode.mockResolvedValue('987654321');
+		const { bot, handlers } = makeBot();
+		const thread = makeThread();
+		const agentExecutor = makeAgentExecutor();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			agentExecutor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			'telegram',
+		);
+
+		await handlers.subscribed!(thread, { text: 'hi', author: { userId: 'u1' } });
+
+		expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		expect(thread.post).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops unlinked onAction events without resuming', async () => {
+		chatAuth.getUserByChatUserId.mockResolvedValue(null);
+		chatAuth.createVerificationCode.mockResolvedValue('111222333');
+		const { bot, handlers } = makeBot();
+		const thread = makeThread();
+		const agentExecutor = makeAgentExecutor();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			agentExecutor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			'telegram',
+		);
+
+		await handlers.action!({
+			actionId: 'ri-btn:run-1:tool-1:0',
+			thread,
+			value: '',
+			user: { userId: 'u1' },
+			adapter: {} as never,
+			messageId: 'm1',
+			threadId: 'thread-1',
+			openModal: jest.fn(),
+			raw: {},
+		});
+
+		expect(agentExecutor.resumeForChat).not.toHaveBeenCalled();
+		expect(thread.post).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not affect integrations without requiresUserAuth', async () => {
+		const { bot, handlers } = makeBot();
+		const thread = makeThread();
+		const agentExecutor = makeAgentExecutor();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			agentExecutor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			'test-buffered',
+		);
+
+		await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+
+		expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		expect(chatAuth.getUserByChatUserId).not.toHaveBeenCalled();
 	});
 });

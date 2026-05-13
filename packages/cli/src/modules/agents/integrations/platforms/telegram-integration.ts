@@ -41,6 +41,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
+	readonly requiresUserAuth = true;
+
 	readonly formatThreadId = {
 		fromSdk: (thread: Thread<unknown, unknown>) => {
 			const adapter = thread.adapter;

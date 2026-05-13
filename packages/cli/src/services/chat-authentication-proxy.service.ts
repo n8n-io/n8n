@@ -4,6 +4,13 @@ import { UserError } from 'n8n-workflow';
 
 export type ChatProviderType = 'telegram' | 'slack';
 
+/** Identity record describing one linked chat account. */
+export interface ChatAuthIdentityDto {
+	providerType: ChatProviderType;
+	providerId: string;
+	linkedAt: Date;
+}
+
 export interface IChatAuthenticationService {
 	/**
 	 * Store a user code for a chat user id and provider
@@ -31,9 +38,9 @@ export interface IChatAuthenticationService {
 	getUserByChatUserId(chatUserId: string, chatProvider: ChatProviderType): Promise<User | null>;
 
 	/**
-	 * Get all linked chat providers for a user.
+	 * Get all chat identities linked to a user (one row per linked account).
 	 */
-	getChatProvidersForUser(n8nUserId: string): Promise<ChatProviderType[]>;
+	getChatProvidersForUser(n8nUserId: string): Promise<ChatAuthIdentityDto[]>;
 
 	/**
 	 * Remove link for chat provider for the given n8n user id
@@ -103,9 +110,9 @@ export class ChatAuthenticationProxyService implements IChatAuthenticationServic
 	}
 
 	/**
-	 * Get all linked chat providers for a user.
+	 * Get all chat identities linked to a user (one row per linked account).
 	 */
-	async getChatProvidersForUser(n8nUserId: string): Promise<ChatProviderType[]> {
+	async getChatProvidersForUser(n8nUserId: string): Promise<ChatAuthIdentityDto[]> {
 		return await this.requireProvider().getChatProvidersForUser(n8nUserId);
 	}
 

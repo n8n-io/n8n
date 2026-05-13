@@ -68,6 +68,15 @@ export abstract class AgentChatIntegration {
 	readonly disableStreaming: boolean = false;
 
 	/**
+	 * True if the bridge should gate inbound events behind a check that the
+	 * platform user is linked to an n8n account via ChatAuthenticationProxyService.
+	 * Unlinked users receive a linking-code message and the event is dropped.
+	 *
+	 * Assumes {@link type} matches a value in `ChatProviderType` ('telegram' | 'slack').
+	 */
+	readonly requiresUserAuth: boolean = false;
+
+	/**
 	 * True if this integration must run on the leader main only.
 	 *
 	 * Polling-based platforms (e.g. Telegram in polling mode) require this so a

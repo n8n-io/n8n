@@ -3,12 +3,19 @@ import { Container } from '@n8n/di';
 import type { ActionEvent, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
+import {
+	ChatAuthenticationProxyService,
+	type ChatProviderType,
+} from '@/services/chat-authentication-proxy.service';
+import { UrlService } from '@/services/url.service';
+
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
+import { MessengerAuthGate } from './messenger-auth-gate';
 import { type TextEndFn, type TextYieldFn, type InternalThread, toInternalThreadId } from './types';
 
 interface AgentExecutor {
@@ -63,6 +70,9 @@ export class AgentChatBridge {
 	/** Resolved integration for this platform (may be undefined for unknown types). */
 	private readonly integration: AgentChatIntegration | undefined;
 
+	/** Auth gate for platforms that require an n8n account link (Telegram). */
+	private readonly authGate: MessengerAuthGate | undefined;
+
 	/**
 	 * In-flight `rich_interaction` tool inputs keyed by toolCallId. Populated on
 	 * the `tool-call` chunk; consumed on the matching `tool-result` chunk when
@@ -91,6 +101,14 @@ export class AgentChatBridge {
 			this.callbackStore = new CallbackStore();
 		}
 		this.disableStreaming = this.integration?.disableStreaming ?? false;
+		if (this.integration?.requiresUserAuth) {
+			this.authGate = new MessengerAuthGate(
+				integrationType as ChatProviderType,
+				Container.get(ChatAuthenticationProxyService),
+				Container.get(UrlService),
+				logger,
+			);
+		}
 		this.registerHandlers();
 	}
 
@@ -139,6 +157,7 @@ export class AgentChatBridge {
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
+				if (!(await this.passesAuthGate(message.author.userId, thread))) return;
 				await thread.subscribe();
 				await this.executeAndStream(thread, message);
 			} catch (error) {
@@ -148,6 +167,7 @@ export class AgentChatBridge {
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
+				if (!(await this.passesAuthGate(message.author.userId, thread))) return;
 				await this.executeAndStream(thread, message);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
@@ -156,11 +176,21 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
+				if (event.thread && !(await this.passesAuthGate(event.user.userId, event.thread))) return;
 				await this.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
 			}
 		});
+	}
+
+	/** Returns true when the inbound platform user passes the integration's auth gate. */
+	private async passesAuthGate(
+		platformUserId: string,
+		thread: Thread<unknown, unknown>,
+	): Promise<boolean> {
+		if (!this.authGate) return true;
+		return await this.authGate.check(platformUserId, thread);
 	}
 
 	/** Release long-lived resources (callback store timer). */

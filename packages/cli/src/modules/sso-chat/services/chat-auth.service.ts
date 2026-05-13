@@ -1,4 +1,5 @@
 import {
+	type ChatAuthIdentityDto,
 	ChatProviderType,
 	IChatAuthenticationService,
 } from '@/services/chat-authentication-proxy.service';
@@ -121,21 +122,19 @@ export class ChatAuthenticationService implements IChatAuthenticationService {
 	}
 
 	/**
-	 * Get all linked chat providers for a user.
+	 * Get all chat identities linked to a user (one row per linked account).
 	 */
-	async getChatProvidersForUser(n8nUserId: string): Promise<ChatProviderType[]> {
-		const providers = await this.chatAuthIdentityRepository.find({
-			where: {
-				userId: n8nUserId,
-			},
-			select: ['providerType'],
+	async getChatProvidersForUser(n8nUserId: string): Promise<ChatAuthIdentityDto[]> {
+		const rows = await this.chatAuthIdentityRepository.find({
+			where: { userId: n8nUserId },
+			select: ['providerType', 'providerId', 'createdAt'],
 		});
 
-		return providers
-			.map((p) => p.providerType)
-			.filter((value, index, array) => {
-				return array.indexOf(value) === index;
-			});
+		return rows.map((r) => ({
+			providerType: r.providerType,
+			providerId: r.providerId,
+			linkedAt: r.createdAt,
+		}));
 	}
 
 	/**

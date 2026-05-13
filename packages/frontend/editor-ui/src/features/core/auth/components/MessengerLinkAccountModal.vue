@@ -14,7 +14,7 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const messengerStore = useMessengerAccountsStore();
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 9;
 
 const code = ref('');
 const state = ref<'idle' | 'verifying' | 'success' | 'error'>('idle');
