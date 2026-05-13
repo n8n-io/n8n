@@ -5,7 +5,9 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
+	InstanceAiDeviceCredentialRequest,
 } from '@n8n/api-types';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 /**
  * POST /instance-ai/chat/:threadId -> { runId }
@@ -160,4 +162,16 @@ export async function getGatewayStatus(context: IRestApiContext): Promise<{
 		hostIdentifier: string | null;
 		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
 	}>(context, 'GET', '/instance-ai/gateway/status');
+}
+
+export async function createDeviceCredential(
+	context: IRestApiContext,
+	payload: InstanceAiDeviceCredentialRequest,
+): Promise<ICredentialsResponse> {
+	return await makeRestApiRequest<ICredentialsResponse>(
+		context,
+		'POST',
+		'/instance-ai/gateway/device-credential',
+		payload,
+	);
 }

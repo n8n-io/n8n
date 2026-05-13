@@ -14,6 +14,7 @@ import {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalSubAgentRequest,
+	InstanceAiDeviceCredentialRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -743,9 +744,9 @@ export class InstanceAiController {
 		);
 
 		// Best-effort: auto-create a Device Connection credential for the user
-		void this.instanceAiService
-			.ensureDeviceCredential(userId, payload.hostIdentifier ?? null)
-			.catch(() => {});
+		void Promise.resolve(
+			this.instanceAiService.ensureDeviceCredential(userId, payload.hostIdentifier ?? null),
+		).catch(() => {});
 
 		// Try to consume a pairing token and upgrade to a session key
 		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
@@ -820,6 +821,28 @@ export class InstanceAiController {
 			[userId],
 		);
 		return { ok: true };
+	}
+
+	@Post('/gateway/device-credential')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayDeviceCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiDeviceCredentialRequest,
+	) {
+		await this.assertGatewayEnabled(req.user.id);
+		const gateway = this.instanceAiService.getLocalGateway(req.user.id);
+
+		if (!gateway.isConnected) {
+			throw new BadRequestError(
+				"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+			);
+		}
+
+		return await this.instanceAiService.ensureDeviceCredentialForProject(
+			req.user,
+			payload.projectId,
+		);
 	}
 
 	// ── Computer Use node endpoints (workflow → gateway) ─────────────────────

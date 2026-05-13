@@ -681,6 +681,10 @@ export class InstanceAiGatewayEventsQuery extends Z.class({
 	apiKey: instanceAiGatewayKeySchema,
 }) {}
 
+export class InstanceAiDeviceCredentialRequest extends Z.class({
+	projectId: z.string().optional(),
+}) {}
+
 export class InstanceAiEventsQuery extends Z.class({
 	lastEventId: z.coerce.number().int().nonnegative().optional(),
 }) {}

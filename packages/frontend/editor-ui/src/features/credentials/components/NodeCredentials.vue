@@ -24,11 +24,13 @@ import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY } from '@/app/constants/modals';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
+import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -93,8 +95,10 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
+const DEVICE_CONNECTION_CREDENTIAL_TYPE = 'deviceConnectionApi';
 
 const credentialsStore = useCredentialsStore();
+const instanceAiSettingsStore = useInstanceAiSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
@@ -127,6 +131,8 @@ const toast = useToast();
 const subscribedToCredentialType = ref('');
 const filter = ref('');
 const listeningForAuthChange = ref(false);
+const pendingDeviceConnectionCredential = ref(false);
+const isCreatingDeviceConnectionCredential = ref(false);
 const selectRefs = ref<Array<InstanceType<typeof N8nSelect>>>([]);
 
 const node = computed(() => props.node);
@@ -245,6 +251,24 @@ watch(
 		);
 	},
 	{ immediate: true },
+);
+
+watch(
+	() => instanceAiSettingsStore.isGatewayConnected,
+	(connected) => {
+		if (connected && pendingDeviceConnectionCredential.value) {
+			void createAndAssignDeviceConnectionCredential();
+		}
+	},
+);
+
+watch(
+	() => uiStore.modalsById[INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY]?.open,
+	(open) => {
+		if (!open) {
+			pendingDeviceConnectionCredential.value = false;
+		}
+	},
 );
 
 onMounted(() => {
@@ -377,12 +401,73 @@ function clearSelectedCredential(credentialType: string) {
 	emit('credentialSelected', updateInformation);
 }
 
+function getDeviceConnectionProjectId(): string | undefined {
+	return props.projectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+}
+
+async function openDeviceConnectionCredentialSetup(credentialType: string) {
+	subscribedToCredentialType.value = credentialType;
+	pendingDeviceConnectionCredential.value = true;
+
+	await instanceAiSettingsStore.refreshModuleSettings().catch(() => {});
+	await instanceAiSettingsStore.ensurePreferencesLoaded();
+
+	if (instanceAiSettingsStore.isLocalGatewayDisabledByAdmin) {
+		pendingDeviceConnectionCredential.value = false;
+		toast.showError(
+			new Error(i18n.baseText('settings.n8nAgent.computerUse.disabled.warning')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
+		);
+		return;
+	}
+
+	if (instanceAiSettingsStore.isLocalGatewayDisabled) {
+		await instanceAiSettingsStore.persistLocalGatewayPreference(false);
+	}
+
+	instanceAiSettingsStore.startGatewayPushListener();
+	uiStore.openModal(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
+	await instanceAiSettingsStore.fetchGatewayStatus();
+
+	if (instanceAiSettingsStore.isGatewayConnected) {
+		void createAndAssignDeviceConnectionCredential();
+	}
+}
+
+async function createAndAssignDeviceConnectionCredential() {
+	if (!pendingDeviceConnectionCredential.value || isCreatingDeviceConnectionCredential.value)
+		return;
+	isCreatingDeviceConnectionCredential.value = true;
+
+	try {
+		const credential = await instanceAiSettingsStore.createDeviceCredential(
+			getDeviceConnectionProjectId(),
+		);
+		credentialsStore.upsertCredential(credential);
+		onCredentialSelected(DEVICE_CONNECTION_CREDENTIAL_TYPE, credential.id);
+		pendingDeviceConnectionCredential.value = false;
+		uiStore.closeModal(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
+		);
+	} finally {
+		isCreatingDeviceConnectionCredential.value = false;
+	}
+}
+
 function createNewCredential(
 	credentialType: string,
 	listenForAuthChange: boolean = false,
 	showAuthOptions = false,
 	forceManualMode = false,
 ) {
+	if (credentialType === DEVICE_CONNECTION_CREDENTIAL_TYPE) {
+		void openDeviceConnectionCredentialSetup(credentialType);
+		return;
+	}
+
 	if (listenForAuthChange) {
 		// If new credential dialog is open, start listening for auth type change which should happen in the modal
 		// this will be handled in this component's watcher which will set subscribed credential accordingly

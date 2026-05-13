@@ -13,7 +13,12 @@ import {
 	fetchServiceCredentials,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { createGatewayLink, disconnectGatewaySession, getGatewayStatus } from './instanceAi.api';
+import {
+	createDeviceCredential as createDeviceCredentialApi,
+	createGatewayLink,
+	disconnectGatewaySession,
+	getGatewayStatus,
+} from './instanceAi.api';
 import type {
 	FrontendModuleSettings,
 	InstanceAiAdminSettingsResponse,
@@ -26,6 +31,7 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -499,6 +505,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		await Promise.all(promises);
 	}
 
+	async function createDeviceCredential(projectId?: string): Promise<ICredentialsResponse> {
+		return await createDeviceCredentialApi(rootStore.restApiContext, {
+			...(projectId ? { projectId } : {}),
+		});
+	}
+
 	return {
 		canManage,
 		settings,
@@ -546,6 +558,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		clearSetupCommand,
 		refreshCredentials,
 		refreshModuleSettings,
+		createDeviceCredential,
 		// Sidebar connections
 		connections,
 		isBrowserUseConnected,
