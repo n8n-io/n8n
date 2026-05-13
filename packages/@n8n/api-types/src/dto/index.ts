@@ -192,6 +192,9 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export { AddDataTableStatusDto } from './data-table/add-data-table-status.dto';
+export { DeleteDataTableStatusDto } from './data-table/delete-data-table-status.dto';
+export { RenameDataTableStatusDto } from './data-table/rename-data-table-status.dto';
 export {
 	updateDataTableColumnSchema,
 	type UpdateDataTableColumnDto,

@@ -1,7 +1,9 @@
 import {
 	AddDataTableRowsDto,
 	AddDataTableColumnDto,
+	AddDataTableStatusDto,
 	CreateDataTableDto,
+	DeleteDataTableStatusDto,
 	DeleteDataTableRowsDto,
 	DownloadDataTableCsvQueryDto,
 	ImportCsvToDataTableDto,
@@ -9,6 +11,7 @@ import {
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
 	RenameDataTableColumnDto,
+	RenameDataTableStatusDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -555,6 +558,68 @@ export class DataTableController {
 			} else {
 				throw e;
 			}
+		}
+	}
+
+	@Post('/:dataTableId/statuses')
+	@ProjectScope('dataTable:update')
+	async addBoardStatus(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: AddDataTableStatusDto,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.dataTableBoardService.addStatus(
+				dataTableId,
+				req.params.projectId,
+				dto.status,
+			);
+		} catch (e: unknown) {
+			this.handleDataTableColumnOperationError(e);
+		}
+	}
+
+	@Patch('/:dataTableId/statuses/rename')
+	@ProjectScope('dataTable:update')
+	async renameBoardStatus(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: RenameDataTableStatusDto,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.dataTableBoardService.renameStatus(
+				dataTableId,
+				req.params.projectId,
+				dto.oldStatus,
+				dto.newStatus,
+			);
+		} catch (e: unknown) {
+			this.handleDataTableColumnOperationError(e);
+		}
+	}
+
+	@Delete('/:dataTableId/statuses')
+	@ProjectScope('dataTable:update')
+	async deleteBoardStatus(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Query dto: DeleteDataTableStatusDto,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.dataTableBoardService.deleteStatus(
+				dataTableId,
+				req.params.projectId,
+				dto.status,
+				dto.migrateTo,
+			);
+		} catch (e: unknown) {
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 }

@@ -8,9 +8,12 @@ import {
 	deleteDataTableApi,
 	updateDataTableApi,
 	addDataTableColumnApi,
+	addBoardStatusApi,
+	deleteBoardStatusApi,
 	deleteDataTableColumnApi,
 	moveDataTableColumnApi,
 	renameDataTableColumnApi,
+	renameBoardStatusApi,
 	getDataTableRowsApi,
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
@@ -225,6 +228,72 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			useFavoritesStore().renameFavorite(dataTableId, 'dataTable', name);
 		}
 		return updated;
+	};
+
+	const addBoardStatus = async (dataTableId: string, projectId: string, status: string) => {
+		const statuses = await addBoardStatusApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			status,
+		);
+		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
+		if (index !== -1) {
+			dataTables.value[index] = {
+				...dataTables.value[index],
+				metadata: {
+					...dataTables.value[index].metadata,
+					allowedStatuses: statuses,
+				},
+			};
+		}
+		return statuses;
+	};
+
+	const renameBoardStatus = async (
+		dataTableId: string,
+		projectId: string,
+		oldStatus: string,
+		newStatus: string,
+	) => {
+		const statuses = await renameBoardStatusApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			oldStatus,
+			newStatus,
+		);
+		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
+		if (index !== -1) {
+			dataTables.value[index] = {
+				...dataTables.value[index],
+				metadata: {
+					...dataTables.value[index].metadata,
+					allowedStatuses: statuses,
+				},
+			};
+		}
+		return statuses;
+	};
+
+	const deleteBoardStatus = async (dataTableId: string, projectId: string, status: string) => {
+		const statuses = await deleteBoardStatusApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			status,
+		);
+		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
+		if (index !== -1) {
+			dataTables.value[index] = {
+				...dataTables.value[index],
+				metadata: {
+					...dataTables.value[index].metadata,
+					allowedStatuses: statuses,
+				},
+			};
+		}
+		return statuses;
 	};
 
 	const fetchDataTableDetails = async (
@@ -455,6 +524,9 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,
+		addBoardStatus,
+		renameBoardStatus,
+		deleteBoardStatus,
 		fetchDataTableDetails,
 		fetchOrFindDataTable,
 		addDataTableColumn,

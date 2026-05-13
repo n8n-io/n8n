@@ -172,6 +172,20 @@ const onCsvImported = async () => {
 	await dataTableTableRef.value?.fetchDataTableRows();
 };
 
+const onBoardStatusesUpdated = (statuses: string[]) => {
+	if (!dataTable.value) {
+		return;
+	}
+
+	dataTable.value = {
+		...dataTable.value,
+		metadata: {
+			...dataTable.value.metadata,
+			allowedStatuses: statuses,
+		},
+	};
+};
+
 const handleSourceControlPull = async () => {
 	// Bypass cache and fetch fresh data from API after pull
 	loading.value = true;
@@ -304,6 +318,7 @@ onBeforeUnmount(() => {
 					:search="searchQuery"
 					:read-only="readOnlyEnv"
 					@toggle-save="onToggleSave"
+					@statuses-updated="onBoardStatusesUpdated"
 				/>
 				<DataTableTable
 					v-else

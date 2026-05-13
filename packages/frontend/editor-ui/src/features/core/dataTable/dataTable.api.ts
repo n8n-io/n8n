@@ -273,6 +273,7 @@ export const downloadDataTableCsvApi = async (
 		filename,
 	};
 };
+
 export const importCsvToDataTableApi = async (
 	context: IRestApiContext,
 	dataTableId: string,
@@ -284,6 +285,49 @@ export const importCsvToDataTableApi = async (
 		'POST',
 		`/projects/${projectId}/data-tables/${dataTableId}/import-csv`,
 		{ fileId },
+	);
+};
+
+export const addBoardStatusApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	status: string,
+) => {
+	return await makeRestApiRequest<string[]>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-tables/${dataTableId}/statuses`,
+		{ status },
+	);
+};
+
+export const renameBoardStatusApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	oldStatus: string,
+	newStatus: string,
+) => {
+	return await makeRestApiRequest<string[]>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/statuses/rename`,
+		{ oldStatus, newStatus },
+	);
+};
+
+export const deleteBoardStatusApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	status: string,
+) => {
+	return await makeRestApiRequest<string[]>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-tables/${dataTableId}/statuses`,
+		{ status },
 	);
 };
 

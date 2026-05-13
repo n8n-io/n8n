@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import Draggable from 'vuedraggable';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nLoading, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nInlineTextEdit,
+	N8nLoading,
+	N8nText,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -22,7 +31,14 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
+	statusesUpdated: [statuses: string[]];
 }>();
+
+type StatusTitleEditComponent = ComponentPublicInstance & {
+	forceFocus: () => void;
+};
+
+type ListAction = 'delete';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -36,10 +52,179 @@ const trashDropList = ref<DataTableRow[]>([]);
 const isDraggingCard = ref(false);
 const hoveredColumn = ref<string | null>(null);
 const isDeleteZoneHovered = ref(false);
+const statusTitles = ref<Record<string, string>>({});
+const pendingFocusStatus = ref<string | null>(null);
+const statusTitleRefs = ref<Record<string, StatusTitleEditComponent | null>>({});
+const isAddingStatus = ref(false);
+const isRenamingStatus = ref(false);
+const isDeletingStatus = ref(false);
 
 const addCardModalKey = computed(() => `${ADD_BOARD_CARD_MODAL_KEY}-${props.dataTable.id}`);
 
 const statuses = computed(() => props.dataTable.metadata?.allowedStatuses ?? []);
+
+const syncStatusTitles = (nextStatuses: string[]) => {
+	const updatedTitles: Record<string, string> = { ...statusTitles.value };
+
+	for (const status of nextStatuses) {
+		if (!(status in updatedTitles)) {
+			updatedTitles[status] = status;
+		}
+	}
+
+	for (const status of Object.keys(updatedTitles)) {
+		if (!nextStatuses.includes(status)) {
+			delete updatedTitles[status];
+		}
+	}
+
+	statusTitles.value = updatedTitles;
+};
+
+watch(
+	statuses,
+	(nextStatuses) => {
+		syncStatusTitles(nextStatuses);
+	},
+	{ immediate: true },
+);
+
+const setStatusTitleRef = (status: string, component: Element | ComponentPublicInstance | null) => {
+	statusTitleRefs.value[status] = component as StatusTitleEditComponent | null;
+};
+
+watch(pendingFocusStatus, async (status) => {
+	if (!status) {
+		return;
+	}
+
+	await nextTick();
+	statusTitleRefs.value[status]?.forceFocus();
+	pendingFocusStatus.value = null;
+});
+
+const getDefaultStatusName = () => {
+	const baseName = i18n.baseText('board.kanban.newList');
+	let candidate = baseName;
+	let suffix = 2;
+
+	while (statuses.value.includes(candidate)) {
+		candidate = `${baseName} ${suffix}`;
+		suffix += 1;
+	}
+
+	return candidate;
+};
+
+const onAddStatus = async () => {
+	if (props.readOnly || isAddingStatus.value) {
+		return;
+	}
+
+	const statusName = getDefaultStatusName();
+	isAddingStatus.value = true;
+	emit('toggleSave', true);
+	try {
+		const updatedStatuses = await dataTableStore.addBoardStatus(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			statusName,
+		);
+		rowsByStatus[statusName] = [];
+		statusTitles.value[statusName] = statusName;
+		emit('statusesUpdated', updatedStatuses);
+		pendingFocusStatus.value = statusName;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('board.kanban.addList.error'));
+	} finally {
+		isAddingStatus.value = false;
+		emit('toggleSave', false);
+	}
+};
+
+const onRenameStatus = async (oldStatus: string, newStatus: string) => {
+	const trimmedStatus = newStatus.trim();
+	if (!trimmedStatus || trimmedStatus === oldStatus || props.readOnly || isRenamingStatus.value) {
+		statusTitles.value[oldStatus] = oldStatus;
+		return;
+	}
+
+	isRenamingStatus.value = true;
+	emit('toggleSave', true);
+	try {
+		const updatedStatuses = await dataTableStore.renameBoardStatus(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			oldStatus,
+			trimmedStatus,
+		);
+		rowsByStatus[trimmedStatus] = rowsByStatus[oldStatus] ?? [];
+		delete rowsByStatus[oldStatus];
+		statusTitles.value[trimmedStatus] = trimmedStatus;
+		delete statusTitles.value[oldStatus];
+		emit('statusesUpdated', updatedStatuses);
+	} catch (error) {
+		statusTitles.value[oldStatus] = oldStatus;
+		toast.showError(error, i18n.baseText('board.kanban.renameList.error'));
+	} finally {
+		isRenamingStatus.value = false;
+		emit('toggleSave', false);
+	}
+};
+
+const getListActions = (): Array<ActionDropdownItem<ListAction>> => [
+	{
+		id: 'delete',
+		label: i18n.baseText('board.kanban.deleteList'),
+		disabled: statuses.value.length <= 1,
+	},
+];
+
+const onListAction = async (status: string, action: ListAction) => {
+	if (action !== 'delete' || props.readOnly || isDeletingStatus.value) {
+		return;
+	}
+
+	const listName = statusTitles.value[status] ?? status;
+	const cardCount = rowsByStatus[status]?.length ?? 0;
+	const confirmResponse = await message.confirm(
+		i18n.baseText(
+			cardCount > 0
+				? 'board.kanban.deleteList.confirmation'
+				: 'board.kanban.deleteList.confirmationEmpty',
+			{
+				interpolate: { name: listName },
+			},
+		),
+		i18n.baseText('board.kanban.deleteList.title'),
+		{
+			confirmButtonText: i18n.baseText('generic.delete'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+
+	if (confirmResponse !== MODAL_CONFIRM) {
+		return;
+	}
+
+	isDeletingStatus.value = true;
+	emit('toggleSave', true);
+	try {
+		const updatedStatuses = await dataTableStore.deleteBoardStatus(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			status,
+		);
+		delete rowsByStatus[status];
+		delete statusTitles.value[status];
+		emit('statusesUpdated', updatedStatuses);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('board.kanban.deleteList.error'));
+	} finally {
+		isDeletingStatus.value = false;
+		emit('toggleSave', false);
+	}
+};
 
 const normalizedSearch = computed(() => props.search?.trim().toLowerCase() ?? '');
 
@@ -328,12 +513,11 @@ defineExpose({
 		</div>
 		<div v-else :class="$style.columns">
 			<section
-				v-for="(status, index) in statuses"
+				v-for="status in statuses"
 				:key="status"
 				:class="[
 					$style.column,
 					{
-						[$style.columnWithDivider]: index < statuses.length - 1,
 						[$style.columnDragActive]: isDraggingCard && hoveredColumn === status,
 					},
 				]"
@@ -341,23 +525,29 @@ defineExpose({
 				:data-board-kanban-status="status"
 			>
 				<header :class="$style.columnHeader">
-					<div :class="$style.columnTitle">
-						<N8nText bold>{{ status }}</N8nText>
-						<N8nTooltip :content="i18n.baseText('board.kanban.addCard')">
-							<N8nIconButton
-								variant="ghost"
-								icon="plus"
-								size="small"
-								:aria-label="i18n.baseText('board.kanban.addCard')"
-								:disabled="readOnly"
-								:data-test-id="`board-kanban-add-card-${status}`"
-								@click="onAddCard(status)"
-							/>
-						</N8nTooltip>
+					<N8nInlineTextEdit
+						:ref="(component) => setStatusTitleRef(status, component)"
+						v-model="statusTitles[status]"
+						:class="$style.columnTitle"
+						:read-only="readOnly"
+						:disabled="readOnly || isRenamingStatus"
+						:data-test-id="`board-kanban-status-title-${status}`"
+						@update:model-value="onRenameStatus(status, $event)"
+					/>
+					<div :class="$style.columnMeta">
+						<N8nText size="small" color="text-light" :class="$style.columnCount">
+							{{ visibleRowsByStatus[status]?.length ?? 0 }}
+						</N8nText>
+						<N8nActionDropdown
+							v-if="!readOnly"
+							:items="getListActions()"
+							activator-icon="ellipsis"
+							placement="bottom-end"
+							:data-test-id="`board-kanban-list-actions-${status}`"
+							@select="onListAction(status, $event)"
+							@click.stop
+						/>
 					</div>
-					<N8nText size="small" color="text-light">
-						{{ visibleRowsByStatus[status]?.length ?? 0 }}
-					</N8nText>
 				</header>
 				<div :class="$style.columnBody">
 					<div :class="$style.columnScroller">
@@ -406,7 +596,31 @@ defineExpose({
 						</N8nText>
 					</div>
 				</div>
+				<footer :class="$style.columnFooter">
+					<N8nButton
+						variant="ghost"
+						icon="plus"
+						type="button"
+						:class="$style.addCardButton"
+						:label="i18n.baseText('board.kanban.addCard')"
+						:disabled="readOnly"
+						:data-test-id="`board-kanban-add-card-${status}`"
+						@click="onAddCard(status)"
+					/>
+				</footer>
 			</section>
+			<button
+				v-if="!readOnly"
+				type="button"
+				:class="$style.addListColumn"
+				:disabled="isAddingStatus"
+				data-test-id="board-kanban-add-list"
+				@click="onAddStatus"
+			>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('board.kanban.addList') }}
+				</N8nText>
+			</button>
 		</div>
 		<div
 			v-show="isDraggingCard && !readOnly"
@@ -476,12 +690,13 @@ defineExpose({
 .columns {
 	display: flex;
 	flex: 1;
-	align-items: stretch;
-	gap: 0;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
 	min-height: 0;
 	height: 100%;
+	padding: var(--spacing--sm);
 	overflow-x: auto;
-	overflow-y: hidden;
+	overflow-y: auto;
 }
 
 .column {
@@ -490,21 +705,20 @@ defineExpose({
 	flex: 0 0 18rem;
 	width: 18rem;
 	min-width: 18rem;
-	align-self: stretch;
-	height: 100%;
-	min-height: 100%;
-	padding: var(--spacing--xs);
+	max-height: 100%;
+	overflow: hidden;
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius--md);
 	background-color: var(--color--background--light-2);
-	transition: background-color 0.15s ease;
+	box-shadow: var(--shadow--md);
+	transition:
+		background-color 0.15s ease,
+		box-shadow 0.15s ease,
+		border-color 0.15s ease;
 }
 
 .columnDragActive {
-	background-color: var(--color--background--light-3);
-	box-shadow: inset 0 0 0 1px var(--focus--border-color);
-}
-
-.columnWithDivider {
-	border-right: 1px solid var(--border-color);
+	border-color: var(--focus--border-color);
 }
 
 .columnHeader {
@@ -513,37 +727,84 @@ defineExpose({
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .columnTitle {
+	min-width: 0;
+	flex: 1;
+}
+
+.columnMeta {
 	display: flex;
+	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	min-width: 0;
+}
+
+.columnCount {
+	flex-shrink: 0;
+}
+
+.addListColumn {
+	display: flex;
+	flex: 0 0 18rem;
+	align-items: flex-start;
+	justify-content: center;
+	width: 18rem;
+	min-width: 18rem;
+	max-height: 100%;
+	padding: var(--spacing--sm);
+	border: 1px dashed var(--border-color);
+	border-radius: var(--radius--md);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--tint-2);
+	cursor: pointer;
+	transition:
+		border-color 0.15s ease,
+		color 0.15s ease;
+
+	&:hover:not(:disabled) {
+		border-color: var(--color--text--tint-2);
+		color: var(--color--text--tint-1);
+	}
+
+	&:disabled {
+		cursor: default;
+		opacity: 0.7;
+	}
 }
 
 .columnBody {
 	position: relative;
 	display: flex;
-	flex: 1;
+	flex: 1 1 auto;
 	flex-direction: column;
 	min-height: 0;
 	overflow: hidden;
 }
 
 .columnScroller {
-	flex: 1;
+	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
+}
+
+.columnFooter {
+	flex-shrink: 0;
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--xs);
+}
+
+.addCardButton {
+	width: 100%;
+	justify-content: flex-start;
 }
 
 .cardList {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	min-height: 100%;
-	padding: var(--spacing--4xs);
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 }
 
 .card {
@@ -552,8 +813,8 @@ defineExpose({
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs);
 	border-radius: var(--radius--2xs);
-	border: 1px solid var(--border-color);
-	background-color: var(--color--background--base);
+	border: 1px solid var(--color--background--light-1);
+	background-color: var(--color--background--light-3);
 	cursor: grab;
 }
 
@@ -592,6 +853,8 @@ defineExpose({
 	z-index: 10001;
 	opacity: 0.9;
 	user-select: none;
+	border: 1px solid var(--color--background--light-1);
+	background-color: var(--color--background--light-3);
 }
 
 .emptyColumn {
