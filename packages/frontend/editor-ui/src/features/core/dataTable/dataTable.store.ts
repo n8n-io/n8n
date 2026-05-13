@@ -10,6 +10,7 @@ import {
 	addDataTableColumnApi,
 	addBoardStatusApi,
 	deleteBoardStatusApi,
+	updateBoardStatusColorApi,
 	deleteDataTableColumnApi,
 	moveDataTableColumnApi,
 	renameDataTableColumnApi,
@@ -35,7 +36,7 @@ import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import type { DataTableKind, DataTableListSortBy } from '@n8n/api-types';
+import type { BoardAllowedStatus, DataTableKind, DataTableListSortBy } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -110,7 +111,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		hasHeaders: boolean = true,
 		options?: {
 			kind?: DataTableKind;
-			metadata?: { allowedStatuses?: string[] };
+			metadata?: { allowedStatuses?: BoardAllowedStatus[] };
 		},
 	) => {
 		const newTable = await createDataTableApi(
@@ -230,12 +231,18 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return updated;
 	};
 
-	const addBoardStatus = async (dataTableId: string, projectId: string, status: string) => {
+	const addBoardStatus = async (
+		dataTableId: string,
+		projectId: string,
+		status: string,
+		color?: string,
+	) => {
 		const statuses = await addBoardStatusApi(
 			rootStore.restApiContext,
 			dataTableId,
 			projectId,
 			status,
+			color,
 		);
 		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
 		if (index !== -1) {
@@ -262,6 +269,32 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			projectId,
 			oldStatus,
 			newStatus,
+		);
+		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
+		if (index !== -1) {
+			dataTables.value[index] = {
+				...dataTables.value[index],
+				metadata: {
+					...dataTables.value[index].metadata,
+					allowedStatuses: statuses,
+				},
+			};
+		}
+		return statuses;
+	};
+
+	const updateBoardStatusColor = async (
+		dataTableId: string,
+		projectId: string,
+		status: string,
+		color: string,
+	) => {
+		const statuses = await updateBoardStatusColorApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			status,
+			color,
 		);
 		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
 		if (index !== -1) {
@@ -526,6 +559,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		updateDataTable,
 		addBoardStatus,
 		renameBoardStatus,
+		updateBoardStatusColor,
 		deleteBoardStatus,
 		fetchDataTableDetails,
 		fetchOrFindDataTable,

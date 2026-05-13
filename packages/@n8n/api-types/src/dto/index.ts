@@ -195,6 +195,7 @@ export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.
 export { AddDataTableStatusDto } from './data-table/add-data-table-status.dto';
 export { DeleteDataTableStatusDto } from './data-table/delete-data-table-status.dto';
 export { RenameDataTableStatusDto } from './data-table/rename-data-table-status.dto';
+export { UpdateDataTableStatusColorDto } from './data-table/update-data-table-status-color.dto';
 export {
 	updateDataTableColumnSchema,
 	type UpdateDataTableColumnDto,

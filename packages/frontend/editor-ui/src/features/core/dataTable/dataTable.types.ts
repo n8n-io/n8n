@@ -1,4 +1,4 @@
-import type { DataTableKind } from '@n8n/api-types';
+import type { BoardAllowedStatus, DataTableKind } from '@n8n/api-types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
 export type DataTable = {
@@ -6,7 +6,7 @@ export type DataTable = {
 	name: string;
 	kind?: DataTableKind;
 	metadata?: {
-		allowedStatuses?: string[];
+		allowedStatuses?: BoardAllowedStatus[];
 	} | null;
 	sizeBytes: number;
 	columns: DataTableColumn[];

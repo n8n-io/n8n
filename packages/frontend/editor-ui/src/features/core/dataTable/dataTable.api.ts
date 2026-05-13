@@ -1,4 +1,4 @@
-import type { DataTableKind, DataTableListSortBy } from '@n8n/api-types';
+import type { BoardAllowedStatus, DataTableKind, DataTableListSortBy } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -47,7 +47,7 @@ export const createDataTableApi = async (
 	hasHeaders: boolean = true,
 	options?: {
 		kind?: DataTableKind;
-		metadata?: { allowedStatuses?: string[] };
+		metadata?: { allowedStatuses?: BoardAllowedStatus[] };
 	},
 ) => {
 	return await makeRestApiRequest<DataTable>(
@@ -293,12 +293,13 @@ export const addBoardStatusApi = async (
 	dataTableId: string,
 	projectId: string,
 	status: string,
+	color?: string,
 ) => {
-	return await makeRestApiRequest<string[]>(
+	return await makeRestApiRequest<BoardAllowedStatus[]>(
 		context,
 		'POST',
 		`/projects/${projectId}/data-tables/${dataTableId}/statuses`,
-		{ status },
+		{ status, ...(color ? { color } : {}) },
 	);
 };
 
@@ -309,11 +310,26 @@ export const renameBoardStatusApi = async (
 	oldStatus: string,
 	newStatus: string,
 ) => {
-	return await makeRestApiRequest<string[]>(
+	return await makeRestApiRequest<BoardAllowedStatus[]>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/data-tables/${dataTableId}/statuses/rename`,
 		{ oldStatus, newStatus },
+	);
+};
+
+export const updateBoardStatusColorApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	status: string,
+	color: string,
+) => {
+	return await makeRestApiRequest<BoardAllowedStatus[]>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/statuses/color`,
+		{ status, color },
 	);
 };
 
@@ -323,7 +339,7 @@ export const deleteBoardStatusApi = async (
 	projectId: string,
 	status: string,
 ) => {
-	return await makeRestApiRequest<string[]>(
+	return await makeRestApiRequest<BoardAllowedStatus[]>(
 		context,
 		'DELETE',
 		`/projects/${projectId}/data-tables/${dataTableId}/statuses`,

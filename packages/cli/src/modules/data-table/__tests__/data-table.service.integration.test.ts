@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { AddDataTableColumnDto, CreateDataTableColumnDto } from '@n8n/api-types';
+import { normalizeBoardAllowedStatuses } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -171,7 +172,9 @@ describe('dataTable', () => {
 			});
 
 			expect(board.kind).toBe('board');
-			expect(board.metadata).toEqual({ allowedStatuses: ['Open', 'Done'] });
+			expect(board.metadata).toEqual({
+				allowedStatuses: normalizeBoardAllowedStatuses(['Open', 'Done']),
+			});
 			await expect(dataTableService.getColumns(board.id, project1.id)).resolves.toEqual([
 				expect.objectContaining({ name: 'status', type: 'string', index: 0 }),
 				expect.objectContaining({ name: 'name', type: 'string', index: 1 }),

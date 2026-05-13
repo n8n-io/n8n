@@ -227,6 +227,17 @@ export {
 	dataTableKindSchema,
 	dataTableMetadataSchema,
 } from './schemas/data-table.schema';
+export {
+	type BoardAllowedStatus,
+	boardAllowedStatusSchema,
+	boardAllowedStatusesSchema,
+	boardStatusColorSchema,
+	DEFAULT_BOARD_STATUS_COLORS,
+	getBoardStatusNames,
+	getDefaultBoardStatusColor,
+	normalizeBoardAllowedStatus,
+	normalizeBoardAllowedStatuses,
+} from './schemas/board-status.schema';
 
 export type {
 	DataTableFilter,

@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
+import type { BoardAllowedStatus } from '@n8n/api-types';
+import { getDefaultBoardStatusColor } from '@n8n/api-types';
 import { computed, onMounted, ref } from 'vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -8,7 +10,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { BOARD_DETAILS, PROJECT_BOARDS } from '@/features/core/dataTable/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-import { N8nButton, N8nIconButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nColorPicker,
+	N8nIconButton,
+	N8nInput,
+	N8nInputLabel,
+} from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 
 type Props = {
@@ -27,7 +35,7 @@ const toast = useToast();
 const telemetry = useTelemetry();
 
 const boardName = ref('');
-const allowedStatuses = ref<string[]>([]);
+const allowedStatuses = ref<BoardAllowedStatus[]>([]);
 const statusInput = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
 const statusInputRef = ref<HTMLInputElement | null>(null);
@@ -52,13 +60,29 @@ const reset = () => {
 
 const addStatus = () => {
 	const status = statusInput.value.trim();
-	if (!status || allowedStatuses.value.includes(status)) {
+	if (!status || allowedStatuses.value.some((existingStatus) => existingStatus.name === status)) {
 		statusInput.value = '';
 		return;
 	}
 
-	allowedStatuses.value = [...allowedStatuses.value, status];
+	allowedStatuses.value = [
+		...allowedStatuses.value,
+		{
+			name: status,
+			color: getDefaultBoardStatusColor(allowedStatuses.value.length),
+		},
+	];
 	statusInput.value = '';
+};
+
+const updateStatusColor = (index: number, color: string | null) => {
+	if (!color) {
+		return;
+	}
+
+	allowedStatuses.value = allowedStatuses.value.map((existingStatus, currentIndex) =>
+		currentIndex === index ? { ...existingStatus, color } : existingStatus,
+	);
 };
 
 const removeStatus = (index: number) => {
@@ -154,10 +178,17 @@ const redirectToBoards = () => {
 					<div :class="$style.statusField" @click="focusStatusInput">
 						<span
 							v-for="(status, index) in allowedStatuses"
-							:key="`${status}-${index}`"
+							:key="`${status.name}-${index}`"
 							:class="$style.statusTag"
 						>
-							<span>{{ status }}</span>
+							<N8nColorPicker
+								:model-value="status.color"
+								size="small"
+								:show-input="false"
+								data-test-id="board-allowed-status-color-picker"
+								@update:model-value="updateStatusColor(index, $event)"
+							/>
+							<span>{{ status.name }}</span>
 							<N8nIconButton
 								icon="x"
 								size="small"

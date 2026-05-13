@@ -5,7 +5,7 @@ import { Z } from '../../zod-class';
 
 const dataTableStatusNameSchema = z.string().trim().min(1).max(128);
 
-export class AddDataTableStatusDto extends Z.class({
+export class UpdateDataTableStatusColorDto extends Z.class({
 	status: dataTableStatusNameSchema,
-	color: boardStatusColorSchema.optional(),
+	color: boardStatusColorSchema,
 }) {}

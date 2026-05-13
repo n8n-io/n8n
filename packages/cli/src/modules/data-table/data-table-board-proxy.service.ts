@@ -125,27 +125,32 @@ export class DataTableBoardProxyService implements BoardProxyProvider {
 
 			// Status CRUD
 			async getStatuses() {
-				return await boardService.getStatuses(boardId, projectId);
+				const statuses = await boardService.getStatuses(boardId, projectId);
+				return statuses.map((status) => status.name);
 			},
 
 			async addStatus(status: string) {
 				checkWrite();
-				return await boardService.addStatus(boardId, projectId, status);
+				const statuses = await boardService.addStatus(boardId, projectId, status);
+				return statuses.map((existingStatus) => existingStatus.name);
 			},
 
 			async renameStatus(oldStatus: string, newStatus: string) {
 				checkWrite();
-				return await boardService.renameStatus(boardId, projectId, oldStatus, newStatus);
+				const statuses = await boardService.renameStatus(boardId, projectId, oldStatus, newStatus);
+				return statuses.map((existingStatus) => existingStatus.name);
 			},
 
 			async deleteStatus(status: string, migrateTo?: string) {
 				checkWrite();
-				return await boardService.deleteStatus(boardId, projectId, status, migrateTo);
+				const statuses = await boardService.deleteStatus(boardId, projectId, status, migrateTo);
+				return statuses.map((existingStatus) => existingStatus.name);
 			},
 
 			async reorderStatuses(orderedStatuses: string[]) {
 				checkWrite();
-				return await boardService.reorderStatuses(boardId, projectId, orderedStatuses);
+				const statuses = await boardService.reorderStatuses(boardId, projectId, orderedStatuses);
+				return statuses.map((existingStatus) => existingStatus.name);
 			},
 		};
 	}

@@ -10,8 +10,10 @@ import {
 	ListDataTableContentQueryDto,
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
+	normalizeBoardAllowedStatuses,
 	RenameDataTableColumnDto,
 	RenameDataTableStatusDto,
+	UpdateDataTableStatusColorDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -124,7 +126,7 @@ export class DataTableController {
 
 				const result = await this.dataTableBoardService.createBoard(req.params.projectId, {
 					name: dto.name,
-					statuses: dto.metadata?.allowedStatuses ?? [],
+					statuses: normalizeBoardAllowedStatuses(dto.metadata?.allowedStatuses ?? []),
 				});
 
 				return result;
@@ -575,6 +577,7 @@ export class DataTableController {
 				dataTableId,
 				req.params.projectId,
 				dto.status,
+				dto.color,
 			);
 		} catch (e: unknown) {
 			this.handleDataTableColumnOperationError(e);
@@ -596,6 +599,27 @@ export class DataTableController {
 				req.params.projectId,
 				dto.oldStatus,
 				dto.newStatus,
+			);
+		} catch (e: unknown) {
+			this.handleDataTableColumnOperationError(e);
+		}
+	}
+
+	@Patch('/:dataTableId/statuses/color')
+	@ProjectScope('dataTable:update')
+	async updateBoardStatusColor(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: UpdateDataTableStatusColorDto,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.dataTableBoardService.updateStatusColor(
+				dataTableId,
+				req.params.projectId,
+				dto.status,
+				dto.color,
 			);
 		} catch (e: unknown) {
 			this.handleDataTableColumnOperationError(e);

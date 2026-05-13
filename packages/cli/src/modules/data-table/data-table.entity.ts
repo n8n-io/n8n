@@ -1,4 +1,5 @@
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
+import type { BoardAllowedStatus } from '@n8n/api-types';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from '@n8n/typeorm';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -6,7 +7,7 @@ import { DataTableColumn } from './data-table-column.entity';
 export type DataTableKind = 'board' | 'list';
 
 export type DataTableMetadata = {
-	allowedStatuses?: string[];
+	allowedStatuses?: BoardAllowedStatus[];
 };
 
 @Entity()

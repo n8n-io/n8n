@@ -1,4 +1,9 @@
-import type { DataTableListOptions } from '@n8n/api-types';
+import type { BoardAllowedStatus, DataTableListOptions } from '@n8n/api-types';
+import {
+	getBoardStatusNames,
+	getDefaultBoardStatusColor,
+	normalizeBoardAllowedStatuses,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
@@ -22,7 +27,7 @@ import { normalizeRows } from './utils/sql-utils';
 
 export interface CreateBoardDto {
 	name: string;
-	statuses: string[];
+	statuses: Array<string | BoardAllowedStatus>;
 }
 
 export interface BoardItem {
@@ -60,11 +65,13 @@ export class DataTableBoardService {
 	// ─── Board CRUD ───────────────────────────────────────────────────────────────
 
 	async createBoard(projectId: string, dto: CreateBoardDto): Promise<DataTable> {
-		if (dto.statuses.length === 0) {
+		const statuses = normalizeBoardAllowedStatuses(dto.statuses);
+
+		if (statuses.length === 0) {
 			throw new DataTableValidationError('A board must have at least one status');
 		}
 
-		this.validateStatusNames(dto.statuses);
+		this.validateStatusNames(getBoardStatusNames(statuses));
 
 		const hasNameClash = await this.dataTableRepository.existsBy({
 			name: dto.name,
@@ -81,7 +88,7 @@ export class DataTableBoardService {
 			BOARD_COLUMNS,
 			undefined,
 			'board',
-			{ allowedStatuses: dto.statuses },
+			{ allowedStatuses: statuses },
 		);
 
 		this.dataTableSizeValidator.reset();
@@ -256,22 +263,33 @@ export class DataTableBoardService {
 
 	// ─── Status CRUD ──────────────────────────────────────────────────────────────
 
-	async getStatuses(boardId: string, projectId: string): Promise<string[]> {
+	async getStatuses(boardId: string, projectId: string): Promise<BoardAllowedStatus[]> {
 		const board = await this.validateBoardExists(boardId, projectId);
-		return board.metadata.allowedStatuses ?? [];
+		return this.getAllowedStatuses(board.metadata);
 	}
 
-	async addStatus(boardId: string, projectId: string, status: string): Promise<string[]> {
+	async addStatus(
+		boardId: string,
+		projectId: string,
+		status: string,
+		color?: string,
+	): Promise<BoardAllowedStatus[]> {
 		const board = await this.validateBoardExists(boardId, projectId);
-		const statuses = board.metadata.allowedStatuses ?? [];
+		const statuses = this.getAllowedStatuses(board.metadata);
 
 		this.validateStatusNames([status]);
 
-		if (statuses.includes(status)) {
+		if (statuses.some((existingStatus) => existingStatus.name === status)) {
 			throw new DataTableValidationError(`Status '${status}' already exists on this board`);
 		}
 
-		const updatedStatuses = [...statuses, status];
+		const updatedStatuses = [
+			...statuses,
+			{
+				name: status,
+				color: color ?? getDefaultBoardStatusColor(statuses.length),
+			},
+		];
 		await this.updateMetadataStatuses(boardId, updatedStatuses);
 		return updatedStatuses;
 	}
@@ -281,21 +299,26 @@ export class DataTableBoardService {
 		projectId: string,
 		oldStatus: string,
 		newStatus: string,
-	): Promise<string[]> {
+	): Promise<BoardAllowedStatus[]> {
 		const board = await this.validateBoardExists(boardId, projectId);
-		const statuses = board.metadata.allowedStatuses ?? [];
+		const statuses = this.getAllowedStatuses(board.metadata);
 
-		if (!statuses.includes(oldStatus)) {
+		if (!statuses.some((existingStatus) => existingStatus.name === oldStatus)) {
 			throw new DataTableValidationError(`Status '${oldStatus}' does not exist on this board`);
 		}
 
 		this.validateStatusNames([newStatus]);
 
-		if (oldStatus !== newStatus && statuses.includes(newStatus)) {
+		if (
+			oldStatus !== newStatus &&
+			statuses.some((existingStatus) => existingStatus.name === newStatus)
+		) {
 			throw new DataTableValidationError(`Status '${newStatus}' already exists on this board`);
 		}
 
-		const updatedStatuses = statuses.map((s) => (s === oldStatus ? newStatus : s));
+		const updatedStatuses = statuses.map((existingStatus) =>
+			existingStatus.name === oldStatus ? { ...existingStatus, name: newStatus } : existingStatus,
+		);
 		await this.updateMetadataStatuses(boardId, updatedStatuses);
 
 		if (oldStatus !== newStatus) {
@@ -330,11 +353,11 @@ export class DataTableBoardService {
 		projectId: string,
 		status: string,
 		migrateTo?: string,
-	): Promise<string[]> {
+	): Promise<BoardAllowedStatus[]> {
 		const board = await this.validateBoardExists(boardId, projectId);
-		const statuses = board.metadata.allowedStatuses ?? [];
+		const statuses = this.getAllowedStatuses(board.metadata);
 
-		if (!statuses.includes(status)) {
+		if (!statuses.some((existingStatus) => existingStatus.name === status)) {
 			throw new DataTableValidationError(`Status '${status}' does not exist on this board`);
 		}
 
@@ -343,7 +366,7 @@ export class DataTableBoardService {
 		}
 
 		if (migrateTo !== undefined) {
-			if (!statuses.includes(migrateTo)) {
+			if (!statuses.some((existingStatus) => existingStatus.name === migrateTo)) {
 				throw new DataTableValidationError(
 					`Migration target status '${migrateTo}' does not exist on this board`,
 				);
@@ -384,7 +407,27 @@ export class DataTableBoardService {
 			);
 		}
 
-		const updatedStatuses = statuses.filter((s) => s !== status);
+		const updatedStatuses = statuses.filter((existingStatus) => existingStatus.name !== status);
+		await this.updateMetadataStatuses(boardId, updatedStatuses);
+		return updatedStatuses;
+	}
+
+	async updateStatusColor(
+		boardId: string,
+		projectId: string,
+		status: string,
+		color: string,
+	): Promise<BoardAllowedStatus[]> {
+		const board = await this.validateBoardExists(boardId, projectId);
+		const statuses = this.getAllowedStatuses(board.metadata);
+
+		if (!statuses.some((existingStatus) => existingStatus.name === status)) {
+			throw new DataTableValidationError(`Status '${status}' does not exist on this board`);
+		}
+
+		const updatedStatuses = statuses.map((existingStatus) =>
+			existingStatus.name === status ? { ...existingStatus, color } : existingStatus,
+		);
 		await this.updateMetadataStatuses(boardId, updatedStatuses);
 		return updatedStatuses;
 	}
@@ -393,11 +436,12 @@ export class DataTableBoardService {
 		boardId: string,
 		projectId: string,
 		orderedStatuses: string[],
-	): Promise<string[]> {
+	): Promise<BoardAllowedStatus[]> {
 		const board = await this.validateBoardExists(boardId, projectId);
-		const currentStatuses = board.metadata.allowedStatuses ?? [];
+		const currentStatuses = this.getAllowedStatuses(board.metadata);
+		const currentStatusNames = getBoardStatusNames(currentStatuses);
 
-		const currentSet = new Set(currentStatuses);
+		const currentSet = new Set(currentStatusNames);
 		const newSet = new Set(orderedStatuses);
 
 		if (currentSet.size !== newSet.size || ![...currentSet].every((s) => newSet.has(s))) {
@@ -406,8 +450,20 @@ export class DataTableBoardService {
 			);
 		}
 
-		await this.updateMetadataStatuses(boardId, orderedStatuses);
-		return orderedStatuses;
+		const statusByName = new Map(
+			currentStatuses.map((existingStatus) => [existingStatus.name, existingStatus]),
+		);
+		const updatedStatuses = orderedStatuses.map((statusName) => {
+			const existingStatus = statusByName.get(statusName);
+			if (!existingStatus) {
+				throw new DataTableValidationError(`Status '${statusName}' does not exist on this board`);
+			}
+
+			return existingStatus;
+		});
+
+		await this.updateMetadataStatuses(boardId, updatedStatuses);
+		return updatedStatuses;
 	}
 
 	// ─── Private Helpers ──────────────────────────────────────────────────────────
@@ -425,11 +481,15 @@ export class DataTableBoardService {
 		return dataTable;
 	}
 
+	private getAllowedStatuses(metadata: DataTableMetadata): BoardAllowedStatus[] {
+		return normalizeBoardAllowedStatuses(metadata.allowedStatuses ?? []);
+	}
+
 	private validateItemStatus(status: string, metadata: DataTableMetadata): void {
-		const allowed = metadata.allowedStatuses ?? [];
-		if (!allowed.includes(status)) {
+		const allowed = this.getAllowedStatuses(metadata);
+		if (!allowed.some((existingStatus) => existingStatus.name === status)) {
 			throw new DataTableValidationError(
-				`Invalid status '${status}'. Allowed statuses: ${allowed.join(', ')}`,
+				`Invalid status '${status}'. Allowed statuses: ${getBoardStatusNames(allowed).join(', ')}`,
 			);
 		}
 	}
@@ -447,7 +507,10 @@ export class DataTableBoardService {
 		}
 	}
 
-	private async updateMetadataStatuses(boardId: string, statuses: string[]): Promise<void> {
+	private async updateMetadataStatuses(
+		boardId: string,
+		statuses: BoardAllowedStatus[],
+	): Promise<void> {
 		await this.dataTableRepository.update(
 			{ id: boardId },
 			{ metadata: { allowedStatuses: statuses } },

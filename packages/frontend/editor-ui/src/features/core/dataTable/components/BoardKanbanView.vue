@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM } from '@/app/constants';
-import { TIME } from '@/app/constants/durations';
-import { useUIStore } from '@/app/stores/ui.store';
-import AddBoardCardModal from '@/features/core/dataTable/components/AddBoardCardModal.vue';
-import { ADD_BOARD_CARD_MODAL_KEY } from '@/features/core/dataTable/constants';
-import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import type { DataTable, DataTableRow } from '@/features/core/dataTable/dataTable.types';
+import type { BoardAllowedStatus } from '@n8n/api-types';
+import {
+	getBoardStatusNames,
+	getDefaultBoardStatusColor,
+	normalizeBoardAllowedStatuses,
+} from '@n8n/api-types';
 import {
 	N8nActionDropdown,
 	N8nButton,
+	N8nColorPicker,
 	N8nIcon,
 	N8nInlineTextEdit,
 	N8nLoading,
@@ -21,6 +19,15 @@ import { useI18n } from '@n8n/i18n';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import Draggable from 'vuedraggable';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { TIME } from '@/app/constants/durations';
+import { useUIStore } from '@/app/stores/ui.store';
+import AddBoardCardModal from '@/features/core/dataTable/components/AddBoardCardModal.vue';
+import { ADD_BOARD_CARD_MODAL_KEY } from '@/features/core/dataTable/constants';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import type { DataTable, DataTableRow } from '@/features/core/dataTable/dataTable.types';
 
 type Props = {
 	dataTable: DataTable;
@@ -32,7 +39,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
-	statusesUpdated: [statuses: string[]];
+	statusesUpdated: [statuses: BoardAllowedStatus[]];
 }>();
 
 type StatusTitleEditComponent = ComponentPublicInstance & {
@@ -59,10 +66,15 @@ const statusTitleRefs = ref<Record<string, StatusTitleEditComponent | null>>({})
 const isAddingStatus = ref(false);
 const isRenamingStatus = ref(false);
 const isDeletingStatus = ref(false);
+const isUpdatingStatusColor = ref(false);
 
 const addCardModalKey = computed(() => `${ADD_BOARD_CARD_MODAL_KEY}-${props.dataTable.id}`);
 
-const statuses = computed(() => props.dataTable.metadata?.allowedStatuses ?? []);
+const statuses = computed(() =>
+	normalizeBoardAllowedStatuses(props.dataTable.metadata?.allowedStatuses ?? []),
+);
+
+const statusNames = computed(() => getBoardStatusNames(statuses.value));
 
 const syncStatusTitles = (nextStatuses: string[]) => {
 	const updatedTitles: Record<string, string> = { ...statusTitles.value };
@@ -83,7 +95,7 @@ const syncStatusTitles = (nextStatuses: string[]) => {
 };
 
 watch(
-	statuses,
+	statusNames,
 	(nextStatuses) => {
 		syncStatusTitles(nextStatuses);
 	},
@@ -109,7 +121,7 @@ const getDefaultStatusName = () => {
 	let candidate = baseName;
 	let suffix = 2;
 
-	while (statuses.value.includes(candidate)) {
+	while (statusNames.value.includes(candidate)) {
 		candidate = `${baseName} ${suffix}`;
 		suffix += 1;
 	}
@@ -130,6 +142,7 @@ const onAddStatus = async () => {
 			props.dataTable.id,
 			props.dataTable.projectId,
 			statusName,
+			getDefaultBoardStatusColor(statuses.value.length),
 		);
 		rowsByStatus[statusName] = [];
 		statusTitles.value[statusName] = statusName;
@@ -169,6 +182,34 @@ const onRenameStatus = async (oldStatus: string, newStatus: string) => {
 		toast.showError(error, i18n.baseText('board.kanban.renameList.error'));
 	} finally {
 		isRenamingStatus.value = false;
+		emit('toggleSave', false);
+	}
+};
+
+const onUpdateStatusColor = async (status: string, color: string | null) => {
+	if (!color || props.readOnly || isUpdatingStatusColor.value) {
+		return;
+	}
+
+	const currentStatus = statuses.value.find((existingStatus) => existingStatus.name === status);
+	if (!currentStatus || currentStatus.color === color) {
+		return;
+	}
+
+	isUpdatingStatusColor.value = true;
+	emit('toggleSave', true);
+	try {
+		const updatedStatuses = await dataTableStore.updateBoardStatusColor(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			status,
+			color,
+		);
+		emit('statusesUpdated', updatedStatuses);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('board.kanban.updateListColor.error'));
+	} finally {
+		isUpdatingStatusColor.value = false;
 		emit('toggleSave', false);
 	}
 };
@@ -243,7 +284,7 @@ const matchesSearch = (row: DataTableRow) => {
 const visibleRowsByStatus = computed(() => {
 	const grouped: Record<string, DataTableRow[]> = {};
 
-	for (const status of statuses.value) {
+	for (const status of statusNames.value) {
 		grouped[status] = (rowsByStatus[status] ?? []).filter(matchesSearch);
 	}
 
@@ -261,7 +302,7 @@ const getCardTitle = (row: DataTableRow) =>
 	String(row.name ?? '').trim() || i18n.baseText('board.kanban.untitledCard');
 
 const removeCardFromBoard = (rowId: number) => {
-	for (const status of statuses.value) {
+	for (const status of statusNames.value) {
 		rowsByStatus[status] = (rowsByStatus[status] ?? []).filter(
 			(existingRow) => Number(existingRow.id) !== rowId,
 		);
@@ -282,13 +323,13 @@ const confirmDeleteCard = async (row: DataTableRow) => {
 };
 
 const syncRowsByStatus = (rows: DataTableRow[]) => {
-	for (const status of statuses.value) {
+	for (const status of statusNames.value) {
 		rowsByStatus[status] = [];
 	}
 
 	for (const row of rows) {
 		const status = String(row.status ?? '');
-		if (statuses.value.includes(status)) {
+		if (statusNames.value.includes(status)) {
 			rowsByStatus[status].push(row);
 		}
 	}
@@ -456,7 +497,7 @@ const onAddCard = (status: string) => {
 
 const onCardCreated = (row: DataTableRow) => {
 	const status = String(row.status ?? '');
-	if (!statuses.value.includes(status)) {
+	if (!statusNames.value.includes(status)) {
 		return;
 	}
 
@@ -467,13 +508,13 @@ const onCardUpdated = (row: DataTableRow) => {
 	const status = String(row.status ?? '');
 	const rowId = getRowId(row);
 
-	for (const columnStatus of statuses.value) {
+	for (const columnStatus of statusNames.value) {
 		rowsByStatus[columnStatus] = (rowsByStatus[columnStatus] ?? []).filter(
 			(existingRow) => getRowId(existingRow) !== rowId,
 		);
 	}
 
-	if (!statuses.value.includes(status)) {
+	if (!statusNames.value.includes(status)) {
 		return;
 	}
 
@@ -543,37 +584,48 @@ onBeforeUnmount(() => {
 		<div v-else :class="$style.columns">
 			<section
 				v-for="status in statuses"
-				:key="status"
+				:key="status.name"
 				:class="[
 					$style.column,
 					{
-						[$style.columnDragActive]: isDraggingCard && hoveredColumn === status,
+						[$style.columnDragActive]: isDraggingCard && hoveredColumn === status.name,
 					},
 				]"
-				:data-test-id="`board-kanban-column-${status}`"
-				:data-board-kanban-status="status"
+				:style="{ borderTopColor: status.color }"
+				:data-test-id="`board-kanban-column-${status.name}`"
+				:data-board-kanban-status="status.name"
 			>
 				<header :class="$style.columnHeader">
 					<N8nInlineTextEdit
-						:ref="(component) => setStatusTitleRef(status, component)"
-						v-model="statusTitles[status]"
+						:ref="(component) => setStatusTitleRef(status.name, component)"
+						v-model="statusTitles[status.name]"
 						:class="$style.columnTitle"
 						:read-only="readOnly"
 						:disabled="readOnly || isRenamingStatus"
-						:data-test-id="`board-kanban-status-title-${status}`"
-						@update:model-value="onRenameStatus(status, $event)"
+						:data-test-id="`board-kanban-status-title-${status.name}`"
+						@update:model-value="onRenameStatus(status.name, $event)"
 					/>
 					<div :class="$style.columnMeta">
+						<N8nColorPicker
+							v-if="!readOnly"
+							:model-value="status.color"
+							size="small"
+							:show-input="false"
+							:disabled="isUpdatingStatusColor"
+							:data-test-id="`board-kanban-status-color-${status.name}`"
+							@update:model-value="onUpdateStatusColor(status.name, $event)"
+							@click.stop
+						/>
 						<N8nText size="small" color="text-light" :class="$style.columnCount">
-							{{ visibleRowsByStatus[status]?.length ?? 0 }}
+							{{ visibleRowsByStatus[status.name]?.length ?? 0 }}
 						</N8nText>
 						<N8nActionDropdown
 							v-if="!readOnly"
 							:items="getListActions()"
 							activator-icon="ellipsis"
 							placement="bottom-end"
-							:data-test-id="`board-kanban-list-actions-${status}`"
-							@select="onListAction(status, $event)"
+							:data-test-id="`board-kanban-list-actions-${status.name}`"
+							@select="onListAction(status.name, $event)"
 							@click.stop
 						/>
 					</div>
@@ -581,7 +633,7 @@ onBeforeUnmount(() => {
 				<div :class="$style.columnBody">
 					<div :class="$style.columnScroller">
 						<Draggable
-							v-model="rowsByStatus[status]"
+							v-model="rowsByStatus[status.name]"
 							:group="{ name: 'board-cards' }"
 							:item-key="getRowId"
 							:disabled="readOnly"
@@ -594,7 +646,7 @@ onBeforeUnmount(() => {
 							@start="onDragStart"
 							@end="onDragEnd"
 							@move="onCardMove"
-							@change="onCardListChange($event, status)"
+							@change="onCardListChange($event, status.name)"
 						>
 							<template #item="{ element }">
 								<article
@@ -619,7 +671,10 @@ onBeforeUnmount(() => {
 							</template>
 						</Draggable>
 					</div>
-					<div v-if="(visibleRowsByStatus[status]?.length ?? 0) === 0" :class="$style.emptyColumn">
+					<div
+						v-if="(visibleRowsByStatus[status.name]?.length ?? 0) === 0"
+						:class="$style.emptyColumn"
+					>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('board.kanban.emptyColumn') }}
 						</N8nText>
@@ -633,8 +688,8 @@ onBeforeUnmount(() => {
 						:class="$style.addCardButton"
 						:label="i18n.baseText('board.kanban.addCard')"
 						:disabled="readOnly"
-						:data-test-id="`board-kanban-add-card-${status}`"
-						@click="onAddCard(status)"
+						:data-test-id="`board-kanban-add-card-${status.name}`"
+						@click="onAddCard(status.name)"
 					/>
 				</footer>
 			</section>
@@ -691,7 +746,7 @@ onBeforeUnmount(() => {
 			:modal-name="addCardModalKey"
 			:data-table-id="dataTable.id"
 			:project-id="dataTable.projectId"
-			:allowed-statuses="statuses"
+			:allowed-statuses="statusNames"
 			@created="onCardCreated"
 			@updated="onCardUpdated"
 			@deleted="onCardDeleted"
@@ -737,6 +792,7 @@ onBeforeUnmount(() => {
 	max-height: 100%;
 	overflow: hidden;
 	border: 1px solid var(--border-color);
+	border-top-width: 3px;
 	border-radius: var(--radius--md);
 	background-color: var(--color--background--light-2);
 	box-shadow: var(--shadow--md);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ListDataTableQueryDto } from '../dto';
+import { boardAllowedStatusesSchema } from './board-status.schema';
 
 export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
 
@@ -40,7 +41,7 @@ export type DataTableKind = z.infer<typeof dataTableKindSchema>;
 
 export const dataTableMetadataSchema = z
 	.object({
-		allowedStatuses: z.array(z.string()).optional(),
+		allowedStatuses: boardAllowedStatusesSchema,
 	})
 	.nullable();
 export type DataTableMetadata = z.infer<typeof dataTableMetadataSchema>;

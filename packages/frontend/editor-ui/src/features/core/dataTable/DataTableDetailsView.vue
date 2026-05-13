@@ -17,7 +17,7 @@ import {
 	PROJECT_BOARDS,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
-import type { DataTableKind } from '@n8n/api-types';
+import type { BoardAllowedStatus, DataTableKind } from '@n8n/api-types';
 import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import BoardKanbanView from '@/features/core/dataTable/components/BoardKanbanView.vue';
@@ -172,7 +172,7 @@ const onCsvImported = async () => {
 	await dataTableTableRef.value?.fetchDataTableRows();
 };
 
-const onBoardStatusesUpdated = (statuses: string[]) => {
+const onBoardStatusesUpdated = (statuses: BoardAllowedStatus[]) => {
 	if (!dataTable.value) {
 		return;
 	}

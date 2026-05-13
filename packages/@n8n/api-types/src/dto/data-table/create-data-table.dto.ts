@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 import { CreateDataTableColumnDto } from './create-data-table-column.dto';
+import { boardAllowedStatusesSchema } from '../../schemas/board-status.schema';
 import { dataTableKindSchema, dataTableNameSchema } from '../../schemas/data-table.schema';
 import { Z } from '../../zod-class';
 
 const createDataTableMetadataSchema = z.object({
-	allowedStatuses: z.array(z.string()).optional(),
+	allowedStatuses: boardAllowedStatusesSchema,
 });
 
 export class CreateDataTableDto extends Z.class({
