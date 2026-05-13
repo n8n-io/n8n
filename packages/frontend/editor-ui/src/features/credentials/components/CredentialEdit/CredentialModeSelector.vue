@@ -40,7 +40,8 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const i18n = useI18n();
-const { hasManagedOAuthCredentials, isOAuthCredentialType, hasManualCredentialInputFields } = useCredentialOAuth();
+const { hasManagedOAuthCredentials, isOAuthCredentialType, hasManualCredentialInputFields } =
+	useCredentialOAuth();
 
 const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.activeNode);
 const activeNodeType = computed<INodeTypeDescription | null>(() => {
