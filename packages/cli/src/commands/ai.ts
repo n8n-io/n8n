@@ -1,5 +1,6 @@
 import { Command } from '@n8n/decorators';
 import { UnexpectedError, UserError } from 'n8n-workflow';
+import readline from 'node:readline/promises';
 import { z } from 'zod';
 
 import { removeTrailingSlash } from '@/utils';
@@ -11,8 +12,19 @@ type SseFrame = {
 	data?: string;
 };
 
+type ThreadMessage = {
+	role?: string;
+	content?: string;
+};
+
+type ThreadMessagesResponse = {
+	threadId: string;
+	messages: ThreadMessage[];
+	nextEventId?: number;
+};
+
 const flagsSchema = z.object({
-	prompt: z.string().alias('p').describe('Prompt to send to Instance AI'),
+	prompt: z.string().alias('p').describe('Prompt to send to Instance AI').optional(),
 	baseUrl: z
 		.string()
 		.describe('Base URL of a running n8n instance')
@@ -28,8 +40,9 @@ const flagsSchema = z.object({
 
 @Command({
 	name: 'ai',
-	description: 'Send a prompt to Instance AI on a running n8n instance',
+	description: 'Send a prompt to Instance AI, or start interactive mode when --prompt is omitted',
 	examples: [
+		'--apiKey <api-key>',
 		'--prompt "Build a workflow that fetches top Hacker News stories"',
 		'--prompt "Summarize this thread" --threadId <thread-id>',
 	],
@@ -56,23 +69,16 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.restBaseUrl = `${removeTrailingSlash(flags.baseUrl)}/rest/instance-ai`;
 
 		const threadId = await this.ensureThread(flags.threadId);
-		const runId = await this.startRun(threadId, flags.prompt, flags.researchMode);
+		if (flags.threadId) {
+			await this.loadAndPrintThreadHistory(threadId);
+		}
 
-		const result = await this.waitForRun(threadId, runId, flags.timeout);
-
-		if (result === 'confirmation-required') {
-			this.logger.info('');
-			this.logger.info('Run paused: user confirmation is required in the n8n UI.');
-			this.logger.info(`Thread ID: ${threadId}`);
-			this.logger.info(`Run ID: ${runId}`);
+		if (flags.prompt) {
+			await this.executePrompt(threadId, flags.prompt, flags.researchMode, flags.timeout);
 			return;
 		}
 
-		if (result !== 'completed') {
-			throw new UserError(`Instance AI run finished with status: ${result}`);
-		}
-
-		process.stdout.write('\n');
+		await this.runInteractiveShell(threadId, flags.researchMode, flags.timeout);
 	}
 
 	async catch(error: Error) {
@@ -209,6 +215,111 @@ export class AiCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (!response.ok) {
 			this.logger.warn('Failed to cancel timed-out run');
 		}
+	}
+
+	private async executePrompt(
+		threadId: string,
+		prompt: string,
+		researchMode: boolean | undefined,
+		timeoutMs: number,
+	): Promise<void> {
+		const runId = await this.startRun(threadId, prompt, researchMode);
+		const result = await this.waitForRun(threadId, runId, timeoutMs);
+
+		if (result === 'confirmation-required') {
+			this.logger.info('');
+			this.logger.info('Run paused: user confirmation is required in the n8n UI.');
+			this.logger.info(`Thread ID: ${threadId}`);
+			this.logger.info(`Run ID: ${runId}`);
+			return;
+		}
+
+		if (result !== 'completed') {
+			throw new UserError(`Instance AI run finished with status: ${result}`);
+		}
+
+		process.stdout.write('\n');
+	}
+
+	private async runInteractiveShell(
+		startingThreadId: string,
+		researchMode: boolean | undefined,
+		timeoutMs: number,
+	): Promise<void> {
+		if (!process.stdin.isTTY || !process.stdout.isTTY) {
+			throw new UserError(
+				'Interactive mode requires a TTY. Use --prompt in non-interactive environments.',
+			);
+		}
+
+		const terminal = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout,
+		});
+
+		let threadId = startingThreadId;
+		this.logger.info('');
+		this.logger.info(`Interactive mode started (thread: ${threadId}).`);
+		this.logger.info('Commands: /exit, /quit, /new, /thread, /thread <thread-id>');
+
+		try {
+			while (true) {
+				const input = (await terminal.question('You: ')).trim();
+				if (!input) continue;
+
+				const [command, ...args] = input.split(/\s+/);
+				const normalized = command.toLowerCase();
+				if (normalized === '/exit' || normalized === '/quit') {
+					break;
+				}
+
+				if (normalized === '/new') {
+					threadId = await this.ensureThread();
+					this.logger.info(`Started new thread: ${threadId}`);
+					continue;
+				}
+
+				if (normalized === '/thread') {
+					if (args.length > 0) {
+						threadId = await this.ensureThread(args[0]);
+						this.logger.info(`Switched thread: ${threadId}`);
+						await this.loadAndPrintThreadHistory(threadId);
+						continue;
+					}
+
+					this.logger.info(`Current thread: ${threadId}`);
+					continue;
+				}
+
+				process.stdout.write('AI: ');
+				await this.executePrompt(threadId, input, researchMode, timeoutMs);
+			}
+		} finally {
+			terminal.close();
+		}
+	}
+
+	private async loadAndPrintThreadHistory(threadId: string): Promise<void> {
+		const history = await this.requestJson<ThreadMessagesResponse>(
+			'GET',
+			`/threads/${encodeURIComponent(threadId)}/messages?limit=100`,
+		);
+
+		if (!history.messages.length) return;
+
+		this.logger.info('');
+		this.logger.info(
+			`Loaded ${history.messages.length} previous message(s) from thread ${threadId}:`,
+		);
+
+		for (const message of history.messages) {
+			if (!message.content || message.content.trim().length === 0) continue;
+
+			const role = message.role === 'assistant' ? 'Assistant' : 'User';
+			this.logger.info(`${role}: ${message.content}`);
+		}
+
+		this.logger.info('');
 	}
 
 	private parseSseFrame(rawFrame: string): SseFrame {
