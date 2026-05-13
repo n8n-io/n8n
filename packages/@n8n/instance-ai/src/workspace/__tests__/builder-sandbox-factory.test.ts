@@ -118,6 +118,7 @@ jest.mock('../sandbox-setup', () => ({
 	formatNodeCatalogLine: jest.fn((x: { name?: string }) => x.name ?? ''),
 	getWorkspaceRoot: jest.fn(async () => await Promise.resolve('/home/daytona/workspace')),
 	setupSandboxWorkspace: jest.fn(async () => await Promise.resolve()),
+	writeCuratedExamples: jest.fn(async () => await Promise.resolve()),
 	PACKAGE_JSON: '{}',
 	TSCONFIG_JSON: '{}',
 	BUILD_MJS: '',
@@ -230,6 +231,21 @@ describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 		await factory.create('builder-1', makeContext());
 
 		expect(ensureSnapshotSpy).toHaveBeenCalledWith(expect.anything(), 'proxy');
+	});
+
+	it('writes curated examples into the new Daytona sandbox', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
+		const sandboxSetup = require('../sandbox-setup') as typeof import('../sandbox-setup');
+		(sandboxSetup.writeCuratedExamples as jest.Mock).mockClear();
+
+		const config = makeDaytonaConfig();
+		const snapshotManager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
+		jest.spyOn(snapshotManager, 'ensureSnapshot').mockResolvedValue('n8n/instance-ai:1.123.0');
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER);
+		await factory.create('builder-1', makeContext());
+
+		expect(sandboxSetup.writeCuratedExamples).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -382,11 +398,16 @@ describe('BuilderSandboxFactory.createN8nSandbox cleanup on failure', () => {
 	});
 
 	it('returns a cleanup handle that destroys the sandbox when create succeeds', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
+		const sandboxSetup = require('../sandbox-setup') as typeof import('../sandbox-setup');
+		(sandboxSetup.writeCuratedExamples as jest.Mock).mockClear();
+
 		const factory = new BuilderSandboxFactory(makeN8nSandboxConfig(), undefined);
 		const bw = await factory.create('b-3', makeContext());
 
 		expect(capturedSandboxes).toHaveLength(1);
 		expect(capturedSandboxes[0].destroy).not.toHaveBeenCalled();
+		expect(sandboxSetup.writeCuratedExamples).toHaveBeenCalledTimes(1);
 
 		await bw.cleanup();
 

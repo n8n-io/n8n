@@ -1,16 +1,7 @@
-import { UPDATE_WORKING_MEMORY_TOOL_NAME, type StreamChunk } from '@n8n/agents';
+import type { StreamChunk } from '@n8n/agents';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
-
-/** Pull the human-readable working-memory content out of the WM tool's input. */
-function workingMemoryContentFromInput(input: unknown): string {
-	if (input && typeof input === 'object' && !Array.isArray(input)) {
-		const maybe = (input as Record<string, unknown>).memory;
-		if (typeof maybe === 'string') return maybe;
-	}
-	return JSON.stringify(input, null, 2);
-}
 
 /**
  * Walk a nodeParameters tree and substitute every `$fromAI('key', ...)`
@@ -189,18 +180,9 @@ export class ExecutionRecorder {
 				this.textBuffer.push(chunk.delta);
 				break;
 			case 'tool-call':
-				if (chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-					this.recordWorkingMemoryUpdate(workingMemoryContentFromInput(chunk.input));
-				} else {
-					this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
-				}
+				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
 				break;
 			case 'tool-result':
-				if (chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-					// WM tool-result is already represented by the timeline entry
-					// pushed at tool-call time; nothing more to do here.
-					break;
-				}
 				this.recordToolResult(
 					chunk.toolCallId,
 					chunk.toolName,
@@ -279,16 +261,6 @@ export class ExecutionRecorder {
 		}
 		this.textBuffer = [];
 		this.textStartTime = null;
-	}
-
-	private recordWorkingMemoryUpdate(content: string): void {
-		this.flushTextBuffer();
-		this.workingMemory = content;
-		this.timeline.push({
-			type: 'working-memory',
-			content,
-			timestamp: Date.now(),
-		});
 	}
 
 	/**

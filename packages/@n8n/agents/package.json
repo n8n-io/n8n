@@ -49,7 +49,7 @@
     "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0",
     "@opentelemetry/sdk-trace-base": ">=1.0.0",
     "@opentelemetry/sdk-trace-node": ">=1.0.0",
-    "langsmith": ">=0.3.0"
+    "langsmith": "catalog:"
   },
   "peerDependenciesMeta": {
     "langsmith": {

@@ -172,6 +172,7 @@ import { AddExecutionDeduplicationKey1778000000000 } from '../common/17780000000
 import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
+import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558-CreateEvaluationCollection';
 import { AddNodeGroupsColumnToWorkflowAndHistory1778496335798 } from '../common/1778496335798-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
@@ -353,6 +354,7 @@ export const postgresMigrations: Migration[] = [
 	CreateEvaluationConfig1778100000000,
 	AddWorkflowVersionToTestRun1778100001000,
 	AddEvaluationConfigColumnsToTestRun1778100002000,
+	CreateEvaluationCollection1778496086558,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,

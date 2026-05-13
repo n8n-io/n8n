@@ -20,7 +20,7 @@ export async function findPackageJsonFiles(rootDir: string): Promise<string[]> {
 	return await fg('packages/**/package.json', {
 		cwd: rootDir,
 		absolute: true,
-		ignore: ['**/node_modules/**', '**/dist/**'],
+		ignore: ['**/node_modules/**', '**/dist/**', '**/src/template/**'],
 	});
 }
 

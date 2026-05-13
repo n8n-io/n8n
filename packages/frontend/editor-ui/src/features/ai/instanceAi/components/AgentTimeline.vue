@@ -120,7 +120,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
 	const eventProps = {
-		thread_id: thread.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'plan-review',
