@@ -4,7 +4,9 @@ export type MetricCategory =
 	| 'cache'
 	| 'logs'
 	| 'queue'
+	| 'webhook'
 	| 'workflowExecutionDuration'
+	| 'workflowInfo'
 	| 'workflowStatistics';
 
 export type MetricLabel =

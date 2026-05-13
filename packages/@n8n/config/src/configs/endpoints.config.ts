@@ -48,6 +48,14 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_CACHE_METRICS')
 	includeCacheMetrics: boolean = false;
 
+	/** Whether to include the `n8n_webhook_request_duration_seconds` histogram for webhook traffic. */
+	@Env('N8N_METRICS_INCLUDE_WEBHOOK_METRICS')
+	includeWebhookMetrics: boolean = false;
+
+	/** Whether to include the `n8n_workflow_info` gauge mapping workflow IDs to names. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_INFO')
+	includeWorkflowInfo: boolean = false;
+
 	/** Whether to include metrics derived from n8n's internal events */
 	@Env('N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS')
 	includeMessageEventBusMetrics: boolean = false;

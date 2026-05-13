@@ -50,6 +50,8 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+			webhook: this.globalConfig.endpoints.metrics.includeWebhookMetrics,
+			workflowInfo: this.globalConfig.endpoints.metrics.includeWorkflowInfo,
 			workflowExecutionDuration:
 				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
 			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
@@ -143,6 +145,8 @@ export class PrometheusMetricsService {
 	 * n8n_workflow_info{workflow_id="123", workflow_name="My Webhook"} 1
 	 */
 	private initWorkflowInfoMetric() {
+		if (!this.includes.metrics.workflowInfo) return;
+
 		const workflowRepository = this.workflowRepository;
 		const cacheService = this.cacheService;
 		const cacheKey = 'metrics:workflow-info';
@@ -281,7 +285,7 @@ export class PrometheusMetricsService {
 	}
 
 	private initWebhookRequestMetric() {
-		if (!this.includes.metrics.routes) return;
+		if (!this.includes.metrics.webhook) return;
 
 		this.histograms.webhookRequestDuration = new promClient.Histogram({
 			name: this.prefix + 'webhook_request_duration_seconds',

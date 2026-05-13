@@ -29,6 +29,8 @@ globalConfig.endpoints.metrics = {
 	includeApiEndpoints: true,
 	includeCacheMetrics: true,
 	includeMessageEventBusMetrics: true,
+	includeWebhookMetrics: true,
+	includeWorkflowInfo: true,
 	includeCredentialTypeLabel: false,
 	includeNodeTypeLabel: false,
 	includeWorkflowIdLabel: false,
