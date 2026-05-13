@@ -15,7 +15,7 @@ export class ComputerUse implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Computer Use',
 		name: 'computerUse',
-		icon: 'fa:desktop',
+		icon: 'fa:monitor',
 		group: ['transform'],
 		version: 1,
 		description:

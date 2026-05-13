@@ -1,9 +1,11 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class DeviceConnectionApi implements ICredentialType {
 	name = 'deviceConnectionApi';
 
 	displayName = 'Device Connection';
+
+	icon: Icon = 'node:@n8n/n8n-nodes-langchain.computerUse';
 
 	properties: INodeProperties[] = [
 		{
