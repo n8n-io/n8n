@@ -12,6 +12,7 @@ import {
 	type ToolCategory,
 	type TaskList,
 } from '@n8n/api-types';
+import type { Message } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ErrorReporter } from 'n8n-core';
@@ -3060,14 +3061,7 @@ export class InstanceAiService {
 						},
 					})
 				: undefined;
-			let streamInput:
-				| string
-				| Array<{
-						role: 'user';
-						content: Array<
-							{ type: 'text'; text: string } | { type: 'file'; data: string; mimeType: string }
-						>;
-				  }>;
+			let streamInput: string | Message[];
 			try {
 				// Compose runtime input: conversation summary → background tasks → user message
 				const fullMessage = conversationSummary
@@ -3084,7 +3078,7 @@ export class InstanceAiService {
 								...nonStructuredAttachments.map((attachment) => ({
 									type: 'file' as const,
 									data: attachment.data,
-									mimeType: attachment.mimeType,
+									mediaType: attachment.mimeType,
 								})),
 							],
 						},
