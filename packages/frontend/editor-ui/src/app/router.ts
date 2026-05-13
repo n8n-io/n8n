@@ -294,6 +294,14 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/visualizations',
+		name: VIEWS.VISUALIZATIONS,
+		component: async () => await import('@/features/visualizations/views/VisualizationsView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/resource-center',
 		name: VIEWS.RESOURCE_CENTER,
 		component: ResourceCenterView,

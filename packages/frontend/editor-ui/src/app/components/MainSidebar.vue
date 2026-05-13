@@ -142,6 +142,14 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
+		id: 'visualizations',
+		icon: 'project-diagram',
+		label: 'Visualizations',
+		position: 'bottom',
+		route: { to: { name: VIEWS.VISUALIZATIONS } },
+		available: true,
+	},
+	{
 		id: 'help',
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),

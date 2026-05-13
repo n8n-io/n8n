@@ -72,6 +72,7 @@ export const enum VIEWS {
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
 	RESOURCE_CENTER = 'ResourceCenter',
+	VISUALIZATIONS = 'Visualizations',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];

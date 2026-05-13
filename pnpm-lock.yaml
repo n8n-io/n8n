@@ -159,6 +159,9 @@ catalogs:
     cron:
       specifier: 4.4.0
       version: 4.4.0
+    cytoscape:
+      specifier: ^3.33.3
+      version: 3.33.3
     eslint:
       specifier: 9.29.0
       version: 9.29.0
@@ -3983,6 +3986,9 @@ importers:
       curlconverter:
         specifier: ^4.12.0
         version: 4.12.0
+      cytoscape:
+        specifier: 'catalog:'
+        version: 3.33.3
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -14152,6 +14158,10 @@ packages:
 
   currency-codes@2.1.0:
     resolution: {integrity: sha512-aASwFNP8VjZ0y0PWlSW7c9N/isYTLxK6OCbm7aVuQMk7dWO2zgup9KGiFQgeL9OGL5P/ulvCHcjQizmuEeZXtw==}
+
+  cytoscape@3.33.3:
+    resolution: {integrity: sha512-Gej7U+OKR+LZ8kvX7rb2HhCYJ0IhvEFsnkud4SB1PR+BUY/TsSO0dmOW59WEVLu51b1Rm+gQRKoz4bLYxGSZ2g==}
+    engines: {node: '>=0.10'}
 
   d3-color@3.1.0:
     resolution: {integrity: sha512-zg/chbXyeBtMQ1LbD/WSoW2DpC3I0mpmPdW+ynRTj/x2DAWYrIY7qeZIHidozwV24m4iavr15lNwIwLxRmOxhA==}
@@ -35118,6 +35128,8 @@ snapshots:
     dependencies:
       first-match: 0.0.1
       nub: 0.0.0
+
+  cytoscape@3.33.3: {}
 
   d3-color@3.1.0: {}
 
