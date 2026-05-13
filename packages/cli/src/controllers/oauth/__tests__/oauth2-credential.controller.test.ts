@@ -49,7 +49,7 @@ describe('OAuth2CredentialController', () => {
 			);
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
-			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.getOAuthCredentials.mockResolvedValueOnce({
 				clientId: 'client_id',
 				clientSecret: 'client_secret',
