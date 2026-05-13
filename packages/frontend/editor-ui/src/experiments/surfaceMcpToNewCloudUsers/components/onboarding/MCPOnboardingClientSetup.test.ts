@@ -40,8 +40,8 @@ describe('MCPOnboardingClientSetup', () => {
 		});
 		const text = container.textContent ?? '';
 
-		expect(text).toContain('Find the official n8n connector and show it in this chat.');
-		expect(text).not.toContain("When it's ready, ask me for the server URL.");
+		expect(text).toContain('Show me the n8n MCP connector');
+		expect(text).toContain("I'll paste my server URL when you tell me where it goes.");
 		expect(text).not.toContain('claude mcp add --scope user --transport http n8n');
 		expect(queryByTestId('mcp-onboarding-claude-server-url')).not.toBeInTheDocument();
 	});
