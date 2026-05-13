@@ -327,7 +327,8 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
  * No-op when the loader returns an empty bundle (e.g. running against a
  * workspace where the manifest hasn't been fetched).
  */
-export async function writeCuratedExamples(workspace: Workspace, logger?: Logger): Promise<void> {
+export async function writeCuratedExamples(_workspace: Workspace, _logger?: Logger): Promise<void> {
+	return;
 	const start = Date.now();
 	const { files: exampleFiles, indexTxt } = getExampleFiles();
 	if (exampleFiles.length === 0) return;
