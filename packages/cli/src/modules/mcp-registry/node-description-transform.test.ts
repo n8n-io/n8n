@@ -307,7 +307,13 @@ describe('serverToCredentialDescription', () => {
 					displayName: 'Allowed HTTP Request Domains',
 					name: 'allowedHttpRequestDomains',
 					type: 'hidden',
-					default: 'none',
+					default: 'domains',
+				},
+				{
+					displayName: 'Allowed Domains',
+					name: 'allowedDomains',
+					type: 'hidden',
+					default: 'mcp.notion.com',
 				},
 			],
 		});
@@ -329,5 +335,14 @@ describe('serverToCredentialDescription', () => {
 		};
 
 		expect(serverToCredentialDescription(noRemoteServer)).toBeNull();
+	});
+
+	it('returns null when the endpoint URL is not a valid URL', () => {
+		const invalidUrlServer: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'streamable-http', url: 'invalid-url' }],
+		};
+
+		expect(serverToCredentialDescription(invalidUrlServer)).toBeNull();
 	});
 });
