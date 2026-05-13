@@ -1,13 +1,11 @@
 type: object
-description: >
-  A single node in the ephemeral-execution catalogue. Field values are
-  illustrative; the catalogue currently returns an empty list (population
-  tracked in follow-up).
+description: A single node in the ephemeral-execution catalogue. One entry per node type, reflecting its `defaultVersion` (or highest version when no default is set).
 required:
   - nodeType
   - nodeTypeVersion
   - displayName
   - description
+  - supportedCredentialTypes
 properties:
   nodeType:
     type: string
@@ -15,7 +13,7 @@ properties:
     example: n8n-nodes-base.httpRequest
   nodeTypeVersion:
     type: number
-    description: Version of the node type to execute.
+    description: Version of the node type to execute (the node's `defaultVersion` when set, otherwise the highest supported version).
     example: 4.2
   displayName:
     type: string
@@ -26,21 +24,13 @@ properties:
     description: Short description of what the node does.
   category:
     type: string
-    description: Top-level node category (e.g. `Core Nodes`, `Communication`).
-  exampleParameters:
-    type: object
-    additionalProperties: true
-    description: An example `nodeParameters` payload demonstrating the minimum viable invocation.
-  requiredCredentialTypes:
+    description: Top-level node category (e.g. `Core Nodes`, `Communication`). Sourced from the node's codex categories; falls back to the first group entry. Omitted when neither is set.
+  supportedCredentialTypes:
     type: array
     items:
       type: string
     description: >
-      Credential type names this node accepts (matches the `type` field of
-      `GET /credentials` entries). Empty if the node needs no credential.
-  inputDataShape:
-    type: object
-    additionalProperties: true
-    description: >
-      Optional JSON-Schema-like description of the input data the node expects.
-      Present when the node has a strong input contract; omitted otherwise.
+      Credential type names the node can authenticate with (matches the
+      `type` field of `GET /credentials` entries). The node typically uses
+      one of these at a time — selection depends on its configuration.
+      Empty if the node needs no credential.
