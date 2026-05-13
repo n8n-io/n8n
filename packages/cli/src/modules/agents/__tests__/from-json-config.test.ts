@@ -503,7 +503,7 @@ describe('buildFromJson()', () => {
 
 		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
 			observerThresholdTokens: 2_000,
-			reflectorThresholdTokens: 24_000,
+			reflectorThresholdTokens: 8_000,
 			observationLogTailLimit: 20,
 			observe: expect.any(Function),
 			reflect: expect.any(Function),
@@ -529,7 +529,7 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasObservationalMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
 			observerThresholdTokens: 2_000,
-			reflectorThresholdTokens: 24_000,
+			reflectorThresholdTokens: 8_000,
 			lockTtlMs: 30_000,
 			observe: expect.any(Function),
 			reflect: expect.any(Function),

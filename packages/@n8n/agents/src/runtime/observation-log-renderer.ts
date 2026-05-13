@@ -14,6 +14,8 @@ const MARKER_SYMBOLS: Record<ObservationLogMarker, string> = {
 
 const MEMORY_INTRO =
 	'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.';
+const MARKER_LEGEND =
+	'Marker legend: 🔴 critical, 🟡 important, 🟢 contextual info, ✅ completed/resolved.';
 
 export interface RenderObservationLogOptions {
 	renderTokenBudget?: number;
@@ -76,7 +78,7 @@ export function renderObservationLog(
 
 	if (roots.length === 0) return null;
 
-	const lines: string[] = ['<observations>', '## Memory', '', MEMORY_INTRO, ''];
+	const lines: string[] = ['<observations>', '## Memory', '', MEMORY_INTRO, MARKER_LEGEND, ''];
 	for (const root of roots) {
 		lines.push(renderBullet(root));
 		for (const child of childrenByParent.get(root.id) ?? []) {

@@ -44,6 +44,7 @@ describe('renderObservationLog', () => {
 				'## Memory',
 				'',
 				'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.',
+				'Marker legend: 🔴 critical, 🟡 important, 🟢 contextual info, ✅ completed/resolved.',
 				'',
 				'* 🟡 (14:30) User is rebuilding observational memory.',
 				'  * ✅ (14:31) Plan 4 was completed.',

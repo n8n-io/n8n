@@ -6,7 +6,7 @@ import {
 
 describe('n8n observation-log reflector policy', () => {
 	it('uses the n8n reflector defaults', () => {
-		expect(DEFAULT_REFLECTOR_THRESHOLD_TOKENS).toBe(24_000);
+		expect(DEFAULT_REFLECTOR_THRESHOLD_TOKENS).toBe(8_000);
 		expect(DEFAULT_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
 		expect(DEFAULT_REFLECTOR_PROMPT).toContain('🔴 Critical');
 	});

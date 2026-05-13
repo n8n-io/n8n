@@ -591,7 +591,7 @@ export function getConfigRulesSection(builderModel: string): string {
 - \`memory.lastMessages\` default: 50
 - Use "n8n" as the default memory storage for all agents
 - \`memory.observationalMemory\` tunes observation-log memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
-  - Defaults: \`observerThresholdTokens: 2000\`, \`reflectorThresholdTokens: 24000\`, \`renderTokenBudget: 8000\`, \`observationLogTailLimit: 20\`.
+  - Defaults: \`observerThresholdTokens: 2000\`, \`reflectorThresholdTokens: 8000\`, \`renderTokenBudget: 8000\`, \`observationLogTailLimit: 20\`.
   - Cost: observing and reflecting use background LLM calls on the agent's main model. Mention this if the user asks about cost.
 - If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
 }

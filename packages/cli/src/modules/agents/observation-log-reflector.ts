@@ -1,7 +1,7 @@
 import { generateText } from 'ai';
 import { createModel, type ModelConfig } from '@n8n/agents';
 
-export const DEFAULT_REFLECTOR_THRESHOLD_TOKENS = 24_000;
+export const DEFAULT_REFLECTOR_THRESHOLD_TOKENS = 8_000;
 
 export const DEFAULT_REFLECTOR_PROMPT = `You are reorganizing an observation log so it stays useful and under a size limit. The log is an append-only record of what happened in a conversation. Your job is to identify what to drop, merge, or replace while preserving the most important content.
 
