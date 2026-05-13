@@ -228,6 +228,9 @@ catalogs:
     playwright-core:
       specifier: 1.58.0
       version: 1.58.0
+    prompts:
+      specifier: 2.4.2
+      version: 2.4.2
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
@@ -2945,6 +2948,9 @@ importers:
       prom-client:
         specifier: 15.1.3
         version: 15.1.3
+      prompts:
+        specifier: 'catalog:'
+        version: 2.4.2
       psl:
         specifier: 1.9.0
         version: 1.9.0
