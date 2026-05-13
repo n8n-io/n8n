@@ -1,5 +1,6 @@
 import {
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
 } from '@n8n/api-types';
@@ -77,6 +78,10 @@ function columnToWildcardAndType(
 
 export function isValidColumnName(name: string) {
 	return dataTableColumnNameSchema.safeParse(name).success;
+}
+
+export function isValidDataTableId(id: string) {
+	return dataTableIdSchema.safeParse(id).success;
 }
 
 export function addColumnQuery(
