@@ -97,4 +97,26 @@ describe('useNlExecutionsFilter', () => {
 
 		expect(store.fetchExecutions).toHaveBeenCalled();
 	});
+
+	it('returns ok=false with reason=network when the AI call throws, and does not mutate the store or refetch', async () => {
+		vi.mocked(assistantApi.generateCodeForPrompt).mockRejectedValue(new Error('boom'));
+		const store = useExecutionsStore();
+		const before = { ...store.filters };
+		vi.mocked(store.fetchExecutions).mockClear();
+
+		const { translate } = useNlExecutionsFilter();
+		const result = await translate('anything');
+
+		expect(result).toEqual({ ok: false, reason: 'network' });
+		expect(store.filters).toEqual(before);
+		expect(store.fetchExecutions).not.toHaveBeenCalled();
+	});
+
+	it('returns parse without calling the AI when given whitespace-only input', async () => {
+		const { translate } = useNlExecutionsFilter();
+		const result = await translate('   ');
+
+		expect(result).toEqual({ ok: false, reason: 'parse' });
+		expect(assistantApi.generateCodeForPrompt).not.toHaveBeenCalled();
+	});
 });
