@@ -231,6 +231,8 @@ export class Expression {
 
 	private static readonly BROWSER_CALLER = {};
 
+	private static useSharedCaller = false;
+
 	constructor(private readonly timezone: string) {}
 
 	/**
@@ -294,10 +296,15 @@ export class Expression {
 				observability: options.observability,
 			});
 			await this.vmEvaluator.initialize();
+			// Browser always passes runtimeBundle (the pre-built IIFE string).
+			// Use its presence as an explicit signal that we are in browser mode,
+			// rather than relying on IS_FRONTEND which is unreliable when
+			// vite-plugin-node-polyfills shims process with extra keys.
 			// Browser uses a single shared caller for all evaluations since the
 			// sync evaluate() requires a pre-acquired caller and Expression
 			// instances are short-lived in the editor.
-			if (IS_FRONTEND) {
+			if (options.runtimeBundle) {
+				this.useSharedCaller = true;
 				await this.vmEvaluator.acquire(Expression.BROWSER_CALLER);
 			}
 		}
@@ -618,7 +625,7 @@ export class Expression {
 				);
 			}
 
-			const caller = IS_FRONTEND ? Expression.BROWSER_CALLER : this;
+			const caller = Expression.useSharedCaller ? Expression.BROWSER_CALLER : this;
 			try {
 				const result = Expression.vmEvaluator.evaluate(expression, data, caller, {
 					timezone: this.timezone,
