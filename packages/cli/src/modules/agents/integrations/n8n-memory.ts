@@ -394,6 +394,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	): Promise<ObservationLogTaskLockHandle | null> {
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
+		const taskKind = 'observer';
 
 		const updateResult = await this.observationLockRepository
 			.createQueryBuilder()
@@ -401,8 +402,9 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			.set({ taskKind, holderId: opts.holderId, heldUntil })
 			.where('"scopeKind" = :scopeKind')
 			.andWhere('"scopeId" = :scopeId')
+			.andWhere('"taskKind" = :taskKind')
 			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
-			.setParameters({ scopeKind, scopeId, holderId: opts.holderId, now })
+			.setParameters({ scopeKind, scopeId, taskKind, holderId: opts.holderId, now })
 			.execute();
 
 		if ((updateResult.affected ?? 0) > 0) {
@@ -420,6 +422,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		const claimed = await this.observationLockRepository.findOneBy({
 			scopeKind,
 			scopeId,
+			taskKind,
 			holderId: opts.holderId,
 		});
 		if (!claimed) return null;
@@ -435,6 +438,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		await this.observationLockRepository.delete({
 			scopeKind: handle.scopeKind,
 			scopeId: handle.scopeId,
+			taskKind: 'observer',
 			holderId: handle.holderId,
 		});
 	}
