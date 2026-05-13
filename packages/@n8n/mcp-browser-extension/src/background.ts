@@ -22,6 +22,7 @@ let activeConnection: ConnectionState | null = null;
 // ---------------------------------------------------------------------------
 
 const SETTINGS_KEY = 'tabManagementSettings';
+const CONSENT_KEY = 'browserUseConsent';
 
 const DEFAULT_SETTINGS: TabManagementSettings = {
 	allowTabCreation: true,
@@ -31,6 +32,19 @@ const DEFAULT_SETTINGS: TabManagementSettings = {
 async function loadSettings(): Promise<TabManagementSettings> {
 	const result = await chrome.storage.local.get(SETTINGS_KEY);
 	return (result[SETTINGS_KEY] as TabManagementSettings) ?? DEFAULT_SETTINGS;
+}
+
+async function hasStoredConsent(): Promise<boolean> {
+	const result = await chrome.storage.local.get(CONSENT_KEY);
+	return result[CONSENT_KEY] === true;
+}
+
+async function storeConsent(): Promise<void> {
+	await chrome.storage.local.set({ [CONSENT_KEY]: true });
+}
+
+async function clearConsent(): Promise<void> {
+	await chrome.storage.local.remove(CONSENT_KEY);
 }
 
 // ---------------------------------------------------------------------------
@@ -97,6 +111,14 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 			await chrome.storage.session.remove(RELAY_URL_KEY);
 			return { success: true };
 
+		case 'revokeConsent':
+			await clearConsent();
+			disconnect();
+			return { success: true };
+
+		case 'getConsent':
+			return { consented: await hasStoredConsent() };
+
 		default:
 			return { error: 'Unknown message type' };
 	}
@@ -140,6 +162,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 		// Store relay URL for the UI to pick up
 		await chrome.storage.session.set({ [RELAY_URL_KEY]: relayUrl });
 
+		// If user previously granted consent, auto-connect without showing the UI
+		const consented = await hasStoredConsent();
+		if (consented) {
+			log.debug('stored consent found — auto-connecting and closing connect tab');
+			await chrome.tabs.remove(tabId);
+			await autoConnectWithConsent(relayUrl);
+			return;
+		}
+
+		// No stored consent — show the connect UI for first-time approval
 		// Check for an existing connect.html tab to reuse
 		const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
 		const allConnectTabs = await chrome.tabs.query({ url: `${connectUrl}*` });
@@ -327,6 +359,9 @@ async function connectToRelay(
 			updateBadge(relay.getControlledIds().length);
 		};
 
+		// Store consent so future relay URLs auto-connect
+		await storeConsent();
+
 		const tabCount = relay.getControlledIds().length;
 		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);
@@ -338,6 +373,20 @@ async function connectToRelay(
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 		};
+	}
+}
+
+/**
+ * Auto-connect using stored consent. Selects all eligible tabs automatically.
+ * Called when a new relay URL arrives and the user has previously granted consent.
+ */
+async function autoConnectWithConsent(relayUrl: string): Promise<void> {
+	log.debug('autoConnectWithConsent: attempting auto-connect with stored consent');
+	const tabs = await getEligibleTabs();
+	const tabIds = tabs.map((t) => t.id).filter((id): id is number => id !== undefined);
+	const result = await connectToRelay(relayUrl, tabIds);
+	if (!result.success) {
+		log.error('autoConnectWithConsent failed:', result.error);
 	}
 }
 

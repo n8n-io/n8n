@@ -817,6 +817,64 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	// ── Computer Use node endpoints (workflow → gateway) ─────────────────────
+
+	/**
+	 * List available tools on the connected device.
+	 * Called by the Computer Use workflow node to discover tools.
+	 * Uses standard session auth — the gateway is resolved from the authenticated user.
+	 */
+	@Get('/gateway/tools')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayTools(req: AuthenticatedRequest) {
+		const gateway = this.instanceAiService.getLocalGateway(req.user.id);
+
+		if (!gateway.isConnected) {
+			throw new BadRequestError(
+				"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+			);
+		}
+
+		const tools = gateway.getAvailableTools();
+		const status = gateway.getStatus();
+		return {
+			tools,
+			hostIdentifier: status.hostIdentifier,
+			directory: status.directory,
+			toolCategories: status.toolCategories,
+		};
+	}
+
+	/**
+	 * Dispatch a tool call to the connected device and return the result.
+	 * Called by the Computer Use workflow node during execution.
+	 * Uses standard session auth — the gateway is resolved from the authenticated user.
+	 */
+	@Post('/gateway/call-tool')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayCallTool(req: AuthenticatedRequest) {
+		const gateway = this.instanceAiService.getLocalGateway(req.user.id);
+
+		if (!gateway.isConnected) {
+			throw new BadRequestError(
+				"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+			);
+		}
+
+		const body = req.body as { name?: string; arguments?: Record<string, unknown> };
+		if (!body.name || typeof body.name !== 'string') {
+			throw new BadRequestError('Missing required field: name');
+		}
+
+		const toolCall = {
+			name: body.name,
+			arguments: body.arguments ?? {},
+		};
+
+		const result = await gateway.callTool(toolCall);
+		return result;
+	}
+
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	/**

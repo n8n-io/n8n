@@ -63,6 +63,14 @@ export interface ClearRelayUrlMessage {
 	type: 'clearRelayUrl';
 }
 
+export interface RevokeConsentMessage {
+	type: 'revokeConsent';
+}
+
+export interface GetConsentMessage {
+	type: 'getConsent';
+}
+
 export type ExtensionMessage =
 	| GetTabsMessage
 	| ConnectMessage
@@ -71,7 +79,9 @@ export type ExtensionMessage =
 	| UpdateSettingsMessage
 	| GetSettingsMessage
 	| GetRelayUrlMessage
-	| ClearRelayUrlMessage;
+	| ClearRelayUrlMessage
+	| RevokeConsentMessage
+	| GetConsentMessage;
 
 // ---------------------------------------------------------------------------
 // Background → UI push messages
