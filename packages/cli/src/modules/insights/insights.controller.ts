@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
+import { Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -35,6 +35,17 @@ export class InsightsController {
 			endDate,
 			projectId: query.projectId,
 		});
+	}
+
+	/**
+	 * Force a flush + compaction so the next query sees executions that just
+	 * finished, instead of waiting for the scheduled flush/compaction ticks.
+	 */
+	@Post('/compact')
+	@GlobalScope('insights:list')
+	async compactNow(): Promise<{ ok: true }> {
+		await this.insightsService.forceCompact();
+		return { ok: true };
 	}
 
 	@Get('/by-workflow')

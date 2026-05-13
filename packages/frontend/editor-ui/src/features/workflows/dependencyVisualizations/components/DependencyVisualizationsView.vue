@@ -11,16 +11,20 @@ const ProjectChordView = defineAsyncComponent(async () => await import('./Projec
 const CommunityAtlasView = defineAsyncComponent(
 	async () => await import('./CommunityAtlasView.vue'),
 );
+const ExecutionsTreemapView = defineAsyncComponent(
+	async () => await import('./ExecutionsTreemapView.vue'),
+);
 
 const { graph, loading, error, fetchGraph } = useDependencyGraph();
 
-const activeTab = ref<'atlas' | 'force' | 'clique' | 'chord'>('atlas');
+const activeTab = ref<'atlas' | 'force' | 'clique' | 'chord' | 'executions'>('atlas');
 
 const tabs = computed(() => [
-	{ value: 'atlas' as const, label: 'Community atlas' },
+	{ value: 'atlas' as const, label: 'Force atlas' },
 	{ value: 'force' as const, label: 'Force network' },
 	{ value: 'clique' as const, label: 'Clique heatmap' },
 	{ value: 'chord' as const, label: 'Project chord' },
+	{ value: 'executions' as const, label: 'Executions treemap' },
 ]);
 
 const statItems = computed(() => {
@@ -140,6 +144,7 @@ async function refresh() {
 				<ForceGraphView v-else-if="activeTab === 'force'" :graph="graph" />
 				<CliqueHeatmapView v-else-if="activeTab === 'clique'" :graph="graph" />
 				<ProjectChordView v-else-if="activeTab === 'chord'" :graph="graph" />
+				<ExecutionsTreemapView v-else-if="activeTab === 'executions'" />
 			</template>
 		</div>
 	</div>

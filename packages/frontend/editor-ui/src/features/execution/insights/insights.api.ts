@@ -64,3 +64,10 @@ export const fetchInsightsByWorkflow = async (
 		'/insights/by-workflow',
 		serializeInsightsFilter(filter),
 	);
+
+/**
+ * Force the insights pipeline to flush its in-memory buffer and run a
+ * compaction pass, so the next read returns the freshest possible data.
+ */
+export const triggerInsightsCompaction = async (context: IRestApiContext): Promise<{ ok: true }> =>
+	await makeRestApiRequest(context, 'POST', '/insights/compact');

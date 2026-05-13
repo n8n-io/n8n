@@ -1,13 +1,23 @@
 <script lang="ts" setup>
 import type { DependencyGraphResponse } from '@n8n/api-types';
 import * as d3 from 'd3';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 
 import { buildWorkflowAffinity } from '../dependencyVisualizations.utils';
 
 const props = defineProps<{
 	graph: DependencyGraphResponse;
 }>();
+
+const styles = useCssModule();
 
 const container = useTemplateRef<HTMLDivElement>('container');
 const order = ref<'cluster' | 'name' | 'project'>('cluster');
@@ -119,9 +129,9 @@ function render() {
 	const svg = d3
 		.select(host)
 		.append('svg')
+		.attr('class', styles.heatmapSvg)
 		.attr('width', width)
-		.attr('height', height)
-		.style('background', 'var(--color-background-xlight)');
+		.attr('height', height);
 
 	const root = svg.append('g').attr('transform', `translate(${margin.left}, ${margin.top})`);
 
@@ -185,7 +195,7 @@ function render() {
 		.attr('text-anchor', 'end')
 		.attr('dominant-baseline', 'middle')
 		.attr('font-size', Math.min(11, cellSize - 2))
-		.attr('fill', 'var(--color-text-base)')
+		.attr('fill', 'currentColor')
 		.text((id) => nameById.get(id)?.name ?? id);
 	yLabels.append('title').text((id) => nameById.get(id)?.name ?? id);
 
@@ -197,7 +207,7 @@ function render() {
 		.attr('transform', (_, i) => `translate(${i * cellSize + cellSize / 2}, -8) rotate(-50)`)
 		.attr('text-anchor', 'start')
 		.attr('font-size', Math.min(11, cellSize - 2))
-		.attr('fill', 'var(--color-text-base)')
+		.attr('fill', 'currentColor')
 		.text((id) => nameById.get(id)?.name ?? id);
 	xLabels.append('title').text((id) => nameById.get(id)?.name ?? id);
 }
@@ -319,5 +329,13 @@ watch([order, metric, minShared, () => props.graph], () => render(), { deep: tru
 	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
 	background: var(--color-background-xlight);
+}
+
+.heatmapSvg {
+	background: var(--color-background-xlight);
+	// Use the new double-dash semantic token so the colour resolves in both
+	// themes (legacy single-dash tokens are undefined in dark mode).
+	// SVG <text> uses fill: currentColor to inherit this.
+	color: var(--color--text--shade-1);
 }
 </style>

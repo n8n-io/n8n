@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import type { DependencyGraphResponse } from '@n8n/api-types';
 import * as d3 from 'd3';
-import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, useCssModule, useTemplateRef, watch } from 'vue';
 
 import { buildProjectFlows } from '../dependencyVisualizations.utils';
+
+const styles = useCssModule();
 
 const props = defineProps<{
 	graph: DependencyGraphResponse;
@@ -38,8 +40,11 @@ function render() {
 	const { projects, matrix, labels, totalFlows } = data.value;
 
 	if (projects.length < 2 || totalFlows === 0) {
-		host.innerHTML =
-			'<div style="padding: 1rem; color: var(--color-text-light)">No cross-project dependencies detected. Workflows aren\'t calling, erroring into, or sharing resources across projects.</div>';
+		const empty = document.createElement('div');
+		empty.className = styles.emptyState;
+		empty.textContent =
+			"No cross-project dependencies detected. Workflows aren't calling, erroring into, or sharing resources across projects.";
+		host.appendChild(empty);
 		return;
 	}
 
@@ -52,10 +57,10 @@ function render() {
 	const svg = d3
 		.select(host)
 		.append('svg')
+		.attr('class', styles.chordSvg)
 		.attr('width', width)
 		.attr('height', height)
-		.attr('viewBox', [-width / 2, -height / 2, width, height])
-		.style('background', 'var(--color-background-xlight)');
+		.attr('viewBox', [-width / 2, -height / 2, width, height]);
 
 	const chord = d3
 		.chordDirected()
@@ -102,6 +107,7 @@ function render() {
 
 	groups
 		.append('text')
+		.attr('class', styles.label)
 		.each((d) => {
 			(d as d3.ChordGroup & { angle: number }).angle = (d.startAngle + d.endAngle) / 2;
 		})
@@ -113,8 +119,6 @@ function render() {
 		.attr('text-anchor', (d) =>
 			((d as d3.ChordGroup & { angle: number }).angle * 180) / Math.PI - 90 > 90 ? 'end' : 'start',
 		)
-		.attr('fill', 'var(--color-text-base)')
-		.attr('font-size', '11px')
 		.text((d) => {
 			const label = labels[d.index];
 			return label.length > 26 ? `${label.slice(0, 25)}…` : label;
@@ -217,5 +221,34 @@ watch(
 	border-radius: var(--border-radius-base);
 	background: var(--color-background-xlight);
 	overflow: auto;
+}
+
+.chordSvg {
+	background: var(--color-background-xlight);
+	// Force a high-contrast text colour for everything inside the SVG.
+	// In dark mode the legacy single-dash tokens are undefined, so we use the
+	// new double-dash semantic token that resolves to white on dark / near-
+	// black on light. SVG `fill` doesn't inherit, so children use
+	// `fill: currentColor` to pick this up.
+	color: var(--color--text--shade-1);
+}
+
+.label {
+	fill: currentColor;
+	font-size: 11px;
+	font-weight: 500;
+	// Soft halo in the canvas colour so labels stay readable when an arc
+	// curves close to them.
+	paint-order: stroke;
+	stroke: var(--color-background-xlight);
+	stroke-width: 3px;
+	stroke-linejoin: round;
+}
+
+.emptyState {
+	padding: var(--spacing--md);
+	color: var(--color-text-light);
+	font-size: var(--font-size--2xs);
+	text-align: center;
 }
 </style>

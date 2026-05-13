@@ -20,7 +20,7 @@ type ColorMode = 'community' | 'project' | 'kind';
 const isolatedCommunity = ref<number | null>(null);
 const isolatedProject = ref<string | null>(null);
 const isolatedKind = ref<ResourceKind | null>(null);
-const colorMode = ref<ColorMode>('community');
+const colorMode = ref<ColorMode>('project');
 /** Communities (by id) currently rendered in colour. Anything not in here renders grey. */
 const coloredCommunities = ref<Set<number>>(new Set());
 /** Projects (by id) currently rendered in colour. */
@@ -127,17 +127,6 @@ const communityStats = computed(() => {
 		.slice(0, 14);
 });
 
-/** Stable index per project — drives the palette in project-color mode. */
-const projectIndex = computed(() => {
-	const map = new Map<string, number>();
-	for (const node of props.graph.nodes) {
-		if (node.projectId && !map.has(node.projectId)) {
-			map.set(node.projectId, map.size);
-		}
-	}
-	return map;
-});
-
 const kindStats = computed(() => {
 	const counts: Record<ResourceKind, number> = { workflow: 0, credential: 0, dataTable: 0 };
 	for (const node of props.graph.nodes) counts[node.kind]++;
@@ -154,8 +143,18 @@ const projectStats = computed(() => {
 	const projectName = new Map(props.graph.projects.map((p) => [p.id, p.name]));
 	return [...counts.entries()]
 		.sort((a, b) => b[1] - a[1])
-		.slice(0, 14)
 		.map(([id, size]) => ({ id, name: projectName.get(id) ?? id, size }));
+});
+
+/**
+ * Stable palette index per project, ordered by node count descending — so the
+ * biggest five projects always land on the first five maximally-distinct
+ * palette entries, matching how communities are renumbered by size.
+ */
+const projectIndex = computed(() => {
+	const map = new Map<string, number>();
+	projectStats.value.forEach((p, i) => map.set(p.id, i));
+	return map;
 });
 
 function isCommunityColored(id: number): boolean {
@@ -780,6 +779,39 @@ function seedDefaultColored() {
 	}
 }
 
+function selectAllColored() {
+	if (colorMode.value === 'community') {
+		coloredCommunities.value = new Set(communityStats.value.map(([id]) => id));
+	} else if (colorMode.value === 'project') {
+		coloredProjects.value = new Set(projectStats.value.map((p) => p.id));
+	}
+}
+
+/** Is the current colour selection exactly the default-top-N for the active mode? */
+function selectionMatchesDefault(): boolean {
+	if (colorMode.value === 'community') {
+		const top = communityStats.value.slice(0, DEFAULT_COLORED_COUNT).map(([id]) => id);
+		if (coloredCommunities.value.size !== top.length) return false;
+		return top.every((id) => coloredCommunities.value.has(id));
+	}
+	if (colorMode.value === 'project') {
+		const top = projectStats.value.slice(0, DEFAULT_COLORED_COUNT).map((p) => p.id);
+		if (coloredProjects.value.size !== top.length) return false;
+		return top.every((id) => coloredProjects.value.has(id));
+	}
+	return false;
+}
+
+const defaultSelectionActive = computed(() => {
+	// Re-evaluate when relevant inputs change. Touch them so Vue tracks deps.
+	void colorMode.value;
+	void coloredCommunities.value;
+	void coloredProjects.value;
+	void communityStats.value;
+	void projectStats.value;
+	return selectionMatchesDefault();
+});
+
 watch(
 	() => props.graph,
 	() => {
@@ -931,8 +963,12 @@ watch(
 				<header :class="$style.sectionHeader">
 					<span :class="$style.sectionTitle">Communities</span>
 					<div :class="$style.sectionActions">
-						<button type="button" :class="$style.linkButton" @click="seedDefaultColored">
-							Top {{ DEFAULT_COLORED_COUNT }}
+						<button
+							type="button"
+							:class="$style.linkButton"
+							@click="defaultSelectionActive ? selectAllColored() : seedDefaultColored()"
+						>
+							{{ defaultSelectionActive ? 'Select all' : `Top ${DEFAULT_COLORED_COUNT}` }}
 						</button>
 						<button
 							v-if="isolatedCommunity !== null"
@@ -978,8 +1014,12 @@ watch(
 				<header :class="$style.sectionHeader">
 					<span :class="$style.sectionTitle">Projects</span>
 					<div :class="$style.sectionActions">
-						<button type="button" :class="$style.linkButton" @click="seedDefaultColored">
-							Top {{ DEFAULT_COLORED_COUNT }}
+						<button
+							type="button"
+							:class="$style.linkButton"
+							@click="defaultSelectionActive ? selectAllColored() : seedDefaultColored()"
+						>
+							{{ defaultSelectionActive ? 'Select all' : `Top ${DEFAULT_COLORED_COUNT}` }}
 						</button>
 						<button
 							v-if="isolatedProject !== null"
@@ -1277,7 +1317,7 @@ watch(
 .linkButton {
 	background: transparent;
 	border: 0;
-	color: var(--color-primary);
+	color: var(--color--primary);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--medium);
 	cursor: pointer;
@@ -1320,15 +1360,13 @@ watch(
 }
 
 .segmentActive {
-	background: var(--color-background-xlight);
-	color: var(--color-text-dark);
-	box-shadow:
-		0 1px 2px rgba(0, 0, 0, 0.18),
-		inset 0 0 0 1px var(--color-foreground-base);
+	background: var(--color--primary);
+	color: var(--color--neutral-white);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 
 	&:hover {
-		color: var(--color-text-dark);
-		background: var(--color-background-xlight);
+		color: var(--color--neutral-white);
+		background: var(--color--primary);
 	}
 }
 
@@ -1362,8 +1400,8 @@ watch(
 
 	&:focus {
 		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 2px var(--color-primary-tint-3, rgba(255, 113, 64, 0.2));
+		border-color: var(--color--primary);
+		box-shadow: 0 0 0 2px var(--color--primary--tint-3);
 	}
 }
 
@@ -1463,7 +1501,7 @@ watch(
 
 .communityRowActive {
 	background: var(--color-background-base);
-	box-shadow: inset 2px 0 0 var(--color-primary);
+	box-shadow: inset 2px 0 0 var(--color--primary);
 }
 
 .colorToggle {
@@ -1487,7 +1525,7 @@ watch(
 
 	&:focus-visible {
 		outline: none;
-		box-shadow: 0 0 0 2px var(--color-primary);
+		box-shadow: 0 0 0 2px var(--color--primary);
 	}
 }
 
@@ -1525,7 +1563,7 @@ watch(
 
 	&:focus-visible {
 		outline: none;
-		box-shadow: 0 0 0 2px var(--color-primary);
+		box-shadow: 0 0 0 2px var(--color--primary);
 	}
 }
 
@@ -1598,7 +1636,7 @@ watch(
 
 	input[type='range'] {
 		width: 100%;
-		accent-color: var(--color-primary);
+		accent-color: var(--color--primary);
 	}
 }
 

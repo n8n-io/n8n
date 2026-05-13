@@ -25,6 +25,18 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
+	/**
+	 * Flush the in-memory raw-insight buffer to disk, then run a compaction pass.
+	 * Lets a UI ask for "as fresh as possible" data instead of waiting for the
+	 * next scheduled flush (default 30s) and compaction (default 60min) ticks.
+	 */
+	async forceCompact() {
+		const { InsightsCollectionService } = await import('./insights-collection.service');
+		const collectionService = Container.get(InsightsCollectionService);
+		await collectionService.flushEvents();
+		await this.compactionService.compactInsights();
+	}
+
 	private async toggleCollectionService(enable: boolean) {
 		if (
 			this.instanceSettings.instanceType !== 'main' &&
