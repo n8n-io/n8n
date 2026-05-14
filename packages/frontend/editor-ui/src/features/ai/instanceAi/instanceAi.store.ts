@@ -273,16 +273,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsPercentageRemaining,
 		isLowCredits,
 
-		// Thread-list actions
-		pendingConfirmations: runtime.pendingConfirmations,
-		isAwaitingConfirmation: runtime.isAwaitingConfirmation,
+		// Pending composer input
 		pendingInitialMessage,
 
-		// Thread-list actions (instance-level)
-		newThread,
+		// Thread-list actions
 		setPendingInitialMessage,
 		consumePendingInitialMessage,
-		clearCurrentThread,
 		deleteThread,
 		renameThread,
 		getThreadMetadata,

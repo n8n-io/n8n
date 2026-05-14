@@ -105,6 +105,7 @@ describe('InstanceAiEmptyView', () => {
 			sendMessage: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.consumePendingInitialMessage.mockReturnValue(null);
 		experimentMocks.proactiveAgentEnabled.value = false;
 	});
 
@@ -149,6 +150,27 @@ describe('InstanceAiEmptyView', () => {
 			params: { threadId: 'thread-placeholder' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('auto-submits a pending initial message on mount', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		store.consumePendingInitialMessage.mockReturnValue('Set up evals for workflow wf-1');
+
+		renderView();
+		await flushPromises();
+
+		expect(store.consumePendingInitialMessage).toHaveBeenCalled();
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder');
+		expect(store.getOrCreateRuntime).toHaveBeenCalledWith('thread-placeholder');
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Set up evals for workflow wf-1',
+			undefined,
+			'test-push-ref',
+		);
+		expect(replaceMock).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-placeholder' },
+		});
 	});
 
 	it('shows a toast and stays on the empty view when syncThread rejects', async () => {

@@ -36,6 +36,10 @@ const isStartingThread = ref(false);
 
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
+	const pendingMessage = store.consumePendingInitialMessage();
+	if (pendingMessage) {
+		void handleSubmit(pendingMessage);
+	}
 });
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
