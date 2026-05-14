@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -61,10 +62,12 @@ export function useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
+	renderData,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
+	renderData?: WorkflowRenderData;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
@@ -686,10 +689,8 @@ export function useCanvasMapping({
 			}
 		}
 
-		const sourceInputs =
-			workflowDocumentStore.value.render.nodes.get(connection.source)?.inputs.value ?? [];
-		const targetInputs =
-			workflowDocumentStore.value.render.nodes.get(connection.target)?.inputs.value ?? [];
+		const sourceInputs = renderData?.render.nodeInputsByNodeId.get(connection.source)?.value ?? [];
+		const targetInputs = renderData?.render.nodeInputsByNodeId.get(connection.target)?.value ?? [];
 		const maxConnections = [...sourceInputs, ...targetInputs]
 			.filter((port) => port.type === type)
 			.reduce<number | undefined>((acc, port) => {

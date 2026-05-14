@@ -1,8 +1,8 @@
 import type { INode, NodeApiError, Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import type { Ref } from 'vue';
-import { computed, markRaw, ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import {
 	createTestNode,
@@ -64,6 +64,16 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+
+const testRenderData = {
+	render: {
+		nodeInputsByNodeId: renderNodeInputsMap,
+		nodeOutputsByNodeId: renderNodeOutputsMap,
+	},
+};
+
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
@@ -110,6 +120,9 @@ beforeEach(() => {
 	workflowState = useWorkflowState();
 	vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
+	renderNodeInputsMap.clear();
+	renderNodeOutputsMap.clear();
+
 	// Set workflow ID so document store can be created
 	const workflowsStore = useWorkflowsStore();
 	workflowsStore.setWorkflowId('test-workflow');
@@ -128,8 +141,8 @@ function setPinData(pinData: IPinData) {
 }
 
 /**
- * Populate the document store's `render.nodes` map directly for tests
- * that rely on per-node inputs/outputs from the store's render data.
+ * Populate the render data maps directly for tests
+ * that rely on per-node inputs/outputs from the render data.
  */
 function setupRenderNodes(
 	entries: Array<{
@@ -138,15 +151,14 @@ function setupRenderNodes(
 		outputs?: CanvasConnectionPort[];
 	}>,
 ) {
-	const workflowsStore = useWorkflowsStore();
-	const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
 	for (const { id, inputs, outputs = [] } of entries) {
-		store.render.nodes.set(
+		renderNodeInputsMap.set(
 			id,
-			markRaw({
-				inputs: computed(() => inputs),
-				outputs: computed(() => outputs),
-			}),
+			computed(() => inputs),
+		);
+		renderNodeOutputsMap.set(
+			id,
+			computed(() => outputs),
 		);
 	}
 }
@@ -3184,6 +3196,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: testRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.maxConnections).toEqual(1);
@@ -3229,6 +3242,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: testRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.maxConnections).toEqual(2);

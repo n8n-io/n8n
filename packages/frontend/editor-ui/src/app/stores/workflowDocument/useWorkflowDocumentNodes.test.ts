@@ -16,7 +16,10 @@
  *    need to be rewritten every time internals change; round-trips do not.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+import type { Workflow } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import {
@@ -43,6 +46,9 @@ function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): Workflo
 		syncWorkflowObject: vi.fn(),
 		unpinNodeData: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
+		workflowObject: ref(
+			mock<Workflow>({ getNode: () => null }),
+		) as unknown as WorkflowDocumentNodesDeps['workflowObject'],
 		...overrides,
 	};
 }

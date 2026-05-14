@@ -17,30 +17,23 @@ vi.mock('vue', async () => {
 	};
 });
 
-const renderNodesMap = new Map<
-	string,
-	{
-		inputs: ComputedRef<CanvasConnectionPort[]>;
-		outputs: ComputedRef<CanvasConnectionPort[]>;
-	}
->();
+const renderNodesInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodesOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 
-vi.mock('@/app/stores/workflowDocument.store', async () => {
-	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
-	return {
-		...actual,
-		injectWorkflowDocumentStore: vi.fn(() =>
-			computed(() => ({
-				render: { nodes: renderNodesMap },
-			})),
-		),
-	};
-});
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		render: {
+			nodeInputsByNodeId: renderNodesInputsMap,
+			nodeOutputsByNodeId: renderNodesOutputsMap,
+		},
+	})),
+}));
 
 describe('useCanvasNode', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		renderNodesMap.clear();
+		renderNodesInputsMap.clear();
+		renderNodesOutputsMap.clear();
 	});
 
 	it('should return default values when node is not provided', () => {
@@ -69,14 +62,14 @@ describe('useCanvasNode', () => {
 	});
 
 	it('should return node data when node is provided', () => {
-		renderNodesMap.set('1', {
-			inputs: computed<CanvasConnectionPort[]>(() => [
-				{ type: NodeConnectionTypes.Main, index: 0 },
-			]),
-			outputs: computed<CanvasConnectionPort[]>(() => [
-				{ type: NodeConnectionTypes.Main, index: 0 },
-			]),
-		});
+		renderNodesInputsMap.set(
+			'1',
+			computed<CanvasConnectionPort[]>(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
+		);
+		renderNodesOutputsMap.set(
+			'1',
+			computed<CanvasConnectionPort[]>(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
+		);
 
 		const node = {
 			data: ref({

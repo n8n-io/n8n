@@ -11,12 +11,13 @@ import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('@vue-flow/core');
 
-vi.mock('@/app/stores/workflowDocument.store', () => ({
-	injectWorkflowDocumentStore: vi.fn(() =>
-		computed(() => ({
-			render: { nodes: new Map() },
-		})),
-	),
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		render: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+		},
+	})),
 }));
 
 function matchesGrid(result: CanvasLayoutResult) {

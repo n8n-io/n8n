@@ -12,7 +12,7 @@ import {
 import { isPresent } from '@/app/utils/typesUtils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import type { ComputedRef } from 'vue';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectWorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -59,7 +59,7 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 		edges: allEdges,
 		nodes: allNodes,
 	} = useVueFlow(canvasId);
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { render: renderData } = injectWorkflowRenderData();
 
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
 		if (target === 'selection') {
@@ -112,9 +112,10 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 				node.data.render.options.configurable === true;
 
 			// Get input/output counts from render data (single source of truth)
-			const renderData = workflowDocumentStore.value.render.nodes.get(node.id);
-			const inputs: CanvasConnectionPort[] = renderData?.inputs.value ?? [];
-			const outputs: CanvasConnectionPort[] = renderData?.outputs.value ?? [];
+			const inputs: CanvasConnectionPort[] =
+				renderData.nodeInputsByNodeId.get(node.id)?.value ?? [];
+			const outputs: CanvasConnectionPort[] =
+				renderData.nodeOutputsByNodeId.get(node.id)?.value ?? [];
 			const mainInputCount = inputs.filter((input) => input.type === 'main').length || 1;
 			const mainOutputCount = outputs.filter((output) => output.type === 'main').length || 1;
 			const nonMainInputCount =

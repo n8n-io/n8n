@@ -29,7 +29,6 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
-import { useWorkflowDocumentRenderData } from './workflowDocument/useWorkflowDocumentRenderData';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -79,7 +78,6 @@ type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
-type RenderDataReturn = ReturnType<typeof useWorkflowDocumentRenderData>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -105,15 +103,6 @@ void (0 as unknown as [
 	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
 	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
 	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
-	AssertNoOverlap<RenderDataReturn, NodesReturn>,
-	AssertNoOverlap<RenderDataReturn, ConnectionsReturn>,
-	AssertNoOverlap<RenderDataReturn, GraphReturn>,
-	AssertNoOverlap<RenderDataReturn, ExpressionReturn>,
-	AssertNoOverlap<RenderDataReturn, MetaReturn>,
-	AssertNoOverlap<RenderDataReturn, PinDataReturn>,
-	AssertNoOverlap<RenderDataReturn, SettingsReturn>,
-	AssertNoOverlap<RenderDataReturn, NodeMetadataReturn>,
-	AssertNoOverlap<RenderDataReturn, NodesIssuesReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -181,6 +170,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
 			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -199,12 +189,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
 		});
-		const workflowDocumentRenderData = useWorkflowDocumentRenderData({
-			getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
-			onNodesChange: workflowDocumentNodes.onNodesChange,
-			workflowObject: workflowDocumentWorkflowObject.workflowObject,
-		});
-
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
 		// store is where cross-concern side effects are wired. When adding new
@@ -385,6 +369,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		}
 
 		return {
+			id,
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
@@ -410,7 +395,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
-			...workflowDocumentRenderData,
 			removeAllNodes,
 			hydrate,
 			reset,
