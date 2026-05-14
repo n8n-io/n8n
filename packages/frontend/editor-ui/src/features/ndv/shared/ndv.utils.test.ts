@@ -650,11 +650,15 @@ describe('collectSettings', () => {
 	};
 
 	it('should round-trip customTelemetryTags from the node object', () => {
-		const node = mock<INodeUi>({ customTelemetryTags });
+		const node = { customTelemetryTags } as INodeUi;
 
 		const result = collectSettings(node, []);
 
 		expect(result.customTelemetryTags).toEqual(customTelemetryTags);
+		expect(result.customTelemetryTags).not.toBe(customTelemetryTags);
+		expect((result.customTelemetryTags as typeof customTelemetryTags).tag).not.toBe(
+			customTelemetryTags.tag,
+		);
 	});
 
 	it('should fall back to an empty customTelemetryTags object when the node has none', () => {

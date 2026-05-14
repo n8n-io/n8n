@@ -702,7 +702,7 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		foundNodeSettings.push('customTelemetryTags');
 		ret = {
 			...ret,
-			customTelemetryTags: node.customTelemetryTags,
+			customTelemetryTags: deepCopy(node.customTelemetryTags),
 		};
 	}
 
