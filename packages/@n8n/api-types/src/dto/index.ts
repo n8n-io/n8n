@@ -232,7 +232,7 @@ export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-se
 
 export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-credential.dto';
 
-export type { WebAuthnCredentialResponse } from './webauthn/index';
+export { isPlatformCredential, type WebAuthnCredentialResponse } from './webauthn/index';
 
 export {
 	ExecutionRedactionQueryDtoSchema,

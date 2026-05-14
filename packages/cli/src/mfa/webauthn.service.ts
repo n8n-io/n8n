@@ -1,24 +1,15 @@
+import { isPlatformCredential } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { UserRepository, WebauthnCredentialRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { User, WebauthnCredential } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { OperationalError } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
-/**
- * Whether a credential is a platform authenticator (passkey) vs a roaming
- * authenticator (security key). Returning the credential's transports without
- * `'internal'` and not a multi-device synced credential means it's a roaming
- * authenticator. Single source of truth — keep callers from drifting.
- */
-export function isPlatformCredential(c: {
-	transports?: string[] | null;
-	deviceType?: string | null;
-}): boolean {
-	return (c.transports ?? []).includes('internal') || c.deviceType === 'multiDevice';
-}
+export { isPlatformCredential };
 
 @Service()
 export class WebAuthnService {
@@ -124,7 +115,7 @@ export class WebAuthnService {
 
 		const challenge = await this.cacheService.get(`webauthn:challenge:reg:${userId}`);
 		if (!challenge) {
-			throw new Error('WebAuthn registration challenge expired or not found');
+			throw new OperationalError('WebAuthn registration challenge expired or not found');
 		}
 
 		// Mirror what we asked for in `generateRegistrationOptions`: passkeys must
@@ -225,7 +216,7 @@ export class WebAuthnService {
 	private async verifyAssertion(
 		response: unknown,
 		challengeCacheKey: string,
-		credentialLookup: { userId?: string },
+		credentialLookup: { userId?: string; preloaded?: WebauthnCredential | null },
 		options: { requireUserVerification: boolean },
 	) {
 		const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
@@ -236,11 +227,13 @@ export class WebAuthnService {
 		const authResponse = response as Parameters<typeof verifyAuthenticationResponse>[0]['response'];
 		const credentialId = authResponse.id;
 
-		const credential = await this.webauthnCredentialRepository.findOne({
-			where: credentialLookup.userId
-				? { userId: credentialLookup.userId, credentialId }
-				: { credentialId },
-		});
+		const credential =
+			credentialLookup.preloaded ??
+			(await this.webauthnCredentialRepository.findOne({
+				where: credentialLookup.userId
+					? { userId: credentialLookup.userId, credentialId }
+					: { credentialId },
+			}));
 		if (!credential) return null;
 
 		const verification = await verifyAuthenticationResponse({
@@ -279,17 +272,17 @@ export class WebAuthnService {
 			where: { userId, credentialId: authResponse.id },
 		});
 		if (!credential) {
-			throw new Error('WebAuthn credential not found');
+			throw new OperationalError('WebAuthn credential not found');
 		}
 
 		const result = await this.verifyAssertion(
 			response,
 			`webauthn:challenge:auth:${userId}`,
-			{ userId },
+			{ userId, preloaded: credential },
 			{ requireUserVerification: isPlatformCredential(credential) },
 		);
 		if (!result) {
-			throw new Error('WebAuthn authentication challenge expired or not found');
+			throw new OperationalError('WebAuthn authentication challenge expired or not found');
 		}
 		return result.verification.verified;
 	}

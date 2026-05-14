@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { ROLE, type Role, type WebAuthnCredentialResponse } from '@n8n/api-types';
+import {
+	isPlatformCredential,
+	ROLE,
+	type Role,
+	type WebAuthnCredentialResponse,
+} from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -132,9 +137,6 @@ const hasTotp = computed(
 		(currentUser.value.availableMfaMethods ?? []).includes('totp'),
 );
 const webauthnCredentials = ref<WebAuthnCredentialResponse[]>([]);
-
-const isPlatformCredential = (c: WebAuthnCredentialResponse) =>
-	(c.transports ?? []).includes('internal') || c.deviceType === 'multiDevice';
 
 const passkeyCredentials = computed<WebAuthnCredentialResponse[]>(() =>
 	webauthnCredentials.value.filter(isPlatformCredential),
