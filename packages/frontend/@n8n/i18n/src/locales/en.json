@@ -6122,7 +6122,7 @@
 	"agents.builder.addTrigger.telegram.accessMode.public": "Public",
 	"agents.builder.addTrigger.telegram.public.warning": "Any Telegram user will be able to chat with this agent.",
 	"agents.builder.addTrigger.telegram.users.label": "Restrict to users",
-	"agents.builder.addTrigger.telegram.users.placeholder": "Type a user ID or @username and press Enter",
+	"agents.builder.addTrigger.telegram.users.placeholder": "Type a user ID or @username and press Space",
 	"agents.builder.addTrigger.telegram.validation.invalid": "Enter valid Telegram user IDs or usernames.",
 	"agents.builder.addTrigger.telegram.validation.required": "Add at least one Telegram user ID or username.",
 	"agents.builder.addTrigger.helpText.slack": "Connect a Slack bot credential to allow this agent to receive and respond to Slack messages.",
