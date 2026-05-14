@@ -131,6 +131,7 @@ exports[`InputPanel > should render 1`] = `
         </div>
         <!--v-if-->
         <!--v-if-->
+        <!--v-if-->
         <div
           class="editModeActions"
           data-v-5b5900d0=""
