@@ -1195,13 +1195,16 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			const productionCombobox = within(
-				getByTestId('workflow-settings-redact-production-select'),
-			).getByRole('combobox');
+			await waitFor(() => {
+				const productionCombobox = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				expect(productionCombobox).toBeDisabled();
+			});
+
 			const manualCombobox = within(
 				getByTestId('workflow-settings-redact-manual-select'),
 			).getByRole('combobox');
-			expect(productionCombobox).toBeDisabled();
 			expect(manualCombobox).toBeDisabled();
 		});
 
