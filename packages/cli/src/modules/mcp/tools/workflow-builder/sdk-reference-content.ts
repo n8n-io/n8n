@@ -6,7 +6,7 @@
  * Served both as an MCP resource and via the n8n_get_workflow_sdk_reference tool.
  */
 
-import { SDK_IMPORT_STATEMENT } from '@n8n/ai-workflow-builder';
+import { SDK_IMPORT_STATEMENT } from './internal/sdk-import-statement';
 import {
 	EXPRESSION_REFERENCE,
 	WORKFLOW_SDK_PATTERNS,

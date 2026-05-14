@@ -8,11 +8,15 @@ import { Telemetry } from '@/telemetry';
 const mockParseAndValidate = jest.fn();
 const mockStripImportStatements = jest.fn((code: string) => code);
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('../tools/workflow-builder/internal/parse-validate-handler', () => ({
 	ParseValidateHandler: jest.fn().mockImplementation(() => ({
 		parseAndValidate: mockParseAndValidate,
 	})),
+}));
+jest.mock('../tools/workflow-builder/internal/extract-code', () => ({
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
+}));
+jest.mock('../tools/workflow-builder/internal/tool-names', () => ({
 	CODE_BUILDER_VALIDATE_TOOL: {
 		toolName: 'validate_workflow_code',
 		displayTitle: 'Validate Workflow Code',

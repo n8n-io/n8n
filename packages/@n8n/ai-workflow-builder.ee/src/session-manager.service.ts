@@ -1,5 +1,6 @@
 import { RunnableConfig } from '@langchain/core/runnables';
 import { type Checkpoint, MemorySaver } from '@langchain/langgraph';
+import { isLangchainMessagesArray, ISessionStorage, LangchainMessage } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -7,8 +8,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { generateCodeBuilderThreadId } from '@/code-builder/utils/code-builder-session';
 import { getBuilderToolsForDisplay } from '@/tools/builder-tools';
 import type { HITLHistoryEntry, HITLInterruptValue } from '@/types/planning';
-import { ISessionStorage } from '@/types/session-storage';
-import { isLangchainMessagesArray, LangchainMessage, Session } from '@/types/sessions';
+import { Session } from '@/types/sessions';
 import { stripAllCacheControlMarkers } from '@/utils/cache-control/helpers';
 import { formatMessages } from '@/utils/stream-processor';
 import { generateThreadId as generateThreadIdUtil } from '@/utils/thread-id';

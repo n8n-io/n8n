@@ -189,7 +189,7 @@ export const createUpdateWorkflowTool = (
 				skippedHttpNodes = autoAssign.skippedHttpNodes;
 			}
 
-			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
+			const { ParseValidateHandler } = await import('./internal/parse-validate-handler');
 			const validator = new ParseValidateHandler({ generatePinData: false });
 			const validationWarnings = validator.validateJSON({
 				name: workflowUpdateData.name,

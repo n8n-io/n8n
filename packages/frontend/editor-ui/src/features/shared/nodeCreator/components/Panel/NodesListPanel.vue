@@ -30,6 +30,7 @@ import {
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import SearchBar from './SearchBar.vue';
+import BuilderV2NodeCreatorPrompt from '@/features/builder-v2/components/BuilderV2NodeCreatorPrompt.vue';
 
 import CommunityNodeDetails from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
 import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
@@ -246,6 +247,8 @@ function onBackButton() {
 					v-text="activeViewStack.subtitle"
 				/>
 			</header>
+
+			<BuilderV2NodeCreatorPrompt />
 
 			<SearchBar
 				v-if="showSearchBar"

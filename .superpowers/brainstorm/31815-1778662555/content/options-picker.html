@@ -1,0 +1,198 @@
+<h2>When the agent is uncertain, how should multiple node options be presented?</h2>
+<p class="subtitle">All three keep the "ghost node with striped animated border" — the question is where the alternatives live.</p>
+
+<style>
+  .canvas-mockup {
+    background: linear-gradient(0deg, transparent 24px, rgba(120,120,140,0.15) 25px),
+                linear-gradient(90deg, transparent 24px, rgba(120,120,140,0.15) 25px);
+    background-size: 25px 25px;
+    background-color: #f7f7fa;
+    border-radius: 8px;
+    padding: 24px;
+    min-height: 240px;
+    position: relative;
+  }
+  .node {
+    display: inline-flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #d0d0d8;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    gap: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .node .icon {
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    background: #ff6d5a;
+    display: inline-block;
+  }
+  .node.committed { background: white; }
+  .node.ghost {
+    background: rgba(255,255,255,0.6);
+    color: #555;
+    border: 2px dashed transparent;
+    background-image:
+      linear-gradient(white, white),
+      repeating-linear-gradient(45deg, #aaa 0 6px, #ddd 6px 12px);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    animation: marchingAnts 1.2s linear infinite;
+  }
+  @keyframes marchingAnts {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 0 0, 24px 0; }
+  }
+  .connector {
+    display: inline-block;
+    width: 32px; height: 2px;
+    background: #b0b0b8;
+    vertical-align: middle;
+    margin: 0 -1px;
+  }
+  .row { display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .stack-ghosts { display: flex; flex-direction: column; gap: 10px; }
+  .stack-ghosts .node { font-size: 12px; padding: 8px 12px; }
+  .or-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #888;
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin: -2px 0;
+  }
+  .panel {
+    background: white;
+    border: 1px solid #e0e0e6;
+    border-radius: 6px;
+    padding: 12px;
+    width: 220px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .panel .panel-title { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 8px; letter-spacing: 0.5px; }
+  .panel .panel-option { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .panel .panel-option:hover { background: #f0f0f5; }
+  .panel .panel-option .icon-sm { width: 16px; height: 16px; border-radius: 3px; }
+  .popover {
+    position: absolute;
+    top: 70px;
+    left: 200px;
+    background: white;
+    border: 1px solid #e0e0e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    padding: 6px;
+    min-width: 180px;
+  }
+  .popover .popover-option { padding: 8px 10px; font-size: 12px; border-radius: 4px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .popover .popover-option:hover { background: #f0f0f5; }
+  .popover-arrow {
+    position: absolute;
+    left: -8px; top: 14px;
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 8px solid white;
+  }
+</style>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="canvas-mockup">
+        <div class="row">
+          <div class="node committed">
+            <span class="icon" style="background:#3aa971"></span>Schedule
+          </div>
+          <span class="connector"></span>
+          <div class="stack-ghosts">
+            <div class="node ghost"><span class="icon"></span>Google Sheets</div>
+            <div class="or-label">or</div>
+            <div class="node ghost"><span class="icon" style="background:#0066ff"></span>Airtable</div>
+            <div class="or-label">or</div>
+            <div class="node ghost"><span class="icon" style="background:#7b3fe4"></span>Notion DB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Stacked ghosts on canvas</h3>
+      <p>All options materialise as ghost nodes at the insertion point. User clicks one to commit — the others fade away. Spatial, but adds canvas clutter for many options.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="canvas-mockup" style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="row">
+          <div class="node committed">
+            <span class="icon" style="background:#3aa971"></span>Schedule
+          </div>
+          <span class="connector"></span>
+          <div class="node ghost"><span class="icon"></span>Google Sheets</div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">3 options — pick one</div>
+          <div class="panel-option" style="background:#eef4ff">
+            <span class="icon-sm" style="background:#0f9d58; display:inline-block"></span>
+            <div><strong>Google Sheets</strong><br><span style="font-size:10px;color:#888">Read rows</span></div>
+          </div>
+          <div class="panel-option">
+            <span class="icon-sm" style="background:#0066ff; display:inline-block"></span>
+            <div>Airtable<br><span style="font-size:10px;color:#888">Search records</span></div>
+          </div>
+          <div class="panel-option">
+            <span class="icon-sm" style="background:#7b3fe4; display:inline-block"></span>
+            <div>Notion DB<br><span style="font-size:10px;color:#888">Query database</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. One ghost + side picker</h3>
+      <p>A single ghost shows the agent's leading suggestion. A side panel (in the assistant chat area) lists alternatives with rationale. Selecting an alternative swaps the ghost. Clean canvas, richer per-option context.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="canvas-mockup">
+        <div class="row">
+          <div class="node committed">
+            <span class="icon" style="background:#3aa971"></span>Schedule
+          </div>
+          <span class="connector"></span>
+          <div class="node ghost"><span class="icon"></span>Google Sheets <span style="opacity:0.5">▾</span></div>
+        </div>
+        <div class="popover">
+          <div class="popover-arrow"></div>
+          <div class="popover-option" style="background:#eef4ff">
+            <span class="icon-sm" style="background:#0f9d58; width:14px;height:14px;border-radius:3px"></span>
+            Google Sheets
+          </div>
+          <div class="popover-option">
+            <span class="icon-sm" style="background:#0066ff; width:14px;height:14px;border-radius:3px"></span>
+            Airtable
+          </div>
+          <div class="popover-option">
+            <span class="icon-sm" style="background:#7b3fe4; width:14px;height:14px;border-radius:3px"></span>
+            Notion Database
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Ghost + dropdown overlay</h3>
+      <p>One ghost with a chevron, clicking opens a popover anchored to the ghost listing alternatives. Most compact; ghost itself becomes the picker. Less rationale visible per option.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:24px">Click an option above, or describe a different approach in the terminal.</p>

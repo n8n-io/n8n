@@ -1,0 +1,4 @@
+{"type":"server-started","port":63023,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:63023","screen_dir":"/Users/michael.drury/n8n/n8n/.superpowers/brainstorm/31815-1778662555/content","state_dir":"/Users/michael.drury/n8n/n8n/.superpowers/brainstorm/31815-1778662555/state"}
+{"type":"screen-added","file":"/Users/michael.drury/n8n/n8n/.superpowers/brainstorm/31815-1778662555/content/options-picker.html"}
+{"source":"user-event","type":"click","text":"Schedule\n          \n          \n          \n            Google Sheets\n            or\n            Airtable\n            or\n            Notion DB\n          \n        \n      \n    \n    \n      A. Stacked ghosts on canvas\n      All options materialise as ghost nodes at the insertion point. User clicks one to commit — the others fade away. Spatial, but adds canvas clutter for many options.","choice":"a","id":null,"timestamp":1778663692784}
+{"type":"server-stopped","reason":"idle timeout"}

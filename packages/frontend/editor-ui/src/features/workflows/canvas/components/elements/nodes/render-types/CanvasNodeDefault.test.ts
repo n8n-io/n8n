@@ -6,6 +6,7 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useBuilderV2Store } from '@/features/builder-v2/stores/builder-v2.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -484,6 +485,115 @@ describe('CanvasNodeDefault', () => {
 
 			await fireEvent.click(getByText('Test Node'));
 
+			expect(emitted()).not.toHaveProperty('replace:node');
+		});
+
+		it('should render builder-v2 ghost accept and reject actions', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: {
+										placeholder: true,
+										placeholderKind: 'ghost',
+										builderV2GhostIndex: 0,
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-builder-v2-ghost-accept')).toBeInTheDocument();
+			expect(getByTestId('canvas-builder-v2-ghost-reject')).toBeInTheDocument();
+		});
+
+		it('should hide builder-v2 ghost actions while a pick is in flight', () => {
+			const builderStore = mockedStore(useBuilderV2Store);
+			builderStore.pickingIndex = 0;
+			const { queryByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: {
+										placeholder: true,
+										placeholderKind: 'ghost',
+										builderV2GhostIndex: 0,
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-builder-v2-ghost-actions')).not.toBeInTheDocument();
+		});
+
+		it('should call builder-v2 store actions from ghost buttons', async () => {
+			const builderStore = mockedStore(useBuilderV2Store);
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: {
+										placeholder: true,
+										placeholderKind: 'ghost',
+										builderV2GhostIndex: 2,
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.click(getByTestId('canvas-builder-v2-ghost-accept'));
+			await fireEvent.click(getByTestId('canvas-builder-v2-ghost-reject'));
+
+			expect(builderStore.pickGhost).toHaveBeenCalledWith(2);
+			expect(builderStore.rejectGhosts).toHaveBeenCalled();
+		});
+
+		it('should activate rather than replace a builder-v2 ghost on double click', async () => {
+			const nodeId = 'builder-v2-ghost-id';
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							id: nodeId,
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: {
+										placeholder: true,
+										placeholderKind: 'ghost',
+										builderV2GhostIndex: 0,
+									},
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.dblClick(getByText('Test Node'));
+
+			expect(emitted()).toHaveProperty('activate');
 			expect(emitted()).not.toHaveProperty('replace:node');
 		});
 	});

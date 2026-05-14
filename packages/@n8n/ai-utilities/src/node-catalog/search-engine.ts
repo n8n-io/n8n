@@ -1,19 +1,15 @@
 /**
- * Code Builder Node Search Engine
+ * Node search engine used by the code-builder agent and MCP tools.
  *
- * This is a fork of tools/engines/node-search-engine.ts for the code-builder agent.
- * It includes additional features for subnode requirements, related subnodes, and
- * builder hints that are specific to the code-builder workflow generation approach.
- *
- * The original node-search-engine.ts is used by the multi-agent system and has
- * different requirements.
+ * Supports fuzzy text search, connection-type lookup (for subnode discovery),
+ * and surfaces subnode requirements and builder hints from `builderHint.inputs`.
  */
 
 import { sublimeSearch } from '@n8n/utils';
 import type { BuilderHintInputs, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { CodeBuilderNodeSearchResult, SubnodeRequirement } from '../types';
+import type { CodeBuilderNodeSearchResult, SubnodeRequirement } from './types';
 
 /** Type guard for NodeConnectionType */
 function isNodeConnectionType(value: string): value is NodeConnectionType {

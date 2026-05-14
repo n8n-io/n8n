@@ -1,10 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { StructuredToolInterface } from '@langchain/core/tools';
+import { NodeTypeParser } from '@n8n/ai-utilities';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { PlanOutput } from '../../../types/planning';
 import type { ChatPayload } from '../../../workflow-builder-agent';
-import { NodeTypeParser } from '../../utils/node-type-parser';
 import { ChatSetupHandler, extractNodeNamesFromPlan } from '../chat-setup-handler';
 
 function createMockTool(name: string): StructuredToolInterface {

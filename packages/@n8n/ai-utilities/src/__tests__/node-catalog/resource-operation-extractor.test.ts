@@ -3,7 +3,7 @@ import type { INodeTypeDescription, INodeProperties, Logger } from 'n8n-workflow
 import {
 	extractResourceOperations,
 	formatResourceOperationsForPrompt,
-} from '../resource-operation-extractor';
+} from '../../node-catalog/resource-operation-extractor';
 
 // Helper to create mock node type descriptions
 function createMockNodeType(

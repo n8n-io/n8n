@@ -47,6 +47,7 @@ export class ModuleRegistry {
 		'ldap',
 		'quick-connect',
 		'workflow-builder',
+		'workflow-builder-v2',
 		'favorites',
 		'redaction',
 		'instance-registry',

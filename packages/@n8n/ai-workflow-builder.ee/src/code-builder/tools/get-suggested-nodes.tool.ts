@@ -1,4 +1,5 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import type { NodeTypeParser } from '@n8n/ai-utilities';
 import { z } from 'zod';
 
 import {
@@ -6,7 +7,6 @@ import {
 	categoryList,
 	type CategorySuggestedNode,
 } from './suggested-nodes-data';
-import type { NodeTypeParser } from '../utils/node-type-parser';
 
 const GetSuggestedNodesSchema = z.object({
 	categories: z

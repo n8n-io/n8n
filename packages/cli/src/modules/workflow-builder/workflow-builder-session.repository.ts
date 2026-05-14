@@ -8,7 +8,7 @@ import {
 	type ISessionStorage,
 	type LangchainMessage,
 	type StoredSession,
-} from '@n8n/ai-workflow-builder';
+} from '@n8n/ai-utilities';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 

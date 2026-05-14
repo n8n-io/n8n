@@ -21,11 +21,13 @@ jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 }));
 
 const mockValidateJSON = jest.fn().mockReturnValue([]);
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('../tools/workflow-builder/internal/tool-names', () => ({
 	MCP_UPDATE_WORKFLOW_TOOL: {
 		toolName: 'update_workflow',
 		displayTitle: 'Updating workflow',
 	},
+}));
+jest.mock('../tools/workflow-builder/internal/parse-validate-handler', () => ({
 	ParseValidateHandler: jest.fn().mockImplementation(() => ({
 		validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
 	})),

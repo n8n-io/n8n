@@ -6,11 +6,12 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useBuilderV2DocSync } from '@/features/builder-v2/composables/useBuilderV2DocSync';
 
 defineOptions({
 	inheritAttrs: false,
@@ -47,11 +48,19 @@ const workflowObject = computed(() =>
 	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 );
 
+// Builder-V2: ghosts and BE-committed nodes are written into the workflow
+// document store by a watcher composable so they behave like real nodes (NDV
+// can open them, click selection works, etc). The marching-ants ghost styling
+// is driven by `placeholderKind: 'ghost'` on each node, applied in
+// CanvasNodeDefault.vue.
+const { stop: stopBuilderV2DocSync } = useBuilderV2DocSync(workflowDocumentStore, props.eventBus);
+onBeforeUnmount(() => stopBuilderV2DocSync());
+
 const nodes = computed(() => {
-	return props.showFallbackNodes
-		? [...workflowDocumentStore.value.allNodes, ...props.fallbackNodes]
-		: workflowDocumentStore.value.allNodes;
+	const docNodes = workflowDocumentStore.value.allNodes;
+	return props.showFallbackNodes ? [...docNodes, ...props.fallbackNodes] : docNodes;
 });
+
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({

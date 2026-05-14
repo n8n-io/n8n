@@ -142,6 +142,7 @@ import {
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
+import { useBuilderV2Store } from '@/features/builder-v2/stores/builder-v2.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -191,6 +192,7 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
+	const builderV2Store = useBuilderV2Store();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const i18n = useI18n();
@@ -2301,6 +2303,8 @@ export function useCanvasOperations() {
 	 */
 
 	function resetWorkspace() {
+		builderV2Store.reset();
+
 		// Reset node creator
 		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
 

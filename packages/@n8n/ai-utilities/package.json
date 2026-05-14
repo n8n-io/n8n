@@ -62,6 +62,7 @@
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",

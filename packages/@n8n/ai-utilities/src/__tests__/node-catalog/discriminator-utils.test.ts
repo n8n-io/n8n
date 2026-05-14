@@ -4,7 +4,7 @@ import {
 	extractModeDiscriminator,
 	extractOperationOnlyDiscriminator,
 	type ModeInfo,
-} from '../discriminator-utils';
+} from '../../node-catalog/discriminator-utils';
 
 // Mock vector store node with mode discriminator that includes outputConnectionType
 const mockVectorStoreNode: INodeTypeDescription = {

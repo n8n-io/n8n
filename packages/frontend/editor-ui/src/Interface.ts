@@ -159,6 +159,17 @@ export interface INodeUi extends INode {
 	pinData?: IDataObject;
 	draggable?: boolean;
 	placeholder?: boolean;
+	/**
+	 * Discriminates which kind of placeholder this is (when `placeholder === true`).
+	 * - `'add-node-stub'`: legacy "click to add a node" stub.
+	 * - `'ghost'`: builder-v2 ghost — an agent-proposed candidate that commits on click.
+	 * Defaults to `'add-node-stub'` for backward compatibility.
+	 */
+	placeholderKind?: 'add-node-stub' | 'ghost';
+	/**
+	 * For builder-v2 ghosts: index into `useBuilderV2Store().ghosts` for click-to-commit.
+	 */
+	builderV2GhostIndex?: number;
 }
 
 export interface INodeTypesMaxCount {

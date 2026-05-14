@@ -7,7 +7,7 @@ import { createWorkflow } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';
 import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validation.utils';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('../tools/workflow-builder/internal/tool-names', () => ({
 	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_sdk_reference', displayTitle: 'SDK Ref' },
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow', displayTitle: 'Validate' },
 }));

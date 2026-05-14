@@ -35,6 +35,10 @@ const PROXY_HEADERS = {
 	'x-n8n-feature': 'agent-builder',
 };
 
+export interface ResolveModelConfigOptions {
+	anthropicModelOverride?: string;
+}
+
 /** Read an Anthropic key from env, preferring the n8n-specific variable. */
 function readEnvAnthropicKey(): string | null {
 	const key = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
@@ -144,11 +148,15 @@ export class AgentsBuilderSettingsService {
 	 *
 	 * Throws `BuilderNotConfiguredError` when none resolve.
 	 */
-	async resolveModelConfig(user: User): Promise<{ config: ModelConfig; isProxied: boolean }> {
+	async resolveModelConfig(
+		user: User,
+		options: ResolveModelConfigOptions = {},
+	): Promise<{ config: ModelConfig; isProxied: boolean }> {
 		const settings = await this.loadSettings();
+		const anthropicDefaultModel = options.anthropicModelOverride ?? AGENT_BUILDER_DEFAULT_MODEL;
 
 		if (settings.mode === 'custom') {
-			const fromCredential = await this.tryResolveCustomCredential(settings);
+			const fromCredential = await this.tryResolveCustomCredential(settings, options);
 			if (fromCredential) return { config: fromCredential, isProxied: false };
 			this.logger.warn(
 				'Agent builder custom credential could not be resolved; falling back to default',
@@ -157,14 +165,17 @@ export class AgentsBuilderSettingsService {
 		}
 
 		if (this.aiService.isProxyEnabled()) {
-			return { config: await this.resolveProxyModel(user), isProxied: true };
+			return {
+				config: await this.resolveProxyModel(user, anthropicDefaultModel),
+				isProxied: true,
+			};
 		}
 
 		const envKey = readEnvAnthropicKey();
 		if (envKey) {
 			return {
 				config: {
-					id: `anthropic/${AGENT_BUILDER_DEFAULT_MODEL}`,
+					id: `anthropic/${anthropicDefaultModel}`,
 					apiKey: envKey,
 				},
 				isProxied: false,
@@ -176,6 +187,7 @@ export class AgentsBuilderSettingsService {
 
 	private async tryResolveCustomCredential(
 		settings: Extract<AgentBuilderAdminSettings, { mode: 'custom' }>,
+		options: ResolveModelConfigOptions,
 	): Promise<ModelConfig | null> {
 		if (!isSupportedAgentProvider(settings.provider)) {
 			this.logger.warn('Agent builder provider is not supported by the runtime', {
@@ -196,7 +208,11 @@ export class AgentsBuilderSettingsService {
 		// Azure OpenAI, AWS Bedrock, OpenAI-compatible base URLs, etc. all work.
 		const mapped = mapCredentialForProvider(settings.provider, data as ResolvedCredential);
 
-		const id = `${settings.provider}/${settings.modelName}`;
+		const modelName =
+			settings.provider === 'anthropic' && options.anthropicModelOverride
+				? options.anthropicModelOverride
+				: settings.modelName;
+		const id = `${settings.provider}/${modelName}`;
 		return { id, ...mapped } as ModelConfig;
 	}
 
@@ -205,7 +221,7 @@ export class AgentsBuilderSettingsService {
 	 * headers are injected via a `fetch` wrapper backed by `ProxyTokenManager`
 	 * so each request gets a fresh-or-cached token.
 	 */
-	private async resolveProxyModel(user: User): Promise<ModelConfig> {
+	private async resolveProxyModel(user: User, modelName: string): Promise<ModelConfig> {
 		const client = await this.aiService.getClient();
 		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/anthropic/v1';
 
@@ -230,7 +246,7 @@ export class AgentsBuilderSettingsService {
 				return await proxyFetch(input as string, { ...init, headers });
 			},
 		});
-		const model = provider(AGENT_BUILDER_DEFAULT_MODEL);
+		const model = provider(modelName);
 		// `LanguageModel` from the AI SDK is structurally compatible with ModelConfig.
 		if (!model) {
 			throw new UnexpectedError('Failed to instantiate Anthropic proxy model');

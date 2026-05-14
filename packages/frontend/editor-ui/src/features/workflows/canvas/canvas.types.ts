@@ -81,6 +81,13 @@ export type CanvasNodeDefaultRender = {
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
 		placeholder?: boolean;
+		/**
+		 * Discriminates which kind of placeholder this is (when `placeholder === true`).
+		 * `'ghost'` renders the marching-ants striped border used by builder-v2 ghosts.
+		 */
+		placeholderKind?: 'add-node-stub' | 'ghost';
+		/** Index into `useBuilderV2Store().ghosts` for click-to-commit on ghosts. */
+		builderV2GhostIndex?: number;
 	}>;
 };
 
@@ -189,7 +196,7 @@ export type CanvasEventBusEvents = {
 	'setConnections:onNodesInit': IConnections;
 	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
-	'nodes:select': { ids: string[]; panIntoView?: boolean };
+	'nodes:select': { ids: string[]; panIntoView?: boolean; centerIntoView?: boolean };
 	'nodes:selectAll': never;
 	'nodes:action': {
 		ids: string[];
@@ -199,6 +206,7 @@ export type CanvasEventBusEvents = {
 	tidyUp: {
 		source: CanvasLayoutSource;
 		nodeIdsFilter?: string[];
+		preserveViewport?: boolean;
 		trackEvents?: boolean;
 		trackHistory?: boolean;
 		trackBulk?: boolean;

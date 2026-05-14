@@ -140,9 +140,10 @@ export const createCreateWorkflowFromCodeTool = (
 		let newWorkflow: WorkflowEntity | undefined;
 
 		try {
-			const { ParseValidateHandler, stripImportStatements } = await import(
-				'@n8n/ai-workflow-builder'
-			);
+			const [{ ParseValidateHandler }, { stripImportStatements }] = await Promise.all([
+				import('./internal/parse-validate-handler'),
+				import('./internal/extract-code'),
+			]);
 
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);

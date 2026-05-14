@@ -52,6 +52,8 @@ export const mockNode = ({
 	parameters = {},
 	draggable = undefined,
 	placeholder = undefined,
+	placeholderKind = undefined,
+	builderV2GhostIndex = undefined,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -63,6 +65,8 @@ export const mockNode = ({
 	parameters?: INodeUi['parameters'];
 	draggable?: INodeUi['draggable'];
 	placeholder?: INodeUi['placeholder'];
+	placeholderKind?: INodeUi['placeholderKind'];
+	builderV2GhostIndex?: INodeUi['builderV2GhostIndex'];
 }) =>
 	mock<INodeUi>({
 		id,
@@ -75,6 +79,8 @@ export const mockNode = ({
 		parameters,
 		draggable,
 		placeholder,
+		placeholderKind,
+		builderV2GhostIndex,
 	});
 
 export const mockNodeTypeDescription = ({

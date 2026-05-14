@@ -178,6 +178,29 @@ describe('Canvas', () => {
 		await waitFor(() => expect(getViewport()).toEqual({ x: 1100, y: 600, zoom: 1 }));
 	});
 
+	it('should center viewport if nodes:select event is received with centerIntoView=true', async () => {
+		const node = createCanvasNodeElement({ position: { x: -1000, y: -500 } });
+
+		renderComponent({
+			props: {
+				id: 'c1',
+				nodes: [node],
+				eventBus: canvasEventBus,
+			},
+		});
+
+		const { getViewport } = useVueFlow('c1');
+
+		expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 });
+		canvasEventBus.emit('nodes:select', { ids: [node.id], centerIntoView: true });
+		await waitFor(() => {
+			const viewport = getViewport();
+			expect(viewport.x).not.toBe(0);
+			expect(viewport.y).not.toBe(0);
+			expect(viewport.zoom).toBe(1);
+		});
+	});
+
 	it('should not emit `update:node:name` event if long key press', async () => {
 		vi.useFakeTimers();
 

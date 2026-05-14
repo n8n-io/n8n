@@ -8,7 +8,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('../tools/workflow-builder/internal/tool-names', () => ({
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {

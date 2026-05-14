@@ -8,7 +8,7 @@
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { CodeBuilderNodeSearchEngine } from '../engines/code-builder-node-search-engine';
+import { CodeBuilderNodeSearchEngine } from './search-engine';
 
 export interface ParsedNodeType {
 	id: string;

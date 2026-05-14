@@ -6,8 +6,8 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { ASK_AI_SLIDE_IN_DURATION_MS, ASK_AI_SLIDE_OUT_DURATION_MS } from '@/app/constants';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
+import BuilderV2ChatPanel from '@/features/builder-v2/components/BuilderV2ChatPanel.vue';
 import AskModeCoachmark from './AskModeCoachmark.vue';
 import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 
@@ -41,7 +41,7 @@ watch(
 	},
 );
 
-const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
+const builderV2Ref = ref<InstanceType<typeof BuilderV2ChatPanel>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
 const chatWidth = computed(() => chatPanelStore.width);
@@ -85,7 +85,7 @@ function onClose() {
 function onSlideEnterComplete() {
 	slideAnimationComplete.value = true;
 	if (isBuildMode.value) {
-		askAssistantBuildRef.value?.focusInput();
+		builderV2Ref.value?.focusInput();
 	} else {
 		askAssistantChatRef.value?.focusInput();
 	}
@@ -149,11 +149,7 @@ onBeforeUnmount(() => {
 			>
 				<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
 					<div :class="$style.assistantContent">
-						<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
-							<template v-if="canToggleModes" #header>
-								<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-							</template>
-						</AskAssistantBuild>
+						<BuilderV2ChatPanel v-if="isBuildMode" ref="builderV2Ref" @close="onClose" />
 						<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
 							<!-- Header switcher is only visible when both modes are available in current view -->
 							<template v-if="canToggleModes" #header>

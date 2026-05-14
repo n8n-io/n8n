@@ -6,6 +6,7 @@ import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
+import { N8nButton } from '@n8n/design-system';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
@@ -17,6 +18,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
+import { useBuilderV2Store } from '@/features/builder-v2/stores/builder-v2.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -61,6 +63,27 @@ const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
+const isBuilderV2Ghost = computed(
+	() => renderOptions.value.placeholder === true && renderOptions.value.placeholderKind === 'ghost',
+);
+
+const builderStore = useBuilderV2Store();
+
+const isBeingPicked = computed(
+	() =>
+		isBuilderV2Ghost.value &&
+		typeof renderOptions.value.builderV2GhostIndex === 'number' &&
+		builderStore.pickingIndex === renderOptions.value.builderV2GhostIndex,
+);
+
+const isOtherGhostPicking = computed(
+	() => isBuilderV2Ghost.value && builderStore.pickingIndex !== null && !isBeingPicked.value,
+);
+
+const showGhostActions = computed(
+	() => isBuilderV2Ghost.value && !builderStore.isLoading && builderStore.pickingIndex === null,
+);
+
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
@@ -76,7 +99,10 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
-		[$style.placeholder]: renderOptions.value.placeholder,
+		[$style.placeholder]: renderOptions.value.placeholder && !isBuilderV2Ghost.value,
+		[$style.builderV2Ghost]: isBuilderV2Ghost.value,
+		[$style.builderV2GhostPicking]: isBeingPicked.value,
+		[$style.builderV2GhostFading]: isOtherGhostPicking.value,
 		waiting: executionWaiting.value || executionStatus.value === 'waiting',
 		running: executionRunning.value || executionWaitingForNext.value,
 	};
@@ -132,7 +158,7 @@ const isStrikethroughVisible = computed(() => {
 });
 
 const iconSource = computed(() => {
-	if (renderOptions.value.placeholder) {
+	if (renderOptions.value.placeholder && !isBuilderV2Ghost.value) {
 		return {
 			type: 'icon',
 			name: 'plus',
@@ -140,6 +166,34 @@ const iconSource = computed(() => {
 	}
 	return renderOptions.value.icon;
 });
+
+function onGhostAcceptClick(event: MouseEvent) {
+	if (!isBuilderV2Ghost.value) return;
+	// Stop the click from also reaching the canvas (which would otherwise
+	// trigger selection of the ghost).
+	event.stopPropagation();
+	const idx = renderOptions.value.builderV2GhostIndex;
+	if (typeof idx !== 'number') return;
+	// Prevent a second click while the first is being processed — otherwise
+	// the FE may send the same chosenIndex twice and the backend will
+	// respond with "No pending suspension to resume" on the second call
+	// because the suspension was already cleared by the first.
+	if (builderStore.isLoading) {
+		// eslint-disable-next-line no-console
+		console.debug('[builder-v2] ghost accept ignored - pick is in flight', { idx });
+		return;
+	}
+	// eslint-disable-next-line no-console
+	console.debug('[builder-v2] ghost accept', { idx });
+	void builderStore.pickGhost(idx);
+}
+
+function onGhostRejectClick(event: MouseEvent) {
+	if (!isBuilderV2Ghost.value) return;
+	event.stopPropagation();
+	if (builderStore.isLoading) return;
+	void builderStore.rejectGhosts();
+}
 
 const showTooltip = ref(false);
 
@@ -161,6 +215,15 @@ function openContextMenu(event: MouseEvent) {
 }
 
 function onActivate(event: MouseEvent) {
+	// Builder-v2 ghosts ARE in the workflow document (added by the doc-sync
+	// composable), so NDV opens naturally on dbl-click. Skip the
+	// `replace:node` branch below — that path is for legacy "add-node-stub"
+	// placeholders, not ghost candidates.
+	if (isBuilderV2Ghost.value) {
+		emit('activate', id.value, event);
+		return;
+	}
+
 	if (renderOptions.value.placeholder) {
 		emit('replace:node', id.value);
 		return;
@@ -183,10 +246,33 @@ function onActivate(event: MouseEvent) {
 		v-else
 		:class="classes"
 		:style="styles"
-		:data-test-id="dataTestId"
-		@contextmenu="openContextMenu"
+		:data-test-id="isBuilderV2Ghost ? 'canvas-builder-v2-ghost' : dataTestId"
+		@contextmenu="isBuilderV2Ghost ? $event.preventDefault() : openContextMenu($event)"
 		@dblclick.stop="onActivate"
 	>
+		<div
+			v-if="showGhostActions"
+			:class="$style.ghostActions"
+			data-test-id="canvas-builder-v2-ghost-actions"
+			@dblclick.stop
+		>
+			<N8nButton
+				variant="solid"
+				size="small"
+				data-test-id="canvas-builder-v2-ghost-accept"
+				@click.stop="onGhostAcceptClick"
+			>
+				{{ i18n.baseText('builderV2.ghost.accept') }}
+			</N8nButton>
+			<N8nButton
+				variant="outline"
+				size="small"
+				data-test-id="canvas-builder-v2-ghost-reject"
+				@click.stop="onGhostRejectClick"
+			>
+				{{ i18n.baseText('builderV2.ghost.reject') }}
+			</N8nButton>
+		</div>
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<NodeIcon
 			:icon-source="iconSource"
@@ -384,6 +470,93 @@ function onActivate(event: MouseEvent) {
 				color: var(--color--primary);
 			}
 		}
+	}
+
+	/**
+	 * Builder V2 ghost: agent-proposed candidate node.
+	 * Marching-ants striped border using two gradients + animated background-position.
+	 */
+	&.builderV2Ghost {
+		--canvas-node--border-color: transparent;
+		--builder-v2-ghost-stripe-width: 6px;
+		--builder-v2-ghost-stripe-cycle: 12px;
+		/* 12px stripe cycle projected onto the x axis for a seamless 45deg loop. */
+		--builder-v2-ghost-stripe-loop-offset: 16.9706px;
+
+		border: 2px dashed transparent;
+		cursor: pointer;
+		opacity: 0.85;
+
+		/* Inner solid fill + outer striped border layer, both painted via background. */
+		background-image:
+			linear-gradient(var(--color--foreground--tint-2), var(--color--foreground--tint-2)),
+			repeating-linear-gradient(
+				45deg,
+				var(--color--primary) 0 var(--builder-v2-ghost-stripe-width),
+				var(--color--foreground--tint-2) var(--builder-v2-ghost-stripe-width)
+					var(--builder-v2-ghost-stripe-cycle)
+			);
+		background-origin: border-box;
+		background-clip: padding-box, border-box;
+		background-repeat: no-repeat, repeat;
+		background-size:
+			100% 100%,
+			auto;
+		animation: builder-v2-marching-ants 1.2s linear infinite;
+
+		&:hover {
+			opacity: 1;
+
+			.icon {
+				color: var(--color--primary);
+			}
+		}
+	}
+
+	/* Picked ghost: solid border, no animation, dimmed to convey commit-in-flight. */
+	&.builderV2GhostPicking {
+		animation: none;
+		opacity: 1;
+		background-image:
+			linear-gradient(var(--color--foreground--tint-2), var(--color--foreground--tint-2)),
+			linear-gradient(var(--color--primary), var(--color--primary));
+		cursor: progress;
+
+		.icon {
+			color: var(--color--primary);
+		}
+	}
+
+	/* Other ghosts during a pick: fade out so the user sees the picked one win. */
+	&.builderV2GhostFading {
+		animation: none;
+		opacity: 0.25;
+		cursor: default;
+		pointer-events: none;
+	}
+}
+
+.ghostActions {
+	position: absolute;
+	left: calc(100% + var(--spacing--xs));
+	top: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	z-index: 1;
+	pointer-events: auto;
+}
+
+@keyframes builder-v2-marching-ants {
+	from {
+		background-position:
+			0 0,
+			0 0;
+	}
+	to {
+		background-position:
+			0 0,
+			var(--builder-v2-ghost-stripe-loop-offset) 0;
 	}
 }
 

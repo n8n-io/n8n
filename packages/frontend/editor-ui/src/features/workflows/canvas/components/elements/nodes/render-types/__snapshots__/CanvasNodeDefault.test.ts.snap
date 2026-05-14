@@ -7,6 +7,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
   style="--canvas-node--width: 224px; --canvas-node--height: 96px; --node--icon--size: 40px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
+  <!--v-if-->
   <node-icon-stub
     class="icon"
     disabled="false"
@@ -49,6 +50,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
   style="--canvas-node--width: 240px; --canvas-node--height: 80px; --node--icon--size: 30px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
+  <!--v-if-->
   <node-icon-stub
     class="icon"
     disabled="false"
@@ -83,6 +85,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
   style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node--icon--size: 30px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
+  <!--v-if-->
   <node-icon-stub
     class="icon"
     disabled="false"
@@ -116,6 +119,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
   data-test-id="canvas-default-node"
   style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node--icon--size: 40px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
+  <!--v-if-->
   <!--v-if-->
   <node-icon-stub
     class="icon"
@@ -158,6 +162,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
   data-test-id="canvas-trigger-node"
   style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node--icon--size: 40px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
+  <!--v-if-->
   <!--v-if-->
   <node-icon-stub
     class="icon"

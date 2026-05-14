@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { NodeTypeParser } from '../node-type-parser';
+import { NodeTypeParser } from '../../node-catalog/node-type-parser';
 
 // Mock node with array version (like OpenAI V2)
 const mockOpenAiNode: INodeTypeDescription = {

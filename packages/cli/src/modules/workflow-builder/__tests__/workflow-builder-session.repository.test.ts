@@ -4,8 +4,8 @@ import { mockClear } from 'jest-mock-extended';
 import { mockEntityManager } from '@test/mocking';
 import { WorkflowBuilderSession } from '../workflow-builder-session.entity';
 
-// Mock the ai-workflow-builder module to avoid import chain issues
-jest.mock('@n8n/ai-workflow-builder', () => ({
+// Mock the ai-utilities module to avoid import chain issues
+jest.mock('@n8n/ai-utilities', () => ({
 	isLangchainMessagesArray: jest.fn((arr: unknown[]) => {
 		if (!Array.isArray(arr)) return false;
 		return arr.every(

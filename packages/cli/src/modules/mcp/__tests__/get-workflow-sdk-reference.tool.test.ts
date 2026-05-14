@@ -10,8 +10,10 @@ import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-
 
 import { Telemetry } from '@/telemetry';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('../tools/workflow-builder/internal/sdk-import-statement', () => ({
 	SDK_IMPORT_STATEMENT: "import { workflow } from '@n8n/workflow-sdk';",
+}));
+jest.mock('../tools/workflow-builder/internal/tool-names', () => ({
 	MCP_GET_SDK_REFERENCE_TOOL: {
 		toolName: 'get_sdk_reference',
 		displayTitle: 'Get SDK Reference',

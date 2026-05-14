@@ -12,10 +12,13 @@ const mockSearchCodeBuilderNodes = jest.fn();
 const mockGetNodeTypes = jest.fn().mockReturnValue('get-result');
 const mockSuggestInvoke = jest.fn().mockResolvedValue('suggest-result');
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('@n8n/ai-utilities', () => ({
 	NodeTypeParser: MockNodeTypeParser,
 	searchCodeBuilderNodes: (...args: unknown[]) => mockSearchCodeBuilderNodes(...args),
 	getNodeTypes: (...args: unknown[]) => mockGetNodeTypes(...args),
+}));
+
+jest.mock('@n8n/ai-workflow-builder', () => ({
 	createGetSuggestedNodesTool: jest.fn(() => ({ invoke: mockSuggestInvoke })),
 }));
 

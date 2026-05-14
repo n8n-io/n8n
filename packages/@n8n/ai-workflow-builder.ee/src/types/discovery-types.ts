@@ -1,4 +1,4 @@
-import type { ResourceInfo } from '../utils/resource-operation-extractor';
+import type { ResourceInfo } from '@n8n/ai-utilities';
 
 export interface DiscoveryContext {
 	nodesFound: Array<{

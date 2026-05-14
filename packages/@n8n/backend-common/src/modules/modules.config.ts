@@ -20,6 +20,7 @@ export const MODULE_NAMES = [
 	'ldap',
 	'quick-connect',
 	'workflow-builder',
+	'workflow-builder-v2',
 	'favorites',
 	'redaction',
 	'instance-registry',

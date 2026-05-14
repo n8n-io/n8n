@@ -97,11 +97,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		chatPanelStateStore.isOpen = true;
 
 		if (chatPanelStateStore.activeMode === 'builder') {
-			const builderStore = useBuilderStore();
-			if (!builderStore.streaming) {
-				void builderStore.fetchBuilderCredits();
-				void builderStore.loadSessions();
-			}
+			// POC builder-v2: old builder credits/sessions calls disabled — v2 doesn't use them.
 		} else if (chatPanelStateStore.activeMode === 'assistant') {
 			const assistantStore = useAssistantStore();
 			assistantStore.chatMessages = assistantStore.chatMessages.map((msg) => ({
@@ -247,9 +243,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 			if (!isEnabledView(newRoute, enabledViews)) {
 				close();
-			} else if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS) && !builderStore.streaming) {
-				builderStore.resetBuilderChat();
 			}
+			// POC builder-v2: skip old builder resetBuilderChat() on route change.
 		},
 	);
 

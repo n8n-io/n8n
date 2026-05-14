@@ -138,6 +138,8 @@ export function useCanvasMapping({
 				dirtiness: dirtinessByName.value[node.name],
 				icon,
 				placeholder: node.placeholder,
+				placeholderKind: node.placeholderKind,
+				builderV2GhostIndex: node.builderV2GhostIndex,
 			},
 		};
 	}
@@ -191,6 +193,9 @@ export function useCanvasMapping({
 				const nodeSubtitle =
 					nodeHelpers.getNodeSubtitle(node, nodeTypeDescription, workflowObject.value) ?? '';
 				if (nodeSubtitle.includes(CUSTOM_API_CALL_KEY)) {
+					return acc;
+				}
+				if (node.placeholderKind === 'ghost' && /\bundefined\b/.test(nodeSubtitle)) {
 					return acc;
 				}
 
@@ -722,6 +727,8 @@ export function useCanvasMapping({
 					render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
 				};
 
+				const isBuilderV2Ghost = node.placeholder === true && node.placeholderKind === 'ghost';
+
 				return {
 					id: node.id,
 					label: node.name,
@@ -729,7 +736,13 @@ export function useCanvasMapping({
 					position: { x: node.position[0], y: node.position[1] },
 					data,
 					...additionalNodePropertiesById.value[node.id],
-					draggable: node.draggable,
+					draggable: isBuilderV2Ghost ? false : node.draggable,
+					// Builder-v2 ghosts: not draggable and no connection-drag (they
+					// aren't part of the document yet). They ARE selectable, so the
+					// user can click the body to highlight the ghost without
+					// committing — committing is done via the explicit tick button
+					// rendered inside CanvasNodeDefault.vue.
+					...(isBuilderV2Ghost ? { connectable: false } : {}),
 				};
 			}),
 		];

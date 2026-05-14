@@ -81,7 +81,6 @@
     "@ai-sdk/anthropic": "2.0.61",
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/luxon": "3.2.0",
     "@types/psl": "1.1.3",

@@ -217,6 +217,19 @@ const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
 
 const isPaneReady = ref(false);
 
+/**
+ * Builder-V2: synthetic "ghost" nodes are injected as ordinary canvas nodes for
+ * rendering but must not participate in selection, keyboard shortcuts, or
+ * select-all. They are read-only — click is the only allowed interaction.
+ */
+const BUILDER_V2_GHOST_NODE_ID_PREFIX = '__builder-v2-ghost-';
+function isBuilderV2GhostNodeId(id: string): boolean {
+	return id.startsWith(BUILDER_V2_GHOST_NODE_ID_PREFIX);
+}
+function isBuilderV2GhostGraphNode(node: { id: string }): boolean {
+	return isBuilderV2GhostNodeId(node.id);
+}
+
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: !props.loading && isPaneReady.value,
@@ -345,7 +358,7 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
-		ctrl_a: () => addSelectedNodes(graphNodes.value),
+		ctrl_a: () => addSelectedNodes(graphNodes.value.filter((n) => !isBuilderV2GhostGraphNode(n))),
 		// Support both key and code for zooming in and out
 		'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
 		'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
@@ -414,7 +427,9 @@ const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed(() =>
 	props.nodes.filter(
 		(node) =>
-			node.data?.render.type === CanvasNodeRenderType.Default && node.data.render.options.trigger,
+			!isBuilderV2GhostNodeId(node.id) &&
+			node.data?.render.type === CanvasNodeRenderType.Default &&
+			node.data.render.options.trigger,
 	),
 );
 
@@ -463,6 +478,10 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	// Builder-V2 ghosts are read-only — click commits via CanvasNodeDefault and
+	// must not propagate through to selection / focus side-effects.
+	if (isBuilderV2GhostGraphNode(node)) return;
+
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
 	}
@@ -505,9 +524,25 @@ function onSelectNode() {
 	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
-function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select']) {
+function onSelectNodes({ ids, panIntoView, centerIntoView }: CanvasEventBusEvents['nodes:select']) {
 	clearSelectedNodes();
 	addSelectedNodes(ids.map(findNode).filter(isPresent));
+
+	if (centerIntoView) {
+		const nodes = ids.map(findNode).filter(isPresent);
+
+		if (nodes.length === 0) {
+			return;
+		}
+
+		const nodesRect = getRectOfNodes(nodes);
+		void setCenter(nodesRect.x + nodesRect.width / 2, nodesRect.y + nodesRect.height / 2, {
+			duration: 200,
+			zoom: viewport.value.zoom,
+			interpolate: 'linear',
+		});
+		return;
+	}
 
 	if (panIntoView) {
 		const nodes = ids.map(findNode).filter(isPresent);
@@ -821,7 +856,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
 		case 'select_all':
-			return addSelectedNodes(graphNodes.value);
+			return addSelectedNodes(graphNodes.value.filter((n) => !isBuilderV2GhostGraphNode(n)));
 		case 'deselect_all':
 			return clearSelectedNodes();
 		case 'duplicate':
@@ -879,6 +914,8 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 	);
 
 	await nextTick();
+	if (payload.preserveViewport) return;
+
 	if (applyOnSelection) {
 		await onFitBounds(selectedNodes.value);
 	} else {

@@ -2,6 +2,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
+import { ISessionStorage } from '@n8n/ai-utilities';
 import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -17,7 +18,6 @@ import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import type { HITLInterruptValue } from '@/types/planning';
-import { ISessionStorage } from '@/types/session-storage';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,

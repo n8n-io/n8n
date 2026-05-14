@@ -11,8 +11,23 @@ import {
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
-import { createNodeType } from '../../../../test/test-utils';
-import { CodeBuilderNodeSearchEngine, SCORE_WEIGHTS } from '../code-builder-node-search-engine';
+import { CodeBuilderNodeSearchEngine, SCORE_WEIGHTS } from '../../node-catalog/search-engine';
+
+// Inlined helper to create mock node type descriptions (was previously in
+// `packages/@n8n/ai-workflow-builder.ee/test/test-utils.ts`). Kept local to
+// avoid a cross-package test-utils dependency.
+const createNodeType = (overrides: Partial<INodeTypeDescription> = {}): INodeTypeDescription => ({
+	displayName: overrides.displayName ?? 'Test Node',
+	name: overrides.name ?? 'test.node',
+	group: overrides.group ?? ['transform'],
+	version: overrides.version ?? 1,
+	description: overrides.description ?? 'Test node description',
+	defaults: overrides.defaults ?? { name: 'Test Node' },
+	inputs: overrides.inputs ?? ['main'],
+	outputs: overrides.outputs ?? ['main'],
+	properties: overrides.properties ?? [],
+	...overrides,
+});
 
 describe('CodeBuilderNodeSearchEngine', () => {
 	let searchEngine: CodeBuilderNodeSearchEngine;

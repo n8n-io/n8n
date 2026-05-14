@@ -1,6 +1,6 @@
+import { NodeTypeParser } from '@n8n/ai-utilities';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { NodeTypeParser } from '../../utils/node-type-parser';
 import { createGetSuggestedNodesTool } from '../get-suggested-nodes.tool';
 import { categoryList, suggestedNodesData } from '../suggested-nodes-data';
 

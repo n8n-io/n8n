@@ -100,6 +100,47 @@ describe('AgentsBuilderSettingsService', () => {
 			});
 		});
 
+		it('mode=default + env set + anthropic model override → returns overridden anthropic config', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			aiService.isProxyEnabled.mockReturnValue(false);
+			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
+
+			const result = await service.resolveModelConfig(user, {
+				anthropicModelOverride: 'claude-haiku-4-5-20251001',
+			});
+
+			expect(result).toEqual({
+				config: {
+					id: 'anthropic/claude-haiku-4-5-20251001',
+					apiKey: 'sk-env',
+				},
+				isProxied: false,
+			});
+		});
+
+		it('mode=custom with anthropic credential + anthropic model override → returns overridden model config', async () => {
+			mockPersistedSettings({
+				mode: 'custom',
+				provider: 'anthropic',
+				credentialId: 'cred-1',
+				modelName: 'claude-sonnet-4-5',
+			});
+			aiService.isProxyEnabled.mockReturnValue(false);
+			mockCustomCredential({ apiKey: 'sk-user' });
+
+			const result = await service.resolveModelConfig(user, {
+				anthropicModelOverride: 'claude-haiku-4-5-20251001',
+			});
+
+			expect(result).toEqual({
+				config: {
+					id: 'anthropic/claude-haiku-4-5-20251001',
+					apiKey: 'sk-user',
+				},
+				isProxied: false,
+			});
+		});
+
 		it('mode=default + proxy disabled + env empty → throws BuilderNotConfiguredError', async () => {
 			mockPersistedSettings({ mode: 'default' });
 			aiService.isProxyEnabled.mockReturnValue(false);

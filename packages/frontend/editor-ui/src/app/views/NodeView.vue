@@ -117,6 +117,7 @@ import {
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useBuilderV2Store } from '@/features/builder-v2/stores/builder-v2.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -195,6 +196,7 @@ const tagsStore = useTagsStore();
 const ndvStore = injectNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
+const builderV2Store = useBuilderV2Store();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -1586,10 +1588,17 @@ watch([() => route.name, () => route.params.workflowId], () => {
 
 watch(
 	() => {
+		// Builder-v2 ghosts and committed nodes live outside the workflow document
+		// (they're synthesised by WorkflowCanvas.vue from the v2 store). When the
+		// v2 builder is active, suppress the empty-state overlay so it doesn't
+		// render on top of the ghosts/committed nodes.
+		const builderV2Active =
+			builderV2Store.hasGhosts || builderV2Store.hasSession || builderV2Store.isLoading;
 		return (
 			isLoading.value ||
 			isCanvasReadOnly.value ||
-			(workflowDocumentStore?.value?.allNodes ?? []).length !== 0
+			(workflowDocumentStore?.value?.allNodes ?? []).length !== 0 ||
+			builderV2Active
 		);
 	},
 	(isReadOnlyOrLoading) => {
@@ -1662,9 +1671,16 @@ watch(
 
 			collaborationStore.requestWriteAccess();
 
-			// Trigger auto-save (debounced) for writers only
-			// Skip auto-save when AI Builder is streaming to keep version history clean
-			if (!builderStore.streaming) {
+			// Trigger auto-save (debounced) for writers only.
+			// Skip while:
+			//  - AI Builder v1 is streaming (keep version history clean)
+			//  - Builder-v2 has an active session: ghosts and optimistic
+			//    placeholder mutations live in the doc but should not be
+			//    persisted to disk. The session ends when ghosts are picked /
+			//    rejected and committed nodes are reconciled with BE truth.
+			const builderV2Active =
+				builderV2Store.hasSession || builderV2Store.hasGhosts || builderV2Store.isLoading;
+			if (!builderStore.streaming && !builderV2Active) {
 				void workflowSaving.autoSaveWorkflow();
 			}
 		}
