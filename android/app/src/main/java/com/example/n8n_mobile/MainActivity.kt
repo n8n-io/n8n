@@ -27,9 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.example.n8n_mobile.triggers.NotificationsScreen
 import com.example.n8n_mobile.triggers.TriggersScreen
 
-private enum class Tab { Workflows, Triggers }
+private enum class Tab { Workflows, Triggers, Notifications }
 
 class MainActivity : ComponentActivity() {
 
@@ -66,6 +67,12 @@ class MainActivity : ComponentActivity() {
                                 icon = {},
                                 label = { Text("Triggers") },
                             )
+                            NavigationBarItem(
+                                selected = tab == Tab.Notifications,
+                                onClick = { tab = Tab.Notifications },
+                                icon = {},
+                                label = { Text("Notifications") },
+                            )
                         }
                     },
                 ) { padding ->
@@ -85,6 +92,20 @@ class MainActivity : ComponentActivity() {
                                 color = MaterialTheme.colorScheme.background,
                             ) {
                                 TriggersScreen()
+                            }
+                        }
+                        if (tab == Tab.Notifications) {
+                            val interactionSource = remember { MutableInteractionSource() }
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(
+                                        interactionSource = interactionSource,
+                                        indication = null,
+                                    ) {},
+                                color = MaterialTheme.colorScheme.background,
+                            ) {
+                                NotificationsScreen()
                             }
                         }
                     }
