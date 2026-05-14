@@ -1039,6 +1039,24 @@ export class WorkflowExecute {
 			subNodeExecutionResults,
 		);
 
+		const tracingFromTags = this.buildCustomTelemetryTracing(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			executionData,
+		);
+
+		if (tracingFromTags !== undefined) {
+			executionData.metadata = {
+				...(executionData.metadata ?? {}),
+				tracing: { ...tracingFromTags, ...(executionData.metadata?.tracing ?? {}) },
+			};
+		}
+
 		let data: INodeExecutionData[][] | EngineRequest | null;
 		let executionSucceeded = false;
 		let closingError: Error | undefined;
@@ -1131,6 +1149,7 @@ export class WorkflowExecute {
 				if (evaluated === undefined || evaluated === null) continue;
 				tracing[trimmedKey] = String(evaluated);
 			} catch (error) {
+				// failing to evaluate a tag expression is not a critical error and should not block the execution
 				Logger.warn('Failed to evaluate customTelemetryTags expression', {
 					nodeName: node.name,
 					tagKey: trimmedKey,
