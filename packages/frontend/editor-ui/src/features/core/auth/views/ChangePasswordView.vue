@@ -159,7 +159,13 @@ const onWebauthnVerify = async () => {
 		password.value = webauthnPassword.value;
 		await submitChangePassword({ webauthnResponse });
 	} catch (e) {
-		const isCancelledOrFocusLoss = e instanceof DOMException && e.name === 'NotAllowedError';
+		// `@simplewebauthn/browser` wraps the original DOMException; match by
+		// `name` on the wrapped error or its cause so password-manager
+		// extension interference (Bitwarden, 1Password) is classified as a
+		// cancelled ceremony rather than a generic failure.
+		const name = (e as { name?: string })?.name;
+		const causeName = (e as { cause?: { name?: string } })?.cause?.name;
+		const isCancelledOrFocusLoss = name === 'NotAllowedError' || causeName === 'NotAllowedError';
 		webauthnError.value = isCancelledOrFocusLoss
 			? locale.baseText('mfa.login.webauthn.error.cancelled')
 			: locale.baseText('auth.changePassword.webauthn.error');

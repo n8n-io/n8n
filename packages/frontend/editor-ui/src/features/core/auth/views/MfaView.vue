@@ -239,7 +239,12 @@ const onWebAuthnClick = async () => {
 		const response = await usersStore.verifyWebAuthnAuthentication(props.email);
 		emit('webauthnSubmit', response);
 	} catch (e) {
-		const isCancelledOrFocusLoss = e instanceof DOMException && e.name === 'NotAllowedError';
+		// Match by `name` on the error or its wrapped `cause` — password-manager
+		// extensions (Bitwarden, 1Password) raise `NotAllowedError` via
+		// `@simplewebauthn/browser`, which wraps the original DOMException.
+		const name = (e as { name?: string })?.name;
+		const causeName = (e as { cause?: { name?: string } })?.cause?.name;
+		const isCancelledOrFocusLoss = name === 'NotAllowedError' || causeName === 'NotAllowedError';
 		webauthnError.value = isCancelledOrFocusLoss
 			? i18.baseText('mfa.login.webauthn.error.cancelled')
 			: i18.baseText('mfa.webauthn.error');
