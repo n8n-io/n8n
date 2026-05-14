@@ -18,6 +18,7 @@ import {
 	UpdateAgentDto,
 	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
+	AgentDisconnectIntegrationDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -683,18 +684,12 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentCredentialIntegrationDto,
+		@Body payload: AgentDisconnectIntegrationDto,
 	) {
-		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(payload);
-		if (!integrationParseResult.success) {
-			throw new BadRequestError(integrationParseResult.error.message);
-		}
-		const integration = integrationParseResult.data;
-		const { type, credentialId } = integration;
+		const { type, credentialId } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		await this.chatIntegrationService.disconnect(agentId, integration);
+		await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
 
 		await this.agentsService.removeCredentialIntegration(agent, type, credentialId);
 

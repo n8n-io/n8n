@@ -82,7 +82,7 @@ export const connectIntegration = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ data: { type, credentialId, ...(settings ? { settings } : {}) } },
+		{ type, credentialId, ...(settings ? { settings } : {}) },
 	);
 };
 
@@ -97,7 +97,7 @@ export const disconnectIntegration = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ data: { type, credentialId } },
+		{ type, credentialId },
 	);
 };
 

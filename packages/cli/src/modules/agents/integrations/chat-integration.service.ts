@@ -238,7 +238,10 @@ export class ChatIntegrationService {
 	 * If `type` and `credentialId` are provided, disconnects only that integration.
 	 * Otherwise disconnects all integrations for the agent.
 	 */
-	async disconnect(agentId: string, integration?: AgentCredentialIntegrationConfig): Promise<void> {
+	async disconnect(
+		agentId: string,
+		integration?: { credentialId: string; type: string },
+	): Promise<void> {
 		if (integration) {
 			await this.disconnectOne(
 				this.connectionKey(agentId, integration.type, integration.credentialId),
