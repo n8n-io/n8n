@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton } from '@n8n/design-system';
 import { getRectOfNodes } from '@vue-flow/core';
 import type { GraphNode } from '@vue-flow/core';
 
@@ -10,6 +11,8 @@ import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGro
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 
 const TOOLBAR_OFFSET_PX = 12;
+const GROUP_NODES_SHORTCUT = { metaKey: true, keys: ['G'] };
+const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
 
 const props = withDefaults(
 	defineProps<{
@@ -74,10 +77,11 @@ function onExtractWorkflowClick() {
 			data-test-id="canvas-selection-toolbar"
 			@mousedown.stop
 		>
-			<N8nTooltip
+			<KeyboardShortcutTooltip
 				v-if="canGroup"
 				placement="top"
-				:content="i18n.baseText('canvas.selection.toolbar.group')"
+				:label="i18n.baseText('canvas.selection.toolbar.group')"
+				:shortcut="GROUP_NODES_SHORTCUT"
 			>
 				<N8nIconButton
 					size="small"
@@ -88,8 +92,13 @@ function onExtractWorkflowClick() {
 					:aria-label="i18n.baseText('canvas.selection.toolbar.group')"
 					@click.stop="onGroupClick"
 				/>
-			</N8nTooltip>
-			<N8nTooltip v-if="canExtractWorkflow" placement="top" :content="extractWorkflowLabel">
+			</KeyboardShortcutTooltip>
+			<KeyboardShortcutTooltip
+				v-if="canExtractWorkflow"
+				placement="top"
+				:label="extractWorkflowLabel"
+				:shortcut="EXTRACT_WORKFLOW_SHORTCUT"
+			>
 				<N8nIconButton
 					size="small"
 					variant="ghost"
@@ -99,7 +108,7 @@ function onExtractWorkflowClick() {
 					:aria-label="extractWorkflowLabel"
 					@click.stop="onExtractWorkflowClick"
 				/>
-			</N8nTooltip>
+			</KeyboardShortcutTooltip>
 		</div>
 	</Teleport>
 </template>

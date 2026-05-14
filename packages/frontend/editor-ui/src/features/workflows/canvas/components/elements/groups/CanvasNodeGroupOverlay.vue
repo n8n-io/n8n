@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
 import { getRectOfNodes } from '@vue-flow/core';
 import type { GraphNode } from '@vue-flow/core';
 
@@ -15,6 +16,7 @@ import {
 
 // Matches the `var(--spacing--sm)` horizontal padding on the header (16px each side).
 const HEADER_PADDING_X = 16;
+const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
 const props = withDefaults(
 	defineProps<{
@@ -116,7 +118,10 @@ watch(
 		>
 			<div v-if="!readOnly" :class="$style.toolbar" data-test-id="canvas-node-group-toolbar">
 				<div :class="$style.toolbarItems">
-					<N8nTooltip placement="top" :content="i18n.baseText('canvas.selection.toolbar.ungroup')">
+					<KeyboardShortcutTooltip
+						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
+						:shortcut="UNGROUP_NODES_SHORTCUT"
+					>
 						<N8nIconButton
 							variant="ghost"
 							size="small"
@@ -126,7 +131,7 @@ watch(
 							@click.stop="onUngroupClick"
 							@mousedown.stop
 						/>
-					</N8nTooltip>
+					</KeyboardShortcutTooltip>
 				</div>
 			</div>
 			<div :class="$style.title" data-test-id="canvas-node-group-title">
