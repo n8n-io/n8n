@@ -1,7 +1,5 @@
 import type { AgentIntegrationSettings, AgentTelegramIntegrationSettings } from '@n8n/api-types';
 
-export const TELEGRAM_INTEGRATION_TYPE = 'telegram';
-
 export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
 	accessMode: 'public',
 	allowedUsers: [],
