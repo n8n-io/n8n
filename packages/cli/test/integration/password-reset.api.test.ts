@@ -10,7 +10,6 @@ import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { compare } from 'bcryptjs';
-import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -169,8 +168,14 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail after password has changed', async () => {
-		const updatedUser = mock<User>({ ...owner, password: 'another-password' });
-		const resetPasswordToken = authService.generatePasswordResetToken(updatedUser);
+		// Issue a reset token, then simulate a password change by bumping the
+		// user's `tokensValidAfter` to a moment strictly after the token's
+		// `iat` (whole-second floor in `isTokenStale` means same-second bumps
+		// don't count). The reset token must now be rejected as stale.
+		const resetPasswordToken = authService.generatePasswordResetToken(owner);
+		await Container.get(UserRepository).update(owner.id, {
+			tokensValidAfter: new Date(Date.now() + 2000),
+		});
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
