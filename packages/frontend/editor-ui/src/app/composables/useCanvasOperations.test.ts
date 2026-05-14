@@ -54,7 +54,7 @@ import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
-import { nextTick, reactive, ref } from 'vue';
+import { isVNode, nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -2540,6 +2540,65 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalled();
 		});
+
+		it('bypasses group validation when undoing an auto-extended connection add', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
+			const toast = useToast();
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			const nodeA = createTestNode({ id: 'a', name: 'A', type: SET_NODE_TYPE });
+			const nodeB = createTestNode({ id: 'b', name: 'B', type: SET_NODE_TYPE });
+			const nodeC = createTestNode({ id: 'c', name: 'C', type: SET_NODE_TYPE });
+			const nodesById = new Map([
+				[nodeA.id, nodeA],
+				[nodeB.id, nodeB],
+				[nodeC.id, nodeC],
+			]);
+			const nodesByName = new Map([
+				[nodeA.name, nodeA],
+				[nodeB.name, nodeB],
+				[nodeC.name, nodeC],
+			]);
+			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id, nodeC.id], title: 'Group 1' };
+			const connection: [IConnection, IConnection] = [
+				{ node: nodeA.name, type: NodeConnectionTypes.Main, index: 0 },
+				{ node: nodeC.name, type: NodeConnectionTypes.Main, index: 0 },
+			];
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowDocumentStoreInstance.allNodes = [nodeA, nodeB, nodeC];
+			workflowDocumentStoreInstance.connectionsBySourceNode = {
+				[nodeA.name]: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: nodeB.name, type: NodeConnectionTypes.Main, index: 0 },
+							{ node: nodeC.name, type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			};
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => nodesByName.get(name) ?? null,
+			);
+			vi.spyOn(canvasNodeGroupsStore, 'getGroupForNode').mockImplementation((nodeId) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+
+			const { revertCreateConnection } = useCanvasOperations();
+			revertCreateConnection(connection);
+
+			expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledWith({
+				connection,
+			});
+			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
 	});
 
 	describe('isConnectionAllowed', () => {
@@ -3400,6 +3459,7 @@ describe('useCanvasOperations', () => {
 			vi.spyOn(canvasNodeGroupsStore, 'getGroupForNode').mockImplementation((nodeId) =>
 				group.nodeIds.includes(nodeId) ? group : undefined,
 			);
+			const deleteGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'deleteGroup');
 
 			const { deleteConnection } = useCanvasOperations();
 			deleteConnection({
@@ -3413,11 +3473,45 @@ describe('useCanvasOperations', () => {
 			expect(toast.showToast).toHaveBeenCalledWith(
 				expect.objectContaining({
 					title: 'Connection not removed',
-					message:
-						"'Group' must stay connected from first node to last node. You can make this change after ungrouping it.",
 					type: 'error',
 				}),
 			);
+
+			const toastConfig = vi.mocked(toast.showToast).mock.calls.at(-1)?.[0];
+			expect(toastConfig).toBeDefined();
+			expect(isVNode(toastConfig?.message)).toBe(true);
+			if (!toastConfig || !isVNode(toastConfig.message)) {
+				throw new Error('Expected toast message to be a vnode');
+			}
+
+			const messageChildren = toastConfig.message.children;
+			if (!Array.isArray(messageChildren)) {
+				throw new Error('Expected toast message children to be an array');
+			}
+
+			expect(messageChildren[0]).toBe(
+				"'Group' must stay connected from first node to last node. You can make this change after ungrouping it.",
+			);
+			const ungroupAction = messageChildren[2];
+			expect(isVNode(ungroupAction)).toBe(true);
+			if (!isVNode(ungroupAction)) {
+				throw new Error('Expected ungroup action to be a vnode');
+			}
+
+			expect(ungroupAction.children).toBe('Ungroup');
+			expect(ungroupAction.props).toEqual(
+				expect.objectContaining({ href: '#', class: 'primary-color' }),
+			);
+
+			const event = {
+				preventDefault: vi.fn(),
+				stopPropagation: vi.fn(),
+			} as unknown as MouseEvent;
+			ungroupAction.props?.onClick(event);
+
+			expect(event.preventDefault).toHaveBeenCalled();
+			expect(event.stopPropagation).toHaveBeenCalled();
+			expect(deleteGroupSpy).toHaveBeenCalledWith(group.id);
 		});
 
 		it('should update node input issues for both nodes after deleting connection', async () => {
@@ -3463,15 +3557,118 @@ describe('useCanvasOperations', () => {
 
 	describe('revertDeleteConnection', () => {
 		it('should revert delete connection', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const sourceNode = createTestNode({
+				id: 'source',
+				name: 'sourceNode',
+				type: SET_NODE_TYPE,
+			});
+			const targetNode = createTestNode({
+				id: 'target',
+				name: 'targetNode',
+				type: SET_NODE_TYPE,
+			});
 			const connection: [IConnection, IConnection] = [
-				{ node: 'sourceNode', type: NodeConnectionTypes.Main, index: 1 },
-				{ node: 'targetNode', type: NodeConnectionTypes.Main, index: 2 },
+				{ node: sourceNode.name, type: NodeConnectionTypes.Main, index: 1 },
+				{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 2 },
 			];
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
+				mockNodeTypeDescription({
+					name: SET_NODE_TYPE,
+					inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+				}),
+			);
+			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) =>
+					({
+						[sourceNode.name]: sourceNode,
+						[targetNode.name]: targetNode,
+					})[name] ?? null,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation(
+				(id) =>
+					({
+						[sourceNode.id]: sourceNode,
+						[targetNode.id]: targetNode,
+					})[id],
+			);
 
 			const { revertDeleteConnection } = useCanvasOperations();
 			revertDeleteConnection(connection);
 
 			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({ connection });
+		});
+
+		it('replays group auto-extension when redoing a connection add', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
+			const toast = useToast();
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			const nodeA = createTestNode({ id: 'a', name: 'A', type: SET_NODE_TYPE });
+			const nodeB = createTestNode({ id: 'b', name: 'B', type: SET_NODE_TYPE });
+			const nodeC = createTestNode({ id: 'c', name: 'C', type: SET_NODE_TYPE });
+			const nodeD = createTestNode({ id: 'd', name: 'D', type: SET_NODE_TYPE });
+			const nodesById = new Map([
+				[nodeA.id, nodeA],
+				[nodeB.id, nodeB],
+				[nodeC.id, nodeC],
+				[nodeD.id, nodeD],
+			]);
+			const nodesByName = new Map([
+				[nodeA.name, nodeA],
+				[nodeB.name, nodeB],
+				[nodeC.name, nodeC],
+				[nodeD.name, nodeD],
+			]);
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], title: 'Group 1' };
+			const connection: [IConnection, IConnection] = [
+				{ node: nodeA.name, type: NodeConnectionTypes.Main, index: 0 },
+				{ node: nodeC.name, type: NodeConnectionTypes.Main, index: 0 },
+			];
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowDocumentStoreInstance.allNodes = [nodeA, nodeB, nodeC, nodeD];
+			workflowDocumentStoreInstance.connectionsBySourceNode = {
+				[nodeA.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: nodeB.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				[nodeB.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: nodeC.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				[nodeC.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: nodeD.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => nodesByName.get(name) ?? null,
+			);
+			vi.spyOn(canvasNodeGroupsStore, 'getGroupForNode').mockImplementation((nodeId) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			const addNodesToGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'addNodesToGroup');
+
+			const { revertDeleteConnection } = useCanvasOperations();
+			revertDeleteConnection(connection);
+
+			expect(addNodesToGroupSpy).toHaveBeenCalledWith(group.id, [nodeA.id]);
+			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({ connection });
+			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 	});
 
@@ -5796,6 +5993,152 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledTimes(2);
 			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledTimes(2);
 		});
+
+		describe('node group validation', () => {
+			const firstNode = createTestNode({
+				id: 'first',
+				name: 'First Node',
+				type: SET_NODE_TYPE,
+			});
+			const selectedStartNode = createTestNode({
+				id: 'selected-start',
+				name: 'Selected Start Node',
+				type: SET_NODE_TYPE,
+			});
+			const selectedEndNode = createTestNode({
+				id: 'selected-end',
+				name: 'Selected End Node',
+				type: SET_NODE_TYPE,
+			});
+			const lastNode = createTestNode({
+				id: 'last',
+				name: 'Last Node',
+				type: SET_NODE_TYPE,
+			});
+			const replacementNode = createTestNode({
+				id: 'replacement',
+				name: 'Replacement Node',
+				type: SET_NODE_TYPE,
+			});
+			const group = {
+				id: 'group',
+				nodeIds: [firstNode.id, selectedStartNode.id, selectedEndNode.id, lastNode.id],
+				title: 'Group 1',
+			};
+
+			beforeEach(() => {
+				const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				const nodeTypeDescription = mockNodeTypeDescription({
+					name: SET_NODE_TYPE,
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+				});
+				const nodes = [firstNode, selectedStartNode, selectedEndNode, lastNode, replacementNode];
+				const nodesById = new Map(nodes.map((node) => [node.id, node]));
+				const nodesByName = new Map(nodes.map((node) => [node.name, node]));
+
+				nodeTypesStore.nodeTypes = { [SET_NODE_TYPE]: { 1: nodeTypeDescription } };
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+				workflowDocumentStoreInstance.allNodes = nodes;
+				workflowDocumentStoreInstance.connectionsBySourceNode = {
+					[firstNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{
+									node: selectedStartNode.name,
+									type: NodeConnectionTypes.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+					[selectedStartNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{
+									node: selectedEndNode.name,
+									type: NodeConnectionTypes.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+					[selectedEndNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: lastNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections: workflowDocumentStoreInstance.connectionsBySourceNode,
+				});
+
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+					nodesById.get(id),
+				);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+					(name) => nodesByName.get(name) ?? null,
+				);
+				vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockImplementation((...args) =>
+					workflowObject.getParentNodes(...args),
+				);
+				vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockImplementation((...args) =>
+					workflowObject.getChildNodes(...args),
+				);
+				vi.mocked(workflowDocumentStoreInstance.getConnectionsBetweenNodes).mockImplementation(
+					(...args) => workflowObject.getConnectionsBetweenNodes(...args),
+				);
+				vi.spyOn(canvasNodeGroupsStore, 'getGroupForNode').mockImplementation((nodeId) =>
+					group.nodeIds.includes(nodeId) ? group : undefined,
+				);
+			});
+
+			it('should not add duplicate replacement connections when a grouped replacement is blocked', () => {
+				const toast = useToast();
+				const { replaceNodeConnections } = useCanvasOperations();
+
+				replaceNodeConnections(selectedEndNode.id, replacementNode.id, {
+					replaceInputs: false,
+				});
+
+				expect(workflowDocumentStoreInstance.removeConnection).not.toHaveBeenCalled();
+				expect(workflowDocumentStoreInstance.addConnection).not.toHaveBeenCalled();
+				expect(toast.showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ title: 'Connection not added', type: 'error' }),
+				);
+			});
+
+			it('should replace grouped connections without per-edge validation for graph rewrites', () => {
+				const toast = useToast();
+				const { replaceNodeConnections } = useCanvasOperations();
+
+				replaceNodeConnections(selectedEndNode.id, replacementNode.id, {
+					replaceInputs: false,
+					validateNodeGroups: false,
+				});
+
+				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledTimes(1);
+				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledWith({
+					connection: [
+						{ index: 0, node: selectedEndNode.name, type: NodeConnectionTypes.Main },
+						{ index: 0, node: lastNode.name, type: NodeConnectionTypes.Main },
+					],
+				});
+				expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledTimes(1);
+				expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({
+					connection: [
+						{ index: 0, node: replacementNode.name, type: NodeConnectionTypes.Main },
+						{ index: 0, node: lastNode.name, type: NodeConnectionTypes.Main },
+					],
+				});
+				expect(toast.showToast).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'error' }),
+				);
+			});
+		});
 	});
 	describe('replaceNode', () => {
 		const sourceNode = createTestNode({ id: 'source', name: 'Source Node' });
@@ -5971,6 +6314,158 @@ describe('useCanvasOperations', () => {
 
 				expect(historyStore.startRecordingUndo).toHaveBeenCalled();
 				expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			});
+		});
+		describe('node group validation', () => {
+			it('should replace a grouped node against the final graph and transfer group membership', () => {
+				const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
+				const toast = useToast();
+				const group = {
+					id: 'group',
+					nodeIds: [sourceNode.id, targetNode.id, nextNode.id],
+					title: 'Group 1',
+				};
+				const connections: IConnections = {
+					[sourceNode.name]: {
+						[NodeConnectionTypes.Main]: [[connectionTargetMain0]],
+					},
+					[targetNode.name]: {
+						[NodeConnectionTypes.Main]: [[connectionNextMain0]],
+					},
+				};
+
+				workflowDocumentStoreInstance.allNodes = [
+					sourceNode,
+					targetNode,
+					replacementNode,
+					nextNode,
+				];
+				workflowDocumentStoreInstance.connectionsBySourceNode = connections;
+
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) => {
+					if (id === sourceNode.id) return sourceNode;
+					if (id === targetNode.id) return targetNode;
+					if (id === replacementNode.id) return replacementNode;
+					if (id === nextNode.id) return nextNode;
+					return undefined;
+				});
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation((name) => {
+					if (name === sourceNode.name) return sourceNode;
+					if (name === targetNode.name) return targetNode;
+					if (name === replacementNode.name) return replacementNode;
+					if (name === nextNode.name) return nextNode;
+					return null;
+				});
+				vi.spyOn(canvasNodeGroupsStore, 'getGroupForNode').mockImplementation((nodeId) =>
+					group.nodeIds.includes(nodeId) ? group : undefined,
+				);
+				const replaceNodeInGroupSpy = vi
+					.spyOn(canvasNodeGroupsStore, 'replaceNodeInGroup')
+					.mockImplementation((id, previousNodeId, newNodeId) => {
+						if (id !== group.id) return;
+						group.nodeIds = group.nodeIds.map((nodeId) =>
+							nodeId === previousNodeId ? newNodeId : nodeId,
+						);
+					});
+
+				const workflowObject = createTestWorkflowObject({
+					nodes: workflowDocumentStoreInstance.allNodes,
+					connections,
+				});
+				vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockImplementation((...args) =>
+					workflowObject.getParentNodes(...args),
+				);
+				vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockImplementation((...args) =>
+					workflowObject.getChildNodes(...args),
+				);
+				vi.mocked(workflowDocumentStoreInstance.getConnectionsBetweenNodes).mockImplementation(
+					(...args) => workflowObject.getConnectionsBetweenNodes(...args),
+				);
+				vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockImplementation(
+					(name) => {
+						const sourceConnections = connections[sourceNode.name]?.[NodeConnectionTypes.Main];
+						const hasSourceToTarget = sourceConnections?.[0]?.some(
+							(connection) => connection.node === targetNode.name,
+						);
+						if (name === targetNode.name && hasSourceToTarget) {
+							return { [NodeConnectionTypes.Main]: [[connectionSourceMain0]] };
+						}
+
+						return {} as INodeConnections;
+					},
+				);
+				vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockImplementation(
+					(name) => {
+						const targetConnections = connections[targetNode.name]?.[NodeConnectionTypes.Main];
+						const hasTargetToNext = targetConnections?.[0]?.some(
+							(connection) => connection.node === nextNode.name,
+						);
+						if (name === targetNode.name && hasTargetToNext) {
+							return { [NodeConnectionTypes.Main]: [[connectionNextMain0]] };
+						}
+
+						return {} as INodeConnections;
+					},
+				);
+				vi.mocked(workflowDocumentStoreInstance.removeConnection).mockImplementation(
+					({ connection }: { connection: IConnection[] }) => {
+						const sourceData = connection[0];
+						const destinationData = connection[1];
+						if (!sourceData || !destinationData) return;
+						const sourceConnections =
+							connections[sourceData.node]?.[sourceData.type]?.[sourceData.index];
+						if (!sourceConnections) return;
+
+						connections[sourceData.node][sourceData.type][sourceData.index] =
+							sourceConnections.filter(
+								(connectionData) =>
+									connectionData.node !== destinationData.node ||
+									connectionData.type !== destinationData.type ||
+									connectionData.index !== destinationData.index,
+							);
+					},
+				);
+				vi.mocked(workflowDocumentStoreInstance.addConnection).mockImplementation(
+					({ connection }: { connection: IConnection[] }) => {
+						const sourceData = connection[0];
+						const destinationData = connection[1];
+						if (!sourceData || !destinationData) return;
+						connections[sourceData.node] = connections[sourceData.node] ?? {};
+						connections[sourceData.node][sourceData.type] =
+							connections[sourceData.node][sourceData.type] ?? [];
+						connections[sourceData.node][sourceData.type][sourceData.index] =
+							connections[sourceData.node][sourceData.type][sourceData.index] ?? [];
+						connections[sourceData.node][sourceData.type][sourceData.index]?.push(destinationData);
+					},
+				);
+
+				const { replaceNode } = useCanvasOperations();
+				replaceNode(targetNode.id, replacementNode.id, { trackHistory: true });
+
+				expect(replaceNodeInGroupSpy).toHaveBeenCalledWith(
+					group.id,
+					targetNode.id,
+					replacementNode.id,
+				);
+				expect(group.nodeIds).toEqual([sourceNode.id, replacementNode.id, nextNode.id]);
+				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledTimes(2);
+				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledWith({
+					connection: [connectionSourceMain0, connectionTargetMain0],
+				});
+				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledWith({
+					connection: [connectionTargetMain0, connectionNextMain0],
+				});
+				expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledTimes(2);
+				expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({
+					connection: [connectionSourceMain0, connectionReplacementMain0],
+				});
+				expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({
+					connection: [connectionReplacementMain0, connectionNextMain0],
+				});
+				expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(targetNode.id);
+				expect(toast.showToast).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'error' }),
+				);
 			});
 		});
 		it('should not track history if flag is false', () => {
@@ -6752,6 +7247,117 @@ describe('useCanvasOperations', () => {
 			// And delete the original connection from Agent to Tool
 			expect(addConnectionSpy).toHaveBeenCalledTimes(2);
 			expect(removeConnectionSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('createConnectionToLastInteractedWithNode - grouped edge insertion', () => {
+		it('should replace the grouped edge and extend the group when inserting a node between grouped nodes', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
+			const toast = useToast();
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			const sourceNode = createTestNode({
+				id: 'source',
+				name: 'Source',
+				type: SET_NODE_TYPE,
+				position: [0, 0],
+			});
+			const targetNode = createTestNode({
+				id: 'target',
+				name: 'Target',
+				type: SET_NODE_TYPE,
+				position: [500, 0],
+			});
+			const insertedNode = createTestNode({
+				id: 'inserted',
+				name: 'Inserted',
+				type: SET_NODE_TYPE,
+				position: [250, 0],
+			});
+			const nodesById = new Map([
+				[sourceNode.id, sourceNode],
+				[targetNode.id, targetNode],
+				[insertedNode.id, insertedNode],
+			]);
+			const nodesByName = new Map([
+				[sourceNode.name, sourceNode],
+				[targetNode.name, targetNode],
+				[insertedNode.name, insertedNode],
+			]);
+			const group = {
+				id: 'group',
+				nodeIds: [sourceNode.id, targetNode.id],
+				title: 'Group 1',
+			};
+
+			nodeTypesStore.nodeTypes = { [SET_NODE_TYPE]: { 1: nodeTypeDescription } };
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode];
+			workflowDocumentStoreInstance.connectionsBySourceNode = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => nodesByName.get(name) ?? null,
+			);
+			vi.spyOn(canvasNodeGroupsStore, 'getGroupForNode').mockImplementation((nodeId) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			const addNodesToGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'addNodesToGroup');
+
+			uiStore.lastInteractedWithNode = sourceNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: sourceNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+				target: targetNode.id,
+				targetHandle: `inputs/${NodeConnectionTypes.Main}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.Main}/0`;
+
+			const { addNode } = useCanvasOperations();
+			addNode(insertedNode, nodeTypeDescription, { isAutoAdd: false });
+
+			expect(addNodesToGroupSpy).toHaveBeenCalledWith(group.id, [insertedNode.id]);
+			expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledTimes(1);
+			expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ index: 0, node: sourceNode.name, type: NodeConnectionTypes.Main },
+					{ index: 0, node: targetNode.name, type: NodeConnectionTypes.Main },
+				],
+			});
+			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledTimes(2);
+			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({
+				connection: [
+					{ index: 0, node: sourceNode.name, type: NodeConnectionTypes.Main },
+					{ index: 0, node: insertedNode.name, type: NodeConnectionTypes.Main },
+				],
+			});
+			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({
+				connection: [
+					{ index: 0, node: insertedNode.name, type: NodeConnectionTypes.Main },
+					{ index: 0, node: targetNode.name, type: NodeConnectionTypes.Main },
+				],
+			});
+			expect(toast.showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: "'Group 1' extended",
+					type: 'info',
+				}),
+			);
+			expect(toast.showToast).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Connection not removed' }),
+			);
 		});
 	});
 

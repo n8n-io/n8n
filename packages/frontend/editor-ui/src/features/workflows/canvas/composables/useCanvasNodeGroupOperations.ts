@@ -1,6 +1,8 @@
 import type { IConnection, IConnections } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, h } from 'vue';
+import type { NotificationHandle } from 'element-plus';
 import cloneDeep from 'lodash/cloneDeep';
+import uniq from 'lodash/uniq';
 
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -20,6 +22,7 @@ import {
 
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
+type InvalidAffectedGroup = { group: CanvasNodeGroup; result: InvalidGroupValidationResult };
 type ExtractableErrorCode = NonNullable<
 	Extract<
 		InvalidGroupValidationResult,
@@ -61,11 +64,10 @@ export function useCanvasNodeGroupOperations() {
 	const toast = useToast();
 	const { isSelectionGroupable } = useSelectionValidation();
 
-	function addConnectionToCandidate(
-		connectionsBySourceNode: IConnections,
+	function applyAddConnection(
+		candidateConnections: IConnections,
 		connection: [IConnection, IConnection],
-	): IConnections {
-		const candidateConnections = cloneDeep(connectionsBySourceNode);
+	): void {
 		const [sourceData, destinationData] = connection;
 
 		candidateConnections[sourceData.node] = candidateConnections[sourceData.node] ?? {};
@@ -80,24 +82,16 @@ export function useCanvasNodeGroupOperations() {
 
 		outputConnections[sourceData.index] = outputConnections[sourceData.index] ?? [];
 		outputConnections[sourceData.index]?.push(destinationData);
-
-		return candidateConnections;
 	}
 
-	function removeConnectionFromCandidate(
-		connectionsBySourceNode: IConnections,
+	function applyRemoveConnection(
+		candidateConnections: IConnections,
 		connection: [IConnection, IConnection],
-	): IConnections {
-		const candidateConnections = cloneDeep(connectionsBySourceNode);
+	): void {
 		const [sourceData, destinationData] = connection;
-		const sourceNodeConnections = candidateConnections[sourceData.node];
-		if (!sourceNodeConnections) return candidateConnections;
-
-		const outputConnections = sourceNodeConnections[sourceData.type];
-		if (!outputConnections) return candidateConnections;
-
-		const targetConnections = outputConnections[sourceData.index];
-		if (!targetConnections) return candidateConnections;
+		const outputConnections = candidateConnections[sourceData.node]?.[sourceData.type];
+		const targetConnections = outputConnections?.[sourceData.index];
+		if (!outputConnections || !targetConnections) return;
 
 		outputConnections[sourceData.index] = targetConnections.filter(
 			(connectionData) =>
@@ -105,6 +99,26 @@ export function useCanvasNodeGroupOperations() {
 				connectionData.type !== destinationData.type ||
 				connectionData.index !== destinationData.index,
 		);
+	}
+
+	function applyConnectionChangesToCandidate({
+		connectionsBySourceNode,
+		connectionsToRemove = [],
+		connectionsToAdd = [],
+	}: {
+		connectionsBySourceNode: IConnections;
+		connectionsToRemove?: Array<[IConnection, IConnection]>;
+		connectionsToAdd?: Array<[IConnection, IConnection]>;
+	}): IConnections {
+		const candidateConnections = cloneDeep(connectionsBySourceNode);
+
+		for (const connection of connectionsToRemove) {
+			applyRemoveConnection(candidateConnections, connection);
+		}
+
+		for (const connection of connectionsToAdd) {
+			applyAddConnection(candidateConnections, connection);
+		}
 
 		return candidateConnections;
 	}
@@ -124,9 +138,10 @@ export function useCanvasNodeGroupOperations() {
 	function findInvalidGroup(
 		affectedGroups: CanvasNodeGroup[],
 		connectionsBySourceNode: IConnections,
+		getNodeIdsForGroup: (group: CanvasNodeGroup) => string[] = (group) => group.nodeIds,
 	): { group: CanvasNodeGroup; result: InvalidGroupValidationResult } | undefined {
 		for (const group of affectedGroups) {
-			const result = isSelectionGroupable(group.nodeIds, connectionsBySourceNode);
+			const result = isSelectionGroupable(getNodeIdsForGroup(group), connectionsBySourceNode);
 			if (!result.valid) return { group, result };
 		}
 		return undefined;
@@ -158,6 +173,53 @@ export function useCanvasNodeGroupOperations() {
 		return i18n.baseText(key, { interpolate: groupInterpolation });
 	}
 
+	function getConnectionChangeBlockedMessageWithAction(
+		group: CanvasNodeGroup,
+		result: InvalidGroupValidationResult,
+	) {
+		let notification: NotificationHandle | undefined;
+		const message = getConnectionChangeBlockedMessage(group, result);
+		const ungroupAction = h(
+			'a',
+			{
+				href: '#',
+				class: 'primary-color',
+				onClick: (event: MouseEvent) => {
+					event.preventDefault();
+					event.stopPropagation();
+					canvasNodeGroupsStore.deleteGroup(group.id);
+					notification?.close();
+				},
+			},
+			i18n.baseText('canvas.selection.toolbar.ungroup'),
+		);
+
+		return {
+			message: h('span', [message, ' ', ungroupAction]),
+			setNotification: (value: NotificationHandle) => {
+				notification = value;
+			},
+		};
+	}
+
+	function showConnectionChangeBlockedToast(
+		titleKey: BaseTextKey,
+		invalidAffectedGroup: InvalidAffectedGroup,
+	) {
+		const { message, setNotification } = getConnectionChangeBlockedMessageWithAction(
+			invalidAffectedGroup.group,
+			invalidAffectedGroup.result,
+		);
+
+		const notification = toast.showToast({
+			title: i18n.baseText(titleKey),
+			message,
+			type: 'error',
+			duration: 5000,
+		});
+		setNotification(notification);
+	}
+
 	function getAutoExtendCandidate({
 		failingGroup,
 		endpointIds,
@@ -183,6 +245,90 @@ export function useCanvasNodeGroupOperations() {
 		return candidateId;
 	}
 
+	function showAutoExtendedToast(group: CanvasNodeGroup, candidateId: string) {
+		const candidateName = workflowDocumentStore.value.getNodeById(candidateId)?.name ?? candidateId;
+
+		toast.showToast({
+			title: i18n.baseText('canvas.nodeGroup.autoExtended.title', {
+				interpolate: { group: group.title },
+			}),
+			message: i18n.baseText('canvas.nodeGroup.autoExtended.message', {
+				interpolate: {
+					node: candidateName,
+					group: group.title,
+				},
+			}),
+			type: 'info',
+			duration: 5000,
+		});
+	}
+
+	function tryAutoExtendInvalidGroup({
+		invalidAffectedGroup,
+		endpointIds,
+		connectionsBySourceNode,
+	}: {
+		invalidAffectedGroup: InvalidAffectedGroup;
+		endpointIds: string[];
+		connectionsBySourceNode: IConnections;
+	}): boolean {
+		const candidateId = getAutoExtendCandidate({
+			failingGroup: invalidAffectedGroup.group,
+			endpointIds,
+			connectionsBySourceNode,
+		});
+
+		if (candidateId === undefined) return false;
+
+		canvasNodeGroupsStore.addNodesToGroup(invalidAffectedGroup.group.id, [candidateId]);
+		showAutoExtendedToast(invalidAffectedGroup.group, candidateId);
+
+		return true;
+	}
+
+	function isConnectionReplacementAllowedForNodeGroups({
+		nodeIds,
+		connectionsToRemove,
+		connectionsToAdd,
+		connectionsBySourceNode,
+		allowAutoExtend = true,
+		blockedTitleKey = BLOCKED_TITLE_KEY.add,
+	}: {
+		nodeIds: string[];
+		connectionsToRemove: Array<[IConnection, IConnection]>;
+		connectionsToAdd: Array<[IConnection, IConnection]>;
+		connectionsBySourceNode: IConnections;
+		allowAutoExtend?: boolean;
+		blockedTitleKey?: BaseTextKey;
+	}): boolean {
+		const affectedGroups = getAffectedNodeGroups(nodeIds);
+		if (affectedGroups.length === 0) return true;
+
+		const candidateConnections = applyConnectionChangesToCandidate({
+			connectionsBySourceNode,
+			connectionsToRemove,
+			connectionsToAdd,
+		});
+
+		const invalidAffectedGroup = findInvalidGroup(affectedGroups, candidateConnections);
+		if (!invalidAffectedGroup) return true;
+
+		if (
+			allowAutoExtend &&
+			tryAutoExtendInvalidGroup({
+				invalidAffectedGroup,
+				endpointIds: nodeIds,
+				connectionsBySourceNode: candidateConnections,
+			})
+		) {
+			return true;
+		}
+
+		showConnectionChangeBlockedToast(blockedTitleKey, invalidAffectedGroup);
+
+		return false;
+	}
+
 	function isConnectionChangeAllowedForNodeGroups({
 		nodeIds,
 		connection,
@@ -194,62 +340,76 @@ export function useCanvasNodeGroupOperations() {
 		connectionsBySourceNode: IConnections;
 		action: ConnectionChangeAction;
 	}): boolean {
-		const affectedGroups = getAffectedNodeGroups(nodeIds);
-		if (affectedGroups.length === 0) return true;
+		return isConnectionReplacementAllowedForNodeGroups({
+			nodeIds,
+			connectionsToRemove: action === 'remove' ? [connection] : [],
+			connectionsToAdd: action === 'add' ? [connection] : [],
+			connectionsBySourceNode,
+			allowAutoExtend: action === 'add',
+			blockedTitleKey: BLOCKED_TITLE_KEY[action],
+		});
+	}
 
-		const candidateConnections =
-			action === 'add'
-				? addConnectionToCandidate(connectionsBySourceNode, connection)
-				: removeConnectionFromCandidate(connectionsBySourceNode, connection);
+	function isNodeReplacementAllowedForNodeGroups({
+		previousNodeId,
+		newNodeId,
+		nodeIds,
+		connectionsToRemove,
+		connectionsToAdd,
+		connectionsBySourceNode,
+	}: {
+		previousNodeId: string;
+		newNodeId: string;
+		nodeIds: string[];
+		connectionsToRemove: Array<[IConnection, IConnection]>;
+		connectionsToAdd: Array<[IConnection, IConnection]>;
+		connectionsBySourceNode: IConnections;
+	}): boolean {
+		const previousGroup = canvasNodeGroupsStore.getGroupForNode(previousNodeId);
+		if (!previousGroup) return true;
 
-		const invalidAffectedGroup = findInvalidGroup(affectedGroups, candidateConnections);
-		if (!invalidAffectedGroup) return true;
-
-		if (action === 'add') {
-			const candidateId = getAutoExtendCandidate({
-				failingGroup: invalidAffectedGroup.group,
-				endpointIds: nodeIds,
-				connectionsBySourceNode: candidateConnections,
+		const newNodeGroup = canvasNodeGroupsStore.getGroupForNode(newNodeId);
+		if (newNodeGroup && newNodeGroup.id !== previousGroup.id) {
+			showConnectionChangeBlockedToast(BLOCKED_TITLE_KEY.add, {
+				group: previousGroup,
+				result: {
+					valid: false,
+					reason: 'invalid-subgraph',
+					errors: [],
+				},
 			});
-
-			if (candidateId !== undefined) {
-				canvasNodeGroupsStore.addNodesToGroup(invalidAffectedGroup.group.id, [candidateId]);
-
-				const candidateName =
-					workflowDocumentStore.value.getNodeById(candidateId)?.name ?? candidateId;
-
-				toast.showToast({
-					title: i18n.baseText('canvas.nodeGroup.autoExtended.title', {
-						interpolate: { group: invalidAffectedGroup.group.title },
-					}),
-					message: i18n.baseText('canvas.nodeGroup.autoExtended.message', {
-						interpolate: {
-							node: candidateName,
-							group: invalidAffectedGroup.group.title,
-						},
-					}),
-					type: 'info',
-					duration: 5000,
-				});
-
-				return true;
-			}
+			return false;
 		}
 
-		toast.showToast({
-			title: i18n.baseText(BLOCKED_TITLE_KEY[action]),
-			message: getConnectionChangeBlockedMessage(
-				invalidAffectedGroup.group,
-				invalidAffectedGroup.result,
-			),
-			type: 'error',
-			duration: 5000,
+		const affectedGroups = getAffectedNodeGroups([...nodeIds, previousNodeId, newNodeId]);
+		if (affectedGroups.length === 0) return true;
+
+		const candidateConnections = applyConnectionChangesToCandidate({
+			connectionsBySourceNode,
+			connectionsToRemove,
+			connectionsToAdd,
 		});
+		const swappedPreviousGroupNodeIds = uniq(
+			previousGroup.nodeIds.map((nodeId) => (nodeId === previousNodeId ? newNodeId : nodeId)),
+		);
+		const getNodeIdsForGroup = (group: CanvasNodeGroup) =>
+			group.id === previousGroup.id ? swappedPreviousGroupNodeIds : group.nodeIds;
+
+		const invalidAffectedGroup = findInvalidGroup(
+			affectedGroups,
+			candidateConnections,
+			getNodeIdsForGroup,
+		);
+		if (!invalidAffectedGroup) return true;
+
+		showConnectionChangeBlockedToast(BLOCKED_TITLE_KEY.add, invalidAffectedGroup);
 
 		return false;
 	}
 
 	return {
 		isConnectionChangeAllowedForNodeGroups,
+		isConnectionReplacementAllowedForNodeGroups,
+		isNodeReplacementAllowedForNodeGroups,
 	};
 }

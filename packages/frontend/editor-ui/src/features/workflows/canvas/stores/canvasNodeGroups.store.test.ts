@@ -98,6 +98,36 @@ describe('canvasNodeGroups.store', () => {
 		});
 	});
 
+	describe('replaceNodeInGroup', () => {
+		it('replaces an existing member while preserving order', () => {
+			const group = store.createGroup(['a', 'b', 'c'], 'X');
+
+			store.replaceNodeInGroup(group.id, 'b', 'replacement');
+
+			expect(store.getGroupById(group.id)?.nodeIds).toEqual(['a', 'replacement', 'c']);
+		});
+
+		it('dedupes when the replacement is already in the group', () => {
+			const group = store.createGroup(['a', 'b', 'c'], 'X');
+
+			store.replaceNodeInGroup(group.id, 'b', 'c');
+
+			expect(store.getGroupById(group.id)?.nodeIds).toEqual(['a', 'c']);
+		});
+
+		it('does nothing for an unknown group id', () => {
+			expect(() => store.replaceNodeInGroup('missing', 'a', 'b')).not.toThrow();
+		});
+
+		it('does nothing when the previous node is not a group member', () => {
+			const group = store.createGroup(['a', 'b'], 'X');
+
+			store.replaceNodeInGroup(group.id, 'c', 'd');
+
+			expect(store.getGroupById(group.id)?.nodeIds).toEqual(['a', 'b']);
+		});
+	});
+
 	describe('pruneNodes', () => {
 		it('removes deleted node ids from each group', () => {
 			const group = store.createGroup(['a', 'b', 'c'], 'X');

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import uniq from 'lodash/uniq';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -72,6 +73,16 @@ export const useCanvasNodeGroupsStore = defineStore(CANVAS_NODE_GROUPS_STORE_ID,
 		group.nodeIds = [...group.nodeIds, ...added];
 	}
 
+	function replaceNodeInGroup(id: string, previousNodeId: string, newNodeId: string) {
+		const group = groups.value.get(id);
+		if (!group) return;
+		if (!group.nodeIds.includes(previousNodeId)) return;
+
+		group.nodeIds = uniq(
+			group.nodeIds.map((nodeId) => (nodeId === previousNodeId ? newNodeId : nodeId)),
+		);
+	}
+
 	function getGroupById(id: string): CanvasNodeGroup | undefined {
 		return groups.value.get(id);
 	}
@@ -109,6 +120,7 @@ export const useCanvasNodeGroupsStore = defineStore(CANVAS_NODE_GROUPS_STORE_ID,
 		updateTitle,
 		deleteGroup,
 		addNodesToGroup,
+		replaceNodeInGroup,
 		getGroupById,
 		getGroupForNode,
 		pruneNodes,
