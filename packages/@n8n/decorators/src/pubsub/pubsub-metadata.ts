@@ -29,6 +29,7 @@ export type PubSubEventName =
 	| 'reload-source-control-config'
 	| 'reload-mcp-registry'
 	| 'cancel-test-run'
+	| 'cancel-collection'
 	| 'agent-chat-integration-changed'
 	| 'agent-config-changed';
 

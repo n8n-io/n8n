@@ -6,6 +6,7 @@ import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 import { computeCost, getModelCost, type ModelCost } from '../sdk/catalog';
 import { isLlmMessage } from '../sdk/message';
 import type {
+	AgentExecutionCounter,
 	AgentRunState,
 	AnthropicThinkingConfig,
 	AttributeValue,
@@ -277,6 +278,13 @@ interface ToolBatchContext {
 	list: AgentMessageList;
 	runId: string;
 	telemetry?: BuiltTelemetry;
+	executionCounter?: AgentExecutionCounter;
+}
+
+interface RawTokenUsage {
+	inputTokens?: number | undefined;
+	outputTokens?: number | undefined;
+	totalTokens?: number | undefined;
 }
 
 /**
@@ -700,6 +708,7 @@ export class AgentRuntime {
 		this.eventBus.emit({ type: AgentEvent.AgentStart });
 		await this.ensureModelCost();
 		const normalizedInput = normalizeInput(input);
+		this.incrementMessageCount(options?.executionCounter);
 		return await this.buildMessageList(normalizedInput, options);
 	}
 
@@ -800,6 +809,34 @@ export class AgentRuntime {
 		};
 	}
 
+	private recordExecutionCounter(fn: () => void): void {
+		try {
+			fn();
+		} catch {
+			// Aggregate counters are best-effort and must never affect agent execution.
+		}
+	}
+
+	private incrementMessageCount(counter: AgentExecutionCounter | undefined): void {
+		if (!counter) return;
+		this.recordExecutionCounter(() => counter.incrementMessageCount());
+	}
+
+	private incrementToolCallCount(counter: AgentExecutionCounter | undefined): void {
+		if (!counter) return;
+		this.recordExecutionCounter(() => counter.incrementToolCallCount());
+	}
+
+	private incrementTokenCount(
+		counter: AgentExecutionCounter | undefined,
+		usage: RawTokenUsage | undefined,
+	): void {
+		if (!counter || !usage) return;
+		const tokenCount = usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+		if (tokenCount <= 0) return;
+		this.recordExecutionCounter(() => counter.incrementTokenCount(tokenCount));
+	}
+
 	private async withTelemetryRootSpan<T>(
 		operation: 'generate' | 'stream',
 		options: ExecutionOptions | undefined,
@@ -894,7 +931,13 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const toolCtx: ToolBatchContext = { toolMap, list, runId, telemetry: runTelemetry };
+		const toolCtx: ToolBatchContext = {
+			toolMap,
+			list,
+			runId,
+			telemetry: runTelemetry,
+			executionCounter: options?.executionCounter,
+		};
 
 		if (pendingResume) {
 			const batch = await this.iteratePendingToolCallsConcurrent({ ...toolCtx, pendingResume });
@@ -954,6 +997,7 @@ export class AgentRuntime {
 			lastFinishReason = fromAiFinishReason(aiFinishReason);
 
 			totalUsage = accumulateUsage(totalUsage, result.usage);
+			this.incrementTokenCount(options?.executionCounter, result.usage);
 
 			const responseMessages = result.response.messages;
 			const newMessages = fromAiMessages(responseMessages);
@@ -1133,7 +1177,13 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const toolCtx: ToolBatchContext = { toolMap, list, runId, telemetry: runTelemetry };
+		const toolCtx: ToolBatchContext = {
+			toolMap,
+			list,
+			runId,
+			telemetry: runTelemetry,
+			executionCounter: options?.executionCounter,
+		};
 		if (pendingResume) {
 			try {
 				const batch = await this.iteratePendingToolCallsConcurrent({
@@ -1244,6 +1294,7 @@ export class AgentRuntime {
 			lastFinishReason = fromAiFinishReason(aiFinishReason);
 
 			totalUsage = accumulateUsage(totalUsage, usage);
+			this.incrementTokenCount(options?.executionCounter, usage);
 
 			const responseMessages = response.messages;
 			const newMessages = fromAiMessages(responseMessages);
@@ -1523,8 +1574,12 @@ export class AgentRuntime {
 			}>;
 		},
 	): Promise<ToolCallBatchResult> {
-		const { toolCalls, toolMap, list, runId, telemetry: resolvedTelemetry } = ctx;
+		const { toolCalls, toolMap, list, runId, telemetry: resolvedTelemetry, executionCounter } = ctx;
 		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
+		const providerExecutedCount = toolCalls.length - executableCalls.length;
+		for (let i = 0; i < providerExecutedCount; i++) {
+			this.incrementToolCallCount(executionCounter);
+		}
 		const executableCallsById = new Map(executableCalls.map((tc) => [tc.toolCallId, tc]));
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
 		const batchSize = this.concurrency;
@@ -1552,6 +1607,8 @@ export class AgentRuntime {
 							list,
 							undefined,
 							resolvedTelemetry,
+							executionCounter,
+							true,
 						),
 				),
 			);
@@ -1645,7 +1702,14 @@ export class AgentRuntime {
 	private async iteratePendingToolCallsConcurrent(
 		ctx: ToolBatchContext & { pendingResume: PendingResume },
 	): Promise<ToolCallBatchResult> {
-		const { pendingResume, toolMap, list, runId, telemetry: resolvedTelemetry } = ctx;
+		const {
+			pendingResume,
+			toolMap,
+			list,
+			runId,
+			telemetry: resolvedTelemetry,
+			executionCounter,
+		} = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
 		const resumedEntry = pendingResume.pendingToolCalls[resumedId];
 		if (!resumedEntry) {
@@ -1667,6 +1731,8 @@ export class AgentRuntime {
 			list,
 			pendingResume.resumeData,
 			resolvedTelemetry,
+			executionCounter,
+			false,
 		);
 
 		if (processResult.outcome === 'suspended') {
@@ -1741,6 +1807,7 @@ export class AgentRuntime {
 				list,
 				runId,
 				telemetry: resolvedTelemetry,
+				executionCounter,
 			});
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
@@ -1769,6 +1836,8 @@ export class AgentRuntime {
 		list: AgentMessageList,
 		resumeData?: unknown,
 		resolvedTelemetry?: BuiltTelemetry,
+		executionCounter?: AgentExecutionCounter,
+		countToolCall = true,
 	): Promise<ToolCallOutcome> {
 		const builtTool = toolMap.get(toolName);
 
@@ -1821,6 +1890,10 @@ export class AgentRuntime {
 				isError: settledBlock.state === 'rejected',
 			});
 			return { outcome: 'noop' };
+		}
+
+		if (countToolCall) {
+			this.incrementToolCallCount(executionCounter);
 		}
 
 		if (builtTool.inputSchema) {
