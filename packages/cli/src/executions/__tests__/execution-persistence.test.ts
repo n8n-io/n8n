@@ -17,6 +17,7 @@ import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { FsStore } from '@/executions/execution-data/fs-store';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
@@ -284,6 +285,292 @@ describe('ExecutionPersistence', () => {
 					expect.objectContaining({
 						deduplicationKey: 'wf-1:node-1:1700000000000',
 					}),
+				);
+			});
+		});
+	});
+
+	describe('update', () => {
+		const executionId = 'exec-1';
+		const workflowId = 'wf-1';
+
+		beforeEach(() => {
+			fsStore.write.mockReset();
+			fsStore.read.mockReset();
+			executionRepository.findOne.mockReset();
+			executionRepository.updateExistingExecution.mockReset();
+		});
+
+		const existingBundle = {
+			data: '[{"resultData":"1"},{}]',
+			workflowData: {
+				id: workflowId,
+				name: 'snapshot',
+				nodes: [],
+				connections: {},
+				settings: undefined,
+			},
+			workflowVersionId: 'v-original',
+			version: 1 as const,
+		};
+
+		const mockEntity = (storedAt: 'db' | 'fs') => {
+			executionRepository.findOne.mockResolvedValue({
+				id: executionId,
+				workflowId,
+				storedAt,
+			} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
+		};
+
+		describe('metadata-only updates', () => {
+			it('should delegate to the repository without touching the data store', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				executionRepository.updateExistingExecution.mockResolvedValue(true);
+
+				const result = await executionPersistence.update(executionId, {
+					retrySuccessId: 'retry-1',
+				});
+
+				expect(result).toBe(true);
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					{ retrySuccessId: 'retry-1' },
+					undefined,
+				);
+				expect(executionRepository.findOne).not.toHaveBeenCalled();
+				expect(fsStore.write).not.toHaveBeenCalled();
+				expect(fsStore.read).not.toHaveBeenCalled();
+			});
+
+			it('should forward conditions to the repository', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.updateExistingExecution.mockResolvedValue(false);
+
+				const result = await executionPersistence.update(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(result).toBe(false);
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+			});
+		});
+
+		describe('data updates on db-mode executions', () => {
+			it('should look up the entity and delegate the full payload to the repository', async () => {
+				const executionPersistence = createPersistenceService('fs'); // current mode is irrelevant for routing
+				mockEntity('db');
+				executionRepository.updateExistingExecution.mockResolvedValue(true);
+
+				const payload = {
+					data: runData,
+					status: 'success' as const,
+				};
+
+				const result = await executionPersistence.update(executionId, payload);
+
+				expect(result).toBe(true);
+				expect(executionRepository.findOne).toHaveBeenCalledWith({
+					where: { id: executionId },
+					select: ['id', 'workflowId', 'storedAt'],
+				});
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					payload,
+					undefined,
+				);
+				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should return false when the execution does not exist', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.findOne.mockResolvedValue(null);
+
+				const result = await executionPersistence.update(executionId, { data: runData });
+
+				expect(result).toBe(false);
+				expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
+				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('data updates on fs-mode executions', () => {
+			it('should update entity in a transaction and write a fresh bundle to fs', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const payload = {
+					data: runData,
+					workflowData,
+					status: 'success' as const,
+				};
+
+				const result = await executionPersistence.update(executionId, payload);
+
+				expect(result).toBe(true);
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ status: 'success' },
+				);
+				expect(fsStore.write).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({
+						data: expect.any(String) as string,
+						workflowData: {
+							id: workflowData.id,
+							name: workflowData.name,
+							nodes: workflowData.nodes,
+							connections: workflowData.connections,
+							settings: workflowData.settings,
+						},
+						workflowVersionId: 'v-original',
+					}),
+				);
+			});
+
+			it('should preserve fields not supplied in a partial payload', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.update(executionId, { data: runData });
+
+				expect(fsStore.write).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({
+						workflowData: existingBundle.workflowData,
+						workflowVersionId: existingBundle.workflowVersionId,
+					}),
+				);
+			});
+
+			it('should apply requireStatus condition and skip the fs write when no rows match', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+
+				const mockTx = mock<EntityManager>();
+				mockTx.update.mockResolvedValue({ affected: 0, generatedMaps: [], raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const result = await executionPersistence.update(
+					executionId,
+					{ data: runData, status: 'success' },
+					{ requireStatus: 'waiting' },
+				);
+
+				expect(result).toBe(false);
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId, status: 'waiting' },
+					{ status: 'success' },
+				);
+				expect(fsStore.read).not.toHaveBeenCalled();
+				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should still write the bundle when the payload contains no entity fields', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const result = await executionPersistence.update(executionId, { data: runData });
+
+				expect(result).toBe(true);
+				expect(mockTx.update).not.toHaveBeenCalled();
+				expect(fsStore.write).toHaveBeenCalled();
+			});
+
+			it('should roll the transaction back if the fs write fails', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const writeError = new Error('disk full');
+				fsStore.write.mockRejectedValue(writeError);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await expect(
+					executionPersistence.update(executionId, { data: runData, status: 'success' }),
+				).rejects.toBe(writeError);
+			});
+
+			it('should throw MissingExecutionDataError when the fs bundle is missing', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(null);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await expect(
+					executionPersistence.update(executionId, { data: runData }),
+				).rejects.toBeInstanceOf(MissingExecutionDataError);
+
+				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should apply requireNotCanceled condition', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.update(
+					executionId,
+					{ data: runData, status: 'running' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ id: executionId, status: expect.anything() as unknown }),
+					{ status: 'running' },
+				);
+			});
+
+			it('should strip immutable fields before updating the entity', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.update(executionId, {
+					id: executionId,
+					data: runData,
+					workflowId: 'other-wf',
+					workflowVersionId: 'v-new',
+					createdAt: new Date(),
+					startedAt: new Date(),
+					customData: { foo: 'bar' },
+					status: 'success',
+				});
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ status: 'success' },
 				);
 			});
 		});

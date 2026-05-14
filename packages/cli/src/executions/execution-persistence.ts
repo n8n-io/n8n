@@ -4,13 +4,17 @@ import type {
 	CreateExecutionPayload,
 	ExecutionDataStorageLocation,
 	ExecutionDeletionCriteria,
+	FindOptionsWhere,
+	IExecutionResponse,
+	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionData, ExecutionEntity, ExecutionRepository } from '@n8n/db';
+import { ExecutionData, ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, StorageConfig } from 'n8n-core';
 
 import { FsStore } from './execution-data/fs-store';
+import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import type { ExecutionRef, WorkflowSnapshot } from './execution-data/types';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
@@ -72,6 +76,102 @@ export class ExecutionPersistence {
 			}
 			throw error;
 		}
+	}
+
+	/**
+	 * Update an existing execution and, if the payload includes data fields, its data in the configured storage.
+	 * - In `db` mode, we update both entity and data in the DB in a transaction.
+	 * - In `fs` mode, we update the entity in the DB and write its data to the filesystem in a transaction.
+	 */
+	async update(
+		executionId: string,
+		execution: Partial<IExecutionResponse>,
+		conditions?: UpdateExecutionConditions,
+	): Promise<boolean> {
+		const hasDataField = execution.data !== undefined || execution.workflowData !== undefined;
+
+		if (!hasDataField) {
+			return await this.executionRepository.updateExistingExecution(
+				executionId,
+				execution,
+				conditions,
+			);
+		}
+
+		const entity = await this.executionRepository.findOne({
+			where: { id: executionId },
+			select: ['id', 'workflowId', 'storedAt'],
+		});
+
+		if (!entity) return false;
+
+		if (entity.storedAt === 'db') {
+			return await this.executionRepository.updateExistingExecution(
+				executionId,
+				execution,
+				conditions,
+			);
+		}
+
+		return await this.applyFsUpdate(
+			{ workflowId: entity.workflowId, executionId },
+			execution,
+			conditions,
+		);
+	}
+
+	private async applyFsUpdate(
+		ref: ExecutionRef,
+		execution: Partial<IExecutionResponse>,
+		conditions?: UpdateExecutionConditions,
+	): Promise<boolean> {
+		const {
+			id: _id,
+			data,
+			workflowId: _workflowId,
+			workflowData,
+			workflowVersionId: _workflowVersionId, // immutable, never updated
+			createdAt: _createdAt, // immutable, never updated
+			startedAt: _startedAt, // immutable, never updated
+			customData: _customData,
+			...executionInformation
+		} = execution;
+
+		return await this.executionRepository.manager.transaction(async (tx) => {
+			if (Object.keys(executionInformation).length > 0) {
+				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: ref.executionId };
+				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireNotFinished) whereCondition.finished = false;
+				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
+
+				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
+				const executionTableAffectedRows = result.affected ?? 0;
+
+				// If conditions were set and the update failed, abort the
+				// transaction early and return false.
+				if (executionTableAffectedRows === 0) {
+					return false;
+				}
+			}
+
+			const existing = await this.fsStore.read(ref);
+			if (!existing) throw new MissingExecutionDataError(ref);
+
+			await this.fsStore.write(ref, {
+				data: data !== undefined ? stringify(data) : existing.data,
+				workflowData: workflowData ? this.toWorkflowSnapshot(workflowData) : existing.workflowData,
+				workflowVersionId: existing.workflowVersionId,
+			});
+
+			return true;
+		});
+	}
+
+	private toWorkflowSnapshot(
+		workflowData: NonNullable<IExecutionResponse['workflowData']>,
+	): WorkflowSnapshot {
+		const { id, name, nodes, connections, settings } = workflowData;
+		return { id, name, nodes, connections, settings };
 	}
 
 	/**
