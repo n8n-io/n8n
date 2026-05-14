@@ -760,6 +760,93 @@ function makeGenerateWithToolCalls(
 	};
 }
 
+describe('AgentRuntime — deferred tool loading', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('searches and loads deferred tools into the next generate iteration', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-search',
+						toolName: 'search_tools',
+						args: { query: 'deferred capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('ready'));
+
+		const result = await runtime.generate('need the deferred capability');
+
+		expect(generateText).toHaveBeenCalledTimes(3);
+
+		const searchCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'search_tools');
+		expect(searchCall?.output).toEqual({
+			results: [
+				{
+					name: 'deferred_capability',
+					description: 'Mock tool deferred_capability',
+					loaded: false,
+				},
+			],
+		});
+
+		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tool');
+		expect(loadCall?.output).toEqual({
+			status: 'loaded',
+			toolName: 'deferred_capability',
+			tool: {
+				name: 'deferred_capability',
+				description: 'Mock tool deferred_capability',
+				loaded: true,
+			},
+			message: 'Tool "deferred_capability" is loaded and will be available on the next model turn.',
+		});
+
+		const generateTextCalls = generateText.mock.calls as Array<
+			[{ tools: Record<string, unknown> }]
+		>;
+		const firstCall = generateTextCalls[0][0];
+		const firstTools = Object.keys(firstCall.tools);
+		expect(firstTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(firstTools).not.toContain('deferred_capability');
+
+		const secondTools = Object.keys(generateTextCalls[1][0].tools);
+		expect(secondTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(secondTools).not.toContain('deferred_capability');
+
+		const thirdTools = Object.keys(generateTextCalls[2][0].tools);
+		expect(thirdTools).toEqual(
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool', 'deferred_capability']),
+		);
+	});
+});
+
 describe('AgentRuntime — concurrent tool execution', () => {
 	beforeEach(() => {
 		generateText.mockReset();
