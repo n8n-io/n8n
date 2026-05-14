@@ -77,9 +77,23 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	): Promise<void> {
 		if (executions.length === 0) return;
 
+		// A queued/just-inserted execution row carries no run data yet
+		// (`executionData.data` is empty until the runner writes its first
+		// snapshot). The repository's unflatten step returns `data: undefined`
+		// for those rows. There is nothing to redact and no policy to apply,
+		// so short-circuit before any strategy reads `execution.data.*` and
+		// crashes on the undefined. Surfaces under parallel evaluations,
+		// which leave several rows in `new` state long enough for FE polling
+		// to catch them mid-flight.
+		const processable = executions.filter(
+			(e): e is RedactableExecution & { data: NonNullable<RedactableExecution['data']> } =>
+				e.data !== undefined && e.data !== null,
+		);
+		if (processable.length === 0) return;
+
 		// Single DB call shared by both the reveal and redact paths.
 		// Only executions where policy doesn't already grant access need a scope check.
-		const needsCheck = executions.filter((e) => !this.policyAllowsReveal(e));
+		const needsCheck = processable.filter((e) => !this.policyAllowsReveal(e));
 		let revealableIds = new Set<string>();
 		if (needsCheck.length > 0) {
 			const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
@@ -93,7 +107,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		// Reveal path: validate all permissions atomically before any processing.
 		if (options.redactExecutionData === false) {
 			// Dynamic credential executions can never be revealed
-			for (const execution of executions) {
+			for (const execution of processable) {
 				if (this.hasDynamicCredentials(execution)) {
 					throw new ForbiddenError();
 				}
@@ -125,6 +139,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 		for (let i = 0; i < executions.length; i++) {
 			const execution = executions[i];
+			// Pre-filtered above — skip data-less rows so the strategies and
+			// dynamic-credential checks below can rely on a populated payload.
+			if (execution.data === undefined || execution.data === null) continue;
 			const hasDynCreds = this.hasDynamicCredentials(execution);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
 			// Dynamic credential executions can never be revealed regardless of permissions

@@ -24,10 +24,17 @@ import { TestRunnerService } from '../test-runner.service.ee';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
+import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
+
+// Tier high enough that the resolver's tier-default branch lifts the cap to
+// 5, which is greater than every concurrency value used in these tests.
+// Tests that need a tighter cap mock the env var explicitly.
+const buildLicenseMock = (planName = 'Enterprise') =>
+	mock<License>({ getPlanName: jest.fn().mockReturnValue(planName) });
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -68,6 +75,7 @@ describe('TestRunnerService', () => {
 			publisher,
 			instanceSettings,
 			concurrencyControlService,
+			buildLicenseMock(),
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -511,6 +519,7 @@ describe('TestRunnerService', () => {
 				publisher,
 				instanceSettings,
 				concurrencyControlService,
+				buildLicenseMock(),
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -829,6 +838,7 @@ describe('TestRunnerService', () => {
 					publisher,
 					instanceSettings,
 					concurrencyControlService,
+					buildLicenseMock(),
 				);
 			});
 
@@ -2231,10 +2241,10 @@ describe('TestRunnerService', () => {
 			expect(concurrencyControlService.release).toHaveBeenCalledTimes(3);
 		});
 
-		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, flag_enabled_for_user', async () => {
+		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, concurrency_limit_source', async () => {
 			setupHappyPathMocks(2);
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4, true);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
 
 			const trackCalls = telemetry.track.mock.calls.filter(
 				([eventName]) => eventName === 'Test run finished',
@@ -2246,20 +2256,27 @@ describe('TestRunnerService', () => {
 					concurrency: 4,
 					parallel_enabled: true,
 					concurrency_limited_by_config: false,
-					flag_enabled_for_user: true,
+					// Env var not set in this test, so the resolver falls through
+					// to the license-tier default — tagged as `tier`.
+					concurrency_limit_source: 'tier',
 				}),
 			);
 		});
 
-		test('flag_enabled_for_user defaults to false when not passed', async () => {
+		test('concurrency_limit_source reports `env` when N8N_CONCURRENCY_EVALUATION_LIMIT is set', async () => {
 			setupHappyPathMocks(2);
-
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
-
-			const payload = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Test run finished',
-			)?.[1] as Record<string, unknown>;
-			expect(payload.flag_enabled_for_user).toBe(false);
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '5';
+			try {
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload.concurrency_limit_source).toBe('env');
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
 		});
 
 		test('telemetry parallel_enabled is false for sequential runs', async () => {
@@ -2284,7 +2301,7 @@ describe('TestRunnerService', () => {
 		test('telemetry payload reports realised fan-out (cases_started, peak_in_flight)', async () => {
 			const { inFlightTracker } = setupHappyPathMocks(6);
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3, true);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
 
 			const payload = telemetry.track.mock.calls.find(
 				([eventName]) => eventName === 'Test run finished',
@@ -2316,23 +2333,34 @@ describe('TestRunnerService', () => {
 				publisher,
 				instanceSettings,
 				concurrencyControlService,
+				buildLicenseMock(),
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
 
-			await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
+			// Env var explicitly set → resolver returns the parsed config value
+			// (2) and ignores the tier default.
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '2';
+			try {
+				await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
 
-			expect(inFlightTracker.max).toBeLessThanOrEqual(2);
-			const payload = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Test run finished',
-			)?.[1] as Record<string, unknown>;
-			expect(payload).toEqual(
-				expect.objectContaining({
-					concurrency: 2,
-					parallel_enabled: true,
-					concurrency_limited_by_config: true,
-				}),
-			);
+				expect(inFlightTracker.max).toBeLessThanOrEqual(2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload).toEqual(
+					expect.objectContaining({
+						concurrency: 2,
+						parallel_enabled: true,
+						concurrency_limited_by_config: true,
+						concurrency_limit_source: 'env',
+					}),
+				);
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
 		});
 
 		test('abort during throttle wait evicts the queue entry and short-circuits without an UNKNOWN_ERROR row', async () => {
@@ -2400,6 +2428,7 @@ describe('TestRunnerService', () => {
 				publisher,
 				multiMainInstance,
 				concurrencyControlService,
+				buildLicenseMock(),
 			);
 
 			setupHappyPathMocks(4);

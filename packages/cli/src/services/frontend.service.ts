@@ -14,6 +14,7 @@ import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
@@ -214,7 +215,10 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			evaluationConcurrencyLimit: this.globalConfig.executions.concurrency.evaluationLimit,
+			evaluationConcurrencyLimit: resolveEvaluationConcurrencyLimit(
+				this.globalConfig.executions,
+				this.license,
+			),
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},

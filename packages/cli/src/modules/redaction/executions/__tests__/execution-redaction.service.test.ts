@@ -134,6 +134,33 @@ describe('ExecutionRedactionService', () => {
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
+		it('skips data-less executions and still processes the rest', async () => {
+			// A queued (`status: new`) execution row whose `executionData.data`
+			// has not been written yet returns `data: undefined` from the
+			// repository's unflatten path. Surfaces under parallel evaluation
+			// when several rows linger in `new` state long enough for FE
+			// polling to catch them. The service must short-circuit those
+			// rows without crashing the rest of the batch.
+			const populated = makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' });
+			const dataless = {
+				id: 'queued-1',
+				mode: 'trigger' as WorkflowExecuteMode,
+				workflowId: 'wf-2',
+				data: undefined,
+				workflowData: { settings: {}, nodes: [] },
+			} as unknown as RedactableExecution;
+			const options: ExecutionRedactionOptions = { user: mockUser };
+
+			await expect(
+				service.processExecutions([dataless, populated], options),
+			).resolves.toBeUndefined();
+
+			// The populated row still triggered the DB scope check, the
+			// data-less one did not contribute its workflow id to the query.
+			const [calledIds] = workflowFinderService.findWorkflowIdsWithScopeForUser.mock.calls[0];
+			expect(new Set(calledIds)).toEqual(new Set(['wf-1']));
+		});
+
 		it('uses a single DB query for N executions (policy-driven)', async () => {
 			const executions = [
 				makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' }),

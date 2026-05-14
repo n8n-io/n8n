@@ -373,9 +373,6 @@ describe('GlobalConfig', () => {
 			interval: 3,
 			newLeaderElection: false,
 		},
-		evaluation: {
-			parallelExecutionEnabled: false,
-		},
 		generic: {
 			timezone: 'America/New_York',
 			releaseChannel: 'dev',
