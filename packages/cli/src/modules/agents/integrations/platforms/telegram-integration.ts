@@ -1,7 +1,7 @@
 import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
 
@@ -126,12 +126,14 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	/**
 	 * Enforce the Private-mode allowlist. Public mode (or legacy connections
-	 * without saved settings) accepts every Telegram user; Private mode only
-	 * accepts senders whose ID appears in `allowedUserIds`.
+	 * without saved settings) accepts every Telegram user; Private mode only accepts users in the allowlist.
 	 */
-	isUserAllowed(userId: string, settings: AgentTelegramIntegrationSettings | undefined): boolean {
+	isUserAllowed(author: Author, settings: AgentTelegramIntegrationSettings | undefined): boolean {
 		if (!settings || settings.accessMode === 'public') return true;
-		return settings.allowedUserIds.includes(userId);
+		return settings.allowedUsers.some((allowed) => {
+			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
+			return normalized === author.userId || normalized === author.userName;
+		});
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {

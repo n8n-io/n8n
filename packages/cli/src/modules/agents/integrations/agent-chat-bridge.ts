@@ -1,7 +1,7 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type { ActionEvent, Chat, Message, Thread } from 'chat';
+import type { ActionEvent, Chat, Message, Thread, Author } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
@@ -143,7 +143,7 @@ export class AgentChatBridge {
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
-				if (!this.canUserAccess(message.author.userId)) return;
+				if (!this.canUserAccess(message.author)) return;
 				await thread.subscribe();
 				await this.executeAndStream(thread, message);
 			} catch (error) {
@@ -153,7 +153,7 @@ export class AgentChatBridge {
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
-				if (!this.canUserAccess(message.author.userId)) return;
+				if (!this.canUserAccess(message.author)) return;
 				await this.executeAndStream(thread, message);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
@@ -162,7 +162,7 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
-				if (!this.canUserAccess(event.user.userId)) return;
+				if (!this.canUserAccess(event.user)) return;
 				await this.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
@@ -175,8 +175,8 @@ export class AgentChatBridge {
 		this.callbackStore?.dispose();
 	}
 
-	private canUserAccess(userId: string): boolean {
-		return this.integration?.isUserAllowed?.(userId, this.integrationSettings) ?? true;
+	private canUserAccess(author: Author): boolean {
+		return this.integration?.isUserAllowed?.(author, this.integrationSettings) ?? true;
 	}
 
 	// ---------------------------------------------------------------------------

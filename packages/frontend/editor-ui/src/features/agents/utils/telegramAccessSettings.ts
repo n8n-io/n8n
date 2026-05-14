@@ -4,7 +4,7 @@ export const TELEGRAM_INTEGRATION_TYPE = 'telegram';
 
 export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
 	accessMode: 'public',
-	allowedUserIds: [],
+	allowedUsers: [],
 } satisfies AgentTelegramIntegrationSettings;
 
 /**
@@ -23,42 +23,57 @@ export function resolveSavedTelegramSettings(
 
 export type TelegramSettingsValidationError = 'required' | 'invalid';
 
-export function parseTelegramUserIdsInput(input: string): {
-	allowedUserIds: string[];
-	invalidUserIds: string[];
-} {
-	const rawUserIds = input
-		.split(',')
-		.map((userId) => userId.trim())
-		.filter(Boolean);
-	const allowedUserIds = [...new Set(rawUserIds.filter((userId) => /^\d+$/.test(userId)))];
-	const invalidUserIds = [...new Set(rawUserIds.filter((userId) => !/^\d+$/.test(userId)))];
+// Matches a Telegram user ID (numeric) or username (letters, numbers, underscores),
+// optionally prefixed with "@".
+const VALID_ENTRY_RE = /^@?[a-zA-Z0-9_]+$/;
 
-	return { allowedUserIds, invalidUserIds };
+export function parseTelegramUsersInput(input: string): {
+	allowedUsers: string[];
+	invalidUsers: string[];
+} {
+	const rawEntries = input
+		.split(',')
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+
+	const validEntries: string[] = [];
+	const invalidEntries: string[] = [];
+
+	for (const entry of rawEntries) {
+		if (VALID_ENTRY_RE.test(entry)) {
+			validEntries.push(entry);
+		} else {
+			invalidEntries.push(entry);
+		}
+	}
+
+	return {
+		allowedUsers: [...new Set(validEntries)],
+		invalidUsers: [...new Set(invalidEntries)],
+	};
 }
 
 export function createTelegramSettings(
 	accessMode: AgentTelegramIntegrationSettings['accessMode'],
-	userIdsInput: string,
+	usersInput: string,
 ): AgentTelegramIntegrationSettings {
-	const { allowedUserIds } = parseTelegramUserIdsInput(userIdsInput);
-
-	return { accessMode, allowedUserIds };
+	const { allowedUsers } = parseTelegramUsersInput(usersInput);
+	return { accessMode, allowedUsers };
 }
 
 export function validateTelegramSettings(
 	settings: AgentTelegramIntegrationSettings,
-	userIdsInput: string,
+	usersInput: string,
 ): TelegramSettingsValidationError | null {
 	if (settings.accessMode === 'public') return null;
 
-	const { allowedUserIds, invalidUserIds } = parseTelegramUserIdsInput(userIdsInput);
-	if (invalidUserIds.length > 0) return 'invalid';
-	if (allowedUserIds.length === 0) return 'required';
+	const { allowedUsers, invalidUsers } = parseTelegramUsersInput(usersInput);
+	if (invalidUsers.length > 0) return 'invalid';
+	if (allowedUsers.length === 0) return 'required';
 
 	return null;
 }
 
-export function serializeTelegramUserIds(userIds: string[]): string {
-	return userIds.join(', ');
+export function serializeTelegramUsers(users: string[]): string {
+	return users.join(', ');
 }

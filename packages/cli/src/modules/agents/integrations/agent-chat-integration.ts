@@ -1,6 +1,6 @@
 import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
 
 import type { SuspendComponent } from './component-mapper';
 
@@ -133,7 +133,7 @@ export abstract class AgentChatIntegration {
 	 * Default (no implementation): allow. Telegram uses this to enforce the
 	 * Private-mode allowlist.
 	 */
-	isUserAllowed?(userId: string, settings: AgentTelegramIntegrationSettings | undefined): boolean;
+	isUserAllowed?(author: Author, settings: AgentTelegramIntegrationSettings | undefined): boolean;
 }
 
 /**

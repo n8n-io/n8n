@@ -1,5 +1,6 @@
 import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
+import type { Author } from 'chat';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-workflow';
@@ -100,9 +101,12 @@ class TelegramTestIntegration extends AgentChatIntegration {
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
-	isUserAllowed(userId: string, settings: AgentTelegramIntegrationSettings | undefined): boolean {
+	isUserAllowed(author: Author, settings: AgentTelegramIntegrationSettings | undefined): boolean {
 		if (!settings || settings.accessMode === 'public') return true;
-		return settings.allowedUserIds.includes(userId);
+		return (
+			settings.allowedUsers.includes(author.userId) ||
+			settings.allowedUsers.includes(author.userName)
+		);
 	}
 }
 
@@ -151,7 +155,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				'test-buffered',
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello world' });
@@ -185,7 +189,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				'test-buffered',
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(3);
 			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'Before suspend. ' });
@@ -211,7 +215,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				'test-buffered',
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
@@ -237,7 +241,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				'test-streaming',
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
@@ -264,10 +268,13 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ accessMode: 'private', allowedUserIds: ['123'] },
+				{ accessMode: 'private', allowedUsers: ['123'] },
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: '999' } });
+			await handlers.mention!(thread, {
+				text: 'hi',
+				author: { userId: '999', userName: 'stranger' },
+			});
 
 			expect(thread.subscribe).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
@@ -292,10 +299,13 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ accessMode: 'private', allowedUserIds: ['123'] },
+				{ accessMode: 'private', allowedUsers: ['123'] },
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: '123' } });
+			await handlers.mention!(thread, {
+				text: 'hi',
+				author: { userId: '123', userName: 'alloweduser' },
+			});
 
 			expect(thread.subscribe).toHaveBeenCalledTimes(1);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
@@ -321,7 +331,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				'telegram',
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: '999' } });
+			await handlers.mention!(thread, {
+				text: 'hi',
+				author: { userId: '999', userName: 'anyuser' },
+			});
 
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 		});
@@ -342,7 +355,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ accessMode: 'private', allowedUserIds: ['123'] },
+				{ accessMode: 'private', allowedUsers: ['123'] },
 			);
 
 			await handlers.action!({
@@ -350,7 +363,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				value: JSON.stringify({ response: 'yes' }),
 				thread,
 				threadId: thread.id,
-				user: { userId: '999' },
+				user: { userId: '999', userName: 'stranger' },
 			});
 
 			expect(agentExecutor.resumeForChat).not.toHaveBeenCalled();

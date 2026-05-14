@@ -7,7 +7,7 @@ import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import {
 	createTelegramSettings,
 	DEFAULT_TELEGRAM_PUBLIC_SETTINGS,
-	serializeTelegramUserIds,
+	serializeTelegramUsers,
 	validateTelegramSettings,
 	type TelegramSettingsValidationError,
 } from '../utils/telegramAccessSettings';
@@ -30,8 +30,8 @@ const i18n = useI18n();
 const accessMode = ref<AgentTelegramIntegrationSettings['accessMode']>(
 	props.savedSettings?.accessMode ?? 'private',
 );
-const userIdsInput = ref<string>(
-	props.savedSettings ? serializeTelegramUserIds(props.savedSettings.allowedUserIds) : '',
+const usersInput = ref<string>(
+	props.savedSettings ? serializeTelegramUsers(props.savedSettings.allowedUsers) : '',
 );
 
 // Only sync when saved settings are populated. If the integration disconnects
@@ -42,16 +42,16 @@ watch(
 	(saved) => {
 		if (!saved) return;
 		accessMode.value = saved.accessMode;
-		userIdsInput.value = serializeTelegramUserIds(saved.allowedUserIds);
+		usersInput.value = serializeTelegramUsers(saved.allowedUsers);
 	},
 );
 
 const currentSettings = computed<AgentTelegramIntegrationSettings>(() =>
-	createTelegramSettings(accessMode.value, userIdsInput.value),
+	createTelegramSettings(accessMode.value, usersInput.value),
 );
 
 const validationError = computed<TelegramSettingsValidationError | null>(() =>
-	validateTelegramSettings(currentSettings.value, userIdsInput.value),
+	validateTelegramSettings(currentSettings.value, usersInput.value),
 );
 
 const validationErrorText = computed<string>(() => {
@@ -68,8 +68,8 @@ const isDirty = computed<boolean>(() => {
 	const saved = props.savedSettings ?? DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
 	const current = currentSettings.value;
 	if (current.accessMode !== saved.accessMode) return true;
-	if (current.allowedUserIds.length !== saved.allowedUserIds.length) return true;
-	return current.allowedUserIds.some((id, i) => id !== saved.allowedUserIds[i]);
+	if (current.allowedUsers.length !== saved.allowedUsers.length) return true;
+	return current.allowedUsers.some((entry, i) => entry !== saved.allowedUsers[i]);
 });
 
 defineExpose({ currentSettings, validationError, isDirty });
@@ -100,9 +100,9 @@ defineExpose({ currentSettings, validationError, isDirty });
 
 		<div v-if="accessMode === 'private'" :class="$style.field">
 			<N8nText size="small" bold>
-				{{ i18n.baseText('agents.builder.addTrigger.telegram.userIds.label') }}
+				{{ i18n.baseText('agents.builder.addTrigger.telegram.users.label') }}
 			</N8nText>
-			<N8nInput v-model="userIdsInput" :disabled="disabled" data-testid="telegram-user-ids" />
+			<N8nInput v-model="usersInput" :disabled="disabled" data-testid="telegram-user-ids" />
 			<N8nText
 				v-if="validationError"
 				:class="$style.error"

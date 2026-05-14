@@ -724,7 +724,7 @@ describe('AgentJsonConfigSchema', () => {
 					type: 'telegram',
 					credentialId: 'cred-1',
 					credentialName: 'Telegram Bot',
-					settings: { accessMode: 'private', allowedUserIds: ['123', '123', '456'] },
+					settings: { accessMode: 'private', allowedUsers: ['123', '123', '456', 'john_doe123'] },
 				},
 			],
 		};
@@ -733,7 +733,7 @@ describe('AgentJsonConfigSchema', () => {
 
 		expect(parsed.integrations?.[0]).toMatchObject({
 			type: 'telegram',
-			settings: { accessMode: 'private', allowedUserIds: ['123', '456'] },
+			settings: { accessMode: 'private', allowedUsers: ['123', '456', 'john_doe123'] },
 		});
 	});
 
@@ -748,7 +748,7 @@ describe('AgentJsonConfigSchema', () => {
 					type: 'telegram',
 					credentialId: 'cred-1',
 					credentialName: 'Telegram Bot',
-					settings: { accessMode: 'private', allowedUserIds: [] },
+					settings: { accessMode: 'private', allowedUsers: [] },
 				},
 			],
 		};
@@ -756,7 +756,7 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('rejects Telegram integration settings with non-numeric user IDs', () => {
+	it('rejects Telegram integration settings with entries containing invalid characters', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
@@ -767,7 +767,7 @@ describe('AgentJsonConfigSchema', () => {
 					type: 'telegram',
 					credentialId: 'cred-1',
 					credentialName: 'Telegram Bot',
-					settings: { accessMode: 'private', allowedUserIds: ['abc'] },
+					settings: { accessMode: 'private', allowedUsers: ['user name'] },
 				},
 			],
 		};

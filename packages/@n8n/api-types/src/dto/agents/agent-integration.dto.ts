@@ -7,18 +7,31 @@ export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;
 export const agentTelegramIntegrationSettingsSchema = z
 	.object({
 		accessMode: z.enum(AGENT_TELEGRAM_ACCESS_MODES),
-		allowedUserIds: z
-			.array(z.string().trim().regex(/^\d+$/, 'Telegram user IDs must contain numbers only'))
+		// allowedUsers holds both Telegram user IDs (numeric strings, e.g. "487257961")
+		// and usernames (alphanumeric + underscore, e.g. "@yokano" or "yokano"). Values
+		// are stored verbatim — the leading "@" is NOT stripped here so user intent is
+		// preserved. Normalization (stripping "@") happens only at access-check time in
+		// TelegramIntegration.isUserAllowed().
+		allowedUsers: z
+			.array(
+				z
+					.string()
+					.trim()
+					.regex(
+						/^@?[a-zA-Z0-9_]+$/,
+						'Enter a valid Telegram user ID (numbers only) or username (letters, numbers, underscores)',
+					),
+			)
 			.default([])
-			.transform((ids) => [...new Set(ids)]),
+			.transform((items) => [...new Set(items)]),
 	})
 	.strict()
 	.superRefine((settings, ctx) => {
-		if (settings.accessMode === 'private' && settings.allowedUserIds.length === 0) {
+		if (settings.accessMode === 'private' && settings.allowedUsers.length === 0) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				path: ['allowedUserIds'],
-				message: 'Add at least one Telegram user ID',
+				path: ['allowedUsers'],
+				message: 'Add at least one Telegram user ID or username',
 			});
 		}
 	});
