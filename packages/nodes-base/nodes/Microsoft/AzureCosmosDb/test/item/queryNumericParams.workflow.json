@@ -21,7 +21,7 @@
 				"query": "SELECT * FROM c WHERE c.projectId = $1 AND c.startDate = $2",
 				"options": {
 					"queryOptions": {
-						"queryParameters": "P12223, 1737062400000"
+						"queryParametersJson": "[\"P12223\", 1737062400000]"
 					}
 				},
 				"requestOptions": {}

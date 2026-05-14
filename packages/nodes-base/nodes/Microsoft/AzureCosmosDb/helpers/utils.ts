@@ -81,18 +81,26 @@ export async function validateQueryParameters(
 
 	const parameterNames = query.replace(/\$(\d+)/g, '@Param$1').match(/@\w+/g) ?? [];
 
+	const queryParamsJson = queryOptions?.queryParametersJson as string;
 	const queryParamsString = queryOptions?.queryParameters as string;
-	const parameterValues = queryParamsString
-		? queryParamsString.split(',').map((param) => {
-				const trimmed = param.trim();
-				if (trimmed === 'true') return true;
-				if (trimmed === 'false') return false;
-				if (trimmed === 'null') return null;
-				const num = Number(trimmed);
-				if (trimmed !== '' && !Number.isNaN(num)) return num;
-				return trimmed;
-			})
-		: [];
+
+	let parameterValues: unknown[];
+
+	if (queryParamsJson) {
+		const parsed = jsonParse<unknown>(queryParamsJson, {
+			errorMessage: 'Query Parameters (JSON) must be a valid JSON array',
+		});
+		if (!Array.isArray(parsed)) {
+			throw new NodeOperationError(this.getNode(), 'Query Parameters (JSON) must be a JSON array', {
+				description: 'Provide values as a JSON array, e.g. [1737062400000, "01234", true, null]',
+			});
+		}
+		parameterValues = parsed;
+	} else {
+		parameterValues = queryParamsString
+			? queryParamsString.split(',').map((param) => param.trim())
+			: [];
+	}
 
 	if (parameterNames.length !== parameterValues.length) {
 		throw new NodeOperationError(this.getNode(), 'Empty parameter value provided', {
