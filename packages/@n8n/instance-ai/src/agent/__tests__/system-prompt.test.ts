@@ -1,6 +1,18 @@
 import { getSystemPrompt } from '../system-prompt';
 
 describe('getSystemPrompt', () => {
+	describe('first visible turn guidance', () => {
+		it('instructs the agent to send a concise sentence before the first tool call', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('before your first tool call');
+			expect(prompt).toContain('write one short sentence');
+			expect(prompt).toContain("Keep it tied to the user's goal, not the tool name");
+			expect(prompt).toContain('Never let an empty assistant message');
+			expect(prompt).toContain('[Calling tools: ...]');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
