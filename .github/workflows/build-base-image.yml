@@ -25,7 +25,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node_version: ['22', '24.14.1', '26']
+        # Third slot tracks the "Current" Node release for hardened-base availability.
+        # Held at 25 until dhi.io publishes node:26-alpine3.22-dev; bump to 26 then.
+        node_version: ['22', '24.14.1', '25']
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
