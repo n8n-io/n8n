@@ -830,7 +830,7 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	background: var(--background--surface);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius--sm);
+	border-radius: var(--radius--lg);
 }
 
 .methodCardHeader {
