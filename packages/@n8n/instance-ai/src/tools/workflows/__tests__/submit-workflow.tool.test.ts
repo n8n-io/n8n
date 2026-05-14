@@ -1,4 +1,4 @@
-import { validateWorkflow } from '@n8n/workflow-sdk';
+import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypes } from 'n8n-workflow';
 
@@ -8,6 +8,7 @@ import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
 	classifySubmitFailure,
 	isTriggerNodeType,
+	normalizeWorkflowNodeParameters,
 	type SubmitWorkflowAttempt,
 } from '../submit-workflow.tool';
 
@@ -211,6 +212,22 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 });
 
 describe('classifySubmitFailure', () => {
+	it('treats structural workflow save validation failures as code-fixable', () => {
+		const remediation = classifySubmitFailure(
+			[
+				'Workflow save failed: Workflow structure is invalid. nodes[0].parameters (invalid_type): Expected object, received null',
+			],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('Fix the workflow code');
+	});
+
 	it('treats workflow save failures as terminal blockers', () => {
 		const remediation = classifySubmitFailure(
 			['Workflow save failed: database unavailable'],
@@ -223,5 +240,36 @@ describe('classifySubmitFailure', () => {
 			reason: 'workflow_save_failed',
 		});
 		expect(remediation.guidance).toContain('Stop editing');
+	});
+});
+
+describe('normalizeWorkflowNodeParameters', () => {
+	it('normalizes missing and null node parameters to empty objects', () => {
+		const workflow = {
+			id: 'wf-1',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: null,
+				},
+				{
+					id: 'node-2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		normalizeWorkflowNodeParameters(workflow);
+
+		expect(workflow.nodes.map((node) => node.parameters)).toEqual([{}, {}]);
 	});
 });

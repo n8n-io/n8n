@@ -99,6 +99,18 @@ export function isTriggerNodeType(nodeType: string | undefined): boolean {
 	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
+	for (const node of json.nodes ?? []) {
+		if (!isRecord(node.parameters)) {
+			node.parameters = {};
+		}
+	}
+}
+
 /**
  * Ensure webhook nodes have a webhookId so n8n registers clean URL paths.
  * Without it, getNodeWebhookPath() falls back to encoding the node name
@@ -243,7 +255,17 @@ export function classifySubmitFailure(
 	errors: string[],
 	reason = 'submit_failed',
 ): RemediationMetadata {
+	const text = errors.join('\n').toLowerCase();
 	if (reason === 'workflow_save_failed') {
+		if (text.includes('workflow structure is invalid') || text.includes('invalid_type')) {
+			return createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason,
+				guidance: 'Fix the workflow code in one batched edit, then call submit-workflow again.',
+			});
+		}
+
 		return createRemediation({
 			category: 'blocked',
 			shouldEdit: false,
@@ -253,7 +275,6 @@ export function classifySubmitFailure(
 		});
 	}
 
-	const text = errors.join('\n').toLowerCase();
 	if (
 		text.includes('blocked by admin') ||
 		text.includes('read-only') ||
@@ -368,10 +389,13 @@ export function createSubmitWorkflowTool(
 					nodeName: w.nodeName,
 				}));
 
+				const json = buildOutput.workflow;
+				normalizeWorkflowNodeParameters(json);
+
 				// Server-side schema validation (Zod checks against node type definitions).
 				// strictMode is hardcoded on at AI-builder call sites — we want every
 				// catchable bug surfaced as a blocking error so the agent can self-correct.
-				const schemaValidation = validateWorkflow(buildOutput.workflow, {
+				const schemaValidation = validateWorkflow(json, {
 					nodeTypesProvider: context.nodeTypesProvider,
 					strictMode: true,
 				});
@@ -404,7 +428,6 @@ export function createSubmitWorkflowTool(
 
 				// Keep positions from the generated workflow. Re-layout here would move
 				// existing nodes during workflow updates and make small edits hard to review.
-				const json = buildOutput.workflow;
 				if (name) {
 					json.name = name;
 				} else if (!json.name && !workflowId) {
