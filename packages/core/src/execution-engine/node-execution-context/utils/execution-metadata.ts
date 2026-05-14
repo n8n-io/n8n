@@ -23,11 +23,11 @@ export function setWorkflowExecutionMetadata(
 	if (typeof key !== 'string') {
 		throw new InvalidExecutionMetadataError('key', key);
 	}
-	if (key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
+	if (key.replace(/[\p{L}\p{N}_]/gu, '').length !== 0) {
 		throw new InvalidExecutionMetadataError(
 			'key',
 			key,
-			`Custom date key can only contain characters "A-Za-z0-9_" (key "${key}")`,
+			`Custom data key can only contain letters, numbers, and underscores (key "${key}")`,
 		);
 	}
 	if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'bigint') {
