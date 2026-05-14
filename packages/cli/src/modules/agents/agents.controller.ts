@@ -18,7 +18,7 @@ import {
 	UpdateAgentDto,
 	isAgentCredentialIntegration,
 } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -53,6 +53,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import type { Agent } from './entities/agent.entity';
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -103,6 +104,25 @@ export class AgentsController {
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
+	private async withRunnableState(
+		agent: Agent,
+		projectId: string,
+		user: User,
+	): Promise<Agent & { isRunnable: boolean }> {
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
+		const { missing } = await this.agentsService.validateAgentIsRunnable(
+			agent.id,
+			projectId,
+			credentialProvider,
+		);
+
+		return { ...agent, isRunnable: missing.length === 0 };
+	}
+
 	@Post('/')
 	@ProjectScope('agent:create')
 	async create(
@@ -112,7 +132,8 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 
-		return await this.agentsService.create(projectId, payload.name);
+		const agent = await this.agentsService.create(projectId, payload.name);
+		return await this.withRunnableState(agent, projectId, req.user);
 	}
 
 	@Get('/')
@@ -298,7 +319,7 @@ export class AgentsController {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		return agent;
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Patch('/:agentId')
@@ -333,7 +354,11 @@ export class AgentsController {
 			);
 		}
 
-		return agent;
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Delete('/:agentId')
@@ -359,7 +384,8 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+		const agent = await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Post('/:agentId/unpublish')
@@ -369,7 +395,8 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+		const agent = await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Post('/:agentId/revert-to-published')
@@ -379,7 +406,8 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
+		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
