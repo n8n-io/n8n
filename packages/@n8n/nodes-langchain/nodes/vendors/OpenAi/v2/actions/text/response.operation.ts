@@ -645,7 +645,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	): item is Extract<T, { type: 'function_call' | 'reasoning' }> =>
 		item.type === 'function_call' || item.type === 'reasoning';
 
-	let toolCalls = response.output.filter(isToolRelatedCall);
+	let toolCalls = (response.output ?? []).filter(isToolRelatedCall);
 
 	const hasFunctionCall = () => toolCalls.some((item) => item.type === 'function_call');
 
@@ -697,7 +697,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);
 		}
 
-		toolCalls = response.output.filter(isToolRelatedCall);
+		toolCalls = (response.output ?? []).filter(isToolRelatedCall);
 
 		currentIteration++;
 	}
@@ -724,7 +724,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const returnData: INodeExecutionData[] = [];
 
 	if (simplify) {
-		const messages = response.output.filter((item) => item.type === 'message');
+		const messages = (response.output ?? []).filter((item) => item.type === 'message');
 		returnData.push({
 			json: {
 				output: messages as unknown as IDataObject,
