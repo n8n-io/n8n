@@ -223,6 +223,10 @@ export const setupTestServer = ({
 						await import('@/controllers/auth.controller');
 						break;
 
+					case 'oauth1':
+						await import('@/controllers/oauth/oauth1-credential.controller');
+						break;
+
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller');
 						break;

@@ -1,13 +1,12 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import { reactive } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation } from '../instanceAi.api';
-import { createThreadRuntime } from '../instanceAi.threadRuntime';
+import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRuntime';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -47,7 +46,6 @@ vi.mock('../instanceAi.api', () => ({
 	postCancel: vi.fn(),
 	postCancelTask: vi.fn(),
 	postConfirmation: vi.fn(),
-	postFeedback: vi.fn(),
 }));
 
 vi.mock('../instanceAi.memory.api', () => ({
@@ -135,10 +133,11 @@ function validRunStartEvent(runId: string, agentId: string) {
 	};
 }
 
+let activeThreadId = '';
+
 function setupRuntimePinia() {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
-
 	const rootStore = mockedStore(useRootStore);
 	rootStore.restApiContext = {
 		baseUrl: 'http://localhost:5678/api',
@@ -152,14 +151,61 @@ function setupRuntimePinia() {
 	);
 }
 
-function createRuntime(threadId = 'thread-active') {
-	return reactive(
-		createThreadRuntime(threadId, {
-			getResearchMode: () => false,
-			onTitleUpdated: vi.fn(),
-			onRunFinish: vi.fn(),
-		}),
-	);
+type RuntimeRegistry = {
+	getOrCreateRuntime: (threadId: string) => ThreadRuntime;
+	getRuntime: (threadId: string) => ThreadRuntime | undefined;
+	deleteThread: (threadId: string) => Promise<boolean>;
+};
+
+function createRuntimeRegistry(): RuntimeRegistry {
+	const runtimes = new Map<string, ThreadRuntime>();
+	const hooks = {
+		getResearchMode: () => false,
+		onTitleUpdated: vi.fn(),
+		onRunFinish: vi.fn(),
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+
+	return {
+		getOrCreateRuntime(threadId) {
+			const existing = runtimes.get(threadId);
+			if (existing) return existing;
+
+			const runtime = createThreadRuntime(threadId, hooks);
+			runtimes.set(threadId, runtime);
+			return runtime;
+		},
+		getRuntime(threadId) {
+			return runtimes.get(threadId);
+		},
+		async deleteThread(threadId) {
+			runtimes.get(threadId)?.dispose();
+			runtimes.delete(threadId);
+			return true;
+		},
+	};
+}
+
+function activeRuntime(registry: RuntimeRegistry) {
+	return registry.getOrCreateRuntime(activeThreadId);
+}
+
+function activateThread(registry: RuntimeRegistry, threadId: string): void {
+	activeRuntime(registry).closeSSE();
+	activeThreadId = threadId;
+	const runtime = registry.getOrCreateRuntime(threadId);
+
+	if (runtime.hydrationStatus === 'hydrating') return;
+	if (runtime.hydrationStatus === 'ready') {
+		void runtime.loadThreadStatus();
+		runtime.connectSSE();
+		return;
+	}
+
+	void runtime.loadHistoricalMessages().then((hydrationStatus) => {
+		if (activeThreadId !== threadId || hydrationStatus !== 'applied') return;
+		void runtime.loadThreadStatus();
+		runtime.connectSSE();
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -188,13 +234,14 @@ afterAll(() => {
 });
 
 describe('createThreadRuntime - SSE and hydration', () => {
-	let runtime: ReturnType<typeof createRuntime>;
+	let registry: RuntimeRegistry;
 
 	beforeEach(async () => {
 		setupRuntimePinia();
 		capturedOnMessage = null;
-		runtime = createRuntime();
-		runtime.connectSSE();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-active';
+		activeRuntime(registry).connectSSE();
 		// Wait for the setTimeout in MockEventSource constructor
 		await vi.waitFor(() => {
 			expect(capturedOnMessage).not.toBeNull();
@@ -202,7 +249,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	});
 
 	afterEach(() => {
-		runtime.closeSSE();
+		activeRuntime(registry).closeSSE();
 		vi.clearAllMocks();
 		mockFetchThreadMessages.mockResolvedValue({
 			threadId: 'thread-1',
@@ -220,16 +267,16 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		// Send data that parses as JSON but fails Zod validation
 		capturedOnMessage!(makeSSEEvent({ invalid: 'shape' }));
 
-		expect(runtime.messages).toHaveLength(0);
-		expect(runtime.activeRunId).toBeNull();
+		expect(activeRuntime(registry).messages).toHaveLength(0);
+		expect(activeRuntime(registry).activeRunId).toBeNull();
 	});
 
 	test('valid SSE event dispatched updates messages state correctly', () => {
 		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
 
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.messages[0].runId).toBe('run-1');
-		expect(runtime.activeRunId).toBe('run-1');
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).messages[0].runId).toBe('run-1');
+		expect(activeRuntime(registry).activeRunId).toBe('run-1');
 	});
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
@@ -259,8 +306,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			}),
 		);
 
-		expect(runtime.activeRunId).toBe('run-active');
-		expect(runtime.messages).toHaveLength(2);
+		expect(activeRuntime(registry).activeRunId).toBe('run-active');
+		expect(activeRuntime(registry).messages).toHaveLength(2);
 
 		// Now simulate reconnect: two run-sync frames arrive.
 		// First: orchestrator group (active)
@@ -281,7 +328,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			status: 'active',
 			backgroundTasks: [],
 		});
-		expect(runtime.activeRunId).toBe('run-active');
+		expect(activeRuntime(registry).activeRunId).toBe('run-active');
 
 		// Second: background group from the older turn
 		capturedInstance!.dispatchNamedEvent('run-sync', {
@@ -314,21 +361,21 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 
 		// activeRunId must still point to the orchestrator run, NOT the background group's
-		expect(runtime.activeRunId).toBe('run-active');
+		expect(activeRuntime(registry).activeRunId).toBe('run-active');
 		// The old message should be updated with the background group's tree
-		const oldMsg = runtime.messages.find((m) => m.messageGroupId === 'mg-old');
+		const oldMsg = activeRuntime(registry).messages.find((m) => m.messageGroupId === 'mg-old');
 		// Background-only: isStreaming must be false so hasActiveBackgroundTasks
 		// computed in InstanceAiMessage.vue correctly shows the background indicator
 		expect(oldMsg?.isStreaming).toBe(false);
 		expect(oldMsg?.agentTree?.children).toHaveLength(1);
 	});
 
-	test('lastEventIdByThread is updated from sseEvent.lastEventId on every message', () => {
-		const threadId = runtime.currentThreadId;
+	test('lastEventId is updated from sseEvent.lastEventId on every message', () => {
+		const threadId = activeThreadId;
 
 		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '42'));
 
-		expect(runtime.lastEventIdByThread[threadId]).toBe(42);
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(42);
 
 		// Second event updates the value
 		capturedOnMessage!(
@@ -343,11 +390,48 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			),
 		);
 
-		expect(runtime.lastEventIdByThread[threadId]).toBe(43);
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(43);
 	});
 
-	test('switchTo clears thread-scoped runtime state before historical messages resolve', async () => {
-		const seededThreadId = runtime.currentThreadId;
+	test('deleting the last active thread clears stale routing state before the replacement thread starts', async () => {
+		const deletedThreadId = activeThreadId;
+		const previousEventSource = capturedInstance;
+		const previousOnMessage = capturedOnMessage;
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-old',
+				agentId: 'old-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-old' },
+			}),
+		);
+
+		await registry.deleteThread(deletedThreadId);
+		activeThreadId = 'thread-replacement';
+		expect(activeThreadId).not.toBe(deletedThreadId);
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedInstance).not.toBe(previousEventSource);
+			expect(capturedOnMessage).not.toBe(previousOnMessage);
+		});
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'text-delta',
+				runId: 'run-old',
+				agentId: 'fresh-root',
+				payload: { text: 'hello again' },
+			}),
+		);
+
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).messages[0].messageGroupId).toBe('run-old');
+		expect(activeRuntime(registry).messages[0].agentTree?.agentId).toBe('fresh-root');
+	});
+
+	test('route activation creates isolated runtime state before historical messages resolve', async () => {
+		const seededThreadId = activeThreadId;
 
 		let resolveFetchThreadMessages:
 			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
@@ -367,26 +451,25 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				payload: { messageId: 'msg-1', messageGroupId: 'mg-seeded' },
 			}),
 		);
-		runtime.submitFeedback('resp-1', { rating: 'up' });
-		runtime.resolveConfirmation('request-1', 'approved');
+		activeRuntime(registry).submitFeedback('resp-1', { rating: 'up' });
+		activeRuntime(registry).resolveConfirmation('request-1', 'approved');
 
-		expect(runtime.currentThreadId).toBe(seededThreadId);
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.activeRunId).toBe('run-seeded');
-		expect(runtime.debugEvents).toHaveLength(1);
-		expect(runtime.feedbackByResponseId).toEqual({ 'resp-1': { rating: 'up' } });
-		expect(runtime.resolvedConfirmationIds.size).toBe(1);
+		expect(activeThreadId).toBe(seededThreadId);
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).activeRunId).toBe('run-seeded');
+		expect(activeRuntime(registry).debugEvents).toHaveLength(1);
+		expect(activeRuntime(registry).feedbackByResponseId).toEqual({ 'resp-1': { rating: 'up' } });
+		expect(activeRuntime(registry).resolvedConfirmationIds.size).toBe(1);
 
-		runtime.switchTo('thread-2');
-		const hydration = runtime.loadHistoricalMessages('thread-2');
+		activateThread(registry, 'thread-2');
 
-		expect(runtime.currentThreadId).toBe('thread-2');
-		expect(runtime.isHydratingThread).toBe(true);
-		expect(runtime.messages).toEqual([]);
-		expect(runtime.activeRunId).toBeNull();
-		expect(runtime.debugEvents).toEqual([]);
-		expect(runtime.feedbackByResponseId).toEqual({});
-		expect(runtime.resolvedConfirmationIds.size).toBe(0);
+		expect(activeThreadId).toBe('thread-2');
+		expect(activeRuntime(registry).isHydratingThread).toBe(true);
+		expect(activeRuntime(registry).messages).toEqual([]);
+		expect(activeRuntime(registry).activeRunId).toBeNull();
+		expect(activeRuntime(registry).debugEvents).toEqual([]);
+		expect(activeRuntime(registry).feedbackByResponseId).toEqual({});
+		expect(activeRuntime(registry).resolvedConfirmationIds.size).toBe(0);
 
 		resolveFetchThreadMessages?.({
 			threadId: 'thread-2',
@@ -394,13 +477,12 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			nextEventId: 0,
 		});
 
-		await hydration;
 		await vi.waitFor(() => {
-			expect(runtime.isHydratingThread).toBe(false);
+			expect(activeRuntime(registry).isHydratingThread).toBe(false);
 		});
 	});
 
-	test('switchTo ignores stale historical hydration completion from a previously requested thread', async () => {
+	test('route activation ignores stale historical hydration completion from a previous route', async () => {
 		let resolveThreadA:
 			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
 			| undefined;
@@ -420,42 +502,48 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				}),
 			);
 
-		runtime.switchTo('thread-a');
-		const threadAHydration = runtime.loadHistoricalMessages('thread-a');
-		runtime.switchTo('thread-b');
-		const threadBHydration = runtime.loadHistoricalMessages('thread-b');
+		const sseBeforeSwitches = capturedInstance;
 
-		expect(runtime.currentThreadId).toBe('thread-b');
-		expect(runtime.isHydratingThread).toBe(true);
+		activateThread(registry, 'thread-a');
+		activateThread(registry, 'thread-b');
+
+		expect(activeThreadId).toBe('thread-b');
+		expect(activeRuntime(registry).isHydratingThread).toBe(true);
 
 		resolveThreadA?.({
 			threadId: 'thread-a',
 			messages: [],
 			nextEventId: 0,
 		});
-		await expect(threadAHydration).resolves.toBe('stale');
+		await new Promise((resolve) => setTimeout(resolve, 0));
 
-		expect(runtime.currentThreadId).toBe('thread-b');
-		expect(runtime.lastEventIdByThread['thread-a']).toBeUndefined();
+		expect(activeThreadId).toBe('thread-b');
+		expect(activeRuntime(registry).sseState).toBe('disconnected');
+		expect(mockFetchThreadStatus).not.toHaveBeenCalledWith(expect.anything(), 'thread-a');
+		expect(capturedInstance).toBe(sseBeforeSwitches);
 
 		resolveThreadB?.({
 			threadId: 'thread-b',
 			messages: [],
-			nextEventId: 21,
+			nextEventId: 0,
 		});
 
-		await expect(threadBHydration).resolves.toBe('applied');
-		expect(runtime.lastEventIdByThread['thread-b']).toBe(20);
+		await vi.waitFor(() => {
+			expect(mockFetchThreadStatus).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
+				'thread-b',
+			);
+		});
+		await vi.waitFor(() => {
+			expect(capturedInstance).not.toBe(sseBeforeSwitches);
+		});
 	});
 
-	test('switchTo ignores stale A hydration in an A -> B -> A sequence', async () => {
+	test('route activation reuses pending A hydration in an A -> B -> A sequence', async () => {
 		let resolveFirstA:
 			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
 			| undefined;
 		let resolveB: ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void) | undefined;
-		let resolveSecondA:
-			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
-			| undefined;
 
 		mockFetchThreadMessages
 			.mockReturnValueOnce(
@@ -467,41 +555,35 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				new Promise((resolve) => {
 					resolveB = resolve;
 				}),
-			)
-			.mockReturnValueOnce(
-				new Promise((resolve) => {
-					resolveSecondA = resolve;
-				}),
 			);
 
-		runtime.switchTo('thread-a');
-		const firstAHydration = runtime.loadHistoricalMessages('thread-a');
-		runtime.switchTo('thread-b');
-		const threadBHydration = runtime.loadHistoricalMessages('thread-b');
-		runtime.switchTo('thread-a');
-		const secondAHydration = runtime.loadHistoricalMessages('thread-a');
+		const sseBeforeSwitches = capturedInstance;
 
-		expect(runtime.currentThreadId).toBe('thread-a');
-		expect(runtime.isHydratingThread).toBe(true);
-		expect(runtime.messages).toEqual([]);
+		activateThread(registry, 'thread-a');
+		activateThread(registry, 'thread-b');
+		activateThread(registry, 'thread-a');
+
+		expect(activeThreadId).toBe('thread-a');
+		expect(activeRuntime(registry).isHydratingThread).toBe(true);
+		expect(activeRuntime(registry).messages).toEqual([]);
 
 		resolveFirstA?.({
 			threadId: 'thread-a',
 			messages: [
 				{
-					id: 'msg-stale-a',
-					runId: 'run-stale-a',
-					messageGroupId: 'mg-stale-a',
+					id: 'msg-restored-a',
+					runId: 'run-restored-a',
+					messageGroupId: 'mg-restored-a',
 					role: 'assistant',
 					createdAt: new Date().toISOString(),
-					content: 'stale',
+					content: 'restored',
 					reasoning: '',
 					isStreaming: false,
 					agentTree: {
 						agentId: 'agent-root',
 						role: 'orchestrator',
 						status: 'completed',
-						textContent: 'stale',
+						textContent: 'restored',
 						reasoning: '',
 						toolCalls: [],
 						children: [],
@@ -511,60 +593,37 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			],
 			nextEventId: 11,
 		});
-		await expect(firstAHydration).resolves.toBe('stale');
 
-		expect(runtime.currentThreadId).toBe('thread-a');
-		expect(runtime.isHydratingThread).toBe(true);
-		expect(runtime.messages).toEqual([]);
-		expect(runtime.lastEventIdByThread['thread-a']).toBeUndefined();
+		await vi.waitFor(() => {
+			expect(activeRuntime(registry).isHydratingThread).toBe(false);
+		});
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).messages[0].id).toBe('msg-restored-a');
+		expect(registry.getRuntime('thread-a')?.lastEventId).toBe(10);
+		await vi.waitFor(() => {
+			expect(mockFetchThreadStatus).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
+				'thread-a',
+			);
+		});
+		await vi.waitFor(() => {
+			expect(capturedInstance).not.toBe(sseBeforeSwitches);
+		});
 
+		const sseAfterAReconnect = capturedInstance;
 		resolveB?.({
 			threadId: 'thread-b',
 			messages: [],
 			nextEventId: 0,
 		});
-		await expect(threadBHydration).resolves.toBe('stale');
+		await new Promise((resolve) => setTimeout(resolve, 0));
 
-		expect(runtime.currentThreadId).toBe('thread-a');
-		expect(runtime.isHydratingThread).toBe(true);
-		expect(runtime.messages).toEqual([]);
-		expect(runtime.lastEventIdByThread['thread-a']).toBeUndefined();
-
-		resolveSecondA?.({
-			threadId: 'thread-a',
-			messages: [
-				{
-					id: 'msg-fresh-a',
-					runId: 'run-fresh-a',
-					messageGroupId: 'mg-fresh-a',
-					role: 'assistant',
-					createdAt: new Date().toISOString(),
-					content: 'fresh',
-					reasoning: '',
-					isStreaming: false,
-					agentTree: {
-						agentId: 'agent-root',
-						role: 'orchestrator',
-						status: 'completed',
-						textContent: 'fresh',
-						reasoning: '',
-						toolCalls: [],
-						children: [],
-						timeline: [],
-					},
-				},
-			],
-			nextEventId: 31,
-		});
-
-		await expect(secondAHydration).resolves.toBe('applied');
-		expect(runtime.isHydratingThread).toBe(false);
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.messages[0].id).toBe('msg-fresh-a');
-		expect(runtime.lastEventIdByThread['thread-a']).toBe(30);
+		expect(activeThreadId).toBe('thread-a');
+		expect(capturedInstance).toBe(sseAfterAReconnect);
+		expect(mockFetchThreadStatus).not.toHaveBeenCalledWith(expect.anything(), 'thread-b');
 	});
 
-	test('loadHistoricalMessages reports stale when a later direct hydration request supersedes it', async () => {
+	test('loadHistoricalMessages hydrates separate thread runtimes independently', async () => {
 		let resolveThreadA:
 			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
 			| undefined;
@@ -584,19 +643,19 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				}),
 			);
 
-		runtime.currentThreadId = 'thread-a';
-		const staleHydration = runtime.loadHistoricalMessages('thread-a');
+		activeThreadId = 'thread-a';
+		const threadAHydration = registry.getOrCreateRuntime('thread-a').loadHistoricalMessages();
 
-		runtime.currentThreadId = 'thread-b';
-		const currentHydration = runtime.loadHistoricalMessages('thread-b');
+		activeThreadId = 'thread-b';
+		const currentHydration = registry.getOrCreateRuntime('thread-b').loadHistoricalMessages();
 
 		resolveThreadA?.({
 			threadId: 'thread-a',
 			messages: [],
 			nextEventId: 11,
 		});
-		await expect(staleHydration).resolves.toBe('stale');
-		expect(runtime.lastEventIdByThread['thread-a']).toBeUndefined();
+		await expect(threadAHydration).resolves.toBe('applied');
+		expect(registry.getRuntime('thread-a')?.lastEventId).toBe(10);
 
 		resolveThreadB?.({
 			threadId: 'thread-b',
@@ -604,11 +663,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			nextEventId: 21,
 		});
 		await expect(currentHydration).resolves.toBe('applied');
-		expect(runtime.lastEventIdByThread['thread-b']).toBe(20);
+		expect(registry.getRuntime('thread-b')?.lastEventId).toBe(20);
 	});
 
 	test('loadHistoricalMessages returns skipped when current thread already has messages', async () => {
-		runtime.messages = [
+		activeRuntime(registry).messages = [
 			{
 				id: 'existing-user-message',
 				role: 'user',
@@ -619,26 +678,26 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			},
 		];
 		mockFetchThreadMessages.mockResolvedValueOnce({
-			threadId: runtime.currentThreadId,
+			threadId: activeThreadId,
 			messages: [],
 			nextEventId: 10,
 		});
 
-		await expect(runtime.loadHistoricalMessages(runtime.currentThreadId)).resolves.toBe('skipped');
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.lastEventIdByThread[runtime.currentThreadId]).toBeUndefined();
+		await expect(activeRuntime(registry).loadHistoricalMessages()).resolves.toBe('skipped');
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).lastEventId).toBeUndefined();
 	});
 
 	test('loadHistoricalMessages returns applied on fetch failure when hydration request is current', async () => {
 		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
 
-		await expect(runtime.loadHistoricalMessages(runtime.currentThreadId)).resolves.toBe('applied');
-		expect(runtime.isHydratingThread).toBe(false);
+		await expect(activeRuntime(registry).loadHistoricalMessages()).resolves.toBe('applied');
+		expect(activeRuntime(registry).isHydratingThread).toBe(false);
 	});
 
 	test('loadHistoricalMessages skips unsafe routing identifiers when rebuilding state', async () => {
 		mockFetchThreadMessages.mockResolvedValueOnce({
-			threadId: runtime.currentThreadId,
+			threadId: activeThreadId,
 			messages: [
 				{
 					id: 'msg-unsafe',
@@ -664,7 +723,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			nextEventId: 11,
 		});
 
-		await runtime.loadHistoricalMessages(runtime.currentThreadId);
+		await activeRuntime(registry).loadHistoricalMessages();
 
 		capturedOnMessage!(
 			makeSSEEvent({
@@ -675,10 +734,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			}),
 		);
 
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.messages[0].messageGroupId).toBe('__proto__');
-		expect(runtime.messages[0].agentTree?.agentId).toBe('agent-root');
-		expect(runtime.messages[0].content).toBe('');
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).messages[0].messageGroupId).toBe('safe-run');
+		expect(activeRuntime(registry).messages[0].agentTree?.agentId).toBe('fresh-root');
+		expect(activeRuntime(registry).messages[0].content).toBe('restored safely');
 	});
 
 	test('run-sync skips unsafe group identifiers instead of registering them', () => {
@@ -709,18 +768,18 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			backgroundTasks: [],
 		});
 
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.messages[0].messageGroupId).toBe('run-safe');
-		expect(runtime.messages[0].agentTree?.textContent).toBe('');
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).messages[0].messageGroupId).toBe('run-safe');
+		expect(activeRuntime(registry).messages[0].agentTree?.textContent).toBe('');
 	});
 
 	test('sendMessage pushes the optimistic user message synchronously and posts without syncing the thread', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		const sendPromise = runtime.sendMessage('first');
+		const sendPromise = activeRuntime(registry).sendMessage('first');
 
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.messages[0]).toMatchObject({
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).messages[0]).toMatchObject({
 			role: 'user',
 			content: 'first',
 			isStreaming: false,
@@ -735,11 +794,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage forwards pushRef to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		await runtime.sendMessage('hello', undefined, 'iframe-push-ref-123');
+		await activeRuntime(registry).sendMessage('hello', undefined, 'iframe-push-ref-123');
 
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
-			runtime.currentThreadId,
+			activeThreadId,
 			'hello',
 			undefined,
 			undefined,
@@ -751,11 +810,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage omits pushRef when not provided', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		await runtime.sendMessage('hello');
+		await activeRuntime(registry).sendMessage('hello');
 
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
-			runtime.currentThreadId,
+			activeThreadId,
 			'hello',
 			undefined,
 			undefined,
@@ -769,13 +828,13 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		// SSE is connected after beforeEach setup. Close it to simulate
 		// Suspense unmount killing the connection during layout transition.
-		runtime.closeSSE();
-		expect(runtime.sseState).toBe('disconnected');
+		activeRuntime(registry).closeSSE();
+		expect(activeRuntime(registry).sseState).toBe('disconnected');
 
 		// Clear capturedInstance so we can verify a *new* EventSource is created
 		capturedInstance = null;
 
-		await runtime.sendMessage('hello');
+		await activeRuntime(registry).sendMessage('hello');
 
 		// sendMessage should have re-opened an EventSource before posting
 		expect(capturedInstance).not.toBeNull();
@@ -785,11 +844,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage rolls back the optimistic message when postMessage fails', async () => {
 		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
 
-		const sendPromise = runtime.sendMessage('first');
+		const sendPromise = activeRuntime(registry).sendMessage('first');
 
-		expect(runtime.isSendingMessage).toBe(true);
-		expect(runtime.messages).toHaveLength(1);
-		expect(runtime.messages[0]).toMatchObject({
+		expect(activeRuntime(registry).isSendingMessage).toBe(true);
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(activeRuntime(registry).messages[0]).toMatchObject({
 			role: 'user',
 			content: 'first',
 			isStreaming: false,
@@ -797,8 +856,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		await sendPromise;
 
-		expect(runtime.messages).toHaveLength(0);
-		expect(runtime.isSendingMessage).toBe(false);
+		expect(activeRuntime(registry).messages).toHaveLength(0);
+		expect(activeRuntime(registry).isSendingMessage).toBe(false);
 	});
 });
 
@@ -808,36 +867,39 @@ describe('createThreadRuntime - SSE and hydration', () => {
 // ---------------------------------------------------------------------------
 
 describe('createThreadRuntime - feedback integration', () => {
-	let runtime: ReturnType<typeof createRuntime>;
+	let registry: RuntimeRegistry;
 
 	beforeEach(async () => {
 		setupRuntimePinia();
 		capturedOnMessage = null;
-		runtime = createRuntime();
-		runtime.connectSSE();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-feedback';
+		activeRuntime(registry).connectSSE();
 		await vi.waitFor(() => {
 			expect(capturedOnMessage).not.toBeNull();
 		});
 	});
 
 	afterEach(() => {
-		runtime.closeSSE();
+		activeRuntime(registry).closeSSE();
 		vi.clearAllMocks();
 	});
 
 	test('runtime exposes rateableResponseId, feedbackByResponseId, and submitFeedback', () => {
-		expect(runtime.rateableResponseId).toBeNull();
-		expect(runtime.feedbackByResponseId).toEqual({});
-		expect(typeof runtime.submitFeedback).toBe('function');
+		expect(activeRuntime(registry).rateableResponseId).toBeNull();
+		expect(activeRuntime(registry).feedbackByResponseId).toEqual({});
+		expect(typeof activeRuntime(registry).submitFeedback).toBe('function');
 	});
 
-	test('feedbackByResponseId is cleared when switching thread', () => {
-		runtime.submitFeedback('resp-1', { rating: 'up' });
-		expect(runtime.feedbackByResponseId['resp-1']).toBeDefined();
+	test('feedbackByResponseId is isolated per runtime', async () => {
+		const firstRuntime = activeRuntime(registry);
+		firstRuntime.submitFeedback('resp-1', { rating: 'up' });
+		expect(firstRuntime.feedbackByResponseId['resp-1']).toBeDefined();
 
-		runtime.switchTo('thread-feedback-new');
+		activeThreadId = 'thread-feedback-new';
 
-		expect(Object.keys(runtime.feedbackByResponseId)).toHaveLength(0);
+		expect(Object.keys(activeRuntime(registry).feedbackByResponseId)).toHaveLength(0);
+		expect(firstRuntime.feedbackByResponseId['resp-1']).toBeDefined();
 	});
 });
 
@@ -846,13 +908,14 @@ describe('createThreadRuntime - feedback integration', () => {
 // ---------------------------------------------------------------------------
 
 describe('createThreadRuntime - gateway resource-decision confirmation', () => {
-	let runtime: ReturnType<typeof createRuntime>;
+	let registry: RuntimeRegistry;
 
 	beforeEach(async () => {
 		setupRuntimePinia();
 		capturedOnMessage = null;
-		runtime = createRuntime();
-		runtime.connectSSE();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-confirmation';
+		activeRuntime(registry).connectSSE();
 		await vi.waitFor(() => {
 			expect(capturedOnMessage).not.toBeNull();
 		});
@@ -860,12 +923,12 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 	});
 
 	afterEach(() => {
-		runtime.closeSSE();
+		activeRuntime(registry).closeSSE();
 		vi.clearAllMocks();
 	});
 
 	it('confirmAction passes resourceDecision payload through to postConfirmation', async () => {
-		await runtime.confirmAction('req-1', {
+		await activeRuntime(registry).confirmAction('req-1', {
 			kind: 'resourceDecision',
 			resourceDecision: 'allowOnce',
 		});
@@ -878,7 +941,7 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 	});
 
 	it('confirmResourceDecision calls postConfirmation with the decision token', async () => {
-		await runtime.confirmResourceDecision('req-2', 'allowForSession');
+		await activeRuntime(registry).confirmResourceDecision('req-2', 'allowForSession');
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
 		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-2', {
@@ -890,7 +953,7 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 	it('confirmResourceDecision does not call postConfirmation when confirmAction throws', async () => {
 		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
 
-		await runtime.confirmResourceDecision('req-3', 'denyOnce');
+		await activeRuntime(registry).confirmResourceDecision('req-3', 'denyOnce');
 
 		// postConfirmation was called once (inside confirmAction) but threw
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();

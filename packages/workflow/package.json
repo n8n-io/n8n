@@ -73,6 +73,6 @@
     "jsonrepair": "catalog:"
   },
   "peerDependencies": {
-    "zod": ">=3.25.0 <4"
+    "zod": "catalog:"
   }
 }
