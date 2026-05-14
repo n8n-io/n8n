@@ -100,7 +100,6 @@ function recordedToolCallToPart(
 
 	return {
 		...base,
-		state: 'resolved',
 		output: toolCall.output,
 	};
 }
