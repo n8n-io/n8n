@@ -18,7 +18,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { VIEWS } from '@/app/constants';
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
@@ -39,6 +39,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 

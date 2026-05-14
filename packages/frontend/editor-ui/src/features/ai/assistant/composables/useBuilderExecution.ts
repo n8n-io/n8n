@@ -8,10 +8,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useToast } from '@/app/composables/useToast';
 import { isChatNode } from '@/app/utils/aiUtils';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const RUNNING_STATES: string[] = ['running', 'waiting'];
 
@@ -25,9 +22,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const router = useRouter();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
 	const toast = useToast();

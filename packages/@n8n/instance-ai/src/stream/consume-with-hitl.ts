@@ -1,4 +1,5 @@
 import type { Agent } from '@mastra/core/agent';
+import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
 import type { Logger } from '../logger';
@@ -24,11 +25,17 @@ export interface ConsumeWithHitlOptions {
 	/** Returns a promise that resolves when a new user correction is queued.
 	 *  Used to unblock HITL suspensions when a correction arrives mid-confirmation. */
 	waitForCorrection?: () => Promise<void>;
+	onActivity?: () => void;
 	llmStepTraceHooks?: LlmStepTraceHooks;
 	/** Max steps for the agent — passed to resumeStream so resumed streams keep the same limit. */
 	maxSteps?: number;
 	/** Additional options to preserve when resuming a suspended stream. */
 	resumeOptions?: Record<string, unknown>;
+	/**
+	 * Optional side-channel observer for every mapped stream event. Used for
+	 * cross-cutting telemetry; errors are swallowed by the executor.
+	 */
+	onStreamEvent?: (event: InstanceAiEvent) => void;
 }
 
 export interface ConsumeWithHitlResult {
@@ -63,6 +70,7 @@ export async function consumeStreamWithHitl(
 			eventBus: options.eventBus,
 			signal: options.abortSignal,
 			logger: options.logger,
+			onActivity: options.onActivity,
 		},
 		control: {
 			mode: 'auto',
@@ -81,6 +89,7 @@ export async function consumeStreamWithHitl(
 				: {}),
 		},
 		llmStepTraceHooks: options.llmStepTraceHooks,
+		onStreamEvent: options.onStreamEvent,
 	});
 
 	return { text: result.text ?? options.stream.text, workSummary: result.workSummary };

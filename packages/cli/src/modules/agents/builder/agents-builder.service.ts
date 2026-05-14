@@ -21,6 +21,7 @@ import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
+import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 
 const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
 
@@ -183,6 +184,15 @@ export class AgentsBuilderService {
 			.instructions(instructions)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+
+		const telemetry = buildBuilderTelemetry({
+			agentId,
+			projectId,
+			userId: user.id,
+			threadId: builderThreadId(agentId),
+			model: modelConfig,
+		});
+		if (telemetry) builder.telemetry(telemetry);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);

@@ -154,6 +154,8 @@ describe('validate-workflow-code MCP tool', () => {
 			const response = parseResult(result);
 			expect(response.valid).toBe(false);
 			expect(response.hint).toContain('sdk_ref');
+			expect(response.hint).toContain('Workflow SDK reference');
+			expect(response.hint).toContain('validate_workflow_code');
 		});
 
 		test('does not include SDK reference hint for non-parse errors', async () => {

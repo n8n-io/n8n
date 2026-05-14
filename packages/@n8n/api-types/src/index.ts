@@ -34,6 +34,7 @@ export {
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
 export * from './instance-registry-types';
+export * from './redaction-enforcement';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -220,6 +221,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
 export type {
@@ -415,6 +417,7 @@ export type {
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
+	InstanceAiEvalMockedCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,
@@ -437,8 +440,30 @@ export {
 	type StartTestRunPayload,
 } from './schemas/evaluations.schema';
 
+export {
+	EVAL_COLLECTIONS_FLAG,
+	evalCollectionVersionEntrySchema,
+	createEvaluationCollectionSchema,
+	CreateEvaluationCollectionDto,
+	updateEvaluationCollectionSchema,
+	UpdateEvaluationCollectionDto,
+	addRunToCollectionSchema,
+	AddRunToCollectionDto,
+	type EvalCollectionVersionEntry,
+	type CreateEvaluationCollectionPayload,
+	type UpdateEvaluationCollectionPayload,
+	type AddRunToCollectionPayload,
+	type EvalCollectionRunStatus,
+	type EvaluationCollectionRecord,
+	type EvaluationCollectionRunSummary,
+	type EvaluationCollectionDetail,
+	type EvalVersionEntry,
+	type EvalVersionsResponse,
+} from './schemas/eval-collections.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
+export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,

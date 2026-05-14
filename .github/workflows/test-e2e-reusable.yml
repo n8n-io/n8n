@@ -47,6 +47,11 @@ on:
         required: false
         default: ''
         type: string
+      artifact-prefix:
+        description: 'Prefix for uploaded shard artifacts'
+        required: false
+        default: 'e2e'
+        type: string
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
@@ -120,7 +125,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: e2e-shard-${{ matrix.shard }}
+          name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/

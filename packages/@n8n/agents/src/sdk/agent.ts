@@ -8,9 +8,14 @@ import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
+import { hasObservationStore } from '../runtime/observation-store';
+import {
+	runObservationalCycle,
+	type RunObservationalCycleOpts,
+	type RunObservationalCycleResult,
+} from '../runtime/observational-cycle';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
-	AgentEvent,
 	AgentEventHandler,
 	AgentMiddleware,
 	BuiltAgent,
@@ -20,6 +25,8 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
+	CompactFn,
+	ObserveFn,
 	CheckpointStore,
 	ExecutionOptions,
 	GenerateResult,
@@ -34,6 +41,7 @@ import type {
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
+import { AgentEvent } from '../types/runtime/event';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
@@ -57,6 +65,8 @@ export interface AgentSnapshot {
 	tools: ReadonlyArray<{ name: string; description: string | undefined }>;
 	/** True when `.memory()` has been configured. */
 	hasMemory: boolean;
+	/** True when observational memory has been configured on the memory builder. */
+	hasObservationalMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -211,7 +221,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			throw new Error(
 				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
-					'or new Memory().storage(new SqliteMemory(path)).lastMessages(N) for persistent storage. ' +
+					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
 					'See the Memory class documentation for all options.',
 			);
 		}
@@ -398,6 +408,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
+	 * Remove a previously registered event handler. Pair with `on()` so
+	 * per-request subscribers (e.g. the cli's ExecutionRecorder) can detach
+	 * cleanly between turns instead of accumulating on a long-lived agent.
+	 */
+	off(event: AgentEvent, handler: AgentEventHandler): void {
+		this.eventBus.off(event, handler);
+	}
+
+	/**
 	 * Wrap this agent as a tool for use in multi-agent composition.
 	 * The tool sends a text prompt to this agent and returns the text of the response.
 	 *
@@ -491,6 +510,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructions: this.instructionsText ?? null,
 			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
 			hasMemory: this.memoryConfig !== undefined,
+			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 			requireToolApproval: this.requireToolApprovalValue,
@@ -516,6 +536,109 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	abort(): void {
 		this.eventBus.abort();
+	}
+
+	/**
+	 * Wait for any in-flight background tasks (title generation, future
+	 * observer cycles) to settle. Call before letting the agent go out of
+	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 */
+	async close(): Promise<void> {
+		if (this.runtime) await this.runtime.dispose();
+	}
+
+	/** Run one observational cycle for a thread synchronously. */
+	async reflect(opts: {
+		threadId: string;
+		resourceId: string;
+		observe?: ObserveFn;
+		compact?: CompactFn;
+	}): Promise<{ status: 'no-config' } | RunObservationalCycleResult> {
+		const cycle = await this.buildCycleOpts(opts);
+		if (cycle === null) return { status: 'no-config' };
+		return await runObservationalCycle(cycle);
+	}
+
+	/**
+	 * Schedule an observational-memory cycle on the background-task tracker
+	 * and return immediately. Used by consumers (e.g. the cli's post-stream
+	 * trigger) that want the observer + compactor to run without blocking
+	 * the response. Errors inside the cycle are surfaced via
+	 * `AgentEvent.Error` (source: 'observer' | 'compactor').
+	 *
+	 * No-ops when observational memory isn't configured or no observer is
+	 * available — same `'no-config'` short-circuit as `reflect()`.
+	 */
+	reflectInBackground(opts: {
+		threadId: string;
+		resourceId: string;
+		observe?: ObserveFn;
+		compact?: CompactFn;
+	}): void {
+		void (async () => {
+			const cycle = await this.buildCycleOpts(opts);
+			if (cycle === null) return;
+			const runtime = await this.ensureBuilt();
+			runtime.scheduleBackgroundCycle(cycle);
+		})().catch((error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			this.eventBus.emit({ type: AgentEvent.Error, message, error });
+		});
+	}
+
+	/**
+	 * Build {@link RunObservationalCycleOpts} from the agent's configured
+	 * observational memory + per-call observer/compactor overrides.
+	 */
+	private async buildCycleOpts(opts: {
+		threadId: string;
+		resourceId: string;
+		observe?: ObserveFn;
+		compact?: CompactFn;
+	}): Promise<RunObservationalCycleOpts | null> {
+		const obsConfig = this.memoryConfig?.observationalMemory;
+		const memory = this.memoryConfig?.memory;
+		const workingMemory = this.memoryConfig?.workingMemory;
+		if (
+			!obsConfig ||
+			!memory ||
+			!workingMemory ||
+			!this.modelConfig ||
+			!hasObservationStore(memory)
+		) {
+			return null;
+		}
+		const runtime = await this.ensureBuilt();
+		const telemetry = runtime.getConfiguredTelemetry();
+		return {
+			memory,
+			threadId: opts.threadId,
+			resourceId: opts.resourceId,
+			model: this.modelConfig,
+			workingMemory: {
+				template: workingMemory.template,
+				structured: workingMemory.structured,
+				...(workingMemory.schema !== undefined && { schema: workingMemory.schema }),
+			},
+			...((opts.observe ?? obsConfig.observe)
+				? { observe: opts.observe ?? obsConfig.observe }
+				: {}),
+			...((opts.compact ?? obsConfig.compact)
+				? { compact: opts.compact ?? obsConfig.compact }
+				: {}),
+			...(obsConfig.trigger !== undefined && { trigger: obsConfig.trigger }),
+			...(obsConfig.compactionThreshold !== undefined && {
+				compactionThreshold: obsConfig.compactionThreshold,
+			}),
+			...(obsConfig.gapThresholdMs !== undefined && { gapThresholdMs: obsConfig.gapThresholdMs }),
+			...(obsConfig.observerPrompt !== undefined && { observerPrompt: obsConfig.observerPrompt }),
+			...(obsConfig.compactorPrompt !== undefined && {
+				compactorPrompt: obsConfig.compactorPrompt,
+			}),
+			...(obsConfig.lockTtlMs !== undefined && { lockTtlMs: obsConfig.lockTtlMs }),
+			...(telemetry !== undefined && { telemetry }),
+			eventBus: this.eventBus,
+		};
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -702,6 +825,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: this.memoryConfig?.titleGeneration,
+			observationalMemory: this.memoryConfig?.observationalMemory,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 		});
 

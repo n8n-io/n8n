@@ -221,14 +221,6 @@ export class AgentsController {
 		return { ok: true };
 	}
 
-	@Get('/:agentId/credentials')
-	@ProjectScope('agent:read')
-	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		const { projectId } = req.params;
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
-		return await credentialProvider.list();
-	}
-
 	@Get('/catalog/models')
 	@ProjectScope('agent:read')
 	async getModelCatalog() {
@@ -401,7 +393,11 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message, sessionId } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -553,7 +549,11 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -606,7 +606,11 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -652,6 +656,13 @@ export class AgentsController {
 				`Agent "${agentId}" must be published before connecting an integration`,
 			);
 
+		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			req.user,
+			{ projectId: agent.projectId },
+		);
+		const credential = usableCredentials.find((c) => c.id === credentialId);
+		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
+
 		await this.chatIntegrationService.connect(
 			agentId,
 			credentialId,
@@ -666,7 +677,6 @@ export class AgentsController {
 			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 		);
 		if (!alreadyExists) {
-			const credential = await this.credentialsService.getOne(req.user, credentialId, false);
 			agent.integrations = [...existing, { type, credentialId, credentialName: credential.name }];
 			await this.agentRepository.save(agent);
 		}
