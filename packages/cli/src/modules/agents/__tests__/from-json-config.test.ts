@@ -2,7 +2,10 @@ import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import {
+	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
+} from '../json-config/agent-json-config';
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
@@ -503,6 +506,24 @@ describe('AgentJsonConfigSchema', () => {
 			instructions: 'Be helpful.',
 		};
 		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('accepts a blank model for draft configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: '',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('requires model and credential for runnable configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: 'Be helpful.',
+		};
+		expect(() => RunnableAgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('rejects invalid model format (no slash)', () => {

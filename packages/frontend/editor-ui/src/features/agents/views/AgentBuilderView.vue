@@ -32,6 +32,7 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
+import { parseModelString } from '../utils/model-string';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
@@ -140,11 +141,16 @@ const builderTelemetry = useAgentBuilderTelemetry({
 });
 
 /**
- * An agent is considered "built" once it has instructions configured.
+ * An agent is considered "built" once the runnable essentials are configured.
  * In that state the home screen + send flow routes to the chat endpoint
  * instead of the builder.
  */
-const isBuilt = computed(() => !!localConfig.value?.instructions?.trim());
+const isBuilt = computed(() => {
+	const currentConfig = localConfig.value;
+	if (!currentConfig?.instructions?.trim()) return false;
+	if (!currentConfig.credential?.trim()) return false;
+	return parseModelString(currentConfig.model) !== null;
+});
 
 function getMaxChatPanelWidth(containerWidth: number): number {
 	return Math.max(

@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { RunnableAgentJsonConfigSchema } from '../json-config/agent-json-config';
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
 const BuilderPromptMemoryConfigSchema = z.object({
@@ -11,7 +11,7 @@ const BuilderPromptMemoryConfigSchema = z.object({
 	lastMessages: z.number().int().min(1).max(200).optional(),
 });
 
-const BuilderPromptAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend({
 	memory: BuilderPromptMemoryConfigSchema.optional(),
 });
 
@@ -205,8 +205,8 @@ Use resolve_llm before ask_llm whenever the user's request contains enough
 information to resolve the main LLM without a picker.
 
 ### resolve_llm
-When: the user explicitly names a provider/model, or a fresh agent needs a
-default LLM and the user did not ask to choose.
+When: the user explicitly names a provider/model, or a fresh agent needs its
+main LLM set and the user did not ask to choose.
 
 Inputs: optional \`provider\`, optional \`model\`.
 - If the user says "Anthropic via OpenRouter", pass
@@ -369,7 +369,7 @@ configuration as a JSON string and the \`baseConfigHash\` from that same
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"<credentialId>\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
+  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"{provider}/{model}\\", \\"credential\\": \\"<credentialId>\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
 }
 \`\`\`
 
@@ -399,7 +399,7 @@ Examples:
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"anthropic/claude-sonnet-4-5\\" }]"
+  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialId>\\" }]"
 }
 \`\`\`
 \`\`\`json
@@ -449,7 +449,7 @@ export const WORKFLOW_SECTION = `\
 ## Workflow
 
 1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call resolve_llm
-   when the user specified a provider/model or did not ask to choose. If
+   when the user specified a provider/model or left model choice to the builder. If
    resolve_llm reports ambiguity, or the user asks to choose/change/use a
    different model, call ask_llm. Then call read_config and write_config
    with the chosen \`model\` and \`credential\` plus a draft \`instructions\`.
@@ -568,7 +568,7 @@ Be concise but informative.
 // Dynamic sections — depend on runtime values
 // ---------------------------------------------------------------------------
 
-export function getConfigRulesSection(builderModel: string): string {
+export function getConfigRulesSection(): string {
 	return `\
 ## Agent config rules
 
@@ -577,7 +577,7 @@ export function getConfigRulesSection(builderModel: string): string {
 - \`memory.storage\` must be "n8n"
 - \`memory.lastMessages\` default: 50
 - Use n8n session-scoped memory for all agents
-- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
+- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
 }
 
 export function getSchemaReferenceSection(): string {
@@ -601,11 +601,10 @@ export interface BuilderPromptContext {
 	configHash: string | null;
 	configUpdatedAt: string | null;
 	toolList: string;
-	builderModel: string;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, configHash, configUpdatedAt, toolList, builderModel } = ctx;
+	const { configJson, configHash, configUpdatedAt, toolList } = ctx;
 
 	return [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
@@ -620,7 +619,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		MEMORY_PRESETS_SECTION,
 		INTEGRATIONS_SECTION,
 		RESEARCH_SECTION,
-		getConfigRulesSection(builderModel),
+		getConfigRulesSection(),
 		getSchemaReferenceSection(),
 		WORKFLOW_SECTION,
 		WRITE_CONFIG_SECTION,

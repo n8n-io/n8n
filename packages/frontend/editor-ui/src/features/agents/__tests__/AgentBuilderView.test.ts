@@ -113,20 +113,34 @@ vi.mock('../composables/useAgentBuilderStatus', () => ({
 interface TestAgentConfig {
 	name: string;
 	instructions: string;
+	model?: string;
+	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
 }
 
-const mockConfig = ref<TestAgentConfig | null>({
-	name: 'Agent One',
-	instructions: 'You are a helpful assistant.',
-});
+const defaultLlmConfig = {
+	model: 'anthropic/claude-sonnet-4-5',
+	credential: 'cred-anthropic',
+} as const;
+
+function withDefaultLlm(config: TestAgentConfig | null): TestAgentConfig | null {
+	return config ? { ...defaultLlmConfig, ...config } : null;
+}
+
+const mockConfig = ref<TestAgentConfig | null>(
+	withDefaultLlm({
+		name: 'Agent One',
+		instructions: 'You are a helpful assistant.',
+	}),
+);
 // Stash the "desired config" separately so the fetchConfig mock can restore
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
 // changed, so the `watch(config, ...)` listener doesn't re-fire.
 let intendedConfig: TestAgentConfig | null = {
 	name: 'Agent One',
+	...defaultLlmConfig,
 	instructions: 'You are a helpful assistant.',
 };
 
@@ -150,7 +164,7 @@ vi.mock('../composables/useAgentConfig', () => ({
 		fetchConfig: vi.fn().mockImplementation(async () => {
 			// Mimic the real composable: re-publish the fetched config by touching
 			// the ref, which triggers watchers even when the shape is unchanged.
-			mockConfig.value = intendedConfig ? { ...intendedConfig } : null;
+			mockConfig.value = withDefaultLlm(intendedConfig);
 		}),
 		updateConfig: vi.fn().mockResolvedValue({ versionId: 'v1' }),
 	}),
@@ -357,7 +371,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
@@ -427,7 +441,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		// the builder is visible instead of being stranded behind the home
 		// screen (where the Test tab is locked and clicking Build is a no-op).
 		intendedConfig = { name: 'Agent One', instructions: '' };
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as { chatMode: string };
@@ -449,7 +463,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 	it('locks the Test tab when the agent has no instructions', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as { chatMode: string };
 
@@ -460,6 +474,24 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		// Clicking Test on an unbuilt agent must be a no-op — the RadioButton
 		// option is disabled and the click handler returns early.
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
+		await nextTick();
+		expect(vm.chatMode).toBe('build');
+	});
+
+	it('locks the Test tab when the agent has instructions but no LLM credential', async () => {
+		intendedConfig = {
+			name: 'Agent One',
+			model: '',
+			credential: undefined,
+			instructions: 'You are a helpful assistant.',
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { chatMode: string; isBuilt: boolean };
+
+		expect(vm.isBuilt).toBe(false);
+
 		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
 		await nextTick();
 		expect(vm.chatMode).toBe('build');
@@ -505,7 +537,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
@@ -547,7 +579,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
@@ -643,7 +675,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			tools: [toolRef],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				tools: {
@@ -678,7 +710,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: {
@@ -719,7 +751,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			tools: [{ type: 'custom', id: 'custom_tool' }],
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: {
@@ -753,7 +785,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			tools: [{ type: 'custom', id: 'custom_tool' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
 		createAgentSkillMock.mockResolvedValueOnce({
 			id: 'skill_0Ab9ZkLm3Pq7Xy2N',
@@ -812,7 +844,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: {

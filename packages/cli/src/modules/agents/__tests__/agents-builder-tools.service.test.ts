@@ -179,6 +179,30 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('write_config rejects draft LLM config without updating', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const draftConfig = { ...currentConfig, model: '', credential: undefined };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(draftConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				errors: expect.arrayContaining([
+					expect.objectContaining({ path: 'model' }),
+					expect.objectContaining({ path: 'credential' }),
+				]),
+			});
+		});
+
 		it('write_config rejects stale baseConfigHash without updating', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };

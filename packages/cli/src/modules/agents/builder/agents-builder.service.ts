@@ -23,8 +23,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 
-const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
-
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.BUILDER}${agentId}`;
@@ -166,7 +164,6 @@ export class AgentsBuilderService {
 			configHash: getAgentConfigHash(currentConfig),
 			configUpdatedAt: agent.updatedAt.toISOString(),
 			toolList,
-			builderModel: BUILDER_MODEL,
 		});
 
 		const tools = this.agentsBuilderToolsService.getTools(
