@@ -137,12 +137,14 @@ export class TelegramIntegration extends AgentChatIntegration {
 		author: Author,
 		integration: AgentCredentialIntegrationConfig | undefined,
 	): boolean {
+		if (!integration) return true;
 		if (integration?.type !== 'telegram') {
 			throw new UnexpectedError(
 				`TelegramIntegration received settings with type "${integration?.type}"`,
 			);
 		}
 		if (!integration.settings) return true;
+
 		if (integration.settings.accessMode === 'public') return true;
 		return integration.settings.allowedUsers.some((allowed) => {
 			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;

@@ -651,11 +651,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentCredentialIntegrationDto,
 	) {
-		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(payload);
-		if (!integrationParseResult.success) {
-			throw new BadRequestError(integrationParseResult.error.message);
-		}
-		const integration = integrationParseResult.data;
+		const integration = await this.validateIntegration(payload);
 		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -878,5 +874,17 @@ export class AgentsController {
 		});
 		const body = await webResponse.text();
 		res.send(body);
+	}
+
+	private async validateIntegration(dto: AgentCredentialIntegrationDto) {
+		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(dto);
+		if (!integrationParseResult.success) {
+			throw new BadRequestError(integrationParseResult.error.message);
+		}
+		const integration = integrationParseResult.data;
+		if (integration.type === 'telegram' && !integration.settings) {
+			throw new BadRequestError('Telegram integration settings are required');
+		}
+		return integration;
 	}
 }

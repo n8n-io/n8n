@@ -66,6 +66,7 @@ export const AgentScheduleIntegrationSchema = z
 
 const credentialIntegrations = [
 	createCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
+		// keep optional for older agents
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
 	createSimpleIntegrationSchema('slack'),
