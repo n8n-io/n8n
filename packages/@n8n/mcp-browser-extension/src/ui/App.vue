@@ -12,6 +12,7 @@ const {
 	errorMessage,
 	settings,
 	hasRelayUrl,
+	isAutoConnect,
 	controlledTabs,
 	controlledTabIds,
 	allSelected,
@@ -30,7 +31,9 @@ const {
 			<N8nLogo class="logo" size="small" :collapsed="false" />
 			<span class="title-text">Browser Use</span>
 		</h1>
-		<p class="subtitle">Let n8n AI control your browser</p>
+		<p class="subtitle">
+			{{ isAutoConnect ? 'Auto-connecting (eval mode)…' : 'Let n8n AI control your browser' }}
+		</p>
 
 		<StatusBadge :status="status" :tab-count="controlledTabIds.length" />
 

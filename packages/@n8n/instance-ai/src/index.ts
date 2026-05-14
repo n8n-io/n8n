@@ -6,6 +6,8 @@ export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
+	appendGeneratedWorkflowIdToRootMetadata,
+	appendRootRunMetadata,
 	createInstanceAiTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
@@ -89,6 +91,7 @@ export type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
 	PendingConfirmation,
+	RunStateTimeoutDetails,
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';

@@ -29,7 +29,7 @@
     "@storybook/addon-vitest": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",
     "storybook-addon-vue-mdx": "3.0.0",
-    "@types/node": "^24.10.1",
+    "@types/node": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/browser-playwright": "^4.0.16",
     "@vitest/coverage-v8": "catalog:",
