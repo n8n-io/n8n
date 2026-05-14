@@ -89,6 +89,12 @@ export class IncrementalBuilderService {
 		const modelString =
 			typeof modelConfig === 'string' ? modelConfig : 'anthropic/claude-sonnet-4-5';
 
+		// Use a cheaper / faster model for the non-tool-using agents
+		// (intake, planner, classifier, verifier). They make one structured-output
+		// call each — Sonnet's depth is wasted there. Only the specialist (the
+		// tool-using one) keeps Sonnet.
+		const fastModelString = pickFastModel(modelString);
+
 		const context = this.adapterService.createContext(user, { threadId });
 
 		// Fire `run-start` so the SSE consumer treats this as a real run.
@@ -109,6 +115,7 @@ export class IncrementalBuilderService {
 			agentId,
 			broker,
 			modelString,
+			fastModelString,
 			workflow: context.workflowService as InstanceAiWorkflowService,
 			node: context.nodeService as InstanceAiNodeService,
 			execution: context.executionService as InstanceAiExecutionService,
@@ -136,6 +143,7 @@ export class IncrementalBuilderService {
 		agentId: string;
 		broker: HitlBroker;
 		modelString: string;
+		fastModelString: string;
 		workflow: InstanceAiWorkflowService;
 		node: InstanceAiNodeService;
 		execution: InstanceAiExecutionService;
@@ -149,7 +157,7 @@ export class IncrementalBuilderService {
 				agentId: opts.agentId,
 				userId: opts.user.id,
 				model: opts.modelString,
-				fastModel: opts.modelString,
+				fastModel: opts.fastModelString,
 				services: {
 					workflow: opts.workflow,
 					node: opts.node,
@@ -217,4 +225,50 @@ export class IncrementalBuilderService {
 		if (!active) return;
 		this.activeByThread.delete(threadId);
 	}
+}
+
+/**
+ * Pick a smaller / faster sibling for the non-tool-using agents. We only
+ * downshift when the family + tier mapping is obvious — Claude / OpenAI /
+ * Google. For anything else we keep the same model so config errors aren't
+ * possible.
+ */
+function pickFastModel(model: string): string {
+	const lower = model.toLowerCase();
+
+	// Anthropic Claude — swap Sonnet/Opus for Haiku.
+	if (lower.startsWith('anthropic/') || lower.includes('claude-')) {
+		if (lower.includes('haiku')) return model;
+		// Match the major version in the user's model so we stay on the same
+		// family. e.g. claude-sonnet-4-5 → claude-haiku-4-5; claude-3-7-sonnet
+		// → claude-3-5-haiku.
+		if (lower.includes('-4-5') || lower.includes('-4.5')) {
+			return 'anthropic/claude-haiku-4-5';
+		}
+		if (lower.includes('-4-6') || lower.includes('-4.6')) {
+			return 'anthropic/claude-haiku-4-5';
+		}
+		if (lower.includes('-4-7') || lower.includes('-4.7')) {
+			return 'anthropic/claude-haiku-4-5';
+		}
+		return 'anthropic/claude-haiku-4-5';
+	}
+
+	// OpenAI — gpt-4o → gpt-4o-mini.
+	if (lower.startsWith('openai/') || lower.includes('gpt-')) {
+		if (lower.includes('mini') || lower.includes('nano')) return model;
+		if (lower.includes('gpt-4o')) return 'openai/gpt-4o-mini';
+		if (lower.includes('gpt-4.1')) return 'openai/gpt-4.1-mini';
+		return model;
+	}
+
+	// Google Gemini — pro → flash.
+	if (lower.startsWith('google/') || lower.includes('gemini-')) {
+		if (lower.includes('flash')) return model;
+		if (lower.includes('2.5')) return 'google/gemini-2.5-flash';
+		if (lower.includes('2.0')) return 'google/gemini-2.0-flash';
+		return model;
+	}
+
+	return model;
 }

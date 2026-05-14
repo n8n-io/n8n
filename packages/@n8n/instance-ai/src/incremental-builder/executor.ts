@@ -77,6 +77,7 @@ export async function runExecutor(opts: ExecutorOptions): Promise<ExecutorResult
 				model: opts.model,
 				draft: opts.draft,
 				nodeContext: opts.nodeContext,
+				channel: opts.channel,
 				context: {
 					item: next,
 					intentBrief: opts.intentBrief,

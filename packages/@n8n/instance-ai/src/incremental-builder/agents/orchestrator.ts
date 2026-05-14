@@ -59,7 +59,7 @@ export async function runIncrementalOrchestrator(
 		userMessage: opts.userMessage,
 		broker: opts.broker,
 		channel,
-		maxRounds: opts.maxClarifyingRounds ?? 3,
+		maxRounds: opts.maxClarifyingRounds ?? 2,
 	});
 
 	// 2) Planner — Checklist.

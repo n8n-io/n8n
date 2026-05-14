@@ -112,7 +112,7 @@ export interface IntakeOptions {
 export async function runIntake(opts: IntakeOptions): Promise<IncScopeSpec> {
 	publishPhase(opts.channel, 'intake', 'Clarifying scope');
 
-	const maxRounds = opts.maxRounds ?? 3;
+	const maxRounds = opts.maxRounds ?? 2;
 	const transcript: string[] = [`User: ${opts.userMessage}`];
 
 	const agent = new Agent('inc-intake')
@@ -183,23 +183,10 @@ async function produceIntakeStep(
 	const first = await agent.generate(basePrompt);
 	const firstParsed = (first as { structuredOutput?: IntakeStep }).structuredOutput;
 
-	if (!forceQuestion) return firstParsed;
-	if (firstParsed?.nextQuestion && !firstParsed.enoughInfo) return firstParsed;
-
-	// Retry with the sharpest possible instruction.
-	const retry = await agent.generate(
-		basePrompt +
-			'\n\nYour previous response did not include nextQuestion. You MUST output ' +
-			'a JSON object with enoughInfo: false and a fully-specified nextQuestion ' +
-			`(question that directly references "${userMessage.slice(0, 200)}", ` +
-			'options: [2-4 strings grounded in that request], allowFreeText: true). ' +
-			'DO NOT return a scope. Output the JSON object only.',
-	);
-	const retryParsed = (retry as { structuredOutput?: IntakeStep }).structuredOutput;
-	if (retryParsed?.nextQuestion) {
-		return { enoughInfo: false, nextQuestion: retryParsed.nextQuestion };
-	}
-	return undefined;
+	// No retry — trust the first response. Saves an extra LLM call per turn.
+	// If the model refused to ask a question on round 0, the caller falls
+	// through to the deriveFallbackScope path which proceeds anyway.
+	return firstParsed;
 }
 
 /**
