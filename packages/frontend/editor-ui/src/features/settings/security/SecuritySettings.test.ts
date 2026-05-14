@@ -11,10 +11,17 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
+const getRedactionEnforcement = vi.fn();
+const updateRedactionEnforcement = vi.fn();
 
 vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
+}));
+
+vi.mock('@n8n/rest-api-client/api/redaction-enforcement', () => ({
+	getRedactionEnforcement: (...args: unknown[]) => getRedactionEnforcement(...args),
+	updateRedactionEnforcement: (...args: unknown[]) => updateRedactionEnforcement(...args),
 }));
 
 const showToast = vi.fn();
@@ -45,8 +52,11 @@ describe('SecuritySettings', () => {
 		sharedPersonalWorkflowsCount: 12,
 		sharedPersonalCredentialsCount: 5,
 		managedByEnv: false,
+	};
+
+	const defaultRedactionEnforcement = {
 		redactionEnforced: false,
-		redactionScope: 'non-manual',
+		redactionScope: 'non-manual' as const,
 	};
 
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -64,6 +74,7 @@ describe('SecuritySettings', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getSecuritySettings.mockResolvedValue(defaultSettings);
+		getRedactionEnforcement.mockResolvedValue(defaultRedactionEnforcement);
 
 		settingsStore = mockedStore(useSettingsStore);
 		usersStore = mockedStore(useUsersStore);
@@ -532,8 +543,7 @@ describe('SecuritySettings', () => {
 
 		it('should render scope dropdown when enforcement is on', async () => {
 			enableRedactionEnforcementFlag(true);
-			getSecuritySettings.mockResolvedValue({
-				...defaultSettings,
+			getRedactionEnforcement.mockResolvedValue({
 				redactionEnforced: true,
 				redactionScope: 'non-manual',
 			});
@@ -549,12 +559,9 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('should call updateSecuritySettings with redactionEnforced=true on toggle', async () => {
+		it('should call updateRedactionEnforcement with redactionEnforced=true on toggle', async () => {
 			enableRedactionEnforcementFlag(true);
-			updateSecuritySettings.mockResolvedValue({
-				...defaultSettings,
-				redactionEnforced: true,
-			});
+			updateRedactionEnforcement.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderView();
 
@@ -565,7 +572,7 @@ describe('SecuritySettings', () => {
 			await userEvent.click(getByTestId('enable-redaction-enforcement'));
 
 			await waitFor(() => {
-				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+				expect(updateRedactionEnforcement).toHaveBeenCalledWith(expect.anything(), {
 					redactionEnforced: true,
 				});
 			});
@@ -578,7 +585,7 @@ describe('SecuritySettings', () => {
 
 		it('should show error toast when toggle update fails', async () => {
 			enableRedactionEnforcementFlag(true);
-			updateSecuritySettings.mockRejectedValue(new Error('boom'));
+			updateRedactionEnforcement.mockRejectedValue(new Error('boom'));
 
 			const { getByTestId } = renderView();
 
@@ -609,8 +616,7 @@ describe('SecuritySettings', () => {
 		it('should not render scope dropdown when unlicensed even if enforced=true', async () => {
 			enableRedactionEnforcementFlag(true);
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
-			getSecuritySettings.mockResolvedValue({
-				...defaultSettings,
+			getRedactionEnforcement.mockResolvedValue({
 				redactionEnforced: true,
 				redactionScope: 'non-manual',
 			});
@@ -642,8 +648,7 @@ describe('SecuritySettings', () => {
 
 		it('should render correct affected-scope summary for each policy value', async () => {
 			enableRedactionEnforcementFlag(true);
-			getSecuritySettings.mockResolvedValue({
-				...defaultSettings,
+			getRedactionEnforcement.mockResolvedValue({
 				redactionEnforced: true,
 				redactionScope: 'all',
 			});

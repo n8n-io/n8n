@@ -18,6 +18,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionScope } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
+import * as redactionEnforcementApi from '@n8n/rest-api-client/api/redaction-enforcement';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -85,10 +86,16 @@ const { state } = useAsyncState(async () => {
 		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
-		redactionEnforced: settings.redactionEnforced,
-		redactionScope: settings.redactionScope,
 	};
 }, undefined);
+
+const { state: redactionState } = useAsyncState(
+	async () =>
+		isRedactionEnforcementFlagEnabled.value
+			? await redactionEnforcementApi.getRedactionEnforcement(rootStore.restApiContext)
+			: undefined,
+	undefined,
+);
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 
@@ -182,14 +189,14 @@ async function updateRedactionEnforcement(payload: {
 	redactionEnforced?: boolean;
 	redactionScope?: RedactionScope;
 }) {
-	const previous = state.value
+	const previous = redactionState.value
 		? {
-				redactionEnforced: state.value.redactionEnforced,
-				redactionScope: state.value.redactionScope,
+				redactionEnforced: redactionState.value.redactionEnforced,
+				redactionScope: redactionState.value.redactionScope,
 			}
 		: undefined;
 	try {
-		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, payload);
+		await redactionEnforcementApi.updateRedactionEnforcement(rootStore.restApiContext, payload);
 		const isToggling = payload.redactionEnforced !== undefined;
 		showToast({
 			type: 'success',
@@ -201,8 +208,8 @@ async function updateRedactionEnforcement(payload: {
 			message: '',
 		});
 	} catch (error) {
-		if (state.value && previous) {
-			state.value = { ...state.value, ...previous };
+		if (redactionState.value && previous) {
+			redactionState.value = { ...redactionState.value, ...previous };
 		}
 		const isToggling = payload.redactionEnforced !== undefined;
 		showError(
@@ -215,30 +222,30 @@ async function updateRedactionEnforcement(payload: {
 }
 
 const dataRedactionEnforced = computed({
-	get: () => state.value?.redactionEnforced ?? false,
+	get: () => redactionState.value?.redactionEnforced ?? false,
 	set: (value: boolean) => {
-		if (state.value) {
-			state.value = { ...state.value, redactionEnforced: value };
+		if (redactionState.value) {
+			redactionState.value = { ...redactionState.value, redactionEnforced: value };
 		}
 		void updateRedactionEnforcement({ redactionEnforced: value });
 	},
 });
 
 const dataRedactionScope = computed({
-	get: () => state.value?.redactionScope ?? 'non-manual',
+	get: () => redactionState.value?.redactionScope ?? 'non-manual',
 	set: (value: RedactionScope) => {
-		if (state.value) {
-			state.value = { ...state.value, redactionScope: value };
+		if (redactionState.value) {
+			redactionState.value = { ...redactionState.value, redactionScope: value };
 		}
 		void updateRedactionEnforcement({ redactionScope: value });
 	},
 });
 
 const affectedScopeText = computed(() => {
-	if (!state.value?.redactionEnforced) {
+	if (!redactionState.value?.redactionEnforced) {
 		return i18n.baseText('settings.security.dataRedaction.affectedScope.none');
 	}
-	const scope = state.value.redactionScope;
+	const scope = redactionState.value.redactionScope;
 	return i18n.baseText(`settings.security.dataRedaction.affectedScope.${scope}` as BaseTextKey);
 });
 </script>
@@ -331,7 +338,7 @@ const affectedScopeText = computed(() => {
 					<div :class="$style.settingsContainerAction">
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
 							<ElSwitch
-								v-if="state !== undefined"
+								v-if="redactionState !== undefined"
 								v-model="dataRedactionEnforced"
 								size="large"
 								:disabled="isManagedByEnv"
@@ -340,7 +347,7 @@ const affectedScopeText = computed(() => {
 							<template #fallback>
 								<N8nTooltip>
 									<ElSwitch
-										v-if="state !== undefined"
+										v-if="redactionState !== undefined"
 										:model-value="dataRedactionEnforced"
 										size="large"
 										:disabled="true"
@@ -363,7 +370,7 @@ const affectedScopeText = computed(() => {
 					</div>
 				</div>
 				<div
-					v-if="state !== undefined && dataRedactionEnforced && isDataRedactionLicensed"
+					v-if="redactionState !== undefined && dataRedactionEnforced && isDataRedactionLicensed"
 					:class="$style.settingsContainer"
 					data-test-id="redaction-enforcement-scope-row"
 				>
