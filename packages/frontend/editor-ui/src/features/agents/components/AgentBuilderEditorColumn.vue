@@ -8,6 +8,7 @@ import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentComputerUsePanel from './AgentComputerUsePanel.vue';
 import AgentEvalsPanel from './AgentEvalsPanel.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
@@ -132,6 +133,16 @@ const i18n = useI18n();
 							:disabled="childrenDisabled"
 							embedded
 							data-testid="agent-memory-panel"
+							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard variant="outlined" :class="$style.card">
+						<AgentComputerUsePanel
+							:config="localConfig"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>

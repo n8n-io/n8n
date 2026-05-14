@@ -38,6 +38,12 @@ export interface AffectedResource {
 	toolGroup: ToolGroup;
 	resource: string;
 	description: string;
+	preview?: {
+		kind: 'text' | 'diff';
+		title?: string;
+		content: string;
+		truncated?: boolean;
+	};
 }
 
 export type ResourceDecision =

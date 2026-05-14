@@ -31,6 +31,10 @@ export function summariseInteractiveOutput(
 	// throwing when a malformed payload sneaks through.
 	if (!isPlainObject(output)) return undefined;
 
+	if ('approved' in output && typeof output.approved === 'boolean') {
+		return output.approved ? 'Approved' : 'Denied';
+	}
+
 	if (toolName === ASK_QUESTION_TOOL_NAME) {
 		const resume = output as AskQuestionResume;
 		if (!Array.isArray(resume.values) || resume.values.length === 0) return undefined;

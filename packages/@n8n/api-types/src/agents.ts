@@ -186,6 +186,16 @@ export interface AgentJsonConfig {
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
 	providerTools?: Record<string, Record<string, unknown>>;
+	computerUse?: {
+		enabled: boolean;
+		filesystem?: {
+			enabled?: boolean;
+			write?: boolean;
+		};
+		shell?: {
+			enabled?: boolean;
+		};
+	};
 	/**
 	 * Triggers (scheduled execution + chat integrations) attached to this agent.
 	 * Mirrors the contents of `agent.integrations` storage column so the builder
@@ -320,6 +330,16 @@ export interface AgentBuilderOpenSuspension {
  * interactive tool call so the FE can resume them.
  */
 export interface AgentBuilderMessagesResponse {
+	messages: AgentPersistedMessageDto[];
+	openSuspensions: AgentBuilderOpenSuspension[];
+}
+
+/**
+ * Response body of `GET /projects/:projectId/agents/v2/:agentId/chat/messages`.
+ * Test chat mirrors the builder history shape so open approval cards can be
+ * restored after reload.
+ */
+export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
 }

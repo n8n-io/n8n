@@ -9,6 +9,8 @@ import {
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
 	type AgentBuilderOpenSuspension,
+	type AgentComputerUseApprovalInput,
+	type AgentComputerUseApprovalResume,
 	type AgentPersistedMessageDto,
 	type AskCredentialInput,
 	type AskCredentialResume,
@@ -80,6 +82,12 @@ export type InteractivePayload =
 			toolName: typeof ASK_QUESTION_TOOL_NAME;
 			input: AskQuestionInput;
 			resolvedValue?: AskQuestionResume;
+	  })
+	| (InteractivePayloadBase & {
+			interactionType: 'computer-use-approval';
+			toolName: string;
+			input: AgentComputerUseApprovalInput;
+			resolvedValue?: AgentComputerUseApprovalResume;
 	  });
 
 const INTERACTIVE_TOOL_NAMES = [
@@ -90,6 +98,48 @@ const INTERACTIVE_TOOL_NAMES = [
 
 export function isInteractiveToolName(v: unknown): v is InteractiveToolName {
 	return typeof v === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(v);
+}
+
+export function isComputerUseApprovalPayload(
+	payload: InteractivePayload,
+): payload is Extract<InteractivePayload, { interactionType: 'computer-use-approval' }> {
+	return 'interactionType' in payload && payload.interactionType === 'computer-use-approval';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isComputerUseApprovalInput(value: unknown): value is AgentComputerUseApprovalInput {
+	if (!isRecord(value)) return false;
+	if (value.type !== 'approval') return false;
+	if (typeof value.toolName !== 'string') return false;
+	if (!Array.isArray(value.resources)) return false;
+	return value.resources.every(
+		(resource) =>
+			isRecord(resource) &&
+			['filesystemRead', 'filesystemWrite', 'shell', 'process'].includes(
+				String(resource.toolGroup),
+			) &&
+			typeof resource.resource === 'string' &&
+			typeof resource.description === 'string' &&
+			isOptionalPreview(resource.preview),
+	);
+}
+
+function isOptionalPreview(value: unknown): boolean {
+	if (value === undefined) return true;
+	if (!isRecord(value)) return false;
+	return (
+		['text', 'diff'].includes(String(value.kind)) &&
+		(value.title === undefined || typeof value.title === 'string') &&
+		typeof value.content === 'string' &&
+		(value.truncated === undefined || typeof value.truncated === 'boolean')
+	);
+}
+
+function isComputerUseApprovalResume(value: unknown): value is AgentComputerUseApprovalResume {
+	return isRecord(value) && typeof value.approved === 'boolean';
 }
 
 // ---------------------------------------------------------------------------
@@ -205,14 +255,26 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
 export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
-	if (!isInteractiveToolName(tc.tool)) return undefined;
-
 	const base: InteractivePayloadBase = {
 		toolCallId: tc.toolCallId,
 		// `resolvedAt` is a boolean-ish flag for the UI's disabled state — the
 		// exact timestamp doesn't matter, only its presence.
 		...(tc.output !== undefined && { resolvedAt: 1 }),
 	};
+
+	if (isComputerUseApprovalInput(tc.input)) {
+		const resolved =
+			tc.output !== undefined && isComputerUseApprovalResume(tc.output) ? tc.output : undefined;
+		return {
+			...base,
+			interactionType: 'computer-use-approval',
+			toolName: tc.tool,
+			input: tc.input,
+			...(resolved && { resolvedValue: resolved }),
+		};
+	}
+
+	if (!isInteractiveToolName(tc.tool)) return undefined;
 
 	if (tc.tool === ASK_CREDENTIAL_TOOL_NAME) {
 		const input = askCredentialInputSchema.safeParse(tc.input);

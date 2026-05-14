@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { buildFilesystemResource, resolveSafePath } from './fs-utils';
+import { buildTextPreview } from './preview-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory path relative to root'),
@@ -17,12 +18,15 @@ export const createDirectoryTool: ToolDefinition<typeof inputSchema> = {
 	annotations: {},
 	async getAffectedResources({ dirPath }, { dir }) {
 		return [
-			await buildFilesystemResource(
-				dir,
-				dirPath,
-				'filesystemWrite',
-				`Create directory: ${dirPath}`,
-			),
+			{
+				...(await buildFilesystemResource(
+					dir,
+					dirPath,
+					'filesystemWrite',
+					`Create directory: ${dirPath}`,
+				)),
+				preview: buildTextPreview('Create directory', dirPath),
+			},
 		];
 	},
 	async execute({ dirPath }, { dir }) {

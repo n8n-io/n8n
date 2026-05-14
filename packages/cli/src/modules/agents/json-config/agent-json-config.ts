@@ -37,6 +37,21 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+const ComputerUseConfigSchema = z.object({
+	enabled: z.boolean(),
+	filesystem: z
+		.object({
+			enabled: z.boolean().optional(),
+			write: z.boolean().optional(),
+		})
+		.optional(),
+	shell: z
+		.object({
+			enabled: z.boolean().optional(),
+		})
+		.optional(),
+});
+
 const NodeToolCredentialSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -111,6 +126,7 @@ export const AgentJsonConfigSchema = z.object({
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
+	computerUse: ComputerUseConfigSchema.optional(),
 	integrations: z.array(AgentIntegrationSchema).optional(),
 	config: z
 		.object({

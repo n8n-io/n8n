@@ -87,11 +87,36 @@ export class N8NCheckpointStorage {
 		return jsonParse<SerializableAgentState>(checkpoint.state);
 	}
 
-	async getStatus(key: string): Promise<CheckpointStatus> {
+	async getStatus(key: string, agentId?: string): Promise<CheckpointStatus> {
 		const checkpoint = await this.agentCheckpointRepository.findOneBy({ runId: key });
 		if (!checkpoint) return { status: 'not-found' };
+		if (agentId !== undefined && checkpoint.agentId !== agentId) return { status: 'not-found' };
 		if (checkpoint.expired || checkpoint.state === null) return { status: 'expired' };
 		return { status: 'active', checkpoint: jsonParse<SerializableAgentState>(checkpoint.state) };
+	}
+
+	async findOpenCheckpoint(
+		agentId: string,
+		matches?: (checkpoint: SerializableAgentState) => boolean,
+	): Promise<SerializableAgentState | null> {
+		const rows = await this.agentCheckpointRepository.find({
+			where: { agentId, expired: false },
+			order: { updatedAt: 'DESC' },
+			take: 10,
+		});
+
+		for (const row of rows) {
+			if (!row.state) continue;
+			let parsed: SerializableAgentState;
+			try {
+				parsed = jsonParse<SerializableAgentState>(row.state);
+			} catch {
+				continue;
+			}
+			if (parsed.status === 'suspended' && (matches?.(parsed) ?? true)) return parsed;
+		}
+
+		return null;
 	}
 
 	async delete(key: string): Promise<void> {

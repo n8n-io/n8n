@@ -5,7 +5,11 @@ import {
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
-import type { InteractivePayload } from '../../composables/agentChatMessages';
+import {
+	isComputerUseApprovalPayload,
+	type InteractivePayload,
+} from '../../composables/agentChatMessages';
+import ApprovalCard from './ApprovalCard.vue';
 import AskCredentialCard from './AskCredentialCard.vue';
 import AskLlmCard from './AskLlmCard.vue';
 import AskQuestionCard from './AskQuestionCard.vue';
@@ -36,38 +40,65 @@ const emit = defineEmits<{
  */
 const disabled = computed(() => !!props.payload.resolvedAt || !props.payload.runId);
 
+const computerUsePayload = computed(() =>
+	isComputerUseApprovalPayload(props.payload) ? props.payload : null,
+);
+const askCredentialPayload = computed(() =>
+	props.payload.toolName === ASK_CREDENTIAL_TOOL_NAME &&
+	!isComputerUseApprovalPayload(props.payload)
+		? props.payload
+		: null,
+);
+const askLlmPayload = computed(() =>
+	props.payload.toolName === ASK_LLM_TOOL_NAME && !isComputerUseApprovalPayload(props.payload)
+		? props.payload
+		: null,
+);
+const askQuestionPayload = computed(() =>
+	props.payload.toolName === ASK_QUESTION_TOOL_NAME && !isComputerUseApprovalPayload(props.payload)
+		? props.payload
+		: null,
+);
+
 function onSubmit(resumeData: unknown) {
 	emit('submit', resumeData);
 }
 </script>
 
 <template>
+	<ApprovalCard
+		v-if="computerUsePayload"
+		:input="computerUsePayload.input"
+		:disabled="disabled"
+		:resolved-value="computerUsePayload.resolvedValue"
+		@submit="onSubmit"
+	/>
 	<AskCredentialCard
-		v-if="payload.toolName === ASK_CREDENTIAL_TOOL_NAME && projectId && agentId"
-		:purpose="payload.input.purpose"
-		:credential-type="payload.input.credentialType"
-		:node-type="payload.input.nodeType"
-		:credential-slot="payload.input.slot"
+		v-else-if="askCredentialPayload && projectId && agentId"
+		:purpose="askCredentialPayload.input.purpose"
+		:credential-type="askCredentialPayload.input.credentialType"
+		:node-type="askCredentialPayload.input.nodeType"
+		:credential-slot="askCredentialPayload.input.slot"
 		:project-id="projectId"
 		:agent-id="agentId"
 		:disabled="disabled"
-		:resolved-value="payload.resolvedValue"
+		:resolved-value="askCredentialPayload.resolvedValue"
 		@submit="onSubmit"
 	/>
 	<AskLlmCard
-		v-else-if="payload.toolName === ASK_LLM_TOOL_NAME"
-		:purpose="payload.input.purpose"
+		v-else-if="askLlmPayload"
+		:purpose="askLlmPayload.input.purpose"
 		:disabled="disabled"
-		:resolved-value="payload.resolvedValue"
+		:resolved-value="askLlmPayload.resolvedValue"
 		@submit="onSubmit"
 	/>
 	<AskQuestionCard
-		v-else-if="payload.toolName === ASK_QUESTION_TOOL_NAME"
-		:question="payload.input.question"
-		:options="payload.input.options"
-		:allow-multiple="payload.input.allowMultiple"
+		v-else-if="askQuestionPayload"
+		:question="askQuestionPayload.input.question"
+		:options="askQuestionPayload.input.options"
+		:allow-multiple="askQuestionPayload.input.allowMultiple"
 		:disabled="disabled"
-		:resolved-value="payload.resolvedValue"
+		:resolved-value="askQuestionPayload.resolvedValue"
 		@submit="onSubmit"
 	/>
 </template>

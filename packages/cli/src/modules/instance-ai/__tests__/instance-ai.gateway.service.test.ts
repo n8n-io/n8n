@@ -128,6 +128,7 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 				directory: null,
 				hostIdentifier: null,
 				toolCategories: [],
+				tools: [],
 			});
 		});
 

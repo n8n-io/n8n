@@ -1,3 +1,4 @@
+import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
 import { textOf } from '../test-utils';
@@ -54,6 +55,59 @@ describe('writeFileTool', () => {
 		});
 	});
 
+	describe('getAffectedResources', () => {
+		it('includes a content preview for new files', async () => {
+			jest
+				.mocked(fs.stat)
+				.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
+
+			const resources = await writeFileTool.getAffectedResources(
+				{ filePath: 'new.txt', content: 'hello' },
+				CONTEXT,
+			);
+
+			expect(resources).toMatchObject([
+				{
+					toolGroup: 'filesystemWrite',
+					resource: '/base/new.txt',
+					description: 'Write file: new.txt',
+					preview: { kind: 'text', content: 'hello' },
+				},
+			]);
+		});
+
+		it('includes a diff preview when overwriting files', async () => {
+			jest.mocked(fs.stat).mockResolvedValue({ size: 3 } as unknown as Stats);
+			(fs.readFile as jest.Mock).mockResolvedValue('old');
+
+			const resources = await writeFileTool.getAffectedResources(
+				{ filePath: 'existing.txt', content: 'new' },
+				CONTEXT,
+			);
+
+			expect(resources[0].preview).toMatchObject({
+				kind: 'diff',
+				content: expect.stringContaining('-old') as string,
+			});
+		});
+
+		it('does not read a large existing file to build the approval preview', async () => {
+			jest.mocked(fs.stat).mockResolvedValue({ size: 600 * 1024 } as unknown as Stats);
+
+			const resources = await writeFileTool.getAffectedResources(
+				{ filePath: 'large.txt', content: 'new' },
+				CONTEXT,
+			);
+
+			expect(fs.readFile).not.toHaveBeenCalled();
+			expect(resources[0].preview).toMatchObject({
+				kind: 'text',
+				title: expect.stringContaining('too large to diff') as string,
+				content: 'new',
+			});
+		});
+	});
+
 	describe('execute', () => {
 		it('creates parent directories and writes the file', async () => {
 			mockMkdir();
@@ -90,6 +144,19 @@ describe('writeFileTool', () => {
 			).resolves.not.toThrow();
 
 			expect(fs.writeFile).toHaveBeenCalledWith('/base/existing.txt', 'new data', 'utf-8');
+		});
+
+		it('rejects when expectedSha256 does not match the existing file', async () => {
+			(fs.readFile as jest.Mock).mockResolvedValue(Buffer.from('old data'));
+
+			await expect(
+				writeFileTool.execute(
+					{ filePath: 'existing.txt', content: 'new data', expectedSha256: 'different' },
+					CONTEXT,
+				),
+			).rejects.toThrow('File changed since it was last read');
+
+			expect(fs.writeFile).not.toHaveBeenCalled();
 		});
 
 		it('rejects content larger than 512 KB', async () => {

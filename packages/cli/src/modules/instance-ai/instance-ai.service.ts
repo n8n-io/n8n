@@ -19,7 +19,7 @@ import type { InstanceAiConfig } from '@n8n/config';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UrlService } from '@/services/url.service';
 import {
@@ -93,12 +93,12 @@ import { v5 as uuidv5 } from 'uuid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { ComputerUseGatewayService } from '@/modules/computer-use-gateway/computer-use-gateway.service';
 import { AiService } from '@/services/ai.service';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
-import { LocalGatewayRegistry } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
@@ -384,7 +384,7 @@ export class InstanceAiService {
 	>();
 
 	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
-	private readonly gatewayRegistry = new LocalGatewayRegistry();
+	private readonly computerUseGateway = Container.get(ComputerUseGatewayService);
 
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
@@ -1422,7 +1422,7 @@ export class InstanceAiService {
 		await this.liveness.sweepTimedOutWork(now);
 	}
 
-	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
+	// ── Gateway lifecycle (delegated to computer-use-gateway) ───────────────
 
 	// ── Test-only trace replay API ───────────────────────────────────────────
 
@@ -1443,39 +1443,39 @@ export class InstanceAiService {
 	}
 
 	getUserIdForApiKey(key: string): string | undefined {
-		return this.gatewayRegistry.getUserIdForApiKey(key);
+		return this.computerUseGateway.getUserIdForApiKey(key);
 	}
 
 	generatePairingToken(userId: string): string {
-		return this.gatewayRegistry.generatePairingToken(userId);
+		return this.computerUseGateway.generatePairingToken(userId);
 	}
 
 	getGatewayApiKeyExpiresAt(userId: string, key: string): Date | null {
-		return this.gatewayRegistry.getApiKeyExpiresAt(userId, key);
+		return this.computerUseGateway.getGatewayApiKeyExpiresAt(userId, key);
 	}
 
 	getPairingToken(userId: string): string | null {
-		return this.gatewayRegistry.getPairingToken(userId);
+		return this.computerUseGateway.getPairingToken(userId);
 	}
 
 	consumePairingToken(userId: string, token: string): string | null {
-		return this.gatewayRegistry.consumePairingToken(userId, token);
+		return this.computerUseGateway.consumePairingToken(userId, token);
 	}
 
 	getActiveSessionKey(userId: string): string | null {
-		return this.gatewayRegistry.getActiveSessionKey(userId);
+		return this.computerUseGateway.getActiveSessionKey(userId);
 	}
 
 	clearActiveSessionKey(userId: string): void {
-		this.gatewayRegistry.clearActiveSessionKey(userId);
+		this.computerUseGateway.clearActiveSessionKey(userId);
 	}
 
 	getLocalGateway(userId: string): LocalGateway {
-		return this.gatewayRegistry.getGateway(userId);
+		return this.computerUseGateway.getLocalGateway(userId);
 	}
 
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
-		this.gatewayRegistry.initGateway(userId, data);
+		this.computerUseGateway.initGateway(userId, data);
 		this.telemetry.track('User connected to Computer Use', {
 			user_id: userId,
 			tool_groups: data.toolCategories.filter((c) => c.enabled).map((c) => c.name),
@@ -1488,18 +1488,16 @@ export class InstanceAiService {
 		result?: McpToolCallResult,
 		error?: string,
 	): boolean {
-		return this.gatewayRegistry.resolveGatewayRequest(userId, requestId, result, error);
+		return this.computerUseGateway.resolveGatewayRequest(userId, requestId, result, error);
 	}
 
 	disconnectGateway(userId: string): void {
-		this.gatewayRegistry.disconnectGateway(userId);
+		this.computerUseGateway.disconnectGateway(userId);
 	}
 
 	/** Disconnect all connected gateways and return the user IDs that were connected. */
 	disconnectAllGateways(): string[] {
-		const connectedUserIds = this.gatewayRegistry.getConnectedUserIds();
-		this.gatewayRegistry.disconnectAll();
-		return connectedUserIds;
+		return this.computerUseGateway.disconnectAllGateways();
 	}
 
 	isLocalGatewayDisabled(): boolean {
@@ -1513,15 +1511,15 @@ export class InstanceAiService {
 		hostIdentifier: string | null;
 		toolCategories: ToolCategory[];
 	} {
-		return this.gatewayRegistry.getGatewayStatus(userId);
+		return this.computerUseGateway.getGatewayStatus(userId);
 	}
 
 	startDisconnectTimer(userId: string, onDisconnect: () => void): void {
-		this.gatewayRegistry.startDisconnectTimer(userId, onDisconnect);
+		this.computerUseGateway.startDisconnectTimer(userId, onDisconnect);
 	}
 
 	clearDisconnectTimer(userId: string): void {
-		this.gatewayRegistry.clearDisconnectTimer(userId);
+		this.computerUseGateway.clearDisconnectTimer(userId);
 	}
 
 	/**
@@ -1602,7 +1600,7 @@ export class InstanceAiService {
 			});
 		}
 
-		this.gatewayRegistry.disconnectAll();
+		this.computerUseGateway.disconnectAll();
 
 		// Destroy all active sandboxes
 		const sandboxCleanups = [...this.sandboxes.keys()].map(
@@ -2144,7 +2142,7 @@ export class InstanceAiService {
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
-		const userGateway = this.gatewayRegistry.findGateway(user.id);
+		const userGateway = this.computerUseGateway.findGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and
 		// AiAssistantClient that are shared across model, search, and tracing

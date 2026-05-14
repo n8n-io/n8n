@@ -62,6 +62,7 @@ function makeService(
 		mock<AgentSecureRuntime>(),
 		mock<EphemeralNodeExecutor>(),
 		agentsToolsService,
+		mock(),
 		mock<N8nMemory>(),
 		mock<AgentExecutionService>(),
 		mock<AgentPublishedVersionRepository>(),

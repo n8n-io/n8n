@@ -11,6 +11,7 @@ import {
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
 	isGroupable,
+	isComputerUseApprovalPayload,
 	type ChatMessage,
 } from '../composables/agentChatMessages';
 
@@ -75,6 +76,31 @@ describe('rebuildInteractiveFromHistory', () => {
 			state: 'done',
 		});
 		expect(result).toBeUndefined();
+	});
+
+	it('rebuilds a computer-use approval card from its suspension payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'write_file',
+			toolCallId: 'call-4',
+			input: {
+				type: 'approval',
+				toolName: 'write_file',
+				args: { filePath: 'a.txt' },
+				resources: [
+					{
+						toolGroup: 'filesystemWrite',
+						resource: '/workspace/a.txt',
+						description: 'write_file: a.txt',
+					},
+				],
+			},
+			state: 'suspended',
+		});
+
+		expect(result).toBeTruthy();
+		expect(result && isComputerUseApprovalPayload(result)).toBe(true);
+		expect(result?.toolName).toBe('write_file');
+		expect(result?.resolvedAt).toBeUndefined();
 	});
 });
 

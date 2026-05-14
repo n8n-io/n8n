@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { z } from 'zod';
 
@@ -53,6 +54,9 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 			content: slicedLines.join('\n'),
 			truncated,
 			totalLines: allLines.length,
+			sizeBytes: stat.size,
+			mtimeMs: stat.mtimeMs,
+			sha256: createHash('sha256').update(buffer).digest('hex'),
 		};
 
 		return formatCallToolResult(result);

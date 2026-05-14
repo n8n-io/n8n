@@ -112,6 +112,7 @@ describe('AgentsService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 			n8nMemory,
 			agentExecutionService,
 			agentPublishedVersionRepository,
@@ -183,6 +184,33 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Help the user.',
 				config: { nodeTools: { enabled: true } },
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('rejects computerUse.enabled when the computer-use agents module is disabled', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				computerUse: { enabled: true },
+			});
+
+			expect(result.valid).toBe(false);
+			if (result.valid) return;
+
+			expect(result.error).toContain('computer-use');
+		});
+
+		it('allows computerUse.enabled when the computer-use agents module is enabled', async () => {
+			agentsConfig.modules = ['computer-use'] as unknown as AgentsConfig['modules'];
+
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				computerUse: { enabled: true },
 			});
 
 			expect(result.valid).toBe(true);
@@ -960,7 +988,7 @@ describe('AgentsService', () => {
 
 			const result = await service.getTestChatMessages(agentId, userId);
 
-			expect(result).toBe(persisted);
+			expect(result).toEqual({ messages: persisted, openSuspensions: [] });
 		});
 	});
 

@@ -9,6 +9,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents';
+export * from './agent-computer-use';
 export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
 export {
 	ASK_LLM_TOOL_NAME,

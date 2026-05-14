@@ -52,7 +52,7 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	},
 };
 
-async function spawnCommand(command: string, { dir, cwd }: { dir: string; cwd?: string }) {
+export async function spawnCommand(command: string, { dir, cwd }: { dir: string; cwd?: string }) {
 	const isWindows = process.platform === 'win32';
 	const isMac = process.platform === 'darwin';
 
@@ -74,6 +74,7 @@ async function runCommand(
 	{ timeout, cwd, dir }: { timeout: number; dir: string; cwd?: string },
 ): Promise<CallToolResult> {
 	return await new Promise<CallToolResult>((resolve, reject) => {
+		const start = Date.now();
 		spawnCommand(command, { dir, cwd })
 			.then((child) => {
 				let stdout = '';
@@ -88,12 +89,28 @@ async function runCommand(
 
 				const timer = setTimeout(() => {
 					child.kill();
-					resolve(formatCallToolResult({ stdout, stderr, exitCode: null, timedOut: true }));
+					resolve(
+						formatCallToolResult({
+							stdout,
+							stderr,
+							exitCode: null,
+							timedOut: true,
+							durationMs: Date.now() - start,
+							cwd: cwd ?? dir,
+						}),
+					);
 				}, timeout);
 
 				child.on('close', (code) => {
 					clearTimeout(timer);
-					const result = formatCallToolResult({ stdout, stderr, exitCode: code });
+					const result = formatCallToolResult({
+						stdout,
+						stderr,
+						exitCode: code,
+						timedOut: false,
+						durationMs: Date.now() - start,
+						cwd: cwd ?? dir,
+					});
 					if (code !== 0) {
 						result.isError = true;
 					}

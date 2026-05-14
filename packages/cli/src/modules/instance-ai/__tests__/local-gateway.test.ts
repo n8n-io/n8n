@@ -115,6 +115,33 @@ describe('LocalGateway', () => {
 			expect((result.content[0] as { type: 'text'; text: string }).text).toContain('console.log');
 		});
 
+		it('should mark preview requests without changing tool arguments', async () => {
+			gateway.init(EMPTY_CAPABILITIES);
+
+			const events: LocalGatewayRequestEvent[] = [];
+			gateway.onRequest((event) => events.push(event));
+
+			const callPromise = gateway.previewTool({
+				name: 'write_file',
+				arguments: { filePath: 'src/index.ts', content: 'hello' },
+			});
+
+			expect(events[0].payload.previewOnly).toBe(true);
+			expect(events[0].payload.toolCall.arguments).toEqual({
+				filePath: 'src/index.ts',
+				content: 'hello',
+			});
+
+			gateway.resolveRequest(events[0].payload.requestId, {
+				content: [],
+				structuredContent: { resources: [] },
+			});
+
+			await expect(callPromise).resolves.toMatchObject({
+				structuredContent: { resources: [] },
+			});
+		});
+
 		it('should reject on error string response', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 

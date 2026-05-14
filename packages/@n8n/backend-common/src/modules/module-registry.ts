@@ -56,6 +56,7 @@ export class ModuleRegistry {
 		'encryption-key-manager',
 		'oauth-jwe',
 		'inbound-secrets',
+		'computer-use-gateway',
 	];
 
 	private readonly activeModules: string[] = [];

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { agentComputerUseApprovalResumeSchema } from './agent-computer-use';
+
 /**
  * Canonical names of the interactive agent-builder tools.
  *
@@ -112,6 +114,7 @@ export const interactiveResumeDataSchema = z.union([
 	askLlmResumeSchema,
 	askCredentialResumeSchema,
 	askQuestionResumeSchema,
+	agentComputerUseApprovalResumeSchema,
 ]);
 
 export type InteractiveResumeData = z.infer<typeof interactiveResumeDataSchema>;

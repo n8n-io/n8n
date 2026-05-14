@@ -1,7 +1,8 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentChatMessagesResponse,
+	AgentComputerUseStatusResponse,
 	AgentIntegrationStatusResponse,
-	AgentPersistedMessageDto,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentScheduleConfig,
@@ -33,6 +34,13 @@ export const getAgent = async (
 		`/projects/${projectId}/agents/v2/${agentId}`,
 	);
 };
+
+export interface AgentComputerUsePairingLinkResponse {
+	token: string;
+	command: string;
+	expiresAt: string | null;
+	ttlSeconds: number | null;
+}
 
 export const createAgent = async (
 	context: IRestApiContext,
@@ -335,8 +343,8 @@ export const getChatMessages = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
@@ -347,11 +355,35 @@ export const getTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const getComputerUseStatus = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentComputerUseStatusResponse> => {
+	return await makeRestApiRequest<AgentComputerUseStatusResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/computer-use/status`,
+	);
+};
+
+export const createComputerUsePairingLink = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentComputerUsePairingLinkResponse> => {
+	return await makeRestApiRequest<AgentComputerUsePairingLinkResponse>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/computer-use/create-link`,
 	);
 };
 

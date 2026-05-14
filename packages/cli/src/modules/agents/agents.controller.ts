@@ -1,6 +1,8 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
+	type AgentChatMessagesResponse,
+	type AgentComputerUseStatusResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
@@ -49,6 +51,7 @@ import {
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
+import { AgentsComputerUseService } from './computer-use/agents-computer-use.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -101,6 +104,7 @@ export class AgentsController {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly agentsComputerUseService: AgentsComputerUseService,
 	) {}
 
 	@Post('/')
@@ -456,7 +460,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
-	) {
+	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -464,7 +468,35 @@ export class AgentsController {
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return await this.agentsService.getChatMessages(threadId);
+		const { messages, openSuspensions } = await this.agentsService.getChatMessages(
+			agentId,
+			threadId,
+			req.user.id,
+		);
+		return { messages: messagesToDto(messages), openSuspensions };
+	}
+
+	@Get('/:agentId/computer-use/status')
+	@ProjectScope('agent:read')
+	async getComputerUseStatus(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentComputerUseStatusResponse> {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return this.agentsComputerUseService.getStatus(req.user.id);
+	}
+
+	@Post('/:agentId/computer-use/create-link')
+	@ProjectScope('agent:update')
+	async createComputerUseLink(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (!this.agentsComputerUseService.isModuleEnabled()) {
+			throw new ConflictError('Computer Use is not enabled for this n8n instance');
+		}
+		return this.agentsComputerUseService.createPairingLink(req.user.id);
 	}
 
 	@Get('/:agentId/build/messages')
@@ -514,12 +546,15 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getTestChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-	): Promise<AgentPersistedMessageDto[]> {
+	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
-		return messagesToDto(messages);
+		const { messages, openSuspensions } = await this.agentsService.getTestChatMessages(
+			agentId,
+			req.user.id,
+		);
+		return { messages: messagesToDto(messages), openSuspensions };
 	}
 
 	@Delete('/:agentId/chat/messages')
@@ -627,6 +662,46 @@ export class AgentsController {
 				),
 				send,
 				makeBuilderToolEvents(send),
+			);
+
+			if (!suspended) {
+				send({ type: 'done' });
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+			send({ type: 'error', message: errorMessage });
+		}
+
+		res.end();
+	}
+
+	@Post('/:agentId/chat/resume', { usesTemplates: true })
+	@ProjectScope('agent:execute')
+	async chatResume(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentBuildResumeDto,
+	) {
+		const { projectId } = req.params;
+		const { runId, toolCallId, resumeData } = payload;
+
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const { send } = initSseStream(res);
+
+		try {
+			const suspended = await pumpChunks(
+				this.agentsService.resumeForTestChat({
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					userId: req.user.id,
+				}),
+				send,
 			);
 
 			if (!suspended) {

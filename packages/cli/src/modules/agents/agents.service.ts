@@ -2,6 +2,7 @@ import type {
 	BuiltAgent,
 	BuiltTool,
 	CredentialProvider,
+	SerializableAgentState,
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
@@ -57,6 +58,7 @@ import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
+import { AgentsComputerUseService } from './computer-use/agents-computer-use.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
@@ -87,9 +89,13 @@ type AgentToolEntries = Agent['tools'];
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
 	agentId: string;
+	config: AgentJsonConfig;
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
+	resolvedTools: BuiltTool[];
+	/** n8n user whose connected gateway may provide draft/test-chat computer-use tools. */
+	computerUseUserId?: string;
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
 }
@@ -140,6 +146,15 @@ export interface ResumeForChatConfig {
 	integrationType?: string;
 }
 
+export interface ResumeForTestChatConfig {
+	agentId: string;
+	projectId: string;
+	runId: string;
+	toolCallId: string;
+	resumeData: unknown;
+	userId: string;
+}
+
 export interface ExecuteForSchedulePublishedConfig {
 	agentId: string;
 	projectId: string;
@@ -162,9 +177,16 @@ interface GetRuntimeParams {
 	agentId: string;
 	projectId: string;
 	n8nUserId?: string;
+	/** Draft/test-chat only. Enables runtime injection from the current user's gateway session. */
+	computerUseUserId?: string;
 	integrationType?: string;
 	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
 	usePublishedVersion?: boolean;
+}
+
+interface ReconstructRuntimeOptions {
+	integrationType?: string;
+	computerUseUserId?: string;
 }
 
 @Service()
@@ -253,6 +275,7 @@ export class AgentsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly agentsToolsService: AgentsToolsService,
+		private readonly agentsComputerUseService: AgentsComputerUseService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
@@ -268,6 +291,10 @@ export class AgentsService {
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
 		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
+	}
+
+	private isComputerUseModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('computer-use');
 	}
 
 	/**
@@ -569,9 +596,20 @@ export class AgentsService {
 		return true;
 	}
 
-	/** Return persisted chat messages for a given session/thread. */
-	async getChatMessages(threadId: string) {
-		return await this.n8nMemory.getMessages(threadId);
+	/** Return chat messages for a given session/thread, plus open test-chat suspensions. */
+	async getChatMessages(agentId: string, threadId: string, userId: string) {
+		const memory = await this.n8nMemory.getMessages(threadId);
+		const checkpoint = await this.n8nCheckpointStorage.findOpenCheckpoint(agentId, (state) => {
+			const persistence = state.persistence;
+			return persistence?.threadId === threadId && persistence.resourceId === userId;
+		});
+		const openSuspensions = this.getOpenSuspensions(checkpoint);
+
+		if (!checkpoint) return { messages: memory, openSuspensions };
+
+		const memoryIds = new Set(memory.map((m) => m.id));
+		const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
+		return { messages: [...memory, ...newFromCheckpoint], openSuspensions };
 	}
 
 	private getMemoryFactory(): MemoryFactory {
@@ -592,11 +630,12 @@ export class AgentsService {
 		toolRegistry: ToolRegistry;
 		projectId: string;
 	}> {
-		const { agentId, projectId, integrationType, usePublishedVersion } = params;
+		const { agentId, projectId, computerUseUserId, integrationType, usePublishedVersion } = params;
 
 		const cacheKey = this.computeRuntimeCacheKey(params);
+		const skipCache = computerUseUserId !== undefined;
 
-		const cached = this.runtimes.get(cacheKey);
+		const cached = skipCache ? undefined : this.runtimes.get(cacheKey);
 		if (cached) return cached;
 
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -630,12 +669,11 @@ export class AgentsService {
 			agentData,
 			credentialProvider,
 			n8nUserId,
-			integrationType,
+			{ computerUseUserId, integrationType },
 		);
 
-		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
-		const runtime = this.runtimes.get(cacheKey);
-		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
+		const runtime = { agent: agentInstance, agentId, toolRegistry, projectId };
+		if (!skipCache) this.runtimes.set(cacheKey, runtime);
 		return runtime;
 	}
 
@@ -688,8 +726,17 @@ export class AgentsService {
 	 * (opt-in, defaults to false) — see {@link shouldAttachNodeTools}.
 	 */
 	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
-		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
-			params;
+		const {
+			agent,
+			agentId,
+			config,
+			projectId,
+			credentialProvider,
+			nodeToolsEnabled,
+			resolvedTools,
+			computerUseUserId,
+			integrationType,
+		} = params;
 
 		// Inject get_environment unconditionally. It surfaces info the model
 		// can't know on its own (current date, instance timezone, day of week)
@@ -735,9 +782,16 @@ export class AgentsService {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
 
+		if (computerUseUserId !== undefined) {
+			for (const tool of this.agentsComputerUseService.getRuntimeTools(config, computerUseUserId)) {
+				agent.tool(tool);
+				resolvedTools.push(tool);
+			}
+		}
+
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage);
+			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
 	}
 
@@ -763,7 +817,7 @@ export class AgentsService {
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
 
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
 		}
@@ -897,7 +951,12 @@ export class AgentsService {
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, userId, memory } = config;
 
-		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const runtime = await this.getRuntime({
+			agentId,
+			projectId,
+			n8nUserId: userId,
+			computerUseUserId: userId,
+		});
 
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
@@ -909,14 +968,111 @@ export class AgentsService {
 		});
 	}
 
+	private async findOpenTestChatCheckpoint(
+		agentId: string,
+		userId: string,
+	): Promise<SerializableAgentState | null> {
+		const threadId = chatThreadId(agentId, userId);
+		return await this.n8nCheckpointStorage.findOpenCheckpoint(agentId, (checkpoint) => {
+			const persistence = checkpoint.persistence;
+			return persistence?.threadId === threadId && persistence.resourceId === userId;
+		});
+	}
+
+	private getOpenSuspensions(checkpoint: SerializableAgentState | null) {
+		return Object.values(checkpoint?.pendingToolCalls ?? {})
+			.filter((tc) => tc.suspended)
+			.map((tc) => ({
+				toolCallId: tc.toolCallId,
+				runId: tc.runId,
+			}));
+	}
+
 	/**
-	 * Return persisted test-chat messages for an agent scoped to the current
-	 * user. Test-chat threads are keyed by agent and user so memory stays isolated.
+	 * Return test-chat messages for an agent scoped to the current user.
+	 * While a tool approval is open, merge the in-flight checkpoint messages
+	 * with persisted memory so the approval card survives reload.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory.getMessages(chatThreadId(agentId, userId), {
+		const memory = await this.n8nMemory.getMessages(chatThreadId(agentId, userId), {
 			resourceId: userId,
 		});
+		const checkpoint = await this.findOpenTestChatCheckpoint(agentId, userId);
+		const openSuspensions = this.getOpenSuspensions(checkpoint);
+
+		if (!checkpoint) return { messages: memory, openSuspensions };
+
+		const memoryIds = new Set(memory.map((m) => m.id));
+		const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
+		return { messages: [...memory, ...newFromCheckpoint], openSuspensions };
+	}
+
+	async *resumeForTestChat(config: ResumeForTestChatConfig): AsyncGenerator<StreamChunk> {
+		const { agentId, projectId, runId, toolCallId, resumeData, userId } = config;
+
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
+		if (checkpointStatus.status === 'expired') {
+			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
+		}
+
+		if (checkpointStatus.status === 'not-found') {
+			throw new UserError(`Checkpoint ${runId} not found and cannot be resumed`);
+		}
+
+		const memoryScope = checkpointStatus.checkpoint?.persistence;
+		if (!memoryScope) {
+			throw new UserError(`Checkpoint ${runId} has no memory data and cannot be resumed`);
+		}
+
+		if (memoryScope.resourceId !== userId) {
+			throw new UserError('Checkpoint does not belong to this test chat');
+		}
+
+		const runtime = await this.getRuntime({
+			agentId,
+			projectId,
+			n8nUserId: userId,
+			computerUseUserId: userId,
+		});
+
+		const { agent: agentInstance, toolRegistry } = runtime;
+		const recorder = new ExecutionRecorder(toolRegistry);
+
+		const resultStream = await agentInstance.resume('stream', resumeData, {
+			runId,
+			toolCallId,
+		});
+
+		const reader = resultStream.stream.getReader();
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				recorder.record(value);
+				yield value;
+			}
+		} finally {
+			reader.releaseLock();
+		}
+
+		const messageRecord = recorder.getMessageRecord();
+		void this.agentExecutionService
+			.recordMessage({
+				threadId: memoryScope.threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userMessage: '',
+				record: messageRecord,
+				hitlStatus: 'resumed',
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record resumed test-chat agent execution', {
+					agentId,
+					threadId: memoryScope.threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	/**
@@ -1259,6 +1415,13 @@ export class AgentsService {
 			};
 		}
 
+		if (config.computerUse?.enabled === true && !this.isComputerUseModuleEnabled()) {
+			return {
+				valid: false,
+				error: 'computerUse.enabled requires the computer-use agents module to be enabled.',
+			};
+		}
+
 		try {
 			this.validateNodeToolExpressions(config);
 		} catch (error) {
@@ -1377,6 +1540,7 @@ export class AgentsService {
 		const credentialProvided = result.config.credential !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
 		const providerToolsProvided = result.config.providerTools !== undefined;
+		const computerUseProvided = result.config.computerUse !== undefined;
 		const configBlockProvided = result.config.config !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
@@ -1398,6 +1562,7 @@ export class AgentsService {
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
+			...(computerUseProvided ? { computerUse: decomposedSchema.computerUse } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 		};
 
@@ -1679,8 +1844,9 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId: string,
-		integrationType?: string,
+		options: ReconstructRuntimeOptions | string = {},
 	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }> {
+		const runtimeOptions = typeof options === 'string' ? { integrationType: options } : options;
 		const config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -1719,10 +1885,13 @@ export class AgentsService {
 		await this.injectRuntimeDependencies({
 			agent: reconstructed,
 			agentId: agentEntity.id,
+			config,
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
-			integrationType,
+			resolvedTools,
+			computerUseUserId: runtimeOptions.computerUseUserId,
+			integrationType: runtimeOptions.integrationType,
 		});
 
 		const toolRegistry = buildToolRegistry(resolvedTools);

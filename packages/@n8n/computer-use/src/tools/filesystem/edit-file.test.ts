@@ -81,12 +81,15 @@ describe('editFileTool', () => {
 
 	describe('getAffectedResources', () => {
 		it('declares both read and write access for the edited file', async () => {
+			mockStat(100);
+			mockReadFile('const foo = 1;');
+
 			const resources = await editFileTool.getAffectedResources(
 				{ filePath: 'src/index.ts', oldString: 'foo', newString: 'bar' },
 				CONTEXT,
 			);
 
-			expect(resources).toEqual([
+			expect(resources).toMatchObject([
 				{
 					toolGroup: 'filesystemRead',
 					resource: '/base/src/index.ts',
@@ -96,6 +99,10 @@ describe('editFileTool', () => {
 					toolGroup: 'filesystemWrite',
 					resource: '/base/src/index.ts',
 					description: 'Edit file: src/index.ts',
+					preview: {
+						kind: 'diff',
+						content: expect.stringContaining('-const foo = 1;') as string,
+					},
 				},
 			]);
 		});
@@ -111,6 +118,19 @@ describe('editFileTool', () => {
 					CONTEXT,
 				),
 			).rejects.toThrow('excluded from filesystem reads');
+		});
+
+		it('rejects large files before reading them for approval preview', async () => {
+			mockStat(600 * 1024);
+
+			await expect(
+				editFileTool.getAffectedResources(
+					{ filePath: 'large.txt', oldString: 'foo', newString: 'bar' },
+					CONTEXT,
+				),
+			).rejects.toThrow('File too large');
+
+			expect(fs.readFile).not.toHaveBeenCalled();
 		});
 	});
 

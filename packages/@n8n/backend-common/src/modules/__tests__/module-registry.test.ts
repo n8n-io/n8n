@@ -45,6 +45,7 @@ describe('eligibleModules', () => {
 			'encryption-key-manager',
 			'oauth-jwe',
 			'inbound-secrets',
+			'computer-use-gateway',
 		]);
 	});
 
@@ -76,6 +77,7 @@ describe('eligibleModules', () => {
 			'encryption-key-manager',
 			'oauth-jwe',
 			'inbound-secrets',
+			'computer-use-gateway',
 			'instance-ai',
 		]);
 	});

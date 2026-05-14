@@ -214,6 +214,18 @@ describe('GatewayClient.checkPermissions', () => {
 			);
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});
+
+		it('returns affected resources in preview mode without prompting or executing', async () => {
+			const session = makeSession({ check: jest.fn().mockReturnValue('ask') });
+			const confirmResourceAccess = jest.fn();
+			const client = makeClient(session, confirmResourceAccess);
+
+			await expect(client['dispatchToolCall']('test_tool', {}, true)).resolves.toEqual({
+				content: [{ type: 'text', text: JSON.stringify({ resources: [SHELL_RESOURCE] }) }],
+				structuredContent: { resources: [SHELL_RESOURCE] },
+			});
+			expect(confirmResourceAccess).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('instance mode', () => {

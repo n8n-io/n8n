@@ -27,7 +27,7 @@ import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	INSTANCE_RESOURCE_DECISION_KEYS,
 } from './tools/types';
-import { formatErrorResult } from './tools/utils';
+import { formatCallToolResult, formatErrorResult } from './tools/utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_AUTH_RETRIES = 5;
@@ -70,6 +70,7 @@ interface FilesystemRequestEvent {
 	payload: {
 		requestId: string;
 		toolCall: { name: string; arguments: Record<string, unknown> };
+		previewOnly?: boolean;
 	};
 }
 
@@ -420,12 +421,16 @@ export class GatewayClient {
 
 			if (!isFilesystemRequestEvent(parsed)) return;
 
-			const { requestId, toolCall } = parsed.payload;
+			const { requestId, toolCall, previewOnly } = parsed.payload;
 			printToolCall(toolCall.name, toolCall.arguments);
 			const start = Date.now();
 
 			try {
-				const result = await this.dispatchToolCall(toolCall.name, toolCall.arguments);
+				const result = await this.dispatchToolCall(
+					toolCall.name,
+					toolCall.arguments,
+					previewOnly === true,
+				);
 				printToolResult(toolCall.name, Date.now() - start);
 				await this.postResponse(requestId, result);
 			} catch (error) {
@@ -441,6 +446,7 @@ export class GatewayClient {
 	private async dispatchToolCall(
 		name: string,
 		args: Record<string, unknown>,
+		previewOnly = false,
 	): Promise<CallToolResult> {
 		await this.getAllDefinitions();
 		const def = this.definitionMap.get(name);
@@ -456,6 +462,9 @@ export class GatewayClient {
 		const context = { dir: this.dir };
 
 		const resources = await def.getAffectedResources(typedArgs, context);
+		if (previewOnly) {
+			return formatCallToolResult({ resources });
+		}
 		await this.checkPermissions(resources, decision);
 
 		return await def.execute(typedArgs, context);
@@ -555,6 +564,7 @@ function isFilesystemRequestEvent(data: unknown): data is FilesystemRequestEvent
 	const p = d.payload as Record<string, unknown>;
 	if (typeof p.requestId !== 'string') return false;
 	if (typeof p.toolCall !== 'object' || p.toolCall === null) return false;
+	if (p.previewOnly !== undefined && typeof p.previewOnly !== 'boolean') return false;
 	const tc = p.toolCall as Record<string, unknown>;
 	return typeof tc.name === 'string' && typeof tc.arguments === 'object' && tc.arguments !== null;
 }

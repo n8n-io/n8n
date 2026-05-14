@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { buildFilesystemResource, resolveReadablePath, resolveSafePath } from './fs-utils';
+import { buildTextPreview } from './preview-utils';
 
 const inputSchema = z.object({
 	sourcePath: z.string().describe('Source path relative to root (file or directory)'),
@@ -25,12 +26,15 @@ export const moveFileTool: ToolDefinition<typeof inputSchema> = {
 				'filesystemRead',
 				`Move source: ${sourcePath}`,
 			),
-			await buildFilesystemResource(
-				dir,
-				destinationPath,
-				'filesystemWrite',
-				`Move destination: ${destinationPath}`,
-			),
+			{
+				...(await buildFilesystemResource(
+					dir,
+					destinationPath,
+					'filesystemWrite',
+					`Move destination: ${destinationPath}`,
+				)),
+				preview: buildTextPreview('Move path', `${sourcePath} -> ${destinationPath}`),
+			},
 		];
 	},
 	async execute({ sourcePath, destinationPath }, { dir }) {

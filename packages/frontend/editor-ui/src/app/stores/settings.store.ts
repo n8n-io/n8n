@@ -176,6 +176,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive('node-tools-searcher'),
 	);
 
+	const isAgentsComputerUseFeatureEnabled = computed(() => isAgentModuleActive('computer-use'));
+
 	const isPublicChatTriggerDisabled = computed(
 		() => settings.value.chatTrigger?.disablePublicChat ?? false,
 	);
@@ -470,6 +472,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isAgentsNodeToolsFeatureEnabled,
+		isAgentsComputerUseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 	};
 });

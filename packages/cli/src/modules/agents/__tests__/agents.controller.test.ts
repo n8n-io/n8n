@@ -11,6 +11,7 @@ import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integra
 import type { AgentScheduleService } from '../integrations/agent-schedule.service';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentsComputerUseService } from '../computer-use/agents-computer-use.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
 
@@ -89,6 +90,7 @@ describe('AgentsController integration credentials', () => {
 			agentRepository,
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
+			mock<AgentsComputerUseService>(),
 		);
 
 		await expect(

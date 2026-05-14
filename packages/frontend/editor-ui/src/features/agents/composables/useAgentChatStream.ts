@@ -84,18 +84,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			} else if (continueId) {
-				dbMessages = await getChatMessages(
+				const envelope = await getChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 					continueId,
 				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
 			} else {
-				dbMessages = await getTestChatMessages(
+				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
 			}
 			if (dbMessages.length > 0) {
 				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
@@ -488,8 +492,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	/**
-	 * Resume a suspended build interaction. Posts to the build/resume endpoint
-	 * and re-enters the same SSE handler. The `runId` is required — it comes
+	 * Resume a suspended interaction. Posts to the matching build/chat resume
+	 * endpoint and re-enters the same SSE handler. The `runId` is required — it comes
 	 * from the original `tool-call-suspended` chunk (live) or from the
 	 * `openSuspensions` sidecar applied during history reload.
 	 */
@@ -535,7 +539,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
+		const resumeEndpoint = params.endpoint.value === 'build' ? 'build' : 'chat';
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${resumeEndpoint}/resume`;
 		const { ok } = await postAndConsume(url, payload);
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
