@@ -71,6 +71,7 @@ function makeService(
 		{ modules } as unknown as AgentsConfig,
 		mock(),
 		mock<Telemetry>(),
+		mock(),
 	);
 }
 

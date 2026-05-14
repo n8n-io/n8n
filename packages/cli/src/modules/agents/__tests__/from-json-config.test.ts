@@ -701,17 +701,6 @@ describe('AgentJsonConfigSchema', () => {
 		});
 	});
 
-	it('rejects a chat integration missing credentialName at the schema level', () => {
-		const config = {
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'my-key',
-			instructions: '',
-			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-		};
-		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
-	});
-
 	it('validates Telegram private integration settings', () => {
 		const config = {
 			name: 'test',
@@ -804,16 +793,5 @@ describe('AgentJsonConfigSchema', () => {
 			credentialId: 'cred-1',
 			credentialName: 'Acme Slack',
 		});
-	});
-
-	it('rejects a chat integration missing credentialName at the schema level', () => {
-		const config = {
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'my-key',
-			instructions: '',
-			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-		};
-		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 });

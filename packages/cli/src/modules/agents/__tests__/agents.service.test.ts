@@ -79,6 +79,7 @@ describe('AgentsService', () => {
 	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let scheduleService: jest.Mocked<AgentScheduleService>;
+	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
 	let publisher: jest.Mocked<Publisher>;
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
@@ -93,6 +94,7 @@ describe('AgentsService', () => {
 		agentExecutionService = mock<AgentExecutionService>();
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
 		scheduleService = mock<AgentScheduleService>();
+		chatIntegrationService = mock<ChatIntegrationService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
 		agentsConfig = { modules: [] } as unknown as AgentsConfig;
@@ -124,6 +126,7 @@ describe('AgentsService', () => {
 			agentsConfig,
 			globalConfig,
 			mock<Telemetry>(),
+			chatIntegrationService,
 		);
 	});
 
@@ -624,7 +627,7 @@ describe('AgentsService', () => {
 
 		it('connects persisted credential integrations after publishing', async () => {
 			const integrations: AgentIntegrationConfig[] = [
-				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack' },
+				{ type: 'slack', credentialId: 'cred-1' },
 				{
 					type: 'schedule',
 					active: false,
@@ -1257,6 +1260,145 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await expect(service.unpublishAgent(agentId, projectId)).resolves.toBeDefined();
+		});
+	});
+
+	describe('saveCredentialIntegration', () => {
+		it('appends a new credential integration to an empty list', async () => {
+			const agent = makeAgent({ integrations: [] });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			const integration = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+				credentialName: 'Slack workspace',
+			};
+
+			await service.saveCredentialIntegration(agent, integration);
+
+			expect(agentRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [integration],
+				}),
+			);
+		});
+
+		it('replaces an existing integration with the same type+credentialId', async () => {
+			const existing = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+				credentialName: 'Old name',
+			};
+			const agent = makeAgent({ integrations: [existing] });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			const updated = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+				credentialName: 'New name',
+			};
+
+			await service.saveCredentialIntegration(agent, updated);
+
+			expect(agentRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [updated],
+				}),
+			);
+		});
+
+		it('preserves schedule integrations when saving credential integrations', async () => {
+			const schedule = {
+				type: 'schedule' as const,
+				active: false,
+				cronExpression: '0 9 * * *',
+				wakeUpPrompt: 'wake up',
+			};
+			const agent = makeAgent({ integrations: [schedule] });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			const slack = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+				credentialName: 'Slack',
+			};
+
+			await service.saveCredentialIntegration(agent, slack);
+
+			expect(agentRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [schedule, slack],
+				}),
+			);
+		});
+
+		it('rejects an integration missing credentialName', async () => {
+			const agent = makeAgent({ integrations: [] });
+
+			await expect(
+				service.saveCredentialIntegration(agent, {
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as never),
+			).rejects.toThrow(/Invalid credential integration/);
+		});
+	});
+
+	describe('removeCredentialIntegration', () => {
+		it('removes the matching credential integration', async () => {
+			const slack = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+				credentialName: 'Slack',
+			};
+			const schedule = {
+				type: 'schedule' as const,
+				active: false,
+				cronExpression: '0 9 * * *',
+				wakeUpPrompt: 'wake up',
+			};
+			const agent = makeAgent({ integrations: [slack, schedule] });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			await service.removeCredentialIntegration(agent, 'slack', 'cred-1');
+
+			expect(agentRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [schedule],
+				}),
+			);
+		});
+
+		it('no-ops when integration does not exist', async () => {
+			const agent = makeAgent({ integrations: [] });
+
+			const result = await service.removeCredentialIntegration(agent, 'slack', 'cred-1');
+
+			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(result).toBe(agent);
+		});
+
+		it('preserves other credential integrations', async () => {
+			const slack = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+				credentialName: 'Slack',
+			};
+			const linear = {
+				type: 'linear' as const,
+				credentialId: 'cred-2',
+				credentialName: 'Linear',
+			};
+			const agent = makeAgent({ integrations: [slack, linear] });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			await service.removeCredentialIntegration(agent, 'slack', 'cred-1');
+
+			expect(agentRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [linear],
+				}),
+			);
 		});
 	});
 });

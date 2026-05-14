@@ -72,9 +72,7 @@ describe('AgentScheduleService', () => {
 	});
 
 	it('saveConfig upserts the schedule integration alongside credential-backed integrations', async () => {
-		const agent = makePublishedAgent([
-			{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack' },
-		]);
+		const agent = makePublishedAgent([{ type: 'slack', credentialId: 'cred-1' }]);
 
 		const result = await service.saveConfig(agent, '* * * * *');
 
@@ -114,6 +112,44 @@ describe('AgentScheduleService', () => {
 				]),
 			),
 		).rejects.toBeInstanceOf(BadRequestError);
+	});
+
+	it('rejects various malformed cron patterns before saving', async () => {
+		const malformed = ['* * *', '99 99 * * *', 'every-day', '0 0 0 0'];
+		for (const cron of malformed) {
+			await expect(service.saveConfig(makePublishedAgent(), cron)).rejects.toBeInstanceOf(
+				BadRequestError,
+			);
+		}
+	});
+
+	it('saveConfig rejects an empty cron when the schedule is active', async () => {
+		const agent = makePublishedAgent([
+			{
+				type: 'schedule',
+				active: true,
+				cronExpression: '* * * * *',
+				wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+			},
+		]);
+
+		await expect(service.saveConfig(agent, '')).rejects.toBeInstanceOf(BadRequestError);
+	});
+
+	it('saveConfig accepts empty cron when the schedule is inactive', async () => {
+		const agent = makePublishedAgent([
+			{
+				type: 'schedule',
+				active: false,
+				cronExpression: '* * * * *',
+				wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+			},
+		]);
+		agentRepository.save.mockImplementation(async (a: Agent) => a);
+
+		const result = await service.saveConfig(agent, '');
+
+		expect(result.cronExpression).toBe('');
 	});
 
 	it('activate rejects unpublished agents', async () => {

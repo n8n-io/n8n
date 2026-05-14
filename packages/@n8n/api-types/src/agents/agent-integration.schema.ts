@@ -10,7 +10,6 @@ const createCredIntegrationSchema = <
 	z.object({
 		type: z.literal<Value>(typeName),
 		credentialId: z.string().min(1),
-		credentialName: z.string().min(1),
 		settings: settingsSchema,
 	});
 
@@ -18,7 +17,6 @@ const createSimpleIntegrationSchema = <Value extends string>(typeName: Value) =>
 	z.object({
 		type: z.literal<Value>(typeName),
 		credentialId: z.string().min(1),
-		credentialName: z.string().min(1),
 	});
 
 export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;

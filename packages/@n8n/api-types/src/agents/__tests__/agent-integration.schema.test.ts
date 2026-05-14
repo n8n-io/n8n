@@ -20,14 +20,6 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects a chat integration missing credentialName', () => {
-		const result = AgentIntegrationSchema.safeParse({
-			type: 'slack',
-			credentialId: 'cred-123',
-		});
-		expect(result.success).toBe(false);
-	});
-
 	it('rejects a schedule integration missing cronExpression', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',
@@ -57,9 +49,8 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('accepts a schedule integration with any non-empty cronExpression string (cron validation is backend-only)', () => {
-		const expressions = ['not-a-cron', '* * *', '99 99 * * *'];
-		for (const cron of expressions) {
+	it('accepts any non-empty cronExpression string (cron syntax validation is backend-only)', () => {
+		for (const cron of ['not-a-cron', '* * *', '99 99 * * *']) {
 			const result = AgentIntegrationSchema.safeParse({
 				type: 'schedule',
 				active: false,
@@ -70,7 +61,7 @@ describe('AgentIntegrationSchema', () => {
 		}
 	});
 
-	it('rejects a schedule integration with an empty cronExpression', () => {
+	it('rejects an empty cronExpression', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',
 			active: false,
