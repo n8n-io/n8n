@@ -828,12 +828,6 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		// Drive status from the persisted agent entry, not from the chat
-		// service's in-memory `connections` map. That map is transiently empty
-		// during boot / reconnect / leader takeover, which made the trigger
-		// chip disappear in the UI even though the integration is configured.
-		// Matches how the schedule trigger already reports `active` from the
-		// persisted config rather than runtime state.
 		const chatIntegrations = (agent.integrations ?? [])
 			.filter(isAgentCredentialIntegration)
 			.map((i) => ({
