@@ -3,6 +3,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { getSubAgentPersistence } from './agent-persistence';
 import { buildNudgeStreamInput } from './browser-credential-setup.nudge';
 import { buildBrowserAgentPrompt, type BrowserToolSource } from './browser-credential-setup.prompt';
 import {
@@ -260,10 +261,12 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						);
 
 						const briefing = buildCredentialSetupBriefing(input, context);
+						const persistence = getSubAgentPersistence(context);
 
 						const stream = await subAgent.stream(briefing, {
 							maxIterations: MAX_STEPS.BROWSER,
 							abortSignal: signal,
+							persistence,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
@@ -294,6 +297,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 										runId: agentRunId,
 										toolCallId: suspension.toolCallId,
 										maxIterations: MAX_STEPS.BROWSER,
+										persistence,
 									}),
 									waitForConfirmation: async (requestId) => {
 										if (!context.waitForConfirmation) {
@@ -324,6 +328,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 								const nudge = await subAgent.stream(nudgeInput, {
 									maxIterations: MAX_STEPS.BROWSER,
 									abortSignal: signal,
+									persistence,
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},

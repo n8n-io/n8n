@@ -25,6 +25,8 @@ export interface ConsumeWithHitlOptions {
 	maxIterations?: number;
 	/** Additional options to preserve when resuming a suspended stream. */
 	resumeOptions?: Record<string, unknown>;
+	/** Native agent persistence owner for suspended sub-agent state. */
+	persistence?: { threadId: string; resourceId: string };
 }
 
 export interface ConsumeWithHitlResult {
@@ -66,16 +68,13 @@ export async function consumeStreamWithHitl(
 			waitForConfirmation: options.waitForConfirmation,
 			drainCorrections: options.drainCorrections,
 			waitForCorrection: options.waitForCorrection,
-			...(options.maxIterations
-				? {
-						buildResumeOptions: ({ agentRunId, suspension }) => ({
-							runId: agentRunId,
-							toolCallId: suspension.toolCallId,
-							maxIterations: options.maxIterations,
-							...(options.resumeOptions ?? {}),
-						}),
-					}
-				: {}),
+			buildResumeOptions: ({ agentRunId, suspension }) => ({
+				runId: agentRunId,
+				toolCallId: suspension.toolCallId,
+				...(options.maxIterations ? { maxIterations: options.maxIterations } : {}),
+				...(options.resumeOptions ?? {}),
+				...(options.persistence ? { persistence: options.persistence } : {}),
+			}),
 		},
 	});
 

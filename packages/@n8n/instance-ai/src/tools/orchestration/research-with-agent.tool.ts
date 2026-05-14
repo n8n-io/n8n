@@ -9,6 +9,7 @@ import { Agent, Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { getSubAgentPersistence } from './agent-persistence';
 import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
 import {
@@ -116,9 +117,11 @@ export async function startResearchAgentTask(
 					}),
 				);
 
+				const persistence = getSubAgentPersistence(context);
 				const stream = await subAgent.stream(briefing, {
 					maxIterations: MAX_STEPS.RESEARCH,
 					abortSignal: signal,
+					persistence,
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' } },
 					},
@@ -137,6 +140,7 @@ export async function startResearchAgentTask(
 					drainCorrections,
 					waitForCorrection,
 					maxIterations: MAX_STEPS.RESEARCH,
+					persistence,
 				});
 
 				return await text;

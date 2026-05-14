@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { getSubAgentPersistence } from './agent-persistence';
 import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
@@ -1138,6 +1139,7 @@ export async function startBuildWorkflowAgentTask(
 
 							let finalText: string;
 							try {
+								const persistence = getSubAgentPersistence(context);
 								const resumeOptions: Record<string, unknown> = {
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1146,6 +1148,7 @@ export async function startBuildWorkflowAgentTask(
 								const stream = await subAgent.stream(briefing, {
 									maxIterations: MAX_STEPS.BUILDER,
 									abortSignal: signal,
+									persistence,
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
@@ -1165,6 +1168,7 @@ export async function startBuildWorkflowAgentTask(
 									waitForCorrection,
 									maxIterations: MAX_STEPS.BUILDER,
 									resumeOptions,
+									persistence,
 								});
 
 								finalText = await hitlResult.text;
@@ -1398,9 +1402,11 @@ export async function startBuildWorkflowAgentTask(
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
 						};
+						const persistence = getSubAgentPersistence(context);
 						const stream = await subAgent.stream(briefing, {
 							maxIterations: MAX_STEPS.BUILDER,
 							abortSignal: signal,
+							persistence,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
@@ -1420,6 +1426,7 @@ export async function startBuildWorkflowAgentTask(
 							waitForCorrection,
 							maxIterations: MAX_STEPS.BUILDER,
 							resumeOptions,
+							persistence,
 						});
 
 						const toolFinalText = await hitlResult.text;

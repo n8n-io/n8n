@@ -10,6 +10,7 @@ import { Agent, Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { getSubAgentPersistence } from './agent-persistence';
 import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
 import { truncateLabel } from './display-utils';
 import {
@@ -121,9 +122,11 @@ export function startDataTableAgentTask(
 					runningTasks: context.getRunningTaskSummaries?.(),
 				});
 
+				const persistence = getSubAgentPersistence(context);
 				const stream = await subAgent.stream(briefing, {
 					maxIterations: MAX_STEPS.DATA_TABLE,
 					abortSignal: signal,
+					persistence,
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' } },
 					},
@@ -140,6 +143,7 @@ export function startDataTableAgentTask(
 					abortSignal: signal,
 					waitForConfirmation: context.waitForConfirmation,
 					maxIterations: MAX_STEPS.DATA_TABLE,
+					persistence,
 				});
 
 				return await hitlResult.text;
