@@ -5,6 +5,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	finalizeItems,
 	formatTriggerActionName,
 	filterAndSearchNodes,
 	groupItemsInSections,
@@ -33,6 +34,9 @@ import {
 	AI_CATEGORY_OTHER_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+	AI_CATEGORY_MCP_NODES,
+	AI_CATEGORY_ROOT_NODES,
+	AI_SUBCATEGORY,
 } from '@/app/constants';
 
 vi.mock('@/app/stores/settings.store', () => ({
@@ -702,6 +706,35 @@ describe('NodeCreator - utils', () => {
 			expect(result.length).toBe(2);
 			expect(result[0].key).toBe('Node1');
 			expect(result[1].key).toBe('node1');
+		});
+	});
+
+	describe('finalizeItems - MCP registry tool tag', () => {
+		const makeMcpNode = (subcategoriesAi: string[]) =>
+			mockNodeCreateElement(undefined, {
+				name: 'mcpRegistryNode',
+				codex: {
+					categories: ['AI'],
+					subcategories: { [AI_SUBCATEGORY]: subcategoriesAi },
+				},
+			});
+
+		it('should tag registry-generated MCP tools as "New"', () => {
+			const node = makeMcpNode([AI_CATEGORY_MCP_NODES]);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ type: 'success', text: 'New' });
+		});
+
+		it('should not tag MCP nodes that are also Root Nodes (e.g. McpTrigger)', () => {
+			const node = makeMcpNode([AI_CATEGORY_ROOT_NODES, AI_CATEGORY_MCP_NODES]);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.tag).toBeUndefined();
+		});
+
+		it('should not tag tools that are not in the MCP subcategory', () => {
+			const node = makeMcpNode(['Tools']);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.tag).toBeUndefined();
 		});
 	});
 

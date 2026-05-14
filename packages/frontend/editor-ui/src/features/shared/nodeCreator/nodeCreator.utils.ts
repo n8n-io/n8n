@@ -15,6 +15,7 @@ import {
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
 	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_OTHER_TOOLS,
+	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
@@ -290,6 +291,11 @@ export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_P
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	if (element.type !== 'node' || element.properties.tag) return element;
 
+	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
+	const isMcpRegistryTool =
+		aiSubcategories.includes(AI_CATEGORY_MCP_NODES) &&
+		!aiSubcategories.includes(AI_CATEGORY_ROOT_NODES);
+
 	if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
 			type: 'info',
@@ -299,6 +305,11 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
+		};
+	} else if (isMcpRegistryTool) {
+		element.properties.tag = {
+			type: 'success',
+			text: i18n.baseText('generic.new'),
 		};
 	} else if (
 		useSettingsStore().isAiGatewayEnabled &&
