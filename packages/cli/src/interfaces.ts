@@ -187,6 +187,13 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	used_dynamic_credentials?: boolean;
 }
 
+export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	message_count?: number;
+	token_count?: number;
+	tool_call_count?: number;
+}
+
 // ----------------------------------
 //               license
 // ----------------------------------
