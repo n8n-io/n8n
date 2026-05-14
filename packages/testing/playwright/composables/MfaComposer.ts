@@ -68,4 +68,18 @@ export class MfaComposer {
 		await this.n8n.mfaLogin.submitMfaRecoveryCode(recoveryCode);
 		await expect(this.n8n.page).toHaveURL(/workflows/);
 	}
+
+	/**
+	 * Complete the MFA login via a WebAuthn ceremony. The browser ceremony is
+	 * served by whichever virtual authenticator was attached to the page —
+	 * see `utils/webauthn-virtual-authenticator.ts`.
+	 */
+	async loginWithWebAuthn(email: string, password: string): Promise<void> {
+		await this.n8n.signIn.fillEmail(email);
+		await this.n8n.signIn.fillPassword(password);
+		await this.n8n.signIn.clickSubmit();
+
+		await this.n8n.mfaWebauthnLogin.clickWebAuthnButton();
+		await expect(this.n8n.page).toHaveURL(/workflows/);
+	}
 }

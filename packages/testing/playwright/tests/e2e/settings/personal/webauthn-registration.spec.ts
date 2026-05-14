@@ -12,17 +12,21 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
 	() => {
-		test('Should register and delete a passkey and a security key', async ({ n8n }) => {
-			// One end-to-end journey: register both kinds and then delete each.
-			// One test rather than several because the DB state carries through
-			// (we can't use `@db:reset`, that tag is container-only). The
-			// virtual authenticators stay attached for the whole page lifetime
-			// so the delete-time reverify ceremonies have the matching keys
-			// available.
+		test('Should register, sign in with, and delete a passkey and a security key', async ({
+			n8n,
+		}) => {
+			// One end-to-end journey covering both methods:
+			//   1. register passkey  →  MFA-login with passkey
+			//   2. register security key  →  delete passkey first so the next
+			//      sign-in can only use the security key
+			//   3. MFA-login with security key  →  delete security key
+			// Single test rather than several because the DB state carries
+			// through (we can't use `@db:reset`, that tag is container-only) and
+			// the virtual authenticators are page-scoped.
 			//
-			// Passwordless sign-in is not exercised here: Chromium's Conditional
-			// UI requires the OS-level autofill picker, which doesn't render in
-			// headless. That path is covered by the backend integration test
+			// Passwordless (Conditional UI) sign-in is not exercised here:
+			// Chromium's autofill picker doesn't render in headless. That code
+			// path is covered with real crypto by the backend integration test
 			// `webauthn.api.test.ts` (passwordless verify).
 			const passkey = await attachVirtualAuthenticator(n8n.page, 'passkey');
 			const securityKey = await attachVirtualAuthenticator(n8n.page, 'security_key');
@@ -30,7 +34,7 @@ test.describe(
 				await n8n.signIn.loginWithEmailAndPassword(email, password, true);
 				await n8n.settingsPersonal.goto();
 
-				// 1. Register the passkey.
+				// --- Passkey ---
 				await n8n.settingsPersonal.getEnablePasskeyButton().click();
 				await n8n.settingsPersonal.registerWebAuthnCredential('My Mac');
 				// Recovery codes step shows on the user's *first ever* credential.
@@ -42,26 +46,32 @@ test.describe(
 				await expect(n8n.settingsPersonal.getWebAuthnModal()).toBeHidden();
 				await expect(n8n.settingsPersonal.getPasskeyCredentialByLabel('My Mac')).toBeVisible();
 
-				// 2. Register the security key while the passkey is in
-				// `excludeCredentials`. The `authenticatorAttachment: 'cross-platform'`
-				// hint routes the ceremony to the security-key authenticator — without
-				// it the browser would try the passkey first and hit InvalidStateError.
+				// MFA-login using the passkey (only credential in DB at this point).
+				await n8n.sideBar.signOutFromWorkflows();
+				await n8n.mfaComposer.loginWithWebAuthn(email, password);
+
+				// --- Security key ---
+				await n8n.settingsPersonal.goto();
 				await n8n.settingsPersonal.getEnableSecurityKeyButton().click();
 				await n8n.settingsPersonal.registerWebAuthnCredential('YubiKey');
 				await expect(n8n.settingsPersonal.getWebAuthnModal()).toBeHidden();
 				await expect(n8n.settingsPersonal.getSecurityKeyCredentialByLabel('YubiKey')).toBeVisible();
 
-				// 3. Remove the security key. `useMfaReverify('security_key')` →
-				// re-verify via the cross-platform virtual authenticator → DELETE.
-				await n8n.settingsPersonal.getSecurityKeyDeleteButtonForLabel('YubiKey').click();
-				await expect(n8n.settingsPersonal.getSecurityKeyCredentialByLabel('YubiKey')).toBeHidden();
-				// Passkey untouched.
-				await expect(n8n.settingsPersonal.getPasskeyCredentialByLabel('My Mac')).toBeVisible();
-
-				// 4. Remove the passkey. `useMfaReverify('passkey')` uses the
-				// platform virtual authenticator.
+				// Drop the passkey so the next sign-in can only resolve to the
+				// security key (otherwise `allowCredentials` would include both
+				// and the picker would non-deterministically route to either
+				// virtual authenticator).
 				await n8n.settingsPersonal.getPasskeyDeleteButtonForLabel('My Mac').click();
 				await expect(n8n.settingsPersonal.getPasskeyCredentialByLabel('My Mac')).toBeHidden();
+
+				// MFA-login using the security key.
+				await n8n.sideBar.signOutFromWorkflows();
+				await n8n.mfaComposer.loginWithWebAuthn(email, password);
+
+				// --- Delete security key ---
+				await n8n.settingsPersonal.goto();
+				await n8n.settingsPersonal.getSecurityKeyDeleteButtonForLabel('YubiKey').click();
+				await expect(n8n.settingsPersonal.getSecurityKeyCredentialByLabel('YubiKey')).toBeHidden();
 			} finally {
 				await passkey.cleanup();
 				await securityKey.cleanup();

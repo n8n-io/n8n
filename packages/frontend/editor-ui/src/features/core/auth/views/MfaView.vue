@@ -365,7 +365,7 @@ watch(currentMethod, (next) => {
 			</template>
 
 			<!-- WebAuthn flow (passkey or security key) -->
-			<template v-else>
+			<div v-else data-test-id="mfa-webauthn-screen">
 				<div :class="$style.webauthnPrompt" data-test-id="mfa-webauthn-prompt">
 					<div
 						:class="[
@@ -424,7 +424,7 @@ watch(currentMethod, (next) => {
 						{{ i18.baseText(switcherLabelKey) }}
 					</button>
 				</div>
-			</template>
+			</div>
 		</N8nCard>
 	</div>
 </template>
