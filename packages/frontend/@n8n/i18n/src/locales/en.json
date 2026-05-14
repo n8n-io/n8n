@@ -1213,7 +1213,6 @@
 	"experiments.resourceCenter.sidebar": "Resources",
 	"experiments.resourceCenter.template.setupTime": "{minutes} minute set up",
 	"experiments.resourceCenter.title": "Resources",
-	"experiments.resourceCenter.tooltip.text": "Get inspired and learn with use cases",
 	"experiments.resourceCenter.video.level": "Level: {level}",
 	"experiments.templatesDataQuality.modalTitle": "Featured templates",
 	"error": "Error",
