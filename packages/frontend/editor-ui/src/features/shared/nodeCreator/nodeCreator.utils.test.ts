@@ -709,7 +709,7 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 
-	describe('finalizeItems - MCP registry tool tag', () => {
+	describe('finalizeItems - MCP registry tool isNew flag', () => {
 		const makeMcpNode = (subcategoriesAi: string[]) =>
 			mockNodeCreateElement(undefined, {
 				name: 'mcpRegistryNode',
@@ -719,22 +719,22 @@ describe('NodeCreator - utils', () => {
 				},
 			});
 
-		it('should tag registry-generated MCP tools as "New"', () => {
+		it('should flag registry-generated MCP tools as new', () => {
 			const node = makeMcpNode([AI_CATEGORY_MCP_NODES]);
 			const [result] = finalizeItems([node]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ type: 'success', text: 'New' });
+			expect(result.properties.isNew).toBe(true);
 		});
 
-		it('should not tag MCP nodes that are also Root Nodes (e.g. McpTrigger)', () => {
+		it('should not flag MCP nodes that are also Root Nodes (e.g. McpTrigger)', () => {
 			const node = makeMcpNode([AI_CATEGORY_ROOT_NODES, AI_CATEGORY_MCP_NODES]);
 			const [result] = finalizeItems([node]) as NodeCreateElement[];
-			expect(result.properties.tag).toBeUndefined();
+			expect(result.properties.isNew).toBeUndefined();
 		});
 
-		it('should not tag tools that are not in the MCP subcategory', () => {
+		it('should not flag tools that are not in the MCP subcategory', () => {
 			const node = makeMcpNode(['Tools']);
 			const [result] = finalizeItems([node]) as NodeCreateElement[];
-			expect(result.properties.tag).toBeUndefined();
+			expect(result.properties.isNew).toBeUndefined();
 		});
 	});
 

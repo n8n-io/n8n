@@ -289,12 +289,17 @@ export const removePreviewToken = (key: string) =>
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
-	if (element.type !== 'node' || element.properties.tag) return element;
+	if (element.type !== 'node') return element;
 
 	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
-	const isMcpRegistryTool =
+	if (
 		aiSubcategories.includes(AI_CATEGORY_MCP_NODES) &&
-		!aiSubcategories.includes(AI_CATEGORY_ROOT_NODES);
+		!aiSubcategories.includes(AI_CATEGORY_ROOT_NODES)
+	) {
+		element.properties.isNew = true;
+	}
+
+	if (element.properties.tag) return element;
 
 	if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
@@ -305,11 +310,6 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
-		};
-	} else if (isMcpRegistryTool) {
-		element.properties.tag = {
-			type: 'success',
-			text: i18n.baseText('generic.new'),
 		};
 	} else if (
 		useSettingsStore().isAiGatewayEnabled &&
