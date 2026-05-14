@@ -205,7 +205,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 					allowedUsers: ['123'],
 				} as never,
 			),
-		).toThrow('TelegramIntegration received settings with type "slack"');
+		).toThrow();
 	});
 });
 

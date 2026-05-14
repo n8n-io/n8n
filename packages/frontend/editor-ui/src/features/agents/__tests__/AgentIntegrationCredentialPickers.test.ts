@@ -304,7 +304,7 @@ describe('agent integration credential picker usage', () => {
 			'agent-1',
 			'telegram',
 			'cred-telegram',
-			{ type: 'telegram', accessMode: 'private', allowedUsers: ['123', '456'] },
+			{ accessMode: 'private', allowedUsers: ['123', '456'] },
 		);
 	});
 
@@ -337,7 +337,7 @@ describe('agent integration credential picker usage', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-telegram',
-					settings: { type: 'telegram', accessMode: 'private', allowedUsers: ['123'] },
+					settings: { accessMode: 'private', allowedUsers: ['123'] },
 				},
 			],
 		});

@@ -92,6 +92,7 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	}
 }
 
+// TODO: use real Telegram integration for testing
 class TelegramTestIntegration extends AgentChatIntegration {
 	readonly type = 'telegram';
 	readonly credentialTypes: string[] = [];
