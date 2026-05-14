@@ -82,6 +82,18 @@ export function odooGetDBName(databaseName: string | undefined, url: string) {
 	return odooURL.hostname.split('.')[0];
 }
 
+function getOdooDatabaseNameFromJsonRpcBody(body: IDataObject): string | undefined {
+	const params = body.params as IDataObject | undefined;
+	const args = params?.args as unknown[] | undefined;
+	const db = args?.[0];
+
+	if (typeof db !== 'string') return undefined;
+
+	const trimmedDb = db.trim();
+
+	return trimmedDb.length > 0 ? trimmedDb : undefined;
+}
+
 function processFilters(value: IOdooFilterOperations) {
 	return value.filter?.map((item) => {
 		const operator = item.operator as FilterOperation;
@@ -108,11 +120,14 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
+		const db = getOdooDatabaseNameFromJsonRpcBody(body);
+
 		const options: IRequestOptions = {
 			headers: {
 				Connection: 'keep-alive',
 				Accept: '*/*',
 				'Content-Type': 'application/json',
+				...(db ? { 'X-Odoo-Database': db } : {}),
 			},
 			method: 'POST',
 			body,
