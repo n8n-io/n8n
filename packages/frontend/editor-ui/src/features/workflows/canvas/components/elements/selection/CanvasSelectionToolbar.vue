@@ -60,6 +60,7 @@ function onGroupClick() {
 					size="small"
 					variant="ghost"
 					icon="group"
+					icon-size="large"
 					data-test-id="canvas-selection-toolbar-group"
 					:aria-label="i18n.baseText('canvas.selection.toolbar.group')"
 					@click.stop="onGroupClick"
