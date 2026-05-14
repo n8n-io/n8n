@@ -27,6 +27,7 @@ import { invokeAgent } from './langchain-utils';
 import {
 	McpToolServerConfigurationService,
 	defaultToolingConfigurationProvider,
+	type MCPServerConfig,
 } from '@microsoft/agents-a365-tooling';
 
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -128,6 +129,28 @@ export const microsoftMcpServers: INodePropertyOptions[] = [
 
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
 
+function hasAuthorizationHeader(headers: Record<string, string>) {
+	return Object.keys(headers).some((headerName) => headerName.toLowerCase() === 'authorization');
+}
+
+function getMcpServerHeaders(
+	server: MCPServerConfig,
+	mcpAuthToken: string,
+	tenantId: string | undefined,
+) {
+	const headers: Record<string, string> = { ...(server.headers ?? {}) };
+
+	if (mcpAuthToken && !hasAuthorizationHeader(headers)) {
+		headers.Authorization = `Bearer ${mcpAuthToken}`;
+	}
+
+	if (tenantId) {
+		headers[MS_TENANT_ID_HEADER] = tenantId;
+	}
+
+	return headers;
+}
+
 function isMicrosoftObservabilityEnabled(): boolean {
 	return (
 		process.env.ENABLE_OBSERVABILITY === 'true' &&
@@ -185,13 +208,7 @@ export async function getMicrosoftMcpTools(
 	const timeout = 60000;
 
 	for (const server of servers) {
-		const headers: Record<string, string> = {};
-		if (mcpAuthToken) {
-			headers['Authorization'] = `Bearer ${mcpAuthToken}`;
-		}
-		if (tenantId) {
-			headers[MS_TENANT_ID_HEADER] = tenantId;
-		}
+		const headers = getMcpServerHeaders(server, mcpAuthToken, tenantId);
 
 		const clientResult = await connectMcpClient({
 			serverTransport: 'httpStreamable', // Microsoft servers use HTTP
@@ -339,7 +356,7 @@ export const configureActivityCallback = (
 							mcpLogs = result?.logs;
 						}
 					} catch (error) {
-						console.log('Error retrieving MCP tools');
+						console.error('Error retrieving MCP tools:', error);
 					}
 				}
 
