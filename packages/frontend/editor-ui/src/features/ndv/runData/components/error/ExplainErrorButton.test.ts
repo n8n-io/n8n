@@ -1,13 +1,31 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { computed } from 'vue';
 import type { NodeError } from 'n8n-workflow';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 
+vi.mock('@/app/composables/useInjectWorkflowId', () => ({
+	useInjectWorkflowId: () => computed(() => 'workflow-1'),
+}));
+
+vi.mock('@/features/ai/assistant/composables/useAIAssistantHelpers', () => ({
+	useAIAssistantHelpers: () => ({
+		getNodeInfoForAssistant: () => ({ authType: undefined, nodeInputData: {}, schemas: [] }),
+		processNodeForAssistant: async (node: unknown) => node,
+		simplifyErrorForAssistant: (err: { name: string; message: string }) => ({
+			name: err.name,
+			message: err.message,
+		}),
+	}),
+}));
+
 import ExplainErrorButton from './ExplainErrorButton.vue';
 import { useExplainErrorStore } from './explainError.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 let mockStore: ReturnType<typeof mockedStore<typeof useExplainErrorStore>>;
 
@@ -35,6 +53,12 @@ describe('ExplainErrorButton', () => {
 		mockStore = mockedStore(useExplainErrorStore);
 		mockStore.state = 'idle';
 		mockStore.result = undefined;
+		const usersStore = mockedStore(useUsersStore);
+		// @ts-expect-error - test mock
+		usersStore.currentUser = { firstName: 'Csaba' };
+		const settingsStore = mockedStore(useSettingsStore);
+		// @ts-expect-error - test mock
+		settingsStore.settings = { ai: { allowSendingParameterValues: true } };
 	});
 
 	it('renders the trigger button with i18n label', () => {
@@ -47,7 +71,10 @@ describe('ExplainErrorButton', () => {
 	it('calls explain() when clicked', async () => {
 		const { getByTestId } = renderComponent({ props: { error: sampleError } });
 		await userEvent.click(getByTestId('explain-error-button'));
-		expect(mockStore.explain).toHaveBeenCalledWith(sampleError);
+		expect(mockStore.explain).toHaveBeenCalledWith(
+			sampleError,
+			expect.objectContaining({ type: 'init-error-helper' }),
+		);
 	});
 
 	it('shows loading text in the popover when state is loading', async () => {
@@ -91,6 +118,9 @@ describe('ExplainErrorButton', () => {
 		await userEvent.click(getByTestId('explain-error-button'));
 		const retry = await findByText('Try again');
 		await userEvent.click(retry);
-		expect(mockStore.retry).toHaveBeenCalledWith(sampleError);
+		expect(mockStore.retry).toHaveBeenCalledWith(
+			sampleError,
+			expect.objectContaining({ type: 'init-error-helper' }),
+		);
 	});
 });

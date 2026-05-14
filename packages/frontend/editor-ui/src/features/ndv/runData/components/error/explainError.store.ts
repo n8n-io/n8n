@@ -28,40 +28,6 @@ function extractText(message: ChatRequest.ResponsePayload['messages'][number]): 
 	return '';
 }
 
-/**
- * Builds the `init-error-helper` payload that the AI assistant backend
- * uses for one-shot error analysis. Mirrors the payload built by the
- * existing "Ask n8n AI" flow but stripped to the minimum context the
- * backend requires — the goal here is a fast, self-contained popover,
- * not a full chat session.
- */
-function buildInitErrorHelperPayload(error: ErrorLike): ChatRequest.InitErrorHelper {
-	const node = error.node;
-	if (!node) {
-		throw new Error('Cannot build error-helper payload without a node');
-	}
-	const simplifiedError: ChatRequest.ErrorContext['error'] = {
-		name: error.name,
-		message: error.message,
-	};
-	if ('type' in error && typeof error.type === 'string') {
-		simplifiedError.type = error.type;
-	}
-	if (error.description) {
-		simplifiedError.description = error.description;
-	}
-	if (error.stack) {
-		simplifiedError.stack = error.stack;
-	}
-	return {
-		role: 'user',
-		type: 'init-error-helper',
-		user: { firstName: 'there' },
-		error: simplifiedError,
-		node,
-	};
-}
-
 function fingerprintError(error: ErrorLike): string {
 	const node = error.node;
 	const nodeKey = node ? `${node.type}:${node.id ?? node.name ?? ''}` : 'unknown';
@@ -86,7 +52,7 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 		lastFingerprint.value = undefined;
 	}
 
-	async function run(error: ErrorLike): Promise<void> {
+	async function run(error: ErrorLike, initPayload: ChatRequest.InitErrorHelper): Promise<void> {
 		// Cancel any in-flight request before starting a new one, otherwise
 		// a late onDone from the previous run could overwrite the new result.
 		abortController.value?.abort();
@@ -104,7 +70,7 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 		await Promise.resolve();
 
 		const payload: ChatRequest.RequestPayload = {
-			payload: buildInitErrorHelperPayload(error),
+			payload: initPayload,
 		};
 
 		let buffer = '';
@@ -161,7 +127,7 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 		});
 	}
 
-	async function explain(error: ErrorLike): Promise<void> {
+	async function explain(error: ErrorLike, payload: ChatRequest.InitErrorHelper): Promise<void> {
 		const fingerprint = fingerprintError(error);
 		if (state.value === 'ready' && lastFingerprint.value === fingerprint) {
 			return;
@@ -169,11 +135,11 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 		if (state.value === 'loading' && lastFingerprint.value === fingerprint) {
 			return;
 		}
-		await run(error);
+		await run(error, payload);
 	}
 
-	async function retry(error: ErrorLike): Promise<void> {
-		await run(error);
+	async function retry(error: ErrorLike, payload: ChatRequest.InitErrorHelper): Promise<void> {
+		await run(error, payload);
 	}
 
 	return {

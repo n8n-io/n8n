@@ -5,6 +5,11 @@ import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nPopover, N8nSpinner, N8nText } from '@n8n/design-system';
 
 import { useExplainErrorStore } from './explainError.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 
 type ErrorProp = NodeError | NodeApiError | NodeOperationError;
 
@@ -14,21 +19,60 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useExplainErrorStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+const assistantHelpers = useAIAssistantHelpers();
+const workflowId = useInjectWorkflowId();
 
 const open = ref(false);
 
 const state = computed(() => store.state);
 const result = computed(() => store.result);
 
+async function buildPayload(): Promise<ChatRequest.InitErrorHelper> {
+	const error = props.error;
+	const node = error.node;
+	if (!node) {
+		throw new Error('Cannot explain error without a node');
+	}
+
+	const allowParameterValues = settingsStore.settings.ai?.allowSendingParameterValues ?? false;
+	const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
+		workflowId.value,
+		node,
+		{ excludeParameterValues: !allowParameterValues },
+	);
+
+	return {
+		role: 'user',
+		type: 'init-error-helper',
+		user: {
+			firstName: usersStore.currentUser?.firstName ?? '',
+		},
+		error: assistantHelpers.simplifyErrorForAssistant(error),
+		node: await assistantHelpers.processNodeForAssistant(node, ['position', 'parameters.notice'], {
+			excludeParameterValues: !allowParameterValues,
+		}),
+		nodeInputData,
+		executionSchema: schemas,
+		authType,
+		context: {
+			aiUsageSettings: { allowSendingParameterValues: allowParameterValues },
+		},
+	};
+}
+
 async function onOpenChange(next: boolean): Promise<void> {
 	open.value = next;
 	if (next) {
-		await store.explain(props.error);
+		const payload = await buildPayload();
+		await store.explain(props.error, payload);
 	}
 }
 
 async function onRetry(): Promise<void> {
-	await store.retry(props.error);
+	const payload = await buildPayload();
+	await store.retry(props.error, payload);
 }
 </script>
 

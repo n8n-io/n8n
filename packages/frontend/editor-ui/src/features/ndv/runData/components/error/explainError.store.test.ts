@@ -21,8 +21,9 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 }));
 
 import { useExplainErrorStore } from './explainError.store';
+import type { INode } from 'n8n-workflow';
 
-const node = {
+const node: INode = {
 	id: 'n1',
 	name: 'HTTP Request',
 	type: 'n8n-nodes-base.httpRequest',
@@ -43,6 +44,14 @@ const fencedJson = [
 	'{ "summary": "Auth failed.", "culprit": "API key", "nextStep": "Rotate the key." }',
 	'```',
 ].join('\n');
+
+const samplePayload = {
+	role: 'user',
+	type: 'init-error-helper',
+	user: { firstName: 'Csaba' },
+	error: { name: 'NodeOperationError', message: 'Authorization failed' },
+	node,
+} as const;
 
 describe('useExplainErrorStore', () => {
 	beforeEach(() => {
@@ -67,7 +76,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		const promise = store.explain(sampleError);
+		const promise = store.explain(sampleError, samplePayload);
 		expect(store.state).toBe('loading');
 		await promise;
 		expect(store.state).toBe('ready');
@@ -85,7 +94,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(store.state).toBe('error');
 		expect(store.result).toBeUndefined();
 	});
@@ -100,8 +109,8 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
+		await store.explain(sampleError, samplePayload);
 		expect(apiSpy).toHaveBeenCalledTimes(1);
 	});
 
@@ -115,8 +124,8 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
-		await store.retry(sampleError);
+		await store.explain(sampleError, samplePayload);
+		await store.retry(sampleError, samplePayload);
 		expect(apiSpy).toHaveBeenCalledTimes(2);
 	});
 
@@ -140,7 +149,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(store.state).toBe('ready');
 		expect(store.result).toEqual({
 			kind: 'structured',
@@ -160,7 +169,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		store.reset();
 		expect(store.state).toBe('idle');
 		expect(store.result).toBeUndefined();
@@ -175,7 +184,7 @@ describe('useExplainErrorStore', () => {
 			onDone();
 		});
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			'User used Explain this error',
 			expect.objectContaining({ outcome: 'success', result_kind: 'structured' }),
@@ -187,7 +196,7 @@ describe('useExplainErrorStore', () => {
 			onError(new Error('boom'));
 		});
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			'User used Explain this error',
 			expect.objectContaining({ outcome: 'error' }),
@@ -211,8 +220,11 @@ describe('useExplainErrorStore', () => {
 		} as unknown as NodeError;
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
-		await store.explain(otherError);
+		await store.explain(sampleError, samplePayload);
+		await store.explain(otherError, {
+			...samplePayload,
+			node: { ...node, id: 'n2', name: 'Slack' },
+		});
 		expect(apiSpy).toHaveBeenCalledTimes(2);
 	});
 
@@ -223,7 +235,7 @@ describe('useExplainErrorStore', () => {
 			onError(aborted);
 		});
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(store.state).not.toBe('error');
 	});
 
@@ -235,7 +247,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		const inFlight = store.explain(sampleError);
+		const inFlight = store.explain(sampleError, samplePayload);
 		// Yield once so explain() reaches the API call and registers the controller.
 		await Promise.resolve();
 		expect(store.state).toBe('loading');
@@ -267,7 +279,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(store.state).toBe('ready');
 		expect(store.result).toEqual({
 			kind: 'structured',
@@ -294,7 +306,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(store.state).toBe('ready');
 		expect(store.result?.kind).toBe('structured');
 	});
@@ -317,7 +329,7 @@ describe('useExplainErrorStore', () => {
 		});
 
 		const store = useExplainErrorStore();
-		await store.explain(sampleError);
+		await store.explain(sampleError, samplePayload);
 		expect(store.state).toBe('error');
 		expect(store.result).toBeUndefined();
 	});
@@ -351,9 +363,12 @@ describe('useExplainErrorStore', () => {
 		].join('\n');
 
 		const store = useExplainErrorStore();
-		const firstCall = store.explain(sampleError);
+		const firstCall = store.explain(sampleError, samplePayload);
 		await Promise.resolve();
-		const secondCall = store.explain(otherError);
+		const secondCall = store.explain(otherError, {
+			...samplePayload,
+			node: { ...node, id: 'n2', name: 'Slack' },
+		});
 		await Promise.resolve();
 
 		// Stale first run completes after the second one started — its
