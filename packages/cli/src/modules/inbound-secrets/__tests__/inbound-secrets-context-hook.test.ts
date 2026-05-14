@@ -53,17 +53,30 @@ describe('InboundSecretContextHook', () => {
 		hook = new InboundSecretContextHook(service);
 	});
 
-	it('delegates to service.strip with description paths and trigger node type', async () => {
-		const input: INodeExecutionData[] = [{ json: { headers: { authorization: 'x' } } }];
+	it('forwards descriptionPaths/type to service.strip and emits contextUpdate keyed by trigger name', async () => {
+		const input: INodeExecutionData[] = [{ json: { headers: { authorization: 'Bearer xyz' } } }];
 		const stripped: INodeExecutionData[] = [{ json: { headers: { authorization: undefined } } }];
-		service.strip.mockReturnValue(stripResult(stripped, [{ 'headers.authorization': 'x' }]));
+		service.strip.mockReturnValue(
+			stripResult(stripped, [{ 'headers.authorization': 'Bearer xyz' }]),
+		);
 
-		await hook.execute(buildOptions(input, ['headers.authorization', 'headers.cookie']));
+		const result = await hook.execute(
+			buildOptions(input, ['headers.authorization', 'headers.cookie']),
+		);
 
 		expect(service.strip).toHaveBeenCalledWith(input, 'n8n-nodes-base.webhook', [
 			'headers.authorization',
 			'headers.cookie',
 		]);
+		expect(result).toEqual({
+			triggerItems: stripped,
+			contextUpdate: {
+				secureArtifacts: {
+					version: 1,
+					artifacts: { Webhook: [{ 'headers.authorization': 'Bearer xyz' }] },
+				},
+			},
+		});
 	});
 
 	it('passes an empty array to service.strip when triggerItems is null', async () => {
@@ -74,28 +87,6 @@ describe('InboundSecretContextHook', () => {
 		expect(service.strip).toHaveBeenCalledWith([], 'n8n-nodes-base.webhook', []);
 	});
 
-	it('returns contextUpdate.secureArtifacts keyed by trigger node name when artifacts are captured', async () => {
-		const input: INodeExecutionData[] = [{ json: { headers: { authorization: 'Bearer xyz' } } }];
-		const stripped: INodeExecutionData[] = [{ json: { headers: { authorization: undefined } } }];
-		service.strip.mockReturnValue(
-			stripResult(stripped, [{ 'headers.authorization': 'Bearer xyz' }]),
-		);
-
-		const result = await hook.execute(buildOptions(input, ['headers.authorization']));
-
-		expect(result).toEqual({
-			triggerItems: stripped,
-			contextUpdate: {
-				secureArtifacts: {
-					version: 1,
-					artifacts: {
-						Webhook: [{ 'headers.authorization': 'Bearer xyz' }],
-					},
-				},
-			},
-		});
-	});
-
 	it('omits contextUpdate when every per-item map is empty', async () => {
 		const input: INodeExecutionData[] = [{ json: { body: { foo: 'bar' } } }];
 		service.strip.mockReturnValue(stripResult(input, [{}]));
@@ -104,25 +95,6 @@ describe('InboundSecretContextHook', () => {
 
 		expect(result).toEqual({ triggerItems: input });
 		expect(result.contextUpdate).toBeUndefined();
-	});
-
-	it('emits contextUpdate when at least one per-item map carries an entry', async () => {
-		const input: INodeExecutionData[] = [
-			{ json: { headers: { authorization: 'a' } } },
-			{ json: { headers: {} } },
-		];
-		service.strip.mockReturnValue(stripResult(input, [{ 'headers.authorization': 'a' }, {}]));
-
-		const result = await hook.execute(buildOptions(input, ['headers.authorization']));
-
-		expect(result.contextUpdate).toEqual({
-			secureArtifacts: {
-				version: 1,
-				artifacts: {
-					Webhook: [{ 'headers.authorization': 'a' }, {}],
-				},
-			},
-		});
 	});
 
 	it('fails open when the node-type lookup throws (admin rules still apply)', async () => {

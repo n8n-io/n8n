@@ -50,128 +50,177 @@ describe('InboundSecretsService', () => {
 			service.init();
 		};
 
-		it('is a no-op when no rules are configured', () => {
-			initWith({});
-			const items = [item({ headers: { authorization: 'x' } })];
+		type StripCase = {
+			name: string;
+			rules?: Record<string, string[]>;
+			triggerType?: string;
+			descriptionPaths?: string[];
+			input: IDataObject[];
+			expectedJson: IDataObject[];
+			expectedArtifacts: Array<Record<string, unknown>>;
+		};
 
-			const result = service.strip(items, 'n8n-nodes-base.webhook');
+		const cases: StripCase[] = [
+			{
+				name: 'no-op when no rules are configured',
+				input: [{ headers: { authorization: 'x' } }],
+				expectedJson: [{ headers: { authorization: 'x' } }],
+				expectedArtifacts: [{}],
+			},
+			{
+				name: 'universal * strips and captures, siblings untouched',
+				rules: { '*': ['headers.authorization'] },
+				input: [{ headers: { authorization: 'secret', other: 'keep-me' } }],
+				expectedJson: [{ headers: { authorization: undefined, other: 'keep-me' } }],
+				expectedArtifacts: [{ 'headers.authorization': 'secret' }],
+			},
+			{
+				name: 'type-specific rule applies when trigger type matches',
+				rules: { 'n8n-nodes-base.formTrigger': ['body.password'] },
+				triggerType: 'n8n-nodes-base.formTrigger',
+				input: [{ body: { password: 'p' } }],
+				expectedJson: [{ body: { password: undefined } }],
+				expectedArtifacts: [{ 'body.password': 'p' }],
+			},
+			{
+				name: 'type-specific rule skipped for other trigger types',
+				rules: { 'n8n-nodes-base.formTrigger': ['body.password'] },
+				input: [{ body: { password: 'p' } }],
+				expectedJson: [{ body: { password: 'p' } }],
+				expectedArtifacts: [{}],
+			},
+			{
+				name: 'unions universal and type-specific rules when both apply',
+				rules: {
+					'*': ['headers.authorization'],
+					'n8n-nodes-base.formTrigger': ['body.password'],
+				},
+				triggerType: 'n8n-nodes-base.formTrigger',
+				input: [{ headers: { authorization: 'a' }, body: { password: 'p' } }],
+				expectedJson: [{ headers: { authorization: undefined }, body: { password: undefined } }],
+				expectedArtifacts: [{ 'headers.authorization': 'a', 'body.password': 'p' }],
+			},
+			{
+				name: 'only universal rule when type-specific does not match',
+				rules: {
+					'*': ['headers.authorization'],
+					'n8n-nodes-base.formTrigger': ['body.password'],
+				},
+				input: [{ headers: { authorization: 'a' }, body: { password: 'p' } }],
+				expectedJson: [{ headers: { authorization: undefined }, body: { password: 'p' } }],
+				expectedArtifacts: [{ 'headers.authorization': 'a' }],
+			},
+			{
+				name: 'applied independently to every item in the batch',
+				rules: { '*': ['headers.authorization'] },
+				input: [
+					{ headers: { authorization: '1' } },
+					{ headers: { authorization: '2' } },
+					{ headers: { authorization: '3' } },
+				],
+				expectedJson: [
+					{ headers: { authorization: undefined } },
+					{ headers: { authorization: undefined } },
+					{ headers: { authorization: undefined } },
+				],
+				expectedArtifacts: [
+					{ 'headers.authorization': '1' },
+					{ 'headers.authorization': '2' },
+					{ 'headers.authorization': '3' },
+				],
+			},
+			{
+				name: 'multiple paths from the same rule',
+				rules: { '*': ['headers.authorization', 'headers.cookie'] },
+				input: [{ headers: { authorization: 'a', cookie: 'c', other: 'k' } }],
+				expectedJson: [{ headers: { authorization: undefined, cookie: undefined, other: 'k' } }],
+				expectedArtifacts: [{ 'headers.authorization': 'a', 'headers.cookie': 'c' }],
+			},
+			{
+				name: 'no matching path: items untouched, empty artifacts',
+				rules: { '*': ['headers.authorization'] },
+				input: [{ body: { foo: 'bar' } }],
+				expectedJson: [{ body: { foo: 'bar' } }],
+				expectedArtifacts: [{}],
+			},
+			{
+				name: 'descriptionPaths apply additively without admin rules',
+				descriptionPaths: ['body.token'],
+				input: [{ body: { token: 't' } }],
+				expectedJson: [{ body: { token: undefined } }],
+				expectedArtifacts: [{ 'body.token': 't' }],
+			},
+			{
+				name: 'admin and descriptionPaths union',
+				rules: {
+					'*': ['headers.authorization'],
+					'n8n-nodes-base.webhook': ['headers.x-internal'],
+				},
+				descriptionPaths: ['headers.cookie'],
+				input: [{ headers: { authorization: 'a', 'x-internal': 'i', cookie: 'c' } }],
+				expectedJson: [
+					{ headers: { authorization: undefined, 'x-internal': undefined, cookie: undefined } },
+				],
+				expectedArtifacts: [
+					{
+						'headers.authorization': 'a',
+						'headers.x-internal': 'i',
+						'headers.cookie': 'c',
+					},
+				],
+			},
+			{
+				name: 'duplicate paths across admin and description extracted once',
+				rules: { '*': ['headers.authorization'] },
+				descriptionPaths: ['headers.authorization'],
+				input: [{ headers: { authorization: 'a' } }],
+				expectedJson: [{ headers: { authorization: undefined } }],
+				expectedArtifacts: [{ 'headers.authorization': 'a' }],
+			},
+			{
+				name: 'Date leaves coerced to ISO string',
+				rules: { '*': ['body.when'] },
+				input: [{ body: { when: new Date('2026-01-15T00:00:00.000Z') } }],
+				expectedJson: [{ body: { when: undefined } }],
+				expectedArtifacts: [{ 'body.when': '2026-01-15T00:00:00.000Z' }],
+			},
+			{
+				name: 'function leaves dropped (JSON.stringify → undefined)',
+				rules: { '*': ['body.fn'] },
+				input: [{ body: { fn: () => 1 } as unknown as IDataObject }],
+				expectedJson: [{ body: { fn: undefined } }],
+				expectedArtifacts: [{}],
+			},
+			{
+				name: 'nested object leaves preserved',
+				rules: { '*': ['body.nested'] },
+				input: [{ body: { nested: { id: 'x', tags: ['a', 'b'] } } }],
+				expectedJson: [{ body: { nested: undefined } }],
+				expectedArtifacts: [{ 'body.nested': { id: 'x', tags: ['a', 'b'] } }],
+			},
+		];
 
-			expect(result.triggerItems).toBe(items);
-			expect(items[0].json).toEqual({ headers: { authorization: 'x' } });
-			expect(result.artifactsByItem).toEqual([{}]);
-		});
+		it.each(cases)(
+			'$name',
+			({
+				rules = {},
+				triggerType = 'n8n-nodes-base.webhook',
+				descriptionPaths = [],
+				input,
+				expectedJson,
+				expectedArtifacts,
+			}) => {
+				initWith(rules);
+				const items = input.map(item);
 
-		it('applies universal `*` rule across any trigger type and leaves siblings untouched', () => {
-			initWith({ '*': ['headers.authorization'] });
-			const items = [item({ headers: { authorization: 'secret', other: 'keep-me' } })];
+				const result = service.strip(items, triggerType, descriptionPaths);
 
-			const result = service.strip(items, 'n8n-nodes-base.webhook');
+				items.forEach((it, i) => expect(it.json).toEqual(expectedJson[i]));
+				expect(result.artifactsByItem).toEqual(expectedArtifacts);
+			},
+		);
 
-			expect(items[0].json).toEqual({
-				headers: { authorization: undefined, other: 'keep-me' },
-			});
-			expect(result.artifactsByItem).toEqual([{ 'headers.authorization': 'secret' }]);
-		});
-
-		it('applies type-specific rules only when the trigger type matches', () => {
-			initWith({ 'n8n-nodes-base.formTrigger': ['body.password'] });
-			const items = [item({ body: { password: 'p' } })];
-
-			const result = service.strip(items, 'n8n-nodes-base.formTrigger');
-
-			expect(items[0].json).toEqual({ body: { password: undefined } });
-			expect(result.artifactsByItem).toEqual([{ 'body.password': 'p' }]);
-		});
-
-		it('does not apply type-specific rules to other trigger types', () => {
-			initWith({ 'n8n-nodes-base.formTrigger': ['body.password'] });
-			const items = [item({ body: { password: 'p' } })];
-
-			const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-			expect(items[0].json).toEqual({ body: { password: 'p' } });
-			expect(result.artifactsByItem).toEqual([{}]);
-		});
-
-		it('unions universal and type-specific rules when both match', () => {
-			initWith({
-				'*': ['headers.authorization'],
-				'n8n-nodes-base.formTrigger': ['body.password'],
-			});
-			const items = [
-				item({
-					headers: { authorization: 'a' },
-					body: { password: 'p' },
-				}),
-			];
-
-			const result = service.strip(items, 'n8n-nodes-base.formTrigger');
-
-			expect(items[0].json).toEqual({
-				headers: { authorization: undefined },
-				body: { password: undefined },
-			});
-			expect(result.artifactsByItem).toEqual([
-				{ 'headers.authorization': 'a', 'body.password': 'p' },
-			]);
-		});
-
-		it('only applies the universal rule when the type-specific rule does not match', () => {
-			initWith({
-				'*': ['headers.authorization'],
-				'n8n-nodes-base.formTrigger': ['body.password'],
-			});
-			const items = [
-				item({
-					headers: { authorization: 'a' },
-					body: { password: 'p' },
-				}),
-			];
-
-			const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-			expect(items[0].json).toEqual({
-				headers: { authorization: undefined },
-				body: { password: 'p' },
-			});
-			expect(result.artifactsByItem).toEqual([{ 'headers.authorization': 'a' }]);
-		});
-
-		it('applies rules independently to every item in the batch', () => {
-			initWith({ '*': ['headers.authorization'] });
-			const items = [
-				item({ headers: { authorization: '1' } }),
-				item({ headers: { authorization: '2' } }),
-				item({ headers: { authorization: '3' } }),
-			];
-
-			const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-			for (const i of items) {
-				expect(i.json).toEqual({ headers: { authorization: undefined } });
-			}
-			expect(result.artifactsByItem).toEqual([
-				{ 'headers.authorization': '1' },
-				{ 'headers.authorization': '2' },
-				{ 'headers.authorization': '3' },
-			]);
-		});
-
-		it('applies multiple paths from the same rule', () => {
-			initWith({ '*': ['headers.authorization', 'headers.cookie'] });
-			const items = [item({ headers: { authorization: 'a', cookie: 'c', other: 'k' } })];
-
-			const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-			expect(items[0].json).toEqual({
-				headers: { authorization: undefined, cookie: undefined, other: 'k' },
-			});
-			expect(result.artifactsByItem).toEqual([
-				{ 'headers.authorization': 'a', 'headers.cookie': 'c' },
-			]);
-		});
-
-		it('returns the same array reference and mutates items in place', () => {
+		it('returns the same triggerItems array reference', () => {
 			initWith({ '*': ['headers.authorization'] });
 			const items = [item({ headers: { authorization: 'x' } })];
 			const json = items[0].json;
@@ -180,93 +229,6 @@ describe('InboundSecretsService', () => {
 
 			expect(result.triggerItems).toBe(items);
 			expect(result.triggerItems[0].json).toBe(json);
-		});
-
-		it('silently leaves items untouched when no path in the rule set matches', () => {
-			initWith({ '*': ['headers.authorization'] });
-			const items = [item({ body: { foo: 'bar' } })];
-
-			const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-			expect(items[0].json).toEqual({ body: { foo: 'bar' } });
-			expect(result.artifactsByItem).toEqual([{}]);
-		});
-
-		describe('descriptionPaths', () => {
-			it('contributes paths additively when no admin rules are configured', () => {
-				initWith({});
-				const items = [item({ body: { token: 't' } })];
-
-				const result = service.strip(items, 'n8n-nodes-base.webhook', ['body.token']);
-
-				expect(items[0].json).toEqual({ body: { token: undefined } });
-				expect(result.artifactsByItem).toEqual([{ 'body.token': 't' }]);
-			});
-
-			it('unions with admin rules so admins can add paths node authors did not declare', () => {
-				initWith({
-					'*': ['headers.authorization'],
-					'n8n-nodes-base.webhook': ['headers.x-internal'],
-				});
-				const items = [
-					item({
-						headers: { authorization: 'a', 'x-internal': 'i', cookie: 'c' },
-					}),
-				];
-
-				const result = service.strip(items, 'n8n-nodes-base.webhook', ['headers.cookie']);
-
-				expect(items[0].json).toEqual({
-					headers: { authorization: undefined, 'x-internal': undefined, cookie: undefined },
-				});
-				expect(result.artifactsByItem).toEqual([
-					{
-						'headers.authorization': 'a',
-						'headers.x-internal': 'i',
-						'headers.cookie': 'c',
-					},
-				]);
-			});
-
-			it('de-duplicates paths declared by both admin and description', () => {
-				initWith({ '*': ['headers.authorization'] });
-				const items = [item({ headers: { authorization: 'a' } })];
-
-				const result = service.strip(items, 'n8n-nodes-base.webhook', ['headers.authorization']);
-
-				expect(result.artifactsByItem).toEqual([{ 'headers.authorization': 'a' }]);
-				expect(items[0].json).toEqual({ headers: { authorization: undefined } });
-			});
-		});
-
-		describe('value sanitisation', () => {
-			it('coerces Date leaves to their ISO string form', () => {
-				initWith({ '*': ['body.when'] });
-				const when = new Date('2026-01-15T00:00:00.000Z');
-				const items = [item({ body: { when } })];
-
-				const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-				expect(result.artifactsByItem).toEqual([{ 'body.when': '2026-01-15T00:00:00.000Z' }]);
-			});
-
-			it('drops values whose JSON serialisation is undefined (e.g. raw function)', () => {
-				initWith({ '*': ['body.fn'] });
-				const items = [item({ body: { fn: () => 1 } })];
-
-				const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-				expect(result.artifactsByItem).toEqual([{}]);
-			});
-
-			it('preserves nested object leaves', () => {
-				initWith({ '*': ['body.nested'] });
-				const items = [item({ body: { nested: { id: 'x', tags: ['a', 'b'] } } })];
-
-				const result = service.strip(items, 'n8n-nodes-base.webhook');
-
-				expect(result.artifactsByItem).toEqual([{ 'body.nested': { id: 'x', tags: ['a', 'b'] } }]);
-			});
 		});
 	});
 });
