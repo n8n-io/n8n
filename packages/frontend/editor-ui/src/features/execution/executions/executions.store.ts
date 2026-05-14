@@ -191,6 +191,34 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
+	/**
+	 * Fetch every execution that belongs to a Hub session (matched on
+	 * `caller.sessionId` metadata). Returns up to 100 entries sorted ascending
+	 * by `startedAt` so callers can render the session timeline in
+	 * chronological order. Does **not** mutate `executionsById` — this is a
+	 * read-only side-fetch driven by the single-node detail view.
+	 */
+	async function fetchSessionExecutions(sessionId: string): Promise<ExecutionSummaryWithScopes[]> {
+		const data = await makeRestApiRequest<IExecutionsListResponse>(
+			rootStore.restApiContext,
+			'GET',
+			'/executions',
+			{
+				filter: {
+					metadata: [{ key: 'caller.sessionId', value: sessionId, exactMatch: true }],
+				},
+				limit: 100,
+			},
+		);
+
+		const results = data.results ?? [];
+		return [...results].sort((a, b) => {
+			const aTime = new Date(a.startedAt ?? a.createdAt).getTime();
+			const bTime = new Date(b.startedAt ?? b.createdAt).getTime();
+			return aTime - bTime;
+		});
+	}
+
 	async function fetchExecution(
 		id: string,
 		queryParams?: ExecutionRedactionQueryDto,
@@ -357,6 +385,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		activeExecution,
 		fetchExecutions,
 		fetchExecution,
+		fetchSessionExecutions,
 		autoRefresh,
 		autoRefreshTimeout,
 		startAutoRefreshInterval,

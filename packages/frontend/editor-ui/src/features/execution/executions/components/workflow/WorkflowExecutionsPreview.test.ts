@@ -8,6 +8,7 @@ import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useExecutionsStore } from '../../executions.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
@@ -325,6 +326,46 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		// Should not show annotation-related elements
 		expect(queryByTestId('annotation-tags-container')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
+	});
+
+	describe('render branch by execution mode', () => {
+		beforeEach(() => {
+			// SingleNodeExecutionDetail renders SingleNodeExecutionSiblingRail,
+			// which calls fetchSessionExecutions on mount. Mock it so the rail
+			// doesn't reject during this test.
+			const executionsStore = mockedStore(useExecutionsStore);
+			executionsStore.fetchSessionExecutions.mockResolvedValue([]);
+		});
+
+		it('renders SingleNodeExecutionDetail when mode is single-node', async () => {
+			const singleNodeExecution = {
+				...executionData,
+				mode: 'single-node',
+				caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 's1' },
+			} as ExecutionSummary;
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { execution: singleNodeExecution },
+			});
+
+			await nextTick();
+
+			expect(getByTestId('single-node-execution-detail')).toBeVisible();
+			expect(queryByTestId('workflow-preview')).toBeNull();
+		});
+
+		it('renders the standard WorkflowPreview for workflow modes', async () => {
+			const workflowExecution = { ...executionData, mode: 'manual' } as ExecutionSummary;
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { execution: workflowExecution },
+			});
+
+			await nextTick();
+
+			expect(getByTestId('workflow-preview')).toBeVisible();
+			expect(queryByTestId('single-node-execution-detail')).toBeNull();
+		});
 	});
 
 	describe('workflow version link', () => {

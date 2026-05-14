@@ -6,22 +6,25 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
+import type { License } from '@/license';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
+	const license = mock<License>();
 
 	const executionsController = new ExecutionsController(
 		executionService,
 		mock(),
 		workflowSharingService,
-		mock(),
+		license,
 		mock(),
 	);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		license.isAdvancedExecutionFiltersEnabled.mockReturnValue(true);
 	});
 
 	describe('getOne', () => {
@@ -124,6 +127,58 @@ describe('ExecutionsController', () => {
 					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 				},
 			);
+		});
+
+		describe('metadata filtering when advanced filters are not licensed', () => {
+			beforeEach(() => {
+				license.isAdvancedExecutionFiltersEnabled.mockReturnValue(false);
+				executionService.buildSharingOptions.mockResolvedValue({
+					workflowRoles: [],
+					projectRoles: [],
+				});
+				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
+			});
+
+			// Build a plain request whose `rangeQuery.metadata` is a real array — the
+			// auto-mocking proxy from `jest-mock-extended` wraps nested arrays into
+			// mock-property bags, so we hand-construct just enough of the request
+			// shape and cast through `unknown` to honor the controller's expectations.
+			const makeReq = (
+				metadata: ExecutionSummaries.RangeQuery['metadata'],
+			): ExecutionRequest.GetMany =>
+				({
+					rangeQuery: {
+						kind: 'range',
+						workflowId: undefined,
+						status: undefined,
+						range: { lastId: undefined, firstId: undefined, limit: 20 },
+						metadata,
+					} satisfies ExecutionSummaries.RangeQuery,
+					user: mock(),
+				}) as unknown as ExecutionRequest.GetMany;
+
+			it('keeps caller.* metadata filters (Hub UX) and drops user-defined keys', async () => {
+				const req = makeReq([
+					{ key: 'caller.sessionId', value: 'romeo-mcp', exactMatch: true },
+					{ key: 'customField', value: 'foo', exactMatch: true },
+				]);
+
+				await executionsController.getMany(req);
+
+				const callArg = executionService.findLatestCurrentAndCompleted.mock.calls[0][0];
+				expect(callArg.metadata).toEqual([
+					{ key: 'caller.sessionId', value: 'romeo-mcp', exactMatch: true },
+				]);
+			});
+
+			it('drops metadata entirely when only user-defined keys are present', async () => {
+				const req = makeReq([{ key: 'customField', value: 'foo', exactMatch: true }]);
+
+				await executionsController.getMany(req);
+
+				const callArg = executionService.findLatestCurrentAndCompleted.mock.calls[0][0];
+				expect(callArg.metadata).toBeUndefined();
+			});
 		});
 
 		describe('if both status and range provided', () => {

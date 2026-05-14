@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 
 import type { ExecutionSummaryWithScopes } from './executions.types';
 import { useExecutionsStore } from './executions.store';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -70,6 +71,100 @@ describe('executions.store', () => {
 
 		it('should delete all executions if given date is now', async () => {
 			await executionsStore.deleteExecutions({ deleteBefore: new Date() });
+
+			expect(executionsStore.executions).toEqual([]);
+		});
+	});
+
+	describe('fetchSessionExecutions', () => {
+		it('queries /executions with caller.sessionId metadata and sorts ascending by startedAt', async () => {
+			const mockMakeRestApiRequest = vi.mocked(makeRestApiRequest);
+			mockMakeRestApiRequest.mockResolvedValue({
+				count: 4,
+				estimated: false,
+				results: [
+					{
+						id: '228',
+						startedAt: new Date('2026-05-13T12:27:37Z'),
+						createdAt: new Date('2026-05-13T12:27:37Z'),
+						mode: 'single-node',
+						status: 'success',
+						workflowId: 'wf-228',
+						scopes: [],
+					},
+					{
+						id: '225',
+						startedAt: new Date('2026-05-13T12:27:32Z'),
+						createdAt: new Date('2026-05-13T12:27:32Z'),
+						mode: 'single-node',
+						status: 'success',
+						workflowId: 'wf-225',
+						scopes: [],
+					},
+					{
+						id: '226',
+						startedAt: new Date('2026-05-13T12:27:34Z'),
+						createdAt: new Date('2026-05-13T12:27:34Z'),
+						mode: 'single-node',
+						status: 'success',
+						workflowId: 'wf-226',
+						scopes: [],
+					},
+					{
+						id: '227',
+						startedAt: new Date('2026-05-13T12:27:36Z'),
+						createdAt: new Date('2026-05-13T12:27:36Z'),
+						mode: 'single-node',
+						status: 'success',
+						workflowId: 'wf-227',
+						scopes: [],
+					},
+				],
+				concurrentExecutionsCount: 0,
+			});
+
+			const result = await executionsStore.fetchSessionExecutions('romeo-mcp-20260513-132732');
+
+			expect(mockMakeRestApiRequest).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				'/executions',
+				expect.objectContaining({
+					filter: {
+						metadata: [
+							{
+								key: 'caller.sessionId',
+								value: 'romeo-mcp-20260513-132732',
+								exactMatch: true,
+							},
+						],
+					},
+					limit: 100,
+				}),
+			);
+			expect(result.map((r) => r.id)).toEqual(['225', '226', '227', '228']);
+		});
+
+		it('does not pollute the store with results', async () => {
+			const mockMakeRestApiRequest = vi.mocked(makeRestApiRequest);
+			mockMakeRestApiRequest.mockResolvedValue({
+				count: 1,
+				estimated: false,
+				results: [
+					{
+						id: 'session-only',
+						startedAt: new Date(),
+						createdAt: new Date(),
+						mode: 'single-node',
+						status: 'success',
+						workflowId: 'wf-session',
+						scopes: [],
+					},
+				],
+				concurrentExecutionsCount: 0,
+			});
+
+			await executionsStore.fetchSessionExecutions('session-xyz');
 
 			expect(executionsStore.executions).toEqual([]);
 		});

@@ -301,7 +301,31 @@ describe('exec run command', () => {
 
 		cap.stop();
 		const body = clientMocks.executeNode.mock.calls[0][0] as Record<string, unknown>;
-		expect(body.caller).toEqual({ kind: 'cli', name: 'n8n-cli' });
+		expect(body.caller).toMatchObject({ kind: 'cli', name: 'n8n-cli' });
+	});
+
+	it('attaches a default sessionId per invocation', async () => {
+		clientMocks.executeNode.mockResolvedValueOnce({});
+		const cap = captureStdout();
+
+		await ExecRun.run(['set.json', '--param', 'mode=raw', '--json'], pkgRoot);
+
+		cap.stop();
+		const body = clientMocks.executeNode.mock.calls[0][0] as Record<string, unknown>;
+		const caller = body.caller as Record<string, unknown>;
+		expect(caller.sessionId).toEqual(expect.stringMatching(/^[a-f0-9-]{8,}/));
+	});
+
+	it('uses --session value when provided', async () => {
+		clientMocks.executeNode.mockResolvedValueOnce({});
+		const cap = captureStdout();
+
+		await ExecRun.run(['set.json', '--param', 'mode=raw', '--session', 'fixed', '--json'], pkgRoot);
+
+		cap.stop();
+		const body = clientMocks.executeNode.mock.calls[0][0] as Record<string, unknown>;
+		const caller = body.caller as Record<string, unknown>;
+		expect(caller.sessionId).toBe('fixed');
 	});
 
 	it('reads --input from a JSON file (with @ prefix) and merges it into parameters', async () => {

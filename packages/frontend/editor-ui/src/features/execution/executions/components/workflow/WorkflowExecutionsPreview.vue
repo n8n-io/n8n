@@ -15,17 +15,23 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
+import type { AnnotationVote, ExecutionSummary, ITaskData } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
 import type { SingleNodeExecutionSummaryExtras } from '../../executions.types';
-import { getSingleNodeHeadline, getCallerDisplay } from '../../executions.utils';
+import {
+	getSingleNodeHeadline,
+	getCallerDisplay,
+	getCallerNameSuffix,
+} from '../../executions.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
+import CallerKindBadge from '../CallerKindBadge.vue';
+import SingleNodeExecutionDetail from './SingleNodeExecutionDetail.vue';
 import VoteButtons from './VoteButtons.vue';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
@@ -82,21 +88,91 @@ const isRetriable = computed(
  */
 const isSingleNodeExecution = computed(() => props.execution?.mode === 'single-node');
 
+/**
+ * Hub placeholders execute exactly one node, conventionally named "Action".
+ * Fall back to "Action" when the summary doesn't surface an explicit node name.
+ *
+ * The store types `activeExecution` as `ExecutionSummary`, but at runtime
+ * `WorkflowExecutionsView` assigns the full `IExecutionResponse` to it, which
+ * carries `executedNode` and `data.resultData.runData`. Narrow via an
+ * intersection so we can read those fields without ad-hoc `as` casts at the
+ * call sites.
+ */
+type ExecutionWithRunData = ExecutionSummary & {
+	executedNode?: string;
+	data?: { resultData?: { runData?: Record<string, ITaskData[]> } };
+	workflowData?: { nodes?: Array<{ name: string; type: string; parameters?: unknown }> };
+};
+
+const activeExecutionWithRunData = computed(
+	() => executionsStore.activeExecution as ExecutionWithRunData | null,
+);
+
+const executedNodeName = computed(
+	() =>
+		(props.execution as ExecutionWithRunData | undefined)?.executedNode ??
+		activeExecutionWithRunData.value?.executedNode ??
+		'Action',
+);
+
+/**
+ * Pull the run data off the fully-fetched execution stored in the executions
+ * store. The summary passed via the `execution` prop only covers metadata.
+ */
+const executionRunData = computed(
+	() => activeExecutionWithRunData.value?.data?.resultData?.runData,
+);
+
+/**
+ * The workflow snapshot stored alongside the execution. For Hub single-node
+ * executions, this carries the placeholder `Action` node whose `parameters`
+ * are the configured inputs we want to render in the detail view. Passing
+ * the node list explicitly avoids re-fetching the workflow or relying on
+ * the workflow store, which is keyed by the live workflow id.
+ */
+const executionWorkflowNodes = computed(
+	() => activeExecutionWithRunData.value?.workflowData?.nodes,
+);
+
+/**
+ * Header parts for the single-node detail view. Split into three slots so the
+ * caller kind can render as an {@link CallerKindBadge} instead of inline text,
+ * matching the list-row treatment.
+ */
 const singleNodeHeader = computed(() => {
-	if (!isSingleNodeExecution.value || !props.execution) return '';
+	if (!isSingleNodeExecution.value || !props.execution) {
+		return { prefix: '', kind: undefined, nameSuffix: '' };
+	}
 	const action = getSingleNodeHeadline(props.execution, '');
 	const callerSegment = getCallerDisplay(props.execution.caller);
+	const kind = props.execution.caller?.kind;
+	const nameSuffix = getCallerNameSuffix(props.execution.caller);
 	if (action && callerSegment) {
-		return locale.baseText('executionDetails.singleNode.header', {
-			interpolate: { nodeType: action, caller: callerSegment },
-		});
+		return {
+			prefix: locale.baseText('executionDetails.singleNode.headerNodeOnly', {
+				interpolate: { nodeType: action },
+			}),
+			suffixPrefix: locale.baseText('executionsList.singleNode.viaPrefix'),
+			kind,
+			nameSuffix,
+		};
 	}
 	if (action) {
-		return locale.baseText('executionDetails.singleNode.headerNoCaller', {
-			interpolate: { nodeType: action },
-		});
+		return {
+			prefix: locale.baseText('executionDetails.singleNode.headerNoCaller', {
+				interpolate: { nodeType: action },
+			}),
+			suffixPrefix: '',
+			kind: undefined,
+			nameSuffix: '',
+		};
 	}
-	return locale.baseText('executionDetails.singleNode.fallbackHeader');
+	return {
+		prefix: locale.baseText('executionDetails.singleNode.fallbackHeader'),
+		suffixPrefix: '',
+		kind: undefined,
+		nameSuffix: '',
+	};
 });
 
 const credentialsStore = useCredentialsStore();
@@ -292,6 +368,18 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
 	</div>
+	<div
+		v-else-if="executionUIDetails && isSingleNodeExecution && execution"
+		:class="$style.previewContainer"
+		:data-test-id="`execution-preview-details-${executionId}`"
+	>
+		<SingleNodeExecutionDetail
+			:execution="execution"
+			:run-data="executionRunData"
+			:executed-node-name="executedNodeName"
+			:workflow-nodes="executionWorkflowNodes"
+		/>
+	</div>
 	<div v-else-if="executionUIDetails" :class="$style.previewContainer">
 		<div
 			v-if="execution"
@@ -300,14 +388,28 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 		>
 			<div :class="$style.executionDetailsLeft">
 				<div v-if="isSingleNodeExecution" :class="$style.singleNodeHeader">
-					<N8nText
-						size="large"
-						color="text-dark"
-						:bold="true"
+					<div
+						:class="$style.singleNodeHeaderTitle"
 						data-test-id="execution-preview-single-node-header"
 					>
-						{{ singleNodeHeader }}
-					</N8nText>
+						<N8nText size="large" color="text-dark" :bold="true">
+							{{ singleNodeHeader.prefix }}
+						</N8nText>
+						<template v-if="singleNodeHeader.kind">
+							<N8nText size="large" color="text-dark" :bold="true">
+								{{ singleNodeHeader.suffixPrefix }}
+							</N8nText>
+							<CallerKindBadge :kind="singleNodeHeader.kind" />
+							<N8nText
+								v-if="singleNodeHeader.nameSuffix"
+								size="large"
+								color="text-dark"
+								:bold="true"
+							>
+								{{ singleNodeHeader.nameSuffix }}
+							</N8nText>
+						</template>
+					</div>
 					<div
 						v-if="credentialInfo"
 						:class="$style.singleNodeCredential"
@@ -502,6 +604,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 		<WorkflowPreview
 			:key="executionId"
+			data-test-id="workflow-preview"
 			mode="execution"
 			loader-type="spinner"
 			:execution-id="executionId"
@@ -554,6 +657,13 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.singleNodeHeaderTitle {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .singleNodeCredential {

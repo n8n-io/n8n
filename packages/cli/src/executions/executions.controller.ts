@@ -1,3 +1,4 @@
+import { EXECUTION_CALLER_METADATA_KEYS } from '@n8n/api-types';
 import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
 import { Body, Get, GlobalScope, Patch, Post, RestController } from '@n8n/decorators';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
@@ -17,6 +18,14 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+
+/**
+ * Metadata keys produced by the n8n Hub (single-node executions originated via
+ * MCP / SDK / CLI). These are first-class Hub UX filters — surfaced as session
+ * chips, action labels, and caller badges — and must remain filterable on every
+ * tier. The advanced-execution-filters license only gates user-defined keys.
+ */
+const HUB_METADATA_KEYS = new Set<string>(Object.values(EXECUTION_CALLER_METADATA_KEYS));
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -47,7 +56,17 @@ export class ExecutionsController {
 		query.sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
-			delete query.metadata;
+			// Keep Hub-related metadata filters (caller.*, actionId, etc.) so the
+			// single-node execution UI works on every tier. Drop only user-defined
+			// metadata keys, which are the actual gated "advanced filters".
+			if (query.metadata) {
+				const hubOnly = query.metadata.filter((entry) => HUB_METADATA_KEYS.has(entry.key));
+				if (hubOnly.length > 0) {
+					query.metadata = hubOnly;
+				} else {
+					delete query.metadata;
+				}
+			}
 			delete query.annotationTags;
 		}
 

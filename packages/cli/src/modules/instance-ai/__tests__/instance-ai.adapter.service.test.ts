@@ -1343,7 +1343,7 @@ describe('createActionAdapter', () => {
 			},
 			credentialId: 'slack-api',
 			dryRun: true,
-			caller: { kind: 'instance-ai', name: 'Instance AI', clientId: 'thread-1' },
+			caller: { kind: 'instance-ai', name: 'Instance AI', sessionId: 'thread-1' },
 		});
 		expect(result).toEqual({
 			executionId: '',

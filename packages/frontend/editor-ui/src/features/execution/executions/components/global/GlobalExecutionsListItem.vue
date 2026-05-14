@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
+import CallerKindBadge from '../CallerKindBadge.vue';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
@@ -10,6 +11,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
+import type { ExecutionCallerKind } from '@n8n/api-types';
 import type { SingleNodeExecutionSummaryExtras } from '../../executions.types';
 import { computed, ref, useCssModule } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -20,10 +22,17 @@ import {
 	N8nCheckbox,
 	N8nIcon,
 	N8nIconButton,
+	N8nTag,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { getCallerLabel, getSingleNodeHeadline } from '../../executions.utils';
+import { useRouter } from 'vue-router';
+import {
+	formatSessionShortId,
+	getCallerLabel,
+	getCallerNameSuffix,
+	getSingleNodeHeadline,
+} from '../../executions.utils';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -44,16 +53,33 @@ const props = withDefaults(
 		workflowPermissions: PermissionsRecord['workflow'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
+		/**
+		 * When `true`, the row is rendered inside a session group header that
+		 * already shows the caller + session metadata, so the caller chip and
+		 * session chip are suppressed to avoid duplication.
+		 */
+		compact?: boolean;
+		/**
+		 * When set, the row is rendered as a child of an expanded session group
+		 * with the given caller kind. Drives the visual hierarchy cues (left rule
+		 * coloured by kind, subtle tint, slight indent) so the child rows read
+		 * as belonging to the session header above them rather than as adjacent
+		 * ungrouped executions.
+		 */
+		sessionKind?: ExecutionCallerKind;
 	}>(),
 	{
 		selected: false,
 		workflowName: '',
+		compact: false,
+		sessionKind: undefined,
 	},
 );
 
 const style = useCssModule();
 const locale = useI18n();
 const executionHelpers = useExecutionHelpers();
+const router = useRouter();
 
 const isStopping = ref(false);
 
@@ -73,6 +99,30 @@ const singleNodeHeadline = computed(() =>
 const singleNodeCallerLabel = computed(() =>
 	isSingleNodeExecution.value ? getCallerLabel(props.execution.caller, locale) : '',
 );
+
+const callerKind = computed(() =>
+	isSingleNodeExecution.value ? props.execution.caller?.kind : undefined,
+);
+
+const callerNameSuffix = computed(() =>
+	isSingleNodeExecution.value ? getCallerNameSuffix(props.execution.caller) : '',
+);
+
+const sessionId = computed(() =>
+	isSingleNodeExecution.value ? props.execution.caller?.sessionId : undefined,
+);
+
+const sessionShort = computed(() => formatSessionShortId(sessionId.value));
+
+function onSessionChipClick() {
+	if (!sessionId.value) return;
+	void router.push({
+		query: {
+			...router.currentRoute.value.query,
+			metadata: `caller.sessionId=${sessionId.value}`,
+		},
+	});
+}
 
 const SOURCE_ICON: Record<string, IconName> = {
 	mcp: 'bot',
@@ -148,6 +198,8 @@ const errorStatuses: ExecutionStatus[] = [EXECUTION_STATUS.ERROR, EXECUTION_STAT
 const classes = computed(() => {
 	return {
 		[style.dangerBg]: errorStatuses.includes(props.execution.status),
+		[style.sessionChildRow]: !!props.sessionKind,
+		[style[`sessionChildRow--${props.sessionKind}`]]: !!props.sessionKind,
 	};
 });
 
@@ -205,8 +257,8 @@ async function handleActionItemClick(commandData: Command) {
 }
 </script>
 <template>
-	<tr :class="classes">
-		<td>
+	<tr :class="classes" :data-session-kind="sessionKind">
+		<td :class="{ [$style.sessionChildFirstCell]: !!sessionKind }">
 			<N8nCheckbox
 				:model-value="selected"
 				data-test-id="select-execution-checkbox"
@@ -218,20 +270,38 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<template v-if="isSingleNodeExecution">
-				<RouterLink
-					:to="{
-						name: VIEWS.EXECUTION_PREVIEW,
-						params: { workflowId: execution.workflowId, executionId: execution.id },
-					}"
-					:class="$style.workflowName"
-					data-test-id="execution-list-single-node-name"
-					target="_blank"
-				>
-					{{ singleNodeHeadline }}
-				</RouterLink>
-				<small v-if="singleNodeCallerLabel" :class="$style.singleNodeCaller">
-					{{ singleNodeCallerLabel }}
-				</small>
+				<div :class="$style.singleNodeCell">
+					<RouterLink
+						:to="{
+							name: VIEWS.EXECUTION_PREVIEW,
+							params: { workflowId: execution.workflowId, executionId: execution.id },
+						}"
+						:class="$style.workflowName"
+						data-test-id="execution-list-single-node-name"
+						target="_blank"
+					>
+						{{ singleNodeHeadline }}
+					</RouterLink>
+					<template v-if="!compact">
+						<span v-if="callerKind" :class="$style.singleNodeCaller">
+							<N8nText size="xsmall" color="text-light">
+								{{ locale.baseText('executionsList.singleNode.viaPrefix') }}
+							</N8nText>
+							<CallerKindBadge :kind="callerKind" />
+							<N8nText v-if="callerNameSuffix" size="xsmall" color="text-light">
+								{{ callerNameSuffix }}
+							</N8nText>
+						</span>
+						<N8nTag
+							v-if="sessionId"
+							:text="sessionShort"
+							:class="$style.sessionChip"
+							data-test-id="executions-session-chip"
+							clickable
+							@click.stop="onSessionChipClick"
+						/>
+					</template>
+				</div>
 			</template>
 			<N8nTooltip v-else :content="execution.workflowName || workflowName" placement="top">
 				<RouterLink
@@ -396,12 +466,64 @@ tr.dangerBg {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 	max-width: 450px;
+	min-width: 0;
+	white-space: nowrap;
+}
+
+.singleNodeCell {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .singleNodeCaller {
-	display: block;
-	color: var(--color--text--tint-1);
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	flex: 0 0 auto;
+}
+
+.sessionChip {
+	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--xs);
-	margin-top: var(--spacing--5xs);
+	cursor: pointer;
+	flex: 0 0 auto;
+}
+
+/*
+ * Child-of-session-group treatment. The visual goal is "these rows obviously
+ * belong to the session above them": subtle tint distinct from the standard
+ * row stripe + a kind-coloured rule running down the leftmost edge of the
+ * first cell + a small indent so children sit "inside" the chevron column of
+ * the session header.
+ *
+ * The left rule is rendered as an inset box-shadow on the first cell rather
+ * than a border to avoid disturbing the row's existing column widths.
+ */
+tr.sessionChildRow {
+	background-color: var(--background--subtle);
+}
+
+.sessionChildFirstCell {
+	box-shadow: inset 3px 0 0 var(--color--text--tint-1);
+	padding-left: var(--spacing--l);
+}
+
+tr.sessionChildRow--mcp .sessionChildFirstCell {
+	box-shadow: inset 3px 0 0 var(--color--primary);
+}
+
+tr.sessionChildRow--cli .sessionChildFirstCell {
+	box-shadow: inset 3px 0 0 var(--color--success);
+}
+
+tr.sessionChildRow--sdk .sessionChildFirstCell {
+	box-shadow: inset 3px 0 0 var(--color--warning);
+}
+
+tr.sessionChildRow--instance-ai .sessionChildFirstCell {
+	box-shadow: inset 3px 0 0 var(--color--primary);
 }
 </style>

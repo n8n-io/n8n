@@ -49,6 +49,14 @@ const hidePreview = computed(() => {
 	return props.loading || (!props.execution && props.executions.length);
 });
 
+/**
+ * Single-node executions are full-page in their detail view — the session
+ * timeline rail (rendered inside the detail itself) is the only relevant
+ * navigation. Hiding the workflow-executions sidebar keeps focus on the
+ * session and avoids advertising sibling executions that don't belong to it.
+ */
+const hideSidebar = computed(() => props.execution?.mode === 'single-node');
+
 const onDeleteCurrentExecution = () => {
 	if (!props.execution?.id) return;
 
@@ -83,6 +91,7 @@ onBeforeRouteLeave(async (to, _, next) => {
 <template>
 	<div :class="$style.container">
 		<WorkflowExecutionsSidebar
+			v-if="!hideSidebar"
 			:executions="executions"
 			:loading="loading && !executions.length"
 			:loading-more="loadingMore"

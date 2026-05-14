@@ -19,6 +19,27 @@ import { waitFor } from '@testing-library/vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 
+// Provide a deterministic localStorage shim. The Vitest environment used here
+// does not always supply window.localStorage; the useGroupBySession composable
+// reads from it during setup, so tests must be able to seed it deterministically.
+function createLocalStorageStub(): Storage {
+	const store = new Map<string, string>();
+	return {
+		get length() {
+			return store.size;
+		},
+		clear: () => store.clear(),
+		getItem: (key: string) => (store.has(key) ? (store.get(key) as string) : null),
+		key: (index: number) => Array.from(store.keys())[index] ?? null,
+		removeItem: (key: string) => {
+			store.delete(key);
+		},
+		setItem: (key: string, value: string) => {
+			store.set(key, String(value));
+		},
+	};
+}
+
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
 		name: VIEWS.WORKFLOW_EXECUTIONS,
@@ -76,6 +97,43 @@ const executionDataFactory = (): ExecutionSummary => ({
 	retrySuccessId: generateUndefinedNullOrString(),
 });
 
+/**
+ * Fixture builder for session-grouping tests. Defaults to a `manual` row;
+ * pass `mode: 'single-node'` together with a `sessionId` to emit a row that
+ * can participate in a session group (caller is auto-derived).
+ */
+function makeRow(
+	overrides: Partial<ExecutionSummaryWithScopes> & {
+		mode?: ExecutionSummary['mode'] | 'single-node';
+		sessionId?: string;
+	} = {},
+): ExecutionSummaryWithScopes {
+	const { sessionId, ...rest } = overrides;
+	const base: ExecutionSummaryWithScopes = {
+		id: rest.id ?? faker.string.uuid(),
+		finished: true,
+		mode: (rest.mode ?? 'manual') as ExecutionSummary['mode'],
+		createdAt: new Date('2026-05-13T10:00:00Z'),
+		startedAt: new Date('2026-05-13T10:00:00Z'),
+		stoppedAt: new Date('2026-05-13T10:00:01Z'),
+		workflowId: rest.workflowId ?? '1',
+		workflowName: rest.workflowName ?? 'wf',
+		status: rest.status ?? 'success',
+		nodeExecutionStatus: {},
+		scopes: [],
+	} as unknown as ExecutionSummaryWithScopes;
+
+	if (sessionId) {
+		(base as ExecutionSummaryWithScopes).caller = {
+			kind: 'mcp',
+			name: 'Claude Desktop',
+			sessionId,
+		};
+	}
+
+	return Object.assign(base, rest) as ExecutionSummaryWithScopes;
+}
+
 const generateExecutionsData = () =>
 	Array.from({ length: 2 }, () => ({
 		count: 20,
@@ -117,6 +175,12 @@ describe('GlobalExecutionsList', () => {
 	beforeEach(() => {
 		executionsData = generateExecutionsData();
 		settingsStore = mockedStore(useSettingsStore);
+		const stub = createLocalStorageStub();
+		Object.defineProperty(window, 'localStorage', {
+			configurable: true,
+			value: stub,
+		});
+		stub.clear();
 	});
 
 	it('should render empty list', async () => {
@@ -225,5 +289,96 @@ describe('GlobalExecutionsList', () => {
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	it('renders a session group when 2+ executions share a sessionId', async () => {
+		const rows = [
+			makeRow({ id: 'a', mode: 'single-node', sessionId: 's1' }),
+			makeRow({ id: 'b', mode: 'single-node', sessionId: 's1' }),
+			makeRow({ id: 'c', mode: 'manual' }),
+		];
+		const { getByTestId } = renderComponent({
+			props: {
+				executions: rows,
+				filters: {} as ExecutionFilterType,
+				total: rows.length,
+				estimated: false,
+			},
+		});
+		await waitAllPromises();
+
+		expect(getByTestId('executions-session-group')).toBeVisible();
+	});
+
+	it('renders solo single-node rows when sessionId is absent', async () => {
+		const rows = [makeRow({ id: 'a', mode: 'single-node' })];
+		const { queryByTestId } = renderComponent({
+			props: {
+				executions: rows,
+				filters: {} as ExecutionFilterType,
+				total: rows.length,
+				estimated: false,
+			},
+		});
+		await waitAllPromises();
+
+		expect(queryByTestId('executions-session-group')).toBeNull();
+	});
+
+	it('does not group when the toggle is off', async () => {
+		window.localStorage.setItem('executions.groupBySession', 'false');
+		const rows = [
+			makeRow({ id: 'a', mode: 'single-node', sessionId: 's1' }),
+			makeRow({ id: 'b', mode: 'single-node', sessionId: 's1' }),
+		];
+		const { queryByTestId } = renderComponent({
+			props: {
+				executions: rows,
+				filters: {} as ExecutionFilterType,
+				total: rows.length,
+				estimated: false,
+			},
+		});
+		await waitAllPromises();
+
+		expect(queryByTestId('executions-session-group')).toBeNull();
+	});
+
+	it('hides duplicate caller/session chips on rows inside a session group', async () => {
+		const rows = [
+			makeRow({ id: 'a', mode: 'single-node', sessionId: 's1' }),
+			makeRow({ id: 'b', mode: 'single-node', sessionId: 's1' }),
+		];
+		const { queryAllByTestId, getByTestId } = renderComponent({
+			props: {
+				executions: rows,
+				filters: {} as ExecutionFilterType,
+				total: rows.length,
+				estimated: false,
+			},
+		});
+		await waitAllPromises();
+
+		// The group header itself renders the caller badge once; child rows
+		// must not duplicate it. The chip count on rows must be zero.
+		expect(getByTestId('executions-session-group')).toBeVisible();
+		expect(queryAllByTestId('executions-session-chip').length).toBe(0);
+	});
+
+	it('keeps the caller/session chips on ungrouped single-node rows', async () => {
+		// Only one row carries a sessionId, so it stays ungrouped and the
+		// chip should still render in-line on its row.
+		const rows = [makeRow({ id: 'a', mode: 'single-node', sessionId: 's-lonely' })];
+		const { getAllByTestId } = renderComponent({
+			props: {
+				executions: rows,
+				filters: {} as ExecutionFilterType,
+				total: rows.length,
+				estimated: false,
+			},
+		});
+		await waitAllPromises();
+
+		expect(getAllByTestId('executions-session-chip').length).toBe(1);
 	});
 });

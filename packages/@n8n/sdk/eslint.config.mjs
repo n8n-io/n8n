@@ -22,6 +22,10 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-call': 'off',
 			'@typescript-eslint/no-unsafe-member-access': 'off',
 			'@typescript-eslint/no-unsafe-return': 'off',
+			// Tests inspect serialized request bodies via JSON.parse; a parse
+			// failure there is itself a useful test signal, so the surrounding
+			// try/catch noise isn't worth its weight.
+			'n8n-local-rules/no-uncaught-json-parse': 'off',
 		},
 	},
 );

@@ -25,8 +25,18 @@ import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import AgentSessionsList from './AgentSessionsList.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
+import ExecutionsSessionGroup from './ExecutionsSessionGroup.vue';
+import { useGroupBySession } from '../../composables/useGroupBySession';
+import { partitionExecutionsBySession } from '../../executions.utils';
 
-import { N8nButton, N8nCheckbox, N8nRadioButtons, N8nTableBase } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nRadioButtons,
+	N8nSwitch,
+	N8nTableBase,
+	N8nText,
+} from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const props = withDefaults(
@@ -62,6 +72,18 @@ const route = useRoute();
 const router = useRouter();
 
 const agentsEnabled = computed(() => settingsStore.isModuleActive('agents'));
+
+const { enabled: groupBySession, setEnabled: setGroupBySession } = useGroupBySession();
+
+const hasSingleNodeExecutions = computed(() =>
+	props.executions.some((e) => e.mode === 'single-node'),
+);
+
+const entries = computed(() =>
+	groupBySession.value
+		? partitionExecutionsBySession(props.executions)
+		: props.executions.map((execution) => ({ kind: 'row' as const, execution })),
+);
 
 type ViewMode = 'workflows' | 'agents';
 const viewMode = computed<ViewMode>(() =>
@@ -416,6 +438,20 @@ const goToUpgrade = () => {
 			/>
 			<div :class="$style.execHeaderRight">
 				<template v-if="viewMode === 'workflows'">
+					<div
+						v-if="hasSingleNodeExecutions"
+						:class="$style.groupBySessionToggle"
+						data-test-id="executions-group-by-session-toolbar"
+					>
+						<N8nSwitch
+							:model-value="groupBySession"
+							data-test-id="executions-group-by-session-toggle"
+							@update:model-value="setGroupBySession"
+						/>
+						<N8nText size="small">
+							{{ i18n.baseText('executionsList.groupBySession.label') }}
+						</N8nText>
+					</div>
 					<ExecutionStopAllText :executions="props.executions" />
 					<ExecutionsFilter
 						:workflows="workflows"
@@ -484,23 +520,56 @@ const goToUpgrade = () => {
 						</tr>
 					</thead>
 					<tbody>
-						<GlobalExecutionsListItem
-							v-for="execution in executions"
-							:key="execution.id"
-							:execution="execution"
-							:workflow-name="getExecutionWorkflowName(execution)"
-							:workflow-permissions="getExecutionWorkflowPermissions(execution)"
-							:selected="selectedItems[execution.id] || allExistingSelected"
-							:concurrency-cap="settingsStore.concurrency"
-							:is-cloud-deployment="settingsStore.isCloudDeployment"
-							data-test-id="global-execution-list-item"
-							@stop="stopExecution"
-							@delete="deleteExecution"
-							@select="toggleSelectExecution"
-							@retry-saved="retrySavedExecution"
-							@retry-original="retryOriginalExecution"
-							@go-to-upgrade="goToUpgrade"
-						/>
+						<template
+							v-for="(entry, idx) in entries"
+							:key="
+								entry.kind === 'group' ? `g-${entry.sessionId}` : `r-${entry.execution.id ?? idx}`
+							"
+						>
+							<ExecutionsSessionGroup
+								v-if="entry.kind === 'group'"
+								:session-id="entry.sessionId"
+								:executions="entry.executions"
+							>
+								<template #default="{ executions: children, callerKind }">
+									<GlobalExecutionsListItem
+										v-for="child in children"
+										:key="child.id"
+										:execution="child"
+										:workflow-name="getExecutionWorkflowName(child)"
+										:workflow-permissions="getExecutionWorkflowPermissions(child)"
+										:selected="selectedItems[child.id] || allExistingSelected"
+										:concurrency-cap="settingsStore.concurrency"
+										:is-cloud-deployment="settingsStore.isCloudDeployment"
+										:compact="true"
+										:session-kind="callerKind"
+										data-test-id="global-execution-list-item"
+										@stop="stopExecution"
+										@delete="deleteExecution"
+										@select="toggleSelectExecution"
+										@retry-saved="retrySavedExecution"
+										@retry-original="retryOriginalExecution"
+										@go-to-upgrade="goToUpgrade"
+									/>
+								</template>
+							</ExecutionsSessionGroup>
+							<GlobalExecutionsListItem
+								v-else
+								:execution="entry.execution"
+								:workflow-name="getExecutionWorkflowName(entry.execution)"
+								:workflow-permissions="getExecutionWorkflowPermissions(entry.execution)"
+								:selected="selectedItems[entry.execution.id] || allExistingSelected"
+								:concurrency-cap="settingsStore.concurrency"
+								:is-cloud-deployment="settingsStore.isCloudDeployment"
+								data-test-id="global-execution-list-item"
+								@stop="stopExecution"
+								@delete="deleteExecution"
+								@select="toggleSelectExecution"
+								@retry-saved="retrySavedExecution"
+								@retry-original="retryOriginalExecution"
+								@go-to-upgrade="goToUpgrade"
+							/>
+						</template>
 						<template v-if="isInitialLoad && executionsStore.loading && !executions.length">
 							<tr v-for="item in executionsStore.itemsPerPage" :key="item">
 								<td v-for="col in 9" :key="col">
@@ -576,5 +645,11 @@ const goToUpgrade = () => {
 	align-items: center;
 	margin-left: auto;
 	gap: var(--spacing--sm);
+}
+
+.groupBySessionToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>

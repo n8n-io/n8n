@@ -2,6 +2,29 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { createClient } from '../client';
 import { N8nValidationError, N8nError } from '../errors';
+import { createProxy } from '../proxy';
+
+/**
+ * Test helper: stubs the global `fetch` with a `vi.fn()` that resolves to a
+ * generic successful ExecutionResult. Mirrors the inline pattern used by the
+ * older tests in this file but lets us assert on `fetchMock.mock.calls`
+ * directly without re-wiring `vi.stubGlobal` per test.
+ */
+function mockFetch(): ReturnType<typeof vi.fn> {
+	const fetchMock = vi.fn().mockResolvedValue({
+		status: 200,
+		ok: true,
+		json: () =>
+			Promise.resolve({
+				executionId: 'e1',
+				status: 'success',
+				output: [],
+				executionUrl: 'http://x/executions/e1',
+			}),
+	});
+	vi.stubGlobal('fetch', fetchMock);
+	return fetchMock;
+}
 
 type OperationFn = (args?: Record<string, unknown>) => Promise<unknown>;
 
@@ -69,13 +92,14 @@ describe('proxy dispatch', () => {
 					// eslint-disable-next-line @typescript-eslint/naming-convention
 					'Content-Type': 'application/json',
 				}),
-				body: JSON.stringify({
-					nodeType: 'n8n-nodes-base.slack',
-					parameters: { resource: 'message', operation: 'send', channel: '#x', text: 'hi' },
-					credentialId: 'c1',
-				}),
 			}),
 		);
+		const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(sentBody).toMatchObject({
+			nodeType: 'n8n-nodes-base.slack',
+			parameters: { resource: 'message', operation: 'send', channel: '#x', text: 'hi' },
+			credentialId: 'c1',
+		});
 		expect(result.executionId).toBe('e1');
 		// Single-item output array is unwrapped to a plain object for ergonomic access.
 		expect(result.output).toEqual({ ok: true });
@@ -155,16 +179,12 @@ describe('proxy dispatch', () => {
 
 		await json({ values: {} });
 
-		expect(fetchMock).toHaveBeenCalledWith(
-			'http://x/rest/executions/node',
-			expect.objectContaining({
-				body: JSON.stringify({
-					nodeType: 'n8n-nodes-base.set',
-					parameters: { operation: 'json', values: {} },
-					credentialId: undefined,
-				}),
-			}),
-		);
+		const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(sentBody).toMatchObject({
+			nodeType: 'n8n-nodes-base.set',
+			parameters: { operation: 'json', values: {} },
+		});
+		expect(sentBody.credentialId).toBeUndefined();
 	});
 
 	it('keeps multi-item output arrays as arrays', async () => {
@@ -222,15 +242,53 @@ describe('proxy dispatch', () => {
 		const customNs = asFn((n8n as Record<string, unknown>)['@n8n/nodes-langchain.openAi']);
 		await customNs({ prompt: 'hi' });
 
-		expect(fetchMock).toHaveBeenCalledWith(
-			'http://x/rest/executions/node',
-			expect.objectContaining({
-				body: JSON.stringify({
-					nodeType: '@n8n/nodes-langchain.openAi',
-					parameters: { prompt: 'hi' },
-					credentialId: undefined,
-				}),
-			}),
-		);
+		const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(sentBody).toMatchObject({
+			nodeType: '@n8n/nodes-langchain.openAi',
+			parameters: { prompt: 'hi' },
+		});
+		expect(sentBody.credentialId).toBeUndefined();
+	});
+
+	it('attaches a default sessionId to every request from one client', async () => {
+		const fetchMock = mockFetch();
+		const n8n = createProxy({ baseUrl: 'https://hub.test', token: 't' });
+
+		const set = asProxy((n8n as Record<string, unknown>).set);
+		await asFn(set.json)({ mode: 'raw' });
+		await asFn(set.json)({ mode: 'expression' });
+
+		const body1 = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		const body2 = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+
+		expect(body1.caller.sessionId).toEqual(expect.stringMatching(/^[a-f0-9-]{8,}/));
+		expect(body2.caller.sessionId).toBe(body1.caller.sessionId);
+	});
+
+	it('uses caller.sessionId override when provided at createProxy', async () => {
+		const fetchMock = mockFetch();
+		const n8n = createProxy({
+			baseUrl: 'https://hub.test',
+			token: 't',
+			caller: { kind: 'sdk', name: 'my-app', sessionId: 'fixed-session' },
+		});
+
+		const set = asProxy((n8n as Record<string, unknown>).set);
+		await asFn(set.json)({});
+		const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(body.caller.sessionId).toBe('fixed-session');
+	});
+
+	it('allows per-call caller override to win over the client default', async () => {
+		const fetchMock = mockFetch();
+		const n8n = createProxy({ baseUrl: 'https://hub.test', token: 't' });
+
+		const set = asProxy((n8n as Record<string, unknown>).set);
+		await asFn(set.json)({
+			caller: { kind: 'sdk', name: '@n8n/sdk', sessionId: 'per-call' },
+		});
+
+		const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+		expect(body.caller.sessionId).toBe('per-call');
 	});
 });

@@ -7,6 +7,9 @@ import { DateTime } from 'luxon';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { ExecutionCallerKind } from '@n8n/api-types';
 
+const routerPushMock = vi.fn();
+const currentRouteRef = { value: { query: {} as Record<string, string | undefined> } };
+
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 
@@ -14,6 +17,8 @@ vi.mock('vue-router', async () => {
 		...actual,
 		useRouter: vi.fn(() => ({
 			resolve: vi.fn(() => ({ href: 'mockedRoute' })),
+			push: routerPushMock,
+			currentRoute: currentRouteRef,
 		})),
 	};
 });
@@ -272,6 +277,121 @@ describe('GlobalExecutionsListItem', () => {
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('-1727438401s');
+	});
+
+	describe('session-id chip', () => {
+		beforeEach(() => {
+			routerPushMock.mockClear();
+			currentRouteRef.value = { query: {} };
+		});
+
+		it('renders a session-id chip when caller.sessionId is present', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: {
+						...mockExecution,
+						mode: 'single-node',
+						caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'a3f24c-session' },
+					},
+					workflowPermissions: defaultWorkflowPermissions,
+					concurrencyCap: 0,
+				},
+			});
+			const chip = getByTestId('executions-session-chip');
+			expect(chip).toBeVisible();
+			expect(chip.textContent).toContain('a3f24c');
+		});
+
+		it('omits the session chip when sessionId is absent', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					execution: {
+						...mockExecution,
+						mode: 'single-node',
+						caller: { kind: 'mcp', name: 'X' },
+					},
+					workflowPermissions: defaultWorkflowPermissions,
+					concurrencyCap: 0,
+				},
+			});
+			expect(queryByTestId('executions-session-chip')).toBeNull();
+		});
+
+		it('pushes a metadata filter URL on chip click', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: {
+						...mockExecution,
+						mode: 'single-node',
+						caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'a3f24c-session' },
+					},
+					workflowPermissions: defaultWorkflowPermissions,
+					concurrencyCap: 0,
+				},
+			});
+
+			await fireEvent.click(getByTestId('executions-session-chip'));
+
+			expect(routerPushMock).toHaveBeenCalledTimes(1);
+			const arg = routerPushMock.mock.calls[0][0];
+			expect(arg.query.metadata).toBe('caller.sessionId=a3f24c-session');
+		});
+
+		it('hides the caller chip and session chip when compact', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					execution: {
+						...mockExecution,
+						mode: 'single-node',
+						caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'a3f24c-session' },
+					},
+					workflowPermissions: defaultWorkflowPermissions,
+					concurrencyCap: 0,
+					compact: true,
+				},
+			});
+			expect(queryByTestId('executions-session-chip')).toBeNull();
+			expect(queryByTestId('executions-caller-badge')).toBeNull();
+		});
+	});
+
+	describe('session group child visual indicator', () => {
+		it('does not mark the row as a session child when sessionKind is absent', () => {
+			const { container } = renderComponent({
+				props: {
+					execution: {
+						...mockExecution,
+						mode: 'single-node',
+						caller: { kind: 'mcp', name: 'Claude Desktop' },
+					},
+					workflowPermissions: defaultWorkflowPermissions,
+					concurrencyCap: 0,
+				},
+			});
+			const row = container.querySelector('tr');
+			expect(row?.getAttribute('data-session-kind')).toBeFalsy();
+		});
+
+		it.each<[ExecutionCallerKind]>([['mcp'], ['cli'], ['sdk'], ['instance-ai']])(
+			'tags the row with data-session-kind=%s when sessionKind is %s',
+			(kind) => {
+				const { container } = renderComponent({
+					props: {
+						execution: {
+							...mockExecution,
+							mode: 'single-node',
+							caller: { kind, name: 'demo', sessionId: 'a3f24c-session' },
+						},
+						workflowPermissions: defaultWorkflowPermissions,
+						concurrencyCap: 0,
+						compact: true,
+						sessionKind: kind,
+					},
+				});
+				const row = container.querySelector('tr');
+				expect(row?.getAttribute('data-session-kind')).toBe(kind);
+			},
+		);
 	});
 
 	it('uses `createdAt` to calculate running time if `startedAt` is undefined and `stoppedAt` is defined', async () => {

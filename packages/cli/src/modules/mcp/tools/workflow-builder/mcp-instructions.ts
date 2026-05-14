@@ -18,7 +18,11 @@ import {
 } from './constants';
 
 export function getMcpInstructions(isBuilderEnabled: boolean): string {
-	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
+	const INTRO = [
+		'This is the official MCP server for n8n, a workflow automation platform.',
+		'',
+		"Session grouping: tool calls from one MCP connection are automatically grouped under the connection's session id, so you do not need to pass `sessionId` to `n8n_execute_tool` to keep an agent run's executions together. Only set it when you intentionally want a sub-session within the same conversation.",
+	].join('\n');
 
 	const BUILDER_INSTRUCTIONS = `This MCP server provides tools to build n8n workflows programmatically using the n8n Workflow SDK.
 

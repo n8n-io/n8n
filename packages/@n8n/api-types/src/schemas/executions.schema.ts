@@ -13,6 +13,7 @@ export const ExecutionCallerSchema = z.object({
 	kind: ExecutionCallerKindSchema,
 	name: z.string(),
 	clientId: z.string().optional(),
+	sessionId: z.string().min(1).max(512).optional(),
 });
 
 export type ExecutionCallerKind = z.infer<typeof ExecutionCallerKindSchema>;
@@ -27,6 +28,7 @@ export const EXECUTION_CALLER_METADATA_KEYS = {
 	kind: 'caller.kind',
 	name: 'caller.name',
 	clientId: 'caller.clientId',
+	sessionId: 'caller.sessionId',
 	nodeType: 'nodeType',
 	/**
 	 * Full action id, e.g. `n8n-nodes-base.slack.message.send`. Distinct from
@@ -63,10 +65,12 @@ export function extractExecutionCaller(
 	if (!kind.success) return undefined;
 
 	const clientId = metadata[EXECUTION_CALLER_METADATA_KEYS.clientId];
+	const sessionId = metadata[EXECUTION_CALLER_METADATA_KEYS.sessionId];
 
 	return {
 		kind: kind.data,
 		name,
 		...(clientId !== undefined ? { clientId } : {}),
+		...(sessionId !== undefined ? { sessionId } : {}),
 	};
 }

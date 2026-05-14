@@ -369,7 +369,7 @@ export class InstanceAiAdapterService {
 				const caller: ExecuteNodeCaller = {
 					kind: 'instance-ai',
 					name: 'Instance AI',
-					...(threadId ? { clientId: threadId } : {}),
+					...(threadId ? { sessionId: threadId } : {}),
 				};
 
 				const result = await this.executeNodeService.execute({

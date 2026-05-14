@@ -19,6 +19,11 @@ WINDOW_START="2026-05-04"
 TMPDIR="$(mktemp -d -t romeo-cli-XXXXXX)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
+# One session id for the whole script so all four single-node executions
+# collapse into one block in the UI's "Group by session" view.
+SESSION_ID="${ROMEO_CLI_SESSION:-romeo-cli-$(date +%Y%m%d-%H%M%S)-$$}"
+echo "session: $SESSION_ID"
+
 step() { printf '\n[%s/6] %s\n' "$1" "$2"; }
 
 # ──────────────────────────────────────────────────────────────────
@@ -41,6 +46,7 @@ jq -n '{authentication:"oAuth2", returnAll:true}' > "$TMPDIR/slack-user-getall.p
 $CLI exec run slack.user.getAll \
   --credential "$SLACK_CRED_ID" \
   --input "$TMPDIR/slack-user-getall.params.json" \
+  --session "$SESSION_ID" \
   --json > "$TMPDIR/slack-user-getall.result.json"
 
 USER_EXEC_ID="$(jq -r '.executionId' "$TMPDIR/slack-user-getall.result.json")"
@@ -67,6 +73,7 @@ jq -n --arg url "https://api.github.com/users/$ROMEO_GH_LOGIN/events" '{
 
 $CLI exec run httpRequest \
   --input "$TMPDIR/gh-events.params.json" \
+  --session "$SESSION_ID" \
   --json > "$TMPDIR/gh-events.result.json"
 
 GH_EXEC_ID="$(jq -r '.executionId' "$TMPDIR/gh-events.result.json")"
@@ -94,6 +101,7 @@ jq -n --arg query "from:@$ROMEO_NAME after:$WINDOW_START" '{
 $CLI exec run slack.message.search \
   --credential "$SLACK_CRED_ID" \
   --input "$TMPDIR/slack-search.params.json" \
+  --session "$SESSION_ID" \
   --json > "$TMPDIR/slack-search.result.json"
 
 SLACK_EXEC_ID="$(jq -r '.executionId' "$TMPDIR/slack-search.result.json")"
@@ -207,6 +215,7 @@ jq -n \
 $CLI exec run slack.message.post \
   --credential "$SLACK_CRED_ID" \
   --input "$TMPDIR/post.params.json" \
+  --session "$SESSION_ID" \
   --json > "$TMPDIR/post.result.json"
 
 POST_EXEC_ID="$(jq -r '.executionId'   "$TMPDIR/post.result.json")"

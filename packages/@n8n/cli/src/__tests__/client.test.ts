@@ -92,6 +92,25 @@ describe('N8nClient REST helpers', () => {
 		expect(result.executionId).toBe('exec-1');
 	});
 
+	it('forwards caller.sessionId to POST /executions/node', async () => {
+		fetchMock.mockResolvedValueOnce(
+			jsonResponse({ executionId: 'exec-1', status: 'success', executionUrl: 'http://x/e/1' }),
+		);
+
+		const client = new N8nClient({ baseUrl: 'http://localhost:5678', apiKey: 'k' });
+		await client.executeNode({
+			nodeType: 'n8n-nodes-base.set',
+			caller: { kind: 'cli', name: 'n8n-cli', sessionId: 'cli-session-42' },
+		});
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.stringContaining('/executions/node'),
+			expect.objectContaining({
+				body: expect.stringContaining('"sessionId":"cli-session-42"'),
+			}),
+		);
+	});
+
 	it('sends the X-N8N-API-KEY header on REST calls', async () => {
 		fetchMock.mockResolvedValueOnce(jsonResponse({ results: [] }));
 

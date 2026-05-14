@@ -8,6 +8,26 @@ import { useCredentialsStore } from '../../credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { CredentialExecutionSummary } from '../../credentials.api';
 
+// Provide a deterministic localStorage shim so the session-grouping composable
+// (which reads from localStorage during setup) behaves predictably across tests.
+function createLocalStorageStub(): Storage {
+	const store = new Map<string, string>();
+	return {
+		get length() {
+			return store.size;
+		},
+		clear: () => store.clear(),
+		getItem: (key: string) => (store.has(key) ? (store.get(key) as string) : null),
+		key: (index: number) => Array.from(store.keys())[index] ?? null,
+		removeItem: (key: string) => {
+			store.delete(key);
+		},
+		setItem: (key: string, value: string) => {
+			store.set(key, String(value));
+		},
+	};
+}
+
 const renderComponent = createComponentRenderer(CredentialExecutions, {
 	props: { credentialId: 'cred_abc' },
 });
@@ -34,6 +54,13 @@ describe('CredentialExecutions', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		credentialsStore = mockedStore(useCredentialsStore);
+
+		const stub = createLocalStorageStub();
+		Object.defineProperty(window, 'localStorage', {
+			configurable: true,
+			value: stub,
+		});
+		stub.clear();
 	});
 
 	it('shows the empty state when the credential has no executions', async () => {
@@ -117,5 +144,96 @@ describe('CredentialExecutions', () => {
 		const callArgs = credentialsStore.fetchCredentialExecutions.mock.calls;
 		expect(callArgs[0]).toEqual(['cred_abc', { limit: 20, lastId: undefined }]);
 		expect(callArgs[1]).toEqual(['cred_abc', { limit: 20, lastId: 'exec-20' }]);
+	});
+
+	it('groups rows that share a session id under a session group header', async () => {
+		credentialsStore.fetchCredentialExecutions.mockResolvedValueOnce({
+			results: [
+				sampleRow({
+					id: 'exec-1',
+					caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'sess-1' },
+				}),
+				sampleRow({
+					id: 'exec-2',
+					actionDisplayName: 'Slack - List users',
+					caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'sess-1' },
+				}),
+				sampleRow({
+					id: 'exec-3',
+					actionDisplayName: 'Notion - Append block',
+					caller: { kind: 'mcp', name: 'Claude Desktop' },
+				}),
+			],
+			total: 3,
+			succeeded: 3,
+			failed: 0,
+		});
+
+		const { getByTestId, getAllByTestId } = renderComponent();
+
+		await waitFor(() => expect(getByTestId('credential-executions-summary')).toBeInTheDocument());
+		// Group + remaining solo row.
+		expect(getByTestId('credential-executions-session-group')).toBeVisible();
+		// All three rows are still rendered (two inside the group, one outside).
+		expect(getAllByTestId('credential-executions-row')).toHaveLength(3);
+	});
+
+	it('does not render a session group when the toggle is off', async () => {
+		window.localStorage.setItem('executions.groupBySession', 'false');
+		credentialsStore.fetchCredentialExecutions.mockResolvedValueOnce({
+			results: [
+				sampleRow({
+					id: 'exec-1',
+					caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'sess-1' },
+				}),
+				sampleRow({
+					id: 'exec-2',
+					caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'sess-1' },
+				}),
+			],
+			total: 2,
+			succeeded: 2,
+			failed: 0,
+		});
+
+		const { getByTestId, queryByTestId, getAllByTestId } = renderComponent();
+
+		await waitFor(() => expect(getByTestId('credential-executions-summary')).toBeInTheDocument());
+		expect(queryByTestId('credential-executions-session-group')).toBeNull();
+		expect(getAllByTestId('credential-executions-row')).toHaveLength(2);
+	});
+
+	it('flattens single-row sessions (no group for sessions of 1)', async () => {
+		credentialsStore.fetchCredentialExecutions.mockResolvedValueOnce({
+			results: [
+				sampleRow({
+					id: 'exec-1',
+					caller: { kind: 'mcp', name: 'Claude Desktop', sessionId: 'sess-1' },
+				}),
+			],
+			total: 1,
+			succeeded: 1,
+			failed: 0,
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(getByTestId('credential-executions-summary')).toBeInTheDocument());
+		expect(queryByTestId('credential-executions-session-group')).toBeNull();
+	});
+
+	it('shows the group-by-session toggle only when single-node rows are present', async () => {
+		credentialsStore.fetchCredentialExecutions.mockResolvedValueOnce({
+			results: [sampleRow()],
+			total: 1,
+			succeeded: 1,
+			failed: 0,
+		});
+
+		const { getByTestId } = renderComponent();
+
+		await waitFor(() =>
+			expect(getByTestId('credential-executions-group-by-session-toolbar')).toBeVisible(),
+		);
 	});
 });

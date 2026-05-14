@@ -40,6 +40,27 @@ describe('executions.schema', () => {
 		it('rejects a caller missing the name', () => {
 			expect(() => ExecutionCallerSchema.parse({ kind: 'sdk' })).toThrow();
 		});
+
+		it('accepts a caller with sessionId', () => {
+			const parsed = ExecutionCallerSchema.parse({
+				kind: 'mcp',
+				name: 'mcp-server',
+				sessionId: 'a3f24c-session',
+			});
+			expect(parsed).toEqual({ kind: 'mcp', name: 'mcp-server', sessionId: 'a3f24c-session' });
+		});
+
+		it('rejects an empty sessionId', () => {
+			expect(() =>
+				ExecutionCallerSchema.parse({ kind: 'cli', name: 'n8n-cli', sessionId: '' }),
+			).toThrow();
+		});
+
+		it('rejects a sessionId longer than 512 chars', () => {
+			expect(() =>
+				ExecutionCallerSchema.parse({ kind: 'cli', name: 'n8n-cli', sessionId: 'x'.repeat(513) }),
+			).toThrow();
+		});
 	});
 
 	describe('extractExecutionCaller', () => {
@@ -89,6 +110,25 @@ describe('executions.schema', () => {
 					[EXECUTION_CALLER_METADATA_KEYS.clientId]: 'client-123',
 				}),
 			).toEqual({ kind: 'mcp', name: 'mcp-server', clientId: 'client-123' });
+		});
+
+		it('includes sessionId when present', () => {
+			expect(
+				extractExecutionCaller({
+					[EXECUTION_CALLER_METADATA_KEYS.kind]: 'mcp',
+					[EXECUTION_CALLER_METADATA_KEYS.name]: 'mcp-server',
+					[EXECUTION_CALLER_METADATA_KEYS.sessionId]: 'a3f24c-session',
+				}),
+			).toEqual({ kind: 'mcp', name: 'mcp-server', sessionId: 'a3f24c-session' });
+		});
+
+		it('omits sessionId when absent', () => {
+			expect(
+				extractExecutionCaller({
+					[EXECUTION_CALLER_METADATA_KEYS.kind]: 'cli',
+					[EXECUTION_CALLER_METADATA_KEYS.name]: 'n8n-cli@host',
+				}),
+			).toEqual({ kind: 'cli', name: 'n8n-cli@host' });
 		});
 	});
 });

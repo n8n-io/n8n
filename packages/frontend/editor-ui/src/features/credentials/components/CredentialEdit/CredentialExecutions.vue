@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSwitch, N8nText } from '@n8n/design-system';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useCredentialsStore } from '../../credentials.store';
 import type {
@@ -11,7 +11,10 @@ import type {
 import {
 	getCallerLabel,
 	getSingleNodeHeadline,
+	partitionExecutionsBySession,
 } from '@/features/execution/executions/executions.utils';
+import { useGroupBySession } from '@/features/execution/executions/composables/useGroupBySession';
+import CredentialExecutionsSessionGroup from './CredentialExecutionsSessionGroup.vue';
 
 type Props = {
 	credentialId: string;
@@ -34,6 +37,11 @@ const errorMessage = ref<string | null>(null);
 // extra count query and matches the existing executions list behaviour.
 const hasMore = ref(false);
 
+// Session-grouping toggle. We deliberately share the same localStorage key as
+// the global executions list (`executions.groupBySession`) so the user toggles
+// it once and the preference applies everywhere single-node executions appear.
+const { enabled: groupBySession, setEnabled: setGroupBySession } = useGroupBySession();
+
 const PAGE_SIZE = 20;
 
 const summaryLine = computed(() =>
@@ -50,6 +58,18 @@ const lastId = computed(() => {
 	const last = rows.value[rows.value.length - 1];
 	return last?.id;
 });
+
+// Single-node executions are the only kind that can carry a sessionId in their
+// caller payload — gate the toggle the same way the global list does.
+const hasSingleNodeExecutions = computed(() =>
+	rows.value.some((row) => row.mode === 'single-node'),
+);
+
+const entries = computed(() =>
+	groupBySession.value
+		? partitionExecutionsBySession(rows.value)
+		: rows.value.map((execution) => ({ kind: 'row' as const, execution })),
+);
 
 async function loadPage(options: { append: boolean }) {
 	errorMessage.value = null;
@@ -146,8 +166,24 @@ onMounted(() => {
 		</div>
 
 		<template v-else>
-			<div :class="$style.summary" data-test-id="credential-executions-summary">
-				<N8nText :compact="true">{{ summaryLine }}</N8nText>
+			<div :class="$style.toolbar">
+				<div :class="$style.summary" data-test-id="credential-executions-summary">
+					<N8nText :compact="true">{{ summaryLine }}</N8nText>
+				</div>
+				<div
+					v-if="hasSingleNodeExecutions"
+					:class="$style.groupBySessionToggle"
+					data-test-id="credential-executions-group-by-session-toolbar"
+				>
+					<N8nSwitch
+						:model-value="groupBySession"
+						data-test-id="credential-executions-group-by-session-toggle"
+						@update:model-value="setGroupBySession"
+					/>
+					<N8nText size="small">
+						{{ i18n.baseText('executionsList.groupBySession.label') }}
+					</N8nText>
+				</div>
 			</div>
 
 			<table :class="$style.table" data-test-id="credential-executions-table">
@@ -163,31 +199,69 @@ onMounted(() => {
 					</tr>
 				</thead>
 				<tbody>
-					<tr
-						v-for="row in rows"
-						:key="row.id"
-						:class="$style.row"
-						data-test-id="credential-executions-row"
+					<template
+						v-for="(entry, idx) in entries"
+						:key="
+							entry.kind === 'group' ? `g-${entry.sessionId}` : `r-${entry.execution.id ?? idx}`
+						"
 					>
-						<td :class="$style.statusCell">
-							<N8nIcon
-								:icon="statusIcon(row.status).name"
-								:style="{ color: statusIcon(row.status).color }"
-								size="small"
-							/>
-						</td>
-						<td>
-							<a :href="executionUrl(row)" rel="noopener" :class="$style.actionLink">
-								{{ getSingleNodeHeadline(row, row.id) }}
-							</a>
-						</td>
-						<td>{{ getCallerLabel(row.caller, i18n) }}</td>
-						<td>
-							<TimeAgo v-if="row.startedAt" :date="String(row.startedAt)" />
-							<span v-else>—</span>
-						</td>
-						<td :class="$style.durationCell">{{ formatDuration(row) }}</td>
-					</tr>
+						<CredentialExecutionsSessionGroup
+							v-if="entry.kind === 'group'"
+							:session-id="entry.sessionId"
+							:executions="entry.executions"
+						>
+							<template #default>
+								<tr
+									v-for="child in entry.executions"
+									:key="child.id"
+									:class="[$style.row, $style.groupedRow]"
+									data-test-id="credential-executions-row"
+								>
+									<td :class="$style.statusCell">
+										<N8nIcon
+											:icon="statusIcon(child.status).name"
+											:style="{ color: statusIcon(child.status).color }"
+											size="small"
+										/>
+									</td>
+									<td>
+										<a :href="executionUrl(child)" rel="noopener" :class="$style.actionLink">
+											{{ getSingleNodeHeadline(child, child.id) }}
+										</a>
+									</td>
+									<td>{{ getCallerLabel(child.caller, i18n) }}</td>
+									<td>
+										<TimeAgo v-if="child.startedAt" :date="String(child.startedAt)" />
+										<span v-else>—</span>
+									</td>
+									<td :class="$style.durationCell">{{ formatDuration(child) }}</td>
+								</tr>
+							</template>
+						</CredentialExecutionsSessionGroup>
+						<tr v-else :class="$style.row" data-test-id="credential-executions-row">
+							<td :class="$style.statusCell">
+								<N8nIcon
+									:icon="statusIcon(entry.execution.status).name"
+									:style="{ color: statusIcon(entry.execution.status).color }"
+									size="small"
+								/>
+							</td>
+							<td>
+								<a :href="executionUrl(entry.execution)" rel="noopener" :class="$style.actionLink">
+									{{ getSingleNodeHeadline(entry.execution, entry.execution.id) }}
+								</a>
+							</td>
+							<td>{{ getCallerLabel(entry.execution.caller, i18n) }}</td>
+							<td>
+								<TimeAgo
+									v-if="entry.execution.startedAt"
+									:date="String(entry.execution.startedAt)"
+								/>
+								<span v-else>—</span>
+							</td>
+							<td :class="$style.durationCell">{{ formatDuration(entry.execution) }}</td>
+						</tr>
+					</template>
 				</tbody>
 			</table>
 
@@ -233,8 +307,21 @@ onMounted(() => {
 	text-align: center;
 }
 
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
 .summary {
 	color: var(--color--text--tint-1);
+}
+
+.groupBySessionToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .table {
@@ -283,5 +370,9 @@ onMounted(() => {
 	display: flex;
 	justify-content: center;
 	padding-top: var(--spacing--sm);
+}
+
+.groupedRow td {
+	border-bottom-color: var(--color--background--shade-2);
 }
 </style>

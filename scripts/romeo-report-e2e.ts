@@ -61,7 +61,18 @@ interface DemoApi {
 	};
 }
 
-const n8n = createClient({ baseUrl, token }) as unknown as DemoApi;
+// Override the auto-generated UUID with a human-readable label so the four
+// resulting executions are easy to spot when grouped in the UI.
+const sessionId =
+	process.env.ROMEO_SDK_SESSION ??
+	`romeo-sdk-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+console.log(`session: ${sessionId}`);
+
+const n8n = createClient({
+	baseUrl,
+	token,
+	caller: { kind: 'sdk', name: 'romeo-report', sessionId },
+}) as unknown as DemoApi;
 
 // ──────────────────────────────────────────────────────────────────
 // Step 1 — Resolve credentials via /rest/credentials

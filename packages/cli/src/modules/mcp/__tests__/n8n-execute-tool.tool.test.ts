@@ -28,6 +28,7 @@ type HandlerInput = {
 	credentialId: string;
 	params: Record<string, unknown>;
 	dryRun: boolean;
+	sessionId: string;
 };
 
 /**
@@ -40,6 +41,7 @@ const buildInput = (overrides: Partial<HandlerInput>): HandlerInput => ({
 	params: overrides.params ?? {},
 	credentialId: overrides.credentialId ?? (undefined as unknown as string),
 	dryRun: overrides.dryRun ?? (undefined as unknown as boolean),
+	sessionId: overrides.sessionId ?? (undefined as unknown as string),
 });
 
 describe('n8n_execute_tool MCP tool', () => {
@@ -326,6 +328,126 @@ describe('n8n_execute_tool MCP tool', () => {
 					results: expect.objectContaining({ success: false }),
 				}),
 			);
+		});
+
+		test('forwards sessionId from tool input to executeNodeService (overrides transport)', async () => {
+			const { executeNodeService, telemetry, nodeCatalogService } = createMocks();
+
+			const tool = createN8nExecuteToolTool(
+				user,
+				executeNodeService,
+				nodeCatalogService,
+				telemetry,
+			);
+
+			await tool.handler(
+				buildInput({
+					id: 'set.json',
+					params: { mode: 'raw' },
+					sessionId: 'agent-conv-123',
+				}),
+				// Agent-supplied sessionId must win over any transport-provided value.
+				{ sessionId: 'transport-should-be-ignored' } as never,
+			);
+
+			expect(executeNodeService.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					caller: expect.objectContaining({
+						kind: 'mcp',
+						name: 'mcp-server',
+						sessionId: 'agent-conv-123',
+					}),
+				}),
+			);
+		});
+
+		test('defaults sessionId to the transport sessionId from MCP extra', async () => {
+			const { executeNodeService, telemetry, nodeCatalogService } = createMocks();
+
+			const tool = createN8nExecuteToolTool(
+				user,
+				executeNodeService,
+				nodeCatalogService,
+				telemetry,
+			);
+
+			await tool.handler(buildInput({ id: 'set.json', params: { mode: 'raw' } }), {
+				sessionId: 'transport-abc',
+			} as never);
+
+			const arg = (executeNodeService.execute as jest.Mock).mock.calls[0][0];
+			expect(arg.caller.sessionId).toBe('transport-abc');
+		});
+
+		test('defaults sessionId to the mcp-session-id request header when SDK sessionId is absent', async () => {
+			const { executeNodeService, telemetry, nodeCatalogService } = createMocks();
+
+			const tool = createN8nExecuteToolTool(
+				user,
+				executeNodeService,
+				nodeCatalogService,
+				telemetry,
+			);
+
+			await tool.handler(buildInput({ id: 'set.json', params: { mode: 'raw' } }), {
+				requestInfo: { headers: { 'mcp-session-id': 'header-session-xyz' } },
+			} as never);
+
+			const arg = (executeNodeService.execute as jest.Mock).mock.calls[0][0];
+			expect(arg.caller.sessionId).toBe('header-session-xyz');
+		});
+
+		test('prefers SDK extra.sessionId over the mcp-session-id header when both are present', async () => {
+			const { executeNodeService, telemetry, nodeCatalogService } = createMocks();
+
+			const tool = createN8nExecuteToolTool(
+				user,
+				executeNodeService,
+				nodeCatalogService,
+				telemetry,
+			);
+
+			await tool.handler(buildInput({ id: 'set.json', params: { mode: 'raw' } }), {
+				sessionId: 'transport-wins',
+				requestInfo: { headers: { 'mcp-session-id': 'header-loses' } },
+			} as never);
+
+			const arg = (executeNodeService.execute as jest.Mock).mock.calls[0][0];
+			expect(arg.caller.sessionId).toBe('transport-wins');
+		});
+
+		test('omits sessionId when no input, transport, and header are provided', async () => {
+			const { executeNodeService, telemetry, nodeCatalogService } = createMocks();
+
+			const tool = createN8nExecuteToolTool(
+				user,
+				executeNodeService,
+				nodeCatalogService,
+				telemetry,
+			);
+
+			await tool.handler(buildInput({ id: 'set.json', params: { mode: 'raw' } }), {} as never);
+
+			const arg = (executeNodeService.execute as jest.Mock).mock.calls[0][0];
+			expect(arg.caller.sessionId).toBeUndefined();
+		});
+
+		test('treats whitespace-only mcp-session-id header as absent', async () => {
+			const { executeNodeService, telemetry, nodeCatalogService } = createMocks();
+
+			const tool = createN8nExecuteToolTool(
+				user,
+				executeNodeService,
+				nodeCatalogService,
+				telemetry,
+			);
+
+			await tool.handler(buildInput({ id: 'set.json', params: { mode: 'raw' } }), {
+				requestInfo: { headers: { 'mcp-session-id': '   ' } },
+			} as never);
+
+			const arg = (executeNodeService.execute as jest.Mock).mock.calls[0][0];
+			expect(arg.caller.sessionId).toBeUndefined();
 		});
 
 		test('uses NodeCatalog parser for longest matching prefix when ambiguous', async () => {

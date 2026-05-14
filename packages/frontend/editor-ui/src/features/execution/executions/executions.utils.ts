@@ -6,6 +6,7 @@ import {
 import type {
 	ITaskData,
 	ExecutionStatus,
+	ExecutionSummary,
 	IDataObject,
 	INode,
 	IPinData,
@@ -23,6 +24,7 @@ import type {
 	ExecutionPreviewOutputSchema,
 	ExecutionPreviewSchemaField,
 	ExecutionsQueryFilter,
+	ExecutionSummaryWithScopes,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	SingleNodeExecutionSummaryExtras,
@@ -607,6 +609,18 @@ export function getCallerLabel(caller: ExecutionCaller | undefined, locale: type
 }
 
 /**
+ * Returns just the parenthesized caller-name suffix used alongside the kind
+ * badge — e.g. "(Claude Desktop)". Empty when the caller has no distinct name.
+ * Pairs with {@link CallerKindBadge} so the badge can render the kind and the
+ * surrounding text can render the name independently.
+ */
+export function getCallerNameSuffix(caller: ExecutionCaller | undefined): string {
+	if (!caller) return '';
+	const source = CALLER_SOURCE_LABEL[caller.kind] ?? caller.kind.toUpperCase();
+	return caller.name && caller.name !== source ? `(${caller.name})` : '';
+}
+
+/**
  * Resolve the most-specific human-friendly label we can build for a single-node
  * execution, falling back through the available fields in preference order:
  *   actionDisplayName → actionId → nodeType → caller.name → fallback.
@@ -649,4 +663,81 @@ export function getFriendlyHubWorkflowName(name: string): string {
 		return `${parts[1]} — ${parts.slice(2).join(' ')}`;
 	}
 	return stripped;
+}
+
+/**
+ * Short, display-friendly form of a sessionId — first `length` chars + ellipsis
+ * when the id is longer. Keeps the list/header chrome tight while leaving the
+ * full id reachable in tooltips and filter URLs.
+ *
+ * The default of 6 fits narrow contexts (per-row chips). Header contexts that
+ * have more horizontal real estate (session group headers) can pass a larger
+ * value such as 24 or 32 to expose more of the id.
+ */
+export function formatSessionShortId(sessionId: string | undefined, length: number = 6): string {
+	if (!sessionId) return '';
+	if (length <= 0) return '';
+	return sessionId.length <= length ? sessionId : `${sessionId.slice(0, length)}…`;
+}
+
+/**
+ * Minimum shape a row needs to participate in session grouping. Kept narrow so
+ * both the global executions list and the credential executions tab — which
+ * fetch slightly different row shapes — can share the same partitioner.
+ */
+export type SessionGroupableRow = {
+	id?: string;
+	mode: ExecutionSummary['mode'] | 'single-node';
+	caller?: ExecutionCaller;
+};
+
+/** Helper for the partitioner — extract sessionId or undefined. */
+export function getSessionGroupKey(row: SessionGroupableRow): string | undefined {
+	if (row.mode !== 'single-node') return undefined;
+	return row.caller?.sessionId;
+}
+
+export type ExecutionListEntry<TRow extends SessionGroupableRow = ExecutionSummaryWithScopes> =
+	| { kind: 'row'; execution: TRow }
+	| { kind: 'group'; sessionId: string; executions: TRow[] };
+
+/**
+ * Partition a list of executions into a mixed sequence of single rows and
+ * session groups. A group is formed only when 2+ executions share a sessionId
+ * (session-of-1 → flat row, per the design). Ordering: groups appear at the
+ * position of their earliest call; ungrouped rows keep their input order.
+ *
+ * Generic over the row shape so credential executions (which lack `scopes`)
+ * can reuse the same logic.
+ */
+export function partitionExecutionsBySession<TRow extends SessionGroupableRow>(
+	executions: TRow[],
+): Array<ExecutionListEntry<TRow>> {
+	const sessionMap = new Map<string, TRow[]>();
+	for (const exec of executions) {
+		const key = getSessionGroupKey(exec);
+		if (!key) continue;
+		const bucket = sessionMap.get(key) ?? [];
+		bucket.push(exec);
+		sessionMap.set(key, bucket);
+	}
+
+	const result: Array<ExecutionListEntry<TRow>> = [];
+	const consumed = new Set<string>();
+
+	for (const exec of executions) {
+		if (exec.id !== undefined && consumed.has(exec.id)) continue;
+		const key = getSessionGroupKey(exec);
+		const bucket = key ? sessionMap.get(key) : undefined;
+		if (key && bucket && bucket.length > 1 && !consumed.has(`session:${key}`)) {
+			result.push({ kind: 'group', sessionId: key, executions: bucket });
+			consumed.add(`session:${key}`);
+			bucket.forEach((b) => b.id !== undefined && consumed.add(b.id));
+		} else {
+			result.push({ kind: 'row', execution: exec });
+			if (exec.id !== undefined) consumed.add(exec.id);
+		}
+	}
+
+	return result;
 }

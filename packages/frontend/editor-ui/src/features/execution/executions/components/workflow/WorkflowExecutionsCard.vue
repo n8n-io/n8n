@@ -12,7 +12,8 @@ import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
-import { getCallerLabel } from '../../executions.utils';
+import { getCallerNameSuffix } from '../../executions.utils';
+import CallerKindBadge from '../CallerKindBadge.vue';
 
 import {
 	N8nActionDropdown,
@@ -62,11 +63,15 @@ const executionUIDetails = computed<IExecutionUIData>(() =>
 const isActive = computed(() => props.execution.id === route.params.executionId);
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
 
-const singleNodeCallerLabel = computed(() => {
+const singleNodeCaller = computed(() => {
 	const extras = props.execution as ExecutionSummary & SingleNodeExecutionSummaryExtras;
-	if (extras.mode !== 'single-node') return '';
-	return getCallerLabel(extras.caller, locale);
+	if (extras.mode !== 'single-node') return undefined;
+	return extras.caller;
 });
+
+const callerKind = computed(() => singleNodeCaller.value?.kind);
+
+const callerNameSuffix = computed(() => getCallerNameSuffix(singleNodeCaller.value));
 
 onMounted(() => {
 	emit('mounted', props.execution.id);
@@ -155,9 +160,17 @@ function onRetryMenuItemSelect(action: string): void {
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
 				</div>
-				<div v-if="singleNodeCallerLabel" :class="$style.singleNodeCaller">
+				<div v-if="callerKind" :class="$style.singleNodeCaller">
 					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
-						{{ singleNodeCallerLabel }}
+						{{ locale.baseText('executionsList.singleNode.viaPrefix') }}
+					</N8nText>
+					<CallerKindBadge :kind="callerKind" />
+					<N8nText
+						v-if="callerNameSuffix"
+						:color="isActive ? 'text-dark' : 'text-base'"
+						size="small"
+					>
+						{{ callerNameSuffix }}
 					</N8nText>
 				</div>
 				<div v-if="isAnnotationEnabled" :class="$style.annotation">
@@ -309,6 +322,9 @@ function onRetryMenuItemSelect(action: string): void {
 	}
 
 	.singleNodeCaller {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing--5xs);
 		margin-top: var(--spacing--4xs);
 	}
 }

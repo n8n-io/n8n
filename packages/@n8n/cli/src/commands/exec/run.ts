@@ -1,4 +1,5 @@
 import { Args, Flags } from '@oclif/core';
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 
 import { parseParamFlag, parseToolId } from './parse-tool-id';
@@ -48,6 +49,10 @@ export default class ExecRun extends BaseCommand {
 			default: false,
 			aliases: ['dry-run'],
 		}),
+		session: Flags.string({
+			description:
+				'Session id to attribute this call to. Defaults to a per-invocation uuid so multi-step scripts group together.',
+		}),
 	};
 
 	async run(): Promise<void> {
@@ -78,12 +83,14 @@ export default class ExecRun extends BaseCommand {
 				...params,
 			};
 
+			const sessionId = flags.session ?? randomUUID();
+
 			const response = (await client.executeNode({
 				nodeType,
 				parameters,
 				...(flags.credential ? { credentialId: flags.credential } : {}),
 				...(flags.dryRun ? { dryRun: true } : {}),
-				caller: { kind: 'cli', name: 'n8n-cli' },
+				caller: { kind: 'cli', name: 'n8n-cli', sessionId },
 			})) as ExecuteNodeResponse;
 
 			this.output(response, flags);

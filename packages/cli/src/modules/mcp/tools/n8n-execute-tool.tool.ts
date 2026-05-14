@@ -40,6 +40,14 @@ const inputSchema = {
 		.describe(
 			'When true, validate inputs and return the resolved node spec without dispatching execution.',
 		),
+	sessionId: z
+		.string()
+		.min(1)
+		.max(512)
+		.optional()
+		.describe(
+			"Optional logical session identifier. By default the MCP server attaches the current connection's session id, so all tool calls from one agent conversation are grouped together automatically. Override this only if you want to scope a sub-session within the conversation (for example, a multi-step task that warrants its own group).",
+		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -148,6 +156,24 @@ function parsedFromTrailing(nodeType: string, trailing: string[]): ParsedId {
 	return { nodeType, resource: trailing[0], operation: trailing[1] };
 }
 
+/**
+ * Pull a session id out of the inbound MCP request headers (case-insensitive).
+ * In stateless transport mode the SDK does not populate `extra.sessionId`, so
+ * we fall back to the client-supplied `mcp-session-id` header — the value the
+ * MCP transport spec defines for binding subsequent requests to the same
+ * connection.
+ */
+function extractHeaderSessionId(
+	headers: Record<string, string | string[] | undefined> | undefined,
+): string | undefined {
+	if (!headers) return undefined;
+	const raw = headers['mcp-session-id'] ?? headers['Mcp-Session-Id'];
+	const value = Array.isArray(raw) ? raw[0] : raw;
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export const createN8nExecuteToolTool = (
 	user: User,
 	executeNodeService: ExecuteNodeService,
@@ -168,8 +194,21 @@ export const createN8nExecuteToolTool = (
 			openWorldHint: true,
 		},
 	},
-	handler: async (input: N8nExecuteToolParams) => {
-		const { id, credentialId, params, dryRun } = input;
+	handler: async (input: N8nExecuteToolParams, extra) => {
+		const { id, credentialId, params, dryRun, sessionId } = input;
+
+		// Default session id to the MCP transport's per-connection identity so
+		// every tool call from one agent conversation is grouped automatically.
+		// Source priority:
+		//   1. `extra.sessionId` — set by the SDK in stateful transport mode.
+		//   2. `mcp-session-id` request header — set by clients on the streamable
+		//      HTTP transport, including stateless mode where the SDK does not
+		//      populate `extra.sessionId` itself.
+		// An explicit `input.sessionId` from the agent overrides both, so the
+		// agent can scope a sub-session within the conversation when desired.
+		const transportSessionId =
+			extra?.sessionId ?? extractHeaderSessionId(extra?.requestInfo?.headers);
+		const effectiveSessionId = sessionId ?? transportSessionId;
 
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
@@ -197,7 +236,11 @@ export const createN8nExecuteToolTool = (
 				parameters,
 				...(credentialId ? { credentialId } : {}),
 				...(dryRun ? { dryRun } : {}),
-				caller: { kind: 'mcp', name: 'mcp-server' },
+				caller: {
+					kind: 'mcp',
+					name: 'mcp-server',
+					...(effectiveSessionId ? { sessionId: effectiveSessionId } : {}),
+				},
 			});
 
 			telemetryPayload.results = {

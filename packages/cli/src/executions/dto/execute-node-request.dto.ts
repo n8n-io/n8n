@@ -19,6 +19,7 @@ export class ExecuteNodeRequestDto extends Z.class({
 			kind: z.enum(['mcp', 'sdk', 'cli', 'instance-ai']),
 			name: z.string(),
 			clientId: z.string().optional(),
+			sessionId: z.string().min(1).max(512).optional(),
 		})
 		.optional(),
 }) {}

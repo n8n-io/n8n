@@ -1052,9 +1052,13 @@ import {
 	CALLER_SOURCE_LABEL,
 	getCallerDisplay,
 	getCallerLabel,
+	getCallerNameSuffix,
 	getSingleNodeHeadline,
 	isHubPlaceholderName,
 	getFriendlyHubWorkflowName,
+	formatSessionShortId,
+	getSessionGroupKey,
+	partitionExecutionsBySession,
 } from './executions.utils';
 
 describe('n8n Hub UI helpers', () => {
@@ -1106,6 +1110,20 @@ describe('n8n Hub UI helpers', () => {
 		it('formats instance-ai callers using the existing label style', () => {
 			const caller: ExecutionCaller = { kind: 'instance-ai', name: 'Instance AI' };
 			expect(getCallerLabel(caller, i18n)).toBe('via Instance AI');
+		});
+	});
+
+	describe('getCallerNameSuffix', () => {
+		it('returns empty string when caller is undefined', () => {
+			expect(getCallerNameSuffix(undefined)).toBe('');
+		});
+
+		it('returns the parenthesized name when it differs from the source label', () => {
+			expect(getCallerNameSuffix({ kind: 'mcp', name: 'Claude Desktop' })).toBe('(Claude Desktop)');
+		});
+
+		it('returns empty string when the name matches the source label', () => {
+			expect(getCallerNameSuffix({ kind: 'cli', name: 'CLI' })).toBe('');
 		});
 	});
 
@@ -1163,5 +1181,84 @@ describe('n8n Hub UI helpers', () => {
 		it('returns the raw name unchanged when the prefix is absent', () => {
 			expect(getFriendlyHubWorkflowName('Some Workflow')).toBe('Some Workflow');
 		});
+	});
+});
+
+describe('formatSessionShortId', () => {
+	it('returns the first 6 chars + ellipsis for long ids', () => {
+		expect(formatSessionShortId('a3f24c-very-long-session-id')).toBe('a3f24c…');
+	});
+	it('returns the id verbatim when short', () => {
+		expect(formatSessionShortId('abc')).toBe('abc');
+	});
+	it('returns empty string for undefined', () => {
+		expect(formatSessionShortId(undefined)).toBe('');
+	});
+	it('honours a custom length when provided', () => {
+		expect(formatSessionShortId('a3f24c-very-long-session-id', 16)).toBe('a3f24c-very-long…');
+	});
+	it('returns the id verbatim when the custom length exceeds the id length', () => {
+		expect(formatSessionShortId('a3f24c-session', 32)).toBe('a3f24c-session');
+	});
+	it('returns empty string when length is zero or negative', () => {
+		expect(formatSessionShortId('a3f24c-session', 0)).toBe('');
+		expect(formatSessionShortId('a3f24c-session', -1)).toBe('');
+	});
+});
+
+describe('partitionExecutionsBySession', () => {
+	const rowWith = (
+		id: string,
+		sessionId?: string,
+		mode: 'single-node' | 'manual' = 'single-node',
+	) => ({
+		id,
+		mode,
+		caller: sessionId ? { kind: 'mcp' as const, name: 'mcp-server', sessionId } : undefined,
+		startedAt: new Date(0).toISOString(),
+	});
+
+	it('returns ungrouped rows for executions without sessionId', () => {
+		const rows = [rowWith('1'), rowWith('2', undefined, 'manual')];
+		const out = partitionExecutionsBySession(rows as any);
+		expect(out).toEqual([
+			{ kind: 'row', execution: rows[0] },
+			{ kind: 'row', execution: rows[1] },
+		]);
+	});
+
+	it('groups rows that share a sessionId', () => {
+		const rows = [
+			rowWith('a', 's1'),
+			rowWith('b', 's1'),
+			rowWith('c', undefined, 'manual'),
+			rowWith('d', 's2'),
+		];
+		const out = partitionExecutionsBySession(rows as any);
+		expect(out).toEqual([
+			{
+				kind: 'group',
+				sessionId: 's1',
+				executions: [rows[0], rows[1]],
+			},
+			{ kind: 'row', execution: rows[2] },
+			{ kind: 'row', execution: rows[3] }, // session-of-1 → row, not group
+		]);
+	});
+
+	it('uses getSessionGroupKey to extract the session key for single-node rows only', () => {
+		expect(
+			getSessionGroupKey({
+				mode: 'single-node',
+				caller: { kind: 'mcp', name: 'mcp', sessionId: 's1' },
+			} as any),
+		).toBe('s1');
+		expect(
+			getSessionGroupKey({
+				mode: 'manual',
+				caller: { kind: 'mcp', name: 'mcp', sessionId: 's1' },
+			} as any),
+		).toBeUndefined();
+		expect(getSessionGroupKey({ mode: 'single-node' } as any)).toBeUndefined();
 	});
 });

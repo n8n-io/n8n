@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { buildAuthHeader } from './auth';
 import type { CreateClientOptions, ExecutionResult, N8nClient } from './client';
 import { N8nError, N8nValidationError } from './errors';
@@ -20,6 +22,7 @@ export interface ExecutionCaller {
 	kind: 'mcp' | 'sdk' | 'cli';
 	name: string;
 	clientId?: string;
+	sessionId?: string;
 }
 
 interface DispatchCall {
@@ -33,9 +36,6 @@ interface DispatchCall {
 	caller?: ExecutionCaller;
 	[parameter: string]: unknown;
 }
-
-/** Default `caller` value baked in so every SDK request is attributable. */
-const DEFAULT_CALLER: ExecutionCaller = { kind: 'sdk', name: '@n8n/sdk' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -216,7 +216,15 @@ function makeL2(
  */
 export function createProxy(options: CreateProxyOptions): N8nClient {
 	const { baseUrl, token, caller } = options;
-	const effectiveCaller: ExecutionCaller = caller ?? DEFAULT_CALLER;
+	const defaultCaller: ExecutionCaller = caller ?? { kind: 'sdk', name: '@n8n/sdk' };
+	// Persist a stable `sessionId` on the proxy so every dispatch from this
+	// client is grouped together in the Hub executions UI. The caller may
+	// supply their own (e.g. a daily-digest cron job that wants to thread
+	// runs by date); otherwise we generate a random UUID once per client.
+	const effectiveCaller: ExecutionCaller = {
+		...defaultCaller,
+		sessionId: defaultCaller.sessionId ?? randomUUID(),
+	};
 	const root: Record<string, unknown> = {};
 
 	return new Proxy(root, {

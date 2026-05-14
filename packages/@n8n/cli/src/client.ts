@@ -480,7 +480,12 @@ export class N8nClient {
 		parameters?: Record<string, unknown>;
 		credentialId?: string;
 		dryRun?: boolean;
-		caller?: { kind: 'mcp' | 'sdk' | 'cli'; name: string; clientId?: string };
+		caller?: {
+			kind: 'mcp' | 'sdk' | 'cli';
+			name: string;
+			clientId?: string;
+			sessionId?: string;
+		};
 	}) {
 		return await this.postRest<Record<string, unknown>>('/executions/node', body);
 	}
