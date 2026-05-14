@@ -3955,7 +3955,7 @@ describe('useCanvasOperations', () => {
 			workflowsStore.setLastSuccessfulExecution = vi.fn((value) => {
 				workflowsStore.lastSuccessfulExecution = value;
 			});
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const resetWorkflowSpy = workflowsStore.resetWorkflow as ReturnType<typeof vi.fn>;
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
 
@@ -3989,10 +3989,14 @@ describe('useCanvasOperations', () => {
 				createNodeActive: false,
 			});
 			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('workflow-id');
-			expect(workflowsStore.resetWorkflow).toHaveBeenCalled();
 			expect(resetStateSpy).toHaveBeenCalled();
+			expect(resetWorkflowSpy).toHaveBeenCalled();
+			// resetState() must run BEFORE resetWorkflow() — resetState reads workflowId
+			// to target the per-workflow execution-state store, and resetWorkflow empties it.
+			expect(resetStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
+				resetWorkflowSpy.mock.invocationCallOrder[0],
+			);
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
-			expect(setActiveExecutionId).toHaveBeenCalledWith(undefined);
 			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.markStateClean).toHaveBeenCalled();

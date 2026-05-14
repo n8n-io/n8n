@@ -1,19 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Span } from '@opentelemetry/api';
+import type { Exception, Span } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
-import {
-	ATTR_EXCEPTION_MESSAGE,
-	ATTR_EXCEPTION_TYPE,
-	ATTR_EXCEPTION_STACKTRACE,
-} from '@opentelemetry/semantic-conventions';
 import type { ExecutionStatus } from 'n8n-workflow';
 
-import type {
-	StartWorkflowParams,
-	EndWorkflowParams,
-	StartNodeParams,
-	EndNodeParams,
+import {
+	type StartWorkflowParams,
+	type EndWorkflowParams,
+	type StartNodeParams,
+	type EndNodeParams,
+	isEndNodeError,
 } from './execution-level-tracer.types';
 import { OtelConfig } from './otel.config';
 import { ATTR } from './otel.constants';
@@ -83,6 +79,10 @@ export class ExecutionLevelTracer {
 			span.setStatus({ code: isError(params.status) ? SpanStatusCode.ERROR : SpanStatusCode.OK });
 			if (isError(params.status) && params.error) {
 				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
+				const recordableException = toRecordableException(params.error);
+				if (recordableException) {
+					span.recordException(recordableException);
+				}
 			}
 
 			//	We don't expect any to be open but we should close any children still running
@@ -156,11 +156,10 @@ export class ExecutionLevelTracer {
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
-				activeNodeSpan.addEvent('exception', {
-					[ATTR_EXCEPTION_MESSAGE]: params.error.message,
-					[ATTR_EXCEPTION_TYPE]: params.error.constructor.name,
-					[ATTR_EXCEPTION_STACKTRACE]: params.error.stack,
-				});
+				const recordableException = toRecordableException(params.error);
+				if (recordableException) {
+					activeNodeSpan.recordException(recordableException);
+				}
 			}
 
 			activeNodeSpan.end();
@@ -275,8 +274,22 @@ function getErrorType(error: unknown): string {
 	const name = record.name;
 	if (typeof name === 'string' && name.trim() !== '') return name;
 
-	const ctor = record.constructor;
-	if (typeof ctor === 'function' && ctor.name && ctor.name !== 'Object') return ctor.name;
+	if (isEndNodeError(error)) {
+		return error.constructor.name;
+	}
 
 	return 'UnknownError';
+}
+
+function toRecordableException(error: unknown): Exception | undefined {
+	if (error instanceof Error || typeof error === 'string') return error;
+	if (isEndNodeError(error)) {
+		return {
+			message: error.message,
+			name: error.constructor.name,
+			stack: error.stack,
+		};
+	}
+
+	return undefined;
 }

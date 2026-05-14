@@ -44,6 +44,7 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
+			'inbound-secrets',
 		]);
 	});
 
@@ -74,6 +75,7 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
+			'inbound-secrets',
 			'instance-ai',
 		]);
 	});

@@ -2,7 +2,11 @@ import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext } from '../types';
-import type { InstanceAiLivenessPolicy } from './liveness-policy';
+import type {
+	InstanceAiLivenessPolicy,
+	InstanceAiLivenessSurface,
+	InstanceAiLivenessTimeoutReason,
+} from './liveness-policy';
 
 export interface ActiveRunState {
 	runId: string;
@@ -70,6 +74,14 @@ export interface BackgroundTaskStatusSnapshot {
 	runId: string;
 	messageGroupId?: string;
 	threadId: string;
+}
+
+export interface RunStateTimeoutDetails {
+	reason: InstanceAiLivenessTimeoutReason;
+	surface: InstanceAiLivenessSurface;
+	timeoutMs: number;
+	elapsedMs: number;
+	idleMs: number;
 }
 
 export interface StartRunOptions<TUser> {
@@ -372,8 +384,12 @@ export class RunStateRegistry<TUser = unknown> {
 		activeThreadIds: string[];
 		suspendedThreadIds: string[];
 		confirmationRequestIds: string[];
+		activeTimeouts: Record<string, RunStateTimeoutDetails>;
+		suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
+		confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
 	} {
 		const activeThreadIds: string[] = [];
+		const activeTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [threadId, run] of this.activeRuns) {
 			if (this.hasPendingConfirmationForThread(threadId)) continue;
 
@@ -387,10 +403,12 @@ export class RunStateRegistry<TUser = unknown> {
 			});
 			if (decision.action === 'timeout') {
 				activeThreadIds.push(threadId);
+				activeTimeouts[threadId] = decision;
 			}
 		}
 
 		const suspendedThreadIds: string[] = [];
+		const suspendedTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [threadId, run] of this.suspendedRuns) {
 			const startedAt = run.startedAt ?? run.createdAt;
 			const lastActivityAt = run.lastActivityAt ?? run.createdAt;
@@ -402,9 +420,11 @@ export class RunStateRegistry<TUser = unknown> {
 			});
 			if (decision.action === 'timeout') {
 				suspendedThreadIds.push(threadId);
+				suspendedTimeouts[threadId] = decision;
 			}
 		}
 		const confirmationRequestIds: string[] = [];
+		const confirmationTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [reqId, pending] of this.pendingConfirmations) {
 			const startedAt = pending.startedAt ?? pending.createdAt;
 			const lastActivityAt = pending.lastActivityAt ?? pending.createdAt;
@@ -416,9 +436,17 @@ export class RunStateRegistry<TUser = unknown> {
 			});
 			if (decision.action === 'timeout') {
 				confirmationRequestIds.push(reqId);
+				confirmationTimeouts[reqId] = decision;
 			}
 		}
-		return { activeThreadIds, suspendedThreadIds, confirmationRequestIds };
+		return {
+			activeThreadIds,
+			suspendedThreadIds,
+			confirmationRequestIds,
+			activeTimeouts,
+			suspendedTimeouts,
+			confirmationTimeouts,
+		};
 	}
 
 	/**

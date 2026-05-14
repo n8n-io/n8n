@@ -522,6 +522,43 @@ export function mergeCurrentTraceMetadata(metadata: Record<string, unknown>): vo
 	}
 }
 
+export function appendRootRunMetadata(
+	root: InstanceAiTraceRun,
+	patch: Record<string, unknown>,
+): void {
+	const currentRun = getTraceParentRun();
+	const baseMetadata =
+		currentRun?.id === root.id
+			? mergeRunTreeMetadata(root.metadata, currentRun.metadata)
+			: root.metadata;
+	const merged = mergeRunTreeMetadata(baseMetadata, patch);
+	if (merged) {
+		root.metadata = merged;
+		if (currentRun?.id === root.id) {
+			currentRun.metadata = merged;
+		}
+	}
+}
+
+export function appendGeneratedWorkflowIdToRootMetadata(
+	root: InstanceAiTraceRun,
+	workflowId: string,
+): void {
+	const currentRun = getTraceParentRun();
+	const metadata =
+		currentRun?.id === root.id
+			? mergeRunTreeMetadata(root.metadata, currentRun.metadata)
+			: root.metadata;
+	const generatedWorkflowIds = metadata?.generated_workflow_ids;
+	const existing = Array.isArray(generatedWorkflowIds)
+		? generatedWorkflowIds.filter((value): value is string => typeof value === 'string')
+		: [];
+	if (existing.includes(workflowId)) {
+		return;
+	}
+	appendRootRunMetadata(root, { generated_workflow_ids: [...existing, workflowId] });
+}
+
 export function mergeTraceRunInputs(
 	run: InstanceAiTraceRun | undefined,
 	inputs: Record<string, unknown>,
