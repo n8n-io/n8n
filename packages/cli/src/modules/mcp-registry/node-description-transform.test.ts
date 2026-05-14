@@ -244,7 +244,7 @@ describe('serverToNodeDescription', () => {
   "defaults": {
     "name": "Notion MCP",
   },
-  "description": "Notion's official MCP server lets you use your Notion workspace as a system of record for knowledge work and software development. Search questions about the codebase and business, fetch links to pages such as tech specs and PRDs, and track tasks with your team.",
+  "description": "Connect to the Notion MCP Server",
   "displayName": "Notion MCP",
   "group": [
     "output",
