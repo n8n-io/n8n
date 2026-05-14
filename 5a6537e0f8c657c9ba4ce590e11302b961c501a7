@@ -1,0 +1,14 @@
+packages/@n8n/nodes-langchain/credentials/SerpApi.credentials.ts
+  h_330405ffe93e01 17-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "5a6537e0f8c657c9ba4ce590e11302b961c501a7",
+  "prompts": {},
+  "humans": {
+    "h_330405ffe93e01": {
+      "author": "Jonathan Bennetts"
+    }
+  }
+}

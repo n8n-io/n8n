@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Jira/__test__/Jira.node.test.ts
+  0b34d6523f10e8e5 249-281
+packages/nodes-base/credentials/test/JiraSoftwareCloudOAuth2Api.credentials.test.ts
+  0b34d6523f10e8e5 1-158
+packages/nodes-base/package.json
+  0b34d6523f10e8e5 200
+packages/nodes-base/nodes/Jira/Jira.node.ts
+  0b34d6523f10e8e5 79-87,100-102
+packages/cli/src/constants.ts
+  0b34d6523f10e8e5 97
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  0b34d6523f10e8e5 12,16-43,64-68
+packages/nodes-base/credentials/JiraSoftwareCloudOAuth2Api.credentials.ts
+  0b34d6523f10e8e5 1-94
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  0b34d6523f10e8e5 4,63-153
+packages/nodes-base/nodes/Jira/JiraTrigger.node.ts
+  0b34d6523f10e8e5 66-74,114-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "f8d43e13797ab1adb3d18fcf6435e12bee277fa0",
+  "prompts": {
+    "0b34d6523f10e8e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f52b1b70-c347-4ca9-9156-be418785a53f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 780,
+      "total_deletions": 13,
+      "accepted_lines": 769,
+      "overriden_lines": 0
+    }
+  }
+}

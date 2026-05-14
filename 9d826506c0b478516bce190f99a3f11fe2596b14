@@ -1,0 +1,38 @@
+packages/nodes-base/credentials/test/JiraSoftwareCloudOAuth2Api.credentials.test.ts
+  291125a06901a402 8-15,70,98-99,115-116
+packages/nodes-base/credentials/JiraSoftwareCloudOAuth2Api.credentials.ts
+  291125a06901a402 3-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9d826506c0b478516bce190f99a3f11fe2596b14",
+  "prompts": {
+    "291125a06901a402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b8d7a77-c71e-4250-9196-2f2b237f5980",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 3,
+      "accepted_lines": 21,
+      "overriden_lines": 0
+    },
+    "e0405104f00f81ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cdb0d0-e5ca-416a-86dc-d9a398d2f59e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 125,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}

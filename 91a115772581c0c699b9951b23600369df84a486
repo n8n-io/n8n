@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/vite.config.mts
+  d94efe7c69786c26 113-114,118-119
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  d94efe7c69786c26 463-465
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.vue
+  d94efe7c69786c26 83-94
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.test.ts
+  d94efe7c69786c26 18-24,26-29,48-51,158-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "91a115772581c0c699b9951b23600369df84a486",
+  "prompts": {
+    "cd3c6f4a7b5a7479": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d98dd0fc-2221-437e-9c5e-fc0834d6c5b6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1066,
+      "overriden_lines": 0
+    },
+    "d94efe7c69786c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "635cd3a3-ec63-40e0-ab86-9b7f6a9048d9",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 64,
+      "total_deletions": 19,
+      "accepted_lines": 64,
+      "overriden_lines": 0
+    }
+  }
+}
