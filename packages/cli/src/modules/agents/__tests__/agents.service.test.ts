@@ -6,6 +6,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Telemetry } from '@/telemetry';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -119,6 +120,7 @@ describe('AgentsService', () => {
 			publisher,
 			agentsConfig,
 			globalConfig,
+			mock<Telemetry>(),
 		);
 	});
 
@@ -1142,10 +1144,16 @@ describe('AgentsService', () => {
 			expect(mockAgentInstance.resume).toHaveBeenCalledWith(
 				'stream',
 				{ value: 'yes' },
-				{ runId, toolCallId },
+				expect.objectContaining({
+					runId,
+					toolCallId,
+					executionCounter: expect.any(Object),
+				}),
 			);
 			// The n8n publisher ID must not appear in the resume args
 			const resumeArgs = mockAgentInstance.resume.mock.calls[0];
+			const resumeOptions = resumeArgs[2] as Record<string, unknown>;
+			expect(resumeOptions).not.toHaveProperty('resourceId');
 			expect(JSON.stringify(resumeArgs)).not.toContain(n8nPublisherId);
 		});
 	});

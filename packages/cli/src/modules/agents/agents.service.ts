@@ -22,13 +22,13 @@ import { Time } from '@n8n/constants';
 import {
 	CredentialsRepository,
 	ExecutionRepository,
+	In,
 	ProjectRelationRepository,
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import {
 	deepCopy,
 	OperationalError,
@@ -47,6 +47,7 @@ import { EphemeralNodeExecutor } from '@/node-execution';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -260,10 +261,22 @@ export class AgentsService {
 		private readonly publisher: Publisher,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
+	}
+
+	private createAgentExecutionCounter(agentId: string): agents.AgentExecutionCounter {
+		return {
+			incrementMessageCount: () =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
+			incrementTokenCount: (tokenCount) =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, token_count: tokenCount }),
+			incrementToolCallCount: () =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, tool_call_count: 1 }),
+		};
 	}
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
@@ -800,6 +813,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1018,6 +1032,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1144,6 +1159,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { resourceId: executionId, threadId },
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
