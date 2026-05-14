@@ -27,12 +27,14 @@ import {
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
 } from './tools/data-table';
+import { createCredentialSetupTools, SETUP_CREDENTIAL_TOOL } from './tools/credential-setup.tool';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
+import { createPreviewWorkflowExecutionTool } from './tools/preview-workflow-execution.tool';
 import { createPreviewWorkflowTool } from './tools/preview-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
@@ -52,9 +54,12 @@ import { NodeCatalogService } from '@/node-catalog';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -66,6 +71,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { ExecutionService } from '@/executions/execution.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 /**
  * Pending MCP execution response, used for queue mode support.
@@ -108,6 +114,10 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly loadNodesAndCredentials?: LoadNodesAndCredentials,
+		private readonly credentialTypes?: CredentialTypes,
+		private readonly credentialsFinderService?: CredentialsFinderService,
+		private readonly oauthService?: OauthService,
 	) {}
 
 	async getServer(user: User) {
@@ -192,6 +202,9 @@ export class McpService {
 			user,
 			this.workflowFinderService,
 			this.telemetry,
+			this.nodeTypes,
+			this.urlService.getInstanceBaseUrl(),
+			this.loadNodesAndCredentials,
 		);
 		const previewWorkflowToolConfig = previewWorkflowTool.config;
 		if (!previewWorkflowToolConfig._meta) {
@@ -202,6 +215,26 @@ export class McpService {
 			previewWorkflowTool.name,
 			{ ...previewWorkflowToolConfig, _meta: previewWorkflowToolConfig._meta },
 			previewWorkflowTool.handler,
+		);
+
+		const previewWorkflowExecutionTool = createPreviewWorkflowExecutionTool(
+			user,
+			this.executionRepository,
+			this.workflowFinderService,
+			this.telemetry,
+			this.nodeTypes,
+			this.urlService.getInstanceBaseUrl(),
+			this.loadNodesAndCredentials,
+		);
+		const previewWorkflowExecutionToolConfig = previewWorkflowExecutionTool.config;
+		if (!previewWorkflowExecutionToolConfig._meta) {
+			throw new Error('Preview workflow execution tool is missing MCP Apps metadata');
+		}
+		registerMcpAppTool(
+			server,
+			previewWorkflowExecutionTool.name,
+			{ ...previewWorkflowExecutionToolConfig, _meta: previewWorkflowExecutionToolConfig._meta },
+			previewWorkflowExecutionTool.handler,
 		);
 
 		const publishWorkflowTool = createPublishWorkflowTool(
@@ -362,6 +395,38 @@ export class McpService {
 			suggestedNodesTool.handler,
 		);
 
+		const credentialSetupTools = createCredentialSetupTools({
+			user,
+			credentialTypes: this.requireCredentialSetupDependency(
+				this.credentialTypes,
+				'CredentialTypes',
+			),
+			credentialsService: this.credentialsService,
+			credentialsFinderService: this.requireCredentialSetupDependency(
+				this.credentialsFinderService,
+				'CredentialsFinderService',
+			),
+			oauthService: this.requireCredentialSetupDependency(this.oauthService, 'OauthService'),
+			telemetry: this.telemetry,
+			instanceBaseUrl: this.urlService.getInstanceBaseUrl(),
+		});
+		for (const tool of credentialSetupTools) {
+			if (tool.name === SETUP_CREDENTIAL_TOOL) {
+				const toolConfig = tool.config;
+				if (!toolConfig._meta) {
+					throw new Error('Credential setup tool is missing MCP Apps metadata');
+				}
+				registerMcpAppTool(
+					server,
+					tool.name,
+					{ ...toolConfig, _meta: toolConfig._meta },
+					tool.handler,
+				);
+			} else {
+				server.registerTool(tool.name, tool.config, tool.handler);
+			}
+		}
+
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
 
@@ -445,6 +510,14 @@ export class McpService {
 		// so all clients can access the SDK reference regardless of resource support.
 		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
 		server.registerTool(sdkRefTool.name, sdkRefTool.config, sdkRefTool.handler);
+	}
+
+	private requireCredentialSetupDependency<T>(dependency: T | undefined, name: string): T {
+		if (!dependency) {
+			throw new Error(`Cannot register credential setup MCP tools without ${name}`);
+		}
+
+		return dependency;
 	}
 
 	// #region Queue Mode Support

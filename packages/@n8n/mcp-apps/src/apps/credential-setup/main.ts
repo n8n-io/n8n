@@ -11,7 +11,7 @@ import { createApp } from 'vue';
 import RootApp from './App.vue';
 import './styles.css';
 
-const mcp = new McpApp({ name: 'Workflow Diagram', version: '0.1.0' });
+const mcp = new McpApp({ name: 'Credential Setup', version: '0.1.0' });
 const app = createApp(RootApp, { mcp });
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
 

@@ -50,6 +50,19 @@ describe('NodeIcon', () => {
 			expect(icon?.getAttribute('data-icon')).toBe('check');
 		});
 
+		it('renders icon type with supported node icon name', () => {
+			const { container } = render(NodeIcon, {
+				props: {
+					type: 'icon',
+					name: 'node:if',
+				},
+			});
+
+			const icon = container.querySelector('[data-testid="n8n-icon"]');
+			expect(icon).toBeTruthy();
+			expect(icon?.getAttribute('data-icon')).toBe('node:if');
+		});
+
 		it('renders unknown type with placeholder', () => {
 			const { getByText } = render(NodeIcon, {
 				props: {

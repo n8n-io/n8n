@@ -17,3 +17,8 @@ export const MCP_PREVIEW_WORKFLOW_TOOL = {
 	toolName: 'preview_workflow',
 	displayTitle: 'Preview Workflow',
 } as const;
+
+export const MCP_PREVIEW_WORKFLOW_EXECUTION_TOOL = {
+	toolName: 'preview_workflow_execution',
+	displayTitle: 'Preview Workflow Execution',
+} as const;

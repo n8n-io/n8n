@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Workflow Diagram MCP App Harness</title>
+		<style>
+			:root {
+				color-scheme: light;
+				--background: #f3f4f7;
+				--surface: #ffffff;
+				--surface-muted: #eef1f6;
+				--text: #111827;
+				--muted: #5f6b7a;
+				--border: #d7dde7;
+				--accent: #0f766e;
+				--danger: #b42318;
+				font-family:
+					Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+					sans-serif;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				background: var(--background);
+				color: var(--text);
+			}
+
+			.shell {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) 420px;
+				gap: 16px;
+				min-height: 100vh;
+				padding: 16px;
+			}
+
+			.preview,
+			.panel {
+				min-width: 0;
+				border: 1px solid var(--border);
+				background: var(--surface);
+			}
+
+			.preview {
+				display: flex;
+				flex-direction: column;
+			}
+
+			.toolbar,
+			.panel-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+				padding: 12px;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.title {
+				min-width: 0;
+			}
+
+			h1,
+			h2 {
+				margin: 0;
+				font-size: 16px;
+				line-height: 1.25;
+			}
+
+			p {
+				margin: 4px 0 0;
+				color: var(--muted);
+				font-size: 13px;
+			}
+
+			.actions {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: flex-end;
+				gap: 8px;
+			}
+
+			button,
+			select {
+				height: 34px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--text);
+				font: inherit;
+				font-size: 13px;
+			}
+
+			button {
+				padding: 0 10px;
+				cursor: pointer;
+			}
+
+			button.primary {
+				border-color: var(--accent);
+				background: var(--accent);
+				color: #ffffff;
+			}
+
+			button.danger {
+				border-color: #f6c2bd;
+				color: var(--danger);
+			}
+
+			.frame-wrap {
+				flex: 1;
+				min-height: 560px;
+				background: var(--surface-muted);
+			}
+
+			iframe {
+				display: block;
+				width: 100%;
+				height: 100%;
+				min-height: 560px;
+				border: 0;
+				background: #f6f7fb;
+			}
+
+			.panel {
+				display: grid;
+				grid-template-rows: auto minmax(180px, 1fr) minmax(180px, 1fr);
+				min-height: 0;
+			}
+
+			.editor,
+			.log {
+				min-height: 0;
+				padding: 12px;
+			}
+
+			.editor {
+				border-bottom: 1px solid var(--border);
+			}
+
+			textarea,
+			pre {
+				width: 100%;
+				height: 100%;
+				margin: 0;
+				border: 1px solid var(--border);
+				background: #0b1020;
+				color: #dbeafe;
+				font:
+					12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+					monospace;
+			}
+
+			textarea {
+				min-height: 180px;
+				padding: 10px;
+				resize: vertical;
+			}
+
+			pre {
+				min-height: 180px;
+				padding: 10px;
+				overflow: auto;
+				white-space: pre-wrap;
+			}
+
+			@media (max-width: 1100px) {
+				.shell {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="shell">
+			<section class="preview">
+				<header class="toolbar">
+					<div class="title">
+						<h1>Workflow Diagram MCP App Harness</h1>
+						<p>Local host shim for the generated workflow-diagram app.</p>
+					</div>
+					<div class="actions">
+						<select id="sandboxMode" aria-label="Sandbox mode">
+							<option value="inspect">Inspect mode</option>
+							<option value="sandbox">Sandbox mode</option>
+						</select>
+						<select id="hostTheme" aria-label="Host theme">
+							<option value="light">Light theme</option>
+							<option value="dark">Dark theme</option>
+						</select>
+						<button id="reloadFrame">Reload app</button>
+						<button id="sendSample" class="primary">Send sample result</button>
+						<button id="sendEmpty">Send empty workflow</button>
+						<button id="sendError" class="danger">Send error result</button>
+					</div>
+				</header>
+				<div class="frame-wrap">
+					<iframe id="appFrame" title="Workflow diagram MCP app"></iframe>
+				</div>
+			</section>
+
+			<aside class="panel">
+				<header class="panel-header">
+					<div class="title">
+						<h2>Tool Result JSON</h2>
+						<p>Edit and send a CallToolResult payload.</p>
+					</div>
+					<button id="sendJson">Send JSON</button>
+				</header>
+				<section class="editor">
+					<textarea id="payloadInput" spellcheck="false"></textarea>
+				</section>
+				<section class="log">
+					<pre id="logOutput" aria-live="polite"></pre>
+				</section>
+			</aside>
+		</main>
+
+		<script>
+			const protocolVersion = "2026-01-26";
+			const appUrl = "../dist/apps/workflow-diagram.html";
+			const frame = document.getElementById("appFrame");
+			const payloadInput = document.getElementById("payloadInput");
+			const logOutput = document.getElementById("logOutput");
+			const sandboxMode = document.getElementById("sandboxMode");
+			const hostTheme = document.getElementById("hostTheme");
+
+			const sampleStructuredContent = {
+				workflowId: "lv1sSV16jEEkC1WU",
+				workflowUrl: "http://localhost:5678/workflow/lv1sSV16jEEkC1WU",
+				name: "Daily Weather to Telegram",
+				nodes: [
+					{
+						name: "Every Morning",
+						type: "n8n-nodes-base.scheduleTrigger",
+						icon: { type: "icon", name: "node:schedule-trigger", color: "black" },
+						position: [240, 304],
+					},
+					{
+						name: "Get Current Weather",
+						type: "n8n-nodes-base.openWeatherMap",
+						icon: {
+							type: "file",
+							src: "http://localhost:5678/icons/n8n-nodes-base/dist/nodes/OpenWeatherMap/openWeatherMap.svg",
+						},
+						position: [464, 304],
+					},
+					{
+						name: "Send Weather to Telegram",
+						type: "n8n-nodes-base.telegram",
+						icon: {
+							type: "file",
+							src: "http://localhost:5678/icons/n8n-nodes-base/dist/nodes/Telegram/telegram.svg",
+						},
+						position: [688, 304],
+					},
+				],
+				connections: {
+					"Every Morning": {
+						main: [[{ node: "Get Current Weather", type: "main", index: 0 }]],
+					},
+					"Get Current Weather": {
+						main: [[{ node: "Send Weather to Telegram", type: "main", index: 0 }]],
+					},
+				},
+			};
+
+			const sampleResult = {
+				content: [{ type: "text", text: "Showing workflow Daily Weather to Telegram (3 nodes)" }],
+				structuredContent: sampleStructuredContent,
+			};
+
+			const emptyResult = {
+				content: [{ type: "text", text: "Showing workflow Empty Workflow (0 nodes)" }],
+				structuredContent: {
+					workflowId: "empty",
+					workflowUrl: "http://localhost:5678/workflow/empty",
+					name: "Empty Workflow",
+					nodes: [],
+					connections: {},
+				},
+			};
+
+			const errorResult = {
+				content: [{ type: "text", text: "{\"error\":\"Workflow is not available in MCP.\"}" }],
+				structuredContent: { error: "Workflow is not available in MCP." },
+				isError: true,
+			};
+
+			payloadInput.value = JSON.stringify(sampleResult, null, 2);
+
+			function log(label, value) {
+				const entry = `[${new Date().toLocaleTimeString()}] ${label}\n${JSON.stringify(
+					value,
+					null,
+					2,
+				)}\n\n`;
+				logOutput.textContent = entry + logOutput.textContent;
+			}
+
+			function postToApp(message) {
+				if (!frame.contentWindow) return;
+				frame.contentWindow.postMessage(message, "*");
+				log("Host -> App", message);
+			}
+
+			function respond(id, result) {
+				postToApp({ jsonrpc: "2.0", id, result });
+			}
+
+			function respondError(id, code, message) {
+				postToApp({ jsonrpc: "2.0", id, error: { code, message } });
+			}
+
+			function sendToolResult(result) {
+				postToApp({
+					jsonrpc: "2.0",
+					method: "ui/notifications/tool-result",
+					params: result,
+				});
+			}
+
+			function toToolResult(value) {
+				if (
+					value &&
+					typeof value === "object" &&
+					("structuredContent" in value || "content" in value || "isError" in value)
+				) {
+					return value;
+				}
+
+				return {
+					content: [{ type: "text", text: "Wrapped structuredContent payload" }],
+					structuredContent: value,
+				};
+			}
+
+			function hostInitializeResult() {
+				return {
+					protocolVersion,
+					hostInfo: {
+						name: "n8n-mcp-app-harness",
+						version: "0.1.0",
+					},
+					hostCapabilities: {
+						serverTools: { listChanged: true },
+						serverResources: { listChanged: true },
+						message: {
+							text: {},
+							structuredContent: {},
+						},
+						openLinks: {},
+						updateModelContext: {
+							structuredContent: {},
+						},
+						logging: {},
+					},
+					hostContext: {
+						theme: hostTheme.value,
+						displayMode: "inline",
+						availableDisplayModes: ["inline"],
+						containerDimensions: {
+							width: frame.clientWidth,
+							height: frame.clientHeight,
+						},
+						locale: "en-US",
+						timeZone: "UTC",
+						platform: "web",
+						toolInfo: {
+							id: "harness-preview-workflow",
+							tool: {
+								name: "preview_workflow",
+								description: "Renders a visual preview of a workflow.",
+								inputSchema: {
+									type: "object",
+									properties: {
+										workflowId: { type: "string" },
+									},
+									required: ["workflowId"],
+								},
+							},
+						},
+					},
+				};
+			}
+
+			function sendHostContextChanged() {
+				postToApp({
+					jsonrpc: "2.0",
+					method: "ui/notifications/host-context-changed",
+					params: {
+						theme: hostTheme.value,
+					},
+				});
+			}
+
+			function reloadFrame() {
+				if (sandboxMode.value === "sandbox") {
+					frame.setAttribute("sandbox", "allow-scripts");
+				} else {
+					frame.removeAttribute("sandbox");
+				}
+
+				frame.src = `${appUrl}?t=${Date.now()}`;
+				logOutput.textContent = "";
+			}
+
+			window.addEventListener("message", (event) => {
+				if (event.source !== frame.contentWindow) return;
+
+				const message = event.data;
+				if (!message || message.jsonrpc !== "2.0") return;
+
+				log("App -> Host", message);
+
+				if (message.method === "ui/initialize") {
+					respond(message.id, hostInitializeResult());
+					return;
+				}
+
+				if (message.method === "ui/message") {
+					respond(message.id, { isError: false });
+					return;
+				}
+
+				if (message.method === "ui/open-link") {
+					const url = message.params?.url;
+					const opened =
+						typeof url === "string" ? window.open(url, "_blank", "noopener,noreferrer") : null;
+					respond(message.id, { isError: opened === null });
+					return;
+				}
+
+				if (message.method === "ui/download-file") {
+					respond(message.id, { isError: false });
+					return;
+				}
+
+				if (message.method === "ui/request-display-mode") {
+					respond(message.id, { mode: "inline" });
+					return;
+				}
+
+				if (message.method === "ping") {
+					respond(message.id, {});
+					return;
+				}
+
+				if (message.id !== undefined && message.method) {
+					respondError(message.id, -32601, `Harness has no handler for ${message.method}`);
+				}
+			});
+
+			frame.addEventListener("load", () => {
+				window.setTimeout(() => sendToolResult(JSON.parse(payloadInput.value)), 250);
+			});
+
+			document.getElementById("reloadFrame").addEventListener("click", reloadFrame);
+			document.getElementById("sendSample").addEventListener("click", () => {
+				payloadInput.value = JSON.stringify(sampleResult, null, 2);
+				sendToolResult(sampleResult);
+			});
+			document.getElementById("sendEmpty").addEventListener("click", () => {
+				payloadInput.value = JSON.stringify(emptyResult, null, 2);
+				sendToolResult(emptyResult);
+			});
+			document.getElementById("sendError").addEventListener("click", () => {
+				payloadInput.value = JSON.stringify(errorResult, null, 2);
+				sendToolResult(errorResult);
+			});
+			document.getElementById("sendJson").addEventListener("click", () => {
+				try {
+					sendToolResult(toToolResult(JSON.parse(payloadInput.value)));
+				} catch (error) {
+					log("JSON parse error", { message: error instanceof Error ? error.message : String(error) });
+				}
+			});
+			sandboxMode.addEventListener("change", reloadFrame);
+			hostTheme.addEventListener("change", sendHostContextChanged);
+
+			reloadFrame();
+		</script>
+	</body>
+</html>

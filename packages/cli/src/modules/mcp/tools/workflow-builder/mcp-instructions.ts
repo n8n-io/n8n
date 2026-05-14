@@ -40,7 +40,9 @@ To build n8n workflows, follow these steps in order:
 
 8. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setWorkflowMetadata). The whole batch is atomic: if any op fails the workflow is unchanged.
 
-9. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.`;
+9. Credential setup: After creating or updating a workflow, check whether any nodes still need credentials. If credentials were not auto-assigned or the tool result says credentials must be configured manually, call setup_credential with the credential type, project ID when known, suggested name, node type, and purpose. Never ask the user to paste API keys, tokens, OAuth codes, or client secrets into chat.
+
+10. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.`;
 
 	return isBuilderEnabled ? `${INTRO}\n\n${BUILDER_INSTRUCTIONS}` : INTRO;
 }

@@ -1,9 +1,10 @@
+<!-- eslint-disable vue/no-v-html -->
 <script lang="ts" setup>
-import { computed, shallowRef, useCssModule, watch } from 'vue';
+import { computed, useCssModule } from 'vue';
 
 import { deprecatedIconSet, updatedIconSet } from './icons';
 import type { IconName, NodeIconName } from './icons';
-import type { nodeIconSet as NodeIconSetType } from './node-icons';
+import { getNodeIconSvg } from './node-icons';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
@@ -88,31 +89,31 @@ const styles = computed(() => {
 	return stylesToApply;
 });
 
-const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
-
-watch(
-	() => props.icon,
-	async (icon) => {
-		if (typeof icon === 'string' && icon.startsWith('node:') && !nodeIconSetRef.value) {
-			const { nodeIconSet } = await import('./node-icons');
-			nodeIconSetRef.value = nodeIconSet;
-		}
-	},
-	{ immediate: true },
-);
+const nodeIconSvg = computed(() => getNodeIconSvg(props.icon));
 
 const resolvedComponent = computed(
 	() =>
-		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
 		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
 		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet],
 );
+
+const nodeIconClasses = computed(() => [...classes.value, $style.rawNodeIcon]);
+const nodeIconStyles = computed(() => ({ ...styles.value, ...size.value }));
 </script>
 
 <template>
+	<span
+		v-if="nodeIconSvg"
+		:class="nodeIconClasses"
+		aria-hidden="true"
+		role="img"
+		:data-icon="props.icon"
+		:style="nodeIconStyles"
+		v-html="nodeIconSvg"
+	/>
 	<Component
 		:is="resolvedComponent"
-		v-if="resolvedComponent"
+		v-else-if="resolvedComponent"
 		:class="classes"
 		aria-hidden="true"
 		focusable="false"
@@ -136,5 +137,17 @@ const resolvedComponent = computed(
 
 .spin {
 	@include motion.spin;
+}
+
+.rawNodeIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+
+	svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
 }
 </style>

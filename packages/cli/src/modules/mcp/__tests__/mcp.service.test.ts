@@ -12,6 +12,7 @@ import {
 	User,
 } from '@n8n/db';
 import {
+	CREDENTIAL_SETUP_URI,
 	RESOURCE_MIME_TYPE,
 	RESOURCE_URI_META_KEY,
 	WORKFLOW_DIAGRAM_URI,
@@ -26,10 +27,13 @@ import { NodeCatalogService } from '@/node-catalog';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -38,6 +42,15 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import {
+	CREDENTIAL_SETUP_CREATE_TOOL,
+	CREDENTIAL_SETUP_DELETE_DRAFT_TOOL,
+	CREDENTIAL_SETUP_DESCRIBE_TOOL,
+	CREDENTIAL_SETUP_OAUTH_AUTHORIZE_TOOL,
+	CREDENTIAL_SETUP_STATUS_TOOL,
+	CREDENTIAL_SETUP_TEST_TOOL,
+	SETUP_CREDENTIAL_TOOL,
+} from '../tools/credential-setup.tool';
 
 class LinkedTransport implements Transport {
 	peer?: LinkedTransport;
@@ -91,7 +104,7 @@ describe('McpService', () => {
 			mockInstance(CredentialsService),
 			activeExecutions,
 			mockInstance(GlobalConfig, {
-				endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
+				endpoints: { webhook: '/webhook', webhookTest: '/webhook-test', mcpBuilderEnabled: false },
 			}),
 			mockInstance(Telemetry),
 			mockInstance(WorkflowRunner),
@@ -131,7 +144,11 @@ describe('McpService', () => {
 				mockInstance(CredentialsService),
 				activeExecutions,
 				mockInstance(GlobalConfig, {
-					endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpBuilderEnabled: false,
+					},
 				}),
 				mockInstance(Telemetry),
 				mockInstance(WorkflowRunner),
@@ -318,7 +335,7 @@ describe('McpService', () => {
 			expect(typeof server.registerTool).toBe('function');
 		});
 
-		it('should expose preview workflow app metadata and resource', async () => {
+		it('should expose MCP app resources', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			jest.mocked(readFile).mockResolvedValue('<!doctype html><html></html>');
 			const server = await mcpService.getServer(user);
@@ -331,6 +348,9 @@ describe('McpService', () => {
 			try {
 				const tools = await client.listTools();
 				const previewTool = tools.tools.find((tool) => tool.name === 'preview_workflow');
+				const previewExecutionTool = tools.tools.find(
+					(tool) => tool.name === 'preview_workflow_execution',
+				);
 
 				expect(previewTool?._meta).toEqual(
 					expect.objectContaining({
@@ -338,12 +358,26 @@ describe('McpService', () => {
 						ui: expect.objectContaining({ resourceUri: WORKFLOW_DIAGRAM_URI }),
 					}),
 				);
+				expect(previewExecutionTool?._meta).toEqual(
+					expect.objectContaining({
+						[RESOURCE_URI_META_KEY]: WORKFLOW_DIAGRAM_URI,
+						ui: expect.objectContaining({ resourceUri: WORKFLOW_DIAGRAM_URI }),
+					}),
+				);
 
 				const resource = await client.readResource({ uri: WORKFLOW_DIAGRAM_URI });
+				const credentialSetupResource = await client.readResource({ uri: CREDENTIAL_SETUP_URI });
 
 				expect(resource.contents[0]).toEqual(
 					expect.objectContaining({
 						uri: WORKFLOW_DIAGRAM_URI,
+						mimeType: RESOURCE_MIME_TYPE,
+						text: expect.stringContaining('<!doctype html>'),
+					}),
+				);
+				expect(credentialSetupResource.contents[0]).toEqual(
+					expect.objectContaining({
+						uri: CREDENTIAL_SETUP_URI,
 						mimeType: RESOURCE_MIME_TYPE,
 						text: expect.stringContaining('<!doctype html>'),
 					}),
@@ -399,6 +433,9 @@ describe('McpService', () => {
 		it('should register builder tools when mcpBuilderEnabled is true', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
+			const urlService = mockInstance(UrlService, {
+				getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
+			});
 
 			const service = new McpService(
 				mockLogger(),
@@ -406,7 +443,7 @@ describe('McpService', () => {
 				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
-				mockInstance(UrlService),
+				urlService,
 				mockInstance(CredentialsService),
 				activeExecutions,
 				mockInstance(GlobalConfig, {
@@ -430,12 +467,49 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				undefined,
+				mockInstance(CredentialTypes),
+				mockInstance(CredentialsFinderService),
+				mockInstance(OauthService),
 			);
 
 			const server = await service.getServer(user);
 			expect(server).toBeDefined();
 			// Builder tools service should have been initialized
 			expect(nodeCatalogService.initialize).toHaveBeenCalled();
+
+			const client = new Client({ name: 'test-client', version: '1.0.0' });
+			const [clientTransport, serverTransport] = createTransportPair();
+
+			await server.connect(serverTransport);
+			await client.connect(clientTransport);
+
+			try {
+				const tools = await client.listTools();
+				const setupTool = tools.tools.find((tool) => tool.name === SETUP_CREDENTIAL_TOOL);
+
+				expect(setupTool?._meta).toEqual(
+					expect.objectContaining({
+						[RESOURCE_URI_META_KEY]: CREDENTIAL_SETUP_URI,
+						ui: expect.objectContaining({ resourceUri: CREDENTIAL_SETUP_URI }),
+					}),
+				);
+				for (const toolName of [
+					CREDENTIAL_SETUP_DESCRIBE_TOOL,
+					CREDENTIAL_SETUP_CREATE_TOOL,
+					CREDENTIAL_SETUP_OAUTH_AUTHORIZE_TOOL,
+					CREDENTIAL_SETUP_STATUS_TOOL,
+					CREDENTIAL_SETUP_TEST_TOOL,
+					CREDENTIAL_SETUP_DELETE_DRAFT_TOOL,
+				]) {
+					expect(tools.tools.find((tool) => tool.name === toolName)?._meta).toEqual({
+						ui: { visibility: ['app'] },
+					});
+				}
+			} finally {
+				await client.close();
+				await server.close();
+			}
 		});
 	});
 });

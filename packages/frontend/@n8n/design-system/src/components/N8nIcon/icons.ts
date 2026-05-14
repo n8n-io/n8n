@@ -39,7 +39,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
-import type { NodeIconName } from './node-icons';
+import { isNodeIconName, type NodeIconName } from './node-icons';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -745,17 +745,13 @@ export type IconName = keyof typeof updatedIconSet; // only new icon names shoul
 
 export { type NodeIconName } from './node-icons';
 
-const NODE_ICON_PREFIX = 'node:';
-
 export function isNodeIcon(iconName?: string): iconName is NodeIconName {
-	return typeof iconName === 'string' && iconName.startsWith(NODE_ICON_PREFIX);
+	return isNodeIconName(iconName);
 }
 
-export function isSupportedIconName(iconName?: string): iconName is IconName {
+export function isSupportedIconName(iconName?: string): iconName is IconName | NodeIconName {
 	return (
 		typeof iconName === 'string' &&
-		(iconName in updatedIconSet ||
-			iconName in deprecatedIconSet ||
-			iconName.startsWith(NODE_ICON_PREFIX))
+		(iconName in updatedIconSet || iconName in deprecatedIconSet || isNodeIconName(iconName))
 	);
 }

@@ -1,0 +1,29 @@
+{
+	"name": "@n8n/node-icons",
+	"version": "0.1.0",
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"generate": "node scripts/generate-node-icons.mjs",
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:dev": "vitest",
+		"lint": "eslint src --quiet",
+		"lint:fix": "eslint src --fix",
+		"format": "biome format --write .",
+		"format:check": "biome ci ."
+	},
+	"main": "dist/index.js",
+	"module": "src/index.ts",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist/**/*",
+		"src/icons/**/*"
+	],
+	"devDependencies": {
+		"@n8n/typescript-config": "workspace:*",
+		"rimraf": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

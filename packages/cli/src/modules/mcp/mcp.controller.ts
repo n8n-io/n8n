@@ -17,11 +17,20 @@ import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
+import {
+	CREDENTIAL_SETUP_CREATE_TOOL,
+	CREDENTIAL_SETUP_TEST_TOOL,
+} from './tools/credential-setup.tool';
 import { getClientInfo } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
 
 const getAuthMiddleware = () => Container.get(McpServerMiddlewareService).getAuthMiddleware();
+
+const SECRET_BEARING_MCP_TOOLS = new Set([
+	CREDENTIAL_SETUP_CREATE_TOOL,
+	CREDENTIAL_SETUP_TEST_TOOL,
+]);
 
 @RootLevelController('/mcp-server')
 export class McpController {
@@ -114,7 +123,7 @@ export class McpController {
 		this.setCorsHeaders(res);
 
 		const body = req.body;
-		this.logger.debug('MCP Request', { body });
+		this.logger.debug('MCP Request', { body: redactMcpRequestBody(body) });
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
@@ -151,7 +160,7 @@ export class McpController {
 					mcp_connection_status: 'success',
 				});
 			} else if (isToolCallRequest) {
-				this.logger.debug('MCP Tool Call request', body);
+				this.logger.debug('MCP Tool Call request', { body: redactMcpRequestBody(body) });
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -199,4 +208,37 @@ export class McpController {
 	private trackConnectionEvent(payload: UserConnectedToMCPEventPayload) {
 		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);
 	}
+}
+
+function redactMcpRequestBody(body: unknown): unknown {
+	if (Array.isArray(body)) {
+		return body.map(redactMcpRequestBody);
+	}
+
+	if (!isRecord(body)) {
+		return body;
+	}
+
+	const method = typeof body.method === 'string' ? body.method : undefined;
+	if (method !== 'tools/call' && method !== 'toolCall') {
+		return body;
+	}
+
+	const params = isRecord(body.params) ? body.params : undefined;
+	const toolName = typeof params?.name === 'string' ? params.name : undefined;
+	if (!toolName || !SECRET_BEARING_MCP_TOOLS.has(toolName)) {
+		return body;
+	}
+
+	return {
+		...body,
+		params: {
+			...params,
+			arguments: '[redacted]',
+		},
+	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }

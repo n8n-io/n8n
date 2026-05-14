@@ -61,4 +61,17 @@ describe('Icon', () => {
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});
+
+	it('renders node icons from the shared node icon registry', () => {
+		const { container } = render(Icon, {
+			props: {
+				icon: 'node:if',
+				size: 24,
+			},
+		});
+
+		const icon = container.querySelector('[data-icon="node:if"]');
+		expect(icon).toBeTruthy();
+		expect(icon?.querySelector('svg')).toBeTruthy();
+	});
 });

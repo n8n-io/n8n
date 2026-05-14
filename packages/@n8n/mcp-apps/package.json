@@ -24,9 +24,16 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "pnpm build:ui && pnpm build:server",
-    "build:ui": "vite build",
+    "build:ui": "vite build --mode workflow-diagram && vite build --mode credential-setup",
     "build:server": "tsc -p tsconfig.build.json",
+    "debug:workflow-diagram": "vite --config vite.harness.config.mts --host 127.0.0.1 --port 4174",
+    "debug:credential-setup": "vite --mode credential-setup --host 127.0.0.1 --port 4175",
+    "test": "vitest run",
+    "test:dev": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@n8n/node-icons": "workspace:*"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "1.26.0"
@@ -40,6 +47,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-singlefile": "catalog:",
+    "vitest": "catalog:",
     "vue": "catalog:frontend",
     "zod": "catalog:"
   }

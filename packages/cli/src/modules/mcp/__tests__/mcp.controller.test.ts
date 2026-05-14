@@ -64,6 +64,33 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).not.toHaveBeenCalled();
 	});
 
+	test('redacts secret-bearing credential setup tool call bodies before debug logging', async () => {
+		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+		const body = {
+			jsonrpc: '2.0',
+			method: 'tools/call',
+			params: {
+				name: 'credential_setup_create',
+				arguments: { data: { apiKey: 'secret-api-key' } },
+			},
+			id: 1,
+		};
+		const res = createRes();
+
+		await controller.build(createReq({ body }), res);
+
+		expect(logger.debug).toHaveBeenCalledWith('MCP Request', {
+			body: {
+				...body,
+				params: {
+					name: 'credential_setup_create',
+					arguments: '[redacted]',
+				},
+			},
+		});
+		expect(JSON.stringify(logger.debug.mock.calls)).not.toContain('secret-api-key');
+	});
+
 	test('creates mcp server if MCP access is enabled', async () => {
 		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
