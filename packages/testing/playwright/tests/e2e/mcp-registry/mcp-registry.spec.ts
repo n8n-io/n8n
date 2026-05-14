@@ -22,7 +22,7 @@ test.describe(
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.addSupplementalNodeToParent('Notion MCP', 'ai_tool', AGENT_NODE_NAME, {
 				exactMatch: true,
-				subcategory: 'MCP',
+				subcategory: 'MCP servers',
 				exactSubcategory: true,
 			});
 
