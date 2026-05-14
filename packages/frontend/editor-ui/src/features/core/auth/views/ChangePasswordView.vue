@@ -2,13 +2,12 @@
 import { onMounted, ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import AuthView from './AuthView.vue';
-
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	createPasswordRules,
 	N8nButton,
 	N8nCard,
+	N8nFormBox,
 	N8nHeading,
 	N8nIcon,
 	N8nInfoTip,
@@ -152,9 +151,9 @@ const submitChangePassword = async (
 	}
 };
 
-const onSubmit = async (values: { [key: string]: string }) => {
+const onSubmit = async (values: Record<string, unknown>) => {
 	const params: { mfaCode?: string } = {};
-	if (values.mfaCode) params.mfaCode = values.mfaCode;
+	if (typeof values.mfaCode === 'string' && values.mfaCode) params.mfaCode = values.mfaCode;
 	await submitChangePassword(params);
 };
 
@@ -380,20 +379,18 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 		</N8nCard>
 	</div>
 
-	<!-- TOTP flow (or no MFA) — existing form-based view, with a switcher
-		 below when the user has more than one MFA method available. -->
-	<div v-else-if="config" :class="$style.totpWrapper">
-		<AuthView :form="config" :form-loading="loading" @submit="onSubmit" @update="onInput" />
-		<div
-			v-if="switcherLabelKey"
-			:class="$style.totpSwitcher"
-			data-test-id="change-password-switcher"
-		>
-			<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
-				<N8nIcon :icon="switcherIcon" size="xsmall" />
-				{{ locale.baseText(switcherLabelKey) }}
-			</button>
-		</div>
+	<!-- TOTP flow (or no MFA) — N8nFormBox so the method switcher can sit
+		 inside the same card as the form, matching the webauthn layout. -->
+	<div v-else-if="config" :class="$style.container">
+		<N8nLogo size="large" :release-channel="releaseChannel" />
+		<N8nFormBox v-bind="config" :button-loading="loading" @submit="onSubmit" @update="onInput">
+			<div v-if="switcherLabelKey" :class="$style.switcher" data-test-id="change-password-switcher">
+				<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
+					<N8nIcon :icon="switcherIcon" size="xsmall" />
+					{{ locale.baseText(switcherLabelKey) }}
+				</button>
+			</div>
+		</N8nFormBox>
 	</div>
 </template>
 
@@ -503,20 +500,6 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 	margin-top: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
-	text-align: center;
-}
-
-.totpWrapper {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-}
-
-// AuthView already bottom-pads itself with `var(--spacing--xl)` — pull the
-// switcher up so it sits flush under the form card rather than hovering at
-// the very bottom of the viewport.
-.totpSwitcher {
-	margin-top: calc(-1 * var(--spacing--md));
 	text-align: center;
 }
 
