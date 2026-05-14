@@ -292,7 +292,9 @@ describe('agent integration credential picker usage', () => {
 		).toBeDefined();
 
 		await wrapper.find('[data-testid="stub-select-first-credential"]').trigger('click');
-		await wrapper.find('[data-testid="telegram-user-ids"]').setValue('123, 123, 456');
+		const tagInput = wrapper.find('[data-testid="telegram-user-ids"] input');
+		await tagInput.setValue('123, 123, 456');
+		await tagInput.trigger('blur');
 		await wrapper.find('[data-testid="telegram-connect-button"]').trigger('click');
 		await flushPromises();
 
@@ -354,7 +356,7 @@ describe('agent integration credential picker usage', () => {
 
 		const userIds = wrapper.find('[data-testid="telegram-user-ids"]');
 		expect(userIds.exists()).toBe(true);
-		expect(userIds.attributes('disabled')).toBeDefined();
+		expect(userIds.find('input').attributes('disabled')).toBeDefined();
 		expect(wrapper.find('[data-testid="telegram-telegram-settings-save"]').exists()).toBe(false);
 	});
 });
