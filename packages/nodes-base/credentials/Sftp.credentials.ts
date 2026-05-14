@@ -57,5 +57,17 @@ export class Sftp implements ICredentialType {
 			default: '',
 			description: 'For an encrypted private key, this is the passphrase used to decrypt it',
 		},
+		{
+			displayName: 'Max Concurrent Handshakes',
+			name: 'maxConcurrentHandshakes',
+			type: 'number',
+			default: 5,
+			typeOptions: {
+				minValue: 1,
+				maxValue: 32,
+			},
+			description:
+				'Cap on parallel SSH handshakes to this server. Lower if you see handshake timeouts under load. Default 5 works for most servers.',
+		},
 	];
 }

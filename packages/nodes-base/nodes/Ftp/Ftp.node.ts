@@ -22,7 +22,7 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
-import { makeHandshakeKey, withHandshakePermit } from './HandshakeQueue';
+import { makeHandshakeKey, resolveHandshakeLimit, withHandshakePermit } from './HandshakeQueue';
 
 interface ReturnFtpItem {
 	type: string;
@@ -530,11 +530,11 @@ export class Ftp implements INodeType {
 				const handshakeKey = makeHandshakeKey({
 					host: credentials.host as string,
 					port: credentials.port as number,
-					username: credentials.username as string,
 					protocol: 'ftp',
 				});
+				const handshakeLimit = resolveHandshakeLimit(credentials.maxConcurrentHandshakes);
 				try {
-					await withHandshakePermit(handshakeKey, async () => {
+					await withHandshakePermit(handshakeKey, handshakeLimit, async () => {
 						await ftp.connect({
 							host: credentials.host as string,
 							port: credentials.port as number,
@@ -564,11 +564,11 @@ export class Ftp implements INodeType {
 				const handshakeKey = makeHandshakeKey({
 					host: credentials.host as string,
 					port: credentials.port as number,
-					username: credentials.username as string,
 					protocol: 'sftp',
 				});
+				const handshakeLimit = resolveHandshakeLimit(credentials.maxConcurrentHandshakes);
 				try {
-					await withHandshakePermit(handshakeKey, async () => {
+					await withHandshakePermit(handshakeKey, handshakeLimit, async () => {
 						if (credentials.privateKey) {
 							await sftp.connect({
 								host: credentials.host as string,
@@ -626,15 +626,15 @@ export class Ftp implements INodeType {
 		const handshakeKey = makeHandshakeKey({
 			host: credentials.host as string,
 			port: credentials.port as number,
-			username: credentials.username as string,
 			protocol: protocol === 'sftp' ? 'sftp' : 'ftp',
 		});
+		const handshakeLimit = resolveHandshakeLimit(credentials.maxConcurrentHandshakes);
 
 		try {
 			try {
 				if (protocol === 'sftp') {
 					sftp = new sftpClient();
-					await withHandshakePermit(handshakeKey, async () => {
+					await withHandshakePermit(handshakeKey, handshakeLimit, async () => {
 						if (credentials.privateKey) {
 							await sftp.connect({
 								host: credentials.host as string,
@@ -663,7 +663,7 @@ export class Ftp implements INodeType {
 					});
 				} else {
 					ftp = new ftpClient();
-					await withHandshakePermit(handshakeKey, async () => {
+					await withHandshakePermit(handshakeKey, handshakeLimit, async () => {
 						await ftp.connect({
 							host: credentials.host as string,
 							port: credentials.port as number,

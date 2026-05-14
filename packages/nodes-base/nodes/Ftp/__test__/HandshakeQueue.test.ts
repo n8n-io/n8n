@@ -1,10 +1,12 @@
 import {
 	__resetHandshakeQueueForTests,
+	DEFAULT_MAX_CONCURRENT_HANDSHAKES,
 	makeHandshakeKey,
+	MAX_MAX_CONCURRENT_HANDSHAKES,
+	MIN_MAX_CONCURRENT_HANDSHAKES,
+	resolveHandshakeLimit,
 	withHandshakePermit,
 } from '../HandshakeQueue';
-
-const ENV_KEY = 'N8N_SFTP_HANDSHAKE_CONCURRENCY';
 
 type Gate = {
 	promise: Promise<undefined>;
@@ -26,12 +28,36 @@ async function flushMicrotasks(): Promise<void> {
 	await new Promise((resolve) => setImmediate(resolve));
 }
 
-describe('HandshakeQueue', () => {
-	const originalEnv = process.env[ENV_KEY];
+async function measurePeak(
+	key: string,
+	limit: number,
+	gateCount: number,
+): Promise<{ peakActive: number; peakConcurrent: number }> {
+	let active = 0;
+	let peakConcurrent = 0;
+	const gates = Array.from({ length: gateCount }, () => gate());
 
+	const runs = gates.map(
+		async (g) =>
+			await withHandshakePermit(key, limit, async () => {
+				active++;
+				peakConcurrent = Math.max(peakConcurrent, active);
+				await g.promise;
+				active--;
+			}),
+	);
+
+	await flushMicrotasks();
+	const peakActive = active;
+
+	gates.forEach((g) => g.resolve());
+	await Promise.all(runs);
+
+	return { peakActive, peakConcurrent };
+}
+
+describe('HandshakeQueue', () => {
 	afterEach(() => {
-		if (originalEnv === undefined) delete process.env[ENV_KEY];
-		else process.env[ENV_KEY] = originalEnv;
 		__resetHandshakeQueueForTests();
 	});
 
@@ -40,180 +66,128 @@ describe('HandshakeQueue', () => {
 			const key = makeHandshakeKey({
 				host: 'sftp.example.com',
 				port: 22,
-				username: 'alice',
 				protocol: 'sftp',
 			});
 
-			expect(key).toBe('sftp|sftp.example.com|22|alice');
+			expect(key).toBe('sftp|sftp.example.com|22');
 			expect(key).not.toContain('password');
 			expect(key).not.toContain('privateKey');
 			expect(key).not.toContain('passphrase');
 		});
 
 		it('lowercases host so case differences collide', () => {
-			const a = makeHandshakeKey({
-				host: 'Example.com',
-				port: 22,
-				username: 'alice',
-				protocol: 'sftp',
-			});
-			const b = makeHandshakeKey({
-				host: 'example.com',
-				port: 22,
-				username: 'alice',
-				protocol: 'sftp',
-			});
+			const a = makeHandshakeKey({ host: 'Example.com', port: 22, protocol: 'sftp' });
+			const b = makeHandshakeKey({ host: 'example.com', port: 22, protocol: 'sftp' });
 			expect(a).toBe(b);
 		});
 
-		it('preserves username case', () => {
-			const a = makeHandshakeKey({
-				host: 'example.com',
-				port: 22,
-				username: 'Alice',
-				protocol: 'sftp',
-			});
-			const b = makeHandshakeKey({
-				host: 'example.com',
-				port: 22,
-				username: 'alice',
-				protocol: 'sftp',
-			});
+		it('shares a bucket across users on the same server (matches MaxStartups scope)', () => {
+			// Username intentionally has no effect — server-side throttle is per source, not per user.
+			const a = makeHandshakeKey({ host: 'example.com', port: 22, protocol: 'sftp' });
+			const b = makeHandshakeKey({ host: 'example.com', port: 22, protocol: 'sftp' });
+			expect(a).toBe(b);
+		});
+
+		it('separates buckets by port', () => {
+			const a = makeHandshakeKey({ host: 'example.com', port: 22, protocol: 'sftp' });
+			const b = makeHandshakeKey({ host: 'example.com', port: 2222, protocol: 'sftp' });
+			expect(a).not.toBe(b);
+		});
+
+		it('separates buckets by protocol', () => {
+			const a = makeHandshakeKey({ host: 'example.com', port: 21, protocol: 'ftp' });
+			const b = makeHandshakeKey({ host: 'example.com', port: 21, protocol: 'sftp' });
 			expect(a).not.toBe(b);
 		});
 	});
 
+	describe('resolveHandshakeLimit', () => {
+		it('returns the value when within range', () => {
+			expect(resolveHandshakeLimit(3)).toBe(3);
+			expect(resolveHandshakeLimit(1)).toBe(MIN_MAX_CONCURRENT_HANDSHAKES);
+			expect(resolveHandshakeLimit(32)).toBe(MAX_MAX_CONCURRENT_HANDSHAKES);
+		});
+
+		it('clamps values below the minimum', () => {
+			expect(resolveHandshakeLimit(0)).toBe(MIN_MAX_CONCURRENT_HANDSHAKES);
+			expect(resolveHandshakeLimit(-5)).toBe(MIN_MAX_CONCURRENT_HANDSHAKES);
+		});
+
+		it('clamps values above the maximum', () => {
+			expect(resolveHandshakeLimit(99)).toBe(MAX_MAX_CONCURRENT_HANDSHAKES);
+		});
+
+		it('truncates non-integer values', () => {
+			expect(resolveHandshakeLimit(3.9)).toBe(3);
+		});
+
+		it.each([undefined, null, 'abc', NaN, Number.POSITIVE_INFINITY])(
+			'falls back to the default for invalid value %p',
+			(value) => {
+				expect(resolveHandshakeLimit(value)).toBe(DEFAULT_MAX_CONCURRENT_HANDSHAKES);
+			},
+		);
+	});
+
 	describe('withHandshakePermit', () => {
 		it('releases the permit when fn resolves', async () => {
-			process.env[ENV_KEY] = '1';
-			__resetHandshakeQueueForTests();
-
-			await withHandshakePermit('key-a', async () => 'first');
-			const result = await withHandshakePermit('key-a', async () => 'second');
-
+			await withHandshakePermit('key-a', 1, async () => 'first');
+			const result = await withHandshakePermit('key-a', 1, async () => 'second');
 			expect(result).toBe('second');
 		});
 
 		it('releases the permit when fn rejects', async () => {
-			process.env[ENV_KEY] = '1';
-			__resetHandshakeQueueForTests();
-
 			await expect(
-				withHandshakePermit('key-a', async () => {
+				withHandshakePermit('key-a', 1, async () => {
 					throw new Error('boom');
 				}),
 			).rejects.toThrow('boom');
 
 			// If the permit leaked, this would hang.
-			const result = await withHandshakePermit('key-a', async () => 'ok');
+			const result = await withHandshakePermit('key-a', 1, async () => 'ok');
 			expect(result).toBe('ok');
 		});
 
-		it('caps concurrency per key', async () => {
-			process.env[ENV_KEY] = '2';
-			__resetHandshakeQueueForTests();
-
-			let active = 0;
-			let peak = 0;
-			const gates = [gate(), gate(), gate(), gate(), gate()];
-
-			const runs = gates.map(
-				async (g) =>
-					await withHandshakePermit('key-a', async () => {
-						active++;
-						peak = Math.max(peak, active);
-						await g.promise;
-						active--;
-					}),
-			);
-
-			await flushMicrotasks();
-			expect(active).toBe(2);
-
-			gates[0].resolve();
-			gates[1].resolve();
-			await flushMicrotasks();
-			expect(active).toBe(2);
-
-			gates[2].resolve();
-			gates[3].resolve();
-			gates[4].resolve();
-			await Promise.all(runs);
-
-			expect(peak).toBe(2);
+		it('caps concurrency per key at the supplied limit', async () => {
+			const { peakActive, peakConcurrent } = await measurePeak('key-a', 2, 5);
+			expect(peakActive).toBe(2);
+			expect(peakConcurrent).toBe(2);
 		});
 
 		it('isolates buckets across keys', async () => {
-			process.env[ENV_KEY] = '1';
-			__resetHandshakeQueueForTests();
-
 			const slow = gate();
-			const aRun = withHandshakePermit('key-a', async () => {
+			const aRun = withHandshakePermit('key-a', 1, async () => {
 				await slow.promise;
 			});
 
 			// key-b must not be blocked by key-a's holder.
-			const bResult = await withHandshakePermit('key-b', async () => 'b-done');
+			const bResult = await withHandshakePermit('key-b', 1, async () => 'b-done');
 			expect(bResult).toBe('b-done');
 
 			slow.resolve();
 			await aRun;
 		});
-	});
 
-	describe('env var parsing', () => {
-		async function measurePeak(gateCount: number): Promise<{ active: number; peak: number }> {
-			let active = 0;
-			let peak = 0;
-			const gates = Array.from({ length: gateCount }, () => gate());
+		it('honours a changed limit on subsequent calls (credential edited mid-flight)', async () => {
+			// Customer edits the credential's maxConcurrentHandshakes from 2 down to 1.
+			// The next workflow execution should see the new cap apply on its own acquires.
+			const firstRun = await measurePeak('key-a', 2, 4);
+			expect(firstRun.peakActive).toBe(2);
 
-			const runs = gates.map(
-				async (g) =>
-					await withHandshakePermit('key-a', async () => {
-						active++;
-						peak = Math.max(peak, active);
-						await g.promise;
-						active--;
-					}),
-			);
-
-			await flushMicrotasks();
-			const observedActive = active;
-
-			gates.forEach((g) => g.resolve());
-			await Promise.all(runs);
-
-			return { active: observedActive, peak };
-		}
-
-		it('falls back to default 5 when unset', async () => {
-			delete process.env[ENV_KEY];
-			__resetHandshakeQueueForTests();
-
-			const { active, peak } = await measurePeak(6);
-			expect(active).toBe(5);
-			expect(peak).toBe(5);
+			const secondRun = await measurePeak('key-a', 1, 4);
+			expect(secondRun.peakActive).toBe(1);
 		});
 
-		it.each(['0', '33', '-1', 'abc', ''])(
-			'falls back to default 5 for invalid value %p',
-			async (value) => {
-				if (value === '') delete process.env[ENV_KEY];
-				else process.env[ENV_KEY] = value;
-				__resetHandshakeQueueForTests();
+		it('uses the default when the credential value is missing', async () => {
+			const limit = resolveHandshakeLimit(undefined);
+			const { peakActive } = await measurePeak('key-a', limit, 6);
+			expect(peakActive).toBe(DEFAULT_MAX_CONCURRENT_HANDSHAKES);
+		});
 
-				const { active } = await measurePeak(6);
-				expect(active).toBe(5);
-			},
-		);
-
-		it('honours valid in-range values', async () => {
-			process.env[ENV_KEY] = '3';
-			__resetHandshakeQueueForTests();
-
-			const { active, peak } = await measurePeak(5);
-			expect(active).toBe(3);
-			expect(peak).toBe(3);
+		it('uses the clamped value when the credential value is out of range', async () => {
+			const limit = resolveHandshakeLimit(0);
+			const { peakActive } = await measurePeak('key-a', limit, 3);
+			expect(peakActive).toBe(MIN_MAX_CONCURRENT_HANDSHAKES);
 		});
 	});
 });
