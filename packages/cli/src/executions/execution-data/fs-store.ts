@@ -69,6 +69,21 @@ export class FsStore implements ExecutionDataStore {
 		}
 	}
 
+	async readMany(refs: ExecutionRef[]) {
+		const bundles = new Map<string, ExecutionDataBundle>();
+		if (refs.length === 0) return bundles;
+
+		const results = await Promise.all(
+			refs.map(async (ref) => [ref, await this.read(ref)] as const),
+		);
+
+		for (const [ref, bundle] of results) {
+			if (bundle) bundles.set(ref.executionId, bundle);
+		}
+
+		return bundles;
+	}
+
 	async delete(ref: ExecutionRef | ExecutionRef[]) {
 		const refs = Array.isArray(ref) ? ref : [ref];
 

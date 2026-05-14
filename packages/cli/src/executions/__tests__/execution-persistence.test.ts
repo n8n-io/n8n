@@ -788,6 +788,340 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
+	describe('findSingleExecution', () => {
+		const executionId = 'exec-1';
+		const workflowId = 'wf-1';
+
+		const bundle = {
+			data: '[{"resultData":"1"},{}]',
+			workflowData: {
+				id: workflowId,
+				name: 'snapshot',
+				nodes: [],
+				connections: {},
+				settings: undefined,
+			},
+			workflowVersionId: 'v-1',
+			version: 1 as const,
+		};
+
+		const mockEntity = (storedAt: 'db' | 'fs') =>
+			({
+				id: executionId,
+				workflowId,
+				storedAt,
+				metadata: [{ key: 'k', value: 'v' }],
+				annotation: undefined,
+				status: 'success',
+			}) as unknown as ExecutionEntity;
+
+		beforeEach(() => {
+			executionRepository.findOne.mockReset();
+			executionRepository.findSingleExecution.mockReset();
+			executionRepository.reportInvalidExecutions.mockReset();
+			dbStore.read.mockReset();
+			fsStore.read.mockReset();
+		});
+
+		it('should delegate to the repository when includeData is not set', async () => {
+			const executionPersistence = createPersistenceService('fs');
+			executionRepository.findSingleExecution.mockResolvedValue({ id: executionId } as never);
+
+			const result = await executionPersistence.findSingleExecution(executionId);
+
+			expect(result).toEqual({ id: executionId });
+			expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(executionId, undefined);
+			expect(executionRepository.findOne).not.toHaveBeenCalled();
+			expect(dbStore.read).not.toHaveBeenCalled();
+			expect(fsStore.read).not.toHaveBeenCalled();
+		});
+
+		it('should load entity without the executionData JOIN and read data from DbStore for db-mode', async () => {
+			const executionPersistence = createPersistenceService('fs');
+			executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+			dbStore.read.mockResolvedValue(bundle);
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(executionRepository.findOne).toHaveBeenCalledWith({
+				where: { id: executionId },
+				relations: { metadata: true },
+			});
+			expect(dbStore.read).toHaveBeenCalledWith({ workflowId, executionId });
+			expect(fsStore.read).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				id: executionId,
+				workflowId,
+				data: bundle.data,
+				workflowData: bundle.workflowData,
+				workflowVersionId: 'v-1',
+				customData: { k: 'v' },
+			});
+		});
+
+		it('should read data from FsStore for fs-mode', async () => {
+			const executionPersistence = createPersistenceService('fs');
+			executionRepository.findOne.mockResolvedValue(mockEntity('fs'));
+			fsStore.read.mockResolvedValue(bundle);
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(fsStore.read).toHaveBeenCalledWith({ workflowId, executionId });
+			expect(dbStore.read).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				data: bundle.data,
+				workflowData: bundle.workflowData,
+			});
+		});
+
+		it('should unflatten data when requested', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+			dbStore.read.mockResolvedValue(bundle);
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(result?.data).not.toEqual(bundle.data);
+			expect(result?.data).toBeTruthy();
+		});
+
+		it('should pass the annotation relation when requested', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+			dbStore.read.mockResolvedValue(bundle);
+
+			await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				includeAnnotation: true,
+			});
+
+			expect(executionRepository.findOne).toHaveBeenCalledWith({
+				where: { id: executionId },
+				relations: { metadata: true, annotation: { tags: true } },
+			});
+		});
+
+		it('should return undefined when entity not found', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(null);
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(result).toBeUndefined();
+			expect(dbStore.read).not.toHaveBeenCalled();
+			expect(fsStore.read).not.toHaveBeenCalled();
+		});
+
+		it('should report invalid and return undefined when db bundle is missing', async () => {
+			const executionPersistence = createPersistenceService('db');
+			const entity = mockEntity('db');
+			executionRepository.findOne.mockResolvedValue(entity);
+			dbStore.read.mockResolvedValue(null);
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(result).toBeUndefined();
+			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([entity]);
+		});
+
+		it('should throw when fs bundle is missing', async () => {
+			const executionPersistence = createPersistenceService('fs');
+			executionRepository.findOne.mockResolvedValue(mockEntity('fs'));
+			fsStore.read.mockResolvedValue(null);
+
+			await expect(
+				executionPersistence.findSingleExecution(executionId, { includeData: true }),
+			).rejects.toBeInstanceOf(MissingExecutionDataError);
+			expect(executionRepository.reportInvalidExecutions).not.toHaveBeenCalled();
+		});
+
+		it('should merge caller `where` into the entity lookup', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+			dbStore.read.mockResolvedValue(bundle);
+
+			await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				where: { status: 'success' },
+			});
+
+			expect(executionRepository.findOne).toHaveBeenCalledWith({
+				where: { id: executionId, status: 'success' },
+				relations: { metadata: true },
+			});
+		});
+	});
+
+	describe('findMultipleExecutions', () => {
+		const wf = 'wf-1';
+
+		const makeBundle = (id: string) => ({
+			data: `[{"id":"${id}"},{}]`,
+			workflowData: { id: wf, name: 's', nodes: [], connections: {}, settings: undefined },
+			workflowVersionId: 'v',
+			version: 1 as const,
+		});
+
+		const makeEntity = (id: string, storedAt: 'db' | 'fs') =>
+			({
+				id,
+				workflowId: wf,
+				storedAt,
+				metadata: [],
+				annotation: undefined,
+				status: 'success',
+			}) as unknown as ExecutionEntity;
+
+		beforeEach(() => {
+			executionRepository.find.mockReset();
+			executionRepository.findMultipleExecutions.mockReset();
+			executionRepository.reportInvalidExecutions.mockReset();
+			dbStore.readMany.mockReset();
+			fsStore.readMany.mockReset();
+		});
+
+		it('should delegate to the repository when includeData is not set', async () => {
+			const executionPersistence = createPersistenceService('fs');
+			executionRepository.findMultipleExecutions.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions({ where: { workflowId: wf } });
+
+			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
+				{ where: { workflowId: wf } },
+				undefined,
+			);
+			expect(executionRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('should batch-fetch db bundles in a single readMany call', async () => {
+			const executionPersistence = createPersistenceService('db');
+			const entities = [makeEntity('a', 'db'), makeEntity('b', 'db')];
+			executionRepository.find.mockResolvedValue(entities);
+			dbStore.readMany.mockResolvedValue(
+				new Map([
+					['a', makeBundle('a')],
+					['b', makeBundle('b')],
+				]),
+			);
+
+			const result = await executionPersistence.findMultipleExecutions(
+				{ where: { workflowId: wf } },
+				{ includeData: true },
+			);
+
+			expect(dbStore.readMany).toHaveBeenCalledTimes(1);
+			expect(dbStore.readMany).toHaveBeenCalledWith([
+				{ workflowId: wf, executionId: 'a' },
+				{ workflowId: wf, executionId: 'b' },
+			]);
+			expect(fsStore.readMany).toHaveBeenCalledWith([]);
+			expect(result).toHaveLength(2);
+		});
+
+		it('should partition mixed batches between db and fs stores', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([
+				makeEntity('a', 'db'),
+				makeEntity('b', 'fs'),
+				makeEntity('c', 'db'),
+			]);
+			dbStore.readMany.mockResolvedValue(
+				new Map([
+					['a', makeBundle('a')],
+					['c', makeBundle('c')],
+				]),
+			);
+			fsStore.readMany.mockResolvedValue(new Map([['b', makeBundle('b')]]));
+
+			const result = await executionPersistence.findMultipleExecutions({}, { includeData: true });
+
+			expect(dbStore.readMany).toHaveBeenCalledWith([
+				{ workflowId: wf, executionId: 'a' },
+				{ workflowId: wf, executionId: 'c' },
+			]);
+			expect(fsStore.readMany).toHaveBeenCalledWith([{ workflowId: wf, executionId: 'b' }]);
+			expect(result.map((e) => e.id)).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should report missing bundles from both stores and drop them from the result', async () => {
+			const executionPersistence = createPersistenceService('db');
+			const dbA = makeEntity('a', 'db');
+			const dbB = makeEntity('b', 'db'); // missing
+			const fsC = makeEntity('c', 'fs'); // missing
+			executionRepository.find.mockResolvedValue([dbA, dbB, fsC]);
+			dbStore.readMany.mockResolvedValue(new Map([['a', makeBundle('a')]]));
+			fsStore.readMany.mockResolvedValue(new Map());
+
+			const result = await executionPersistence.findMultipleExecutions({}, { includeData: true });
+
+			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([dbB, fsC]);
+			expect(result.map((e) => e.id)).toEqual(['a']);
+		});
+
+		it('should add metadata relation (not executionData) when none was supplied', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions(
+				{ where: { workflowId: wf }, take: 5 },
+				{ includeData: true },
+			);
+
+			const findArg = executionRepository.find.mock.calls[0][0];
+			expect(findArg?.relations).toEqual(['metadata']);
+			expect(findArg?.where).toEqual({ workflowId: wf });
+			expect(findArg?.take).toBe(5);
+		});
+
+		it('should append metadata to a caller-provided array of relations', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions(
+				{ relations: ['annotation'] },
+				{ includeData: true },
+			);
+
+			const findArg = executionRepository.find.mock.calls[0][0];
+			expect(findArg?.relations).toEqual(['annotation', 'metadata']);
+		});
+
+		it('should add metadata to a caller-provided object of relations', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions(
+				{ relations: { annotation: true } },
+				{ includeData: true },
+			);
+
+			const findArg = executionRepository.find.mock.calls[0][0];
+			expect(findArg?.relations).toEqual({ annotation: true, metadata: true });
+		});
+
+		it('should return an empty array when no entities match', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			const result = await executionPersistence.findMultipleExecutions({}, { includeData: true });
+
+			expect(result).toEqual([]);
+			expect(dbStore.readMany).not.toHaveBeenCalled();
+			expect(fsStore.readMany).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('hardDelete', () => {
 		const executionPersistence = createPersistenceService('db');
 		const baseTarget = { workflowId: 'wf-1', executionId: 'exec-1' };
