@@ -12,6 +12,11 @@ export class McpRegistryModule implements ModuleInterface {
 		await Container.get(McpRegistryService).init();
 	}
 
+	async entities() {
+		const { McpRegistryServerEntity } = await import('./registry/mcp-registry-server.entity');
+		return [McpRegistryServerEntity];
+	}
+
 	async nodeLoaders() {
 		const { McpRegistryNodeLoader } = await import('./mcp-registry-node-loader');
 

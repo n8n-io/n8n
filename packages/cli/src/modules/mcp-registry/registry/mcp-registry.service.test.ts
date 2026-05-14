@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -8,12 +7,17 @@ import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { McpRegistryApiClient, McpRegistryServerMetadata } from './mcp-registry-api.client';
+import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
+import type { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryService } from './mcp-registry.service';
 import type { McpRegistryServer } from './mcp-registry.types';
+import { toEntity } from './mcp-registry.types';
 import { linearMockServer, notionMockServer } from './mock-servers';
-import { jsonParse } from 'n8n-workflow';
 
-const settingsKey = 'mcp-registry.servers';
+function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
+	const now = new Date();
+	return { ...toEntity(server), createdAt: now, updatedAt: now } as McpRegistryServerEntity;
+}
 
 type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
@@ -23,7 +27,7 @@ type CreateServiceOptions = {
 
 function createService(options: CreateServiceOptions = {}) {
 	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
-	const settingsRepository = mock<SettingsRepository>();
+	const repository = mock<McpRegistryServerRepository>();
 	const apiClient = mock<McpRegistryApiClient>();
 	const instanceSettings = mock<InstanceSettings>({
 		isLeader: options.isLeader ?? false,
@@ -34,26 +38,34 @@ function createService(options: CreateServiceOptions = {}) {
 	const publisher = mock<Publisher>({ publishCommand: jest.fn().mockResolvedValue(undefined) });
 
 	if (options.storedServers === null) {
-		settingsRepository.findByKey.mockResolvedValue(null);
+		repository.find.mockResolvedValue([]);
+		repository.findBy.mockResolvedValue([]);
 	} else {
-		settingsRepository.findByKey.mockResolvedValue({
-			key: settingsKey,
-			value: JSON.stringify({
-				servers: options.storedServers ?? [notionMockServer, linearMockServer],
-				lastSyncedAt: '2026-05-10T10:00:00.000Z',
-			}),
-			loadOnStartup: false,
-		} as never);
+		const servers = options.storedServers ?? [notionMockServer, linearMockServer];
+		const entities = servers.map(toMockEntity);
+		repository.find.mockResolvedValue(entities);
+		repository.findBy.mockImplementation(async (where) => {
+			if (where && 'status' in where) {
+				return entities.filter((e) => e.status === where.status);
+			}
+			return entities;
+		});
+		repository.findOneBy.mockImplementation(async (where) => {
+			if (where && 'slug' in where) {
+				return entities.find((e) => e.slug === where.slug) ?? null;
+			}
+			return null;
+		});
 	}
 
 	apiClient.fetchServersMetadata.mockResolvedValue([]);
 	apiClient.fetchServersByIds.mockResolvedValue([]);
 	apiClient.fetchAllServers.mockResolvedValue([notionMockServer, linearMockServer]);
-	settingsRepository.upsert.mockResolvedValue({} as never);
+	repository.upsert.mockResolvedValue({} as never);
 
 	const service = new McpRegistryService(
 		logger,
-		settingsRepository,
+		repository,
 		apiClient,
 		instanceSettings,
 		loadNodesAndCredentials,
@@ -63,7 +75,7 @@ function createService(options: CreateServiceOptions = {}) {
 
 	return {
 		service,
-		settingsRepository,
+		repository,
 		apiClient,
 		push,
 		publisher,
@@ -88,7 +100,7 @@ describe('McpRegistryService', () => {
 			});
 
 			await service.init();
-			const servers = service.getAll();
+			const servers = await service.getAll();
 
 			expect(servers).toEqual([notionMockServer, linearMockServer]);
 		});
@@ -104,7 +116,7 @@ describe('McpRegistryService', () => {
 			});
 
 			await service.init();
-			const servers = service.getAll({ includeDeprecated: true });
+			const servers = await service.getAll({ includeDeprecated: true });
 
 			expect(servers).toEqual([notionMockServer, linearMockServer, deprecated]);
 		});
@@ -113,8 +125,8 @@ describe('McpRegistryService', () => {
 			const { service } = createService();
 
 			await service.init();
-			const notion = service.get('notion');
-			const missing = service.get('missing');
+			const notion = await service.get('notion');
+			const missing = await service.get('missing');
 
 			expect(notion).toEqual(notionMockServer);
 			expect(missing).toBeUndefined();
@@ -162,13 +174,13 @@ describe('McpRegistryService', () => {
 					updatedAt: linearMockServer.updatedAt,
 				},
 			];
-			const { service, apiClient, settingsRepository, push, publisher } = createService();
+			const { service, apiClient, repository, push, publisher } = createService();
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
 
 			await service.onLeaderTakeover();
 
 			expect(apiClient.fetchServersByIds).not.toHaveBeenCalled();
-			expect(settingsRepository.upsert).not.toHaveBeenCalled();
+			expect(repository.upsert).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
@@ -194,7 +206,7 @@ describe('McpRegistryService', () => {
 					updatedAt: linearMockServer.updatedAt,
 				},
 			];
-			const { service, apiClient, settingsRepository, push, publisher } = createService({
+			const { service, apiClient, repository, push, publisher } = createService({
 				storedServers: [staleNotion, linearMockServer],
 			});
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
@@ -204,12 +216,9 @@ describe('McpRegistryService', () => {
 
 			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
 			expect(apiClient.fetchServersByIds).toHaveBeenCalledWith([notionMockServer.id]);
-			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
-			const upsertPayload = settingsRepository.upsert.mock.calls[0][0] as { value: string };
-			const stored = jsonParse<{ servers: McpRegistryServer[] }>(upsertPayload.value, {
-				fallbackValue: { servers: [] },
-			});
-			expect(stored.servers).toEqual([notionMockServer, linearMockServer]);
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsert.mock.calls[0][0];
+			expect(upsertEntities).toEqual([notionMockServer].map(toEntity));
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
 
@@ -217,23 +226,23 @@ describe('McpRegistryService', () => {
 		});
 
 		it('onLeaderTakeover fetches all servers when no data is persisted', async () => {
-			const { service, apiClient, settingsRepository } = createService({ storedServers: null });
+			const { service, apiClient, repository } = createService({ storedServers: null });
 
 			await service.onLeaderTakeover();
 
 			expect(apiClient.fetchAllServers).toHaveBeenCalledTimes(1);
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
-			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
 
 			service.shutdown();
 		});
 	});
 
-	describe('reloadFromDb', () => {
+	describe('handleReloadMcpRegistry', () => {
 		it('notifies the UI on the main instance', async () => {
 			const { service, push } = createService({ instanceType: 'main' });
 
-			await service.reloadFromDb();
+			await service.handleReloadMcpRegistry();
 
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 		});
@@ -241,7 +250,7 @@ describe('McpRegistryService', () => {
 		it('does not notify the UI on worker instances', async () => {
 			const { service, push } = createService({ instanceType: 'worker' });
 
-			await service.reloadFromDb();
+			await service.handleReloadMcpRegistry();
 
 			expect(push.broadcast).not.toHaveBeenCalled();
 		});

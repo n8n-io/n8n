@@ -1,3 +1,10 @@
+import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
+
+type McpRegistryServerUpsertRow = Pick<
+	McpRegistryServerEntity,
+	'id' | 'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
+>;
+
 /**
  * The shape of an entry returned by the MCP server registry.
  */
@@ -43,3 +50,27 @@ export type McpRegistryTool = {
 	title?: string;
 	annotations?: McpRegistryToolAnnotations;
 };
+
+export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
+	const { id, slug, status, version, updatedAt, ...rest } = server;
+	return {
+		id,
+		slug,
+		status,
+		version,
+		registryUpdatedAt: updatedAt,
+		data: rest,
+	};
+}
+
+export function fromEntity(entity: McpRegistryServerEntity): McpRegistryServer {
+	const { id, slug, status, version, registryUpdatedAt, data } = entity;
+	return {
+		id,
+		slug,
+		status: status as McpRegistryServer['status'],
+		version,
+		updatedAt: registryUpdatedAt,
+		...data,
+	} as McpRegistryServer;
+}
