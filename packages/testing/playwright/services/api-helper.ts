@@ -1,7 +1,8 @@
 // services/api-helper.ts
 import type { ClusterInfoResponse, InstanceAiPermissions } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
-import { merge, omitBy } from 'lodash';
+import merge from 'lodash/merge';
+import omitBy from 'lodash/omitBy';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
