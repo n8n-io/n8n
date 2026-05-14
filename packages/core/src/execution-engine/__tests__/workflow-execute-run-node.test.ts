@@ -30,9 +30,7 @@ jest.mock('@/errors/error-reporter', () => ({
 }));
 
 jest.mock('../node-execution-context', () => {
-	const actual = jest.requireActual<typeof import('../node-execution-context')>(
-		'../node-execution-context',
-	);
+	const actual = jest.requireActual('../node-execution-context');
 	return {
 		...actual,
 		ExecuteContext: jest.fn().mockImplementation(() => ({
