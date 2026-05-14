@@ -102,7 +102,7 @@ class TelegramTestIntegration extends AgentChatIntegration {
 		return {};
 	}
 	isUserAllowed(author: Author, settings: AgentIntegrationSettings | undefined): boolean {
-		if (!settings || settings.type !== 'telegram') return true;
+		if (!settings) return true;
 		if (settings.accessMode === 'public') return true;
 		return (
 			settings.allowedUsers.includes(author.userId) ||
@@ -269,7 +269,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ type: 'telegram', accessMode: 'private', allowedUsers: ['123'] },
+				{ accessMode: 'private', allowedUsers: ['123'] },
 			);
 
 			await handlers.mention!(thread, {
@@ -300,7 +300,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ type: 'telegram', accessMode: 'private', allowedUsers: ['123'] },
+				{ accessMode: 'private', allowedUsers: ['123'] },
 			);
 
 			await handlers.mention!(thread, {
@@ -356,7 +356,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ type: 'telegram', accessMode: 'private', allowedUsers: ['123'] },
+				{ accessMode: 'private', allowedUsers: ['123'] },
 			);
 
 			await handlers.action!({

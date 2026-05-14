@@ -1,4 +1,4 @@
-import type { AgentIntegrationSettings } from '@n8n/api-types';
+import { agentTelegramSettingsSchema, type AgentIntegrationSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
@@ -135,9 +135,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 */
 	isUserAllowed(author: Author, settings: AgentIntegrationSettings | undefined): boolean {
 		if (!settings) return true;
-		if (settings.type !== 'telegram') {
+		const validConfig = agentTelegramSettingsSchema.safeParse(settings);
+		if (!validConfig.success) {
 			throw new UnexpectedError(
-				`TelegramIntegration received settings with type "${(settings as { type: string })?.type}"`,
+				`Invalid Telegram integration settings: ${validConfig.error.message}`,
 			);
 		}
 		if (settings.accessMode === 'public') return true;

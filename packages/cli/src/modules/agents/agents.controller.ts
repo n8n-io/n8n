@@ -116,11 +116,6 @@ export class AgentsController {
 			}
 			return undefined;
 		}
-		if (settings.type !== integrationType) {
-			throw new BadRequestError(
-				`Settings type "${settings.type}" does not match integration type "${integrationType}"`,
-			);
-		}
 		return settings;
 	}
 

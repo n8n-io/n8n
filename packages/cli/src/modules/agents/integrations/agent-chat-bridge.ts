@@ -89,12 +89,11 @@ export class AgentChatBridge {
 		private readonly integrationType: string,
 		private readonly integrationSettings?: AgentIntegrationSettings,
 	) {
-		if (integrationSettings && integrationSettings.type !== integrationType) {
-			throw new UnexpectedError(
-				`Integration settings type "${integrationSettings.type}" does not match integration type "${integrationType}"`,
-			);
+		const integration = Container.get(ChatIntegrationRegistry).get(integrationType);
+		if (!integration) {
+			throw new UnexpectedError(`Unknown integration type: ${integrationType}`);
 		}
-		this.integration = Container.get(ChatIntegrationRegistry).get(integrationType);
+		this.integration = integration;
 		if (this.integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}

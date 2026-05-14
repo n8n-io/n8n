@@ -725,7 +725,6 @@ describe('AgentJsonConfigSchema', () => {
 					credentialId: 'cred-1',
 					credentialName: 'Telegram Bot',
 					settings: {
-						type: 'telegram',
 						accessMode: 'private',
 						allowedUsers: ['123', '123', '456', 'john_doe123'],
 					},
@@ -738,7 +737,6 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[0]).toMatchObject({
 			type: 'telegram',
 			settings: {
-				type: 'telegram',
 				accessMode: 'private',
 				allowedUsers: ['123', '456', 'john_doe123'],
 			},
@@ -756,7 +754,7 @@ describe('AgentJsonConfigSchema', () => {
 					type: 'telegram',
 					credentialId: 'cred-1',
 					credentialName: 'Telegram Bot',
-					settings: { type: 'telegram', accessMode: 'private', allowedUsers: [] },
+					settings: { accessMode: 'private', allowedUsers: [] },
 				},
 			],
 		};
@@ -775,7 +773,7 @@ describe('AgentJsonConfigSchema', () => {
 					type: 'telegram',
 					credentialId: 'cred-1',
 					credentialName: 'Telegram Bot',
-					settings: { type: 'telegram', accessMode: 'private', allowedUsers: ['user name'] },
+					settings: { accessMode: 'private', allowedUsers: ['user name'] },
 				},
 			],
 		};
