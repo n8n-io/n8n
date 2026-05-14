@@ -89,7 +89,6 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
-				console.log('result', result);
 				applyStatus(state, integrationTypes, result.integrations ?? []);
 			} catch {
 				// Mark only types we don't already have a confirmed answer for as
