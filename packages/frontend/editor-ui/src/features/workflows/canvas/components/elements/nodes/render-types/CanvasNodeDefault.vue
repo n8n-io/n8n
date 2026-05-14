@@ -4,6 +4,7 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
+import { injectWorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
@@ -34,8 +35,6 @@ const {
 	id,
 	label,
 	subtitle,
-	inputs,
-	outputs,
 	connections,
 	isDisabled,
 	isReadOnly,
@@ -50,6 +49,9 @@ const {
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const renderData = injectWorkflowRenderData();
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,

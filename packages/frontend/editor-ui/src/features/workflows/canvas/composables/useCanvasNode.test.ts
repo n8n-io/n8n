@@ -1,12 +1,7 @@
 import { useCanvasNode } from './useCanvasNode';
-import { type ComputedRef, computed, inject, ref } from 'vue';
-import type {
-	CanvasConnectionPort,
-	CanvasNodeData,
-	CanvasNodeInjectionData,
-} from '../canvas.types';
+import { inject, ref } from 'vue';
+import type { CanvasNodeData, CanvasNodeInjectionData } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
-import { NodeConnectionTypes } from 'n8n-workflow';
 import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('vue', async () => {
@@ -17,29 +12,15 @@ vi.mock('vue', async () => {
 	};
 });
 
-const renderNodesInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
-const renderNodesOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
-
-vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
-	injectWorkflowRenderData: vi.fn(() => ({
-		nodeInputsByNodeId: renderNodesInputsMap,
-		nodeOutputsByNodeId: renderNodesOutputsMap,
-	})),
-}));
-
 describe('useCanvasNode', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		renderNodesInputsMap.clear();
-		renderNodesOutputsMap.clear();
 	});
 
 	it('should return default values when node is not provided', () => {
 		const result = useCanvasNode();
 
 		expect(result.label.value).toBe('');
-		expect(result.inputs.value).toEqual([]);
-		expect(result.outputs.value).toEqual([]);
 		expect(result.connections.value).toEqual({
 			[CanvasConnectionMode.Input]: {},
 			[CanvasConnectionMode.Output]: {},
@@ -60,15 +41,6 @@ describe('useCanvasNode', () => {
 	});
 
 	it('should return node data when node is provided', () => {
-		renderNodesInputsMap.set(
-			'1',
-			computed<CanvasConnectionPort[]>(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
-		);
-		renderNodesOutputsMap.set(
-			'1',
-			computed<CanvasConnectionPort[]>(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
-		);
-
 		const node = {
 			data: ref({
 				id: 'node1',
@@ -109,8 +81,6 @@ describe('useCanvasNode', () => {
 
 		expect(result.label.value).toBe('Node 1');
 		expect(result.name.value).toBe('Node 1');
-		expect(result.inputs.value).toEqual([{ type: NodeConnectionTypes.Main, index: 0 }]);
-		expect(result.outputs.value).toEqual([{ type: NodeConnectionTypes.Main, index: 0 }]);
 		expect(result.connections.value).toEqual({
 			[CanvasConnectionMode.Input]: { '0': [] },
 			[CanvasConnectionMode.Output]: {},

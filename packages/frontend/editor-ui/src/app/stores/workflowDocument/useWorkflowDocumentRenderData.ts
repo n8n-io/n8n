@@ -1,3 +1,4 @@
+import type { Ref } from 'vue';
 import { useWorkflowDocumentStore, type WorkflowDocumentId } from '../workflowDocument.store';
 import { WorkflowRenderDataKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
@@ -26,6 +27,6 @@ export type WorkflowRenderData = ReturnType<typeof useWorkflowDocumentRenderData
  * Throws if no render data is provided — every canvas must have
  * an ancestor that provides WorkflowRenderDataKey.
  */
-export function injectWorkflowRenderData(): WorkflowRenderData {
+export function injectWorkflowRenderData(): Ref<WorkflowRenderData> {
 	return injectStrict(WorkflowRenderDataKey);
 }

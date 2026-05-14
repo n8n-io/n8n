@@ -173,7 +173,8 @@ const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
-provide(WorkflowRenderDataKey, props.renderData);
+const renderData = toRef(props, 'renderData');
+provide(WorkflowRenderDataKey, renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();

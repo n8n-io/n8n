@@ -8,6 +8,7 @@ import CanvasHandlePlus from './parts/CanvasHandlePlus.vue';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import { getMaxNodePortsLabelSize } from '../../../../canvas.utils';
+import { injectWorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 const emit = defineEmits<{
 	add: [];
@@ -16,7 +17,9 @@ const emit = defineEmits<{
 const $style = useCssModule();
 
 const i18n = useI18n();
-const { outputs } = useCanvasNode();
+const { id } = useCanvasNode();
+const renderData = injectWorkflowRenderData();
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const { label, isConnected, isConnecting, isReadOnly, isRequired, runData } = useCanvasNodeHandle();
 const { viewport } = useCanvas();
 const { calculateHandleLightness } = useZoomAdjustedValues(viewport);

@@ -12,8 +12,10 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia';
 
 vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
 	injectWorkflowRenderData: vi.fn(() => ({
-		nodeInputsByNodeId: new Map(),
-		nodeOutputsByNodeId: new Map(),
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+		},
 	})),
 }));
 

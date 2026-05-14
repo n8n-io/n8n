@@ -3,8 +3,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
 	injectWorkflowRenderData: vi.fn(() => ({
-		nodeInputsByNodeId: new Map(),
-		nodeOutputsByNodeId: new Map(),
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+		},
 	})),
 }));
 

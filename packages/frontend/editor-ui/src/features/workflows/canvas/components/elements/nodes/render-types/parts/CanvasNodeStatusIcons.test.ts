@@ -22,8 +22,10 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
 	injectWorkflowRenderData: vi.fn(() => ({
-		nodeInputsByNodeId: new Map(),
-		nodeOutputsByNodeId: new Map(),
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+		},
 	})),
 }));
 

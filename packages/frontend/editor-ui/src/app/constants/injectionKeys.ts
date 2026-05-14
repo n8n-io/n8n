@@ -35,6 +35,7 @@ export const WorkflowExecutionStateStoreKey: InjectionKey<
 > = Symbol('WorkflowExecutionStateStore');
 export const NDVStoreKey: InjectionKey<ShallowRef<ReturnType<typeof useNDVStore> | null>> =
 	Symbol('NDVStore');
-export const WorkflowRenderDataKey: InjectionKey<WorkflowRenderData> = Symbol('WorkflowRenderData');
+export const WorkflowRenderDataKey: InjectionKey<Ref<WorkflowRenderData>> =
+	Symbol('WorkflowRenderData');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');

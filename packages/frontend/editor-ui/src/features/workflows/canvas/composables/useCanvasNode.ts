@@ -4,11 +4,9 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import type { CanvasNodeData } from '../canvas.types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '../canvas.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectWorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
-	const renderData = injectWorkflowRenderData();
 	const data = computed(
 		() =>
 			node?.data.value ??
@@ -38,8 +36,6 @@ export function useCanvasNode() {
 
 	const subtitle = computed(() => data.value.subtitle);
 	const name = computed(() => data.value.name);
-	const inputs = computed(() => renderData.nodeInputsByNodeId.get(id.value)?.value ?? []);
-	const outputs = computed(() => renderData.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 	const connections = computed(() => data.value.connections);
 
 	const isDisabled = computed(() => data.value.disabled);
@@ -83,8 +79,6 @@ export function useCanvasNode() {
 		name,
 		label,
 		subtitle,
-		inputs,
-		outputs,
 		connections,
 		isDisabled,
 		isReadOnly,

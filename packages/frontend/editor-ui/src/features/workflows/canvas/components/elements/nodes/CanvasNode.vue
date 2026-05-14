@@ -86,8 +86,8 @@ const renderData = injectWorkflowRenderData();
   Toolbar slot classes
 */
 const nodeClasses = ref<string[]>([]);
-const inputs = computed(() => renderData.nodeInputsByNodeId.get(props.id)?.value ?? []);
-const outputs = computed(() => renderData.nodeOutputsByNodeId.get(props.id)?.value ?? []);
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(props.id)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(props.id)?.value ?? []);
 const connections = computed(() => props.data.connections);
 const {
 	mainInputs,
