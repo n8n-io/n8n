@@ -158,6 +158,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, {
 				type: 'telegram',
 				credentialId: 'cred-1',
+				credentialName: 'Telegram Bot',
 				settings: {
 					accessMode: 'public',
 					allowedUsers: [],
@@ -177,6 +178,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 			integration.isUserAllowed({ userId: '123', userName: 'someuser' } as Author, {
 				type: 'telegram',
 				credentialId: 'cred-1',
+				credentialName: 'Telegram Bot',
 				settings: {
 					accessMode: 'private',
 					allowedUsers: ['123', '456'],
@@ -190,6 +192,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 			integration.isUserAllowed({ userId: '999', userName: 'john_doe123' } as Author, {
 				type: 'telegram',
 				credentialId: 'cred-1',
+				credentialName: 'Telegram Bot',
 				settings: {
 					accessMode: 'private',
 					allowedUsers: ['john_doe123', '456'],
@@ -203,6 +206,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 			integration.isUserAllowed({ userId: '999', userName: 'stranger' } as Author, {
 				type: 'telegram',
 				credentialId: 'cred-1',
+				credentialName: 'Telegram Bot',
 				settings: {
 					accessMode: 'private',
 					allowedUsers: ['123', 'john_doe123'],

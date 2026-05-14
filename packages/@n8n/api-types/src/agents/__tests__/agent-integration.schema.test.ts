@@ -1,4 +1,4 @@
-import { AgentIntegrationSchema } from '../json-config/integration-config';
+import { AgentIntegrationSchema } from '../agent-integration.schema';
 
 describe('AgentIntegrationSchema', () => {
 	it('accepts a schedule integration', () => {
@@ -57,16 +57,26 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects a schedule integration whose cronExpression is malformed', () => {
-		const malformed = ['not-a-cron', '* * *', '99 99 * * *'];
-		for (const cron of malformed) {
+	it('accepts a schedule integration with any non-empty cronExpression string (cron validation is backend-only)', () => {
+		const expressions = ['not-a-cron', '* * *', '99 99 * * *'];
+		for (const cron of expressions) {
 			const result = AgentIntegrationSchema.safeParse({
 				type: 'schedule',
 				active: false,
 				cronExpression: cron,
 				wakeUpPrompt: 'go',
 			});
-			expect(result.success).toBe(false);
+			expect(result.success).toBe(true);
 		}
+	});
+
+	it('rejects a schedule integration with an empty cronExpression', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'schedule',
+			active: false,
+			cronExpression: '',
+			wakeUpPrompt: 'go',
+		});
+		expect(result.success).toBe(false);
 	});
 });

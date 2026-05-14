@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { AgentJsonConfigSchema } from '@n8n/api-types';
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
 const BuilderPromptMemoryConfigSchema = z.object({

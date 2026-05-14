@@ -6,7 +6,7 @@ import {
 	type AgentCredentialIntegrationConfig,
 	type AgentIntegrationConfig,
 	isAgentScheduleIntegration,
-} from '../json-config/integration-config';
+} from '@n8n/api-types';
 
 function scheduleConfigsEqual(
 	a: AgentIntegrationConfig | undefined,

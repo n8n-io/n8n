@@ -10,7 +10,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
-import type { AgentCredentialIntegrationConfig } from '../../json-config/integration-config';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 

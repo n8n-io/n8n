@@ -8,6 +8,16 @@ import type {
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AGENT_WORKFLOW_TRIGGER_TYPE,
+	AgentCredentialIntegrationSchema,
+	AgentJsonConfigSchema,
+	isAgentCredentialIntegration,
+	isAgentScheduleIntegration,
+	isNodeToolsEnabled,
+	type AgentCredentialIntegrationConfig,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 	type ChatIntegrationDescriptor,
@@ -64,13 +74,7 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
-import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
-import type {
-	AgentJsonConfig,
-	AgentJsonConfigRef,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-} from './json-config/agent-json-config';
+
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -80,10 +84,7 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import {
-	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
-} from './json-config/integration-config';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -264,6 +265,7 @@ export class AgentsService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
+		private readonly chatIntegrationService: ChatIntegrationService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
@@ -1441,7 +1443,7 @@ export class AgentsService {
 		if (toolsProvided) {
 			const referencedIds = new Set(
 				(result.config.tools ?? [])
-					.filter((t): t is Extract<AgentJsonConfigRef, { type: 'custom' }> => t.type === 'custom')
+					.filter((t): t is Extract<AgentJsonToolConfig, { type: 'custom' }> => t.type === 'custom')
 					.map((t) => t.id),
 			);
 			const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
@@ -1479,6 +1481,81 @@ export class AgentsService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
+	}
+
+	/**
+	 * Persist a credential integration on the agent after validation.
+	 * Replaces an existing entry with the same type+credentialId or appends a new one.
+	 */
+	async saveCredentialIntegration(
+		agent: Agent,
+		integration: AgentCredentialIntegrationConfig,
+	): Promise<Agent> {
+		const parseResult = AgentCredentialIntegrationSchema.safeParse(integration);
+		if (!parseResult.success) {
+			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
+		}
+		const validated = parseResult.data;
+		const { type, credentialId } = validated;
+
+		const existing = agent.integrations ?? [];
+		const alreadyExists = existing.some(
+			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+		);
+
+		agent.integrations = alreadyExists
+			? existing.map((existingIntegration) =>
+					isAgentCredentialIntegration(existingIntegration) &&
+					existingIntegration.type === type &&
+					existingIntegration.credentialId === credentialId
+						? validated
+						: existingIntegration,
+				)
+			: [...existing, validated];
+
+		const result = await this.agentRepository.save(agent);
+		await this.chatIntegrationService.broadcastIntegrationChange(agent.id, integration, 'connect');
+		return result;
+	}
+
+	/**
+	 * Remove a credential integration from the agent.
+	 */
+	async removeCredentialIntegration(
+		agent: Agent,
+		type: string,
+		credentialId: string,
+	): Promise<Agent> {
+		if (!agent.integrations?.length) return agent;
+		const integration = agent.integrations.find(
+			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+		);
+		if (!integration) return agent;
+		// filter by ref
+		agent.integrations = agent.integrations.filter((i) => i !== integration);
+
+		const result = await this.agentRepository.save(agent);
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			agent.id,
+			integration as AgentCredentialIntegrationConfig,
+			'disconnect',
+		);
+		return result;
+	}
+
+	/**
+	 * Validate and persist the full integrations array on an agent.
+	 * Used internally by updateConfig and exposed for direct schedule/credential writes.
+	 */
+	private validateIntegrationRefs(integrations: AgentIntegrationConfig[], agent: Agent): void {
+		const activeUnpublishedSchedule = integrations.some(
+			(integration) => isAgentScheduleIntegration(integration) && integration.active,
+		);
+		if (activeUnpublishedSchedule && !agent.publishedVersion) {
+			throw new UserError(
+				'Invalid agent config: schedule integration cannot be active until the agent is published',
+			);
+		}
 	}
 
 	/**
@@ -1568,7 +1645,7 @@ export class AgentsService {
 		// Remove from config tools array
 		if (entity.schema?.tools) {
 			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonConfigRef) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
+				(t: AgentJsonToolConfig) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
 			);
 		}
 
@@ -1646,18 +1723,7 @@ export class AgentsService {
 			);
 		}
 
-		// Mirror AgentScheduleService.activate(): a schedule integration cannot be
-		// active until the agent has a published version. Otherwise the persisted
-		// config can claim active=true while the cron registration silently
-		// refuses to register.
-		const activeUnpublishedSchedule = (config.integrations ?? []).some(
-			(integration) => isAgentScheduleIntegration(integration) && integration.active,
-		);
-		if (activeUnpublishedSchedule && !entity.publishedVersion) {
-			throw new UserError(
-				'Invalid agent config: schedule integration cannot be active until the agent is published',
-			);
-		}
+		this.validateIntegrationRefs(config.integrations ?? [], entity);
 	}
 
 	private getMissingCustomToolIds(
@@ -1665,7 +1731,7 @@ export class AgentsService {
 		tools: AgentToolEntries,
 	): string[] {
 		const refs = (config?.tools ?? []).filter(
-			(ref): ref is Extract<AgentJsonConfigRef, { type: 'custom' }> => ref.type === 'custom',
+			(ref): ref is Extract<AgentJsonToolConfig, { type: 'custom' }> => ref.type === 'custom',
 		);
 		const seen = new Set<string>();
 		const missing: string[] = [];

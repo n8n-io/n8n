@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-import { isValidCronExpression } from '../integrations/cron-validation';
-import { AgentTelegramSettingsSchema } from '@n8n/api-types';
-
 const createCredIntegrationSchema = <
 	Value extends string,
 	Settings extends z.ZodObject<z.ZodRawShape>,
@@ -13,6 +10,7 @@ const createCredIntegrationSchema = <
 	z.object({
 		type: z.literal<Value>(typeName),
 		credentialId: z.string().min(1),
+		credentialName: z.string().min(1),
 		settings: settingsSchema,
 	});
 
@@ -20,54 +18,84 @@ const createSimpleIntegrationSchema = <Value extends string>(typeName: Value) =>
 	z.object({
 		type: z.literal<Value>(typeName),
 		credentialId: z.string().min(1),
+		credentialName: z.string().min(1),
 	});
+
+export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;
+
+export const AgentTelegramSettingsSchema = z
+	.object({
+		accessMode: z.enum(AGENT_TELEGRAM_ACCESS_MODES),
+		allowedUsers: z
+			.array(
+				z
+					.string()
+					.trim()
+					.regex(
+						/^@?[a-zA-Z0-9_]+$/,
+						'Enter a valid Telegram user ID (numbers only) or username (letters, numbers, underscores)',
+					),
+			)
+			.default([])
+			.transform((items) => [...new Set(items)]),
+	})
+	.strict();
+
+export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSettingsSchema>;
+
+export const AgentIntegrationSettingsSchema = z.union([AgentTelegramSettingsSchema, z.undefined()]);
+export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
+
+export const AGENT_SCHEDULE_TRIGGER_TYPE = 'schedule';
 
 export const AgentScheduleIntegrationSchema = z
 	.object({
-		type: z.literal('schedule'),
+		type: z.literal(AGENT_SCHEDULE_TRIGGER_TYPE),
 		active: z.boolean(),
-		cronExpression: z
-			.string()
-			.min(1, 'cronExpression is required')
-			.refine(isValidCronExpression, { message: 'Invalid cron expression' }),
+		cronExpression: z.string().min(1, 'cronExpression is required'),
 		wakeUpPrompt: z.string().min(1, 'wakeUpPrompt is required'),
 	})
 	.strict();
 
 const credentialIntegrations = [
 	createCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
-		// legacy support for the old schema without settings
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
 	createSimpleIntegrationSchema('slack'),
 	createSimpleIntegrationSchema('linear'),
 ] as const;
 
-// Place settings schemas inside @n8n/api-types to expose on frontend
-export const AgentIntegrationSchema = z.discriminatedUnion('type', [
-	...credentialIntegrations,
-	AgentScheduleIntegrationSchema,
-]);
 export const AgentCredentialIntegrationSchema = z.discriminatedUnion(
 	'type',
 	credentialIntegrations,
 );
 
+export const AgentIntegrationSchema = z.discriminatedUnion('type', [
+	...credentialIntegrations,
+	AgentScheduleIntegrationSchema,
+]);
+
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationSchema>;
 export type AgentScheduleIntegrationConfig = z.infer<typeof AgentScheduleIntegrationSchema>;
 export type AgentCredentialIntegrationConfig = Exclude<
 	AgentIntegrationConfig,
-	{ type: 'schedule' }
+	{ type: typeof AGENT_SCHEDULE_TRIGGER_TYPE }
 >;
+
+export type AgentScheduleIntegration = AgentScheduleIntegrationConfig;
+export type AgentCredentialIntegrationDto = AgentCredentialIntegrationConfig;
+export type AgentIntegration = AgentIntegrationConfig;
 
 export function isAgentScheduleIntegration(
 	integration: AgentIntegrationConfig | null | undefined,
 ): integration is AgentScheduleIntegrationConfig {
-	return integration?.type === 'schedule';
+	return integration?.type === AGENT_SCHEDULE_TRIGGER_TYPE;
 }
 
 export function isAgentCredentialIntegration(
 	integration: AgentIntegrationConfig | null | undefined,
 ): integration is AgentCredentialIntegrationConfig {
-	return integration?.type !== 'schedule';
+	return (
+		integration !== null && integration !== undefined && !isAgentScheduleIntegration(integration)
+	);
 }

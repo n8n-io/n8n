@@ -8,7 +8,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
-import { AgentCredentialIntegrationConfig } from '../../json-config/integration-config';
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';

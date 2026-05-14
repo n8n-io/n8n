@@ -1,5 +1,5 @@
 import type { CredentialProvider } from '@n8n/agents';
-import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
+import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH, type AgentJsonConfig } from '@n8n/api-types';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -12,7 +12,6 @@ import {
 import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const ctx = {

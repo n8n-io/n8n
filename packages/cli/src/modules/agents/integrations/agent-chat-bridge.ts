@@ -10,7 +10,7 @@ import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
 import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
-import type { AgentCredentialIntegrationConfig } from '../json-config/integration-config';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 interface AgentExecutor {
 	executeForChatPublished(config: {

@@ -1,4 +1,9 @@
-import { type AgentIntegrationStatusResponse, type AgentIntegrationSettings } from '@n8n/api-types';
+import {
+	AgentCredentialIntegrationConfig,
+	isAgentCredentialIntegration,
+	type AgentIntegrationSettings,
+	type AgentIntegrationStatusResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -22,10 +27,6 @@ import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
-import {
-	AgentCredentialIntegrationConfig,
-	isAgentCredentialIntegration,
-} from '../json-config/integration-config';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces

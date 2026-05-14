@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 
-import { AgentCredentialIntegrationConfig } from '../json-config/integration-config';
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { SuspendComponent } from './component-mapper';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */

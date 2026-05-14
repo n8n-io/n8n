@@ -1,21 +1,23 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
-	type AgentBuilderMessagesResponse,
-	type AgentIntegrationStatusResponse,
-	type AgentPersistedMessageDto,
-	type AgentSkill,
-	type AgentScheduleConfig,
-	type AgentSseEvent,
-	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
-	CreateAgentSkillDto,
-	AgentCredentialIntegrationDto,
+	AgentCredentialIntegrationSchema,
+	type AgentBuilderMessagesResponse,
+	type AgentCredentialIntegrationDto,
+	type AgentIntegrationStatusResponse,
+	type AgentPersistedMessageDto,
+	type AgentScheduleConfig,
+	type AgentSkill,
+	type AgentSseEvent,
+	type ChatIntegrationDescriptor,
 	CreateAgentDto,
-	UpdateAgentSkillDto,
+	CreateAgentSkillDto,
+	isAgentCredentialIntegration,
 	UpdateAgentConfigDto,
-	UpdateAgentScheduleDto,
 	UpdateAgentDto,
+	UpdateAgentScheduleDto,
+	UpdateAgentSkillDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -33,6 +35,7 @@ import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -52,11 +55,6 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
-import {
-	AgentCredentialIntegrationSchema,
-	isAgentCredentialIntegration,
-} from './json-config/integration-config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -657,7 +655,7 @@ export class AgentsController {
 			throw new BadRequestError(integrationParseResult.error.message);
 		}
 		const integration = integrationParseResult.data;
-		const { credentialId, type } = integration;
+		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (!agent.publishedVersion)
@@ -674,27 +672,7 @@ export class AgentsController {
 
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
 
-		// Persist the integration reference on the agent
-		const existing = agent.integrations ?? [];
-		const alreadyExists = existing.some(
-			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
-		);
-
-		// Replace existing integration or append a new one
-		agent.integrations = alreadyExists
-			? existing.map((existingIntegration) =>
-					isAgentCredentialIntegration(existingIntegration) &&
-					existingIntegration.type === type &&
-					existingIntegration.credentialId === credentialId
-						? integration
-						: existingIntegration,
-				)
-			: [...existing, integration];
-		await this.agentRepository.save(agent);
-
-		// Notify peer mains so they connect the integration too — without this
-		// step inbound webhooks load-balanced to a follower would 404.
-		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
+		await this.agentsService.saveCredentialIntegration(agent, integration);
 
 		return { status: 'connected' };
 	}
@@ -718,17 +696,7 @@ export class AgentsController {
 
 		await this.chatIntegrationService.disconnect(agentId, integration);
 
-		// Remove the integration reference from the agent
-		agent.integrations = (agent.integrations ?? []).filter(
-			(i) => !isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
-		);
-		await this.agentRepository.save(agent);
-
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			agentId,
-			integration,
-			'disconnect',
-		);
+		await this.agentsService.removeCredentialIntegration(agent, type, credentialId);
 
 		return { status: 'disconnected' };
 	}

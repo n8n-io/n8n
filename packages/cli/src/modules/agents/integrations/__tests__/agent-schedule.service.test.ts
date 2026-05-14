@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT } from '@n8n/api-types';
+import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegrationConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
@@ -9,7 +9,6 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import type { AgentsService } from '../../agents.service';
 import type { Agent } from '../../entities/agent.entity';
-import type { AgentIntegrationConfig } from '../../json-config/integration-config';
 import { AgentScheduleService } from '../agent-schedule.service';
 
 function makePublishedAgent(
@@ -73,14 +72,16 @@ describe('AgentScheduleService', () => {
 	});
 
 	it('saveConfig upserts the schedule integration alongside credential-backed integrations', async () => {
-		const agent = makePublishedAgent([{ type: 'slack', credentialId: 'cred-1' }]);
+		const agent = makePublishedAgent([
+			{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack' },
+		]);
 
 		const result = await service.saveConfig(agent, '* * * * *');
 
 		expect(agentRepository.save).toHaveBeenCalledWith(
 			expect.objectContaining({
 				integrations: [
-					{ type: 'slack', credentialId: 'cred-1' },
+					{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack' },
 					{
 						type: 'schedule',
 						active: false,

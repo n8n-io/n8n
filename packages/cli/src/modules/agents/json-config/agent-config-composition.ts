@@ -1,7 +1,6 @@
-import type { AgentIntegrationConfig } from './integration-config';
+import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 
 import type { Agent } from '../entities/agent.entity';
-import type { AgentJsonConfig } from './agent-json-config';
 
 /**
  * Build the unified `AgentJsonConfig` view from an agent entity. The schema

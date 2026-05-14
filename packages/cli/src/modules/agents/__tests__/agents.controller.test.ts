@@ -131,7 +131,7 @@ describe('AgentsController integration credentials', () => {
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'slack', credentialId: 'cred-outside-project' },
+				{ type: 'slack', credentialId: 'cred-outside-project', credentialName: 'Slack' },
 			),
 		).rejects.toThrow(NotFoundError);
 
@@ -153,7 +153,7 @@ describe('AgentsController integration credentials', () => {
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'telegram', credentialId: 'cred-telegram' },
+				{ type: 'telegram', credentialId: 'cred-telegram', credentialName: 'Telegram Bot' },
 			),
 		).rejects.toThrow(BadRequestError);
 
@@ -203,7 +203,12 @@ describe('AgentsController integration credentials', () => {
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'telegram', credentialId: 'cred-telegram', settings },
+				{
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					credentialName: 'Telegram Bot',
+					settings,
+				},
 			),
 		).resolves.toEqual({ status: 'connected' });
 
@@ -286,7 +291,14 @@ describe('AgentsController integration credentials', () => {
 			),
 		).resolves.toEqual({
 			status: 'connected',
-			integrations: [{ type: 'telegram', credentialId: 'cred-telegram', settings }],
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					credentialName: 'Telegram Bot',
+					settings,
+				},
+			],
 		});
 	});
 });

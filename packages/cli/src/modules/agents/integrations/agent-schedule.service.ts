@@ -1,6 +1,7 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+	isAgentScheduleIntegration,
 	type AgentScheduleConfig,
 	type AgentScheduleIntegration,
 } from '@n8n/api-types';
@@ -20,7 +21,6 @@ import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 import { isValidCronExpression } from './cron-validation';
-import { isAgentScheduleIntegration } from '../json-config/integration-config';
 
 @Service()
 export class AgentScheduleService {
