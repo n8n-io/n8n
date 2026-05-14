@@ -205,8 +205,6 @@ export class McpRegistryService {
 			this.loadNodesAndCredentials.releaseTypes();
 		}
 
-		// don't hold servers in memory after generating node types
-		loader.setServers([]);
 		this.logger.debug('MCP registry loader done', { serverCount: servers.length });
 	}
 
