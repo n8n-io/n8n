@@ -1,6 +1,7 @@
 import {
 	ChangePasswordRequestDto,
 	ForgotPasswordRequestDto,
+	PasswordResetWebAuthnOptionsRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -203,14 +204,9 @@ export class PasswordResetController {
 	async getPasswordResetWebAuthnOptions(
 		_req: AuthlessRequest,
 		_res: Response,
-		@Body payload: { token: string },
+		@Body payload: PasswordResetWebAuthnOptionsRequestDto,
 	) {
-		const { token } = payload;
-		if (!token || typeof token !== 'string') {
-			throw new BadRequestError('Token is required');
-		}
-
-		const user = await this.authService.resolvePasswordResetToken(token);
+		const user = await this.authService.resolvePasswordResetToken(payload.token);
 		if (!user || !user.mfaEnabled) {
 			throw new NotFoundError('');
 		}

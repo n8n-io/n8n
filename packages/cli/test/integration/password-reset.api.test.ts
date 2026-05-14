@@ -308,3 +308,43 @@ describe('POST /change-password', () => {
 		expect(response.statusCode).toBe(403);
 	});
 });
+
+describe('POST /password-reset/webauthn-options', () => {
+	test('should reject when body is missing', async () => {
+		// Pinning the DTO behaviour: without a body the registry's validator
+		// returns 400 (it used to crash the controller with `Cannot
+		// destructure 'token' of undefined` when the route used an inline
+		// `{ token: string }` type literal instead of a DTO class).
+		const response = await testServer.authlessAgent.post('/password-reset/webauthn-options');
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject when token is not a string', async () => {
+		const response = await testServer.authlessAgent
+			.post('/password-reset/webauthn-options')
+			.send({ token: 42 });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 when the token does not resolve to a user', async () => {
+		const response = await testServer.authlessAgent
+			.post('/password-reset/webauthn-options')
+			.send({ token: 'not-a-real-token' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 when the user has no MFA enabled', async () => {
+		const resetPasswordToken = authService.generatePasswordResetToken(owner);
+
+		const response = await testServer.authlessAgent
+			.post('/password-reset/webauthn-options')
+			.send({ token: resetPasswordToken });
+
+		// Owner has `mfaEnabled: false` by default → endpoint refuses to leak
+		// authentication options.
+		expect(response.statusCode).toBe(404);
+	});
+});

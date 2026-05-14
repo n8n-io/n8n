@@ -60,6 +60,7 @@ export { DismissBannerRequestDto } from './owner/dismiss-banner-request.dto';
 export { ForgotPasswordRequestDto } from './password-reset/forgot-password-request.dto';
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
+export { PasswordResetWebAuthnOptionsRequestDto } from './password-reset/password-reset-webauthn-options-request.dto';
 
 export { CreateProjectDto } from './project/create-project.dto';
 export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/update-project.dto';
