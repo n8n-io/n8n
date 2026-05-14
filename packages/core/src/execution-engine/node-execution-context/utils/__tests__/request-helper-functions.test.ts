@@ -1391,6 +1391,33 @@ describe('Request Helper Functions', () => {
 			).rejects.not.toThrow('needs to be reconnected');
 		});
 
+		test('should rethrow non-AuthError refresh failures unchanged', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').replyWithError(new Error('network exploded'));
+
+			const promise = refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			await expect(promise).rejects.toThrow('network exploded');
+			await expect(promise).rejects.not.toThrow('needs to be reconnected');
+		});
+
+		test('should fall back to credential type when no credential name is set', async () => {
+			mockNode.credentials = {
+				'test-credentials-type': { id: 'test-credentials-id', name: '' },
+			};
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(400, { error: 'invalid_grant' });
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('The credential of type "test-credentials-type" needs to be reconnected.');
+		});
+
 		describe('JWE decryption via oauth-jwe proxy', () => {
 			beforeEach(() => {
 				nock.cleanAll();
