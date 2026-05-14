@@ -1150,6 +1150,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should enable dropdowns when policy is "none" and user has only enableRedaction scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
 
 			const workflowEnableOnly = createTestWorkflow({
 				id: '1',
@@ -1176,6 +1177,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should disable dropdowns when policy is active and user has only enableRedaction scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
 
 			// Current policy is 'all' so both dropdowns show 'redact' state.
 			// Switching to 'default' = disabling → requires disableRedaction (not granted).
