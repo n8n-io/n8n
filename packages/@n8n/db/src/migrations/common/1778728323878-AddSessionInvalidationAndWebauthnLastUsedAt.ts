@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddSessionInvalidationAndWebauthnLastUsedAt1783200000000
+export class AddSessionInvalidationAndWebauthnLastUsedAt1778728323878
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
