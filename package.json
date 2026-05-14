@@ -139,7 +139,6 @@
       "tar": "7.5.11",
       "@microsoft/api-extractor@<=7.58.1": "7.58.1",
       "lodash-es": "4.18.1",
-      "protobufjs@<=7.5.5": "7.5.5",
       "node-forge": "1.4.0",
       "path-to-regexp@<=8.4.0": "8.4.0",
       "@xmldom/xmldom@<=0.8.13": "0.8.13",
@@ -157,7 +156,8 @@
       "openai": "6.21.0",
       "hono@<=4.12.18": "4.12.18",
       "langsmith@<=0.5.19": "0.5.19",
-      "uuid@<=11.1.1": "11.1.1"
+      "uuid@<=11.1.1": "11.1.1",
+      "protobufjs@<=7.5.6": "7.5.6"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
