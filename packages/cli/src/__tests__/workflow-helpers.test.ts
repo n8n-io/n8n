@@ -368,6 +368,29 @@ describe('removeDefaultValues', () => {
 		});
 	});
 
+	it('should remove worker pool overrides when cleared (empty string)', () => {
+		const settings: IWorkflowSettings = {
+			workerPoolOverrideProduction: '',
+			workerPoolOverrideManual: '',
+			workerPoolOverrideEvaluation: '',
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({ timezone: 'America/New_York' });
+	});
+
+	it('should keep worker pool overrides when set to a pool name', () => {
+		const settings: IWorkflowSettings = {
+			workerPoolOverrideProduction: 'gpu',
+			workerPoolOverrideManual: 'cpu',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			workerPoolOverrideProduction: 'gpu',
+			workerPoolOverrideManual: 'cpu',
+		});
+	});
+
 	it('should not mutate the original settings object', () => {
 		const settings = {
 			errorWorkflow: DEFAULT,
