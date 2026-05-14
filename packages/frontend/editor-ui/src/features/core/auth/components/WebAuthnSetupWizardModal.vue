@@ -126,7 +126,13 @@ const onRegister = async () => {
 		if (isCancelledOrFocusLoss) {
 			inlineError.value = i18n.baseText('settings.personal.twoFactor.webauthn.error.cancelled');
 		} else {
-			inlineError.value = i18n.baseText('settings.personal.twoFactor.webauthn.error.generic');
+			// Surface the real error so it's debuggable from devtools — the generic
+			// message hides whether the browser-side ceremony or the server-side
+			// verify is the cause.
+			console.error('WebAuthn registration failed', e);
+			const detail = e instanceof Error && e.message ? `: ${e.message}` : '';
+			inlineError.value =
+				i18n.baseText('settings.personal.twoFactor.webauthn.error.generic') + detail;
 		}
 	} finally {
 		submitting.value = false;

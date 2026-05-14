@@ -66,6 +66,12 @@ export class WebAuthnService {
 						userVerification: 'required',
 					} as const)
 				: ({
+						// Constrain to roaming authenticators so the browser doesn't
+						// offer the user's existing platform passkey alongside the
+						// security key prompt. Without this, accidentally picking the
+						// already-registered Mac/iPhone triggers the InvalidStateError
+						// path from `excludeCredentials`.
+						authenticatorAttachment: 'cross-platform',
 						userVerification: 'preferred',
 					} as const);
 
