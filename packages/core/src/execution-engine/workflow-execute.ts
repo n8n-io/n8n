@@ -60,7 +60,12 @@ import PCancelable from 'p-cancelable';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import { ExecuteContext, PollContext, resolveSourceOverwrite } from './node-execution-context';
+import {
+	ExecuteContext,
+	getAdditionalKeys,
+	PollContext,
+	resolveSourceOverwrite,
+} from './node-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -1087,6 +1092,56 @@ export class WorkflowExecute {
 		}
 
 		return { data, hints: context.hints };
+	}
+
+	private buildCustomTelemetryTracing(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		executionData: IExecuteData,
+	): Record<string, string> | undefined {
+		const tags = node.customTelemetryTags?.tag;
+		if (!tags?.length) return;
+
+		const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+		const tracing: Record<string, string> = {};
+
+		for (const { key, value } of tags) {
+			const trimmedKey = key?.trim();
+			if (!trimmedKey) continue;
+
+			try {
+				const evaluated = workflow.expression.getParameterValue(
+					value,
+					runExecutionData,
+					runIndex,
+					0,
+					node.name,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executionData,
+					false,
+					{},
+				);
+				if (evaluated === undefined || evaluated === null) continue;
+				tracing[trimmedKey] = String(evaluated);
+			} catch (error) {
+				Logger.warn('Failed to evaluate customTelemetryTags expression', {
+					nodeName: node.name,
+					tagKey: trimmedKey,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		if (Object.keys(tracing).length === 0) return;
+
+		return tracing;
 	}
 
 	/**
