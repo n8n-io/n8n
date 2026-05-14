@@ -297,7 +297,7 @@ watch(currentMethod, (next) => {
 			</div>
 
 			<!-- TOTP flow -->
-			<template v-if="currentMethod === 'totp'">
+			<div v-if="currentMethod === 'totp'" data-test-id="mfa-totp-screen">
 				<div :class="[$style.formContainer, reportError ? $style.formError : '']">
 					<N8nFormInputs
 						v-if="formInputs"
@@ -362,7 +362,7 @@ watch(currentMethod, (next) => {
 						{{ i18.baseText(switcherLabelKey) }}
 					</button>
 				</div>
-			</template>
+			</div>
 
 			<!-- WebAuthn flow (passkey or security key) -->
 			<div v-else data-test-id="mfa-webauthn-screen">

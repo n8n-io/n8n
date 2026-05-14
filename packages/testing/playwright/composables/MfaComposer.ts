@@ -72,12 +72,19 @@ export class MfaComposer {
 	/**
 	 * Complete the MFA login via a WebAuthn ceremony. The browser ceremony is
 	 * served by whichever virtual authenticator was attached to the page —
-	 * see `utils/webauthn-virtual-authenticator.ts`.
+	 * see `utils/webauthn-virtual-authenticator.ts`. If the MFA screen lands
+	 * on the TOTP form (which can happen when the seed user has both
+	 * `mfaSecret` and a webauthn credential, with `localStorage.n8n.last2faMethod`
+	 * pointing at `totp`), flip to webauthn via the switcher first.
 	 */
 	async loginWithWebAuthn(email: string, password: string): Promise<void> {
 		await this.n8n.signIn.fillEmail(email);
 		await this.n8n.signIn.fillPassword(password);
 		await this.n8n.signIn.clickSubmit();
+
+		if (await this.n8n.mfaLogin.getForm().isVisible()) {
+			await this.n8n.mfaLogin.getSwitcherLink().click();
+		}
 
 		await this.n8n.mfaWebauthnLogin.clickWebAuthnButton();
 		await expect(this.n8n.page).toHaveURL(/workflows/);
