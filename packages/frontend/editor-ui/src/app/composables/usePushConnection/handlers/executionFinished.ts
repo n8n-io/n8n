@@ -18,6 +18,11 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -475,24 +480,29 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const stateStore = useWorkflowExecutionStateStore(
+		createWorkflowExecutionStateId(workflowsStore.workflowId),
+	);
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
-	const workflowExecution = workflowsStore.getWorkflowExecution;
 
 	workflowState.executingNode.clearNodeExecutionQueue();
+
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
+	const workflowExecution = executionDataStore.getExecutionSnapshot();
 
 	if (workflowExecution === null) {
 		return;
 	}
 
-	workflowState.setWorkflowExecutionData({
+	executionDataStore.setExecution({
 		...workflowExecution,
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
 	});
-	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
-	workflowState.setActiveExecutionId(undefined);
+	executionDataStore.setExecutionRunData(runExecutionData);
+	stateStore.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
@@ -509,7 +519,7 @@ export function setRunExecutionData(
 			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
 	}
 
-	workflowState.setActiveExecutionId(undefined);
+	stateStore.setActiveExecutionId(undefined);
 
 	void useExternalHooks().run('pushConnection.executionFinished', {
 		itemsCount,
