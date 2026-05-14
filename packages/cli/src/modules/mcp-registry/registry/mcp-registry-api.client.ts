@@ -1,24 +1,53 @@
 import { Service } from '@n8n/di';
 
+import { buildStrapiUpdateQuery, paginatedRequest } from '@/utils/strapi-utils';
+
 import type { McpRegistryServer } from './mcp-registry.types';
-import { linearMockServer, notionMockServer } from './mock-servers';
 
 export type McpRegistryServerMetadata = Pick<McpRegistryServer, 'id' | 'version' | 'updatedAt'>;
 
+const MCP_SERVERS_STAGING_URL = 'https://api-staging.n8n.io/api/mcp-servers';
+const MCP_SERVERS_PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
+
+/** Strapi's qs parser has an arrayLimit of 100 */
+const STRAPI_ARRAY_LIMIT = 100;
+
 @Service()
 export class McpRegistryApiClient {
-	private readonly mockServers: McpRegistryServer[] = [notionMockServer, linearMockServer];
-
 	async fetchAllServers(): Promise<McpRegistryServer[]> {
-		return this.mockServers.map((server) => ({ ...server }));
+		return await paginatedRequest<McpRegistryServer>(this.getUrl(), {
+			pagination: { page: 1, pageSize: 25 },
+		});
 	}
 
 	async fetchServersMetadata(): Promise<McpRegistryServerMetadata[]> {
-		return this.mockServers.map(({ id, version, updatedAt }) => ({ id, version, updatedAt }));
+		return await paginatedRequest<McpRegistryServerMetadata>(this.getUrl(), {
+			fields: ['version', 'updatedAt'],
+			pagination: { page: 1, pageSize: 500 },
+		});
 	}
 
 	async fetchServersByIds(ids: number[]): Promise<McpRegistryServer[]> {
-		const idSet = new Set(ids);
-		return this.mockServers.filter(({ id }) => idSet.has(id)).map((server) => ({ ...server }));
+		const data: McpRegistryServer[] = [];
+		for (let i = 0; i < ids.length; i += STRAPI_ARRAY_LIMIT) {
+			const batch = ids.slice(i, i + STRAPI_ARRAY_LIMIT);
+			const qs = buildStrapiUpdateQuery(batch);
+			const batchData = await paginatedRequest<McpRegistryServer>(this.getUrl(), {
+				...qs,
+				pagination: { page: 1, pageSize: 25 },
+			});
+			data.push(...batchData);
+		}
+
+		return data;
+	}
+
+	private getUrl(): string {
+		const environment = process.env.ENVIRONMENT;
+		if (environment === 'staging') {
+			return MCP_SERVERS_STAGING_URL;
+		}
+
+		return MCP_SERVERS_PRODUCTION_URL;
 	}
 }

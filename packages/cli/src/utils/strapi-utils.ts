@@ -61,10 +61,10 @@ export async function paginatedRequest<T>(
 			});
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
-				tags: { source: 'communityNodesPaginatedRequest' },
+				tags: { source: 'strapiPaginatedRequest' },
 			});
 			Container.get(Logger).error(
-				`Error while fetching community nodes: ${(error as Error).message}`,
+				`Error fetching from Strapi API (${url}): ${(error as Error).message}`,
 			);
 			if (options?.throwOnError) throw error;
 
