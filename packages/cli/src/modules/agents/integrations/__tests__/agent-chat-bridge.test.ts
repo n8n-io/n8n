@@ -1,4 +1,4 @@
-import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
+import type { AgentIntegrationSettings } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
 import type { Author } from 'chat';
 import { Container } from '@n8n/di';
@@ -101,8 +101,9 @@ class TelegramTestIntegration extends AgentChatIntegration {
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
-	isUserAllowed(author: Author, settings: AgentTelegramIntegrationSettings | undefined): boolean {
-		if (!settings || settings.accessMode === 'public') return true;
+	isUserAllowed(author: Author, settings: AgentIntegrationSettings | undefined): boolean {
+		if (!settings || settings.type !== 'telegram') return true;
+		if (settings.accessMode === 'public') return true;
 		return (
 			settings.allowedUsers.includes(author.userId) ||
 			settings.allowedUsers.includes(author.userName)
@@ -268,7 +269,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ accessMode: 'private', allowedUsers: ['123'] },
+				{ type: 'telegram', accessMode: 'private', allowedUsers: ['123'] },
 			);
 
 			await handlers.mention!(thread, {
@@ -299,7 +300,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ accessMode: 'private', allowedUsers: ['123'] },
+				{ type: 'telegram', accessMode: 'private', allowedUsers: ['123'] },
 			);
 
 			await handlers.mention!(thread, {
@@ -355,7 +356,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				'telegram',
-				{ accessMode: 'private', allowedUsers: ['123'] },
+				{ type: 'telegram', accessMode: 'private', allowedUsers: ['123'] },
 			);
 
 			await handlers.action!({

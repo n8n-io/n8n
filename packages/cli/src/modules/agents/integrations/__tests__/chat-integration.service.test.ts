@@ -557,7 +557,11 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		it('publishes settings alongside a connect broadcast', async () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
-			const settings = { accessMode: 'private' as const, allowedUsers: ['123'] };
+			const settings = {
+				type: 'telegram' as const,
+				accessMode: 'private' as const,
+				allowedUsers: ['123'],
+			};
 
 			await service.broadcastIntegrationChange('a1', 'telegram', 'c1', 'connect', settings);
 

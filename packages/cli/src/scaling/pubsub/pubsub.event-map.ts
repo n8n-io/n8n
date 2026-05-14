@@ -1,5 +1,5 @@
 import type {
-	AgentTelegramIntegrationSettings,
+	AgentIntegrationSettings,
 	ChatHubMessageStatus,
 	PushMessage,
 	WorkerStatus,
@@ -194,7 +194,7 @@ export type PubSubCommandMap = {
 		type: string;
 		credentialId: string;
 		action: 'connect' | 'disconnect';
-		settings?: AgentTelegramIntegrationSettings;
+		settings?: AgentIntegrationSettings;
 	};
 
 	/**

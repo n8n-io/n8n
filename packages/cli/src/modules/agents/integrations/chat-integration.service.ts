@@ -2,7 +2,7 @@ import {
 	isAgentCredentialIntegration,
 	type AgentCredentialIntegration,
 	type AgentIntegrationStatusResponse,
-	type AgentTelegramIntegrationSettings,
+	type AgentIntegrationSettings,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -56,7 +56,7 @@ interface ChatAgentConnection {
 
 interface ConnectOptions {
 	skipExternalHooks?: boolean;
-	settings?: AgentTelegramIntegrationSettings;
+	settings?: AgentIntegrationSettings;
 }
 
 /**
@@ -95,7 +95,7 @@ export class ChatIntegrationService {
 		type: string,
 		credentialId: string,
 		action: 'connect' | 'disconnect',
-		settings?: AgentTelegramIntegrationSettings,
+		settings?: AgentIntegrationSettings,
 	): Promise<void> {
 		if (!this.globalConfig.multiMainSetup.enabled) return;
 		try {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AGENT_SCHEDULE_TRIGGER_TYPE, type AgentTelegramIntegrationSettings } from '@n8n/api-types';
+import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -9,13 +9,9 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
-import {
-	resolveSavedTelegramSettings,
-	TELEGRAM_INTEGRATION_TYPE,
-} from '../utils/telegramAccessSettings';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
-import AgentTelegramAccessSettingsForm from './AgentTelegramAccessSettingsForm.vue';
+import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -122,13 +118,11 @@ const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
 
 // Bound via a callback ref because the form is rendered inside a v-for and
-// Vue would otherwise collect it into an array; only the telegram card matches
-// its v-if, so a single ref to that one instance is what we want.
-const telegramFormRef = ref<InstanceType<typeof AgentTelegramAccessSettingsForm> | null>(null);
-function setTelegramFormRef(el: unknown): void {
-	telegramFormRef.value = (el ?? null) as InstanceType<
-		typeof AgentTelegramAccessSettingsForm
-	> | null;
+// Vue would otherwise collect it into an array; only the matching card's v-if
+// triggers, so a single ref to that one instance is what we want.
+const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm> | null>(null);
+function setSettingsFormRef(el: unknown): void {
+	settingsFormRef.value = (el ?? null) as InstanceType<typeof AgentIntegrationSettingsForm> | null;
 }
 const copied = ref(false);
 const showManifest = ref(false);
@@ -150,14 +144,6 @@ function isLoading(type: string): boolean {
 
 function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
-}
-
-function isTelegram(type: string): boolean {
-	return type === TELEGRAM_INTEGRATION_TYPE;
-}
-
-function telegramSavedSettingsFor(type: string): AgentTelegramIntegrationSettings | undefined {
-	return resolveSavedTelegramSettings(integrationSettings.value[type], isConnected(type));
 }
 
 // Webhook URLs in the integration manifests must use the instance's configured
@@ -312,11 +298,8 @@ async function fetchCredentials() {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
-	let settings: AgentTelegramIntegrationSettings | undefined;
-	if (isTelegram(type)) {
-		if (telegramFormRef.value?.validationError) return;
-		settings = telegramFormRef.value?.currentSettings;
-	}
+	if (settingsFormRef.value?.validationError) return;
+	const settings = settingsFormRef.value?.currentSettings;
 	try {
 		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
@@ -472,13 +455,12 @@ onMounted(async () => {
 					</N8nText>
 				</div>
 
-				<!-- Telegram access settings — mounted once per card so the user's
-					 typed allowlist survives a disconnect → edit → reconnect. -->
-				<AgentTelegramAccessSettingsForm
-					v-if="isTelegram(config.type)"
-					:ref="setTelegramFormRef"
+				<AgentIntegrationSettingsForm
+					:ref="setSettingsFormRef"
+					:type="config.type"
 					:disabled="isConnected(config.type) || isLoading(config.type)"
-					:saved-settings="telegramSavedSettingsFor(config.type)"
+					:connected="isConnected(config.type)"
+					:saved-settings="integrationSettings[config.type]"
 				/>
 
 				<N8nText
@@ -514,7 +496,7 @@ onMounted(async () => {
 						:disabled="
 							!selectedCredentials[config.type] ||
 							isLoading(config.type) ||
-							(isTelegram(config.type) && !!telegramFormRef?.validationError)
+							!!settingsFormRef?.validationError
 						"
 						:loading="isLoading(config.type)"
 						size="small"

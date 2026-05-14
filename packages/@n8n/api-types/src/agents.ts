@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { AgentTelegramIntegrationSettings } from './dto/agents/agent-integration.dto';
+import type { AgentIntegrationSettings } from './dto/agents/agent-integration.dto';
 
 /**
  * Describes a chat platform integration that agents can connect to.
@@ -64,7 +64,7 @@ export interface AgentCredentialIntegration {
 	type: string;
 	credentialId: string;
 	credentialName: string;
-	settings?: AgentTelegramIntegrationSettings;
+	settings?: AgentIntegrationSettings;
 }
 
 export interface AgentScheduleIntegration {
@@ -85,7 +85,7 @@ export interface AgentScheduleConfig {
 export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;
-	settings?: AgentTelegramIntegrationSettings;
+	settings?: AgentIntegrationSettings;
 }
 
 export interface AgentIntegrationStatusResponse {

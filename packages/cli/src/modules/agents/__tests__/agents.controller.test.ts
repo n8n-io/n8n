@@ -189,7 +189,11 @@ describe('AgentsController integration credentials', () => {
 			chatIntegrationService,
 			agentRepository,
 		});
-		const settings = { accessMode: 'private' as const, allowedUsers: ['123'] };
+		const settings = {
+			type: 'telegram' as const,
+			accessMode: 'private' as const,
+			allowedUsers: ['123'],
+		};
 
 		await expect(
 			controller.connectIntegration(
@@ -232,7 +236,11 @@ describe('AgentsController integration credentials', () => {
 	});
 
 	it('returns Telegram integrations from the persisted agent entry even when the live bridge is empty', async () => {
-		const settings = { accessMode: 'private' as const, allowedUsers: ['123'] };
+		const settings = {
+			type: 'telegram' as const,
+			accessMode: 'private' as const,
+			allowedUsers: ['123'],
+		};
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-1',

@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { N8nCallout, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { ref, computed, watch, nextTick } from 'vue';
+import { N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 
 import {
-	createTelegramSettings,
 	DEFAULT_TELEGRAM_PUBLIC_SETTINGS,
-	serializeTelegramUsers,
-	validateTelegramSettings,
+	VALID_TELEGRAM_ENTRY_RE,
 	type TelegramSettingsValidationError,
 } from '../utils/telegramAccessSettings';
 
@@ -30,29 +28,75 @@ const i18n = useI18n();
 const accessMode = ref<AgentTelegramIntegrationSettings['accessMode']>(
 	props.savedSettings?.accessMode ?? 'private',
 );
-const usersInput = ref<string>(
-	props.savedSettings ? serializeTelegramUsers(props.savedSettings.allowedUsers) : '',
-);
+const entries = ref<string[]>(props.savedSettings?.allowedUsers.slice() ?? []);
+const inputText = ref('');
+const inputRef = ref<HTMLInputElement>();
 
-// Only sync when saved settings are populated. If the integration disconnects
-// the prop becomes undefined — keep whatever the user has typed so they can
-// edit and reconnect without retyping the allowlist.
 watch(
 	() => props.savedSettings,
 	(saved) => {
 		if (!saved) return;
 		accessMode.value = saved.accessMode;
-		usersInput.value = serializeTelegramUsers(saved.allowedUsers);
+		entries.value = saved.allowedUsers.slice();
+		inputText.value = '';
 	},
 );
 
-const currentSettings = computed<AgentTelegramIntegrationSettings>(() =>
-	createTelegramSettings(accessMode.value, usersInput.value),
+function finalizeInput() {
+	const raw = inputText.value.trim();
+	if (!raw) return;
+
+	const tokens = raw.split(/[\s,]+/).filter(Boolean);
+	const unique = new Set(entries.value);
+	for (const token of tokens) {
+		unique.add(token);
+	}
+	entries.value = [...unique];
+	inputText.value = '';
+}
+
+function removeEntry(index: number) {
+	entries.value = entries.value.filter((_, i) => i !== index);
+	void nextTick(() => inputRef.value?.focus());
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (e.key === ',' || e.key === ' ' || e.key === 'Enter') {
+		e.preventDefault();
+		finalizeInput();
+	}
+	if (e.key === 'Backspace' && inputText.value === '' && entries.value.length > 0) {
+		entries.value = entries.value.slice(0, -1);
+	}
+}
+
+function onPaste(e: ClipboardEvent) {
+	e.preventDefault();
+	const pasted = e.clipboardData?.getData('text') ?? '';
+	inputText.value += pasted;
+	finalizeInput();
+}
+
+function onContainerClick() {
+	inputRef.value?.focus();
+}
+
+const currentSettings = computed<AgentTelegramIntegrationSettings>(() => ({
+	type: 'telegram',
+	accessMode: accessMode.value,
+	allowedUsers: [...new Set(entries.value.filter(Boolean))],
+}));
+
+const invalidEntries = computed<string[]>(() =>
+	entries.value.filter((entry) => !VALID_TELEGRAM_ENTRY_RE.test(entry)),
 );
 
-const validationError = computed<TelegramSettingsValidationError | null>(() =>
-	validateTelegramSettings(currentSettings.value, usersInput.value),
-);
+const validationError = computed<TelegramSettingsValidationError | null>(() => {
+	if (currentSettings.value.accessMode === 'public') return null;
+	if (invalidEntries.value.length > 0) return 'invalid';
+	if (entries.value.length === 0) return 'required';
+	return null;
+});
 
 const validationErrorText = computed<string>(() => {
 	if (validationError.value === 'invalid') {
@@ -102,7 +146,42 @@ defineExpose({ currentSettings, validationError, isDirty });
 			<N8nText size="small" bold>
 				{{ i18n.baseText('agents.builder.addTrigger.telegram.users.label') }}
 			</N8nText>
-			<N8nInput v-model="usersInput" :disabled="disabled" data-testid="telegram-user-ids" />
+			<div
+				:class="[$style.tagInput, { [$style.tagInputDisabled]: disabled }]"
+				data-testid="telegram-user-ids"
+				@click="onContainerClick"
+			>
+				<span
+					v-for="(entry, idx) in entries"
+					:key="entry + idx"
+					:class="[$style.badge, { [$style.badgeInvalid]: !VALID_TELEGRAM_ENTRY_RE.test(entry) }]"
+				>
+					{{ entry }}
+					<button
+						v-if="!disabled"
+						:class="$style.badgeRemove"
+						type="button"
+						:aria-label="'Remove ' + entry"
+						@click.stop="removeEntry(idx)"
+					>
+						<N8nIcon icon="x" size="small" />
+					</button>
+				</span>
+				<input
+					ref="inputRef"
+					v-model="inputText"
+					:class="$style.tagInputField"
+					:disabled="disabled"
+					:placeholder="
+						entries.length === 0
+							? i18n.baseText('agents.builder.addTrigger.telegram.users.placeholder')
+							: ''
+					"
+					@keydown="onKeydown"
+					@paste="onPaste"
+					@blur="finalizeInput"
+				/>
+			</div>
 			<N8nText
 				v-if="validationError"
 				:class="$style.error"
@@ -144,5 +223,79 @@ defineExpose({ currentSettings, validationError, isDirty });
 
 .error {
 	color: var(--color--danger);
+}
+
+.tagInput {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background-color: var(--input--color--background, var(--color--foreground--tint-2));
+	cursor: text;
+	min-height: 36px;
+
+	&:focus-within {
+		border-color: var(--color--primary);
+	}
+}
+
+.tagInputDisabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.tagInputField {
+	flex: 1;
+	min-width: 80px;
+	border: none;
+	outline: none;
+	background: transparent;
+	font-size: var(--font-size--2xs);
+	color: var(--text-color);
+	padding: var(--spacing--4xs) 0;
+
+	&::placeholder {
+		color: var(--text-color--subtler);
+	}
+}
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	height: var(--tag--height);
+	padding: var(--tag--padding);
+	line-height: var(--tag--line-height);
+	color: var(--tag--color--text);
+	background-color: var(--tag--color--background);
+	border: 1px solid var(--tag--border-color);
+	border-radius: var(--tag--radius);
+	font-size: var(--tag--font-size);
+	white-space: nowrap;
+}
+
+.badgeInvalid {
+	border-color: var(--color--danger);
+	color: var(--color--danger);
+}
+
+.badgeRemove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	color: inherit;
+	opacity: 0.6;
+	line-height: 1;
+
+	&:hover {
+		opacity: 1;
+	}
 }
 </style>

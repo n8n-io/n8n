@@ -5,7 +5,7 @@ import type {
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentScheduleConfig,
-	AgentTelegramIntegrationSettings,
+	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -76,7 +76,7 @@ export const connectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
-	settings?: AgentTelegramIntegrationSettings,
+	settings?: AgentIntegrationSettings,
 ): Promise<{ status: string }> => {
 	return await makeRestApiRequest(
 		context,

@@ -1,7 +1,8 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
+import type { AgentIntegrationSettings } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { ActionEvent, Chat, Message, Thread, Author } from 'chat';
+import { UnexpectedError } from 'n8n-workflow';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
@@ -86,8 +87,13 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
 		private readonly integrationType: string,
-		private readonly integrationSettings?: AgentTelegramIntegrationSettings,
+		private readonly integrationSettings?: AgentIntegrationSettings,
 	) {
+		if (integrationSettings && integrationSettings.type !== integrationType) {
+			throw new UnexpectedError(
+				`Integration settings type "${integrationSettings.type}" does not match integration type "${integrationType}"`,
+			);
+		}
 		this.integration = Container.get(ChatIntegrationRegistry).get(integrationType);
 		if (this.integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
@@ -108,7 +114,7 @@ export class AgentChatBridge {
 		logger: Logger,
 		n8nProjectId: string,
 		integrationType: string,
-		integrationSettings?: AgentTelegramIntegrationSettings,
+		integrationSettings?: AgentIntegrationSettings,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
 			async *executeForChatPublished({ memory, agentId: aid, message, integrationType }) {

@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import type { AgentIntegrationStatusEntry, AgentTelegramIntegrationSettings } from '@n8n/api-types';
+import type { AgentIntegrationStatusEntry, AgentIntegrationSettings } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -10,7 +10,7 @@ type Status = 'connected' | 'disconnected' | 'unknown';
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
 	connectedCredentials: Ref<Record<string, string>>;
-	integrationSettings: Ref<Record<string, AgentTelegramIntegrationSettings | undefined>>;
+	integrationSettings: Ref<Record<string, AgentIntegrationSettings | undefined>>;
 	loadingMap: Ref<Record<string, boolean>>;
 	errorMessages: Ref<Record<string, string>>;
 	errorIsConflict: Ref<Record<string, boolean>>;
@@ -109,7 +109,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 	async function connect(
 		type: string,
 		credId: string,
-		settings?: AgentTelegramIntegrationSettings,
+		settings?: AgentIntegrationSettings,
 	): Promise<void> {
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';

@@ -156,6 +156,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('allows everyone in public mode', () => {
 		expect(
 			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, {
+				type: 'telegram',
 				accessMode: 'public',
 				allowedUsers: [],
 			}),
@@ -171,6 +172,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('accepts a whitelisted user by numeric ID in private mode', () => {
 		expect(
 			integration.isUserAllowed({ userId: '123', userName: 'someuser' } as Author, {
+				type: 'telegram',
 				accessMode: 'private',
 				allowedUsers: ['123', '456'],
 			}),
@@ -180,6 +182,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('accepts a whitelisted user by username in private mode', () => {
 		expect(
 			integration.isUserAllowed({ userId: '999', userName: 'john_doe123' } as Author, {
+				type: 'telegram',
 				accessMode: 'private',
 				allowedUsers: ['john_doe123', '456'],
 			}),
@@ -189,10 +192,24 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('rejects a user whose ID and username are both absent from the allowlist', () => {
 		expect(
 			integration.isUserAllowed({ userId: '999', userName: 'stranger' } as Author, {
+				type: 'telegram',
 				accessMode: 'private',
 				allowedUsers: ['123', 'john_doe123'],
 			}),
 		).toBe(false);
+	});
+
+	it('throws UnexpectedError when settings type does not match telegram', () => {
+		expect(() =>
+			integration.isUserAllowed(
+				{ userId: '123', userName: 'user' } as Author,
+				{
+					type: 'slack',
+					accessMode: 'private',
+					allowedUsers: ['123'],
+				} as never,
+			),
+		).toThrow('TelegramIntegration received settings with type "slack"');
 	});
 });
 

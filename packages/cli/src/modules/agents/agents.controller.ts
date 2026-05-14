@@ -7,7 +7,7 @@ import {
 	type AgentSkill,
 	type AgentScheduleConfig,
 	type AgentSseEvent,
-	type AgentTelegramIntegrationSettings,
+	type AgentIntegrationSettings,
 	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
@@ -56,8 +56,6 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
-
-const TELEGRAM_INTEGRATION_TYPE = 'telegram';
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -109,20 +107,20 @@ export class AgentsController {
 	) {}
 
 	private settingsForConnect(
-		type: string,
-		settings: AgentTelegramIntegrationSettings | undefined,
-	): AgentTelegramIntegrationSettings | undefined {
-		if (type !== TELEGRAM_INTEGRATION_TYPE) {
-			if (settings) {
-				throw new BadRequestError('Integration settings are only supported for Telegram');
+		integrationType: string,
+		settings: AgentIntegrationSettings | undefined,
+	): AgentIntegrationSettings | undefined {
+		if (!settings) {
+			if (integrationType === 'telegram') {
+				throw new BadRequestError('Integration settings are required for telegram');
 			}
 			return undefined;
 		}
-
-		if (!settings) {
-			throw new BadRequestError('Telegram access settings are required');
+		if (settings.type !== integrationType) {
+			throw new BadRequestError(
+				`Settings type "${settings.type}" does not match integration type "${integrationType}"`,
+			);
 		}
-
 		return settings;
 	}
 

@@ -1,8 +1,9 @@
-import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
+import type { AgentIntegrationSettings, AgentTelegramIntegrationSettings } from '@n8n/api-types';
 
 export const TELEGRAM_INTEGRATION_TYPE = 'telegram';
 
 export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
+	type: 'telegram',
 	accessMode: 'public',
 	allowedUsers: [],
 } satisfies AgentTelegramIntegrationSettings;
@@ -14,18 +15,19 @@ export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
  * form starts in private mode.
  */
 export function resolveSavedTelegramSettings(
-	settings: AgentTelegramIntegrationSettings | undefined,
+	settings: AgentIntegrationSettings | undefined,
 	connected: boolean,
 ): AgentTelegramIntegrationSettings | undefined {
 	if (!connected) return undefined;
-	return settings ?? DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
+	if (settings?.type === 'telegram') return settings;
+	return DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
 }
 
 export type TelegramSettingsValidationError = 'required' | 'invalid';
 
 // Matches a Telegram user ID (numeric) or username (letters, numbers, underscores),
 // optionally prefixed with "@".
-const VALID_ENTRY_RE = /^@?[a-zA-Z0-9_]+$/;
+export const VALID_TELEGRAM_ENTRY_RE = /^@?[a-zA-Z0-9_]+$/;
 
 export function parseTelegramUsersInput(input: string): {
 	allowedUsers: string[];
@@ -40,7 +42,7 @@ export function parseTelegramUsersInput(input: string): {
 	const invalidEntries: string[] = [];
 
 	for (const entry of rawEntries) {
-		if (VALID_ENTRY_RE.test(entry)) {
+		if (VALID_TELEGRAM_ENTRY_RE.test(entry)) {
 			validEntries.push(entry);
 		} else {
 			invalidEntries.push(entry);
@@ -58,7 +60,7 @@ export function createTelegramSettings(
 	usersInput: string,
 ): AgentTelegramIntegrationSettings {
 	const { allowedUsers } = parseTelegramUsersInput(usersInput);
-	return { accessMode, allowedUsers };
+	return { type: 'telegram', accessMode, allowedUsers };
 }
 
 export function validateTelegramSettings(

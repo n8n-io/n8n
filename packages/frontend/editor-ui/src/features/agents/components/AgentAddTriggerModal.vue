@@ -17,24 +17,16 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
-	type AgentTelegramIntegrationSettings,
-	type ChatIntegrationDescriptor,
-} from '@n8n/api-types';
+import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
-import {
-	resolveSavedTelegramSettings,
-	TELEGRAM_INTEGRATION_TYPE,
-} from '../utils/telegramAccessSettings';
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
-import AgentTelegramAccessSettingsForm from './AgentTelegramAccessSettingsForm.vue';
+import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -86,7 +78,7 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
-const telegramFormRef = ref<InstanceType<typeof AgentTelegramAccessSettingsForm>>();
+const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm>>();
 
 // Track credentials that existed before the user opened the "new credential"
 // modal, keyed by trigger type. After the modal closes we diff against the
@@ -136,14 +128,6 @@ function isLoading(type: string): boolean {
 
 function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
-}
-
-function isTelegram(type: string): boolean {
-	return type === TELEGRAM_INTEGRATION_TYPE;
-}
-
-function telegramSavedSettingsFor(type: string): AgentTelegramIntegrationSettings | undefined {
-	return resolveSavedTelegramSettings(integrationSettings.value[type], isConnected(type));
 }
 
 const CONNECTED_TEXT_KEYS = {
@@ -366,11 +350,8 @@ async function ensurePublished(): Promise<boolean> {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
-	let settings: AgentTelegramIntegrationSettings | undefined;
-	if (isTelegram(type)) {
-		if (telegramFormRef.value?.validationError) return;
-		settings = telegramFormRef.value?.currentSettings;
-	}
+	if (settingsFormRef.value?.validationError) return;
+	const settings = settingsFormRef.value?.currentSettings;
 	const published = await ensurePublished();
 	if (!published) return;
 	try {
@@ -592,13 +573,12 @@ onMounted(async () => {
 						</N8nText>
 					</div>
 
-					<!-- Telegram access settings — mounted once so the user's typed
-						 allowlist survives a disconnect → edit → reconnect. -->
-					<AgentTelegramAccessSettingsForm
-						v-if="isTelegram(currentIntegration.type)"
-						ref="telegramFormRef"
+					<AgentIntegrationSettingsForm
+						ref="settingsFormRef"
+						:type="currentIntegration.type"
 						:disabled="isConnected(currentIntegration.type) || isLoading(currentIntegration.type)"
-						:saved-settings="telegramSavedSettingsFor(currentIntegration.type)"
+						:connected="isConnected(currentIntegration.type)"
+						:saved-settings="integrationSettings[currentIntegration.type]"
 					/>
 
 					<N8nText
@@ -662,7 +642,7 @@ onMounted(async () => {
 								!selectedCredentials[currentIntegration.type] ||
 								isLoading(currentIntegration.type) ||
 								publishing ||
-								(isTelegram(currentIntegration.type) && !!telegramFormRef?.validationError)
+								!!settingsFormRef?.validationError
 							"
 							:loading="isLoading(currentIntegration.type) || publishing"
 							size="small"
