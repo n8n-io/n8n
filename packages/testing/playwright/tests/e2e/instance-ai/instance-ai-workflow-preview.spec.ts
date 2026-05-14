@@ -83,8 +83,8 @@ test.describe(
 				timeout: 120_000,
 			});
 
-			// Close the preview
-			await n8n.instanceAi.getPreviewCloseButton().click();
+			// Hide the preview
+			await n8n.instanceAi.getPreviewToggleButton().click();
 
 			// Preview iframe should no longer be visible
 			await expect(n8n.instanceAi.getPreviewIframeLocator()).toBeHidden();

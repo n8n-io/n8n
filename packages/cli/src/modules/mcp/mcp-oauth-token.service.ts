@@ -188,7 +188,7 @@ export class McpOAuthTokenService {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
-			return { user };
+			return { user, authType: 'oauth' };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
