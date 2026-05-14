@@ -98,9 +98,13 @@ const getResetToken = () => {
 const getAvailableMfaMethods = (): MfaMethod[] => {
 	const param = router.currentRoute.value.query.mfaMethods;
 	if (typeof param !== 'string') return [];
-	return param
+	const parsed = param
 		.split(',')
 		.filter((m): m is MfaMethod => m === 'totp' || m === 'passkey' || m === 'security_key');
+	// Defensive dedupe — a user with multiple WebAuthn credentials of the
+	// same kind would otherwise surface as `['passkey', 'passkey', ...]`,
+	// and the switcher's `indexOf`+1 cycle would land on the same method.
+	return Array.from(new Set(parsed));
 };
 
 // Pick the user's default method when they land on the page. Same priority
@@ -206,11 +210,15 @@ const onWebauthnVerify = async () => {
 // Build the (TOTP / no-MFA) form config — reactive to `mfaMethod` so toggling
 // the switcher to TOTP mid-flow injects the mfaCode field.
 const buildFormConfig = (): IFormBoxConfig => {
+	const isMfaFlow = mfaMethod.value !== null;
+
 	const form: IFormBoxConfig = {
 		title: locale.baseText('auth.changePassword'),
 		buttonText: locale.baseText('auth.changePassword'),
-		redirectText: locale.baseText('auth.signin'),
-		redirectLink: '/signin',
+		// Plain (no-MFA) flow keeps the legacy "Sign in" escape link. In the
+		// MFA flow the user is mid-2FA, so dropping the link avoids them
+		// abandoning the recovery to land on a sign-in screen they can't pass.
+		...(isMfaFlow ? {} : { redirectText: locale.baseText('auth.signin'), redirectLink: '/signin' }),
 		inputs: [
 			{
 				name: 'password',
@@ -372,14 +380,21 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 		</N8nCard>
 	</div>
 
-	<!-- TOTP flow (or no MFA) — existing form-based view -->
-	<AuthView
-		v-else-if="config"
-		:form="config"
-		:form-loading="loading"
-		@submit="onSubmit"
-		@update="onInput"
-	/>
+	<!-- TOTP flow (or no MFA) — existing form-based view, with a switcher
+		 below when the user has more than one MFA method available. -->
+	<div v-else-if="config" :class="$style.totpWrapper">
+		<AuthView :form="config" :form-loading="loading" @submit="onSubmit" @update="onInput" />
+		<div
+			v-if="switcherLabelKey"
+			:class="$style.totpSwitcher"
+			data-test-id="change-password-switcher"
+		>
+			<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
+				<N8nIcon :icon="switcherIcon" size="xsmall" />
+				{{ locale.baseText(switcherLabelKey) }}
+			</button>
+		</div>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -488,6 +503,20 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 	margin-top: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	text-align: center;
+}
+
+.totpWrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+// AuthView already bottom-pads itself with `var(--spacing--xl)` — pull the
+// switcher up so it sits flush under the form card rather than hovering at
+// the very bottom of the viewport.
+.totpSwitcher {
+	margin-top: calc(-1 * var(--spacing--md));
 	text-align: center;
 }
 
