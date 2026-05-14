@@ -72,7 +72,8 @@ export async function fetchAndExtract(
 			});
 		} finally {
 			clearTimeout(timeout);
-			await dispatcher.close();
+			// Fire-and-forget — awaiting Agent.close() deadlocks against an unread body.
+			void dispatcher.close().catch(() => {});
 		}
 
 		// Follow redirects manually so each hop is SSRF-checked

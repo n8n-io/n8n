@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
+import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
@@ -10,9 +11,12 @@ import { useInstanceAiStore } from './instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import {
+	InstanceAiProactiveStarterMessage,
+	useInstanceAiProactiveAgentExperiment,
+} from '@/experiments/instanceAiProactiveAgent';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
-import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
@@ -23,21 +27,20 @@ const router = useRouter();
 const toast = useToast();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
-
-// Reset to a blank "no active thread" state so the sidebar doesn't keep
-// highlighting the previous thread alongside the empty main view, and SSE
-// from any prior thread is torn down. A fresh placeholder UUID is generated;
-// `handleSubmit` promotes it to a real thread via `syncThread` before navigation.
-store.clearCurrentThread();
+const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
+	useInstanceAiProactiveAgentExperiment();
+const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+const isStartingThread = ref(false);
 
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
-	const threadId = store.currentThreadId;
+	const threadId = uuidv4();
+	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
 	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
@@ -45,19 +48,17 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	try {
 		await store.syncThread(threadId);
 	} catch {
+		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
 
-	void store.sendMessage(message, attachments, rootStore.pushRef);
+	const thread = store.getOrCreateRuntime(threadId);
+	void thread.sendMessage(message, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },
 	});
-}
-
-function handleStop() {
-	void store.cancelRun();
 }
 </script>
 
@@ -66,10 +67,11 @@ function handleStop() {
 		<InstanceAiViewHeader />
 
 		<div :class="$style.contentArea">
-			<div :class="$style.emptyLayout">
-				<InstanceAiEmptyState />
-				<div :class="$style.centeredInput">
-					<InstanceAiStatusBar />
+			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
+				<div :class="$style.proactiveMessageList">
+					<InstanceAiProactiveStarterMessage />
+				</div>
+				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
@@ -79,10 +81,30 @@ function handleStop() {
 					/>
 					<InstanceAiInput
 						ref="chatInputRef"
-						:is-streaming="store.isStreaming"
+						:is-submitting="isStartingThread"
+						:research-mode="store.researchMode"
+						@submit="handleSubmit"
+						@toggle-research-mode="store.toggleResearchMode()"
+					/>
+				</div>
+			</div>
+			<div v-else :class="$style.emptyLayout">
+				<InstanceAiEmptyState />
+				<div :class="$style.centeredInput">
+					<CreditWarningBanner
+						v-if="creditBanner.visible.value"
+						:credits-remaining="store.creditsRemaining"
+						:credits-quota="store.creditsQuota"
+						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+						@dismiss="creditBanner.dismiss()"
+					/>
+					<InstanceAiInput
+						ref="chatInputRef"
+						:is-submitting="isStartingThread"
+						:research-mode="store.researchMode"
 						:suggestions="INSTANCE_AI_EMPTY_STATE_SUGGESTIONS"
 						@submit="handleSubmit"
-						@stop="handleStop"
+						@toggle-research-mode="store.toggleResearchMode()"
 					/>
 				</div>
 			</div>
@@ -121,5 +143,30 @@ function handleStop() {
 .centeredInput {
 	width: 100%;
 	max-width: 680px;
+}
+
+.proactiveLayout {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.proactiveMessageList {
+	flex: 1;
+	width: 100%;
+	max-width: 800px;
+	margin: 0 auto;
+	padding: var(--spacing--lg);
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+}
+
+.proactiveInput {
+	width: 100%;
+	max-width: 750px;
+	margin: 0 auto;
+	padding: 0 var(--spacing--lg) var(--spacing--sm);
 }
 </style>

@@ -2,14 +2,16 @@
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-system';
-import N8nSelect from '@n8n/design-system/components/N8nSelect';
-import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
+import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -48,11 +50,8 @@ const emit = defineEmits<{
 
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-
-interface CredentialOption {
-	id: string;
-	name: string;
-}
+const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
 
 interface IntegrationConfig {
 	type: string;
@@ -103,6 +102,7 @@ const integrationConfigs: IntegrationConfig[] = [
 const {
 	statuses,
 	connectedCredentials,
+	integrationSettings,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -114,17 +114,37 @@ const {
 
 // UI-only state — stays local.
 const selectedCredentials = ref<Record<string, string>>({});
-const credentialsByType = ref<Record<string, CredentialOption[]>>({});
+const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+
+// One ref per integration type — keyed by config.type so each card's form is
+// read and validated independently.
+const settingsFormRefs = ref<
+	Record<string, InstanceType<typeof AgentIntegrationSettingsForm> | null>
+>({});
+function getSettingsFormRef(type: string) {
+	return (el: unknown) => {
+		settingsFormRefs.value[type] = (el ?? null) as InstanceType<
+			typeof AgentIntegrationSettingsForm
+		> | null;
+	};
+}
 const copied = ref(false);
 const showManifest = ref(false);
 
+const projectForPermissions = computed(() => {
+	if (projectsStore.currentProject?.id === props.projectId) return projectsStore.currentProject;
+	if (projectsStore.personalProject?.id === props.projectId) return projectsStore.personalProject;
+	return projectsStore.myProjects.find((project) => project.id === props.projectId) ?? null;
+});
+
+const credentialPermissions = computed(() => {
+	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
+	return { ...permissions, create: !!permissions.create };
+});
+
 function isLoading(type: string): boolean {
 	return loadingMap.value[type] ?? false;
-}
-
-function hasCredentials(type: string): boolean {
-	return (credentialsByType.value[type] ?? []).length > 0;
 }
 
 function hasError(type: string): boolean {
@@ -256,14 +276,20 @@ function onScheduleTriggerAdded() {
 async function fetchCredentials() {
 	credentialsLoading.value = true;
 	try {
-		const allCredentials = await makeRestApiRequest<
-			Array<{ id: string; name: string; type: string }>
-		>(rootStore.restApiContext, 'GET', '/credentials');
+		credentialsStore.setCredentials([]);
+		const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			projectId: props.projectId,
+		});
 
 		for (const config of integrationConfigs) {
 			credentialsByType.value[config.type] = allCredentials
 				.filter((c) => config.credentialTypes.includes(c.type))
-				.map((c) => ({ id: c.id, name: c.name }));
+				.map((c) => ({
+					id: c.id,
+					name: c.name,
+					typeDisplayName: credentialsStore.getCredentialTypeByName(c.type)?.displayName,
+					homeProject: c.homeProject,
+				}));
 		}
 	} catch {
 		for (const config of integrationConfigs) {
@@ -277,8 +303,10 @@ async function fetchCredentials() {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
+	if (settingsFormRefs.value[type]?.validationError) return;
+	const settings = settingsFormRefs.value[type]?.currentSettings;
 	try {
-		await connect(type, credId);
+		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
 		emit('trigger-added', { triggerType: type, triggers });
 		emitConnectedTriggers();
@@ -302,6 +330,7 @@ function onCreateCredential(type: string) {
 			config.credentialTypes[0],
 			false,
 			false,
+			props.projectId,
 			undefined,
 			undefined,
 			undefined,
@@ -391,83 +420,37 @@ onMounted(async () => {
 				</div>
 
 				<div v-if="!isConnected(config.type)" :class="$style.connectForm">
-					<template v-if="hasCredentials(config.type)">
-						<label :class="$style.label">
-							<N8nText size="small" bold>{{ config.label }} Credential</N8nText>
-						</label>
-						<div :class="$style.selectRow">
-							<N8nSelect
-								v-model="selectedCredentials[config.type]"
-								:class="$style.select"
-								placeholder="Select a credential..."
-								:loading="credentialsLoading"
-								:disabled="isLoading(config.type)"
-								size="medium"
-								:data-testid="`${config.type}-credential-select`"
-							>
-								<N8nOption
-									v-for="cred in credentialsByType[config.type] ?? []"
-									:key="cred.id"
-									:value="cred.id"
-									:label="cred.name"
-								/>
-							</N8nSelect>
-							<N8nButton
-								v-if="selectedCredentials[config.type]"
-								type="tertiary"
-								size="small"
-								icon="pen"
-								aria-label="Edit credential"
-								:data-testid="`${config.type}-edit-credential`"
-								@click="onEditCredential(config.type)"
-							/>
-						</div>
-					</template>
-
-					<div v-else-if="!credentialsLoading" :class="$style.emptyCredentials">
-						<N8nText size="small">{{ config.noCredentialsMessage }}</N8nText>
+					<label :class="$style.label">
+						<N8nText size="small" bold>{{ config.label }} Credential</N8nText>
+					</label>
+					<div :class="$style.selectRow">
+						<AgentCredentialSelect
+							v-model="selectedCredentials[config.type]"
+							:class="$style.select"
+							placeholder="Select a credential..."
+							:credentials="credentialsByType[config.type] ?? []"
+							:credential-permissions="credentialPermissions"
+							:loading="credentialsLoading"
+							:disabled="isLoading(config.type)"
+							:data-test-id="`${config.type}-credential-select`"
+							@create="onCreateCredential(config.type)"
+						/>
 						<N8nButton
-							size="small"
-							:data-testid="`${config.type}-create-credential`"
-							@click="onCreateCredential(config.type)"
-						>
-							<N8nIcon icon="plus" :size="14" />
-							Add {{ config.label }} credential
-						</N8nButton>
-					</div>
-
-					<N8nText v-if="hasError(config.type)" :class="$style.errorText" size="small">
-						{{ errorMessages[config.type] }}
-						<a
-							v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
-							:class="$style.link"
-							href="#"
-							@click.prevent="onEditCredential(config.type)"
-							>Edit credential</a
-						>
-					</N8nText>
-
-					<div :class="$style.actions">
-						<N8nButton
-							:disabled="!selectedCredentials[config.type] || isLoading(config.type)"
-							:loading="isLoading(config.type)"
-							size="small"
-							:data-testid="`${config.type}-connect-button`"
-							@click="onConnect(config.type)"
-						>
-							<N8nIcon icon="plug" :size="14" />
-							Connect
-						</N8nButton>
-						<N8nButton
-							v-if="hasCredentials(config.type)"
+							v-if="selectedCredentials[config.type]"
 							type="tertiary"
 							size="small"
-							:data-testid="`${config.type}-create-another-credential`"
-							@click="onCreateCredential(config.type)"
-						>
-							<N8nIcon icon="plus" :size="14" />
-							New credential
-						</N8nButton>
+							icon="pen"
+							aria-label="Edit credential"
+							:data-testid="`${config.type}-edit-credential`"
+							@click="onEditCredential(config.type)"
+						/>
+					</div>
+
+					<div
+						v-if="!credentialsLoading && (credentialsByType[config.type] ?? []).length === 0"
+						:class="$style.emptyCredentials"
+					>
+						<N8nText size="small">{{ config.noCredentialsMessage }}</N8nText>
 					</div>
 				</div>
 
@@ -475,43 +458,83 @@ onMounted(async () => {
 					<N8nText size="small">
 						{{ config.connectedDescription }}
 					</N8nText>
+				</div>
 
-					<!-- Slack App Manifest (Slack only) -->
-					<template v-if="config.type === 'slack'">
-						<N8nText :class="$style.manifestHint" size="small">
-							Copy the app manifest and paste it into your Slack app's settings to configure events,
-							scopes, and interactivity.
-							<a :class="$style.link" href="#" @click.prevent="showManifest = true">View JSON</a>
-						</N8nText>
-						<N8nButton variant="outline" size="small" @click="copyManifest">
-							<N8nIcon :icon="copied ? 'check' : 'copy'" :size="14" />
-							{{ copied ? 'Copied' : 'Copy manifest' }}
-						</N8nButton>
-					</template>
+				<AgentIntegrationSettingsForm
+					:ref="getSettingsFormRef(config.type)"
+					:type="config.type"
+					:disabled="isConnected(config.type) || isLoading(config.type)"
+					:connected="isConnected(config.type)"
+					:saved-settings="integrationSettings[config.type]"
+				/>
 
+				<N8nText
+					v-if="!isConnected(config.type) && hasError(config.type)"
+					:class="$style.errorText"
+					size="small"
+				>
+					{{ errorMessages[config.type] }}
+					<a
+						v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
+						:class="$style.link"
+						href="#"
+						@click.prevent="onEditCredential(config.type)"
+						>Edit credential</a
+					>
+				</N8nText>
+
+				<!-- Slack App Manifest (Slack only, shown when connected) -->
+				<template v-if="isConnected(config.type) && config.type === 'slack'">
+					<N8nText :class="$style.manifestHint" size="small">
+						Copy the app manifest and paste it into your Slack app's settings to configure events,
+						scopes, and interactivity.
+						<a :class="$style.link" href="#" @click.prevent="showManifest = true">View JSON</a>
+					</N8nText>
+					<N8nButton variant="outline" size="small" @click="copyManifest">
+						<N8nIcon :icon="copied ? 'check' : 'copy'" :size="14" />
+						{{ copied ? 'Copied' : 'Copy manifest' }}
+					</N8nButton>
+				</template>
+
+				<div v-if="!isConnected(config.type)" :class="$style.actions">
 					<N8nButton
-						:class="$style.actionButton"
-						variant="destructive"
+						:disabled="
+							!selectedCredentials[config.type] ||
+							isLoading(config.type) ||
+							!!settingsFormRefs[config.type]?.validationError
+						"
 						:loading="isLoading(config.type)"
 						size="small"
-						:data-testid="`${config.type}-disconnect-button`"
-						@click="onDisconnect(config.type)"
+						:data-testid="`${config.type}-connect-button`"
+						@click="onConnect(config.type)"
 					>
-						<N8nIcon icon="unlink" :size="14" />
-						Disconnect
+						<N8nIcon icon="plug" :size="14" />
+						Connect
 					</N8nButton>
-
-					<!-- Manifest modal (Slack only) -->
-					<N8nDialog
-						v-if="config.type === 'slack'"
-						:open="showManifest"
-						header="Slack App Manifest"
-						size="medium"
-						@update:open="showManifest = $event"
-					>
-						<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
-					</N8nDialog>
 				</div>
+				<N8nButton
+					v-else
+					:class="$style.actionButton"
+					variant="destructive"
+					:loading="isLoading(config.type)"
+					size="small"
+					:data-testid="`${config.type}-disconnect-button`"
+					@click="onDisconnect(config.type)"
+				>
+					<N8nIcon icon="unlink" :size="14" />
+					Disconnect
+				</N8nButton>
+
+				<!-- Manifest modal (Slack only) -->
+				<N8nDialog
+					v-if="config.type === 'slack'"
+					:open="showManifest"
+					header="Slack App Manifest"
+					size="medium"
+					@update:open="showManifest = $event"
+				>
+					<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
+				</N8nDialog>
 			</div>
 		</N8nCard>
 	</div>
