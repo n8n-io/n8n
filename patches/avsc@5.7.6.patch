@@ -1,0 +1,13 @@
+diff --git a/lib/types.js b/lib/types.js
+index 8070de0a475147d27d783320bd4cea4e3e9a0b2b..865348ce7491076ad04012f2db13d1278ff74261 100644
+--- a/lib/types.js
++++ b/lib/types.js
+@@ -48,7 +48,7 @@ var TYPES = {
+ var RANDOM = new utils.Lcg();
+ 
+ // Encoding tap (shared for performance).
+-var TAP = new Tap(new SlowBuffer(1024));
++var TAP = new Tap(Buffer.alloc(1024));
+ 
+ // Currently active logical type, used for name redirection.
+ var LOGICAL_TYPE = null;
