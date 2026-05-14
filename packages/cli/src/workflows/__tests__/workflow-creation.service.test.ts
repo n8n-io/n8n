@@ -164,7 +164,7 @@ describe('WorkflowCreationService', () => {
 	});
 
 	describe('redaction policy scope enforcement on create', () => {
-		it('should strip redactionPolicy when user lacks scope', async () => {
+		it('should check enableRedaction and strip redactionPolicy when user lacks it', async () => {
 			/**
 			 * Arrange
 			 */
@@ -188,18 +188,15 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).toHaveBeenCalledWith(
-				user,
-				['workflow:updateRedactionSetting'],
-				false,
-				{ projectId: 'project-1' },
-			);
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+				projectId: 'project-1',
+			});
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 		});
 
-		it('should preserve redactionPolicy when user has scope', async () => {
+		it('should check enableRedaction and preserve redactionPolicy when user has it', async () => {
 			/**
 			 * Arrange
 			 */
@@ -223,15 +220,41 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).toHaveBeenCalledWith(
-				user,
-				['workflow:updateRedactionSetting'],
-				false,
-				{ projectId: 'project-1' },
-			);
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+				projectId: 'project-1',
+			});
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBe('all');
+		});
+
+		it('should not check scope when redactionPolicy is none (default, harmless)', async () => {
+			/**
+			 * Arrange
+			 */
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
+			const { transactionManager } = setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { redactionPolicy: 'none' };
+
+			/**
+			 * Act
+			 */
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+			).rejects.toThrow('Stopping for test');
+
+			/**
+			 * Assert
+			 */
+			expect(userHasScopesMock).not.toHaveBeenCalled();
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBe('none');
 		});
 
 		it('should resolve projectId from personal project when projectId not provided', async () => {
@@ -263,12 +286,9 @@ describe('WorkflowCreationService', () => {
 			expect(projectRepositoryMock.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
 				'user-456',
 			);
-			expect(userHasScopesMock).toHaveBeenCalledWith(
-				user,
-				['workflow:updateRedactionSetting'],
-				false,
-				{ projectId: 'personal-project-789' },
-			);
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+				projectId: 'personal-project-789',
+			});
 		});
 
 		it('should not check scope when settings has no redactionPolicy', async () => {

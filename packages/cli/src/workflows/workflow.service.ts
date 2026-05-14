@@ -400,9 +400,10 @@ export class WorkflowService {
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
 			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
 		) {
-			const canUpdate = await userHasScopes(user, ['workflow:updateRedactionSetting'], false, {
-				workflowId,
-			});
+			const isDisabling = workflowUpdateData.settings.redactionPolicy === 'none';
+			const requiredScope = isDisabling ? 'workflow:disableRedaction' : 'workflow:enableRedaction';
+
+			const canUpdate = await userHasScopes(user, [requiredScope], false, { workflowId });
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
 			}

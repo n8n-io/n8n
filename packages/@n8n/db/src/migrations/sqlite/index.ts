@@ -169,6 +169,7 @@ import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
+import { SplitRedactionScopeInCustomRoles1778680897918 } from '../common/1778680897918-SplitRedactionScopeInCustomRoles';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -340,6 +341,7 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowVersionToTestRun1778100001000,
 	AddEvaluationConfigColumnsToTestRun1778100002000,
 	CreateEvaluationCollection1778496086558,
+	SplitRedactionScopeInCustomRoles1778680897918,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,

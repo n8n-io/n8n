@@ -205,8 +205,23 @@ const isDataRedactionLicensed = computed(
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
-const isRedactionSettingLocked = computed(
-	() => isDataRedactionLicensed.value && !workflowPermissions.value.updateRedactionSetting,
+// Locked when licensed but the user lacks the scope required for the action in that direction.
+// Production: 'default'→'redact' needs enableRedaction; 'redact'→'default' needs disableRedaction.
+const isProductionRedactionLocked = computed(
+	() =>
+		isDataRedactionLicensed.value &&
+		(redactProductionData.value === 'default'
+			? !workflowPermissions.value.enableRedaction
+			: !workflowPermissions.value.disableRedaction),
+);
+
+// Manual: same direction logic applied to the manual-data toggle.
+const isManualRedactionLocked = computed(
+	() =>
+		isDataRedactionLicensed.value &&
+		(redactManualData.value === 'default'
+			? !workflowPermissions.value.enableRedaction
+			: !workflowPermissions.value.disableRedaction),
 );
 
 const redactionMembersModalOpen = ref(false);
@@ -1176,13 +1191,13 @@ onBeforeUnmount(() => {
 								$style['setting-name'],
 								{
 									[$style['setting-name--disabled']]:
-										!isDataRedactionLicensed || isRedactionSettingLocked,
+										!isDataRedactionLicensed || isProductionRedactionLocked,
 								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactProductionData') }}
 							<N8nIcon
-								v-if="isRedactionSettingLocked"
+								v-if="isProductionRedactionLocked"
 								icon="lock"
 								size="xsmall"
 								style="opacity: 1"
@@ -1204,9 +1219,13 @@ onBeforeUnmount(() => {
 						<ElCol
 							:span="14"
 							class="ignore-key-press-canvas"
-							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+							:class="{ [$style['setting-name--disabled']]: isProductionRedactionLocked }"
 						>
-							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+							<N8nTooltip
+								:disabled="!isProductionRedactionLocked"
+								:enterable="true"
+								placement="top"
+							>
 								<template #content>
 									<span
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
@@ -1224,8 +1243,7 @@ onBeforeUnmount(() => {
 									:disabled="
 										!isDataRedactionLicensed ||
 										readOnlyEnv ||
-										!workflowPermissions.updateRedactionSetting ||
-										isRedactionSettingLocked ||
+										isProductionRedactionLocked ||
 										workflowHasDynamicCredentials
 									"
 									:placeholder="i18n.baseText('workflowSettings.selectOption')"
@@ -1259,12 +1277,12 @@ onBeforeUnmount(() => {
 								$style['setting-name'],
 								{
 									[$style['setting-name--disabled']]:
-										!isDataRedactionLicensed || isRedactionSettingLocked,
+										!isDataRedactionLicensed || isManualRedactionLocked,
 								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
-							<N8nIcon v-if="isRedactionSettingLocked" icon="lock" size="xsmall" />
+							<N8nIcon v-if="isManualRedactionLocked" icon="lock" size="xsmall" />
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
@@ -1282,9 +1300,9 @@ onBeforeUnmount(() => {
 						<ElCol
 							:span="14"
 							class="ignore-key-press-canvas"
-							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+							:class="{ [$style['setting-name--disabled']]: isManualRedactionLocked }"
 						>
-							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+							<N8nTooltip :disabled="!isManualRedactionLocked" :enterable="true" placement="top">
 								<template #content>
 									<span
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
@@ -1299,12 +1317,7 @@ onBeforeUnmount(() => {
 								</template>
 								<N8nSelect
 									v-model="redactManualData"
-									:disabled="
-										!isDataRedactionLicensed ||
-										readOnlyEnv ||
-										!workflowPermissions.updateRedactionSetting ||
-										isRedactionSettingLocked
-									"
+									:disabled="!isDataRedactionLicensed || readOnlyEnv || isManualRedactionLocked"
 									:placeholder="i18n.baseText('workflowSettings.selectOption')"
 									filterable
 									:limit-popper-width="true"

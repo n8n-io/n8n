@@ -164,14 +164,14 @@ export class WorkflowCreationService {
 				delete newWorkflow.settings.redactionPolicy;
 			}
 
-			// Strip redactionPolicy if user lacks scope (projectId is already resolved here)
-			if (newWorkflow.settings?.redactionPolicy !== undefined) {
-				const canUpdateRedaction = await userHasScopes(
-					user,
-					['workflow:updateRedactionSetting'],
-					false,
-					{ projectId: effectiveProjectId },
-				);
+			// Strip redactionPolicy if user lacks the enableRedaction scope.
+			if (
+				newWorkflow.settings?.redactionPolicy !== undefined &&
+				newWorkflow.settings.redactionPolicy !== 'none'
+			) {
+				const canUpdateRedaction = await userHasScopes(user, ['workflow:enableRedaction'], false, {
+					projectId: effectiveProjectId,
+				});
 				if (!canUpdateRedaction) {
 					delete newWorkflow.settings.redactionPolicy;
 				}

@@ -456,10 +456,10 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
-				if (settings.redactionPolicy !== undefined) {
+				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
-						['workflow:updateRedactionSetting'],
+						['workflow:enableRedaction'],
 						false,
 						{ projectId },
 					);
@@ -539,12 +539,14 @@ export class InstanceAiAdapterService {
 				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
-					const canUpdateRedaction = await userHasScopes(
-						user,
-						['workflow:updateRedactionSetting'],
-						false,
-						{ workflowId },
-					);
+					const isDisabling = settings.redactionPolicy === 'none';
+					const requiredScope = isDisabling
+						? 'workflow:disableRedaction'
+						: 'workflow:enableRedaction';
+
+					const canUpdateRedaction = await userHasScopes(user, [requiredScope], false, {
+						workflowId,
+					});
 					if (!canUpdateRedaction) {
 						delete settings.redactionPolicy;
 					}
