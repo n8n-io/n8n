@@ -153,6 +153,18 @@ describe('createLlmMockHandler', () => {
 		});
 	});
 
+	it('should preserve an explicit null body (204/202-style empty payload)', async () => {
+		llmSubmits({ type: 'json', body: null });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: null,
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		});
+	});
+
 	it('should materialize binary spec with Buffer body', async () => {
 		llmSubmits({ type: 'binary', contentType: 'application/pdf', filename: 'doc.pdf' });
 		const handler = createLlmMockHandler();

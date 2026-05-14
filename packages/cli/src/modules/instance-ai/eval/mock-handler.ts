@@ -310,8 +310,10 @@ async function callLlm(
 function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 	switch (spec.type) {
 		case 'json':
+			// Distinguish "body omitted" (apply default) from "body: null" (intentional
+			// empty payload for 204/202 endpoints, which the schema explicitly allows).
 			return {
-				body: spec.body ?? { ok: true },
+				body: spec.body === undefined ? { ok: true } : spec.body,
 				headers: { 'content-type': 'application/json' },
 				statusCode: 200,
 			};
