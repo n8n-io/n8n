@@ -11,7 +11,7 @@ const OBSERVATION_TASK_KINDS = ['observer', 'reflector'];
  * intentionally drops its queued observation rows instead of editing the
  * original migration.
  */
-export class ReplaceAgentObservationTables1785000000000 implements ReversibleMigration {
+export class ReplaceAgentObservationTables1784000000001 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, dropTable, column } }: MigrationContext) {
 		await this.dropObservationTables(dropTable);
 		await this.createObservationLogTables(createTable, column);

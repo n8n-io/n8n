@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class DropAgentExecutionWorkingMemory1785000000001 implements ReversibleMigration {
+export class DropAgentExecutionWorkingMemory1784000000002 implements ReversibleMigration {
 	async up({ schemaBuilder: { dropColumns } }: MigrationContext) {
 		await dropColumns('agent_execution', ['workingMemory']);
 	}
