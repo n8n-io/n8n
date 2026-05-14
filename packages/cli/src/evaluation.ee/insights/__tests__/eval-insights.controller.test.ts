@@ -34,7 +34,7 @@ describe('EvalInsightsController', () => {
 	}
 
 	describe('flag gating', () => {
-		it('returns 404 when the eval_collections flag is off', async () => {
+		it('returns 404 when the 084_eval_collections flag is off', async () => {
 			postHogClient.getFeatureFlags.mockResolvedValueOnce({});
 			await expect(
 				controller.generate(makeReq({ workflowId: 'wf-1', collectionId: 'col-1' })),

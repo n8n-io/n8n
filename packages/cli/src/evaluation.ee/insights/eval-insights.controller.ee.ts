@@ -20,8 +20,8 @@ type CollectionParam = { workflowId: string; collectionId: string };
  *     `workflow:read` on the workflow's project. Reads-only — generating
  *     insights doesn't mutate workflow state. Throws 404 on missing/
  *     denied workflow before the handler runs.
- *  2. Handler asserts the `eval_collections` PostHog flag is enabled for
- *     this user. Throws 404 (not 403) to match the rest of the
+ *  2. Handler asserts the `084_eval_collections` PostHog flag is enabled
+ *     for this user. Throws 404 (not 403) to match the rest of the
  *     eval-collections feature surface — the flag id never leaks into
  *     responses (see `EvaluationCollectionsController.assertFlagEnabled`).
  *  3. Service checks the AI Assistant license. Throws 403 if off, which is
