@@ -54,8 +54,8 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
@@ -503,9 +503,7 @@ export function useWorkflowHelpers() {
 
 	const i18n = useI18n();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowDocumentStore.value.allNodes;
@@ -858,14 +856,6 @@ export function useWorkflowHelpers() {
 		return { workflowDocumentStore: initializedWorkflowDocumentStore };
 	}
 
-	/**
-	 * Check if workflow contains any node from specified package
-	 * by performing a quick check based on the node type name.
-	 */
-	const containsNodeFromPackage = (workflow: IWorkflowDb, packageName: string) => {
-		return workflow.nodes.some((node) => node.type.startsWith(packageName));
-	};
-
 	function getMethods(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
 			if (trigger.parameters.multipleMethods === true) {
@@ -942,7 +932,6 @@ export function useWorkflowHelpers() {
 		getWorkflowProjectRole,
 		initState,
 		getNodeParametersWithResolvedExpressions,
-		containsNodeFromPackage,
 		checkConflictingWebhooks,
 	};
 }

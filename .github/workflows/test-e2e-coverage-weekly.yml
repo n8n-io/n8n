@@ -25,6 +25,7 @@ jobs:
       runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 45
       pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""},{"shard":4,"images":""}]'
+      artifact-prefix: coverage
     secrets: inherit
 
   aggregate:
@@ -42,7 +43,7 @@ jobs:
       - name: Download shard artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          pattern: e2e-shard-*
+          pattern: coverage-shard-*
           path: /tmp/shards/
 
       - name: Collect coverage JSON

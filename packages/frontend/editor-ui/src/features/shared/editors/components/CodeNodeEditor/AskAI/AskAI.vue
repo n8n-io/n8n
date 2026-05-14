@@ -25,10 +25,7 @@ import {
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/app/constants';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];
@@ -49,6 +46,7 @@ const props = withDefaults(
 const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
 const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const loadingPhraseIndex = ref(0);
 const loaderProgress = ref(0);
@@ -97,14 +95,12 @@ function getParentNodes() {
 
 	if (!activeNode || !workflowId) return [];
 
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-
-	return workflowDocumentStore
+	return workflowDocumentStore.value
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => workflowDocumentStore.getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.value.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 

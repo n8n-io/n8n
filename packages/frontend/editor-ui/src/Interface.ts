@@ -455,6 +455,7 @@ export type SimplifiedNodeType = Pick<
 	| 'outputs'
 > & {
 	tag?: NodeCreatorTag;
+	isNew?: boolean;
 };
 export interface SubcategoryItemProps {
 	description?: string;
@@ -644,6 +645,7 @@ export interface NewCredentialsModal extends ModalState {
 	projectId?: string;
 	suggestedName?: string;
 	nodeName?: string;
+	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
 }
 

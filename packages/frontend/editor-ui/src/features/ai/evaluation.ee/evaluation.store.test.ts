@@ -50,7 +50,7 @@ describe('evaluation.store.ee', () => {
 
 		getTestRuns.mockResolvedValue([TEST_RUN]);
 		getTestRun.mockResolvedValue(TEST_RUN);
-		startTestRun.mockResolvedValue({ success: true });
+		startTestRun.mockResolvedValue({ success: true, testRunId: 'run1' });
 		deleteTestRun.mockResolvedValue({ success: true });
 	});
 
@@ -85,7 +85,7 @@ describe('evaluation.store.ee', () => {
 			const result = await store.startTestRun('1');
 
 			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', undefined);
-			expect(result).toEqual({ success: true });
+			expect(result).toEqual({ success: true, testRunId: 'run1' });
 		});
 
 		test('Starting Test Run with concurrency', async () => {
@@ -94,7 +94,7 @@ describe('evaluation.store.ee', () => {
 			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
 				concurrency: 5,
 			});
-			expect(result).toEqual({ success: true });
+			expect(result).toEqual({ success: true, testRunId: 'run1' });
 		});
 
 		test('Deleting Test Run', async () => {
