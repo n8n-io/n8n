@@ -188,9 +188,13 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
-				projectId: 'project-1',
-			});
+			expect(userHasScopesMock).toHaveBeenCalledWith(
+				user,
+				['workflow:enableRedaction'],
+				false,
+				{ projectId: 'project-1' },
+				transactionManager,
+			);
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
@@ -220,9 +224,13 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
-				projectId: 'project-1',
-			});
+			expect(userHasScopesMock).toHaveBeenCalledWith(
+				user,
+				['workflow:enableRedaction'],
+				false,
+				{ projectId: 'project-1' },
+				transactionManager,
+			);
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBe('all');
@@ -267,7 +275,9 @@ describe('WorkflowCreationService', () => {
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			userHasScopesMock.mockResolvedValue(false);
-			setupTransactionMocks({ personalProjectId: 'personal-project-789' });
+			const { transactionManager } = setupTransactionMocks({
+				personalProjectId: 'personal-project-789',
+			});
 
 			const user = mock<User>({ id: 'user-456' });
 			const newWorkflow = new WorkflowEntity();
@@ -286,9 +296,13 @@ describe('WorkflowCreationService', () => {
 			expect(projectRepositoryMock.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
 				'user-456',
 			);
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
-				projectId: 'personal-project-789',
-			});
+			expect(userHasScopesMock).toHaveBeenCalledWith(
+				user,
+				['workflow:enableRedaction'],
+				false,
+				{ projectId: 'personal-project-789' },
+				transactionManager,
+			);
 		});
 
 		it('should not check scope when settings has no redactionPolicy', async () => {

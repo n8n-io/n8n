@@ -169,9 +169,14 @@ export class WorkflowCreationService {
 				newWorkflow.settings?.redactionPolicy !== undefined &&
 				newWorkflow.settings.redactionPolicy !== 'none'
 			) {
-				const canUpdateRedaction = await userHasScopes(user, ['workflow:enableRedaction'], false, {
-					projectId: effectiveProjectId,
-				});
+				const canUpdateRedaction = await userHasScopes(
+					user,
+					['workflow:enableRedaction'],
+					false,
+					{ projectId: effectiveProjectId },
+					transactionManager,
+				);
+
 				if (!canUpdateRedaction) {
 					delete newWorkflow.settings.redactionPolicy;
 				}
