@@ -1,4 +1,5 @@
-import { PasswordUpdateRequestDto, UserUpdateRequestDto } from '@n8n/api-types';
+import { UserUpdateRequestDto } from '@n8n/api-types';
+import type { PasswordUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
