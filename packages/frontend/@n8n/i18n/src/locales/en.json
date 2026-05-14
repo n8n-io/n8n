@@ -4921,7 +4921,6 @@
 	"settings.personal.passkey.description": "Skip the password entirely. Your device verifies you with biometrics or a PIN — no code needed.",
 	"settings.personal.passkey.enable.button": "Set up passkey",
 	"settings.personal.passkey.remove.button": "Remove passkey",
-	"settings.personal.method.status.notSetUp": "Not set up",
 	"settings.personal.method.button.setUp": "Set up",
 	"settings.personal.method.button.remove": "Remove",
 	"settings.personal.method.button.disable": "Disable",

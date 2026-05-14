@@ -545,9 +545,6 @@ onBeforeUnmount(() => {
 													interpolate: { count: String(passkeyCredentials.length) },
 												})
 									}}</N8nBadge>
-									<N8nBadge v-else theme="default">{{
-										i18n.baseText('settings.personal.method.status.notSetUp')
-									}}</N8nBadge>
 								</div>
 								<span :class="$style.methodDetail">{{
 									i18n.baseText('settings.personal.twoFactor.method.passkey.detail')
@@ -628,9 +625,6 @@ onBeforeUnmount(() => {
 										<N8nBadge v-if="isMethodActive('totp')" theme="success">{{
 											i18n.baseText('settings.personal.mfa.status.enabled')
 										}}</N8nBadge>
-										<N8nBadge v-else theme="default">{{
-											i18n.baseText('settings.personal.method.status.notSetUp')
-										}}</N8nBadge>
 									</div>
 									<span :class="$style.methodDetail">{{
 										i18n.baseText('settings.personal.twoFactor.picker.totp.description')
@@ -672,9 +666,6 @@ onBeforeUnmount(() => {
 												: i18n.baseText('settings.personal.method.badge.registeredMany', {
 														interpolate: { count: String(securityKeyCredentials.length) },
 													})
-										}}</N8nBadge>
-										<N8nBadge v-else theme="default">{{
-											i18n.baseText('settings.personal.method.status.notSetUp')
 										}}</N8nBadge>
 									</div>
 									<span :class="$style.methodDetail">{{
