@@ -290,7 +290,7 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
-	describe('update', () => {
+	describe('updateExistingExecution', () => {
 		const executionId = 'exec-1';
 		const workflowId = 'wf-1';
 
@@ -327,7 +327,7 @@ describe('ExecutionPersistence', () => {
 				const executionPersistence = createPersistenceService('fs');
 				executionRepository.updateExistingExecution.mockResolvedValue(true);
 
-				const result = await executionPersistence.update(executionId, {
+				const result = await executionPersistence.updateExistingExecution(executionId, {
 					retrySuccessId: 'retry-1',
 				});
 
@@ -346,7 +346,7 @@ describe('ExecutionPersistence', () => {
 				const executionPersistence = createPersistenceService('db');
 				executionRepository.updateExistingExecution.mockResolvedValue(false);
 
-				const result = await executionPersistence.update(
+				const result = await executionPersistence.updateExistingExecution(
 					executionId,
 					{ status: 'success' },
 					{ requireNotCanceled: true },
@@ -372,7 +372,7 @@ describe('ExecutionPersistence', () => {
 					status: 'success' as const,
 				};
 
-				const result = await executionPersistence.update(executionId, payload);
+				const result = await executionPersistence.updateExistingExecution(executionId, payload);
 
 				expect(result).toBe(true);
 				expect(executionRepository.findOne).toHaveBeenCalledWith({
@@ -391,7 +391,9 @@ describe('ExecutionPersistence', () => {
 				const executionPersistence = createPersistenceService('db');
 				executionRepository.findOne.mockResolvedValue(null);
 
-				const result = await executionPersistence.update(executionId, { data: runData });
+				const result = await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+				});
 
 				expect(result).toBe(false);
 				expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
@@ -414,7 +416,7 @@ describe('ExecutionPersistence', () => {
 					status: 'success' as const,
 				};
 
-				const result = await executionPersistence.update(executionId, payload);
+				const result = await executionPersistence.updateExistingExecution(executionId, payload);
 
 				expect(result).toBe(true);
 				expect(mockTx.update).toHaveBeenCalledWith(
@@ -446,7 +448,7 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				await executionPersistence.update(executionId, { data: runData });
+				await executionPersistence.updateExistingExecution(executionId, { data: runData });
 
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
@@ -465,7 +467,7 @@ describe('ExecutionPersistence', () => {
 				mockTx.update.mockResolvedValue({ affected: 0, generatedMaps: [], raw: {} });
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				const result = await executionPersistence.update(
+				const result = await executionPersistence.updateExistingExecution(
 					executionId,
 					{ data: runData, status: 'success' },
 					{ requireStatus: 'waiting' },
@@ -489,7 +491,9 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				const result = await executionPersistence.update(executionId, { data: runData });
+				const result = await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+				});
 
 				expect(result).toBe(true);
 				expect(mockTx.update).not.toHaveBeenCalled();
@@ -508,7 +512,10 @@ describe('ExecutionPersistence', () => {
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				await expect(
-					executionPersistence.update(executionId, { data: runData, status: 'success' }),
+					executionPersistence.updateExistingExecution(executionId, {
+						data: runData,
+						status: 'success',
+					}),
 				).rejects.toBe(writeError);
 			});
 
@@ -521,7 +528,7 @@ describe('ExecutionPersistence', () => {
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				await expect(
-					executionPersistence.update(executionId, { data: runData }),
+					executionPersistence.updateExistingExecution(executionId, { data: runData }),
 				).rejects.toBeInstanceOf(MissingExecutionDataError);
 
 				expect(fsStore.write).not.toHaveBeenCalled();
@@ -535,7 +542,7 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				await executionPersistence.update(
+				await executionPersistence.updateExistingExecution(
 					executionId,
 					{ data: runData, status: 'success' },
 					{ requireNotFinished: true },
@@ -556,7 +563,7 @@ describe('ExecutionPersistence', () => {
 				mockTx.update.mockResolvedValue({ affected: undefined, generatedMaps: [], raw: {} });
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				const result = await executionPersistence.update(
+				const result = await executionPersistence.updateExistingExecution(
 					executionId,
 					{ data: runData, status: 'success' },
 					{ requireStatus: 'waiting' },
@@ -575,7 +582,7 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				await executionPersistence.update(
+				await executionPersistence.updateExistingExecution(
 					executionId,
 					{ data: runData, status: 'running' },
 					{ requireNotCanceled: true },
@@ -596,7 +603,7 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				await executionPersistence.update(executionId, {
+				await executionPersistence.updateExistingExecution(executionId, {
 					id: executionId,
 					data: runData,
 					workflowId: 'other-wf',

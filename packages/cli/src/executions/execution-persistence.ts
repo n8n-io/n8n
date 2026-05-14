@@ -83,7 +83,7 @@ export class ExecutionPersistence {
 	 * - In `db` mode, we update both entity and data in the DB in a transaction.
 	 * - In `fs` mode, we update the entity in the DB and write its data to the filesystem in a transaction.
 	 */
-	async update(
+	async updateExistingExecution(
 		executionId: string,
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
