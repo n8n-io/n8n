@@ -1,3 +1,4 @@
+import { zodToJsonSchema } from '../../utils/zod';
 import { createWorkspaceTools } from '../../workspace/tools/workspace-tools';
 import type { WorkspaceFilesystem, WorkspaceSandbox, CommandResult } from '../../workspace/types';
 
@@ -62,6 +63,8 @@ describe('createWorkspaceTools', () => {
 
 		expect(names).toEqual([
 			'workspace_read_file',
+			'workspace_str_replace_file',
+			'workspace_batch_str_replace_file',
 			'workspace_write_file',
 			'workspace_list_files',
 			'workspace_file_stat',
@@ -97,8 +100,10 @@ describe('createWorkspaceTools', () => {
 		const names = tools.map((t) => t.name);
 
 		expect(names).toContain('workspace_read_file');
+		expect(names).toContain('workspace_str_replace_file');
+		expect(names).toContain('workspace_batch_str_replace_file');
 		expect(names).toContain('workspace_execute_command');
-		expect(names).toHaveLength(11);
+		expect(names).toHaveLength(13);
 	});
 
 	describe('tool handlers', () => {
@@ -111,6 +116,124 @@ describe('createWorkspaceTools', () => {
 
 			expect(fs.readFile).toHaveBeenCalledWith('/test.txt', { encoding: 'utf-8' });
 			expect(result).toEqual({ content: 'file content' });
+		});
+
+		it('targeted edit input schemas serialize with a top-level object type', () => {
+			const tools = createWorkspaceTools({ filesystem: makeFakeFilesystem() });
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
+
+			expect(zodToJsonSchema(strReplaceTool.inputSchema)).toMatchObject({ type: 'object' });
+			expect(zodToJsonSchema(batchStrReplaceTool.inputSchema)).toMatchObject({
+				type: 'object',
+			});
+		});
+
+		it('str_replace_file handler reads then writes changed content', async () => {
+			const fs = makeFakeFilesystem({
+				readFile: jest.fn().mockResolvedValue('first\nsecond'),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+
+			const result = await strReplaceTool.handler!(
+				{
+					path: '/test.txt',
+					old_str: 'second',
+					new_str: 'changed',
+				},
+				{} as never,
+			);
+
+			expect(fs.writeFile).toHaveBeenCalledWith('/test.txt', 'first\nchanged', {
+				overwrite: true,
+			});
+			expect(result).toEqual({ success: true, result: 'Edit applied successfully.' });
+		});
+
+		it('str_replace_file handler returns errors without writing when replacement is not unique', async () => {
+			const fs = makeFakeFilesystem({
+				readFile: jest.fn().mockResolvedValue('same\nsame'),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+
+			const result = await strReplaceTool.handler!(
+				{
+					path: '/test.txt',
+					old_str: 'same',
+					new_str: 'changed',
+				},
+				{} as never,
+			);
+
+			expect(fs.writeFile).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				error: 'Found 2 matches. Please provide more context to make the replacement unique.',
+			});
+		});
+
+		it('batch_str_replace_file handler applies all replacements atomically', async () => {
+			const fs = makeFakeFilesystem({
+				readFile: jest.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
+
+			const result = await batchStrReplaceTool.handler!(
+				{
+					path: '/test.ts',
+					replacements: [
+						{ old_str: 'const a = 1;', new_str: 'const a = 10;' },
+						{ old_str: 'const b = 2;', new_str: 'const b = 20;' },
+					],
+				},
+				{} as never,
+			);
+
+			expect(fs.writeFile).toHaveBeenCalledWith('/test.ts', 'const a = 10;\nconst b = 20;', {
+				overwrite: true,
+			});
+			expect(result).toEqual({
+				success: true,
+				result: 'All 2 replacements applied successfully.',
+			});
+		});
+
+		it('batch_str_replace_file handler does not write when any replacement fails', async () => {
+			const fs = makeFakeFilesystem({
+				readFile: jest.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
+
+			const result = await batchStrReplaceTool.handler!(
+				{
+					path: '/test.ts',
+					replacements: [
+						{ old_str: 'const a = 1;', new_str: 'const a = 10;' },
+						{ old_str: 'const missing = 0;', new_str: 'const missing = 1;' },
+					],
+				},
+				{} as never,
+			);
+
+			expect(fs.writeFile).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				error: 'Batch replacement failed.',
+				results: [
+					{ index: 0, old_str: 'const a = 1;', status: 'success' },
+					{
+						index: 1,
+						old_str: 'const missing = 0;',
+						status: 'failed',
+						error:
+							'No exact match found for str_replace. The old_str content was not found in the file.',
+					},
+				],
+			});
 		});
 
 		it('write_file handler calls filesystem.writeFile', async () => {

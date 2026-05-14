@@ -83,6 +83,8 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.created',
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
+	'n8n.audit.workflow.waiting',
+	'n8n.audit.workflow.resumed',
 	'n8n.audit.workflow.archived',
 	'n8n.audit.workflow.unarchived',
 	'n8n.audit.workflow.activated',
@@ -117,6 +119,15 @@ export const eventNamesAudit = [
 	'n8n.audit.role-mapping.rule.created',
 	'n8n.audit.role-mapping.rule.updated',
 	'n8n.audit.role-mapping.rule.deleted',
+	'n8n.audit.role-mapping.rules.bulk-deleted',
+	'n8n.audit.cluster.version-mismatch.detected',
+	'n8n.audit.cluster.version-mismatch.resolved',
+	'n8n.audit.cluster.hostid-clash.detected',
+	'n8n.audit.cluster.hostid-clash.resolved',
+	'n8n.audit.cluster.split-brain.detected',
+	'n8n.audit.cluster.split-brain.resolved',
+	'n8n.audit.cluster.instance-joined',
+	'n8n.audit.cluster.instance-left',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
@@ -155,3 +166,6 @@ export type EventMessageTypes =
 	| EventMessageAiNode
 	| EventMessageQueue
 	| EventMessageRunner;
+
+export const isNodeEventMessage = (message: EventMessageTypes): message is EventMessageNode =>
+	message.eventName.startsWith('n8n.node.');

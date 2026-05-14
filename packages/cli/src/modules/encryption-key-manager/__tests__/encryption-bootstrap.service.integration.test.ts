@@ -1,14 +1,17 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 
 import { EncryptionBootstrapService } from '../encryption-bootstrap.service';
 
+const INSTANCE_ENCRYPTION_KEY = 'legacy-encryption-key';
+
 beforeAll(async () => {
 	mockInstance(InstanceSettings, {
-		encryptionKey: 'legacy-encryption-key',
+		encryptionKey: INSTANCE_ENCRYPTION_KEY,
 		n8nFolder: '/tmp/n8n-test',
+		instanceType: 'main',
 	});
 	await testDb.init();
 });
@@ -22,43 +25,39 @@ afterAll(async () => {
 });
 
 describe('EncryptionBootstrapService (integration)', () => {
-	it('seeds the legacy CBC key as active when the table is empty', async () => {
+	it('creates an inactive CBC key seeded from the instance encryption key', async () => {
 		await Container.get(EncryptionBootstrapService).run();
 
 		const rows = await Container.get(DeploymentKeyRepository).find({
-			where: { type: 'data_encryption' },
+			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 		});
 		expect(rows).toHaveLength(1);
-		expect(rows[0]).toMatchObject({
-			type: 'data_encryption',
-			value: 'legacy-encryption-key',
-			algorithm: 'aes-256-cbc',
-			status: 'active',
-		});
+		expect(rows[0].status).toBe('inactive');
+
+		const cipher = Container.get(Cipher);
+		const decrypted = cipher.decryptDEKWithInstanceKey(rows[0].value);
+		expect(decrypted).toBe(INSTANCE_ENCRYPTION_KEY);
 	});
 
-	it('is a no-op on a second run', async () => {
-		const service = Container.get(EncryptionBootstrapService);
-		const repository = Container.get(DeploymentKeyRepository);
-
-		await service.run();
-		const [firstRow] = await repository.find({ where: { type: 'data_encryption' } });
-
-		await service.run();
-		const rows = await repository.find({ where: { type: 'data_encryption' } });
-
-		expect(rows).toHaveLength(1);
-		expect(rows[0].id).toBe(firstRow.id);
-	});
-
-	it('produces exactly one active row under concurrent runs', async () => {
-		const service = Container.get(EncryptionBootstrapService);
-
-		await Promise.all([service.run(), service.run(), service.run()]);
+	it('creates an active GCM key', async () => {
+		await Container.get(EncryptionBootstrapService).run();
 
 		const rows = await Container.get(DeploymentKeyRepository).find({
-			where: { type: 'data_encryption', status: 'active' },
+			where: { type: 'data_encryption', algorithm: 'aes-256-gcm', status: 'active' },
 		});
 		expect(rows).toHaveLength(1);
+	});
+
+	it('is idempotent — running twice does not create duplicate keys', async () => {
+		await Container.get(EncryptionBootstrapService).run();
+		await Container.get(EncryptionBootstrapService).run();
+
+		const all = await Container.get(DeploymentKeyRepository).find({
+			where: { type: 'data_encryption' },
+		});
+		const cbcKeys = all.filter((k) => k.algorithm === 'aes-256-cbc');
+		const gcmKeys = all.filter((k) => k.algorithm === 'aes-256-gcm' && k.status === 'active');
+		expect(cbcKeys).toHaveLength(1);
+		expect(gcmKeys).toHaveLength(1);
 	});
 });

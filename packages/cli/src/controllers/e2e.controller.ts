@@ -1,5 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
@@ -14,6 +15,9 @@ import {
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
+import type nodeFs from 'node:fs';
+import type nodePath from 'node:path';
+import type nodeV8 from 'node:v8';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -21,12 +25,11 @@ import { inE2ETests } from '@/constants';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { ExecutionsConfig } from '@n8n/config';
-import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -289,6 +292,165 @@ export class E2EController {
 		};
 	}
 
+	/**
+	 * Write a V8 heap snapshot for memory leak analysis.
+	 * Triggers GC first for a cleaner snapshot.
+	 * Returns the file path inside the container — retrieve via `docker cp` or keepalive mode.
+	 */
+	@Post('/heap-snapshot', { skipAuth: true })
+	takeHeapSnapshot() {
+		const v8 = require('node:v8') as typeof nodeV8;
+		const fs = require('node:fs') as typeof nodeFs;
+
+		if (typeof global.gc === 'function') {
+			global.gc();
+			global.gc();
+		}
+
+		const filePath = v8.writeHeapSnapshot();
+		if (!filePath) {
+			return { success: false, message: 'Failed to write heap snapshot' };
+		}
+
+		const path = require('node:path') as typeof nodePath;
+		const stats = fs.statSync(filePath);
+		const filename = path.basename(filePath);
+		this.heapSnapshotPaths.set(filename, filePath);
+
+		return {
+			success: true,
+			filePath: filename,
+			sizeBytes: stats.size,
+			sizeMB: Math.round(stats.size / 1024 / 1024),
+		};
+	}
+
+	private heapSnapshotPaths = new Map<string, string>();
+
+	/**
+	 * Download a heap snapshot file as a stream.
+	 * The response-helper pipes Readable streams directly to the response.
+	 */
+	@Get('/heap-snapshot/:filename', { skipAuth: true })
+	downloadHeapSnapshot(req: Request) {
+		const fs = require('node:fs') as typeof nodeFs;
+		const path = require('node:path') as typeof nodePath;
+
+		const filename = path.basename(req.params.filename);
+		if (!filename.endsWith('.heapsnapshot')) {
+			throw new Error('Invalid file type');
+		}
+
+		// Look up the full path stored during POST, or try cwd
+		const filePath = this.heapSnapshotPaths.get(filename) ?? path.resolve(filename);
+		if (!fs.existsSync(filePath)) {
+			throw new Error(`Snapshot not found: ${filename} (tried ${filePath})`);
+		}
+
+		return fs.createReadStream(filePath);
+	}
+
+	/**
+	 * Return a parsed breakdown of process RSS from /proc/self/smaps.
+	 * Groups memory mappings by pathname and returns both a rollup summary
+	 * and per-mapping detail sorted by RSS. Linux-only (containers).
+	 */
+	@Get('/memory-maps', { skipAuth: true })
+	getMemoryMaps() {
+		const fs = require('node:fs') as typeof nodeFs;
+
+		const memUsage = process.memoryUsage();
+		const result: {
+			processMemoryUsage: {
+				rss: number;
+				heapTotal: number;
+				heapUsed: number;
+				external: number;
+				arrayBuffers: number;
+			};
+			rollup: Record<string, number> | null;
+			mappings: Array<{ name: string; rssMB: number; pssMB: number; count: number }> | null;
+			raw: string | null;
+		} = {
+			processMemoryUsage: {
+				rss: Math.round(memUsage.rss / 1024 / 1024),
+				heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+				heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+				external: Math.round(memUsage.external / 1024 / 1024),
+				arrayBuffers: Math.round(memUsage.arrayBuffers / 1024 / 1024),
+			},
+			rollup: null,
+			mappings: null,
+			raw: null,
+		};
+
+		// Parse /proc/self/smaps_rollup (summary)
+		try {
+			const rollupText = fs.readFileSync('/proc/self/smaps_rollup', 'utf-8');
+			const rollup: Record<string, number> = {};
+			for (const line of rollupText.split('\n')) {
+				const match = line.match(/^(\w+):\s+(\d+)\s+kB$/);
+				if (match) {
+					rollup[`${match[1]}MB`] = Math.round(Number(match[2]) / 1024);
+				}
+			}
+			result.rollup = rollup;
+		} catch {
+			// Not available (macOS, permissions)
+		}
+
+		// Parse /proc/self/smaps (detailed per-mapping)
+		try {
+			const smapsText = fs.readFileSync('/proc/self/smaps', 'utf-8');
+			result.raw = smapsText;
+
+			const grouped = new Map<string, { rssKB: number; pssKB: number; count: number }>();
+			let currentName = '[unknown]';
+
+			for (const line of smapsText.split('\n')) {
+				// Mapping header: address range + pathname
+				const headerMatch = line.match(/^[0-9a-f]+-[0-9a-f]+\s+\S+\s+\S+\s+\S+\s+\S+\s*(.*)/);
+				if (headerMatch) {
+					const path = headerMatch[1].trim();
+					currentName = path || '[anon]';
+					if (!grouped.has(currentName)) {
+						grouped.set(currentName, { rssKB: 0, pssKB: 0, count: 0 });
+					}
+					const entry = grouped.get(currentName)!;
+					entry.count++;
+					continue;
+				}
+
+				const rssMatch = line.match(/^Rss:\s+(\d+)\s+kB$/);
+				if (rssMatch) {
+					const entry = grouped.get(currentName);
+					if (entry) entry.rssKB += Number(rssMatch[1]);
+					continue;
+				}
+
+				const pssMatch = line.match(/^Pss:\s+(\d+)\s+kB$/);
+				if (pssMatch) {
+					const entry = grouped.get(currentName);
+					if (entry) entry.pssKB += Number(pssMatch[1]);
+				}
+			}
+
+			result.mappings = [...grouped.entries()]
+				.map(([name, { rssKB, pssKB, count }]) => ({
+					name,
+					rssMB: Math.round((rssKB / 1024) * 10) / 10,
+					pssMB: Math.round((pssKB / 1024) * 10) / 10,
+					count,
+				}))
+				.filter((m) => m.rssMB > 0)
+				.sort((a, b) => b.rssMB - a.rssMB);
+		} catch {
+			// Not available (macOS, permissions)
+		}
+
+		return result;
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
@@ -398,7 +560,10 @@ export class E2EController {
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
 			const { encryptedRecoveryCodes, encryptedSecret } =
-				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
+				await this.mfaService.encryptSecretAndRecoveryCodes(
+					owner.mfaSecret,
+					owner.mfaRecoveryCodes,
+				);
 
 			await this.userRepository.update(newOwner.user.id, {
 				mfaSecret: encryptedSecret,

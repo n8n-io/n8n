@@ -35,6 +35,10 @@ export class McpOAuthTokenService {
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 	) {}
 
+	getAccessTokenExpirySeconds(): number {
+		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
+	}
+
 	generateTokenPair(
 		userId: string,
 		clientId: string,
@@ -184,7 +188,7 @@ export class McpOAuthTokenService {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
-			return { user };
+			return { user, authType: 'oauth' };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =

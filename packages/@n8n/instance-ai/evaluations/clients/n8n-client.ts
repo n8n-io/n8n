@@ -6,7 +6,39 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiRichMessagesResponse,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSubAgentRequest,
+	InstanceAiEvalSubAgentResponse,
+} from '@n8n/api-types';
+import { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Computer-use gateway response shapes (Zod-validated to keep the client
+// honest about API drift instead of trusting `as` casts)
+// ---------------------------------------------------------------------------
+
+const GatewayLinkSchema = z.object({
+	token: z.string(),
+	command: z.string(),
+});
+const GatewayLinkEnvelope = z.object({ data: GatewayLinkSchema });
+export type GatewayLink = z.infer<typeof GatewayLinkSchema>;
+
+const GatewayStatusSchema = z.object({
+	connected: z.boolean(),
+	directory: z.string().nullable(),
+	toolCategories: z.array(
+		z.object({
+			name: z.string(),
+			enabled: z.boolean(),
+		}),
+	),
+});
+const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
+export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
@@ -16,6 +48,7 @@ import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } fr
 export interface WorkflowNodeResponse {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -26,6 +59,8 @@ export interface WorkflowResponse {
 	id: string;
 	name: string;
 	active: boolean;
+	versionId: string;
+	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
 	pinData?: Record<string, unknown>;
@@ -75,14 +110,9 @@ interface ThreadStatus {
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(readonly baseUrl: string) {}
+	constructor(private readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
-
-	/** Set the session cookie directly (for sharing across workers). */
-	setSessionCookie(cookie: string): void {
-		this.sessionCookie = cookie;
-	}
 
 	/**
 	 * Authenticate with the n8n instance via POST /rest/login.
@@ -120,16 +150,12 @@ export class N8nClient {
 	/**
 	 * Confirm or reject an action requested by the agent.
 	 * POST /rest/instance-ai/confirm/:requestId
-	 * body: { approved, mockCredentials?, credentialId?, ... }
+	 * body: kind-tagged `InstanceAiConfirmRequest` discriminated union.
 	 */
-	async confirmAction(
-		requestId: string,
-		approved: boolean,
-		options?: { mockCredentials?: boolean },
-	): Promise<void> {
+	async confirmAction(requestId: string, payload: InstanceAiConfirmRequest): Promise<void> {
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
-			body: { approved, ...options },
+			body: payload,
 		});
 	}
 
@@ -141,6 +167,20 @@ export class N8nClient {
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
+	}
+
+	/**
+	 * Run an isolated sub-agent on the instance and return its result.
+	 * POST /rest/instance-ai/eval/run-sub-agent
+	 */
+	async runSubAgentEval(
+		request: InstanceAiEvalSubAgentRequest,
+	): Promise<InstanceAiEvalSubAgentResponse> {
+		const result = (await this.fetch('/rest/instance-ai/eval/run-sub-agent', {
+			method: 'POST',
+			body: request,
+		})) as { data: InstanceAiEvalSubAgentResponse };
+		return result.data;
 	}
 
 	/**
@@ -162,6 +202,37 @@ export class N8nClient {
 		return result.data;
 	}
 
+	/**
+	 * Delete a thread (and its memory + run state).
+	 * DELETE /rest/instance-ai/threads/:threadId
+	 */
+	async deleteThread(threadId: string): Promise<void> {
+		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
+	}
+
+	// -- Computer-use gateway (pairing + status) -----------------------------
+
+	/**
+	 * Generate a one-shot pairing token for the local computer-use daemon.
+	 * POST /rest/instance-ai/gateway/create-link
+	 */
+	async createGatewayLink(): Promise<GatewayLink> {
+		const result = await this.fetch('/rest/instance-ai/gateway/create-link', {
+			method: 'POST',
+		});
+		return GatewayLinkEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Read the local gateway status. The daemon flips this to `connected: true`
+	 * once it has registered its capabilities.
+	 * GET /rest/instance-ai/gateway/status
+	 */
+	async getGatewayStatus(): Promise<GatewayStatus> {
+		const result = await this.fetch('/rest/instance-ai/gateway/status');
+		return GatewayStatusEnvelope.parse(result).data;
+	}
+
 	// -- REST API (verification helpers) -------------------------------------
 
 	/**
@@ -171,6 +242,32 @@ export class N8nClient {
 	async listWorkflows(): Promise<WorkflowListItem[]> {
 		const result = (await this.fetch('/rest/workflows')) as { data: WorkflowListItem[] };
 		return result.data;
+	}
+
+	/** List all workflow IDs visible to the authenticated user. */
+	async listWorkflowIds(): Promise<string[]> {
+		const workflows = await this.listWorkflows();
+		return workflows.map((w) => w.id);
+	}
+
+	/**
+	 * Create a workflow from a JSON definition.
+	 * POST /rest/workflows
+	 */
+	async createWorkflow(definition: Record<string, unknown>): Promise<{ id: string }> {
+		const result = (await this.fetch('/rest/workflows', {
+			method: 'POST',
+			body: definition,
+		})) as { data: { id: string } };
+		return { id: result.data.id };
+	}
+
+	/** List all credential IDs visible to the authenticated user. */
+	async listCredentialIds(): Promise<string[]> {
+		const result = (await this.fetch('/rest/credentials')) as {
+			data: Array<{ id: string }>;
+		};
+		return Array.isArray(result.data) ? result.data.map((c) => c.id) : [];
 	}
 
 	/**
@@ -241,23 +338,37 @@ export class N8nClient {
 
 	/**
 	 * Activate a workflow.
-	 * PATCH /rest/workflows/:id  body: { active: true }
+	 * POST /rest/workflows/:id/activate  body: { versionId, name, description }
+	 *
+	 * The activate endpoint requires the current `versionId` (concurrency
+	 * guard) plus optional name/description for the version label. We fetch
+	 * the workflow first to read those — the harness creates workflows from
+	 * JSON fixtures and never knows the freshly-assigned versionId otherwise.
+	 *
+	 * Note: PATCH /rest/workflows/:id silently drops `active` from the body
+	 * (`workflows.controller.ts:318` filters it from user input), so the old
+	 * `PATCH … { active: true }` shape used to no-op rather than activate.
 	 */
 	async activateWorkflow(id: string): Promise<void> {
-		await this.fetch(`/rest/workflows/${id}`, {
-			method: 'PATCH',
-			body: { active: true },
+		const workflow = await this.getWorkflow(id);
+		await this.fetch(`/rest/workflows/${id}/activate`, {
+			method: 'POST',
+			body: {
+				versionId: workflow.versionId,
+				name: workflow.name,
+				description: workflow.description ?? '',
+			},
 		});
 	}
 
 	/**
 	 * Deactivate a workflow.
-	 * PATCH /rest/workflows/:id  body: { active: false }
+	 * POST /rest/workflows/:id/deactivate  body: {}
 	 */
 	async deactivateWorkflow(id: string): Promise<void> {
-		await this.fetch(`/rest/workflows/${id}`, {
-			method: 'PATCH',
-			body: { active: false },
+		await this.fetch(`/rest/workflows/${id}/deactivate`, {
+			method: 'POST',
+			body: {},
 		});
 	}
 
@@ -339,17 +450,16 @@ export class N8nClient {
 
 	/**
 	 * Get the personal project ID for the authenticated user.
-	 * GET /rest/me  → user.personalProjectId (or similar)
+	 * GET /rest/projects/personal
 	 */
 	async getPersonalProjectId(): Promise<string> {
-		const result = (await this.fetch('/rest/me')) as {
-			data: { personalProjectId?: string; defaultPersonalProjectId?: string };
+		const result = (await this.fetch('/rest/projects/personal')) as {
+			data: { id: string };
 		};
-		const projectId = result.data.personalProjectId ?? result.data.defaultPersonalProjectId ?? '';
-		if (!projectId) {
+		if (!result.data?.id) {
 			throw new Error('Could not determine personal project ID');
 		}
-		return projectId;
+		return result.data.id;
 	}
 
 	/**
@@ -361,6 +471,12 @@ export class N8nClient {
 			data: Array<{ id: string; name: string }>;
 		};
 		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	/** List data table IDs for a project. */
+	async listDataTableIds(projectId: string): Promise<string[]> {
+		const dataTables = await this.listDataTables(projectId);
+		return dataTables.map((dt) => dt.id);
 	}
 
 	/**

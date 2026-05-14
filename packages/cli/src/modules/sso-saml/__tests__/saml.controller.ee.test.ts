@@ -9,7 +9,7 @@ import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
-import { isConnectionTestRequest } from '../saml-helpers';
+import { extractTestIdFromRelayState, isConnectionTestRequest } from '../saml-helpers';
 import { SamlController } from '../saml.controller.ee';
 import type { SamlService } from '../saml.service.ee';
 import { getServiceProviderConfigTestReturnUrl } from '../service-provider.ee';
@@ -18,6 +18,7 @@ import type { SamlUserAttributes } from '../types';
 // Mock the saml-helpers module
 jest.mock('../saml-helpers', () => ({
 	isConnectionTestRequest: jest.fn(),
+	extractTestIdFromRelayState: jest.fn(),
 }));
 
 jest.mock('@/sso.ee/sso-helpers', () => ({
@@ -55,8 +56,10 @@ describe('Test views', () => {
 	const RelayState = getServiceProviderConfigTestReturnUrl();
 
 	beforeEach(() => {
+		jest.clearAllMocks();
 		// Mock the helper functions for test connection flow
 		(isConnectionTestRequest as jest.Mock).mockReturnValue(true);
+		(extractTestIdFromRelayState as jest.Mock).mockReturnValue(undefined);
 	});
 
 	test('Should render success with template', async () => {
@@ -108,6 +111,103 @@ describe('Test views', () => {
 
 		expect(res.render).toBeCalledWith('saml-connection-test-failed', { message: 'Test Error' });
 	});
+
+	test('Should pass cached metadata to handleSamlLogin for test connections', async () => {
+		const req = mock<AuthlessRequest>();
+		const res = mock<Response>({
+			status: jest.fn().mockReturnThis(),
+			json: jest.fn().mockReturnThis(),
+		});
+		const testId = 'abc123';
+		const metadata = '<EntityDescriptor/>';
+		const RelayStateWithTestId = `${RelayState}?t=${testId}`;
+
+		(extractTestIdFromRelayState as jest.Mock).mockReturnValue(testId);
+		samlService.consumePendingTestConfig.mockResolvedValueOnce(metadata);
+		samlService.handleSamlLogin.mockResolvedValueOnce({
+			authenticatedUser: user,
+			attributes,
+			onboardingRequired: false,
+		});
+
+		await controller.acsPost(req, res, { RelayState: RelayStateWithTestId });
+
+		expect(samlService.consumePendingTestConfig).toHaveBeenCalledWith(testId);
+		expect(samlService.handleSamlLogin).toHaveBeenCalledWith(req, 'post', metadata);
+		expect(res.render).toBeCalledWith('saml-connection-test-success', attributes);
+	});
+
+	test('Should still call handleSamlLogin without override when no test token in RelayState', async () => {
+		const req = mock<AuthlessRequest>();
+		const res = mock<Response>({
+			status: jest.fn().mockReturnThis(),
+			json: jest.fn().mockReturnThis(),
+		});
+
+		samlService.handleSamlLogin.mockResolvedValueOnce({
+			authenticatedUser: user,
+			attributes,
+			onboardingRequired: false,
+		});
+
+		await controller.acsPost(req, res, { RelayState });
+
+		expect(samlService.consumePendingTestConfig).not.toHaveBeenCalled();
+		expect(samlService.handleSamlLogin).toHaveBeenCalledWith(req, 'post', undefined);
+	});
+});
+
+describe('configTestPost', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
+	});
+
+	test('caches pasted metadata and embeds testId in RelayState', async () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>();
+		const metadata = '<EntityDescriptor/>';
+
+		samlService.storePendingTestConfig.mockResolvedValueOnce('tok12345');
+		samlService.getLoginRequestUrl.mockResolvedValueOnce({
+			binding: 'redirect',
+			context: { context: 'http://idp.example.com/login' } as any,
+		});
+
+		await controller.configTestPost(req, res, { metadata } as any);
+
+		expect(samlService.fetchMetadataFromUrl).not.toHaveBeenCalled();
+		expect(samlService.storePendingTestConfig).toHaveBeenCalledWith(metadata);
+		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith(
+			'http://localhost:5678/config/test/return?t=tok12345',
+			undefined,
+			metadata,
+		);
+	});
+
+	test('fetches metadata from URL and caches it before building login request', async () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>();
+		const metadataUrl = 'https://idp.example.com/metadata';
+		const fetchedMetadata = '<EntityDescriptor fetched/>';
+
+		samlService.fetchMetadataFromUrl.mockResolvedValueOnce(fetchedMetadata);
+		samlService.storePendingTestConfig.mockResolvedValueOnce('tokXYZ');
+		samlService.getLoginRequestUrl.mockResolvedValueOnce({
+			binding: 'redirect',
+			context: { context: 'http://idp.example.com/login' } as any,
+		});
+
+		await controller.configTestPost(req, res, { metadataUrl, ignoreSSL: true } as any);
+
+		expect(samlService.fetchMetadataFromUrl).toHaveBeenCalledWith(metadataUrl, true);
+		expect(samlService.storePendingTestConfig).toHaveBeenCalledWith(fetchedMetadata);
+		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith(
+			'http://localhost:5678/config/test/return?t=tokXYZ',
+			undefined,
+			fetchedMetadata,
+		);
+	});
 });
 
 describe('SAML Login Flow', () => {
@@ -115,6 +215,7 @@ describe('SAML Login Flow', () => {
 		jest.clearAllMocks();
 		// Mock the helper functions for actual login flow (not test connections)
 		(isConnectionTestRequest as jest.Mock).mockReturnValue(false);
+		(extractTestIdFromRelayState as jest.Mock).mockReturnValue(undefined);
 		(isSamlLicensedAndEnabled as jest.Mock).mockReturnValue(true);
 
 		// Mock URL service
@@ -205,7 +306,7 @@ describe('SAML Login Flow', () => {
 
 			await controller.initSsoGet(req, res);
 
-			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/', undefined, undefined);
+			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
 		});
 
 		test('validates redirect URL that is passed in via referrer header', async () => {
@@ -224,7 +325,7 @@ describe('SAML Login Flow', () => {
 
 			await controller.initSsoGet(req, res);
 
-			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/', undefined, undefined);
+			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
 		});
 
 		const hostWithoutRedirect = 'http://localhost:5678/';

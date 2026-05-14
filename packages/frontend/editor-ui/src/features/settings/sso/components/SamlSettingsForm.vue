@@ -72,11 +72,12 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
-	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
+	trackProvisioningChange,
 	roleAssignmentTransition,
 	storedHasProjectRoles,
+	isDroppingProjectRules,
 	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
@@ -244,11 +245,24 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 			loginEnabled: samlLoginEnabled.value,
 		});
 
-		await saveProvisioningConfig(isDisablingSamlLogin);
+		const provisioningResult = await saveProvisioningConfig(isDisablingSamlLogin);
 
-		if (userRoleProvisioning.value === 'expression_based') {
-			await roleMappingRuleEditorRef.value?.save();
+		// If the user's effective role assignment doesn't include project roles,
+		// discard any project-rule state in the editor (both locally-added and
+		// server-backed entries) so editor.save() doesn't try to POST/PATCH rules
+		// that shouldn't exist. Checking the current dropdown at save-time is
+		// robust against storedHasProjectRules drift.
+		const effectiveRoleAssignment = isDisablingSamlLogin ? 'manual' : roleAssignment.value;
+		if (effectiveRoleAssignment !== 'instance_and_project') {
+			roleMappingRuleEditorRef.value?.discardProjectRules();
 		}
+
+		const ruleSaveResult =
+			mappingMethod.value === 'rules_in_n8n'
+				? await roleMappingRuleEditorRef.value?.save()
+				: undefined;
+
+		trackProvisioningChange(provisioningResult, ruleSaveResult);
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
@@ -400,7 +414,6 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
-				v-model:legacy-value="userRoleProvisioning"
 				:disabled="isSsoManagedByEnv"
 				auth-protocol="saml"
 			/>
@@ -413,6 +426,7 @@ onMounted(async () => {
 				v-model="showUserRoleProvisioningDialog"
 				:transition-type="roleAssignmentTransition"
 				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
+				:will-delete-project-rules="isDroppingProjectRules"
 				auth-protocol="saml"
 				@confirm-provisioning="onSave(true)"
 				@cancel="

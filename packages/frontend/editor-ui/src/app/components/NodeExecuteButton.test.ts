@@ -376,7 +376,7 @@ describe('NodeExecuteButton', () => {
 	it('opens chat when clicking button for chat child node', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
-		workflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
+		vi.mocked(workflowDocumentStore.checkIfNodeHasChatParent).mockReturnValue(true);
 
 		const { getByRole } = renderComponent();
 

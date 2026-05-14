@@ -111,6 +111,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(), // redactionEnforcementService
 		);
 	});
 
@@ -1323,7 +1324,7 @@ describe('SourceControlImportService', () => {
 
 				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-				cipher.encrypt.mockReturnValue('some-encrypted-data');
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 				await service.importCredentialsFromWorkFolder(
 					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1360,7 +1361,7 @@ describe('SourceControlImportService', () => {
 
 				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-				cipher.encrypt.mockReturnValue('some-encrypted-data');
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 				await service.importCredentialsFromWorkFolder(
 					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1397,7 +1398,7 @@ describe('SourceControlImportService', () => {
 
 				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-				cipher.encrypt.mockReturnValue('some-encrypted-data');
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 				await service.importCredentialsFromWorkFolder(
 					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1438,7 +1439,7 @@ describe('SourceControlImportService', () => {
 
 			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1477,7 +1478,7 @@ describe('SourceControlImportService', () => {
 
 			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			{
 				const project = await projectRepository.findOne({
@@ -1538,7 +1539,7 @@ describe('SourceControlImportService', () => {
 
 			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1555,7 +1556,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should change the owner to match source control when credential is owned by somebody else on the target instance', async () => {
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			const importingUser = await getGlobalOwner();
 
@@ -1638,7 +1639,7 @@ describe('SourceControlImportService', () => {
 
 			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1673,7 +1674,7 @@ describe('SourceControlImportService', () => {
 
 			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],

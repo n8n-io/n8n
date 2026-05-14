@@ -1,124 +1,71 @@
+import * as workflowsApi from '@/app/api/workflows';
 import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
-import type {
-	INewWorkflowData,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IUpdateInformation,
-	IWorkflowDb,
-} from '@/Interface';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
+import {
+	createWorkflowExecutionStateId,
+	disposeWorkflowExecutionStateStore,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { isEmpty } from '@/app/utils/typesUtils';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
 	IExecutionResponse,
 	IExecutionsStopData,
 } from '@/features/execution/executions/executions.types';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
-import {
-	type INodeIssueData,
-	type INodeIssueObjectProperty,
-	type IWorkflowSettings,
-	NodeHelpers,
-	type IDataObject,
-	type INodeParameters,
-} from 'n8n-workflow';
-import { inject } from 'vue';
-import * as workflowsApi from '@/app/api/workflows';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { isEmpty } from '@/app/utils/typesUtils';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
-import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import type { INewWorkflowData } from '@/Interface';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
+import { inject } from 'vue';
 import { useDocumentTitle } from './useDocumentTitle';
-import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
-import { isObject } from '@/app/utils/objectUtils';
-import findLast from 'lodash/findLast';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import isEqual from 'lodash/isEqual';
-import pick from 'lodash/pick';
-import { createEventBus } from '@n8n/utils/event-bus';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-
-export type WorkflowStateBusEvents = {
-	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
-};
-
-export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const workflowStateStore = useWorkflowStateStore();
-	const uiStore = useUIStore();
 	const rootStore = useRootStore();
-	const nodeTypesStore = useNodeTypesStore();
 
 	////
 	// Workflow editing state
 	////
 
-	/** @deprecated Use `workflowDocumentStore.removeAllConnections()` instead. */
-	function removeAllConnections(data: { setStateDirty: boolean }): void {
-		if (data?.setStateDirty) {
-			uiStore.markStateDirty();
-		}
-
-		ws.workflow.connections = {};
-		ws.workflowObject.setConnections({});
-	}
-
-	/** @deprecated Use `workflowDocumentStore.removeAllNodes()` instead. */
-	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
-		if (data.setStateDirty) {
-			uiStore.markStateDirty();
-		}
-
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(ws.workflow.id),
-		);
-
-		if (data.removePinData) {
-			workflowDocumentStore.setPinData({});
-		}
-
-		ws.workflow.nodes.splice(0, ws.workflow.nodes.length);
-		ws.workflowObject.setNodes(ws.workflow.nodes);
-		workflowDocumentStore.setAllNodeMetadata({});
-	}
-
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		if (workflowResultData?.data?.waitTill) {
-			delete workflowResultData.data.resultData.runData[
-				workflowResultData.data.resultData.lastNodeExecuted as string
-			];
+		const stateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
+		);
+		if (workflowResultData === null) {
+			stateStore.setPendingExecution(null);
+			stateStore.clearDisplayedExecution();
+		} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
+			stateStore.setPendingExecution(workflowResultData);
+			stateStore.setActiveExecutionId(null);
+			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+				workflowResultData,
+			);
+		} else {
+			stateStore.trackExecutionId(workflowResultData.id);
+			useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
+				workflowResultData,
+			);
+			if (typeof stateStore.activeExecutionId !== 'string') {
+				stateStore.setPendingExecution(null);
+				stateStore.setActiveExecutionId(undefined);
+				stateStore.setDisplayedExecutionId(workflowResultData.id);
+			}
 		}
-		ws.workflowExecutionData = workflowResultData;
-		ws.workflowExecutionPairedItemMappings = getPairedItemsMapping(workflowResultData);
-		ws.workflowExecutionResultDataLastUpdate = Date.now();
-		ws.workflowExecutionStartedData = undefined;
-	}
-
-	/** @deprecated Use `workflowDocumentStore.resetAllNodesIssues()` instead. */
-	function resetAllNodesIssues(): boolean {
-		ws.workflow.nodes.forEach((node) => {
-			node.issues = undefined;
-		});
-		return true;
-	}
-
-	function setWorkflowId(id?: string) {
-		// Set the workflow ID directly, or empty string if not provided
-		ws.workflow.id = id || '';
-		ws.workflowObject.id = ws.workflow.id;
-	}
-
-	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
-		ws.workflow[key] = value;
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		ws.private.setActiveExecutionId(id);
+		useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
+		).setActiveExecutionId(id);
 	}
 
 	async function getNewWorkflowData(
@@ -156,275 +103,77 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		setActiveExecutionId(undefined);
-		workflowStateStore.executingNode.clearNodeExecutionQueue();
-		ws.executionWaitingForWebhook = false;
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(ws.workflow.id),
+		const stateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
 		);
+		const activeExecutionId = stateStore.activeExecutionId;
+
+		stateStore.setActiveExecutionId(undefined);
+		workflowStateStore.executingNode.clearNodeExecutionQueue();
+		stateStore.setExecutionWaitingForWebhook(false);
+
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-		ws.workflowExecutionStartedData = undefined;
 
-		// TODO(ckolb): confirm this works across files?
-		clearPopupWindowState();
-
-		if (!ws.workflowExecutionData) {
-			return;
-		}
-
-		const runData = ws.workflowExecutionData.data?.resultData.runData ?? {};
-
-		for (const nodeName in runData) {
-			runData[nodeName] = runData[nodeName].filter(
-				({ executionStatus }) => executionStatus === 'success',
+		if (typeof activeExecutionId === 'string') {
+			const executionDataStore = useExecutionDataStore(createExecutionDataId(activeExecutionId));
+			executionDataStore.clearExecutionStartedData();
+			executionDataStore.markAsStopped(stopData);
+		} else if (activeExecutionId === null) {
+			// Pending scaffold: filter the IN_PROGRESS placeholder data and
+			// mirror status onto the pendingExecution ref so the UI sees the canceled state.
+			const executionDataStore = useExecutionDataStore(
+				createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
 			);
+			executionDataStore.clearExecutionStartedData();
+			executionDataStore.markAsStopped(stopData);
+			if (stopData) {
+				stateStore.applyStopDataToPendingExecution(stopData);
+			}
+		} else {
+			// activeExecutionId === undefined: fall back to displayedExecutionId for the
+			// stop-race-with-finished case where active was just cleared.
+			const displayedExecutionId = stateStore.displayedExecutionId;
+			if (typeof displayedExecutionId === 'string') {
+				const executionDataStore = useExecutionDataStore(
+					createExecutionDataId(displayedExecutionId),
+				);
+				executionDataStore.clearExecutionStartedData();
+				executionDataStore.markAsStopped(stopData);
+			}
 		}
 
-		if (stopData) {
-			ws.workflowExecutionData.status = stopData.status;
-			ws.workflowExecutionData.startedAt = stopData.startedAt;
-			ws.workflowExecutionData.stoppedAt = stopData.stoppedAt;
-		}
+		clearPopupWindowState();
 	}
 
 	function resetState() {
-		removeAllConnections({ setStateDirty: false });
-		removeAllNodes({ setStateDirty: false, removePinData: true });
-
-		setWorkflowExecutionData(null);
-		resetAllNodesIssues();
-
-		// Reset name via document store (triggers onNameChange → updates workflowObject.name)
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(ws.workflow.id),
-		);
-		workflowDocumentStore.setName('');
-
-		setWorkflowId('');
-		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
-		ws.workflowObject.setSettings({ ...DEFAULT_SETTINGS });
-		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
-
-		setActiveExecutionId(undefined);
-		workflowStateStore.executingNode.executingNode.length = 0;
-		ws.executionWaitingForWebhook = false;
-		useBuilderStore().resetManualExecutionStats();
-	}
-
-	////
-	// Node modification
-	////
-
-	/**
-	 * @deprecated Use per-node mutation methods on `workflowDocumentStore` instead.
-	 * @returns `true` if the object was changed
-	 */
-	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
-		if (nodeIndex !== -1) {
-			const node = ws.workflow.nodes[nodeIndex];
-			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
-			const changed = !isEqual(existingData, nodeData);
-
-			if (changed) {
-				Object.assign(node, nodeData);
-				ws.workflow.nodes[nodeIndex] = node;
-				ws.workflowObject.setNodes(ws.workflow.nodes);
-			}
-
-			return changed;
-		}
-		return false;
-	}
-
-	/** @deprecated Use `workflowDocumentStore.setNodeParameters()` instead. */
-	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
-		// Find the node that should be updated
-		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex === -1) {
-			throw new Error(
-				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
-			);
-		}
-
-		const { name, parameters } = ws.workflow.nodes[nodeIndex];
-
-		const newParameters =
-			!!append && isObject(updateInformation.value)
-				? { ...parameters, ...updateInformation.value }
-				: updateInformation.value;
-
-		const changed = updateNodeAtIndex(nodeIndex, {
-			parameters: newParameters as INodeParameters,
-		});
-
-		if (changed) {
-			uiStore.markStateDirty();
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(ws.workflow.id),
-			);
-			workflowDocumentStore.touchParametersLastUpdatedAt(name);
-		}
-	}
-
-	/** @deprecated Use `workflowDocumentStore.setLastNodeParameters()` instead. */
-	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
-		const latestNode = findLast(
-			ws.workflow.nodes,
-			(node) => node.type === updateInformation.key,
-		) as INodeUi;
-		const nodeType = nodeTypesStore.getNodeType(latestNode.type);
-		if (!nodeType) return;
-
-		const nodeParams = NodeHelpers.getNodeParameters(
-			nodeType.properties,
-			updateInformation.value as INodeParameters,
-			true,
-			false,
-			latestNode,
-			nodeType,
-		);
-
-		if (latestNode) {
-			setNodeParameters({ value: nodeParams, name: latestNode.name }, true);
-		}
-	}
-
-	/** @deprecated Use `workflowDocumentStore.setNodeValue()` instead. */
-	function setNodeValue(updateInformation: IUpdateInformation): void {
-		// Find the node that should be updated
-		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex === -1 || !updateInformation.key) {
-			throw new Error(
-				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
-			);
-		}
-
-		const changed = updateNodeAtIndex(nodeIndex, {
-			[updateInformation.key]: updateInformation.value,
-		});
-
-		if (changed) {
-			uiStore.markStateDirty();
-		}
-
-		const excludeKeys = ['position', 'notes', 'notesInFlow'];
-
-		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(ws.workflow.id),
-			);
-			workflowDocumentStore.touchParametersLastUpdatedAt(ws.workflow.nodes[nodeIndex].name);
-		}
-	}
-
-	/** @deprecated Use `workflowDocumentStore.setNodePositionById()` instead. */
-	function setNodePositionById(id: string, position: INodeUi['position']): void {
-		const node = ws.workflow.nodes.find((n) => n.id === id);
-		if (!node) return;
-
-		setNodeValue({ name: node.name, key: 'position', value: position });
-	}
-
-	/**
-	 * Update node by ID. Finds the node by ID and updates it with the provided data.
-	 * @deprecated Use `workflowDocumentStore.updateNodeById()` instead.
-	 * @returns `true` if the node was found and updated
-	 */
-	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
-		const nodeIndex = ws.workflow.nodes.findIndex((node) => node.id === nodeId);
-		if (nodeIndex === -1) return false;
-		return updateNodeAtIndex(nodeIndex, nodeData);
-	}
-
-	/** @deprecated Use `workflowDocumentStore.updateNodeProperties()` instead. */
-	function updateNodeProperties(
-		this: WorkflowState,
-		updateInformation: INodeUpdatePropertiesInformation,
-	): void {
-		// Find the node that should be updated
-		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
-			return node.name === updateInformation.name;
-		});
-
-		if (nodeIndex !== -1) {
-			for (const key of Object.keys(updateInformation.properties)) {
-				const typedKey = key as keyof INodeUpdatePropertiesInformation['properties'];
-				const property = updateInformation.properties[typedKey];
-
-				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
-
-				if (changed) {
-					uiStore.markStateDirty();
-				}
-			}
-		}
-
-		workflowStateEventBus.emit('updateNodeProperties', [this, updateInformation]);
-	}
-
-	/** @deprecated Use `workflowDocumentStore.setNodeIssue()` instead. */
-	function setNodeIssue(nodeIssueData: INodeIssueData): void {
-		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
-			return node.name === nodeIssueData.node;
-		});
-		if (nodeIndex === -1) {
+		const wid = ws.workflowId;
+		if (!wid) {
+			workflowStateStore.executingNode.executingNode.length = 0;
+			useBuilderStore().resetManualExecutionStats();
 			return;
 		}
+		const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId(wid));
+		// Disposes every tracked executionData store + IN_PROGRESS placeholder, then clears all
+		// session-level fields.
+		stateStore.resetExecutionState();
+		// Then dispose the per-workflow state store so pinia state doesn't accumulate one entry
+		// per workflow ever opened in this session.
+		disposeWorkflowExecutionStateStore(stateStore);
 
-		const node = ws.workflow.nodes[nodeIndex];
-
-		if (nodeIssueData.value === null) {
-			// Remove the value if one exists
-			if (node.issues?.[nodeIssueData.type] === undefined) {
-				// No values for type exist so nothing has to get removed
-				return;
-			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { [nodeIssueData.type]: _removedNodeIssue, ...remainingNodeIssues } = node.issues;
-			updateNodeAtIndex(nodeIndex, {
-				issues: remainingNodeIssues,
-			});
-		} else {
-			updateNodeAtIndex(nodeIndex, {
-				issues: {
-					...node.issues,
-					[nodeIssueData.type]: nodeIssueData.value as INodeIssueObjectProperty,
-				},
-			});
-		}
+		workflowStateStore.executingNode.executingNode.length = 0;
+		useBuilderStore().resetManualExecutionStats();
 	}
 
 	return {
 		// Workflow editing state
 		resetState,
-		removeAllConnections,
-		removeAllNodes,
 		setWorkflowExecutionData,
-		resetAllNodesIssues,
-		setWorkflowId,
-		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowData,
 
 		// Execution
 		markExecutionAsStopped,
-
-		// Node modification
-		setNodeParameters,
-		setLastNodeParameters,
-		setNodeValue,
-		setNodePositionById,
-		setNodeIssue,
-		updateNodeAtIndex,
-		updateNodeById,
-		updateNodeProperties,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,

@@ -9,7 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -157,7 +157,7 @@ const showSlowLoadNotice = ref(false);
 const longLoadingTimer = ref<NodeJS.Timeout | null>(null);
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -295,7 +295,7 @@ const currentRequestParams = computed(() => {
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
 		projectId: projectsStore.currentProjectId,
-		workflowId: workflowsStore.workflow.id,
+		workflowId: workflowsStore.workflowId,
 	};
 });
 
@@ -567,7 +567,7 @@ onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
 
-	useNDVStore().$subscribe(() => {
+	ndvStore.$subscribe(() => {
 		// Update the width when main panel dimension change
 		setWidth();
 	});
@@ -835,7 +835,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflow.id,
+			workflowId: workflowsStore.workflowId,
 		};
 
 		if (params.filter) {

@@ -4,10 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -164,7 +161,7 @@ function onSelect(value: string) {
 		case 'workflowParent':
 		case 'errorWorkflow':
 		case 'errorWorkflowParent':
-			const href = router.resolve({ name: VIEWS.WORKFLOW, params: { name: dep.id } }).href;
+			const href = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: dep.id } }).href;
 			window.open(href, '_blank');
 			break;
 		case 'dataTableId':
@@ -207,8 +204,7 @@ async function onDropdownToggle(open: boolean) {
 	<N8nTooltip :content="tooltipText" placement="bottom" :show-after="300">
 		<N8nDropdownMenu
 			:items="menuItems"
-			trigger="hover"
-			placement="bottom"
+			placement="bottom-end"
 			:loading="isLoadingDetails"
 			:loading-item-count="1"
 			:searchable="showSearch"
@@ -251,6 +247,14 @@ async function onDropdownToggle(open: boolean) {
 
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text);
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+
+	:global([aria-expanded='true']) & {
+		background-color: var(--background--active);
+	}
 }
 
 .badgeText {

@@ -8,7 +8,7 @@
 import { expect, it, beforeEach } from 'vitest';
 
 import { Agent, Memory, type AgentDbMessage } from '../../../index';
-import type { BuiltMemory, Thread } from '../../../types/sdk/memory';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../../../types/sdk/memory';
 import { describeIf, findLastTextContent, getModel } from '../helpers';
 
 const describe = describeIf('anthropic');
@@ -17,6 +17,9 @@ const describe = describeIf('anthropic');
 // Custom in-memory BuiltMemory implementation (simulates Redis, DynamoDB, etc.)
 // ---------------------------------------------------------------------------
 class CustomMapMemory implements BuiltMemory {
+	describe(): MemoryDescriptor {
+		throw new Error('Method not implemented.');
+	}
 	readonly threads = new Map<string, Thread>();
 	readonly messages = new Map<string, AgentDbMessage[]>();
 	readonly workingMemory = new Map<string, string>();

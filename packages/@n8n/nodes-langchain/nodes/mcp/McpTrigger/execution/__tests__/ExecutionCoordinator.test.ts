@@ -92,7 +92,7 @@ describe('ExecutionCoordinator', () => {
 
 		it('should pass context to strategy', async () => {
 			const mockStrategy = {
-				executeTool: jest.fn().mockResolvedValue('result'),
+				executeTool: vi.fn().mockResolvedValue('result'),
 			};
 			const coordinator = new ExecutionCoordinator(mockStrategy);
 			const tool = createMockTool('test', { invokeReturn: 'result' });
@@ -123,7 +123,7 @@ describe('ExecutionCoordinator', () => {
 		it('should return false for anonymous strategy implementations', () => {
 			const coordinator = new ExecutionCoordinator();
 			const anonymousStrategy = {
-				executeTool: jest.fn().mockResolvedValue('result'),
+				executeTool: vi.fn().mockResolvedValue('result'),
 			};
 
 			coordinator.setStrategy(anonymousStrategy);
