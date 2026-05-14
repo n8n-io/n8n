@@ -7,9 +7,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
-	AGENT_PREVIEW_VIEW,
-	CONTINUE_SESSION_ID_PARAM,
 	AGENT_SESSION_DETAIL_VIEW,
+	EXECUTIONS_SECTION_KEY,
 } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
@@ -31,7 +30,14 @@ import {
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nBreadcrumbs, N8nButton, N8nDropdownMenu, N8nIcon, N8nInput } from '@n8n/design-system';
+import {
+	N8nBreadcrumbs,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+} from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
@@ -143,6 +149,11 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 const agentRoute = computed<RouteLocationRaw>(() => ({
 	name: AGENT_BUILDER_VIEW,
 	params: { projectId: projectId.value, agentId: agentId.value },
+}));
+
+const agentExecutionsRoute = computed<RouteLocationRaw>(() => ({
+	...agentRoute.value,
+	query: { section: EXECUTIONS_SECTION_KEY },
 }));
 
 const breadcrumbItems = computed<PathItem[]>(() => [
@@ -307,12 +318,8 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-function continueChat() {
-	void router.push({
-		name: AGENT_PREVIEW_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query: { [CONTINUE_SESSION_ID_PARAM]: threadId.value },
-	});
+function closeTimeline() {
+	void router.push(agentExecutionsRoute.value);
 }
 
 function onBreadcrumbSelect(item: PathItem) {
@@ -390,14 +397,15 @@ function onSessionSelect(nextThreadId: string) {
 					<N8nIcon icon="clock" :size="12" />
 					<span>{{ formatDuration(thread.totalDuration) }}</span>
 				</span>
-				<button
-					v-if="triggerSource === 'chat'"
-					:class="$style.continueButton"
-					@click="continueChat"
-				>
-					<N8nIcon icon="message-square" :size="12" />
-					{{ i18n.baseText('agentSessions.timeline.continueChat') }}
-				</button>
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="small"
+					:class="$style.closeButton"
+					:aria-label="i18n.baseText('generic.close')"
+					data-test-id="agent-session-timeline-close"
+					@click="closeTimeline"
+				/>
 			</div>
 		</div>
 
@@ -509,6 +517,10 @@ function onSessionSelect(nextThreadId: string) {
 	gap: var(--spacing--4xs);
 	white-space: nowrap;
 }
+.closeButton {
+	margin-left: var(--spacing--3xs);
+	color: var(--text-color--subtler);
+}
 .crumbSeparator {
 	color: var(--border-color);
 	margin: 0 var(--spacing--4xs);
@@ -552,23 +564,6 @@ function onSessionSelect(nextThreadId: string) {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	color: var(--text-color);
-}
-.continueButton {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	margin-left: var(--spacing--2xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: none;
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--background--brand);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	cursor: pointer;
-	&:hover {
-		background-color: var(--background--hover);
-	}
 }
 .subHeader {
 	display: flex;
