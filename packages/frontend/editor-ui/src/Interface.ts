@@ -455,6 +455,7 @@ export type SimplifiedNodeType = Pick<
 	| 'outputs'
 > & {
 	tag?: NodeCreatorTag;
+	isNew?: boolean;
 };
 export interface SubcategoryItemProps {
 	description?: string;
