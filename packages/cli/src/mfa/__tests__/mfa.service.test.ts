@@ -313,4 +313,36 @@ describe('MfaService', () => {
 			expect(mockWebAuthnService.verifyAuthenticationResponse).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('getAvailableMfaMethods', () => {
+		const userId = 'user-1';
+
+		it('returns each enabled method at most once', async () => {
+			// User with two passkeys, one security key and TOTP would otherwise
+			// surface `['totp', 'passkey', 'passkey', 'security_key']`, which the
+			// change-password switcher cycles through `indexOf`-by-method —
+			// duplicates would freeze the cycle on the repeated entry.
+			mockUserRepository.findOneByOrFail.mockResolvedValue({ mfaSecret: 'secret' } as never);
+			mockWebAuthnService.getUserCredentials.mockResolvedValue([
+				{ transports: ['internal'], deviceType: 'multiDevice' },
+				{ transports: ['internal'], deviceType: 'multiDevice' },
+				{ transports: ['usb'], deviceType: 'singleDevice' },
+			] as never);
+
+			const result = await mfaService.getAvailableMfaMethods(userId);
+
+			expect(result).toEqual(['totp', 'passkey', 'security_key']);
+		});
+
+		it('omits TOTP when the user has no secret', async () => {
+			mockUserRepository.findOneByOrFail.mockResolvedValue({ mfaSecret: null } as never);
+			mockWebAuthnService.getUserCredentials.mockResolvedValue([
+				{ transports: ['internal'], deviceType: 'multiDevice' },
+			] as never);
+
+			const result = await mfaService.getAvailableMfaMethods(userId);
+
+			expect(result).toEqual(['passkey']);
+		});
+	});
 });

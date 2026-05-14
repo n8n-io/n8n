@@ -164,19 +164,19 @@ export class MfaService {
 	async getAvailableMfaMethods(
 		userId: string,
 	): Promise<Array<'totp' | 'passkey' | 'security_key'>> {
-		const methods: Array<'totp' | 'passkey' | 'security_key'> = [];
+		const methods = new Set<'totp' | 'passkey' | 'security_key'>();
 
 		const user = await this.userRepository.findOneByOrFail({ id: userId });
 		if (user.mfaSecret) {
-			methods.push('totp');
+			methods.add('totp');
 		}
 
 		const credentials = await this.webauthn.getUserCredentials(userId);
 		for (const cred of credentials) {
-			methods.push(isPlatformCredential(cred) ? 'passkey' : 'security_key');
+			methods.add(isPlatformCredential(cred) ? 'passkey' : 'security_key');
 		}
 
-		return methods;
+		return Array.from(methods);
 	}
 
 	async clearTotpState(userId: string) {
