@@ -18,6 +18,7 @@ import {
 } from '@/app/constants';
 import { mfaEventBus } from '../auth.eventBus';
 import { LAST_2FA_METHOD_KEY } from '../auth.constants';
+import { isWebauthnUserCancellation } from '../utils/webauthn-error';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
@@ -239,13 +240,7 @@ const onWebAuthnClick = async () => {
 		const response = await usersStore.verifyWebAuthnAuthentication(props.email);
 		emit('webauthnSubmit', response);
 	} catch (e) {
-		// Match by `name` on the error or its wrapped `cause` — password-manager
-		// extensions (Bitwarden, 1Password) raise `NotAllowedError` via
-		// `@simplewebauthn/browser`, which wraps the original DOMException.
-		const name = (e as { name?: string })?.name;
-		const causeName = (e as { cause?: { name?: string } })?.cause?.name;
-		const isCancelledOrFocusLoss = name === 'NotAllowedError' || causeName === 'NotAllowedError';
-		webauthnError.value = isCancelledOrFocusLoss
+		webauthnError.value = isWebauthnUserCancellation(e)
 			? i18.baseText('mfa.login.webauthn.error.cancelled')
 			: i18.baseText('mfa.webauthn.error');
 	} finally {

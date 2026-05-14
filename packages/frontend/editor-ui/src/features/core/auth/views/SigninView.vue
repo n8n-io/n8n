@@ -17,6 +17,7 @@ import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
 import type { LoginRequestDto, MfaMethod } from '@n8n/api-types';
 import { LAST_2FA_METHOD_KEY } from '../auth.constants';
+import { isWebauthnUserCancellation } from '../utils/webauthn-error';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -241,19 +242,6 @@ const onSigninWithPasskeyComplete = async () => {
 	await router.push({ name: VIEWS.HOMEPAGE });
 };
 
-// `@simplewebauthn/browser` wraps the underlying DOMException in a custom
-// `WebAuthnError`. Both raw DOMException names and the wrapped codes for
-// user dismissal / aborted ceremony are treated as benign — silent.
-const isBenignPasskeyError = (e: unknown): boolean => {
-	if (!e || typeof e !== 'object') return false;
-	const candidate = e as { name?: string; code?: string; cause?: { name?: string } };
-	if (candidate.name === 'NotAllowedError' || candidate.name === 'AbortError') return true;
-	if (candidate.code === 'ERROR_CEREMONY_ABORTED') return true;
-	if (candidate.code === 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY') return true;
-	const causeName = candidate.cause?.name;
-	return causeName === 'NotAllowedError' || causeName === 'AbortError';
-};
-
 // Conditional UI: while the signin page is mounted, ask the browser to surface
 // any saved discoverable passkey for this origin via its native autofill UI.
 // Tapping the suggestion runs the WebAuthn ceremony and posts the assertion to
@@ -270,7 +258,7 @@ onMounted(async () => {
 		// Benign dismissals / abort signals are common on this path (the user
 		// may submit the password form before completing autofill, or close
 		// the OS picker). Only surface real failures.
-		if (isBenignPasskeyError(e)) return;
+		if (isWebauthnUserCancellation(e)) return;
 		toast.showError(e, locale.baseText('auth.signin.passkey.error'));
 	}
 });

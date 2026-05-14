@@ -19,6 +19,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import type { MfaMethod } from '@n8n/api-types';
 import { twoFactorWizardBus } from '../auth.eventBus';
 import { suggestCredentialLabel } from '../utils/suggest-label';
+import { isWebauthnUserCancellation } from '../utils/webauthn-error';
 import MfaWizardSteps from './MfaWizardSteps.vue';
 
 const props = defineProps<{
@@ -110,16 +111,7 @@ const onRegister = async () => {
 		twoFactorWizardBus.emit('completed', { method: completed });
 		uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
 	} catch (e) {
-		// `@simplewebauthn/browser` wraps the browser error in its own
-		// `WebAuthnError`, so an `instanceof DOMException` check misses the
-		// "user cancelled / focus stolen" case (the latter is what Bitwarden,
-		// 1Password, and other password-manager extensions cause when they
-		// hook into `navigator.credentials.create`). Match by `name` on the
-		// wrapped or the underlying cause instead.
-		const name = (e as { name?: string })?.name;
-		const causeName = (e as { cause?: { name?: string } })?.cause?.name;
-		const isCancelledOrFocusLoss = name === 'NotAllowedError' || causeName === 'NotAllowedError';
-		if (isCancelledOrFocusLoss) {
+		if (isWebauthnUserCancellation(e)) {
 			inlineError.value = i18n.baseText('settings.personal.twoFactor.webauthn.error.cancelled');
 		} else {
 			// Surface the real error so it's debuggable from devtools — the generic
