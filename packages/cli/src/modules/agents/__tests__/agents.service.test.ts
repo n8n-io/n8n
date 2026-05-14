@@ -270,7 +270,6 @@ describe('AgentsService', () => {
 			const slackIntegration = {
 				type: 'slack',
 				credentialId: 'cred-slack',
-				credentialName: 'Slack workspace',
 			} as const;
 			const agent = makeAgent({
 				integrations: [slackIntegration],
@@ -297,7 +296,6 @@ describe('AgentsService', () => {
 			const slackIntegration = {
 				type: 'slack',
 				credentialId: 'cred-slack',
-				credentialName: 'Slack workspace',
 			} as const;
 			const agent = makeAgent({
 				integrations: [slackIntegration],
@@ -650,7 +648,7 @@ describe('AgentsService', () => {
 			expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(
 				agent,
 				[],
-				[{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack' }],
+				[{ type: 'slack', credentialId: 'cred-1' }],
 			);
 		});
 
@@ -1271,7 +1269,6 @@ describe('AgentsService', () => {
 			const integration = {
 				type: 'slack' as const,
 				credentialId: 'cred-1',
-				credentialName: 'Slack workspace',
 			};
 
 			await service.saveCredentialIntegration(agent, integration);
@@ -1287,7 +1284,6 @@ describe('AgentsService', () => {
 			const existing = {
 				type: 'slack' as const,
 				credentialId: 'cred-1',
-				credentialName: 'Old name',
 			};
 			const agent = makeAgent({ integrations: [existing] });
 			agentRepository.save.mockImplementation(async (a) => a as Agent);
@@ -1295,7 +1291,6 @@ describe('AgentsService', () => {
 			const updated = {
 				type: 'slack' as const,
 				credentialId: 'cred-1',
-				credentialName: 'New name',
 			};
 
 			await service.saveCredentialIntegration(agent, updated);
@@ -1320,7 +1315,6 @@ describe('AgentsService', () => {
 			const slack = {
 				type: 'slack' as const,
 				credentialId: 'cred-1',
-				credentialName: 'Slack',
 			};
 
 			await service.saveCredentialIntegration(agent, slack);
@@ -1332,13 +1326,12 @@ describe('AgentsService', () => {
 			);
 		});
 
-		it('rejects an integration missing credentialName', async () => {
+		it('rejects an integration missing credentialId', async () => {
 			const agent = makeAgent({ integrations: [] });
 
 			await expect(
 				service.saveCredentialIntegration(agent, {
 					type: 'slack',
-					credentialId: 'cred-1',
 				} as never),
 			).rejects.toThrow(/Invalid credential integration/);
 		});
@@ -1349,7 +1342,6 @@ describe('AgentsService', () => {
 			const slack = {
 				type: 'slack' as const,
 				credentialId: 'cred-1',
-				credentialName: 'Slack',
 			};
 			const schedule = {
 				type: 'schedule' as const,
@@ -1382,12 +1374,10 @@ describe('AgentsService', () => {
 			const slack = {
 				type: 'slack' as const,
 				credentialId: 'cred-1',
-				credentialName: 'Slack',
 			};
 			const linear = {
 				type: 'linear' as const,
 				credentialId: 'cred-2',
-				credentialName: 'Linear',
 			};
 			const agent = makeAgent({ integrations: [slack, linear] });
 			agentRepository.save.mockImplementation(async (a) => a as Agent);

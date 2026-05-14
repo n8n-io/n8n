@@ -688,7 +688,7 @@ describe('AgentJsonConfigSchema', () => {
 					cronExpression: '0 0 * * *',
 					wakeUpPrompt: 'tick',
 				},
-				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
@@ -697,7 +697,6 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
 		});
 	});
 
@@ -711,7 +710,6 @@ describe('AgentJsonConfigSchema', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-1',
-					credentialName: 'Telegram Bot',
 					settings: {
 						accessMode: 'private',
 						allowedUsers: ['123', '123', '456', 'john_doe123'],
@@ -741,7 +739,6 @@ describe('AgentJsonConfigSchema', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-1',
-					credentialName: 'Telegram Bot',
 					settings: { accessMode: 'private', allowedUsers: [] },
 				},
 			],
@@ -760,7 +757,6 @@ describe('AgentJsonConfigSchema', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-1',
-					credentialName: 'Telegram Bot',
 					settings: { accessMode: 'private', allowedUsers: ['user name'] },
 				},
 			],
@@ -782,7 +778,7 @@ describe('AgentJsonConfigSchema', () => {
 					cronExpression: '0 0 * * *',
 					wakeUpPrompt: 'tick',
 				},
-				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
@@ -791,7 +787,6 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
 		});
 	});
 });

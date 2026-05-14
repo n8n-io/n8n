@@ -71,18 +71,10 @@ describe('AgentRepository', () => {
 
 		it('returns agents that have a matching type + credentialId, excluding the given agentId', async () => {
 			const agents = [
-				makeAgent('agent-self', [
-					{ type: 'telegram', credentialId: 'cred-1', credentialName: 'Telegram Bot' },
-				]),
-				makeAgent('agent-other', [
-					{ type: 'telegram', credentialId: 'cred-1', credentialName: 'Telegram Bot' },
-				]),
-				makeAgent('agent-slack', [
-					{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack' },
-				]),
-				makeAgent('agent-unrelated', [
-					{ type: 'telegram', credentialId: 'cred-2', credentialName: 'Telegram Bot' },
-				]),
+				makeAgent('agent-self', [{ type: 'telegram', credentialId: 'cred-1' }]),
+				makeAgent('agent-other', [{ type: 'telegram', credentialId: 'cred-1' }]),
+				makeAgent('agent-slack', [{ type: 'slack', credentialId: 'cred-1' }]),
+				makeAgent('agent-unrelated', [{ type: 'telegram', credentialId: 'cred-2' }]),
 				makeAgent('agent-empty', []),
 			];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);
@@ -101,9 +93,7 @@ describe('AgentRepository', () => {
 			jest
 				.spyOn(repository, 'find')
 				.mockResolvedValue([
-					makeAgent('agent-self', [
-						{ type: 'telegram', credentialId: 'cred-1', credentialName: 'Telegram Bot' },
-					]),
+					makeAgent('agent-self', [{ type: 'telegram', credentialId: 'cred-1' }]),
 				]);
 
 			const result = await repository.findByIntegrationCredential(
@@ -118,9 +108,7 @@ describe('AgentRepository', () => {
 
 		it('handles agents whose integrations column is null / undefined without crashing', async () => {
 			const agents = [
-				makeAgent('agent-a', [
-					{ type: 'telegram', credentialId: 'cred-1', credentialName: 'Telegram Bot' },
-				]),
+				makeAgent('agent-a', [{ type: 'telegram', credentialId: 'cred-1' }]),
 				{ id: 'agent-null', integrations: null } as unknown as Agent,
 				{ id: 'agent-undef' } as unknown as Agent,
 			];
@@ -146,9 +134,7 @@ describe('AgentRepository', () => {
 						wakeUpPrompt: 'Automated message',
 					},
 				]),
-				makeAgent('agent-match', [
-					{ type: 'telegram', credentialId: 'cred-1', credentialName: 'Telegram Bot' },
-				]),
+				makeAgent('agent-match', [{ type: 'telegram', credentialId: 'cred-1' }]),
 			];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);
 

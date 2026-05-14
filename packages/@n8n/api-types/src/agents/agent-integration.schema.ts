@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const createCredIntegrationSchema = <
 	Value extends string,
-	Settings extends z.ZodObject<z.ZodRawShape>,
+	Settings extends z.ZodTypeAny | z.ZodEffects<z.ZodTypeAny>,
 >(
 	typeName: Value,
 	settingsSchema: Settings,
@@ -37,7 +37,16 @@ export const AgentTelegramSettingsSchema = z
 			.default([])
 			.transform((items) => [...new Set(items)]),
 	})
-	.strict();
+	.strict()
+	.superRefine((settings, ctx) => {
+		if (settings.accessMode === 'private' && settings.allowedUsers.length === 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['allowedUsers'],
+				message: 'Add at least one Telegram user ID or username',
+			});
+		}
+	});
 
 export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSettingsSchema>;
 

@@ -79,7 +79,7 @@ describe('AgentScheduleService', () => {
 		expect(agentRepository.save).toHaveBeenCalledWith(
 			expect.objectContaining({
 				integrations: [
-					{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack' },
+					{ type: 'slack', credentialId: 'cred-1' },
 					{
 						type: 'schedule',
 						active: false,

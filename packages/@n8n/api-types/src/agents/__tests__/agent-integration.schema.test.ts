@@ -11,11 +11,10 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts a chat integration with credential name', () => {
+	it('accepts a chat integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
 			credentialId: 'cred-123',
-			credentialName: 'Acme Slack',
 		});
 		expect(result.success).toBe(true);
 	});
@@ -33,7 +32,15 @@ describe('AgentIntegrationSchema', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',
 			credentialId: 'cred-123',
-			credentialName: 'Acme',
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects Telegram private settings without allowed users', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'telegram',
+			credentialId: 'cred-telegram',
+			settings: { accessMode: 'private', allowedUsers: [] },
 		});
 		expect(result.success).toBe(false);
 	});
