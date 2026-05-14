@@ -8,8 +8,6 @@ import type {
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AGENT_WORKFLOW_TRIGGER_TYPE,
-	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 	type ChatIntegrationDescriptor,
@@ -82,6 +80,10 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import {
+	isAgentCredentialIntegration,
+	isAgentScheduleIntegration,
+} from './json-config/integration-config';
 
 type AgentToolEntries = Agent['tools'];
 

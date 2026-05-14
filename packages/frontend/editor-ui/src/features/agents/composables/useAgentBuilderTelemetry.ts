@@ -1,8 +1,8 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
 import {
-	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
+	AgentIntegration,
+	AgentScheduleIntegration,
 	type AgentIntegrationStatusEntry,
 } from '@n8n/api-types';
 import {
@@ -75,6 +75,12 @@ function deriveChangedParts(
 	return Array.from(parts);
 }
 
+function isAgentScheduleIntegration(
+	integration: AgentIntegration,
+): integration is AgentScheduleIntegration {
+	return integration.type === 'schedule';
+}
+
 function integrationStatusEntriesFromConfig(
 	config: AgentJsonConfig | null,
 	knownTriggerTypes: readonly string[],
@@ -92,7 +98,7 @@ function integrationStatusEntriesFromConfig(
 			continue;
 		}
 
-		if (isAgentCredentialIntegration(integration)) {
+		if (!isAgentScheduleIntegration(integration)) {
 			entries.push({ type: integration.type, credentialId: integration.credentialId });
 		}
 	}

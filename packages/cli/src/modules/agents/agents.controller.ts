@@ -1,24 +1,21 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
-	type AgentCredentialIntegration,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
 	type AgentScheduleConfig,
 	type AgentSseEvent,
-	type AgentIntegrationSettings,
 	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
 	CreateAgentSkillDto,
-	AgentIntegrationDto,
+	AgentCredentialIntegrationDto,
 	CreateAgentDto,
 	UpdateAgentSkillDto,
 	UpdateAgentConfigDto,
 	UpdateAgentScheduleDto,
 	UpdateAgentDto,
-	isAgentCredentialIntegration,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -36,7 +33,6 @@ import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -56,6 +52,11 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import {
+	AgentCredentialIntegrationSchema,
+	isAgentCredentialIntegration,
+} from './json-config/integration-config';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -105,19 +106,6 @@ export class AgentsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
-
-	private settingsForConnect(
-		integrationType: string,
-		settings: AgentIntegrationSettings | undefined,
-	): AgentIntegrationSettings | undefined {
-		if (!settings) {
-			if (integrationType === 'telegram') {
-				throw new BadRequestError('Integration settings are required for telegram');
-			}
-			return undefined;
-		}
-		return settings;
-	}
 
 	@Post('/')
 	@ProjectScope('agent:create')
@@ -662,10 +650,14 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentIntegrationDto,
+		@Body payload: AgentCredentialIntegrationDto,
 	) {
-		const { type, credentialId } = payload;
-		const settings = this.settingsForConnect(type, payload.settings);
+		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(payload);
+		if (!integrationParseResult.success) {
+			throw new BadRequestError(integrationParseResult.error.message);
+		}
+		const integration = integrationParseResult.data;
+		const { credentialId, type } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (!agent.publishedVersion)
@@ -680,26 +672,13 @@ export class AgentsController {
 		const credential = usableCredentials.find((c) => c.id === credentialId);
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
 
-		await this.chatIntegrationService.connect(
-			agentId,
-			credentialId,
-			type,
-			req.user.id,
-			agent.projectId,
-			settings ? { settings } : {},
-		);
+		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
 
 		// Persist the integration reference on the agent
 		const existing = agent.integrations ?? [];
 		const alreadyExists = existing.some(
 			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 		);
-		const integration: AgentCredentialIntegration = {
-			type,
-			credentialId,
-			credentialName: credential.name,
-			...(settings ? { settings } : {}),
-		};
 
 		// Replace existing integration or append a new one
 		agent.integrations = alreadyExists
@@ -715,13 +694,7 @@ export class AgentsController {
 
 		// Notify peer mains so they connect the integration too — without this
 		// step inbound webhooks load-balanced to a follower would 404.
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			agentId,
-			type,
-			credentialId,
-			'connect',
-			settings,
-		);
+		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
 		return { status: 'connected' };
 	}
@@ -732,13 +705,18 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentIntegrationDto,
+		@Body payload: AgentCredentialIntegrationDto,
 	) {
-		const { type, credentialId } = payload;
+		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(payload);
+		if (!integrationParseResult.success) {
+			throw new BadRequestError(integrationParseResult.error.message);
+		}
+		const integration = integrationParseResult.data;
+		const { type, credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		await this.chatIntegrationService.disconnect(agentId, type, credentialId);
+		await this.chatIntegrationService.disconnect(agentId, integration);
 
 		// Remove the integration reference from the agent
 		agent.integrations = (agent.integrations ?? []).filter(
@@ -748,8 +726,7 @@ export class AgentsController {
 
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			agentId,
-			type,
-			credentialId,
+			integration,
 			'disconnect',
 		);
 
@@ -828,7 +805,7 @@ export class AgentsController {
 			.map((i) => ({
 				type: i.type,
 				credentialId: i.credentialId,
-				...(i.settings ? { settings: i.settings } : {}),
+				...('settings' in i ? { settings: i.settings } : {}),
 			}));
 		const schedule = this.agentScheduleService.getConfig(agent);
 		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];

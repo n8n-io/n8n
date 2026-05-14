@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { AgentIntegrationSettings } from './dto/agents/agent-integration.dto';
+import type { AgentCredentialIntegrationDto, AgentIntegrationSettings } from './dto';
 
 /**
  * Describes a chat platform integration that agents can connect to.
@@ -60,13 +60,6 @@ export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
 	'Automated message: you were triggered on schedule.';
 
-export interface AgentCredentialIntegration {
-	type: string;
-	credentialId: string;
-	credentialName: string;
-	settings?: AgentIntegrationSettings;
-}
-
 export interface AgentScheduleIntegration {
 	type: typeof AGENT_SCHEDULE_TRIGGER_TYPE;
 	active: boolean;
@@ -74,7 +67,7 @@ export interface AgentScheduleIntegration {
 	wakeUpPrompt: string;
 }
 
-export type AgentIntegration = AgentCredentialIntegration | AgentScheduleIntegration;
+export type AgentIntegration = AgentCredentialIntegrationDto | AgentScheduleIntegration;
 
 export interface AgentScheduleConfig {
 	active: boolean;
@@ -91,24 +84,6 @@ export interface AgentIntegrationStatusEntry {
 export interface AgentIntegrationStatusResponse {
 	status: 'connected' | 'disconnected';
 	integrations: AgentIntegrationStatusEntry[];
-}
-
-export function isAgentScheduleIntegration(
-	integration: AgentIntegration | null | undefined,
-): integration is AgentScheduleIntegration {
-	return integration?.type === AGENT_SCHEDULE_TRIGGER_TYPE;
-}
-
-export function isAgentCredentialIntegration(
-	integration: AgentIntegration | null | undefined,
-): integration is AgentCredentialIntegration {
-	return (
-		integration !== null &&
-		integration !== undefined &&
-		integration.type !== AGENT_SCHEDULE_TRIGGER_TYPE &&
-		'credentialId' in integration &&
-		typeof integration.credentialId === 'string'
-	);
 }
 
 export interface NodeToolConfig {
