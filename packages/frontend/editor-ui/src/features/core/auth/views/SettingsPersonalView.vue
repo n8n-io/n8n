@@ -583,15 +583,15 @@ onBeforeUnmount(() => {
 									<N8nIcon icon="trash-2" size="small" />
 								</button>
 							</div>
-							<button
-								type="button"
+							<N8nButton
+								variant="ghost"
+								size="small"
+								icon="plus"
 								:class="$style.addAnotherBtn"
+								:label="i18n.baseText('settings.personal.method.button.addAnother.passkey')"
 								data-test-id="add-passkey-button"
 								@click="onSetupPasskeyClick"
-							>
-								<N8nIcon icon="plus" size="xsmall" />
-								{{ i18n.baseText('settings.personal.method.button.addAnother.passkey') }}
-							</button>
+							/>
 						</div>
 					</div>
 				</div>
@@ -705,15 +705,15 @@ onBeforeUnmount(() => {
 										<N8nIcon icon="trash-2" size="small" />
 									</button>
 								</div>
-								<button
-									type="button"
+								<N8nButton
+									variant="ghost"
+									size="small"
+									icon="plus"
 									:class="$style.addAnotherBtn"
+									:label="i18n.baseText('settings.personal.method.button.addAnother.security_key')"
 									data-test-id="add-security-key-button"
 									@click="onTwoFactorMethodClick('security_key')"
-								>
-									<N8nIcon icon="plus" size="xsmall" />
-									{{ i18n.baseText('settings.personal.method.button.addAnother.security_key') }}
-								</button>
+								/>
 							</div>
 						</div>
 					</div>
@@ -904,24 +904,8 @@ onBeforeUnmount(() => {
 }
 
 .addAnotherBtn {
+	align-self: flex-start;
 	margin-top: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	font-size: var(--font-size--xs);
-	border-radius: var(--radius--sm);
-	border: 1px dashed var(--color--foreground);
-	background: transparent;
-	color: var(--text-color--subtle);
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--3xs);
-}
-
-.addAnotherBtn:hover {
-	border-style: solid;
-	border-color: var(--color--primary);
-	color: var(--color--primary);
 }
 
 .methodCardContent {
