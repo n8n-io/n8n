@@ -904,7 +904,7 @@ onBeforeUnmount(() => {
 }
 
 .addAnotherBtn {
-	align-self: flex-start;
+	align-self: center;
 	margin-top: var(--spacing--2xs);
 }
 
