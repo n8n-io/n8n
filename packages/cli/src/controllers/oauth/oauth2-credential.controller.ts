@@ -26,7 +26,7 @@ export class OAuth2CredentialController {
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
-		const credential = await this.oauthService.getCredential(req);
+		const credential = await this.oauthService.getCredentialForUpdate(req);
 
 		const uri = await this.oauthService.generateAOauth2AuthUri(credential, {
 			cid: credential.id,

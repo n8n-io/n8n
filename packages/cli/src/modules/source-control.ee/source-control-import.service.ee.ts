@@ -46,6 +46,7 @@ import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
@@ -1239,6 +1240,13 @@ export class SourceControlImportService {
 				continue;
 			}
 
+			if (!isValidDataTableId(dataTable.id)) {
+				this.logger.warn(
+					`Invalid data table ID "${dataTable.id}" in file ${candidate.file}. Skipping.`,
+				);
+				continue;
+			}
+
 			let targetProject: Project | null = null;
 
 			if (dataTable.ownedBy) {
@@ -1354,6 +1362,13 @@ export class SourceControlImportService {
 					// Upsert columns
 					const columnEntities = [];
 					for (const column of dataTable.columns) {
+						if (!isValidColumnName(column.name)) {
+							this.logger.warn(
+								`Invalid column name "${column.name}" in data table ${dataTable.name}. Skipping column.`,
+							);
+							continue;
+						}
+
 						if (!isValidDataTableColumnType(column.type)) {
 							this.logger.warn(
 								`Invalid column type "${column.type}" in data table ${dataTable.name}, column ${column.name}. Skipping column.`,
