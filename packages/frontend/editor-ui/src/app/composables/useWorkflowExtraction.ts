@@ -27,8 +27,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
 import { checkExhaustive } from '@/app/utils/typeGuards';
 import isEqual from 'lodash/isEqual';
+import uniq from 'lodash/uniq';
 import { v4 as uuidv4 } from 'uuid';
 import { sanitizeConnections } from '../utils/workflowUtils';
+import { useCanvasNodeGroupsStore } from '@/features/workflows/canvas/stores/canvasNodeGroups.store';
 
 const CANVAS_HISTORY_OPTIONS = {
 	trackBulk: false,
@@ -44,6 +46,7 @@ export function useWorkflowExtraction() {
 	const router = useRouter();
 	const historyStore = useHistoryStore();
 	const canvasOperations = useCanvasOperations();
+	const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const { isSelectionExtractable } = useSelectionValidation();
@@ -322,16 +325,23 @@ export function useWorkflowExtraction() {
 			})
 		)[0];
 
+		addReplacementNodeToSelectionGroup(
+			selection.map((node) => node.id),
+			executeWorkflowNode.id,
+		);
+
 		if (endId)
 			canvasOperations.replaceNodeConnections(endId, executeWorkflowNode.id, {
 				...CANVAS_HISTORY_OPTIONS,
 				replaceInputs: false,
+				validateNodeGroups: false,
 			});
 
 		if (startId)
 			canvasOperations.replaceNodeConnections(startId, executeWorkflowNode.id, {
 				...CANVAS_HISTORY_OPTIONS,
 				replaceOutputs: false,
+				validateNodeGroups: false,
 			});
 
 		canvasOperations.deleteNodes(
@@ -354,6 +364,18 @@ export function useWorkflowExtraction() {
 
 		uiStore.markStateDirty();
 		historyStore.stopRecordingUndo();
+	}
+
+	function addReplacementNodeToSelectionGroup(selectionIds: string[], replacementNodeId: string) {
+		const affectedGroupIds = uniq(
+			selectionIds
+				.map((nodeId) => canvasNodeGroupsStore.getGroupForNode(nodeId)?.id)
+				.filter((id): id is string => id !== undefined),
+		);
+
+		if (affectedGroupIds.length !== 1) return;
+
+		canvasNodeGroupsStore.addNodesToGroup(affectedGroupIds[0], [replacementNodeId]);
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {

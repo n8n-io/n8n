@@ -143,5 +143,26 @@ test.describe(
 			await n8n.canvas.selectNodes([TRIGGER, 'Set A']);
 			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
 		});
+
+		test('auto-extends the group when a new connection would otherwise invalidate it', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.selectNodes(['Set B', 'Set C']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+			await expect(n8n.canvas.getNodeGroupByTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
+
+			const before = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+
+			await n8n.canvas.connectNodesByDrag('Set A', 'Set C');
+
+			await expect(
+				n8n.notifications.getNotificationByTitle(`'${DEFAULT_GROUP_TITLE}' extended`),
+			).toBeVisible();
+			await expect(n8n.canvas.connectionBetweenNodes('Set A', 'Set C')).toHaveCount(1);
+
+			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
+			expect(after.width).toBeGreaterThan(before.width);
+		});
 	},
 );
