@@ -1,0 +1,88 @@
+{
+  "httpRequest": {
+    "method": "GET",
+    "path": "/v1/models"
+  },
+  "httpResponse": {
+    "statusCode": 401,
+    "reasonPhrase": "Unauthorized",
+    "headers": {
+      "x-request-id": [
+        "f435220f-2c11-4953-9262-6d1ad8d1a4b7"
+      ],
+      "x-openai-proxy-wasm": [
+        "v0.1"
+      ],
+      "www-authenticate": [
+        "Bearer realm=\"OpenAI API\""
+      ],
+      "set-cookie": [
+        "__cf_bm=_hiCIllM_gKtoOT57FB5CS1RuKfMOSnQWGDAFYA90Cc-1778753122.1619577-1.0.1.1-jss4rx2Xxr4KEIksnQL56iqaCatTf2iduhngUED4saod8DVEhxOiSx1wXzYJCbRIouDhQNK8C_oc0EIPNg4yB5JxAXbajMryA247LLIu5zJxiwxASDAW3E43E3_wwmQp; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com; Expires=Thu, 14 May 2026 10:35:22 GMT",
+        "_cfuvid=1z_7ANvcyUrpIGnO2xWWu9gARxOsXMbsZMnATZf0skE-1778753122.1619577-1.0.1.1-IokvPLK5_XlnnzyN3RBSecNOkUwg51FE_YPEkm8EI94; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com"
+      ],
+      "openai-version": [
+        "2020-10-01"
+      ],
+      "openai-processing-ms": [
+        "10"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "alt-svc": [
+        "h3=\":443\"; ma=86400"
+      ],
+      "access-control-expose-headers": [
+        "X-Request-ID",
+        "CF-Ray"
+      ],
+      "X-Content-Type-Options": [
+        "nosniff"
+      ],
+      "Strict-Transport-Security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Thu, 14 May 2026 10:05:22 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "CF-RAY": [
+        "9fb9158589f3f329-PRG"
+      ],
+      "Access-Control-Expose-Headers": [
+        "X-Request-ID",
+        "CF-Ray"
+      ]
+    },
+    "cookies": {
+      "__cf_bm": "_hiCIllM_gKtoOT57FB5CS1RuKfMOSnQWGDAFYA90Cc-1778753122.1619577-1.0.1.1-jss4rx2Xxr4KEIksnQL56iqaCatTf2iduhngUED4saod8DVEhxOiSx1wXzYJCbRIouDhQNK8C_oc0EIPNg4yB5JxAXbajMryA247LLIu5zJxiwxASDAW3E43E3_wwmQp",
+      "_cfuvid": "1z_7ANvcyUrpIGnO2xWWu9gARxOsXMbsZMnATZf0skE-1778753122.1619577-1.0.1.1-IokvPLK5_XlnnzyN3RBSecNOkUwg51FE_YPEkm8EI94"
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "error": {
+          "message": "Incorrect API key provided: sk-group****test. You can find your API key at https://platform.openai.com/account/api-keys.",
+          "type": "invalid_request_error",
+          "param": null,
+          "code": "invalid_api_key"
+        }
+      },
+      "rawBytes": "ewogICJlcnJvciI6IHsKICAgICJtZXNzYWdlIjogIkluY29ycmVjdCBBUEkga2V5IHByb3ZpZGVkOiBzay1ncm91cCoqKip0ZXN0LiBZb3UgY2FuIGZpbmQgeW91ciBBUEkga2V5IGF0IGh0dHBzOi8vcGxhdGZvcm0ub3BlbmFpLmNvbS9hY2NvdW50L2FwaS1rZXlzLiIsCiAgICAidHlwZSI6ICJpbnZhbGlkX3JlcXVlc3RfZXJyb3IiLAogICAgInBhcmFtIjogbnVsbCwKICAgICJjb2RlIjogImludmFsaWRfYXBpX2tleSIKICB9Cn0="
+    }
+  },
+  "id": "0003-1778753133524-api.openai.com-GET-_v1_models-2ef5ce20.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}
