@@ -497,6 +497,24 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(vm.chatMode).toBe('build');
 	});
 
+	it('locks the Test tab when the agent has an invalid LLM model string', async () => {
+		intendedConfig = {
+			name: 'Agent One',
+			model: 'openai/',
+			credential: 'cred-openai',
+			instructions: 'You are a helpful assistant.',
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { chatMode: string; isBuilt: boolean };
+
+		expect(vm.isBuilt).toBe(false);
+
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
+		await nextTick();
+		expect(vm.chatMode).toBe('build');
+	});
+
 	it('transitions to test chat when a toggle segment is clicked', async () => {
 		// The view defaults to Build for built agents; clicking Test must
 		// switch chatMode and mount the test panel.
