@@ -2,6 +2,7 @@ const mockAgentInstances: Array<{
 	model: jest.Mock;
 	instructions: jest.Mock;
 	tool: jest.Mock;
+	deferredTool: jest.Mock;
 	checkpoint: jest.Mock;
 	memory: jest.Mock;
 	telemetry: jest.Mock;
@@ -12,6 +13,7 @@ jest.mock('@n8n/agents', () => ({
 		this.model = jest.fn().mockReturnThis();
 		this.instructions = jest.fn().mockReturnThis();
 		this.tool = jest.fn().mockReturnThis();
+		this.deferredTool = jest.fn().mockReturnThis();
 		this.checkpoint = jest.fn().mockReturnThis();
 		this.memory = jest.fn().mockReturnThis();
 		this.telemetry = jest.fn().mockReturnThis();
@@ -29,9 +31,11 @@ const mockBuiltTool = (name: string, marker?: string) => ({
 jest.mock('../../tools', () => ({
 	createAllTools: jest.fn((context: { runLabel?: string }) => ({
 		workflows: mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`),
+		research: mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`),
 	})),
 	createOrchestratorDomainTools: jest.fn((context: { runLabel?: string }) => ({
 		workflows: mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`),
+		research: mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`),
 	})),
 	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
 		plan: mockBuiltTool(`plan-${context.runId}`),
@@ -81,10 +85,25 @@ function createMcpManagerStub(
 function getAttachedTools(agentIndex = 0) {
 	const instance = mockAgentInstances[agentIndex];
 	const calls = (instance?.tool.mock.calls ?? []) as unknown as Array<
-		[Array<ReturnType<typeof mockBuiltTool>>]
+		[Array<Record<string, unknown>>]
 	>;
 	const tools = calls[0]?.[0];
-	return Object.fromEntries((tools ?? []).map((tool) => [tool.name, tool]));
+	return Object.fromEntries((tools ?? []).map((tool) => [getToolKey(tool), tool]));
+}
+
+function getDeferredTools(agentIndex = 0) {
+	const instance = mockAgentInstances[agentIndex];
+	const calls = (instance?.deferredTool.mock.calls ?? []) as unknown as Array<
+		[Array<Record<string, unknown>>, unknown]
+	>;
+	const tools = calls[0]?.[0];
+	return Object.fromEntries((tools ?? []).map((tool) => [getToolKey(tool), tool]));
+}
+
+function getToolKey(tool: Record<string, unknown>) {
+	if (typeof tool.name === 'string') return tool.name;
+	if (typeof tool.id === 'string') return tool.id;
+	return 'unknown';
 }
 
 describe('createInstanceAgent', () => {
@@ -122,11 +141,16 @@ describe('createInstanceAgent', () => {
 		await createInstanceAgent(createOptions('run-2'));
 
 		expect(Agent).toHaveBeenCalledTimes(2);
-		expect(mockAgentInstances[0]?.tool).toHaveBeenCalledWith(
+		const attachedTools = getAttachedTools();
+		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
+		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
+		expect(mockAgentInstances[0]?.deferredTool).toHaveBeenCalledWith(
 			expect.arrayContaining([expect.objectContaining({ name: 'build-run-1' })]),
+			{ search: { topK: 5 } },
 		);
-		expect(mockAgentInstances[1]?.tool).toHaveBeenCalledWith(
+		expect(mockAgentInstances[1]?.deferredTool).toHaveBeenCalledWith(
 			expect.arrayContaining([expect.objectContaining({ name: 'build-run-2' })]),
+			{ search: { topK: 5 } },
 		);
 	});
 
@@ -223,8 +247,7 @@ describe('createInstanceAgent', () => {
 			disableDeferredTools: true,
 		} as never);
 
-		const calls = Agent.mock.calls as Array<[{ tools: Record<string, { id: string }> }]>;
-		const agentTools = calls[0]?.[0].tools;
+		const agentTools = getAttachedTools();
 		expect(agentTools).toMatchObject({
 			browser_connect: { id: 'browser_connect' },
 			browser_navigate: { id: 'browser_navigate' },
@@ -263,7 +286,7 @@ describe('createInstanceAgent', () => {
 			mcpManager: createMcpManagerStub(externalTools),
 		} as never);
 
-		const agentTools = getAttachedTools();
+		const agentTools = getDeferredTools();
 		const mcpContextTools = orchestrationContext.mcpTools as Record<
 			string,
 			ReturnType<typeof mockBuiltTool>

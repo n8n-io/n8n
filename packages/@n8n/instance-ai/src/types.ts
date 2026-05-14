@@ -1113,6 +1113,11 @@ export interface CreateInstanceAgentOptions {
 	/** Native checkpoint store for HITL/suspend state. */
 	checkpointStore?: CheckpointStore;
 	/**
+	 * Eager-load all orchestrator tools instead of exposing most tools through search/load.
+	 * Intended for tests and fallback paths that need the full toolset visible immediately.
+	 */
+	disableDeferredTools?: boolean;
+	/**
 	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
 	 * workspace tools on the orchestrator, which the LLM abused as a `sleep` primitive
 	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder

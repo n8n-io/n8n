@@ -13,6 +13,30 @@ import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../type
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
+const ALWAYS_LOADED_TOOLS = new Set([
+	'plan',
+	'delegate',
+	'ask-user',
+	'research',
+	'web-search',
+	'fetch-url',
+]);
+
+function splitDeferredTools(tools: InstanceAiToolRegistry) {
+	const coreTools: InstanceAiToolRegistry = {};
+	const deferredTools: InstanceAiToolRegistry = {};
+
+	for (const [name, tool] of Object.entries(tools)) {
+		if (ALWAYS_LOADED_TOOLS.has(name)) {
+			coreTools[name] = tool;
+		} else {
+			deferredTools[name] = tool;
+		}
+	}
+
+	return { coreTools, deferredTools };
+}
+
 export async function createInstanceAgent(options: CreateInstanceAgentOptions): Promise<Agent> {
 	const {
 		modelId,
@@ -116,12 +140,15 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
+	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
+	const hasDeferrableTools = !options.disableDeferredTools && Object.keys(deferredTools).length > 0;
+	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
 	const systemPrompt = getSystemPrompt({
 		researchMode: orchestrationContext?.researchMode,
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
-		toolSearchEnabled: false,
+		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
 		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
@@ -142,8 +169,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
 		})
-		.tool(Object.values(tracedOrchestratorTools))
+		.tool(Object.values(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (hasDeferrableTools) {
+		agent.deferredTool(Object.values(deferredTools), { search: { topK: 5 } });
+	}
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
@@ -167,7 +197,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		orchestrationContext?.tracing?.actorRun,
 		buildAgentTraceInputs({
 			systemPrompt,
-			tools: tracedOrchestratorTools,
+			tools: runtimeTools,
+			deferredTools: hasDeferrableTools ? deferredTools : undefined,
 			modelId,
 			memory: options.memory
 				? {
@@ -175,7 +206,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 						semanticRecallTopK: memoryConfig.semanticRecallTopK,
 					}
 				: undefined,
-			toolSearchEnabled: false,
+			toolSearchEnabled: hasDeferrableTools,
+			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
 		}),
 	);
 
