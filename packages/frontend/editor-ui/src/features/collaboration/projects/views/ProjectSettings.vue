@@ -605,10 +605,10 @@ onBeforeMount(async () => {
 		tasks.push(
 			projectsStore
 				.fetchProjectPoolSettings(projectId)
-				.then(resetPoolSettingsFormData)
 				.catch(() => {
-					// Non-fatal; leave defaults and let the user retry by reloading.
-				}),
+					// Non-fatal; store has been cleared, fall back to defaults below.
+				})
+				.finally(resetPoolSettingsFormData),
 		);
 	}
 	await Promise.all(tasks);

@@ -199,6 +199,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const fetchProjectPoolSettings = async (projectId: string): Promise<void> => {
+		currentProjectPoolSettings.value = null;
 		currentProjectPoolSettings.value = await getProjectPoolSettings(
 			rootStore.restApiContext,
 			projectId,
