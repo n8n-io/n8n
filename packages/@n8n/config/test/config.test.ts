@@ -375,6 +375,7 @@ describe('GlobalConfig', () => {
 		},
 		evaluation: {
 			parallelExecutionEnabled: false,
+			collectionsEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
