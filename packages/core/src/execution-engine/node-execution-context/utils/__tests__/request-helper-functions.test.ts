@@ -1340,6 +1340,57 @@ describe('Request Helper Functions', () => {
 			).not.toHaveBeenCalled();
 		});
 
+		test('should surface an actionable reconnect message when refresh returns invalid_grant', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(400, {
+				error: 'invalid_grant',
+				error_description: 'Token has been expired or revoked.',
+			});
+
+			const promise = refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			await expect(promise).rejects.toThrow(
+				'The credential "test-credentials-name" needs to be reconnected.',
+			);
+			await expect(promise).rejects.toMatchObject({
+				description: expect.stringContaining('reconnect'),
+				level: 'warning',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should surface an actionable reconnect message when client credentials token fetch returns invalid_grant', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				grantType: 'clientCredentials',
+			});
+			nock(baseUrl).post('/token').reply(400, {
+				error: 'invalid_grant',
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('The credential "test-credentials-name" needs to be reconnected.');
+		});
+
+		test('should rethrow non-invalid_grant token errors unchanged', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(400, {
+				error: 'invalid_client',
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.not.toThrow('needs to be reconnected');
+		});
+
 		describe('JWE decryption via oauth-jwe proxy', () => {
 			beforeEach(() => {
 				nock.cleanAll();
