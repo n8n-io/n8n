@@ -15,14 +15,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { emitInstanceAi } from './codegen/emit-instance-ai';
-import { ensureExtracted } from './examples-zip';
+import { ensureExtracted, WORKFLOWS_CACHE_DIR } from './examples-zip';
 import type { WorkflowJSON } from './types/base';
 
-// Resolve relative to this file. At runtime this lives at <package>/dist/examples-loader.js,
-// so `../examples` reaches <package>/examples/.
+// Manifest ships read-only in the package; workflows live in WORKFLOWS_CACHE_DIR.
 const EXAMPLES_DIR = path.resolve(__dirname, '..', 'examples');
 const MANIFEST_PATH = path.join(EXAMPLES_DIR, 'manifest.json');
-const WORKFLOWS_DIR = path.join(EXAMPLES_DIR, 'workflows');
 
 const NODES_INLINE_LIMIT = 5;
 const INDEX_NODE_SEPARATOR = ',';
@@ -95,7 +93,7 @@ function loadFromDisk(): ExampleFilesBundle {
 	const indexLines: string[] = [];
 
 	for (const entry of entries) {
-		const wfPath = path.join(WORKFLOWS_DIR, `${entry.slug}.json`);
+		const wfPath = path.join(WORKFLOWS_CACHE_DIR, `${entry.slug}.json`);
 		if (!fs.existsSync(wfPath)) continue;
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Internal workflow fixture
 		const wf = JSON.parse(fs.readFileSync(wfPath, 'utf-8')) as WorkflowJSON;
