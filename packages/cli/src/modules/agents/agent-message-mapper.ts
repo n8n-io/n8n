@@ -1,6 +1,8 @@
 import type { AgentDbMessage, MessageContent } from '@n8n/agents';
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
 
+import type { AgentExecution } from './entities/agent-execution.entity';
+
 export function contentPartToDto(part: MessageContent): AgentPersistedMessageContentPart {
 	const dto: AgentPersistedMessageContentPart = { type: part.type };
 	if ('text' in part && typeof part.text === 'string') dto.text = part.text;
@@ -31,4 +33,37 @@ export function messagesToDto(msgs: AgentDbMessage[]): AgentPersistedMessageDto[
 		if (dto) out.push(dto);
 	}
 	return out;
+}
+
+function textMessageDto(
+	id: string,
+	role: AgentPersistedMessageDto['role'],
+	text: string,
+): AgentPersistedMessageDto | null {
+	if (!text.trim()) return null;
+	return {
+		id,
+		role,
+		content: [{ type: 'text', text }],
+	};
+}
+
+export function executionsToMessagesDto(executions: AgentExecution[]): AgentPersistedMessageDto[] {
+	const messages: AgentPersistedMessageDto[] = [];
+
+	for (const execution of executions) {
+		const userMessage = textMessageDto(`${execution.id}:user`, 'user', execution.userMessage);
+		if (userMessage) messages.push(userMessage);
+
+		const assistantText =
+			execution.assistantResponse || (execution.error ? `Error: ${execution.error}` : '');
+		const assistantMessage = textMessageDto(
+			`${execution.id}:assistant`,
+			'assistant',
+			assistantText,
+		);
+		if (assistantMessage) messages.push(assistantMessage);
+	}
+
+	return messages;
 }

@@ -39,7 +39,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
-import { messagesToDto } from './agent-message-mapper';
+import { executionsToMessagesDto, messagesToDto } from './agent-message-mapper';
 import {
 	type FlushableResponse,
 	initSseStream,
@@ -464,7 +464,12 @@ export class AgentsController {
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return await this.agentsService.getChatMessages(threadId);
+		const memoryMessages = messagesToDto(await this.agentsService.getChatMessages(threadId));
+		if (memoryMessages.length > 0) return memoryMessages;
+
+		const detail = await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId);
+		if (!detail) throw new NotFoundError(`Thread "${threadId}" not found`);
+		return executionsToMessagesDto(detail.executions);
 	}
 
 	@Get('/:agentId/build/messages')

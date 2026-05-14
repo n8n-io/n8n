@@ -110,3 +110,97 @@ describe('AgentsController integration credentials', () => {
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 });
+
+describe('AgentsController chat message history', () => {
+	function makeController() {
+		const agentsService = mock<AgentsService>();
+		const agentExecutionService = mock<AgentExecutionService>();
+		const controller = new AgentsController(
+			agentsService,
+			mock<AgentsBuilderService>(),
+			mock<CredentialsService>(),
+			mock<ChatIntegrationService>(),
+			mock<AgentScheduleService>(),
+			mock<AgentRepository>(),
+			agentExecutionService,
+			mock<ChatIntegrationRegistry>(),
+		);
+
+		return { controller, agentsService, agentExecutionService };
+	}
+
+	it('falls back to execution transcript when memory history is empty', async () => {
+		const { controller, agentsService, agentExecutionService } = makeController();
+		const thread = {
+			id: 'thread-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		};
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getChatMessages.mockResolvedValue([]);
+		agentExecutionService.findThreadById.mockResolvedValue(thread as never);
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread,
+			executions: [
+				{
+					id: 'execution-1',
+					userMessage: 'Hello',
+					assistantResponse: 'Hi there',
+					error: null,
+				},
+			],
+		} as never);
+
+		const messages = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(messages).toEqual([
+			{
+				id: 'execution-1:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Hello' }],
+			},
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi there' }],
+			},
+		]);
+		expect(agentExecutionService.getThreadDetail).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+		);
+	});
+
+	it('uses memory history when available', async () => {
+		const { controller, agentsService, agentExecutionService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getChatMessages.mockResolvedValue([
+			{
+				id: 'message-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'From memory' }],
+			},
+		] as never);
+		agentExecutionService.findThreadById.mockResolvedValue({
+			id: 'thread-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		} as never);
+
+		const messages = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(messages).toEqual([
+			{
+				id: 'message-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'From memory' }],
+			},
+		]);
+		expect(agentExecutionService.getThreadDetail).not.toHaveBeenCalled();
+	});
+});
