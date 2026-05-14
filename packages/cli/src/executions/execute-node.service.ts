@@ -8,6 +8,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { createHash } from 'crypto';
 import {
 	createRunExecutionData,
@@ -26,6 +27,7 @@ import { v4 as uuid } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import { NodeTypes } from '@/node-types';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -34,6 +36,7 @@ export type ExecuteNodeCaller = {
 	kind: 'mcp' | 'sdk' | 'cli' | 'instance-ai';
 	name: string;
 	clientId?: string;
+	sessionId?: string;
 };
 
 export type ExecuteNodeRequest = {
@@ -302,6 +305,18 @@ export class ExecuteNodeService {
 	}
 
 	async execute(req: ExecuteNodeRequest): Promise<ExecuteNodeResult> {
+		// 0. Scope check — chokepoint for all callers (REST controller, MCP tool,
+		// Instance AI adapter, future SDK/CLI paths). The REST entrypoint also
+		// asserts `node:execute` via `@GlobalScope`, but the alternate entrypoints
+		// historically bypassed it. Enforcing here guarantees consistent
+		// authorization regardless of how the service is invoked.
+		if (!hasGlobalScope(req.user, 'node:execute')) {
+			throw new ScopeForbiddenError(
+				'Missing required scope to execute a node outside a workflow.',
+				{ errorCode: 'NODE_EXECUTE_FORBIDDEN', requiredScope: 'node:execute' },
+			);
+		}
+
 		// 1. Resolve the action node type. Throws if unknown.
 		const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(req.nodeType, req.nodeVersion);
 		const description = nodeTypeInstance.description;
@@ -513,6 +528,9 @@ export class ExecuteNodeService {
 			metadata[EXECUTION_CALLER_METADATA_KEYS.name] = req.caller.name;
 			if (req.caller.clientId !== undefined) {
 				metadata[EXECUTION_CALLER_METADATA_KEYS.clientId] = req.caller.clientId;
+			}
+			if (req.caller.sessionId !== undefined) {
+				metadata[EXECUTION_CALLER_METADATA_KEYS.sessionId] = req.caller.sessionId;
 			}
 		}
 

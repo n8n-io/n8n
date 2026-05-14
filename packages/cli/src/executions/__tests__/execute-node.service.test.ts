@@ -41,7 +41,14 @@ describe('ExecuteNodeService', () => {
 	activeExecutions.has.mockReturnValue(true);
 	const logger = mock<Logger>();
 
-	const mockUser = mock<User>({ id: 'user-1' });
+	const mockUser = mock<User>({
+		id: 'user-1',
+		role: { slug: 'global:owner', scopes: [{ slug: 'node:execute' }] },
+	});
+	const mockUserWithoutScope = mock<User>({
+		id: 'user-2',
+		role: { slug: 'global:member', scopes: [] },
+	});
 
 	const service = new ExecuteNodeService(
 		nodeTypes,
@@ -190,6 +197,29 @@ describe('ExecuteNodeService', () => {
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 
+	it('rejects callers without the node:execute scope before touching the engine', async () => {
+		await expect(
+			service.execute({
+				user: mockUserWithoutScope,
+				nodeType: 'test-node',
+				parameters: {},
+			}),
+		).rejects.toThrow(/Missing required scope to execute a node/);
+		expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('rejects unauthorized callers on the dry-run path as well', async () => {
+		await expect(
+			service.execute({
+				user: mockUserWithoutScope,
+				nodeType: 'test-node',
+				parameters: {},
+				dryRun: true,
+			}),
+		).rejects.toThrow(/Missing required scope to execute a node/);
+	});
+
 	// NOTE: cache-poisoning self-heal (when the placeholder workflow is deleted
 	// out-of-band between calls) is verified manually — the in-memory map
 	// `actionWorkflowEnsured` is private, the test scaffold for repeated execute()
@@ -242,6 +272,39 @@ describe('ExecuteNodeService', () => {
 				actionId: 'n8n-nodes-base.set',
 				actionDisplayName: 'Test Node',
 			});
+		});
+
+		it('persists caller.sessionId when present', async () => {
+			await service.execute({
+				user: mockUser,
+				nodeType: 'n8n-nodes-base.set',
+				parameters: { values: {} },
+				caller: {
+					kind: 'mcp',
+					name: 'mcp-server',
+					clientId: 'abc',
+					sessionId: 'session-xyz',
+				},
+			});
+
+			expect(executionMetadataService.save).toHaveBeenCalledWith(
+				'exec-42',
+				expect.objectContaining({
+					'caller.sessionId': 'session-xyz',
+				}),
+			);
+		});
+
+		it('omits caller.sessionId when absent', async () => {
+			await service.execute({
+				user: mockUser,
+				nodeType: 'n8n-nodes-base.set',
+				parameters: { values: {} },
+				caller: { kind: 'cli', name: 'n8n-cli' },
+			});
+
+			const callArg = executionMetadataService.save.mock.calls[0][1];
+			expect(callArg).not.toHaveProperty('caller.sessionId');
 		});
 
 		it('persists credentialId in metadata when present', async () => {
