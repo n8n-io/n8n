@@ -170,7 +170,8 @@
       "fast-xml-parser": "5.7.2",
       "hono": "4.12.18",
       "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
-      "uuid@<=13.0.1": "13.0.1"
+      "uuid@<=13.0.1": "13.0.1",
+      "fast-uri": "3.1.2"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

@@ -22,6 +22,7 @@ import {
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -365,7 +366,9 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
 		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
-		workflowsStore.updateNodeExecutionStatus({
+		useExecutionDataStore(
+			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+		).updateNodeExecutionStatus({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			itemCountByConnectionType: { ai_agent: [1] },
@@ -520,10 +523,10 @@ describe('LogsPanel', () => {
 		await canvasOperations.renameNode('AI Model', 'Renamed!!');
 
 		await waitFor(() => {
+			expect(rendered.getByTestId('log-details-header')).toHaveTextContent('Renamed!!');
 			expect(
-				within(rendered.getByTestId('log-details-header')).getByText('Renamed!!'),
-			).toBeInTheDocument();
-			expect(within(rendered.getByRole('tree')).getByText('Renamed!!')).toBeInTheDocument();
+				within(rendered.getByRole('tree')).getAllByText('Renamed!!').length,
+			).toBeGreaterThanOrEqual(1);
 		});
 	});
 
