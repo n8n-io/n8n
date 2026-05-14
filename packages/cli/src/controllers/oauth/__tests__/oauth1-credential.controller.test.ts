@@ -31,7 +31,7 @@ describe('OAuth1CredentialController', () => {
 	describe('getAuthUri', () => {
 		it('should return a valid auth URI', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
-			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.generateAOauth1AuthUri.mockResolvedValueOnce(
 				'https://example.domain/oauth/authorize?oauth_token=random-token',
 			);
@@ -90,7 +90,7 @@ describe('OAuth1CredentialController', () => {
 				createdAt: timestamp,
 				data: 'encrypted-data',
 			};
-			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			// @ts-ignore
 			oauthService.getDecryptedData.mockResolvedValue({ csrfSecret: 'invalid' });
 			oauthService.getOAuthCredentials.mockResolvedValueOnce({
