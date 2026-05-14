@@ -3,7 +3,6 @@ import type { AgentIntegrationSettings, AgentTelegramIntegrationSettings } from 
 export const TELEGRAM_INTEGRATION_TYPE = 'telegram';
 
 export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
-	type: 'telegram',
 	accessMode: 'public',
 	allowedUsers: [],
 } satisfies AgentTelegramIntegrationSettings;
@@ -19,8 +18,7 @@ export function resolveSavedTelegramSettings(
 	connected: boolean,
 ): AgentTelegramIntegrationSettings | undefined {
 	if (!connected) return undefined;
-	if (settings?.type === 'telegram') return settings;
-	return DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
+	return settings ?? DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
 }
 
 export type TelegramSettingsValidationError = 'required' | 'invalid';
@@ -60,7 +58,7 @@ export function createTelegramSettings(
 	usersInput: string,
 ): AgentTelegramIntegrationSettings {
 	const { allowedUsers } = parseTelegramUsersInput(usersInput);
-	return { type: 'telegram', accessMode, allowedUsers };
+	return { accessMode, allowedUsers };
 }
 
 export function validateTelegramSettings(
