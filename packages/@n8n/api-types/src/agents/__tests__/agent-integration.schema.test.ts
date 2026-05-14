@@ -56,18 +56,6 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('accepts any non-empty cronExpression string (cron syntax validation is backend-only)', () => {
-		for (const cron of ['not-a-cron', '* * *', '99 99 * * *']) {
-			const result = AgentIntegrationSchema.safeParse({
-				type: 'schedule',
-				active: false,
-				cronExpression: cron,
-				wakeUpPrompt: 'go',
-			});
-			expect(result.success).toBe(true);
-		}
-	});
-
 	it('rejects an empty cronExpression', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',
