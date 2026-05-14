@@ -21,6 +21,13 @@ vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
 	useDynamicCredentials: vi.fn(),
 }));
 
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+	})),
+}));
+
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);

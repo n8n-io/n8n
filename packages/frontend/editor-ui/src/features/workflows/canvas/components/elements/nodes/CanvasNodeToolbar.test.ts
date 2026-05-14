@@ -10,6 +10,13 @@ import {
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+	})),
+}));
+
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
 describe('CanvasNodeToolbar', () => {

@@ -46,6 +46,8 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { WorkflowRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
 	nextTick,
@@ -141,6 +143,7 @@ const props = withDefaults(
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
+		renderData: WorkflowRenderData;
 		readOnly?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
@@ -169,6 +172,8 @@ const props = withDefaults(
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+
+provide(WorkflowRenderDataKey, props.renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
@@ -213,7 +218,7 @@ const {
 	getDownstreamNodes,
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
-const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
+const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
 const isPaneReady = ref(false);
 

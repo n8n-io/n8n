@@ -11,8 +11,8 @@ import {
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/app/utils/nodeViewUtils';
-import type { ComputedRef } from 'vue';
-import { injectWorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { ComputedRef, Ref } from 'vue';
+import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -51,7 +51,11 @@ const AI_X_SPACING = GRID_SIZE * 3;
 const AI_Y_SPACING = GRID_SIZE * 8;
 const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
 
-export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedRef<boolean>) {
+export function useCanvasLayout(
+	canvasId: string,
+	isEmbeddedNdvActive: ComputedRef<boolean>,
+	renderData: Ref<WorkflowRenderData>,
+) {
 	const {
 		findNode,
 		findEdge,
@@ -59,7 +63,6 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 		edges: allEdges,
 		nodes: allNodes,
 	} = useVueFlow(canvasId);
-	const { render: renderData } = injectWorkflowRenderData();
 
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
 		if (target === 'selection') {
@@ -113,9 +116,9 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 
 			// Get input/output counts from render data (single source of truth)
 			const inputs: CanvasConnectionPort[] =
-				renderData.nodeInputsByNodeId.get(node.id)?.value ?? [];
+				renderData.value.nodeInputsByNodeId.get(node.id)?.value ?? [];
 			const outputs: CanvasConnectionPort[] =
-				renderData.nodeOutputsByNodeId.get(node.id)?.value ?? [];
+				renderData.value.nodeOutputsByNodeId.get(node.id)?.value ?? [];
 			const mainInputCount = inputs.filter((input) => input.type === 'main').length || 1;
 			const mainOutputCount = outputs.filter((output) => output.type === 'main').length || 1;
 			const nonMainInputCount =

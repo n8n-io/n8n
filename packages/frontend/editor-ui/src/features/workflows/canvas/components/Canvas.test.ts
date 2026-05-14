@@ -24,6 +24,13 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	return { ...actual, useDeviceSupport: vi.fn(() => ({ isCtrlKeyPressed: vi.fn() })) };
 });
 
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+	})),
+}));
+
 const canvasId = 'canvas';
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;

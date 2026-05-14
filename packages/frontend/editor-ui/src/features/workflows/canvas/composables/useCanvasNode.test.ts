@@ -22,10 +22,8 @@ const renderNodesOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]
 
 vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
 	injectWorkflowRenderData: vi.fn(() => ({
-		render: {
-			nodeInputsByNodeId: renderNodesInputsMap,
-			nodeOutputsByNodeId: renderNodesOutputsMap,
-		},
+		nodeInputsByNodeId: renderNodesInputsMap,
+		nodeOutputsByNodeId: renderNodesOutputsMap,
 	})),
 }));
 

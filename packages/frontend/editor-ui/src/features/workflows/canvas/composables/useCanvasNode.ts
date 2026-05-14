@@ -8,7 +8,7 @@ import { injectWorkflowRenderData } from '@/app/stores/workflowDocument/useWorkf
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
-	const { render: renderData } = injectWorkflowRenderData();
+	const renderData = injectWorkflowRenderData();
 	const data = computed(
 		() =>
 			node?.data.value ??

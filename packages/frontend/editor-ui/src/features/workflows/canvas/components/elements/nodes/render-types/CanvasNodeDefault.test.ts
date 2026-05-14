@@ -9,10 +9,15 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { computed, type ComputedRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../../canvas.types';
+import {
+	CanvasConnectionMode,
+	CanvasNodeRenderType,
+	type CanvasConnectionPort,
+} from '../../../../canvas.types';
 import CanvasNodeDefault from './CanvasNodeDefault.vue';
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -22,6 +27,16 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute: vi.fn(),
 	};
 });
+
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: renderNodeInputsMap,
+		nodeOutputsByNodeId: renderNodeOutputsMap,
+	})),
+}));
 
 const stubs = {
 	NodeIcon: {
@@ -45,6 +60,8 @@ const mockedUseRoute = vi.mocked(useRoute);
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	renderNodeInputsMap.clear();
+	renderNodeOutputsMap.clear();
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -75,7 +92,26 @@ describe('CanvasNodeDefault', () => {
 			[4, 4, '160px'],
 		])(
 			'should adjust height css variable based on the number of inputs and outputs (%i inputs, %i outputs)',
-			(_inputCount, _outputCount, expected) => {
+			(inputCount, outputCount, expected) => {
+				renderNodeInputsMap.set(
+					'node',
+					computed(() =>
+						Array.from({ length: inputCount }, () => ({
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						})),
+					),
+				);
+				renderNodeOutputsMap.set(
+					'node',
+					computed(() =>
+						Array.from({ length: outputCount }, () => ({
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						})),
+					),
+				);
+
 				const { getByText } = renderComponent({
 					global: {
 						stubs,
@@ -176,6 +212,15 @@ describe('CanvasNodeDefault', () => {
 		});
 
 		it('should render strike-through when node is disabled and has node input and output handles', () => {
+			renderNodeInputsMap.set(
+				'node',
+				computed(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
+			);
+			renderNodeOutputsMap.set(
+				'node',
+				computed(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
+			);
+
 			const { container } = renderComponent({
 				global: {
 					stubs,
@@ -293,7 +338,15 @@ describe('CanvasNodeDefault', () => {
 				],
 			])(
 				'should adjust width css variable based on the number of non-main inputs (%s)',
-				(_, _nonMainInputs, expected) => {
+				(_, nonMainInputs, expected) => {
+					renderNodeInputsMap.set(
+						'node',
+						computed(() => [
+							{ type: NodeConnectionTypes.Main, index: 0 },
+							...(nonMainInputs as CanvasConnectionPort[]),
+						]),
+					);
+
 					const { getByText } = renderComponent({
 						global: {
 							stubs,

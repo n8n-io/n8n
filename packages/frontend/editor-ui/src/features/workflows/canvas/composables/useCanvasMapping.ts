@@ -67,7 +67,7 @@ export function useCanvasMapping({
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
-	renderData?: WorkflowRenderData;
+	renderData: Ref<WorkflowRenderData>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
@@ -689,8 +689,8 @@ export function useCanvasMapping({
 			}
 		}
 
-		const sourceInputs = renderData?.render.nodeInputsByNodeId.get(connection.source)?.value ?? [];
-		const targetInputs = renderData?.render.nodeInputsByNodeId.get(connection.target)?.value ?? [];
+		const sourceInputs = renderData.value.nodeInputsByNodeId.get(connection.source)?.value ?? [];
+		const targetInputs = renderData.value.nodeInputsByNodeId.get(connection.target)?.value ?? [];
 		const maxConnections = [...sourceInputs, ...targetInputs]
 			.filter((port) => port.type === type)
 			.reduce<number | undefined>((acc, port) => {

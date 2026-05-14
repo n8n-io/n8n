@@ -80,7 +80,7 @@ const contextMenu = useContextMenu();
 
 const { connectingHandle, isExperimentalNdvActive } = useCanvas();
 
-const { render: renderData } = injectWorkflowRenderData();
+const renderData = injectWorkflowRenderData();
 
 /*
   Toolbar slot classes

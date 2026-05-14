@@ -29,9 +29,11 @@ describe('useWorkflowDocumentRenderData', () => {
 		]);
 		mockInputsMap.set('node-1', inputs);
 
-		const { render } = useWorkflowDocumentRenderData('test@latest' as WorkflowDocumentId);
+		const { nodeInputsByNodeId } = useWorkflowDocumentRenderData(
+			'test@latest' as WorkflowDocumentId,
+		);
 
-		expect(render.nodeInputsByNodeId.get('node-1')).toBe(inputs);
+		expect(nodeInputsByNodeId.get('node-1')).toBe(inputs);
 	});
 
 	it('should expose nodeOutputsByNodeId from the store', () => {
@@ -40,15 +42,19 @@ describe('useWorkflowDocumentRenderData', () => {
 		]);
 		mockOutputsMap.set('node-1', outputs);
 
-		const { render } = useWorkflowDocumentRenderData('test@latest' as WorkflowDocumentId);
+		const { nodeOutputsByNodeId } = useWorkflowDocumentRenderData(
+			'test@latest' as WorkflowDocumentId,
+		);
 
-		expect(render.nodeOutputsByNodeId.get('node-1')).toBe(outputs);
+		expect(nodeOutputsByNodeId.get('node-1')).toBe(outputs);
 	});
 
 	it('should return empty maps when store has no port data', () => {
-		const { render } = useWorkflowDocumentRenderData('test@latest' as WorkflowDocumentId);
+		const { nodeInputsByNodeId, nodeOutputsByNodeId } = useWorkflowDocumentRenderData(
+			'test@latest' as WorkflowDocumentId,
+		);
 
-		expect(render.nodeInputsByNodeId.size).toBe(0);
-		expect(render.nodeOutputsByNodeId.size).toBe(0);
+		expect(nodeInputsByNodeId.size).toBe(0);
+		expect(nodeOutputsByNodeId.size).toBe(0);
 	});
 });

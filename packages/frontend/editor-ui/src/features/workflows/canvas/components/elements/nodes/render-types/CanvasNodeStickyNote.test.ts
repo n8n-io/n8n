@@ -5,6 +5,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
 
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+	})),
+}));
+
 const renderComponent = createComponentRenderer(CanvasNodeStickyNote);
 
 beforeEach(() => {

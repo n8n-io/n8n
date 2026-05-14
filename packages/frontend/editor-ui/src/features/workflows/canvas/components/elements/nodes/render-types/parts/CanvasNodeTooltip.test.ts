@@ -5,6 +5,13 @@ import type { CanvasNodeDefaultRender } from '../../../../../canvas.types';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+	})),
+}));
+
 const renderComponent = createComponentRenderer(CanvasNodeTooltip);
 
 describe('CanvasNodeTooltip', () => {

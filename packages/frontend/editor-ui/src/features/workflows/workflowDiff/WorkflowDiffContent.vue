@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CanvasNode, CanvasConnection } from '@/features/workflows/canvas/canvas.types';
+import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import type { INodeUi } from '@/Interface';
 import SyncedWorkflowCanvas from './SyncedWorkflowCanvas.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
@@ -14,8 +15,10 @@ import { NodeDiffStatus } from 'n8n-workflow';
 const props = defineProps<{
 	sourceNodes: CanvasNode[];
 	sourceConnections: CanvasConnection[];
+	sourceRenderData: WorkflowRenderData;
 	targetNodes: CanvasNode[];
 	targetConnections: CanvasConnection[];
+	targetRenderData: WorkflowRenderData;
 	sourceLabel: string;
 	targetLabel: string;
 	sourceExists: boolean;
@@ -61,6 +64,7 @@ function getEdgeStatusClass(id: string) {
 						id="top"
 						:nodes="sourceNodes"
 						:connections="sourceConnections"
+						:render-data="sourceRenderData"
 						:apply-layout="applyLayout"
 					>
 						<template #node="{ nodeProps }">
@@ -103,6 +107,7 @@ function getEdgeStatusClass(id: string) {
 						id="bottom"
 						:nodes="targetNodes"
 						:connections="targetConnections"
+						:render-data="targetRenderData"
 						:apply-layout="applyLayout"
 					>
 						<template #node="{ nodeProps }">

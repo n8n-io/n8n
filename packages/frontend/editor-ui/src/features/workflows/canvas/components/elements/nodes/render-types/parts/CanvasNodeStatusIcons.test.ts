@@ -20,6 +20,13 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+	})),
+}));
+
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
 });

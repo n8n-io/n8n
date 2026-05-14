@@ -1,6 +1,6 @@
-import { inject } from 'vue';
 import { useWorkflowDocumentStore, type WorkflowDocumentId } from '../workflowDocument.store';
 import { WorkflowRenderDataKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
 
 /**
  * Canvas-level render data composable. Provides per-node port data
@@ -14,10 +14,8 @@ export function useWorkflowDocumentRenderData(id: WorkflowDocumentId) {
 	const store = useWorkflowDocumentStore(id);
 
 	return {
-		render: {
-			nodeInputsByNodeId: store.nodeInputsByNodeId,
-			nodeOutputsByNodeId: store.nodeOutputsByNodeId,
-		},
+		nodeInputsByNodeId: store.nodeInputsByNodeId,
+		nodeOutputsByNodeId: store.nodeOutputsByNodeId,
 	};
 }
 
@@ -25,15 +23,9 @@ export type WorkflowRenderData = ReturnType<typeof useWorkflowDocumentRenderData
 
 /**
  * Injects the workflow render data from the component tree.
- * Must be used within a component that is a descendant of WorkflowCanvas.
+ * Throws if no render data is provided — every canvas must have
+ * an ancestor that provides WorkflowRenderDataKey.
  */
 export function injectWorkflowRenderData(): WorkflowRenderData {
-	const renderData = inject(WorkflowRenderDataKey);
-	if (!renderData) {
-		throw new Error(
-			'injectWorkflowRenderData(): no render data provided. ' +
-				'Ensure this is called within a WorkflowCanvas descendant.',
-		);
-	}
-	return renderData;
+	return injectStrict(WorkflowRenderDataKey);
 }

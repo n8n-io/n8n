@@ -57,6 +57,13 @@ vi.mock('@/features/workflows/workflowDiff/useViewportSync', () => ({
 	}),
 }));
 
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+	})),
+}));
+
 vi.mock('@/features/workflows/workflowDiff/useWorkflowDiff', () => ({
 	useWorkflowDiff: () => ({
 		source: { nodes: [], connections: [] },

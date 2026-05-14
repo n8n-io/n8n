@@ -1,5 +1,6 @@
 import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
+import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import {
 	createCanvasGraphEdge,
 	createCanvasGraphNode,
@@ -10,15 +11,6 @@ import { STICKY_NODE_TYPE } from '@/app/constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('@vue-flow/core');
-
-vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
-	injectWorkflowRenderData: vi.fn(() => ({
-		render: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-		},
-	})),
-}));
 
 function matchesGrid(result: CanvasLayoutResult) {
 	return result.nodes.every((node) => node.x % GRID_SIZE === 0 && node.y % GRID_SIZE === 0);
@@ -51,6 +43,10 @@ describe('useCanvasLayout', () => {
 		const { layout } = useCanvasLayout(
 			'test-canvas-id',
 			computed(() => false),
+			shallowRef<WorkflowRenderData>({
+				nodeInputsByNodeId: new Map(),
+				nodeOutputsByNodeId: new Map(),
+			}),
 		);
 
 		return { layout };

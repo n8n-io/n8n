@@ -1,14 +1,15 @@
 import CanvasNode from './CanvasNode.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
-
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { computed, type ComputedRef } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import {
 	createCanvasNodeData,
 	createCanvasNodeProps,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
-import { CanvasNodeRenderType } from '../../../canvas.types';
+import { CanvasNodeRenderType, type CanvasConnectionPort } from '../../../canvas.types';
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
@@ -24,8 +25,20 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+
+vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
+	injectWorkflowRenderData: vi.fn(() => ({
+		nodeInputsByNodeId: renderNodeInputsMap,
+		nodeOutputsByNodeId: renderNodeOutputsMap,
+	})),
+}));
+
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
+	renderNodeInputsMap.clear();
+	renderNodeOutputsMap.clear();
 	const pinia = createPinia();
 	setActivePinia(pinia);
 
@@ -65,6 +78,22 @@ describe('CanvasNode', () => {
 
 	describe('handles', () => {
 		it('should render correct number of input and output handles', async () => {
+			renderNodeInputsMap.set(
+				'node',
+				computed(() => [
+					{ type: NodeConnectionTypes.Main, index: 0 },
+					{ type: NodeConnectionTypes.Main, index: 0 },
+					{ type: NodeConnectionTypes.Main, index: 0 },
+				]),
+			);
+			renderNodeOutputsMap.set(
+				'node',
+				computed(() => [
+					{ type: NodeConnectionTypes.Main, index: 0 },
+					{ type: NodeConnectionTypes.Main, index: 0 },
+				]),
+			);
+
 			const { getAllByTestId } = renderComponent({
 				props: {
 					...createCanvasNodeProps(),
@@ -84,6 +113,20 @@ describe('CanvasNode', () => {
 		});
 
 		it('should insert spacers after required non-main input handle', () => {
+			renderNodeInputsMap.set(
+				'node',
+				computed(() => [
+					{ type: NodeConnectionTypes.Main, index: 0 },
+					{ type: NodeConnectionTypes.AiAgent, index: 0, required: true },
+					{ type: NodeConnectionTypes.AiMemory, index: 0 },
+					{ type: NodeConnectionTypes.AiTool, index: 0 },
+				]),
+			);
+			renderNodeOutputsMap.set(
+				'node',
+				computed(() => []),
+			);
+
 			const { getAllByTestId } = renderComponent({
 				props: {
 					...createCanvasNodeProps(),
