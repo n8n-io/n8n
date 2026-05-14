@@ -39,7 +39,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
-import { executionsToMessagesDto, messagesToDto } from './agent-message-mapper';
+import { messagesToDto } from './agent-message-mapper';
 import {
 	type FlushableResponse,
 	initSseStream,
@@ -460,16 +460,15 @@ export class AgentsController {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const thread = await this.agentExecutionService.findThreadById(threadId);
-		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
+		const history = await this.agentsService.getConversationHistory({
+			threadId,
+			projectId,
+			agentId,
+		});
+		if (!history) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		const memoryMessages = messagesToDto(await this.agentsService.getChatMessages(threadId));
-		if (memoryMessages.length > 0) return memoryMessages;
-
-		const detail = await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId);
-		if (!detail) throw new NotFoundError(`Thread "${threadId}" not found`);
-		return executionsToMessagesDto(detail.executions);
+		return history;
 	}
 
 	@Get('/:agentId/build/messages')
