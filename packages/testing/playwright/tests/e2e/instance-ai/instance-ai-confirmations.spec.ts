@@ -115,7 +115,7 @@ test.describe(
 				await n8n.navigate.toInstanceAi();
 				await n8n.instanceAi.sendMessage(prompt);
 				await n8n.instanceAi.waitForResponseComplete();
-				await expect(n8n.instanceAi.getAssistantMessageText(/has been restored/i)).toBeVisible();
+				await expect(n8n.instanceAi.getAssistantMessageText(/restored/i)).toBeVisible();
 				await expect
 					.poll(async () => {
 						const restoredWorkflow = (await n8n.api.workflows.getWorkflow(

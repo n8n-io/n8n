@@ -73,7 +73,7 @@ test.describe(
 		test('should rename thread via double-click', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
-			await n8n.instanceAi.sendMessage('Thread to rename');
+			await n8n.instanceAi.sendMessage('List my credentials');
 			await n8n.instanceAi.waitForResponseComplete();
 
 			// Sidebar starts collapsed; open it so the thread list is queryable.

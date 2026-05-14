@@ -81,10 +81,6 @@ export class InstanceAiPage extends BasePage {
 		return this.getAssistantMessages().getByText(text);
 	}
 
-	getToolCallsButton(label: string): Locator {
-		return this.page.getByRole('button', { name: label });
-	}
-
 	getStatusBar(): Locator {
 		return this.container.getByTestId('instance-ai-status-bar');
 	}
@@ -197,6 +193,12 @@ export class InstanceAiPage extends BasePage {
 
 	getPreviewExecuteNodeButton(nodeName: string): Locator {
 		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
+	}
+
+	async executePreviewNodeByName(nodeName: string): Promise<void> {
+		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
+		await executeNodeButton.waitFor({ state: 'visible', timeout: 5_000 });
+		await executeNodeButton.click({ force: true });
 	}
 
 	getPreviewNodeSuccessIndicator(nodeName: string): Locator {
