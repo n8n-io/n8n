@@ -6074,6 +6074,8 @@
 	"agents.builder.header.switcher.ariaLabel": "Switch agent",
 	"agents.builder.header.saving": "Saving…",
 	"agents.builder.header.saved": "Saved",
+	"agents.builder.preview.button": "Preview",
+	"agents.builder.preview.close.ariaLabel": "Close preview",
 	"agents.builder.executions.count": "{count} session | {count} sessions",
 	"agents.builder.raw.description": "Agent JSON configuration",
 	"agents.builder.evaluations.comingSoon": "Evaluations functionality is coming soon.",

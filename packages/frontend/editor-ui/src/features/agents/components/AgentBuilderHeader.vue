@@ -18,7 +18,7 @@ import {
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
@@ -32,11 +32,18 @@ const props = defineProps<{
 	projectName: string | null;
 	headerActions: Array<ActionDropdownItem<string>>;
 	saveStatus?: 'idle' | 'saving' | 'saved';
+	mode?: 'edit' | 'preview';
+	currentSessionTitle?: string;
+	sessionOptions?: Array<DropdownMenuItemProps<string>>;
 	beforeRevertToPublished?: () => Promise<void> | void;
 }>();
 
 const emit = defineEmits<{
 	'header-action': [item: string];
+	'open-preview': [];
+	'new-chat': [];
+	'close-preview': [];
+	'session-select': [sessionId: string];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
@@ -47,6 +54,7 @@ const i18n = useI18n();
 const router = useRouter();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
+const sessionMenuMaxHeight = 'calc((var(--spacing--xl) * 5) + var(--spacing--xs))';
 
 onMounted(() => {
 	void ensureLoaded();
@@ -67,6 +75,20 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 ]);
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
+const isPreview = computed(() => props.mode === 'preview');
+const sessionTitle = computed(
+	() => props.currentSessionTitle ?? i18n.baseText('agents.builder.chat.newChat.label'),
+);
+const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	if (props.sessionOptions && props.sessionOptions.length > 0) return props.sessionOptions;
+	return [
+		{
+			id: '__empty__',
+			label: i18n.baseText('agents.builder.chat.sessionPicker.empty'),
+			disabled: true,
+		},
+	];
+});
 
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
@@ -120,39 +142,94 @@ function onBreadcrumbSelect(item: PathItem) {
 							</N8nButton>
 						</template>
 					</N8nDropdownMenu>
+					<template v-if="isPreview">
+						<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
+						<N8nDropdownMenu
+							:items="sessionOptions"
+							:max-height="sessionMenuMaxHeight"
+							:extra-popper-class="$style.sessionMenu"
+							placement="bottom-start"
+							data-testid="agent-preview-session-picker"
+							@select="emit('session-select', $event)"
+						>
+							<template #trigger>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									:class="$style.switcherButton"
+									:aria-label="i18n.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
+								>
+									<span :class="$style.switcherLabel">{{ sessionTitle }}</span>
+									<N8nIcon icon="chevron-down" :size="12" />
+								</N8nButton>
+							</template>
+						</N8nDropdownMenu>
+					</template>
 				</template>
 			</N8nBreadcrumbs>
 		</div>
 		<div :class="$style.right">
-			<span
-				v-if="saveStatus === 'saving' || saveStatus === 'saved'"
-				:class="$style.saveStatus"
-				data-testid="agent-header-save-status"
-			>
-				{{
-					saveStatus === 'saving'
-						? i18n.baseText('agents.builder.header.saving')
-						: i18n.baseText('agents.builder.header.saved')
-				}}
-			</span>
-			<AgentPublishButton
-				:agent="agent"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:is-saving="saveStatus === 'saving'"
-				:before-revert-to-published="beforeRevertToPublished"
-				@published="(a: AgentResource) => emit('published', a)"
-				@unpublished="(a: AgentResource) => emit('unpublished', a)"
-				@reverted="(a: AgentResource) => emit('reverted', a)"
-			/>
-			<N8nActionDropdown
-				v-if="headerActions.length > 0"
-				:items="headerActions"
-				activator-icon="ellipsis"
-				activator-size="medium"
-				data-testid="agent-header-actions"
-				@select="(item: string) => emit('header-action', item)"
-			/>
+			<template v-if="isPreview">
+				<N8nButton
+					variant="solid"
+					size="medium"
+					icon="plus"
+					data-testid="agent-preview-new-chat-btn"
+					@click="emit('new-chat')"
+				>
+					{{ i18n.baseText('agents.builder.chat.newChat.label') }}
+				</N8nButton>
+				<N8nButton
+					variant="ghost"
+					icon-only
+					size="medium"
+					:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)"
+					data-testid="agent-preview-close-btn"
+					@click="emit('close-preview')"
+				>
+					<N8nIcon icon="x" :size="16" />
+				</N8nButton>
+			</template>
+			<template v-else>
+				<span
+					v-if="saveStatus === 'saving' || saveStatus === 'saved'"
+					:class="$style.saveStatus"
+					data-testid="agent-header-save-status"
+				>
+					{{
+						saveStatus === 'saving'
+							? i18n.baseText('agents.builder.header.saving')
+							: i18n.baseText('agents.builder.header.saved')
+					}}
+				</span>
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					icon="play"
+					data-testid="agent-header-preview-btn"
+					@click="emit('open-preview')"
+				>
+					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
+				</N8nButton>
+				<AgentPublishButton
+					:agent="agent"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:is-saving="saveStatus === 'saving'"
+					:before-revert-to-published="beforeRevertToPublished"
+					@published="(a: AgentResource) => emit('published', a)"
+					@unpublished="(a: AgentResource) => emit('unpublished', a)"
+					@reverted="(a: AgentResource) => emit('reverted', a)"
+				/>
+				<N8nActionDropdown
+					v-if="headerActions.length > 0"
+					:items="headerActions"
+					activator-icon="ellipsis"
+					activator-size="medium"
+					data-testid="agent-header-actions"
+					@select="(item: string) => emit('header-action', item)"
+				/>
+			</template>
 		</div>
 	</header>
 </template>
@@ -204,5 +281,12 @@ function onBreadcrumbSelect(item: PathItem) {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	user-select: none;
+}
+
+.sessionMenu {
+	width: min(
+		calc(var(--spacing--5xl) + var(--spacing--3xl)),
+		calc(100vw - var(--spacing--xl))
+	) !important;
 }
 </style>
