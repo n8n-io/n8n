@@ -1,4 +1,12 @@
-import { computed, effectScope, ref, shallowReactive, type ComputedRef, type Ref } from 'vue';
+import {
+	computed,
+	effectScope,
+	ref,
+	shallowReactive,
+	shallowRef,
+	type ComputedRef,
+	type Ref,
+} from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type {
 	INode,
@@ -188,14 +196,52 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	const allNodes = computed<INodeUi[]>(() => nodes.value);
 
-	const nodesByName = computed(() => {
-		return nodes.value.reduce<Record<string, INodeUi>>((acc, node) => {
+	// Node lookup indices — maintained via onNodesChange events.
+	// Only rebuilt on add/remove/set, NOT on property updates. Node objects
+	// are mutated in place, so consumers reading from these indices still
+	// see the latest property values without needing a rebuild.
+	const nodesByName = shallowRef<Record<string, INodeUi>>({});
+	const nodesById = shallowRef(new Map<string, INodeUi>());
+
+	function rebuildNodeIndices() {
+		nodesById.value = new Map(nodes.value.map((n) => [n.id, n]));
+		nodesByName.value = nodes.value.reduce<Record<string, INodeUi>>((acc, node) => {
 			acc[node.name] = node;
 			return acc;
 		}, {});
+	}
+
+	onNodesChange.on((event) => {
+		switch (event.action) {
+			case CHANGE_ACTION.ADD: {
+				const { node } = event.payload as NodeAddedPayload;
+				nodesById.value = new Map(nodesById.value).set(node.id, node);
+				nodesByName.value = { ...nodesByName.value, [node.name]: node };
+				break;
+			}
+			case CHANGE_ACTION.DELETE: {
+				const { id, name } = event.payload as NodeRemovedPayload;
+				if (id) {
+					const nextById = new Map(nodesById.value);
+					nextById.delete(id);
+					nodesById.value = nextById;
+
+					const { [name]: _, ...restByName } = nodesByName.value;
+					nodesByName.value = restByName;
+				} else {
+					nodesById.value = new Map();
+					nodesByName.value = {};
+				}
+				break;
+			}
+			case CHANGE_ACTION.SET: {
+				rebuildNodeIndices();
+				break;
+			}
+		}
 	});
 
-	const nodesById = computed(() => new Map(nodes.value.map((n) => [n.id, n])));
+	rebuildNodeIndices();
 
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
