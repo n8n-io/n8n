@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Zammad/Zammad.node.ts
+  6dd649b817bdd758 228,233,251
+packages/nodes-base/nodes/Zammad/descriptions/TicketDescription.ts
+  6dd649b817bdd758 409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "f22c7638d83d1ec1e3cdd13923c251ee544a45bd",
+  "prompts": {
+    "6dd649b817bdd758": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3c731ed-9ae1-4232-839e-15c3f210358e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 2,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}

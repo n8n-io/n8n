@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Notion/shared/GenericFunctions.ts
+  160e707512e2f348 74-76
+packages/nodes-base/nodes/Notion/NotionTrigger.node.ts
+  160e707512e2f348 36-40,42-49,56-71
+packages/nodes-base/nodes/Notion/test/GenericFunctions.test.ts
+  160e707512e2f348 7,220-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "28098707d83617af4ed8fef1bd8d1faca88c6249",
+  "prompts": {
+    "160e707512e2f348": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "256d1cef-2d16-4f9a-8b69-71dcc82107b5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 83,
+      "total_deletions": 2,
+      "accepted_lines": 83,
+      "overriden_lines": 0
+    }
+  }
+}
