@@ -1493,6 +1493,63 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(executionData.metadata?.tracing).toEqual({ ok: 'value' });
 		});
 
+		it('writes tracing for trigger nodes', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'prod' }],
+				},
+			};
+			getParameterValue.mockReturnValue('prod');
+
+			mockNodeType.trigger = jest.fn();
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.webhook = undefined;
+
+			const mockTriggersAndPollersInstance = {
+				runTrigger: jest.fn().mockResolvedValue({
+					manualTriggerResponse: Promise.resolve([[{ json: { triggered: 'data' } }]]),
+				}),
+			};
+			mockContainer.get.mockImplementation((token) => {
+				if (token === TriggersAndPollers) return mockTriggersAndPollersInstance;
+				return { sentry: { backendDsn: '' } };
+			});
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ env: 'prod' });
+		});
+
+		it('writes tracing for poll nodes in non-manual mode', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'staging' }],
+				},
+			};
+			getParameterValue.mockReturnValue('staging');
+
+			mockNodeType.poll = jest.fn();
+			mockNodeType.execute = undefined;
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'trigger',
+			);
+
+			expect(executionData.metadata?.tracing).toEqual({ env: 'staging' });
+		});
+
 		it('writes tracing when execution uses a custom operation instead of execute()', async () => {
 			const mockData = [[{ json: { result: 'custom operation result' } }]];
 			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);

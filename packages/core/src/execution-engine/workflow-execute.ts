@@ -1039,24 +1039,6 @@ export class WorkflowExecute {
 			subNodeExecutionResults,
 		);
 
-		const tracingFromTags = this.buildCustomTelemetryTracing(
-			workflow,
-			node,
-			additionalData,
-			mode,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			executionData,
-		);
-
-		if (tracingFromTags !== undefined) {
-			executionData.metadata = {
-				...(executionData.metadata ?? {}),
-				tracing: { ...tracingFromTags, ...(executionData.metadata?.tracing ?? {}) },
-			};
-		}
-
 		let data: INodeExecutionData[][] | EngineRequest | null;
 		let executionSucceeded = false;
 		let closingError: Error | undefined;
@@ -1322,6 +1304,24 @@ export class WorkflowExecute {
 		this.rethrowLastNodeError(runExecutionData, node);
 
 		inputData = this.handleExecuteOnce(node, inputData);
+
+		const tracingFromTags = this.buildCustomTelemetryTracing(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			executionData,
+		);
+
+		if (tracingFromTags !== undefined) {
+			executionData.metadata = {
+				...(executionData.metadata ?? {}),
+				tracing: { ...tracingFromTags, ...(executionData.metadata?.tracing ?? {}) },
+			};
+		}
 
 		if (nodeType.execute || customOperation) {
 			return await this.executeNode(
