@@ -114,4 +114,79 @@ export class SettingsPersonalPage extends BasePage {
 	getUpgradeCta(): Locator {
 		return this.page.getByTestId('public-api-upgrade-cta');
 	}
+
+	// --- WebAuthn (passkey + security key) ---
+
+	getPasskeyCard(): Locator {
+		return this.page.getByTestId('passkey-card');
+	}
+
+	getSecurityKeyCard(): Locator {
+		return this.page.getByTestId('mfa-method-security_key');
+	}
+
+	/** "Set up" button on the passkey card when no credentials are registered. */
+	getEnablePasskeyButton(): Locator {
+		return this.page.getByTestId('enable-passkey-button');
+	}
+
+	/** "Add another passkey" footer button when at least one passkey is registered. */
+	getAddPasskeyButton(): Locator {
+		return this.page.getByTestId('add-passkey-button');
+	}
+
+	/** "Set up" button on the security-key card when no credentials are registered. */
+	getEnableSecurityKeyButton(): Locator {
+		return this.page.getByTestId('mfa-method-security_key-setup');
+	}
+
+	/** "Add another security key" footer button. */
+	getAddSecurityKeyButton(): Locator {
+		return this.page.getByTestId('add-security-key-button');
+	}
+
+	getWebAuthnModal(): Locator {
+		return this.page.getByTestId('webauthnSetupWizard-modal');
+	}
+
+	getWebAuthnLabelInput(): Locator {
+		return this.page.getByTestId('mfa-webauthn-label-input');
+	}
+
+	getWebAuthnRegisterButton(): Locator {
+		return this.page.getByTestId('mfa-webauthn-register-button');
+	}
+
+	getWebAuthnDoneButton(): Locator {
+		return this.page.getByTestId('mfa-webauthn-done-button');
+	}
+
+	/**
+	 * Find a registered passkey row by its label. Scoped to `[data-test-id^="passkey-cred-"]`
+	 * so the label text doesn't accidentally match the description copy ("Use a
+	 * physical FIDO2 key like YubiKey…" contains both kind names verbatim).
+	 */
+	getPasskeyCredentialByLabel(label: string): Locator {
+		return this.getPasskeyCard()
+			.locator('[data-test-id^="passkey-cred-"]')
+			.filter({ hasText: label });
+	}
+
+	/** Find a registered security-key row by its label. */
+	getSecurityKeyCredentialByLabel(label: string): Locator {
+		return this.getSecurityKeyCard()
+			.locator('[data-test-id^="security-key-cred-"]')
+			.filter({ hasText: label });
+	}
+
+	/**
+	 * Drive the WebAuthn setup wizard end-to-end. The browser ceremony itself
+	 * is served by a virtual authenticator attached via `setupVirtualAuthenticator`
+	 * — without one this hangs on the OS prompt.
+	 */
+	async registerWebAuthnCredential(label: string): Promise<void> {
+		await this.getWebAuthnModal().waitFor({ state: 'visible' });
+		await this.getWebAuthnLabelInput().fill(label);
+		await this.getWebAuthnRegisterButton().click();
+	}
 }
