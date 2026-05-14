@@ -1335,7 +1335,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		const abortController = new AbortController();
 		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
 			status: 'completed',
-			mastraRunId: 'mastra-1',
+			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
 			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
 		});
@@ -1345,7 +1345,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			{},
 			{
 				runId: 'run-1',
-				mastraRunId: 'mastra-1',
+				agentRunId: 'agent-run-1',
 				threadId: 'thread-a',
 				user: fakeUser,
 				toolCallId: 'tool-call-1',
