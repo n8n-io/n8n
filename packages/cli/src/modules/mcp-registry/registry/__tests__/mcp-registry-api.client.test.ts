@@ -88,10 +88,14 @@ describe('McpRegistryApiClient', () => {
 
 			await client.fetchServersMetadata();
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, {
-				fields: ['version', 'updatedAt'],
-				pagination: { page: 1, pageSize: 500 },
-			});
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				PRODUCTION_URL,
+				{
+					fields: ['version', 'updatedAt'],
+					pagination: { page: 1, pageSize: 500 },
+				},
+				{ throwOnError: true },
+			);
 		});
 
 		it('should return metadata from paginatedRequest', async () => {

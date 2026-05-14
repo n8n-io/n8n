@@ -21,10 +21,16 @@ export class McpRegistryApiClient {
 	}
 
 	async fetchServersMetadata(): Promise<McpRegistryServerMetadata[]> {
-		return await paginatedRequest<McpRegistryServerMetadata>(this.getUrl(), {
-			fields: ['version', 'updatedAt'],
-			pagination: { page: 1, pageSize: 500 },
-		});
+		return await paginatedRequest<McpRegistryServerMetadata>(
+			this.getUrl(),
+			{
+				fields: ['version', 'updatedAt'],
+				pagination: { page: 1, pageSize: 500 },
+			},
+			{
+				throwOnError: true,
+			},
+		);
 	}
 
 	async fetchServersByIds(ids: number[]): Promise<McpRegistryServer[]> {
