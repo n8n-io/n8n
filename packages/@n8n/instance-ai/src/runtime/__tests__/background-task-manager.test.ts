@@ -215,7 +215,7 @@ describe('BackgroundTaskManager', () => {
 			expect(onFailed).not.toHaveBeenCalled();
 		});
 
-		it('does not call onSettled when aborted', async () => {
+		it('calls onSettled exactly once when cancelled, so the orchestrator sees the task terminate', async () => {
 			const onSettled = jest.fn();
 			const { promise, reject } = createDeferred<string | BackgroundTaskResult>();
 
@@ -230,7 +230,8 @@ describe('BackgroundTaskManager', () => {
 			reject(new Error('aborted'));
 			await flushPromises();
 
-			expect(onSettled).not.toHaveBeenCalled();
+			expect(onSettled).toHaveBeenCalledTimes(1);
+			expect(onSettled).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
 		});
 
 		it('removes task from map after settlement', async () => {

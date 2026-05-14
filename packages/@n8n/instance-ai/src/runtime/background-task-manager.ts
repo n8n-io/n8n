@@ -97,12 +97,14 @@ export interface BackgroundTaskMessageOptions<
 	formatTask?: (task: TTask) => Promise<string> | string;
 }
 
+type TaskCallbacks = Pick<
+	SpawnManagedBackgroundTaskOptions,
+	'onCompleted' | 'onFailed' | 'onSettled'
+>;
+
 export class BackgroundTaskManager {
 	private readonly tasks = new Map<string, ManagedBackgroundTask>();
-	private readonly callbacks = new Map<
-		string,
-		Pick<SpawnManagedBackgroundTaskOptions, 'onCompleted' | 'onFailed' | 'onSettled'>
-	>();
+	private readonly callbacks = new Map<string, TaskCallbacks>();
 	/** plannedTaskId → taskId for the currently-running task. Populated only when the caller provides a dedupeKey with plannedTaskId. */
 	private readonly byPlannedTaskId = new Map<string, string>();
 	/**
@@ -198,11 +200,13 @@ export class BackgroundTaskManager {
 		const task = this.tasks.get(taskId);
 		if (!task || task.threadId !== threadId || task.status !== 'running') return undefined;
 
+		const callbacks = this.callbacks.get(taskId);
 		task.abortController.abort();
 		task.status = 'cancelled';
 		this.tasks.delete(taskId);
 		this.releaseDedupeIndices(task);
 		this.callbacks.delete(taskId);
+		this.fireSettledOnCancel(task, callbacks);
 		return task;
 	}
 
@@ -210,26 +214,49 @@ export class BackgroundTaskManager {
 		const cancelled: ManagedBackgroundTask[] = [];
 		for (const [taskId, task] of this.tasks) {
 			if (task.threadId !== threadId || task.status !== 'running') continue;
+			const callbacks = this.callbacks.get(taskId);
 			task.abortController.abort();
 			task.status = 'cancelled';
 			cancelled.push(task);
 			this.tasks.delete(taskId);
 			this.releaseDedupeIndices(task);
 			this.callbacks.delete(taskId);
+			this.fireSettledOnCancel(task, callbacks);
 		}
 		return cancelled;
 	}
 
 	cancelAll(): ManagedBackgroundTask[] {
 		const cancelled: ManagedBackgroundTask[] = [];
-		for (const [taskId, task] of this.tasks) {
+		for (const task of this.tasks.values()) {
+			const callbacks = this.callbacks.get(task.taskId);
 			task.abortController.abort();
 			cancelled.push(task);
-			this.tasks.delete(taskId);
+			this.tasks.delete(task.taskId);
 			this.releaseDedupeIndices(task);
-			this.callbacks.delete(taskId);
+			this.callbacks.delete(task.taskId);
+			this.fireSettledOnCancel(task, callbacks);
 		}
 		return cancelled;
+	}
+
+	/**
+	 * Fire `onSettled` for a cancelled task without changing the synchronous
+	 * return contract of the cancel methods. Without this, downstream consumers
+	 * (chat surface, orchestrator) never see a `<background-task-completed>`
+	 * event for cancelled tasks and the task appears "still running" indefinitely.
+	 */
+	private fireSettledOnCancel(
+		task: ManagedBackgroundTask,
+		callbacks: TaskCallbacks | undefined,
+	): void {
+		const onSettled = callbacks?.onSettled;
+		if (!onSettled) return;
+		void Promise.resolve()
+			.then(async () => await onSettled(task))
+			.catch(() => {
+				// Swallow — settle handler errors must not crash the cancel path.
+			});
 	}
 
 	touchTask(threadId: string, taskId: string, at = Date.now()): boolean {
