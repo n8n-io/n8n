@@ -80,10 +80,7 @@ describe('MFAController', () => {
 			mfaService.validateProof.mockResolvedValue(true);
 			webauthnService.getUserCredentials.mockResolvedValue([{ id: credId } as never]);
 			mfaService.isMFAEnforced.mockResolvedValue(true);
-			mfaService.getSecretAndRecoveryCodes.mockResolvedValue({
-				decryptedSecret: '',
-				decryptedRecoveryCodes: [],
-			});
+			mfaService.hasTotpSecret.mockResolvedValue(false);
 
 			await expect(
 				controller.deleteWebAuthnCredential(mkReq({ mfaCode: '123456' }), mock<Response>()),
@@ -95,10 +92,7 @@ describe('MFAController', () => {
 			mfaService.validateProof.mockResolvedValue(true);
 			webauthnService.getUserCredentials.mockResolvedValue([{ id: credId } as never]);
 			mfaService.isMFAEnforced.mockResolvedValue(true);
-			mfaService.getSecretAndRecoveryCodes.mockResolvedValue({
-				decryptedSecret: 'totp-secret',
-				decryptedRecoveryCodes: ['rc'],
-			});
+			mfaService.hasTotpSecret.mockResolvedValue(true);
 			webauthnService.deleteCredential.mockResolvedValue(true);
 
 			const res = mock<Response>();
@@ -114,10 +108,7 @@ describe('MFAController', () => {
 			mfaService.validateProof.mockResolvedValue(true);
 			webauthnService.getUserCredentials.mockResolvedValue([{ id: credId } as never]);
 			mfaService.isMFAEnforced.mockResolvedValue(false);
-			mfaService.getSecretAndRecoveryCodes.mockResolvedValue({
-				decryptedSecret: '',
-				decryptedRecoveryCodes: [],
-			});
+			mfaService.hasTotpSecret.mockResolvedValue(false);
 			webauthnService.deleteCredential.mockResolvedValue(true);
 
 			const res = mock<Response>();
@@ -142,10 +133,7 @@ describe('MFAController', () => {
 				{ id: 'cred-2' },
 			] as never);
 			mfaService.isMFAEnforced.mockResolvedValue(false);
-			mfaService.getSecretAndRecoveryCodes.mockResolvedValue({
-				decryptedSecret: '',
-				decryptedRecoveryCodes: [],
-			});
+			mfaService.hasTotpSecret.mockResolvedValue(false);
 			webauthnService.deleteCredential.mockResolvedValue(true);
 
 			const res = mock<Response>();
@@ -159,10 +147,7 @@ describe('MFAController', () => {
 			mfaService.validateProof.mockResolvedValue(true);
 			webauthnService.getUserCredentials.mockResolvedValue([{ id: credId } as never]);
 			mfaService.isMFAEnforced.mockResolvedValue(false);
-			mfaService.getSecretAndRecoveryCodes.mockResolvedValue({
-				decryptedSecret: 'totp-secret',
-				decryptedRecoveryCodes: ['rc'],
-			});
+			mfaService.hasTotpSecret.mockResolvedValue(true);
 			webauthnService.deleteCredential.mockResolvedValue(false);
 
 			await expect(

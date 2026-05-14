@@ -121,6 +121,14 @@ export class MfaService {
 		return await this.decryptSecretAndRecoveryCodes(mfaSecret ?? '', mfaRecoveryCodes ?? []);
 	}
 
+	async hasTotpSecret(userId: string): Promise<boolean> {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			select: { mfaSecret: true },
+		});
+		return !!user?.mfaSecret;
+	}
+
 	async validateMfa(
 		userId: string,
 		mfaCode: string | undefined,
@@ -164,18 +172,16 @@ export class MfaService {
 	async getAvailableMfaMethods(
 		userId: string,
 	): Promise<Array<'totp' | 'passkey' | 'security_key'>> {
+		const [user, credentials] = await Promise.all([
+			this.userRepository.findOneByOrFail({ id: userId }),
+			this.webauthn.getUserCredentials(userId),
+		]);
+
 		const methods = new Set<'totp' | 'passkey' | 'security_key'>();
-
-		const user = await this.userRepository.findOneByOrFail({ id: userId });
-		if (user.mfaSecret) {
-			methods.add('totp');
-		}
-
-		const credentials = await this.webauthn.getUserCredentials(userId);
+		if (user.mfaSecret) methods.add('totp');
 		for (const cred of credentials) {
 			methods.add(isPlatformCredential(cred) ? 'passkey' : 'security_key');
 		}
-
 		return Array.from(methods);
 	}
 

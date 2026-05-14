@@ -206,10 +206,6 @@ export class MFAController {
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
 	}
 
-	// ---------------------------------------------------------------
-	// WebAuthn endpoints
-	// ---------------------------------------------------------------
-
 	@Get('/webauthn/registration-options', {
 		allowSkipMFA: true,
 	})
@@ -361,16 +357,13 @@ export class MFAController {
 			throw new BadRequestError('Invalid two-factor proof');
 		}
 
-		const [credentialsBefore, isMFAEnforced, { decryptedSecret }] = await Promise.all([
+		const [credentialsBefore, isMFAEnforced, hasTotpSecret] = await Promise.all([
 			this.mfaService.webauthn.getUserCredentials(userId),
 			this.mfaService.isMFAEnforced(),
-			this.mfaService.getSecretAndRecoveryCodes(userId),
+			this.mfaService.hasTotpSecret(userId),
 		]);
 		const remainingWebauthn = credentialsBefore.filter((c) => c.id !== id).length;
-		const hasTotpSecret = !!decryptedSecret;
 
-		// Refuse if removing this credential would leave the user with no
-		// authentication factor on an instance that enforces MFA.
 		if (isMFAEnforced && remainingWebauthn === 0 && !hasTotpSecret) {
 			throw new BadRequestError(
 				'You can’t remove your last MFA credential while two-factor authentication is required on this instance',
@@ -382,9 +375,8 @@ export class MFAController {
 			throw new BadRequestError('Credential not found');
 		}
 
-		// If this was the last MFA factor, mirror disable-MFA semantics so the
-		// user's session reflects the new state. The pre-delete read above
-		// already told us what's left — no need to re-query.
+		// Mirror disable-MFA semantics when the last factor is gone so the
+		// session reflects the new state.
 		if (remainingWebauthn === 0 && !hasTotpSecret) {
 			await this.userRepository.update(userId, {
 				mfaEnabled: false,
