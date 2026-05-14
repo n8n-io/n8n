@@ -202,8 +202,7 @@ async function refreshWebauthnCredentials() {
 async function removeWebAuthnCredential(credential: WebAuthnCredentialResponse) {
 	// Re-verify with the same kind of authenticator the user is removing:
 	// `reverify` filters `allowCredentials` server-side so the OS picker can
-	// only satisfy the ceremony with a matching credential. Falls back to
-	// TOTP / recovery-code when the device is unavailable.
+	// only satisfy the ceremony with a matching credential.
 	const kind = isPlatformCredential(credential) ? 'passkey' : 'security_key';
 	const proof = await reverify(kind);
 	if (!proof) return;

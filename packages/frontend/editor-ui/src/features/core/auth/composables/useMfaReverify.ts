@@ -56,10 +56,12 @@ export function useMfaReverify() {
 			const webauthnResponse = await usersStore.verifyWebAuthnAuthentication(user.email, chosen);
 			return { webauthnResponse };
 		} catch {
-			// Authenticator unavailable (lost device, cancelled ceremony) — fall
-			// back to the code/recovery-code prompt so users can still manage
-			// their account with a recovery code.
-			return await promptCode();
+			// Pressing ESC or dismissing the OS dialog rejects with
+			// `NotAllowedError` from `@simplewebauthn/browser`; treat any
+			// ceremony failure as user cancellation and abort the calling
+			// flow rather than silently surfacing the TOTP prompt — that
+			// fallback was confusing because the user hadn't asked for it.
+			return null;
 		}
 	}
 
