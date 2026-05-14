@@ -50,6 +50,7 @@ export class ModuleRegistry {
 		'favorites',
 		'redaction',
 		'instance-registry',
+		'mcp-registry',
 		'otel',
 		'token-exchange',
 		'instance-version-history',
