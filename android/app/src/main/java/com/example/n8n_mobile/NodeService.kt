@@ -101,15 +101,16 @@ class NodeService : Service() {
         // sqlite3's prebuilt .node depends on libc++_shared.so, but jniLibs ships it
         // as libcxxshared.so (the name libnode.so was built against). Bridge the names
         // by creating a symlink alias in a writable dir we prepend to LD_LIBRARY_PATH.
+        // Always replace: nativeLibraryDir's path changes per install, so a previous
+        // install's symlink dangles and File.exists() reports false on a dangling link.
         val nativeDir = File(applicationInfo.nativeLibraryDir)
         val libAliasDir = File(filesDir, "lib-aliases").apply { mkdirs() }
         val cxxAlias = File(libAliasDir, "libc++_shared.so")
-        if (!cxxAlias.exists()) {
-            try {
-                Os.symlink(File(nativeDir, "libcxxshared.so").absolutePath, cxxAlias.absolutePath)
-            } catch (e: Exception) {
-                Log.w(TAG, "libc++_shared.so alias failed", e)
-            }
+        try {
+            java.nio.file.Files.deleteIfExists(cxxAlias.toPath())
+            Os.symlink(File(nativeDir, "libcxxshared.so").absolutePath, cxxAlias.absolutePath)
+        } catch (e: Exception) {
+            Log.w(TAG, "libc++_shared.so alias failed", e)
         }
 
         val env = mapOf(
@@ -119,7 +120,7 @@ class NodeService : Service() {
             "LD_LIBRARY_PATH" to "${libAliasDir.absolutePath}:${nativeDir.absolutePath}",
         )
 
-        Log.d(TAG, "spawning ${entrypoint.absolutePath} with env=$env")
+        Log.d(TAG, "spawning ${entrypoint.absolutePath}")
         val p = NodeRunner.start(this, entrypoint, env, cwd = projectRoot)
         process = p
 

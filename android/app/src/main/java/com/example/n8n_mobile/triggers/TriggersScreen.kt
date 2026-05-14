@@ -18,9 +18,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -35,14 +35,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -86,7 +87,12 @@ fun TriggersScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+    ) {
         Text("Triggers", style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
 
@@ -143,15 +149,17 @@ fun TriggersScreen() {
         Text("Registered (${triggers.size})", fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
 
-        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(triggers, key = { it.id }) { trigger ->
-                TriggerCard(
-                    trigger = trigger,
-                    onDelete = {
-                        manager.unregister(trigger.id)
-                        store.remove(trigger.id)
-                    },
-                )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            triggers.forEach { trigger ->
+                key(trigger.id) {
+                    TriggerCard(
+                        trigger = trigger,
+                        onDelete = {
+                            manager.unregister(trigger.id)
+                            store.remove(trigger.id)
+                        },
+                    )
+                }
             }
         }
     }

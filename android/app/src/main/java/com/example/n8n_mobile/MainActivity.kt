@@ -28,8 +28,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.n8n_mobile.triggers.TriggersScreen
+import com.example.n8n_mobile.tunnel.TunnelScreen
 
-private enum class Tab { Workflows, Triggers }
+private enum class Tab { Workflows, Triggers, Tunnel }
 
 class MainActivity : ComponentActivity() {
 
@@ -66,6 +67,12 @@ class MainActivity : ComponentActivity() {
                                 icon = {},
                                 label = { Text("Triggers") },
                             )
+                            NavigationBarItem(
+                                selected = tab == Tab.Tunnel,
+                                onClick = { tab = Tab.Tunnel },
+                                icon = {},
+                                label = { Text("Tunnel") },
+                            )
                         }
                     },
                 ) { padding ->
@@ -73,7 +80,7 @@ class MainActivity : ComponentActivity() {
                         // Always compose TestScreen so its WebView (and the SSE connection
                         // to /events) stays alive across tab switches. Triggers overlays it.
                         TestScreen()
-                        if (tab == Tab.Triggers) {
+                        if (tab != Tab.Workflows) {
                             val interactionSource = remember { MutableInteractionSource() }
                             Surface(
                                 modifier = Modifier
@@ -84,7 +91,11 @@ class MainActivity : ComponentActivity() {
                                     ) {},
                                 color = MaterialTheme.colorScheme.background,
                             ) {
-                                TriggersScreen()
+                                when (tab) {
+                                    Tab.Triggers -> TriggersScreen()
+                                    Tab.Tunnel -> TunnelScreen()
+                                    Tab.Workflows -> Unit
+                                }
                             }
                         }
                     }

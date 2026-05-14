@@ -122,7 +122,6 @@ fun TestScreen() {
                         )
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
-                        settings.databaseEnabled = true
                         settings.allowFileAccess = true
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         // n8n's editor is built for desktop; the default Android WebView UA
@@ -134,14 +133,6 @@ fun TestScreen() {
                         settings.useWideViewPort = true
                         settings.loadWithOverviewMode = true
                         webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                                Log.d("WebView", "onPageStarted url=$url")
-                            }
-
-                            override fun onPageFinished(view: WebView?, url: String?) {
-                                Log.d("WebView", "onPageFinished url=$url title='${view?.title}'")
-                            }
-
                             override fun onReceivedError(
                                 view: WebView?,
                                 request: WebResourceRequest?,
