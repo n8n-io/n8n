@@ -72,12 +72,12 @@ describe('JSON Schema validation — non-MCP tools with raw JSON Schema', () => 
 		// The handler should have been called with valid data
 		expect(handler).toHaveBeenCalledWith(expect.objectContaining({ age: 25 }), expect.anything());
 
-		// No tool-result should carry an error flag
+		// No tool-call block should have state 'rejected'
 		const allMessages = filterLlmMessages(result.messages);
-		const toolResults = allMessages.flatMap((m) =>
-			m.content.filter((c) => c.type === 'tool-result'),
+		const toolCallBlocks = allMessages.flatMap((m) =>
+			m.content.filter((c) => c.type === 'tool-call'),
 		);
-		expect(toolResults.every((r) => !r.isError)).toBe(true);
+		expect(toolCallBlocks.every((c) => (c as { state: string }).state !== 'rejected')).toBe(true);
 	});
 
 	it('allows the LLM to self-correct after receiving a JSON Schema validation error', async () => {
@@ -105,12 +105,12 @@ describe('JSON Schema validation — non-MCP tools with raw JSON Schema', () => 
 		expect(result.finishReason).toBe('stop');
 		expect(result.error).toBeUndefined();
 
-		// There should be at least two tool-result messages: one error, one success
+		// There should be at least two tool-call messages: one rejected, one resolved
 		const allMessages = filterLlmMessages(result.messages);
-		const toolResultMessages = allMessages.filter((m) =>
-			m.content.some((c) => c.type === 'tool-result'),
+		const toolCallMessages = allMessages.filter((m) =>
+			m.content.some((c) => c.type === 'tool-call'),
 		);
-		expect(toolResultMessages.length).toBeGreaterThanOrEqual(2);
+		expect(toolCallMessages.length).toBeGreaterThanOrEqual(2);
 
 		// The successful handler call should have received a valid age
 		expect(callCount).toBeGreaterThanOrEqual(1);

@@ -17,6 +17,10 @@ import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -710,11 +714,13 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
-				mock<INodeUi>({ type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
-			);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.setNodes([
+				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
+			]);
 
-			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+			nodeTypesStore.getNodeType = () =>
+				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
 
@@ -738,11 +744,13 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
-				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.setNodes([
+				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			]);
 
-			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+			nodeTypesStore.getNodeType = () =>
+				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
 
@@ -766,11 +774,13 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
-				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			);
+			const docStore2 = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			docStore2.setNodes([
+				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			]);
 
-			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+			nodeTypesStore.getNodeType = () =>
+				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
 

@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import type {
 	ExecutionStatus,
@@ -19,26 +20,29 @@ import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
+
+const mockDocumentStore = {
+	name: '',
+	settings: {},
+	pinData: {},
+	usedCredentials: mockDocumentStoreUsedCredentials,
+	allNodes: [],
+	workflowTriggerNodes: [],
+	getNodeByName: vi.fn(),
+	setNodeIssue: vi.fn(),
+	updateNodeProperties: vi.fn(),
+	getExpressionHandler: vi.fn(() => ({})),
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+};
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return {
 		...actual,
-		useWorkflowDocumentStore: vi.fn(() => ({
-			name: '',
-			settings: {},
-			pinData: {},
-			usedCredentials: mockDocumentStoreUsedCredentials,
-			allNodes: [],
-			getNodeByName: vi.fn(),
-			setNodeIssue: vi.fn(),
-			updateNodeProperties: vi.fn(),
-			getExpressionHandler: vi.fn(() => ({})),
-			getPinDataSnapshot: vi.fn().mockReturnValue({}),
-		})),
+		useWorkflowDocumentStore: vi.fn(() => mockDocumentStore),
+		injectWorkflowDocumentStore: () => shallowRef(mockDocumentStore),
 	};
 });
 
@@ -76,17 +80,7 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			vi.mocked(useWorkflowDocumentStore).mockReturnValueOnce({
-				name: '',
-				settings: {},
-				usedCredentials: mockDocumentStoreUsedCredentials,
-				allNodes: [],
-				getNodeByName: vi.fn().mockReturnValue(node),
-				setNodeIssue: vi.fn(),
-				updateNodeProperties: vi.fn(),
-				getExpressionHandler: vi.fn(() => ({})),
-				getPinDataSnapshot: vi.fn().mockReturnValue({}),
-			} as unknown as ReturnType<typeof useWorkflowDocumentStore>);
+			mockDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);

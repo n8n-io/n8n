@@ -22,10 +22,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { IConnections, INodeTypes } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentNodes,
 	type WorkflowDocumentNodesDeps,
@@ -49,23 +48,13 @@ function createNodesDeps(): WorkflowDocumentNodesDeps {
 	};
 }
 
-function createMockNodeTypes(): INodeTypes {
-	return {
-		getByName: vi.fn(),
-		getByNameAndVersion: vi.fn(),
-		getKnownTypes: vi.fn().mockReturnValue({}),
-	};
-}
-
 describe('useWorkflowDocumentGraph', () => {
 	let nodes: ReturnType<typeof useWorkflowDocumentNodes>;
 	let connections: ReturnType<typeof useWorkflowDocumentConnections>;
 	let workflowObj: ReturnType<typeof useWorkflowDocumentWorkflowObject>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		workflowsStore = useWorkflowsStore();
 		nodes = useWorkflowDocumentNodes(createNodesDeps());
 		connections = useWorkflowDocumentConnections({
 			getNodeById: (id) => nodes.getNodeById(id),
@@ -73,7 +62,6 @@ describe('useWorkflowDocumentGraph', () => {
 		});
 		workflowObj = useWorkflowDocumentWorkflowObject({
 			workflowId: '',
-			getNodeTypes: () => createMockNodeTypes(),
 		});
 	});
 
@@ -83,8 +71,8 @@ describe('useWorkflowDocumentGraph', () => {
 	): ReturnType<typeof useWorkflowDocumentGraph> {
 		nodes.setNodes(nodeList);
 		connections.setConnections(connectionMap);
-		workflowObj.syncWorkflowObjectNodes(workflowsStore.workflow.nodes);
-		workflowObj.syncWorkflowObjectConnections(workflowsStore.workflow.connections);
+		workflowObj.syncWorkflowObjectNodes(nodes.allNodes.value);
+		workflowObj.syncWorkflowObjectConnections(connections.connectionsBySourceNode.value);
 		return useWorkflowDocumentGraph(workflowObj.workflowObject);
 	}
 

@@ -9,7 +9,6 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import ModelSection from '../components/settings/ModelSection.vue';
-import LocalGatewaySection from '../components/settings/LocalGatewaySection.vue';
 import SandboxSection from '../components/settings/SandboxSection.vue';
 import MemorySection from '../components/settings/MemorySection.vue';
 import SearchSection from '../components/settings/SearchSection.vue';
@@ -42,6 +41,7 @@ const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTe
 	},
 	{ key: 'readFilesystem', labelKey: 'settings.n8nAgent.permissions.readFilesystem' },
 	{ key: 'fetchUrl', labelKey: 'settings.n8nAgent.permissions.fetchUrl' },
+	{ key: 'webSearch', labelKey: 'settings.n8nAgent.permissions.webSearch' },
 	{
 		key: 'restoreWorkflowVersion',
 		labelKey: 'settings.n8nAgent.permissions.restoreWorkflowVersion',
@@ -124,17 +124,11 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							</span>
 						</div>
 						<ElSwitch
-							:class="$style.toggle"
 							:model-value="!(store.settings?.localGatewayDisabled ?? false)"
 							:disabled="store.isSaving"
 							data-test-id="n8n-agent-computer-use-toggle"
 							@update:model-value="handleComputerUseToggle"
 						/>
-					</div>
-				</div>
-				<div :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<LocalGatewaySection />
 					</div>
 				</div>
 
@@ -189,14 +183,14 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 					</div>
 				</template>
 
-				<div v-if="!store.isProxyEnabled" :class="$style.card">
+				<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
 					<div :class="$style.sectionBlock">
 						<ModelSection />
 					</div>
 				</div>
 
 				<template v-if="isAdmin">
-					<div v-if="!store.isProxyEnabled" :class="$style.card">
+					<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
 						<div :class="$style.sectionBlock">
 							<SandboxSection />
 						</div>

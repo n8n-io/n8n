@@ -13,6 +13,7 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalSubAgentRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -33,9 +34,11 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
+import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -91,6 +94,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly subAgentEvalService: SubAgentEvalService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -134,6 +138,21 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
+		if (payload.attachments && payload.attachments.length > 0) {
+			try {
+				validateAttachmentMimeTypes(payload.attachments);
+			} catch (error) {
+				if (error instanceof UnsupportedAttachmentError) {
+					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
+					throw new BadRequestError(
+						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
+							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				throw error;
+			}
+		}
+
 		// One active run per thread
 		if (this.instanceAiService.hasActiveRun(threadId)) {
 			throw new ConflictError('A run is already active for this thread');
@@ -167,6 +186,11 @@ export class InstanceAiController {
 		const ownership = await this.memoryService.checkThreadOwnership(req.user.id, threadId);
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
+		}
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
 		}
 
 		// When the thread didn't exist at connect time, another user could create
@@ -322,27 +346,21 @@ export class InstanceAiController {
 
 	@Post('/confirm/:requestId')
 	@GlobalScope('instanceAi:message')
-	async confirm(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('requestId') requestId: string,
-		@Body body: InstanceAiConfirmRequestDto,
-	) {
+	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
 		this.requireInstanceAiEnabled();
-		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
-			approved: body.approved,
-			credentialId: body.credentialId,
-			credentials: body.credentials,
-			nodeCredentials: body.nodeCredentials,
-			autoSetup: body.autoSetup,
-			userInput: body.userInput,
-			domainAccessAction: body.domainAccessAction,
-			action: body.action,
-			nodeParameters: body.nodeParameters,
-			testTriggerNode: body.testTriggerNode,
-			answers: body.answers,
-			resourceDecision: body.resourceDecision,
-		});
+
+		// Manual parse: `@Body` decorator can't resolve zod discriminated unions via reflection,
+		// so validate the request body against the union schema directly.
+		const parseResult = InstanceAiConfirmRequestDto.safeParse(req.body);
+		if (!parseResult.success) {
+			throw new BadRequestError(parseResult.error.errors[0].message);
+		}
+
+		const resolved = await this.instanceAiService.resolveConfirmation(
+			req.user.id,
+			requestId,
+			parseResult.data,
+		);
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
 		}
@@ -550,6 +568,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
@@ -608,6 +627,19 @@ export class InstanceAiController {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
+	@Post('/eval/run-sub-agent')
+	@GlobalScope('instanceAi:message')
+	async runSubAgentEval(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalSubAgentRequest,
+	) {
+		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
+			throw new ForbiddenError('Sub-agent evaluation is not enabled');
+		}
+		return await this.subAgentEvalService.run(req.user, payload);
+	}
+
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
@@ -615,9 +647,13 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
+		const expiresAt = this.instanceAiService.getGatewayApiKeyExpiresAt(req.user.id, token);
+		const ttlSeconds = expiresAt
+			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
+			: null;
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
-		return { token, command };
+		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
@@ -644,9 +680,14 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		const unsubscribe = gateway.onRequest((event) => {
+		const unsubscribeRequest = gateway.onRequest((event) => {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			res.flush?.();
+		});
+		const unsubscribeDisconnect = gateway.onDisconnect((event) => {
+			res.write(`data: ${JSON.stringify(event)}\n\n`);
+			res.flush?.();
+			res.end();
 		});
 
 		const keepAlive = setInterval(() => {
@@ -654,8 +695,12 @@ export class InstanceAiController {
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
 
+		let cleanedUp = false;
 		const cleanup = () => {
-			unsubscribe();
+			if (cleanedUp) return;
+			cleanedUp = true;
+			unsubscribeRequest();
+			unsubscribeDisconnect();
 			clearInterval(keepAlive);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
@@ -748,6 +793,28 @@ export class InstanceAiController {
 	async gatewayStatus(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		return this.instanceAiService.getGatewayStatus(req.user.id);
+	}
+
+	/**
+	 * User-initiated gateway disconnect. Tears down the paired daemon session
+	 * so its tools are no longer exposed to the agent, without changing the
+	 * user's preference to disabled.
+	 */
+	@Post('/gateway/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayDisconnectSession(req: AuthenticatedRequest) {
+		const userId = req.user.id;
+		this.instanceAiService.clearDisconnectTimer(userId);
+		this.instanceAiService.disconnectGateway(userId);
+		this.instanceAiService.clearActiveSessionKey(userId);
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
+			[userId],
+		);
+		return { ok: true };
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────

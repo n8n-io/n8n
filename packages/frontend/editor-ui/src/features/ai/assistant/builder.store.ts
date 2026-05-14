@@ -1004,7 +1004,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const payload = await createBuilderPayload(text, userMessageId, {
 			workflowId: workflowsStore.workflowId,
 			quickReplyType,
-			workflow: workflowsStore.workflow,
+			workflow: workflowDocumentStore.value.getSnapshot(),
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowDocumentStore.value.nodesByName),
 			mode: modeForPayload,

@@ -19,11 +19,13 @@ import type {
 	INode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
+	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	INodeTypes,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { ERROR_TRIGGER_NODE_TYPE, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -461,6 +463,36 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
+	function getAllNodeTypes(): INodeTypes {
+		const nodeTypes: INodeTypes = {
+			nodeTypes: {},
+			init: async (): Promise<void> => {},
+			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+				const nodeTypeDescription =
+					getNodeType.value(nodeType, version) ??
+					communityNodeType.value(nodeType)?.nodeDescription ??
+					null;
+				if (nodeTypeDescription === null) {
+					return undefined;
+				}
+
+				return {
+					description: nodeTypeDescription,
+					// As we do not have the trigger/poll functions available in the frontend
+					// we use the information available to figure out what are trigger nodes
+					// @ts-ignore
+					trigger:
+						(![ERROR_TRIGGER_NODE_TYPE].includes(nodeType) &&
+							nodeTypeDescription.inputs.length === 0 &&
+							!nodeTypeDescription.webhooks) ||
+						undefined,
+				};
+			},
+		} as unknown as INodeTypes;
+
+		return nodeTypes;
+	}
+
 	// #endregion
 
 	return {
@@ -491,6 +523,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodesInformation,
 		getFullNodesProperties,
 		getNodeTypes,
+		getAllNodeTypes,
 		loadNodeTypesIfNotLoaded,
 		getNodeTranslationHeaders,
 		setNodeTypes,

@@ -8,7 +8,7 @@ on:
         required: false
         type: string
       test-mode:
-        description: 'Test mode: local, docker-artifact, or docker-pull'
+        description: 'Test mode: local or docker-artifact'
         required: false
         default: 'local'
         type: string
@@ -16,11 +16,6 @@ on:
         description: 'Test command to run'
         required: false
         default: 'pnpm --filter=n8n-playwright test:local'
-        type: string
-      docker-image:
-        description: 'Docker image to use (docker-pull mode only). Ignored in docker-artifact mode (image is loaded as n8nio/n8n:local).'
-        required: false
-        default: 'n8nio/n8n:nightly'
         type: string
       workers:
         description: 'Number of parallel workers'
@@ -37,18 +32,13 @@ on:
         required: false
         default: 30
         type: number
-      upload-failure-artifacts:
-        description: 'Upload test failure artifacts (screenshots, traces, videos). Enable for community PRs without Currents access.'
-        required: false
-        default: false
-        type: boolean
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
         default: 'LRxcNt'
         type: string
       pre-generated-matrix:
-        description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own (see test-e2e-ci-reusable.yml prepare-matrix).'
+        description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
         required: false
         default: '[{"shard":1,"images":""}]'
         type: string
@@ -57,14 +47,19 @@ on:
         required: false
         default: ''
         type: string
+      artifact-prefix:
+        description: 'Prefix for uploaded shard artifacts'
+        required: false
+        default: 'e2e'
+        type: string
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
-  # docker-artifact loads the image locally as n8nio/n8n:local.
-  TEST_IMAGE_N8N: ${{ inputs.test-mode == 'docker-artifact' && 'n8nio/n8n:local' || inputs.docker-image }}
+  # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
+  TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'
   CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
   CURRENTS_PROJECT_ID: ${{ inputs.currents-project-id }}
@@ -107,10 +102,17 @@ jobs:
         run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Run Tests
-        # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
-        run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+        run: |
+          # shellcheck disable=SC2086
+          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS
         env:
-          CURRENTS_RECORD_KEY: ${{ vars.CURRENTS_RECORD_VAR }}
+          # Protect args from template injections
+          TEST_COMMAND: ${{ inputs.test-command }}
+          # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
+          WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
+          SHARD_ARGS: ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          # Args for actual test command runner
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
@@ -119,15 +121,17 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
 
-      - name: Upload Failure Artifacts
-        if: ${{ failure() && inputs.upload-failure-artifacts }}
+      - name: Upload Shard Artifacts
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: playwright-report-shard-${{ matrix.shard }}
+          name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
-          retention-days: 7
+            packages/testing/playwright/.nyc_output/
+          retention-days: 1
+          if-no-files-found: ignore
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}

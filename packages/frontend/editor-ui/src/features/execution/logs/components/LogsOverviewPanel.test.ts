@@ -16,12 +16,14 @@ import {
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { createLogTree, flattenLogEntries } from '../logs.utils';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const { mockDocumentStore } = vi.hoisted(() => ({
 	mockDocumentStore: {
 		workflowId: 'test-workflow-id',
 		name: 'Test Workflow',
-		allNodes: [] as unknown[],
+		allNodes: [],
+		workflowTriggerNodes: [],
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
@@ -29,7 +31,7 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 		checkIfNodeHasChatParent: vi.fn().mockReturnValue(false),
 		checkIfToolNodeHasChatParent: vi.fn().mockReturnValue(false),
 		getExpressionHandler: vi.fn().mockReturnValue(null),
-		getSnapshot: vi.fn().mockReturnValue({
+		getWorkflowObjectAccessorSnapshot: vi.fn().mockReturnValue({
 			id: 'test-workflow-id',
 			connectionsBySourceNode: {},
 			pinData: {},
@@ -41,13 +43,25 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 			getChildNodes: vi.fn().mockReturnValue([]),
 			getParentNodesByDepth: vi.fn().mockReturnValue([]),
 		}),
-		connectionsBySourceNode: {} as Record<string, unknown>,
-		pinData: {} as Record<string, unknown>,
+		connectionsBySourceNode: {},
+		pinData: {},
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		settings: {},
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
-	},
+		serialize: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+			pinData: {},
+			active: false,
+			settings: {},
+			tags: [],
+			versionId: '',
+			meta: {},
+		}),
+	} satisfies Partial<ReturnType<typeof useWorkflowDocumentStore>>,
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
@@ -94,7 +108,7 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.setWorkflowId('test-workflow-id');
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;
