@@ -71,17 +71,17 @@ test.describe(
 		});
 
 		test('should rename thread via double-click', async ({ n8n }) => {
-			await n8n.navigate.toInstanceAi();
-
-			await n8n.instanceAi.sendMessage('List my credentials');
-			await n8n.instanceAi.waitForResponseComplete();
+			const thread = await n8n.api.createInstanceAiThread();
+			await n8n.api.renameInstanceAiThread(thread.id, 'Thread to rename');
+			await n8n.instanceAi.gotoThread(thread.id);
 
 			// Sidebar starts collapsed; open it so the thread list is queryable.
 			await n8n.instanceAi.openSidebar();
 
 			// Double-click the thread to enter rename mode
-			const thread = n8n.instanceAi.sidebar.getThreadItems().first();
-			await thread.dblclick();
+			const threadItem = n8n.instanceAi.sidebar.getThreadByTitle('Thread to rename');
+			await expect(threadItem).toBeVisible({ timeout: 5_000 });
+			await threadItem.dblclick();
 
 			// Find the rename input and type a new name
 			const input = n8n.instanceAi.sidebar.getRenameInput();

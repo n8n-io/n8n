@@ -48,11 +48,11 @@ export class InstanceAiPage extends BasePage {
 	 * query thread items without racing the 200ms slide-in transition.
 	 */
 	async openSidebar(): Promise<void> {
-		const toggle = this.getSidebarToggle();
-		if (await toggle.isVisible()) {
-			await toggle.click();
+		const threadList = this.page.getByTestId('instance-ai-thread-list');
+		if (!(await threadList.isVisible())) {
+			await this.getSidebarToggle().click({ timeout: 10_000 });
 		}
-		await this.getContainer().getByTestId('instance-ai-thread-list').waitFor({ state: 'visible' });
+		await threadList.waitFor({ state: 'visible' });
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ export class InstanceAiPage extends BasePage {
 	async executePreviewNodeByName(nodeName: string): Promise<void> {
 		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
 		await executeNodeButton.waitFor({ state: 'visible', timeout: 5_000 });
-		await executeNodeButton.click({ force: true });
+		await executeNodeButton.dispatchEvent('click');
 	}
 
 	getPreviewNodeSuccessIndicator(nodeName: string): Locator {

@@ -911,7 +911,7 @@ test.describe(
 				firstCrdentialInList.name,
 			);
 
-			await n8n.instanceAi.workflowSetup.selectCredential(secondCrdentialInList.name);
+			await n8n.instanceAi.workflowSetup.selectCredentialById(secondCrdentialInList.id);
 			await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
 				secondCrdentialInList.name,
 			);

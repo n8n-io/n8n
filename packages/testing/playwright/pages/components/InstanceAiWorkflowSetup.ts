@@ -31,6 +31,10 @@ export class InstanceAiWorkflowSetup {
 		return this.root.page().getByRole('option', { name: credentialName });
 	}
 
+	getCredentialOptionById(credentialId: string): Locator {
+		return this.root.page().getByTestId(`node-credentials-select-item-${credentialId}`);
+	}
+
 	getApplyButton(): Locator {
 		return this.root.getByRole('button', { name: /^(Apply|Continue)$/ });
 	}
@@ -108,6 +112,11 @@ export class InstanceAiWorkflowSetup {
 	async selectCredential(credentialName: string): Promise<void> {
 		await this.getCredentialSelect().click();
 		await this.getCredentialOption(credentialName).click();
+	}
+
+	async selectCredentialById(credentialId: string): Promise<void> {
+		await this.getCredentialSelect().click();
+		await this.getCredentialOptionById(credentialId).click();
 	}
 
 	async fillParameter(parameterName: string, value: string): Promise<void> {
