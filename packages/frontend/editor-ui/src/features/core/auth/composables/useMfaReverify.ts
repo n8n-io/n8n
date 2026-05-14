@@ -26,8 +26,8 @@ export function useMfaReverify() {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 
-	const promptCode = (): Promise<MfaProof | null> =>
-		new Promise<MfaProof | null>((resolve) => {
+	const promptCode = async (): Promise<MfaProof | null> =>
+		await new Promise<MfaProof | null>((resolve) => {
 			const handler = (payload: { mfaCode?: string; mfaRecoveryCode?: string } | undefined) => {
 				promptMfaCodeBus.off('closed', handler);
 				if (!payload) return resolve(null);
