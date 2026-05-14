@@ -1050,6 +1050,7 @@ export class CanvasPage extends BasePage {
 	readonly selectionToolbar = {
 		root: () => this.page.getByTestId('canvas-selection-toolbar'),
 		groupButton: () => this.page.getByTestId('canvas-selection-toolbar-group'),
+		extractSubWorkflowButton: () => this.page.getByTestId('canvas-selection-toolbar-extract'),
 	};
 
 	getNodeGroupHeader(title: string): Locator {

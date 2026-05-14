@@ -1255,6 +1255,7 @@ defineExpose({
 			:selected-nodes="selectedNodes"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
+			@extract-workflow="emit('extract-workflow', $event)"
 		/>
 
 		<Transition name="minimap">

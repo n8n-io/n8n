@@ -9,11 +9,13 @@ import CanvasSelectionToolbar from './CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupsStore } from '../../../stores/canvasNodeGroups.store';
 
 const isSelectionGroupableMock = vi.fn();
+const isSelectionExtractableMock = vi.fn();
 const expandSelectionWithSubNodesMock = vi.fn((nodeIds: string[]) => nodeIds);
 
 vi.mock('@/app/composables/useSelectionValidation', () => ({
 	useSelectionValidation: () => ({
 		isSelectionGroupable: isSelectionGroupableMock,
+		isSelectionExtractable: isSelectionExtractableMock,
 		expandSelectionWithSubNodes: expandSelectionWithSubNodesMock,
 	}),
 }));
@@ -43,6 +45,11 @@ describe('CanvasSelectionToolbar', () => {
 			valid: true,
 			subGraphData: { start: 'A', end: 'B' },
 		});
+		isSelectionExtractableMock.mockImplementation((nodeIds: string[]) =>
+			nodeIds.length < 2
+				? { valid: false, reason: 'too-few-nodes' }
+				: { valid: true, subGraphData: { start: 'A', end: 'B' } },
+		);
 		expandSelectionWithSubNodesMock.mockImplementation((nodeIds: string[]) => nodeIds);
 	});
 
@@ -65,8 +72,13 @@ describe('CanvasSelectionToolbar', () => {
 		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
 	});
 
-	it('is hidden when the validation helper rejects the selection', () => {
+	it('is hidden when grouping and extraction reject the selection', () => {
 		isSelectionGroupableMock.mockReturnValue({
+			valid: false,
+			reason: 'invalid-subgraph',
+			errors: [],
+		});
+		isSelectionExtractableMock.mockReturnValue({
 			valid: false,
 			reason: 'invalid-subgraph',
 			errors: [],
@@ -75,7 +87,7 @@ describe('CanvasSelectionToolbar', () => {
 		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
 	});
 
-	it('is hidden when expanded sub-nodes are connected outside the group', () => {
+	it('shows only Extract when expanded sub-nodes are connected outside the group', () => {
 		expandSelectionWithSubNodesMock.mockImplementation((nodeIds: string[]) => [
 			...nodeIds,
 			'model',
@@ -89,41 +101,47 @@ describe('CanvasSelectionToolbar', () => {
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('agent')] });
 
 		expect(isSelectionGroupableMock).toHaveBeenCalledWith(['a', 'agent', 'model']);
-		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
+		expect(wrapper.getByTestId('canvas-selection-toolbar-extract')).toBeTruthy();
 	});
 
-	it('shows Group when the selection is valid and not part of a group', () => {
+	it('shows Group and Extract when the selection is valid and not part of a group', () => {
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
 		expect(wrapper.getByTestId('canvas-selection-toolbar-group')).toBeTruthy();
+		expect(wrapper.getByTestId('canvas-selection-toolbar-extract')).toBeTruthy();
 	});
 
-	it('is hidden when the selection is fully inside an existing group', () => {
+	it('hides Group and shows Extract when the selection is fully inside an existing group', () => {
 		const store = useCanvasNodeGroupsStore();
 		store.createGroup(['a', 'b'], 'Group');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
-		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
+		expect(wrapper.getByTestId('canvas-selection-toolbar-extract')).toBeTruthy();
 	});
 
-	it('is hidden when a subset of a group is selected', () => {
+	it('hides Group and shows Extract when a subset of a group is selected', () => {
 		const store = useCanvasNodeGroupsStore();
 		store.createGroup(['a', 'b', 'c'], 'Group');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
-		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
+		expect(wrapper.getByTestId('canvas-selection-toolbar-extract')).toBeTruthy();
 	});
 
-	it('is hidden when the selection mixes grouped and ungrouped nodes', () => {
+	it('hides Group and shows Extract when the selection mixes grouped and ungrouped nodes', () => {
 		const store = useCanvasNodeGroupsStore();
 		store.createGroup(['a', 'b'], 'Group');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('c')] });
-		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
+		expect(wrapper.getByTestId('canvas-selection-toolbar-extract')).toBeTruthy();
 	});
 
-	it('is hidden when the selection spans nodes from different groups', () => {
+	it('hides Group and shows Extract when the selection spans nodes from different groups', () => {
 		const store = useCanvasNodeGroupsStore();
 		store.createGroup(['a', 'b'], 'Group A');
 		store.createGroup(['c', 'd'], 'Group B');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('c')] });
-		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
+		expect(wrapper.getByTestId('canvas-selection-toolbar-extract')).toBeTruthy();
 	});
 
 	it('is hidden in read-only mode', () => {
@@ -143,6 +161,13 @@ describe('CanvasSelectionToolbar', () => {
 		expect(store.allGroups[0].nodeIds).toEqual(['a', 'b']);
 		expect(store.allGroups[0].title).toBe('Group 1');
 		expect(wrapper.emitted()['group-created']).toEqual([[store.allGroups[0].id]]);
+	});
+
+	it('emits extract-workflow when Extract is clicked', async () => {
+		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
+		await fireEvent.click(wrapper.getByTestId('canvas-selection-toolbar-extract'));
+
+		expect(wrapper.emitted()['extract-workflow']).toEqual([[['a', 'b']]]);
 	});
 
 	it('increments the default title for each new group', async () => {
@@ -170,7 +195,7 @@ describe('CanvasSelectionToolbar', () => {
 		expect(store.allGroups[0].nodeIds).toEqual(['a', 'agent', 'memory', 'tool']);
 	});
 
-	it('is hidden when an expanded sub-node already belongs to another group', () => {
+	it('hides Group and shows Extract when an expanded sub-node already belongs to another group', () => {
 		expandSelectionWithSubNodesMock.mockImplementation((nodeIds: string[]) => [
 			...nodeIds,
 			'memory',
@@ -180,7 +205,8 @@ describe('CanvasSelectionToolbar', () => {
 		store.createGroup(['other', 'memory'], 'Other');
 
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('agent')] });
-		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
+		expect(wrapper.getByTestId('canvas-selection-toolbar-extract')).toBeTruthy();
 	});
 
 	it('positions the toolbar centered above the selection rect in world coordinates', () => {

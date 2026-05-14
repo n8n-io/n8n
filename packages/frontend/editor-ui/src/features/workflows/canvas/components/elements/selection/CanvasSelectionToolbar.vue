@@ -7,6 +7,7 @@ import type { GraphNode } from '@vue-flow/core';
 
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 
 const TOOLBAR_OFFSET_PX = 12;
 
@@ -22,13 +23,27 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
+const { isSelectionExtractable } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
 	readOnly: () => props.readOnly,
 });
 
 const emit = defineEmits<{
 	'group-created': [id: string];
+	'extract-workflow': [ids: string[]];
 }>();
+
+const selectedNodeIds = computed(() => props.selectedNodes.map((node) => node.id));
+
+const canExtractWorkflow = computed(
+	() => !props.readOnly && isSelectionExtractable(selectedNodeIds.value).valid,
+);
+
+const isToolbarVisible = computed(() => canGroup.value || canExtractWorkflow.value);
+
+const extractWorkflowLabel = computed(() =>
+	i18n.baseText('contextMenu.extract', { adjustToNumber: props.selectedNodes.length }),
+);
 
 const position = computed(() => {
 	const rect = getRectOfNodes(props.selectedNodes);
@@ -42,12 +57,16 @@ function onGroupClick() {
 	const group = groupSelection();
 	if (group) emit('group-created', group.id);
 }
+
+function onExtractWorkflowClick() {
+	emit('extract-workflow', selectedNodeIds.value);
+}
 </script>
 
 <template>
 	<Teleport :to="teleportTarget" :disabled="!teleportTarget">
 		<div
-			v-if="canGroup"
+			v-if="isToolbarVisible"
 			:class="$style.toolbar"
 			:style="{
 				transform: `translate(${position.left}px, ${position.top}px) translate(-50%, -100%)`,
@@ -55,7 +74,11 @@ function onGroupClick() {
 			data-test-id="canvas-selection-toolbar"
 			@mousedown.stop
 		>
-			<N8nTooltip placement="top" :content="i18n.baseText('canvas.selection.toolbar.group')">
+			<N8nTooltip
+				v-if="canGroup"
+				placement="top"
+				:content="i18n.baseText('canvas.selection.toolbar.group')"
+			>
 				<N8nIconButton
 					size="small"
 					variant="ghost"
@@ -64,6 +87,17 @@ function onGroupClick() {
 					data-test-id="canvas-selection-toolbar-group"
 					:aria-label="i18n.baseText('canvas.selection.toolbar.group')"
 					@click.stop="onGroupClick"
+				/>
+			</N8nTooltip>
+			<N8nTooltip v-if="canExtractWorkflow" placement="top" :content="extractWorkflowLabel">
+				<N8nIconButton
+					size="small"
+					variant="ghost"
+					icon="workflow"
+					icon-size="large"
+					data-test-id="canvas-selection-toolbar-extract"
+					:aria-label="extractWorkflowLabel"
+					@click.stop="onExtractWorkflowClick"
 				/>
 			</N8nTooltip>
 		</div>

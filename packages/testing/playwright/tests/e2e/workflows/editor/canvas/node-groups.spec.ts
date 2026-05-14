@@ -35,6 +35,7 @@ test.describe(
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
 
 			await expect(n8n.canvas.selectionToolbar.groupButton()).toBeVisible();
+			await expect(n8n.canvas.selectionToolbar.extractSubWorkflowButton()).toBeVisible();
 			await n8n.canvas.selectionToolbar.groupButton().click();
 
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
@@ -85,7 +86,7 @@ test.describe(
 			await expect(n8n.canvas.connectionBetweenNodes('Set A', 'Set B')).toHaveCount(1);
 		});
 
-		test('hides the selection toolbar when nodes inside an existing group are selected', async ({
+		test('hides the Group action when nodes inside an existing group are selected', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.selectNodes(['Set A', 'Set B', 'Set C']);
@@ -93,7 +94,8 @@ test.describe(
 			await n8n.canvas.deselectAll();
 
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
-			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
+			await expect(n8n.canvas.selectionToolbar.groupButton()).toBeHidden();
+			await expect(n8n.canvas.selectionToolbar.extractSubWorkflowButton()).toBeVisible();
 		});
 
 		test('hides the toolbar for invalid selections', async ({ n8n }) => {
