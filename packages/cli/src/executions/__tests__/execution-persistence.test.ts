@@ -527,6 +527,46 @@ describe('ExecutionPersistence', () => {
 				expect(fsStore.write).not.toHaveBeenCalled();
 			});
 
+			it('should apply requireNotFinished condition', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.update(
+					executionId,
+					{ data: runData, status: 'success' },
+					{ requireNotFinished: true },
+				);
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId, finished: false },
+					{ status: 'success' },
+				);
+			});
+
+			it('should treat undefined `affected` from the driver as zero rows updated', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+
+				const mockTx = mock<EntityManager>();
+				mockTx.update.mockResolvedValue({ affected: undefined, generatedMaps: [], raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const result = await executionPersistence.update(
+					executionId,
+					{ data: runData, status: 'success' },
+					{ requireStatus: 'waiting' },
+				);
+
+				expect(result).toBe(false);
+				expect(fsStore.read).not.toHaveBeenCalled();
+				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
 			it('should apply requireNotCanceled condition', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
