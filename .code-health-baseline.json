@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-13T10:23:52.870Z",
-	"totalViolations": 87,
+	"generated": "2026-05-14T12:22:10.584Z",
+	"totalViolations": 102,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -70,12 +70,6 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 300,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "88d67e2ef747"
-			},
-			{
-				"rule": "catalog-violations",
 				"line": 259,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "69d6fa7e46f9"
@@ -97,6 +91,12 @@
 				"line": 290,
 				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "46cb48884e22"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 300,
+				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "88d67e2ef747"
 			},
 			{
 				"rule": "catalog-violations",
@@ -279,26 +279,6 @@
 				"hash": "283fa9114c03"
 			}
 		],
-		"packages/node-dev/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 47,
-				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "6988b9f58c92"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "da9b64834300"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 53,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "632a744e397e"
-			}
-		],
 		"packages/nodes-base/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -311,12 +291,6 @@
 				"line": 963,
 				"message": "semver appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "2daf37aa14e4"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 968,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "3f93c404ae9c"
 			},
 			{
 				"rule": "catalog-violations",
@@ -356,9 +330,35 @@
 			},
 			{
 				"rule": "catalog-violations",
+				"line": 968,
+				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "3f93c404ae9c"
+			},
+			{
+				"rule": "catalog-violations",
 				"line": 894,
 				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "ac254baa61f9"
+			}
+		],
+		"packages/node-dev/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 47,
+				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6988b9f58c92"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 53,
+				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "632a744e397e"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 46,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "da9b64834300"
 			}
 		],
 		"packages/@n8n/node-cli/package.json": [
@@ -376,15 +376,15 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 51,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "9711a9b00bf9"
-			},
-			{
-				"rule": "catalog-violations",
 				"line": 55,
 				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "6a9e12780943"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 51,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9711a9b00bf9"
 			}
 		],
 		"packages/frontend/editor-ui/package.json": [
@@ -487,30 +487,6 @@
 				"hash": "51cb5069f382"
 			}
 		],
-		"packages/@n8n/benchmark/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 36,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "67f9d81d9528"
-			}
-		],
-		"packages/@n8n/cli/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 74,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "733c3960022e"
-			}
-		],
-		"packages/@n8n/computer-use/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 47,
-				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "f50c1eee2ed6"
-			}
-		],
 		"packages/workflow/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -529,6 +505,30 @@
 				"line": 68,
 				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "b660317b5f6f"
+			}
+		],
+		"packages/@n8n/computer-use/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 47,
+				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f50c1eee2ed6"
+			}
+		],
+		"packages/@n8n/benchmark/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 36,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "67f9d81d9528"
+			}
+		],
+		"packages/@n8n/cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 74,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "733c3960022e"
 			}
 		],
 		"packages/@n8n/eslint-plugin-community-nodes/package.json": [
@@ -557,24 +557,116 @@
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1783000000000-CreateAgentTables.ts is prefixed with a future timestamp (1783000000000, ~50d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "d81428d567aa"
+				"message": "1783000000000-CreateAgentTables.ts is prefixed with a future timestamp (1783000000000, ~49d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "93fcfb9e7024"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1783000000001-CreateAgentExecutionTables.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1783000000001-CreateAgentExecutionTables.ts is prefixed with a future timestamp (1783000000001, ~50d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "e33a8a794126"
+				"message": "1783000000001-CreateAgentExecutionTables.ts is prefixed with a future timestamp (1783000000001, ~49d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "350cda83a9ee"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1784000000000-CreateAgentObservationTables.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1784000000000-CreateAgentObservationTables.ts is prefixed with a future timestamp (1784000000000, ~61d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "4bae5ef065ad"
+				"message": "1784000000000-CreateAgentObservationTables.ts is prefixed with a future timestamp (1784000000000, ~60d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "dc6692aa28db"
+			}
+		],
+		"package.json": [
+			{
+				"rule": "stale-overrides",
+				"line": 100,
+				"message": "Override \"@azure/identity\" duplicates a catalog entry for @azure/identity — set the override to \"catalog:\" or remove it",
+				"hash": "ef24d04a4347"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 101,
+				"message": "Override \"@lezer/common\" duplicates a catalog entry for @lezer/common — set the override to \"catalog:\" or remove it",
+				"hash": "1e5d2fb72ef8"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 104,
+				"message": "Override \"@types/node\" duplicates a catalog entry for @types/node — set the override to \"catalog:\" or remove it",
+				"hash": "d3577ed2e92d"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 105,
+				"message": "Override \"chokidar\" duplicates a catalog entry for chokidar — set the override to \"catalog:\" or remove it",
+				"hash": "8496c5755ef0"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 115,
+				"message": "Override \"vue-tsc\" duplicates a catalog entry for vue-tsc — set the override to \"catalog:frontend\" or remove it",
+				"hash": "5414a6c2842f"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 121,
+				"message": "Override \"form-data\" duplicates a catalog entry for form-data — set the override to \"catalog:\" or remove it",
+				"hash": "ec13014b18ab"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 123,
+				"message": "Override \"nodemailer\" duplicates a catalog entry for nodemailer — set the override to \"catalog:\" or remove it",
+				"hash": "1a696378ebfc"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 125,
+				"message": "Override \"zod\" duplicates a catalog entry for zod — set the override to \"catalog:\" or remove it",
+				"hash": "6224a1e7997d"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 135,
+				"message": "Override \"@rudderstack/rudder-sdk-node@<=3.0.0\" duplicates a catalog entry for @rudderstack/rudder-sdk-node — set the override to \"catalog:\" or remove it",
+				"hash": "71f703e2c449"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 146,
+				"message": "Override \"lodash\" duplicates a catalog entry for lodash — set the override to \"catalog:\" or remove it",
+				"hash": "3cbb69cc0ff8"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 155,
+				"message": "Override \"flatted\" duplicates a catalog entry for flatted — set the override to \"catalog:\" or remove it",
+				"hash": "7fe03ed5fec2"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 164,
+				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
+				"hash": "170e854b445c"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 165,
+				"message": "Override \"yaml@<=2.8.3\" duplicates a catalog entry for yaml — set the override to \"catalog:\" or remove it",
+				"hash": "a5ab421c217c"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 166,
+				"message": "Override \"axios\" duplicates a catalog entry for axios — set the override to \"catalog:\" or remove it",
+				"hash": "3bd62181cb8d"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 170,
+				"message": "Override \"uuid@<=13.0.1\" duplicates a catalog entry for uuid — set the override to \"catalog:\" or remove it",
+				"hash": "abd23b6d69fe"
 			}
 		]
 	}
