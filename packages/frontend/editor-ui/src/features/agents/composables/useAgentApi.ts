@@ -5,6 +5,7 @@ import type {
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentScheduleConfig,
+	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -75,12 +76,13 @@ export const connectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
+	settings?: AgentIntegrationSettings,
 ): Promise<{ status: string }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ type, credentialId },
+		{ type, credentialId, ...(settings ? { settings } : {}) },
 	);
 };
 

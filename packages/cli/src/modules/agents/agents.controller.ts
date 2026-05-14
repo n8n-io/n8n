@@ -1,11 +1,13 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
+	type AgentCredentialIntegration,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
 	type AgentScheduleConfig,
 	type AgentSseEvent,
+	type AgentIntegrationSettings,
 	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
@@ -34,6 +36,7 @@ import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -120,7 +123,20 @@ export class AgentsController {
 			credentialProvider,
 		);
 
-		return { ...agent, isRunnable: missing.length === 0 };
+		return Object.assign(agent, { isRunnable: missing.length === 0 });
+	}
+
+	private settingsForConnect(
+		integrationType: string,
+		settings: AgentIntegrationSettings | undefined,
+	): AgentIntegrationSettings | undefined {
+		if (!settings) {
+			if (integrationType === 'telegram') {
+				throw new BadRequestError('Integration settings are required for telegram');
+			}
+			return undefined;
+		}
+		return settings;
 	}
 
 	@Post('/')
@@ -677,6 +693,7 @@ export class AgentsController {
 		@Body payload: AgentIntegrationDto,
 	) {
 		const { type, credentialId } = payload;
+		const settings = this.settingsForConnect(type, payload.settings);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (!agent.publishedVersion)
@@ -697,6 +714,7 @@ export class AgentsController {
 			type,
 			req.user.id,
 			agent.projectId,
+			settings ? { settings } : {},
 		);
 
 		// Persist the integration reference on the agent
@@ -704,10 +722,24 @@ export class AgentsController {
 		const alreadyExists = existing.some(
 			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 		);
-		if (!alreadyExists) {
-			agent.integrations = [...existing, { type, credentialId, credentialName: credential.name }];
-			await this.agentRepository.save(agent);
-		}
+		const integration: AgentCredentialIntegration = {
+			type,
+			credentialId,
+			credentialName: credential.name,
+			...(settings ? { settings } : {}),
+		};
+
+		// Replace existing integration or append a new one
+		agent.integrations = alreadyExists
+			? existing.map((existingIntegration) =>
+					isAgentCredentialIntegration(existingIntegration) &&
+					existingIntegration.type === type &&
+					existingIntegration.credentialId === credentialId
+						? integration
+						: existingIntegration,
+				)
+			: [...existing, integration];
+		await this.agentRepository.save(agent);
 
 		// Notify peer mains so they connect the integration too — without this
 		// step inbound webhooks load-balanced to a follower would 404.
@@ -716,6 +748,7 @@ export class AgentsController {
 			type,
 			credentialId,
 			'connect',
+			settings,
 		);
 
 		return { status: 'connected' };
@@ -818,10 +851,16 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const chatStatus = this.chatIntegrationService.getStatus(agentId);
+		const chatIntegrations = (agent.integrations ?? [])
+			.filter(isAgentCredentialIntegration)
+			.map((i) => ({
+				type: i.type,
+				credentialId: i.credentialId,
+				...(i.settings ? { settings: i.settings } : {}),
+			}));
 		const schedule = this.agentScheduleService.getConfig(agent);
 		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
-		const connectedIntegrations = [...chatStatus.integrations, ...scheduleIntegrations];
+		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
 
 		return {
 			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',

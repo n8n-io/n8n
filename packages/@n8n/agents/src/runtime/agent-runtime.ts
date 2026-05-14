@@ -1494,12 +1494,12 @@ export class AgentRuntime {
 		switch (provider) {
 			case 'anthropic': {
 				const cfg = thinking as AnthropicThinkingConfig;
+				if (cfg.mode === 'adaptive') {
+					return { anthropic: { thinking: { type: 'adaptive' } } };
+				}
 				return {
 					anthropic: {
-						thinking: {
-							type: 'enabled',
-							budgetTokens: cfg.budgetTokens ?? 10000,
-						},
+						thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
 					},
 				};
 			}

@@ -248,7 +248,14 @@ export {
 	agentSkillSchema,
 } from './agents/create-agent-skill.dto';
 export { UpdateAgentSkillDto } from './agents/update-agent-skill.dto';
-export { AgentIntegrationDto } from './agents/agent-integration.dto';
+export {
+	AGENT_TELEGRAM_ACCESS_MODES,
+	AgentIntegrationDto,
+	agentIntegrationSettingsSchema,
+	agentTelegramSettingsSchema,
+	type AgentIntegrationSettings,
+	type AgentTelegramIntegrationSettings,
+} from './agents/agent-integration.dto';
 export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
 export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
 

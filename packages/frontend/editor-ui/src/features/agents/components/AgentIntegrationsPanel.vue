@@ -11,6 +11,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -101,6 +102,7 @@ const integrationConfigs: IntegrationConfig[] = [
 const {
 	statuses,
 	connectedCredentials,
+	integrationSettings,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -114,6 +116,19 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+
+// One ref per integration type — keyed by config.type so each card's form is
+// read and validated independently.
+const settingsFormRefs = ref<
+	Record<string, InstanceType<typeof AgentIntegrationSettingsForm> | null>
+>({});
+function getSettingsFormRef(type: string) {
+	return (el: unknown) => {
+		settingsFormRefs.value[type] = (el ?? null) as InstanceType<
+			typeof AgentIntegrationSettingsForm
+		> | null;
+	};
+}
 const copied = ref(false);
 const showManifest = ref(false);
 
@@ -288,8 +303,10 @@ async function fetchCredentials() {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
+	if (settingsFormRefs.value[type]?.validationError) return;
+	const settings = settingsFormRefs.value[type]?.currentSettings;
 	try {
-		await connect(type, credId);
+		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
 		emit('trigger-added', { triggerType: type, triggers });
 		emitConnectedTriggers();
@@ -435,73 +452,89 @@ onMounted(async () => {
 					>
 						<N8nText size="small">{{ config.noCredentialsMessage }}</N8nText>
 					</div>
-
-					<N8nText v-if="hasError(config.type)" :class="$style.errorText" size="small">
-						{{ errorMessages[config.type] }}
-						<a
-							v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
-							:class="$style.link"
-							href="#"
-							@click.prevent="onEditCredential(config.type)"
-							>Edit credential</a
-						>
-					</N8nText>
-
-					<div :class="$style.actions">
-						<N8nButton
-							:disabled="!selectedCredentials[config.type] || isLoading(config.type)"
-							:loading="isLoading(config.type)"
-							size="small"
-							:data-testid="`${config.type}-connect-button`"
-							@click="onConnect(config.type)"
-						>
-							<N8nIcon icon="plug" :size="14" />
-							Connect
-						</N8nButton>
-					</div>
 				</div>
 
 				<div v-else :class="$style.connectedSection">
 					<N8nText size="small">
 						{{ config.connectedDescription }}
 					</N8nText>
+				</div>
 
-					<!-- Slack App Manifest (Slack only) -->
-					<template v-if="config.type === 'slack'">
-						<N8nText :class="$style.manifestHint" size="small">
-							Copy the app manifest and paste it into your Slack app's settings to configure events,
-							scopes, and interactivity.
-							<a :class="$style.link" href="#" @click.prevent="showManifest = true">View JSON</a>
-						</N8nText>
-						<N8nButton variant="outline" size="small" @click="copyManifest">
-							<N8nIcon :icon="copied ? 'check' : 'copy'" :size="14" />
-							{{ copied ? 'Copied' : 'Copy manifest' }}
-						</N8nButton>
-					</template>
+				<AgentIntegrationSettingsForm
+					:ref="getSettingsFormRef(config.type)"
+					:type="config.type"
+					:disabled="isConnected(config.type) || isLoading(config.type)"
+					:connected="isConnected(config.type)"
+					:saved-settings="integrationSettings[config.type]"
+				/>
 
+				<N8nText
+					v-if="!isConnected(config.type) && hasError(config.type)"
+					:class="$style.errorText"
+					size="small"
+				>
+					{{ errorMessages[config.type] }}
+					<a
+						v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
+						:class="$style.link"
+						href="#"
+						@click.prevent="onEditCredential(config.type)"
+						>Edit credential</a
+					>
+				</N8nText>
+
+				<!-- Slack App Manifest (Slack only, shown when connected) -->
+				<template v-if="isConnected(config.type) && config.type === 'slack'">
+					<N8nText :class="$style.manifestHint" size="small">
+						Copy the app manifest and paste it into your Slack app's settings to configure events,
+						scopes, and interactivity.
+						<a :class="$style.link" href="#" @click.prevent="showManifest = true">View JSON</a>
+					</N8nText>
+					<N8nButton variant="outline" size="small" @click="copyManifest">
+						<N8nIcon :icon="copied ? 'check' : 'copy'" :size="14" />
+						{{ copied ? 'Copied' : 'Copy manifest' }}
+					</N8nButton>
+				</template>
+
+				<div v-if="!isConnected(config.type)" :class="$style.actions">
 					<N8nButton
-						:class="$style.actionButton"
-						variant="destructive"
+						:disabled="
+							!selectedCredentials[config.type] ||
+							isLoading(config.type) ||
+							!!settingsFormRefs[config.type]?.validationError
+						"
 						:loading="isLoading(config.type)"
 						size="small"
-						:data-testid="`${config.type}-disconnect-button`"
-						@click="onDisconnect(config.type)"
+						:data-testid="`${config.type}-connect-button`"
+						@click="onConnect(config.type)"
 					>
-						<N8nIcon icon="unlink" :size="14" />
-						Disconnect
+						<N8nIcon icon="plug" :size="14" />
+						Connect
 					</N8nButton>
-
-					<!-- Manifest modal (Slack only) -->
-					<N8nDialog
-						v-if="config.type === 'slack'"
-						:open="showManifest"
-						header="Slack App Manifest"
-						size="medium"
-						@update:open="showManifest = $event"
-					>
-						<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
-					</N8nDialog>
 				</div>
+				<N8nButton
+					v-else
+					:class="$style.actionButton"
+					variant="destructive"
+					:loading="isLoading(config.type)"
+					size="small"
+					:data-testid="`${config.type}-disconnect-button`"
+					@click="onDisconnect(config.type)"
+				>
+					<N8nIcon icon="unlink" :size="14" />
+					Disconnect
+				</N8nButton>
+
+				<!-- Manifest modal (Slack only) -->
+				<N8nDialog
+					v-if="config.type === 'slack'"
+					:open="showManifest"
+					header="Slack App Manifest"
+					size="medium"
+					@update:open="showManifest = $event"
+				>
+					<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
+				</N8nDialog>
 			</div>
 		</N8nCard>
 	</div>
