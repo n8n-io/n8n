@@ -474,6 +474,14 @@ export class FrontendService {
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
 
+		// Re-resolve on every settings fetch so a license upgrade/downgrade
+		// (and the tier-default it implies) propagates to the FE without an
+		// instance restart. The env override still wins inside the resolver.
+		this.settings.evaluationConcurrencyLimit = resolveEvaluationConcurrencyLimit(
+			this.globalConfig.executions,
+			this.license,
+		);
+
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
 			sharing: this.license.isSharingEnabled(),

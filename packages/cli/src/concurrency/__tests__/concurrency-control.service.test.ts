@@ -12,6 +12,7 @@ import {
 } from '@/concurrency/concurrency-control.service';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
+import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from '../concurrency-queue';
@@ -31,10 +32,29 @@ describe('ConcurrencyControlService', () => {
 		},
 	});
 
+	// Default plan is `Community` so the tier-default resolver returns `1`
+	// when the env var is unset. Tests that exercise the lazy eval path
+	// override this (Enterprise/Business) and/or set the env var.
+	const license = mock<License>({ getPlanName: jest.fn().mockReturnValue('Community') });
+
+	// Most pre-existing tests configure `evaluationLimit` via globalConfig
+	// directly — that path mirrors an operator-set env var, so make the env
+	// look set throughout the suite. The new tier-default test toggles this
+	// off in its own `beforeEach`.
+	const originalEvalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+	beforeAll(() => {
+		process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '-1';
+	});
+	afterAll(() => {
+		if (originalEvalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+		else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEvalEnv;
+	});
+
 	afterEach(() => {
 		globalConfig.executions.concurrency.productionLimit = -1;
 		globalConfig.executions.concurrency.evaluationLimit = -1;
 		globalConfig.executions.mode = 'regular';
+		license.getPlanName.mockReturnValue('Community');
 
 		jest.clearAllMocks();
 	});
@@ -58,6 +78,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 
 				/**
@@ -91,6 +112,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 				} catch (error) {
 					/**
@@ -117,6 +139,7 @@ describe('ConcurrencyControlService', () => {
 				telemetry,
 				eventService,
 				globalConfig,
+				license,
 			);
 
 			/**
@@ -144,6 +167,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 
 				/**
@@ -170,6 +194,7 @@ describe('ConcurrencyControlService', () => {
 				telemetry,
 				eventService,
 				globalConfig,
+				license,
 			);
 
 			/**
@@ -177,6 +202,109 @@ describe('ConcurrencyControlService', () => {
 			 */
 			// @ts-expect-error Private property
 			expect(service.isEnabled).toBe(false);
+		});
+	});
+
+	describe('evaluation queue tier defaults (lazy)', () => {
+		// Env unset → resolver falls through to the license-tier default.
+		// The eval queue is built lazily on first eval-mode throttle so the
+		// license has time to activate after DI construction.
+		beforeEach(() => {
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+		});
+		afterEach(() => {
+			// Restore the suite-level env so the surrounding tests still see
+			// an explicit env-set value (the path their assertions assume).
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '-1';
+		});
+
+		it('builds the eval queue on first throttle using the Business tier default (3)', async () => {
+			globalConfig.executions.concurrency.evaluationLimit = -1;
+			license.getPlanName.mockReturnValue('Business');
+
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventService,
+				globalConfig,
+				license,
+			);
+
+			// No eager queue — pending lazy resolution.
+			// @ts-expect-error Private property
+			expect(service.queues.get('evaluation')).toBeUndefined();
+
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
+
+			// @ts-expect-error Private property
+			const evalQueue = service.queues.get('evaluation') as ConcurrencyQueue;
+			expect(evalQueue).toBeInstanceOf(ConcurrencyQueue);
+			// @ts-expect-error Private property
+			expect(service.limits.get('evaluation')).toBe(3);
+		});
+
+		it('caps two simultaneous eval runs at the Enterprise tier default (5) when env is unset', async () => {
+			globalConfig.executions.concurrency.evaluationLimit = -1;
+			license.getPlanName.mockReturnValue('Enterprise');
+
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventService,
+				globalConfig,
+				license,
+			);
+
+			// Fill the queue up to the cap. These first five pass through
+			// immediately; the queue accepts up to its `concurrency` count
+			// without blocking.
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-2' });
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-3' });
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-4' });
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-5' });
+
+			// @ts-expect-error Private property
+			expect(service.limits.get('evaluation')).toBe(5);
+
+			// 6th eval cannot proceed synchronously — the queue is at cap.
+			// We don't await because the queue would block. Instead, schedule
+			// the enqueue and check it hasn't resolved in a microtask flush.
+			let sixthResolved = false;
+			void service.throttle({ mode: 'evaluation', executionId: 'eval-6' }).then(() => {
+				sixthResolved = true;
+			});
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(sixthResolved).toBe(false);
+
+			// Release one slot and the sixth eval should pass through.
+			service.release({ mode: 'evaluation' });
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(sixthResolved).toBe(true);
+		});
+
+		it('env override wins on the lazy path too', async () => {
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '-1';
+			globalConfig.executions.concurrency.evaluationLimit = -1;
+			license.getPlanName.mockReturnValue('Enterprise');
+
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventService,
+				globalConfig,
+				license,
+			);
+
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
+
+			// Env explicitly -1 (unlimited) — no eval queue should be created
+			// regardless of tier.
+			// @ts-expect-error Private property
+			expect(service.queues.get('evaluation')).toBeUndefined();
 		});
 	});
 
@@ -200,6 +328,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -229,6 +358,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -256,6 +386,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -286,6 +417,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -315,6 +447,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -342,6 +475,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -372,6 +506,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -401,6 +536,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -428,6 +564,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -459,6 +596,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 
 					jest
@@ -499,6 +637,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('webhook');
@@ -526,6 +665,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('evaluation');
@@ -557,6 +697,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -585,6 +726,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -614,6 +756,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -640,6 +783,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -668,6 +812,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -694,6 +839,7 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 					globalConfig,
+					license,
 				);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -730,6 +876,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 
 					/**
@@ -764,6 +911,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 
 					/**
@@ -797,6 +945,7 @@ describe('ConcurrencyControlService', () => {
 						telemetry,
 						eventService,
 						globalConfig,
+						license,
 					);
 
 					/**

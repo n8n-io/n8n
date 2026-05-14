@@ -48,7 +48,12 @@ describe('FrontendService', () => {
 		generic: { releaseChannel: 'stable', timezone: 'UTC' },
 		publicApi: { path: 'api', swaggerUiDisabled: false },
 		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
-		executions: { pruneData: false, pruneDataMaxAge: 336, pruneDataMaxCount: 10000 },
+		executions: {
+			pruneData: false,
+			pruneDataMaxAge: 336,
+			pruneDataMaxCount: 10000,
+			concurrency: { productionLimit: -1, evaluationLimit: -1 },
+		},
 		hideUsagePage: false,
 		license: { tenantId: 1 },
 		mfa: { enabled: false },
@@ -264,6 +269,43 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.communityNodesManagedByEnv).toBe(false);
+		});
+
+		it('refreshes evaluationConcurrencyLimit when license tier changes between getSettings calls', async () => {
+			// Env override unset for this test so the resolver follows the
+			// license-tier branch. The override is restored by the suite's
+			// afterEach via `process.env = originalEnv`.
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			license.getPlanName.mockReturnValue('Community');
+
+			const { service } = createMockService();
+			const initial = await service.getSettings();
+			expect(initial.evaluationConcurrencyLimit).toBe(1);
+
+			// Simulate a license upgrade landing after settings have been
+			// initialised. The next getSettings() call must surface the new
+			// tier default without requiring an instance restart.
+			license.getPlanName.mockReturnValue('Enterprise');
+			const refreshed = await service.getSettings();
+			expect(refreshed.evaluationConcurrencyLimit).toBe(5);
+		});
+
+		it('keeps env override winning over license tier on refresh', async () => {
+			// Operator-set env always wins, even after a license change.
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '7';
+			globalConfig.executions = {
+				...globalConfig.executions,
+				concurrency: { productionLimit: -1, evaluationLimit: 7 },
+			} as GlobalConfig['executions'];
+			license.getPlanName.mockReturnValue('Community');
+
+			const { service } = createMockService();
+			const initial = await service.getSettings();
+			expect(initial.evaluationConcurrencyLimit).toBe(7);
+
+			license.getPlanName.mockReturnValue('Enterprise');
+			const refreshed = await service.getSettings();
+			expect(refreshed.evaluationConcurrencyLimit).toBe(7);
 		});
 	});
 

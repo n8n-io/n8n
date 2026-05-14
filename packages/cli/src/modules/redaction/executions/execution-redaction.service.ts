@@ -177,8 +177,12 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 
 		// Emit audit events after all executions have been successfully processed.
+		// Iterate over `processable` so a queued (data-undefined) row in the
+		// batch doesn't trip `resolvePolicy`. There is nothing to "reveal" on
+		// a row that carries no payload, so its omission from the audit trail
+		// matches reality — the API response for that entry has `data: null`.
 		if (options.redactExecutionData === false) {
-			for (const execution of executions) {
+			for (const execution of processable) {
 				this.eventService.emit('execution-data-revealed', {
 					user: options.user,
 					executionId: execution.id ?? '',

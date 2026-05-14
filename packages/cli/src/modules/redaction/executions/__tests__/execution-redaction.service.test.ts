@@ -161,6 +161,39 @@ describe('ExecutionRedactionService', () => {
 			expect(new Set(calledIds)).toEqual(new Set(['wf-1']));
 		});
 
+		it('skips data-less executions on the reveal-success path (audit-emit)', async () => {
+			// Reveal-success audit loop reads `resolvePolicy(execution)`, which
+			// dereferences `.data.executionData`. With a data-less row in the
+			// batch, the success path used to 500 even though the data-less
+			// row had no payload to reveal. Verify the audit event fires for
+			// the populated row and not for the data-less one.
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			const populated = makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' });
+			const dataless = {
+				id: 'queued-1',
+				mode: 'trigger' as WorkflowExecuteMode,
+				workflowId: 'wf-2',
+				data: undefined,
+				workflowData: { settings: {}, nodes: [] },
+			} as unknown as RedactableExecution;
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: false,
+			};
+
+			await expect(
+				service.processExecutions([dataless, populated], options),
+			).resolves.toBeUndefined();
+
+			const revealedCalls = eventService.emit.mock.calls.filter(
+				([eventName]) => eventName === 'execution-data-revealed',
+			);
+			expect(revealedCalls).toHaveLength(1);
+			expect(revealedCalls[0][1]).toEqual(
+				expect.objectContaining({ executionId: populated.id, workflowId: 'wf-1' }),
+			);
+		});
+
 		it('uses a single DB query for N executions (policy-driven)', async () => {
 			const executions = [
 				makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' }),
