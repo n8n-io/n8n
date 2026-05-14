@@ -120,9 +120,9 @@ describe('POST /mfa/webauthn/registration-verify (real crypto)', () => {
 		});
 		expect(typeof httpRes.body.data.id).toBe('string');
 		expect(typeof httpRes.body.data.credentialId).toBe('string');
-		// First credential → recovery codes returned to the user.
-		expect(Array.isArray(httpRes.body.data.recoveryCodes)).toBe(true);
-		expect(httpRes.body.data.recoveryCodes.length).toBeGreaterThan(0);
+		// WebAuthn registration never returns recovery codes — those belong to
+		// the TOTP setup flow only.
+		expect(httpRes.body.data.recoveryCodes).toBeUndefined();
 
 		// Persisted as we expect.
 		const credentials = await credentialRepo.find({ where: { userId: owner.id } });
@@ -148,8 +148,7 @@ describe('POST /mfa/webauthn/registration-verify (real crypto)', () => {
 		expect(updatedUser.tokensValidAfter).toBeInstanceOf(Date);
 	});
 
-	test('does not regenerate recovery codes when the user already has them', async () => {
-		// First registration generates recovery codes.
+	test('persists multiple passkey registrations side by side', async () => {
 		const firstAuth = generateAuthenticator();
 		const firstChallenge = await fetchRegistrationChallenge(owner, 'platform');
 		await testServer
@@ -168,10 +167,9 @@ describe('POST /mfa/webauthn/registration-verify (real crypto)', () => {
 			})
 			.expect(200);
 
-		// Second registration should NOT return recovery codes.
 		const secondAuth = generateAuthenticator();
 		const secondChallenge = await fetchRegistrationChallenge(owner, 'platform');
-		const secondRes = await testServer
+		await testServer
 			.authAgentFor(owner)
 			.post('/mfa/webauthn/registration-verify')
 			.send({
@@ -186,8 +184,6 @@ describe('POST /mfa/webauthn/registration-verify (real crypto)', () => {
 				attachment: 'platform',
 			})
 			.expect(200);
-
-		expect(secondRes.body.data.recoveryCodes).toBeUndefined();
 
 		const credentials = await credentialRepo.find({ where: { userId: owner.id } });
 		expect(credentials).toHaveLength(2);

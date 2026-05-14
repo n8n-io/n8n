@@ -147,10 +147,6 @@ export class SettingsPersonalPage extends BasePage {
 		return this.page.getByTestId('mfa-webauthn-register-button');
 	}
 
-	getWebAuthnDoneButton(): Locator {
-		return this.page.getByTestId('mfa-webauthn-done-button');
-	}
-
 	/**
 	 * Find a registered passkey row by its label. Scoped to `[data-test-id^="passkey-cred-"]`
 	 * so the label text doesn't accidentally match the description copy ("Use a

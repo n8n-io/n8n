@@ -58,6 +58,7 @@
     "flatted": "catalog:",
     "generate-schema": "2.6.0",
     "jsonwebtoken": "catalog:",
+    "lodash": "catalog:",
     "mockserver-client": "^5.15.0",
     "n8n": "workspace:*",
     "n8n-containers": "workspace:*",

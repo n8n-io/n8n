@@ -12,6 +12,15 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
 	() => {
+		// Re-seed the owner without a TOTP `mfaSecret`. The global setup seeds
+		// it (so the existing TOTP-focused spec can use it), but for this spec
+		// we want `availableMfaMethods` to reflect only what we explicitly
+		// register — otherwise the MFA login screen defaults to TOTP and the
+		// user has to click the switcher to reach the webauthn prompt.
+		test.beforeAll(async ({ api }) => {
+			await api.resetDatabaseWith({ owner: { mfaSecret: null, mfaRecoveryCodes: null } });
+		});
+
 		test('Should register, sign in with, and delete a passkey and a security key', async ({
 			n8n,
 		}) => {
@@ -37,12 +46,6 @@ test.describe(
 				// --- Passkey ---
 				await n8n.settingsPersonal.getEnablePasskeyButton().click();
 				await n8n.settingsPersonal.registerWebAuthnCredential('My Mac');
-				// Recovery codes step shows on the user's *first ever* credential.
-				// The seed user already has recovery codes (`test-users.ts`), so the
-				// modal closes straight away — branch on either path.
-				if (await n8n.settingsPersonal.getWebAuthnDoneButton().isVisible()) {
-					await n8n.settingsPersonal.getWebAuthnDoneButton().click();
-				}
 				await expect(n8n.settingsPersonal.getWebAuthnModal()).toBeHidden();
 				await expect(n8n.settingsPersonal.getPasskeyCredentialByLabel('My Mac')).toBeVisible();
 

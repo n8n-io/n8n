@@ -284,13 +284,6 @@ export class MFAController {
 			? 'passkey'
 			: 'security_key';
 
-		let recoveryCodes: string[] | undefined;
-		const { decryptedRecoveryCodes } = await this.mfaService.getSecretAndRecoveryCodes(userId);
-		if (decryptedRecoveryCodes.length === 0) {
-			recoveryCodes = this.mfaService.generateRecoveryCodes();
-			await this.mfaService.saveRecoveryCodes(userId, recoveryCodes);
-		}
-
 		await this.mfaService.enableMfa(userId);
 		await this.authService.rotateSession(res, req.user, true, req);
 
@@ -299,7 +292,6 @@ export class MFAController {
 			credentialId: savedCredential.credentialId,
 			label: savedCredential.label,
 			method,
-			...(recoveryCodes && { recoveryCodes }),
 		};
 	}
 

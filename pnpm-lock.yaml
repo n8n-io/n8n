@@ -4752,6 +4752,9 @@ importers:
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
       mockserver-client:
         specifier: ^5.15.0
         version: 5.15.0
