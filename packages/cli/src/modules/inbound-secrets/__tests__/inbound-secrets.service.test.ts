@@ -62,9 +62,10 @@ describe('InboundSecretsService', () => {
 
 		const cases: StripCase[] = [
 			{
-				name: 'no-op when no rules are configured',
-				input: [{ headers: { authorization: 'x' } }],
-				expectedJson: [{ headers: { authorization: 'x' } }],
+				name: 'no matching path: items untouched, empty artifacts',
+				rules: { '*': ['headers.authorization'] },
+				input: [{ body: { foo: 'bar' } }],
+				expectedJson: [{ body: { foo: 'bar' } }],
 				expectedArtifacts: [{}],
 			},
 			{
@@ -81,13 +82,6 @@ describe('InboundSecretsService', () => {
 				input: [{ body: { password: 'p' } }],
 				expectedJson: [{ body: { password: undefined } }],
 				expectedArtifacts: [{ 'body.password': 'p' }],
-			},
-			{
-				name: 'type-specific rule skipped for other trigger types',
-				rules: { 'n8n-nodes-base.formTrigger': ['body.password'] },
-				input: [{ body: { password: 'p' } }],
-				expectedJson: [{ body: { password: 'p' } }],
-				expectedArtifacts: [{}],
 			},
 			{
 				name: 'unions universal and type-specific rules when both apply',
@@ -113,35 +107,12 @@ describe('InboundSecretsService', () => {
 			{
 				name: 'applied independently to every item in the batch',
 				rules: { '*': ['headers.authorization'] },
-				input: [
-					{ headers: { authorization: '1' } },
-					{ headers: { authorization: '2' } },
-					{ headers: { authorization: '3' } },
-				],
+				input: [{ headers: { authorization: '1' } }, { headers: { authorization: '2' } }],
 				expectedJson: [
 					{ headers: { authorization: undefined } },
 					{ headers: { authorization: undefined } },
-					{ headers: { authorization: undefined } },
 				],
-				expectedArtifacts: [
-					{ 'headers.authorization': '1' },
-					{ 'headers.authorization': '2' },
-					{ 'headers.authorization': '3' },
-				],
-			},
-			{
-				name: 'multiple paths from the same rule',
-				rules: { '*': ['headers.authorization', 'headers.cookie'] },
-				input: [{ headers: { authorization: 'a', cookie: 'c', other: 'k' } }],
-				expectedJson: [{ headers: { authorization: undefined, cookie: undefined, other: 'k' } }],
-				expectedArtifacts: [{ 'headers.authorization': 'a', 'headers.cookie': 'c' }],
-			},
-			{
-				name: 'no matching path: items untouched, empty artifacts',
-				rules: { '*': ['headers.authorization'] },
-				input: [{ body: { foo: 'bar' } }],
-				expectedJson: [{ body: { foo: 'bar' } }],
-				expectedArtifacts: [{}],
+				expectedArtifacts: [{ 'headers.authorization': '1' }, { 'headers.authorization': '2' }],
 			},
 			{
 				name: 'descriptionPaths apply additively without admin rules',

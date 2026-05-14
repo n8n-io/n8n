@@ -48,28 +48,25 @@ export class InboundSecretsService {
 		triggerNodeType: string,
 		descriptionPaths: string[] = [],
 	): StripResult {
-		const wildcardPaths = this.sensitiveFieldRules['*'] ?? [];
-		const typePaths = this.sensitiveFieldRules[triggerNodeType] ?? [];
-		const paths = Array.from(new Set([...wildcardPaths, ...typePaths, ...descriptionPaths]));
+		const paths = Array.from(
+			new Set([
+				...(this.sensitiveFieldRules['*'] ?? []),
+				...(this.sensitiveFieldRules[triggerNodeType] ?? []),
+				...descriptionPaths,
+			]),
+		);
 
-		const artifactsByItem: ArtifactItem[] = [];
-
-		if (paths.length === 0) {
-			for (let i = 0; i < items.length; i++) artifactsByItem.push({});
-			return { triggerItems: items, artifactsByItem };
-		}
-
-		for (const item of items) {
+		const artifactsByItem = items.map((item) => {
 			const perItem: ArtifactItem = {};
 			for (const path of paths) {
 				const extracted = extractAndClear(item.json, path);
 				if (extracted === undefined) continue;
 				const sanitised = toJsonValue(extracted);
-				if (sanitised === undefined) continue;
-				perItem[path] = sanitised;
+				if (sanitised !== undefined) perItem[path] = sanitised;
 			}
-			artifactsByItem.push(perItem);
-		}
+			return perItem;
+		});
+
 		return { triggerItems: items, artifactsByItem };
 	}
 }

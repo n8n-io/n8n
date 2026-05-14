@@ -24,41 +24,34 @@ export class InboundSecretContextHook implements IContextEstablishmentHook {
 	}
 
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-		const items = options.triggerItems ?? [];
-		const descriptionPaths = this.resolveDescriptionPaths(options);
-
 		const { triggerItems, artifactsByItem } = this.inboundSecretsService.strip(
-			items,
+			options.triggerItems ?? [],
 			options.triggerNode.type,
-			descriptionPaths,
+			this.resolveDescriptionPaths(options),
 		);
 
-		const hasArtifacts = artifactsByItem.some((m) => Object.keys(m).length > 0);
-		if (!hasArtifacts) {
-			return { triggerItems };
-		}
+		if (!artifactsByItem.some((m) => Object.keys(m).length > 0)) return { triggerItems };
 
 		return {
 			triggerItems,
 			contextUpdate: {
 				secureArtifacts: {
 					version: 1,
-					artifacts: {
-						[options.triggerNode.name]: artifactsByItem,
-					},
+					artifacts: { [options.triggerNode.name]: artifactsByItem },
 				},
 			},
 		};
 	}
 
+	// Fail open on unknown node type so admin rules still apply.
 	private resolveDescriptionPaths(options: ContextEstablishmentOptions): string[] {
-		// Fail open on unknown node type so admin rules still apply.
 		try {
-			const description = options.workflow.nodeTypes.getByNameAndVersion(
-				options.triggerNode.type,
-				options.triggerNode.typeVersion,
-			).description;
-			return description.sensitiveOutputFields ?? [];
+			return (
+				options.workflow.nodeTypes.getByNameAndVersion(
+					options.triggerNode.type,
+					options.triggerNode.typeVersion,
+				).description.sensitiveOutputFields ?? []
+			);
 		} catch {
 			return [];
 		}
