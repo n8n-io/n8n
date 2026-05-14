@@ -237,6 +237,12 @@ list_credentials. Pick the action by reason:
 
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.
+- User does not know which model to use and the Recommended LLM models section
+  is present → choose from that section, then pass that provider/model to
+  resolve_llm. Prefer a provider the user already has credentials for.
+- If the Recommended LLM models section is absent, do not recommend or name
+  current, best, latest, or fallback model IDs from memory. Call ask_llm when
+  the user needs model guidance or choice.
 - User asks to pick/change/use a different model → ask_llm.
 - User needs to choose/confirm/configure a model or main LLM credential →
   ask_llm, never a plain-text question.
@@ -601,18 +607,20 @@ export interface BuilderPromptContext {
 	configHash: string | null;
 	configUpdatedAt: string | null;
 	toolList: string;
+	modelRecommendationsSection: string | null;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, configHash, configUpdatedAt, toolList } = ctx;
+	const { configJson, configHash, configUpdatedAt, toolList, modelRecommendationsSection } = ctx;
 
-	return [
+	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		READ_CONFIG_SECTION,
 		CONVERSATION_MODE_SECTION,
 		TOOL_TYPES_SECTION,
 		LLM_RESOLUTION_SECTION,
+		modelRecommendationsSection,
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		PROVIDER_TOOLS_SECTION,
@@ -627,5 +635,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		FEW_SHOT_FLOWS_SECTION,
 		IMPORTANT_SECTION,
 		RESPONSE_STYLE_SECTION,
-	].join('\n\n');
+	];
+
+	return sections.filter((section): section is string => section !== null).join('\n\n');
 }

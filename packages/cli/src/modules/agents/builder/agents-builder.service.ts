@@ -22,6 +22,7 @@ import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -159,11 +160,13 @@ export class AgentsBuilderService {
 				.join('\n') || '(none)';
 
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
+		const modelRecommendationsSection = await getModelRecommendationsSection();
 		const instructions = buildBuilderPrompt({
 			configJson,
 			configHash: getAgentConfigHash(currentConfig),
 			configUpdatedAt: agent.updatedAt.toISOString(),
 			toolList,
+			modelRecommendationsSection,
 		});
 
 		const tools = this.agentsBuilderToolsService.getTools(

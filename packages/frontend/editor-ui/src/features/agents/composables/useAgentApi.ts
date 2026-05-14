@@ -192,6 +192,7 @@ export const listAllAgents = async (
 export interface ModelInfo {
 	id: string;
 	name: string;
+	releaseDate?: string;
 	reasoning: boolean;
 	toolCall: boolean;
 }
