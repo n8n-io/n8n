@@ -67,6 +67,7 @@ runs:
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
+        SAFE_CHAIN_LOGGING: verbose
       run: |
         $INSTALL_COMMAND
       shell: bash
