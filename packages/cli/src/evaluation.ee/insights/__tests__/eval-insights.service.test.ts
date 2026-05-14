@@ -232,6 +232,41 @@ describe('EvalInsightsService', () => {
 			expect(result.insights.suggestedNext.headline.toLowerCase()).toMatch(/lock in|baseline/);
 		});
 
+		it("preserves the run's original A/B/C label when a middle run is skipped", async () => {
+			// `detail.runs` is ordered createdAt ASC and labels in the
+			// insights envelope must align with that position. If a middle
+			// run is still running / errored / missing metrics, later runs
+			// must stay on their original labels — otherwise the FE sees
+			// the winner attributed to the wrong version.
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeRun({ id: 'tr-a', workflowVersionId: 'wfv-a', metrics: { acc: 0.6 } }),
+					makeRun({
+						id: 'tr-b',
+						workflowVersionId: 'wfv-b',
+						status: 'running',
+						metrics: undefined,
+					}),
+					makeRun({ id: 'tr-c', workflowVersionId: 'wfv-c', metrics: { acc: 0.95 } }),
+				],
+			});
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			// Highest score is on the third run (workflowVersionId wfv-c),
+			// which sits at index 2 → label "C". Before the fix this would
+			// have come back as "B" because the running run was filtered
+			// out and then C took B's index in the filtered array.
+			expect(result.insights.winner.versionLabel).toBe('C');
+			expect(result.insights.winner.headline).toContain('C');
+			// Any regression on the only other scored run is attributed to
+			// "A" (the first run, index 0), not "B" (the skipped one).
+			for (const regression of result.insights.regressions) {
+				expect(regression.versionLabel).toBe('A');
+			}
+		});
+
 		it('returns a neutral envelope when no runs produce numeric metrics', async () => {
 			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
 				collection: makeCollection(),

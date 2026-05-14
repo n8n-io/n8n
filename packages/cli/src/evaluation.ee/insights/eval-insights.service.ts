@@ -91,14 +91,27 @@ export class EvalInsightsService {
 
 		// 4. Need at least two completed runs with metrics to say anything
 		// useful. Compare-of-one isn't a comparison.
-		const completedRuns = detail.runs.filter((r) => r.status === 'completed' && r.metrics);
-		if (completedRuns.length < 2) {
+		//
+		// Labels (A/B/C) are derived from the run's index in the *full*
+		// collection — `detail.runs` is ordered `createdAt ASC` (see
+		// `EvaluationCollectionRepository.getDetailByIdAndWorkflowId`). The
+		// frontend assigns labels by the same position, so if a middle run
+		// is filtered out here (still running, errored, or missing metrics)
+		// we must keep the later runs on their original positions —
+		// otherwise the insights response calls the third run "B" while the
+		// frontend shows it as "C", and the user sees the winner / regression
+		// attributed to the wrong workflow version.
+		const summaries: RunSummary[] = [];
+		detail.runs.forEach((run, originalIndex) => {
+			if (run.status === 'completed' && run.metrics) {
+				summaries.push(this.summariseRun(run, originalIndex));
+			}
+		});
+		if (summaries.length < 2) {
 			throw new BadRequestError(
 				'Collection needs at least 2 completed runs with metrics before insights can be generated',
 			);
 		}
-
-		const summaries = completedRuns.map((r, i) => this.summariseRun(r, i));
 		const startMs = Date.now();
 		let response: AiInsightsResponse;
 

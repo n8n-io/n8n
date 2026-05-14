@@ -1,7 +1,7 @@
-import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
+import { EVAL_COLLECTIONS_FLAG, GenerateInsightsDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, Post, ProjectScope, RestController } from '@n8n/decorators';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { PostHogClient } from '@/posthog';
@@ -50,12 +50,21 @@ export class EvalInsightsController {
 
 	@Post('/:workflowId/eval-collections/:collectionId/insights')
 	@ProjectScope('workflow:read')
-	async generate(req: AuthenticatedRequest<CollectionParam>) {
+	async generate(
+		req: AuthenticatedRequest<CollectionParam>,
+		_res: unknown,
+		@Body payload: GenerateInsightsDto,
+	) {
 		await this.assertFlagEnabled(req.user);
 		return await this.service.generateInsights(
 			req.user,
 			req.params.workflowId,
 			req.params.collectionId,
+			// `forceRegenerate` is the only knob today. Cache also busts on
+			// membership / completion changes, so a manual override is rarely
+			// needed — primarily here so a future "Regenerate" UI button has
+			// a path without depending on cache-bust side effects.
+			{ forceRegenerate: payload?.forceRegenerate === true },
 		);
 	}
 }

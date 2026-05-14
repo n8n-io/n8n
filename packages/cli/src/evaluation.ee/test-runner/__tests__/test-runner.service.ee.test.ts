@@ -1,6 +1,7 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import type {
+	EvaluationCollectionRepository,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
@@ -49,6 +50,7 @@ describe('TestRunnerService', () => {
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
 	const concurrencyControlService = mock<ConcurrencyControlService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const evaluationCollectionRepository = mock<EvaluationCollectionRepository>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -71,6 +73,7 @@ describe('TestRunnerService', () => {
 			instanceSettings,
 			concurrencyControlService,
 			workflowHistoryService,
+			evaluationCollectionRepository,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -515,6 +518,7 @@ describe('TestRunnerService', () => {
 				instanceSettings,
 				concurrencyControlService,
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -834,6 +838,7 @@ describe('TestRunnerService', () => {
 					instanceSettings,
 					concurrencyControlService,
 					workflowHistoryService,
+					evaluationCollectionRepository,
 				);
 			});
 
@@ -2322,6 +2327,7 @@ describe('TestRunnerService', () => {
 				instanceSettings,
 				concurrencyControlService,
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
@@ -2407,6 +2413,7 @@ describe('TestRunnerService', () => {
 				multiMainInstance,
 				concurrencyControlService,
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			setupHappyPathMocks(4);
@@ -2423,6 +2430,51 @@ describe('TestRunnerService', () => {
 			expect(testRunRepository.isCancellationRequested).toHaveBeenCalled();
 			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
 			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		// Cache-invalidation hook (TRUST-80). When a run that belongs to an
+		// eval collection finishes successfully, the collection's cached
+		// AI-insights envelope is now stale — the freshly-completed run can
+		// flip the winner / produce new regressions. Bust the cache so the
+		// next `EvalInsightsService.generateInsights` call regenerates.
+		// Skipping `markAsError` / `markAsCancelled` on purpose: those
+		// terminal states still satisfy the service's filter
+		// (`status === 'completed' && metrics`) as false, so a previously
+		// running run that ends in error never contributed to the cache.
+		describe('runTest - collection insights cache invalidation (TRUST-80)', () => {
+			test('busts the insights cache after a collection-tagged run completes', async () => {
+				setupHappyPathMocks(2);
+				// Override the outer beforeEach so the run row carries a
+				// non-null `collectionId`.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-coll', collectionId: 'col-x' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockResolvedValue(undefined as never);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-x',
+					null,
+				);
+			});
+
+			test('does not call updateInsightsCache when the completed run has no collectionId', async () => {
+				setupHappyPathMocks(2);
+				// `mock<TestRun>(...)` returns a deep-mocked proxy where
+				// unset fields evaluate truthy, so we have to spell out the
+				// nullish `collectionId` explicitly to exercise the
+				// non-collection branch of the runner.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-solo', collectionId: null }),
+				);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -2559,6 +2611,7 @@ describe('TestRunnerService', () => {
 				multiMain,
 				concurrencyControlService,
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);

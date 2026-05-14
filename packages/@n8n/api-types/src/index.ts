@@ -465,12 +465,15 @@ export {
 	aiInsightsStatusSchema,
 	aiInsightsPayloadSchema,
 	aiInsightsResponseSchema,
+	generateInsightsSchema,
+	GenerateInsightsDto,
 	type AiInsightsStatus,
 	type AiInsightsWinner,
 	type AiInsightsRegression,
 	type AiInsightsSuggestedNext,
 	type AiInsightsPayload,
 	type AiInsightsResponse,
+	type GenerateInsightsPayload,
 } from './schemas/eval-insights.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';

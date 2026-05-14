@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { Z } from '../zod-class';
+
 /**
  * AI insights for an evaluation collection. Returned by
  * `POST /workflows/:workflowId/eval-collections/:id/insights` and rendered as
@@ -66,3 +68,17 @@ export type AiInsightsRegression = z.infer<typeof regressionSchema>;
 export type AiInsightsSuggestedNext = z.infer<typeof suggestedNextSchema>;
 export type AiInsightsPayload = z.infer<typeof aiInsightsPayloadSchema>;
 export type AiInsightsResponse = z.infer<typeof aiInsightsResponseSchema>;
+
+// Optional request body for the insights endpoint. The only knob users
+// currently have is `forceRegenerate` — bypass any cached envelope and
+// re-compute. With the cache also busting on membership / completion
+// changes, this is primarily a manual-override / "regenerate" UI hook
+// rather than a workaround for stale data.
+const generateInsightsShape = {
+	forceRegenerate: z.boolean().optional(),
+};
+
+export const generateInsightsSchema = z.object(generateInsightsShape);
+export type GenerateInsightsPayload = z.infer<typeof generateInsightsSchema>;
+
+export class GenerateInsightsDto extends Z.class(generateInsightsShape) {}

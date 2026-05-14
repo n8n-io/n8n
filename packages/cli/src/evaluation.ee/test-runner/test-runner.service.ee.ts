@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
+	EvaluationCollectionRepository,
 	TestCaseExecutionRepository,
 	TestRun,
 	TestRunRepository,
@@ -89,6 +90,7 @@ export class TestRunnerService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly concurrencyControlService: ConcurrencyControlService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
 	) {}
 
 	/**
@@ -1068,6 +1070,19 @@ export class TestRunnerService {
 				this.logger.debug('Aggregated metrics', aggregatedMetrics);
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+
+				// If this run belongs to an eval collection, a fresh
+				// `completed` status with new metrics can flip the
+				// winner / produce new regressions in the insights
+				// envelope. Bust any cached envelope so the next
+				// `EvalInsightsService.generateInsights` call regenerates
+				// against the up-to-date set. Cache busts happen here (not
+				// in the repository) because terminal-state setters live
+				// in this service; centralising the bust avoids spreading
+				// the dependency across every call site.
+				if (testRun.collectionId) {
+					await this.evaluationCollectionRepository.updateInsightsCache(testRun.collectionId, null);
+				}
 
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });
 			}

@@ -1,3 +1,4 @@
+import type { GenerateInsightsDto } from '@n8n/api-types';
 import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
@@ -33,11 +34,19 @@ describe('EvalInsightsController', () => {
 		return { user, params } as unknown as AuthenticatedRequest<typeof params>;
 	}
 
+	function makeBody(over: Partial<GenerateInsightsDto> = {}): GenerateInsightsDto {
+		return { ...over } as GenerateInsightsDto;
+	}
+
 	describe('flag gating', () => {
 		it('returns 404 when the 084_eval_collections flag is off', async () => {
 			postHogClient.getFeatureFlags.mockResolvedValueOnce({});
 			await expect(
-				controller.generate(makeReq({ workflowId: 'wf-1', collectionId: 'col-1' })),
+				controller.generate(
+					makeReq({ workflowId: 'wf-1', collectionId: 'col-1' }),
+					undefined,
+					makeBody(),
+				),
 			).rejects.toThrow(NotFoundError);
 			expect(service.generateInsights).not.toHaveBeenCalled();
 		});
@@ -45,7 +54,11 @@ describe('EvalInsightsController', () => {
 		it('fails open to 404 on PostHog outage rather than 500ing', async () => {
 			postHogClient.getFeatureFlags.mockRejectedValueOnce(new Error('posthog timeout'));
 			await expect(
-				controller.generate(makeReq({ workflowId: 'wf-1', collectionId: 'col-1' })),
+				controller.generate(
+					makeReq({ workflowId: 'wf-1', collectionId: 'col-1' }),
+					undefined,
+					makeBody(),
+				),
 			).rejects.toThrow(NotFoundError);
 		});
 	});
@@ -66,10 +79,38 @@ describe('EvalInsightsController', () => {
 
 			const result = await controller.generate(
 				makeReq({ workflowId: 'wf-1', collectionId: 'col-1' }),
+				undefined,
+				makeBody(),
 			);
 
 			expect(result).toBe(response);
-			expect(service.generateInsights).toHaveBeenCalledWith(user, 'wf-1', 'col-1');
+			expect(service.generateInsights).toHaveBeenCalledWith(user, 'wf-1', 'col-1', {
+				forceRegenerate: false,
+			});
+		});
+
+		it('forwards forceRegenerate=true to the service', async () => {
+			service.generateInsights.mockResolvedValueOnce({} as never);
+			await controller.generate(
+				makeReq({ workflowId: 'wf-1', collectionId: 'col-1' }),
+				undefined,
+				makeBody({ forceRegenerate: true }),
+			);
+			expect(service.generateInsights).toHaveBeenCalledWith(user, 'wf-1', 'col-1', {
+				forceRegenerate: true,
+			});
+		});
+
+		it('defaults forceRegenerate to false when the body is absent', async () => {
+			service.generateInsights.mockResolvedValueOnce({} as never);
+			await controller.generate(
+				makeReq({ workflowId: 'wf-1', collectionId: 'col-1' }),
+				undefined,
+				undefined as unknown as GenerateInsightsDto,
+			);
+			expect(service.generateInsights).toHaveBeenCalledWith(user, 'wf-1', 'col-1', {
+				forceRegenerate: false,
+			});
 		});
 	});
 
