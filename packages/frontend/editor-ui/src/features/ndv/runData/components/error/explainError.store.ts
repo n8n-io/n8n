@@ -7,11 +7,7 @@ import { chatWithAssistant } from '@/features/ai/assistant/assistant.api';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-import {
-	buildExplainErrorQuestion,
-	parseExplainErrorResponse,
-	type ExplainErrorResult,
-} from './explainError.prompt';
+import { parseExplainErrorResponse, type ExplainErrorResult } from './explainError.prompt';
 
 export type ExplainErrorState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -30,6 +26,40 @@ function extractText(message: ChatRequest.ResponsePayload['messages'][number]): 
 	if (message.type === 'summary') return message.content;
 	if (message.type === 'agent-suggestion') return message.text;
 	return '';
+}
+
+/**
+ * Builds the `init-error-helper` payload that the AI assistant backend
+ * uses for one-shot error analysis. Mirrors the payload built by the
+ * existing "Ask n8n AI" flow but stripped to the minimum context the
+ * backend requires — the goal here is a fast, self-contained popover,
+ * not a full chat session.
+ */
+function buildInitErrorHelperPayload(error: ErrorLike): ChatRequest.InitErrorHelper {
+	const node = error.node;
+	if (!node) {
+		throw new Error('Cannot build error-helper payload without a node');
+	}
+	const simplifiedError: ChatRequest.ErrorContext['error'] = {
+		name: error.name,
+		message: error.message,
+	};
+	if ('type' in error && typeof error.type === 'string') {
+		simplifiedError.type = error.type;
+	}
+	if (error.description) {
+		simplifiedError.description = error.description;
+	}
+	if (error.stack) {
+		simplifiedError.stack = error.stack;
+	}
+	return {
+		role: 'user',
+		type: 'init-error-helper',
+		user: { firstName: 'there' },
+		error: simplifiedError,
+		node,
+	};
 }
 
 function fingerprintError(error: ErrorLike): string {
@@ -74,12 +104,7 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 		await Promise.resolve();
 
 		const payload: ChatRequest.RequestPayload = {
-			payload: {
-				role: 'user',
-				type: 'init-support-chat',
-				user: { firstName: 'there' },
-				question: buildExplainErrorQuestion(error),
-			},
+			payload: buildInitErrorHelperPayload(error),
 		};
 
 		let buffer = '';
