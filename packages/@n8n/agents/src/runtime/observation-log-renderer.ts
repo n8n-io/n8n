@@ -5,17 +5,17 @@ import type {
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
 
-const MARKER_SYMBOLS: Record<ObservationLogMarker, string> = {
-	critical: '🔴',
-	important: '🟡',
-	info: '🟢',
-	completion: '✅',
+const MARKER_LABELS: Record<ObservationLogMarker, string> = {
+	critical: 'CRITICAL',
+	important: 'IMPORTANT',
+	info: 'INFO',
+	completion: 'COMPLETION',
 };
 
 const MEMORY_INTRO =
 	'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.';
 const MARKER_LEGEND =
-	'Marker legend: 🔴 critical, 🟡 important, 🟢 contextual info, ✅ completed/resolved.';
+	'Marker legend: CRITICAL = must retain, IMPORTANT = useful continuity, INFO = contextual detail, COMPLETION = completed/resolved.';
 
 export interface RenderObservationLogOptions {
 	renderTokenBudget?: number;
@@ -40,7 +40,7 @@ function observationTokenCount(entry: ObservationLogEntry, tokenCounter: TokenCo
 }
 
 function renderBullet(entry: ObservationLogEntry, indent = ''): string {
-	return `${indent}* ${MARKER_SYMBOLS[entry.marker]} (${formatObservationTime(entry.createdAt)}) ${entry.text}`;
+	return `${indent}* ${MARKER_LABELS[entry.marker]} (${formatObservationTime(entry.createdAt)}) ${entry.text}`;
 }
 
 export function renderObservationLog(

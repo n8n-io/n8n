@@ -44,10 +44,10 @@ describe('renderObservationLog', () => {
 				'## Memory',
 				'',
 				'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.',
-				'Marker legend: 🔴 critical, 🟡 important, 🟢 contextual info, ✅ completed/resolved.',
+				'Marker legend: CRITICAL = must retain, IMPORTANT = useful continuity, INFO = contextual detail, COMPLETION = completed/resolved.',
 				'',
-				'* 🟡 (14:30) User is rebuilding observational memory.',
-				'  * ✅ (14:31) Plan 4 was completed.',
+				'* IMPORTANT (14:30) User is rebuilding observational memory.',
+				'  * COMPLETION (14:31) Plan 4 was completed.',
 				'</observations>',
 			].join('\n'),
 		);
@@ -71,7 +71,7 @@ describe('renderObservationLog', () => {
 
 		expect(rendered).toContain('<observations>');
 		expect(rendered).toContain('</observations>');
-		expect(rendered).toContain('* 🔴 (14:30) User wants the SDK to stay unopinionated.');
+		expect(rendered).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
 		expect(rendered).not.toContain('This entry no longer fits.');
 	});
 

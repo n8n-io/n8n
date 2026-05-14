@@ -24,10 +24,10 @@ describe('parseObservationLogMarkdown', () => {
 	it('parses marker bullets and attaches marked sub-bullets to the previous parent', () => {
 		const parsed = parseObservationLogMarkdown(
 			[
-				'* 🔴 (14:30) User chose the observation log model.',
-				'  * ✅ (14:31) Plan 4 was completed.',
+				'* CRITICAL (14:30) User chose the observation log model.',
+				'  * COMPLETION (14:31) Plan 4 was completed.',
 				'not a bullet',
-				'* 🟢 (14:32) Small context detail.',
+				'* INFO (14:32) Small context detail.',
 			].join('\n'),
 		);
 
@@ -162,7 +162,7 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'short turn', new Date(2026, 4, 12, 14, 30))],
 		});
 
-		const observe = jest.fn().mockResolvedValue('* 🔴 (14:30) User said something durable.');
+		const observe = jest.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
 
 		const result = await runObservationLogObserver({
 			memory: store,
@@ -199,8 +199,8 @@ describe('runObservationLogObserver', () => {
 			observe: async () =>
 				await Promise.resolve(
 					[
-						'* 🔴 (14:31) User needs the current request remembered.',
-						'  * ✅ (14:31) Observer pipeline parsed the child row.',
+						'* CRITICAL (14:31) User needs the current request remembered.',
+						'  * COMPLETION (14:31) Observer pipeline parsed the child row.',
 					].join('\n'),
 				),
 		});

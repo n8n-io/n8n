@@ -15,14 +15,15 @@ import { estimateObservationTokens } from '../types/sdk/observation-log';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
-const MARKER_BY_SYMBOL: Record<string, ObservationLogMarker> = {
-	'🔴': 'critical',
-	'🟡': 'important',
-	'🟢': 'info',
-	'✅': 'completion',
+const MARKER_BY_TOKEN: Record<string, ObservationLogMarker> = {
+	CRITICAL: 'critical',
+	IMPORTANT: 'important',
+	INFO: 'info',
+	COMPLETION: 'completion',
 };
 
-const BULLET_PATTERN = /^(\s*)[*-]\s+([🔴🟡🟢✅])(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/u;
+const BULLET_PATTERN =
+	/^(\s*)[*-]\s+(CRITICAL|IMPORTANT|INFO|COMPLETION)(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/iu;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
@@ -100,8 +101,8 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 			continue;
 		}
 
-		const [, indentation, markerSymbol, text] = match;
-		const marker = MARKER_BY_SYMBOL[markerSymbol];
+		const [, indentation, markerToken, text] = match;
+		const marker = MARKER_BY_TOKEN[markerToken.toUpperCase()];
 		const isChild = indentation.length > 0;
 		if (isChild && currentParentIndex === null) {
 			skippedLines.push(rawLine);

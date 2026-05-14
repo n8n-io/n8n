@@ -9,10 +9,10 @@ You receive: the active observation log with IDs, markers, and timestamps; the c
 
 MARKERS AND PRIORITY
 
-🔴 Critical. Facts, decisions, identities, commitments. NEVER drop. May merge with other 🔴 observations on the SAME topic if they restate the same thing.
-🟡 Important. Preferences, ongoing work, recent activity. Drop ONLY if clearly superseded or redundant. Prefer merging over dropping.
-🟢 Info. Small acknowledgments, recoverable detail, conversational filler. FIRST to drop when the log is oversized. Drop older 🟢 before newer 🟢.
-✅ Completion. Drop together with the parent observation when the parent is dropped. May fold into the merged observation when the parent is merged.
+CRITICAL. Facts, decisions, identities, commitments. NEVER drop. May merge with other CRITICAL observations on the SAME topic if they restate the same thing.
+IMPORTANT. Preferences, ongoing work, recent activity. Drop ONLY if clearly superseded or redundant. Prefer merging over dropping.
+INFO. Small acknowledgments, recoverable detail, conversational filler. FIRST to drop when the log is oversized. Drop older INFO before newer INFO.
+COMPLETION. Drop together with the parent observation when the parent is dropped. May fold into the merged observation when the parent is merged.
 
 TIEBREAKER: When two observations are equally important, keep the more recent one.
 
@@ -21,19 +21,19 @@ EXAMPLES
 Example 1: Log under budget. Return empty arrays.
 
 Input:
-[obs_001] 🔴 (14:30) User is migrating @n8n/agents from Mastra to internal SDK
-[obs_002] 🟡 (14:35) User adopted two-stage compression model (Observer + Reflector)
+[obs_001] CRITICAL (14:30) User is migrating @n8n/agents from Mastra to internal SDK
+[obs_002] IMPORTANT (14:35) User adopted two-stage compression model (Observer + Reflector)
 Budget: 5000 tokens. Current: 600 tokens.
 
 Output:
 {"drop": [], "merge": []}
 
-Example 2: Multiple 🔴 observations restating the same fact. Merge them.
+Example 2: Multiple CRITICAL observations restating the same fact. Merge them.
 
 Input:
-[obs_010] 🔴 (09:00) User works at Acme on the platform team
-[obs_034] 🔴 (10:15) User confirmed they joined Acme platform team 8 months ago
-[obs_078] 🔴 (12:00) User leads the storage subgroup within the platform team
+[obs_010] CRITICAL (09:00) User works at Acme on the platform team
+[obs_034] CRITICAL (10:15) User confirmed they joined Acme platform team 8 months ago
+[obs_078] CRITICAL (12:00) User leads the storage subgroup within the platform team
 
 Output:
 {
@@ -41,30 +41,30 @@ Output:
   "merge": [
     {
       "supersedes": ["obs_010", "obs_034", "obs_078"],
-      "marker": "🔴",
+      "marker": "CRITICAL",
       "text": "User works at Acme on the platform team (joined 8 months ago); leads the storage subgroup."
     }
   ]
 }
 
-Example 3: Old 🟢 acknowledgments. Drop them.
+Example 3: Old INFO acknowledgments. Drop them.
 
 Input:
-[obs_001] 🟢 (08:00) User greeted the agent
-[obs_002] 🟢 (08:30) User thanked agent for an earlier explanation
-[obs_023] 🟢 (14:00) User confirmed they understood the recent answer
+[obs_001] INFO (08:00) User greeted the agent
+[obs_002] INFO (08:30) User thanked agent for an earlier explanation
+[obs_023] INFO (14:00) User confirmed they understood the recent answer
 Budget: 3000 tokens. Current: 4200 tokens.
 
 Output:
 {"drop": ["obs_001", "obs_002"], "merge": []}
 
-(Keep the most recent acknowledgment; drop older filler. If budget pressure required it, obs_023 could also be dropped, but newer 🟢 stays before older 🟢 goes.)
+(Keep the most recent acknowledgment; drop older filler. If budget pressure required it, obs_023 could also be dropped, but newer INFO stays before older INFO goes.)
 
-Example 4: 🟡 observation superseded by a later one.
+Example 4: IMPORTANT observation superseded by a later one.
 
 Input:
-[obs_005] 🟡 (10:00) User plans to use Postgres for the memory store
-[obs_044] 🟡 (12:30) User switched to SQLite for the memory store (changing from earlier Postgres plan)
+[obs_005] IMPORTANT (10:00) User plans to use Postgres for the memory store
+[obs_044] IMPORTANT (12:30) User switched to SQLite for the memory store (changing from earlier Postgres plan)
 
 Output:
 {"drop": ["obs_005"], "merge": []}
@@ -74,23 +74,23 @@ Output:
 Example 5: Completion under a dropped parent.
 
 Input:
-[obs_001] 🟡 (10:00) User asked about hybrid retrieval implementation
-[obs_002] ✅ (10:30) User confirmed they understand RRF fusion
-[obs_087] 🟡 (14:00) User asked about Reflector design tradeoffs
-[obs_088] ✅ (14:30) User confirmed Reflector approach is clear
+[obs_001] IMPORTANT (10:00) User asked about hybrid retrieval implementation
+[obs_002] COMPLETION (10:30) User confirmed they understand RRF fusion
+[obs_087] IMPORTANT (14:00) User asked about Reflector design tradeoffs
+[obs_088] COMPLETION (14:30) User confirmed Reflector approach is clear
 
 Output:
 {"drop": ["obs_001", "obs_002"], "merge": []}
 
-(Old completed Q&A pair drops together. Newer 🟡 + ✅ pair stays.)
+(Old completed Q&A pair drops together. Newer IMPORTANT + COMPLETION pair stays.)
 
 Example 6: Clusters across multiple turns of the same case. Merge.
 
 Input:
-[obs_020] 🟡 (11:00) Investigation: login failing intermittently for some users
-[obs_021] 🟡 (11:05) Auth service logs show no errors during failure window
-[obs_022] 🟡 (11:10) DB connection pool at 12/50; not saturated
-[obs_023] 🟡 (11:30) Session store identified as suspect; not yet checked
+[obs_020] IMPORTANT (11:00) Investigation: login failing intermittently for some users
+[obs_021] IMPORTANT (11:05) Auth service logs show no errors during failure window
+[obs_022] IMPORTANT (11:10) DB connection pool at 12/50; not saturated
+[obs_023] IMPORTANT (11:30) Session store identified as suspect; not yet checked
 
 Output:
 {
@@ -98,7 +98,7 @@ Output:
   "merge": [
     {
       "supersedes": ["obs_020", "obs_021", "obs_022", "obs_023"],
-      "marker": "🟡",
+      "marker": "IMPORTANT",
       "text": "Intermittent login failure investigation: auth service logs clean, DB pool at 12/50 (ruled out). Session store identified as next suspect; not yet checked."
     }
   ]
@@ -109,13 +109,13 @@ BAD AND GOOD MERGE PATTERNS
 BAD: Merging across topics.
 
 Input:
-[obs_001] 🔴 User works at Acme
-[obs_002] 🔴 User is migrating @n8n/agents from Mastra
+[obs_001] CRITICAL User works at Acme
+[obs_002] CRITICAL User is migrating @n8n/agents from Mastra
 
 Wrong merge:
 {
   "supersedes": ["obs_001", "obs_002"],
-  "marker": "🔴",
+  "marker": "CRITICAL",
   "text": "User works at Acme and is migrating @n8n/agents from Mastra"
 }
 
@@ -124,23 +124,23 @@ These are about different topics. Do NOT merge them. Leave both as separate obse
 BAD: Inventing causation or content not in sources.
 
 Input:
-[obs_001] 🔴 User uses Postgres
-[obs_002] 🟡 User mentioned performance issues with the workflow
+[obs_001] CRITICAL User uses Postgres
+[obs_002] IMPORTANT User mentioned performance issues with the workflow
 
 Wrong merge:
 {
   "supersedes": ["obs_001", "obs_002"],
-  "marker": "🔴",
+  "marker": "CRITICAL",
   "text": "User has Postgres performance issues affecting workflows"
 }
 
 The sources do not state Postgres caused the performance issues. NEVER invent a causal link the observations do not state. Leave both as separate observations.
 
-BAD: Dropping 🔴 because it feels redundant when it is not duplicated.
+BAD: Dropping CRITICAL because it feels redundant when it is not duplicated.
 
 Input:
-[obs_001] 🔴 User works at Acme
-[obs_002] 🔴 User joined Acme in March 2025
+[obs_001] CRITICAL User works at Acme
+[obs_002] CRITICAL User joined Acme in March 2025
 
 Wrong:
 {"drop": ["obs_001"], "merge": []}
@@ -153,7 +153,7 @@ Correct:
   "merge": [
     {
       "supersedes": ["obs_001", "obs_002"],
-      "marker": "🔴",
+      "marker": "CRITICAL",
       "text": "User works at Acme; joined in March 2025."
     }
   ]
@@ -162,9 +162,9 @@ Correct:
 GOOD: Combining genuinely redundant facts.
 
 Input:
-[obs_001] 🟡 User prefers concise responses
-[obs_034] 🟡 User asked agent to keep answers shorter
-[obs_087] 🟡 User mentioned again that the previous response was too long
+[obs_001] IMPORTANT User prefers concise responses
+[obs_034] IMPORTANT User asked agent to keep answers shorter
+[obs_087] IMPORTANT User mentioned again that the previous response was too long
 
 Output:
 {
@@ -172,7 +172,7 @@ Output:
   "merge": [
     {
       "supersedes": ["obs_001", "obs_034", "obs_087"],
-      "marker": "🟡",
+      "marker": "IMPORTANT",
       "text": "User prefers concise responses (reinforced multiple times in this conversation)."
     }
   ]
@@ -187,7 +187,7 @@ Return JSON with two arrays:
   "merge": [
     {
       "supersedes": ["obs_id_3", "obs_id_4"],
-      "marker": "🟡",
+      "marker": "IMPORTANT",
       "text": "Merged observation that replaces the listed ones"
     }
   ]
@@ -198,9 +198,9 @@ The merged observation supersedes its sources. The drop array drops observations
 GOALS
 
 - Keep the active log under the token budget.
-- Preserve every 🔴 unless it is genuinely duplicated by another 🔴.
-- Preserve recent 🟡 unless clearly superseded.
-- Drop 🟢 aggressively, oldest first.
+- Preserve every CRITICAL unless it is genuinely duplicated by another CRITICAL.
+- Preserve recent IMPORTANT unless clearly superseded.
+- Drop INFO aggressively, oldest first.
 - Merge clusters of related observations into denser ones.
 - Preserve uncertainty: if a source says "user suspects X", the merged observation must also say "suspects", not "X is true".
 - NEVER invent content, causation, or attributions not present in the source observations.

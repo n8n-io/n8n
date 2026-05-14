@@ -2254,7 +2254,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				reflectorThresholdTokens: 10_000,
 				observationLogTailLimit: 20,
 				observe: async () =>
-					await Promise.resolve('* 🔴 (14:30) User needs observation memory wired.'),
+					await Promise.resolve('* CRITICAL (14:30) User needs observation memory wired.'),
 				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
 			},
 		});
@@ -2298,7 +2298,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				reflectorThresholdTokens: 10_000,
 				observationLogTailLimit: 20,
 				observe: async () =>
-					await Promise.resolve('* 🟡 (14:30) User asked for generate observation memory.'),
+					await Promise.resolve('* IMPORTANT (14:30) User asked for generate observation memory.'),
 				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
 			},
 		});
@@ -2366,8 +2366,8 @@ describe('AgentRuntime — observation log jobs', () => {
 				observe: async ({ transcript }) =>
 					await Promise.resolve(
 						transcript.includes('resource-one')
-							? '* 🔴 (14:30) Resource one memory.'
-							: '* 🔴 (14:30) Resource two memory.',
+							? '* CRITICAL (14:30) Resource one memory.'
+							: '* CRITICAL (14:30) Resource two memory.',
 					),
 				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
 			},
@@ -2457,7 +2457,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				reflectorThresholdTokens: 1,
 				observationLogTailLimit: 20,
 				observe: async () =>
-					await Promise.resolve(`* 🔴 (14:30) ${'Large observation. '.repeat(20)}`),
+					await Promise.resolve(`* CRITICAL (14:30) ${'Large observation. '.repeat(20)}`),
 				reflect: async () => await Promise.reject(error),
 			},
 		});

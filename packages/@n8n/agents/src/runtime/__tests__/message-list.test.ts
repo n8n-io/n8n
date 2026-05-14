@@ -147,14 +147,14 @@ describe('AgentMessageList — forLlm observation memory', () => {
 			'',
 			'The following is your memory of this conversation.',
 			'',
-			'* 🔴 (14:30) User wants the SDK to stay unopinionated.',
+			'* CRITICAL (14:30) User wants the SDK to stay unopinionated.',
 		].join('\n');
 
 		const prompt = systemContent(list);
 
 		expect(prompt).toContain('Base instructions');
 		expect(prompt).toContain('## Memory');
-		expect(prompt).toContain('* 🔴 (14:30) User wants the SDK to stay unopinionated.');
+		expect(prompt).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
 	});
 
 	it('keeps recent history messages in LLM context when observation memory is empty', () => {

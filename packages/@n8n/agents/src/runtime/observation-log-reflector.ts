@@ -14,11 +14,11 @@ import { estimateObservationTokens } from '../types/sdk/observation-log';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
-const MARKER_SYMBOLS: Record<ObservationLogMarker, string> = {
-	critical: '🔴',
-	important: '🟡',
-	info: '🟢',
-	completion: '✅',
+const MARKER_LABELS: Record<ObservationLogMarker, string> = {
+	critical: 'CRITICAL',
+	important: 'IMPORTANT',
+	info: 'INFO',
+	completion: 'COMPLETION',
 };
 
 const REFLECTOR_OVER_BUDGET_WARNING =
@@ -318,18 +318,18 @@ function readMerge(value: unknown, index: number): ObservationLogMerge {
 }
 
 function readMarker(value: unknown, index: number): ObservationLogMarker {
-	switch (value) {
-		case '🔴':
-		case 'critical':
+	if (typeof value !== 'string') {
+		throw new Error(`Reflector merge[${index}].marker must be a known observation marker`);
+	}
+
+	switch (value.toUpperCase()) {
+		case 'CRITICAL':
 			return 'critical';
-		case '🟡':
-		case 'important':
+		case 'IMPORTANT':
 			return 'important';
-		case '🟢':
-		case 'info':
+		case 'INFO':
 			return 'info';
-		case '✅':
-		case 'completion':
+		case 'COMPLETION':
 			return 'completion';
 		default:
 			throw new Error(`Reflector merge[${index}].marker must be a known observation marker`);
@@ -371,7 +371,7 @@ function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number 
 }
 
 function renderReflectionBullet(entry: ObservationLogEntry, indent = ''): string {
-	return `${indent}* [${entry.id}] ${MARKER_SYMBOLS[entry.marker]} ${entry.createdAt.toISOString()} ${entry.text}`;
+	return `${indent}* [${entry.id}] ${MARKER_LABELS[entry.marker]} ${entry.createdAt.toISOString()} ${entry.text}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -23,14 +23,14 @@ function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationL
 }
 
 describe('parseObservationLogReflectionJson', () => {
-	it('parses reflector JSON with marker symbols into storage markers', () => {
+	it('parses reflector JSON with marker labels into storage markers', () => {
 		const reflection = parseObservationLogReflectionJson(
 			[
 				'```json',
 				'{',
 				'  "drop": ["obs-1"],',
 				'  "merge": [',
-				'    { "supersedes": ["obs-2", "obs-3"], "marker": "🟡", "text": "Merged plan detail" }',
+				'    { "supersedes": ["obs-2", "obs-3"], "marker": "IMPORTANT", "text": "Merged plan detail" }',
 				'  ]',
 				'}',
 				'```',
@@ -79,8 +79,8 @@ describe('renderObservationLogForReflection', () => {
 			},
 		]);
 
-		expect(rendered).toContain('* [parent] 🔴 2026-05-12T14:30:00.000Z User chose');
-		expect(rendered).toContain('  * [child] ✅ 2026-05-12T14:31:00.000Z Plan 7');
+		expect(rendered).toContain('* [parent] CRITICAL 2026-05-12T14:30:00.000Z User chose');
+		expect(rendered).toContain('  * [child] COMPLETION 2026-05-12T14:31:00.000Z Plan 7');
 	});
 
 	it('renders active orphan children as top-level observations', () => {
@@ -99,7 +99,7 @@ describe('renderObservationLogForReflection', () => {
 			},
 		]);
 
-		expect(rendered).toContain('* [orphan] 🟡 2026-05-12T14:32:00.000Z Orphaned active');
+		expect(rendered).toContain('* [orphan] IMPORTANT 2026-05-12T14:32:00.000Z Orphaned active');
 	});
 });
 
@@ -239,14 +239,14 @@ describe('runObservationLogReflector', () => {
 			reflectorThresholdTokens: 10,
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			reflect: async (input) => {
-				expect(input.renderedObservationLog).toContain(`[${stale.id}] 🟢`);
+				expect(input.renderedObservationLog).toContain(`[${stale.id}] INFO`);
 				return await Promise.resolve(
 					JSON.stringify({
 						drop: [stale.id],
 						merge: [
 							{
 								supersedes: [oldA.id, oldB.id],
-								marker: '🟡',
+								marker: 'IMPORTANT',
 								text: 'User compared old plan A and old plan B.',
 							},
 						],
