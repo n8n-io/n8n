@@ -117,12 +117,17 @@ const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
 
-// Bound via a callback ref because the form is rendered inside a v-for and
-// Vue would otherwise collect it into an array; only the matching card's v-if
-// triggers, so a single ref to that one instance is what we want.
-const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm> | null>(null);
-function setSettingsFormRef(el: unknown): void {
-	settingsFormRef.value = (el ?? null) as InstanceType<typeof AgentIntegrationSettingsForm> | null;
+// One ref per integration type — keyed by config.type so each card's form is
+// read and validated independently.
+const settingsFormRefs = ref<
+	Record<string, InstanceType<typeof AgentIntegrationSettingsForm> | null>
+>({});
+function getSettingsFormRef(type: string) {
+	return (el: unknown) => {
+		settingsFormRefs.value[type] = (el ?? null) as InstanceType<
+			typeof AgentIntegrationSettingsForm
+		> | null;
+	};
 }
 const copied = ref(false);
 const showManifest = ref(false);
@@ -298,8 +303,8 @@ async function fetchCredentials() {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
-	if (settingsFormRef.value?.validationError) return;
-	const settings = settingsFormRef.value?.currentSettings;
+	if (settingsFormRefs.value[type]?.validationError) return;
+	const settings = settingsFormRefs.value[type]?.currentSettings;
 	try {
 		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
@@ -456,7 +461,7 @@ onMounted(async () => {
 				</div>
 
 				<AgentIntegrationSettingsForm
-					:ref="setSettingsFormRef"
+					:ref="getSettingsFormRef(config.type)"
 					:type="config.type"
 					:disabled="isConnected(config.type) || isLoading(config.type)"
 					:connected="isConnected(config.type)"
@@ -496,7 +501,7 @@ onMounted(async () => {
 						:disabled="
 							!selectedCredentials[config.type] ||
 							isLoading(config.type) ||
-							!!settingsFormRef?.validationError
+							!!settingsFormRefs[config.type]?.validationError
 						"
 						:loading="isLoading(config.type)"
 						size="small"
