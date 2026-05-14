@@ -49,7 +49,7 @@ describe('serverToNodeDescription', () => {
 		expect(description).toMatchObject({
 			name: 'notion',
 			displayName: 'Notion MCP',
-			description: notionMockServer.description,
+			description: notionMockServer.tagline,
 			iconUrl: notionMockServer.icons[0].src,
 			defaults: { name: 'Notion MCP' },
 			version: 1,
