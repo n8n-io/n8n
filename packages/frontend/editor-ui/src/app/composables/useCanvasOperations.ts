@@ -136,7 +136,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-import { useCanvasNodeGroupOperations } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperations';
+import { useCanvasNodeGroupOperationGuards } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
 import { useCanvasNodeGroupsStore } from '@/features/workflows/canvas/stores/canvasNodeGroups.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
@@ -218,7 +218,7 @@ export function useCanvasOperations() {
 		isConnectionChangeAllowedForNodeGroups,
 		isConnectionReplacementAllowedForNodeGroups,
 		isNodeReplacementAllowedForNodeGroups,
-	} = useCanvasNodeGroupOperations();
+	} = useCanvasNodeGroupOperationGuards();
 	const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 
 	const router = useRouter();

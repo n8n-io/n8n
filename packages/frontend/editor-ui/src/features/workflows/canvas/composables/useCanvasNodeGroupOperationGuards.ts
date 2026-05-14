@@ -53,7 +53,7 @@ const MESSAGE_KEY_BY_ERROR_CODE: Record<ExtractableErrorCode, BaseTextKey> = {
 
 const FALLBACK_MESSAGE_KEY: BaseTextKey = 'canvas.nodeGroup.connectionChangeBlocked.message';
 
-export function useCanvasNodeGroupOperations() {
+export function useCanvasNodeGroupOperationGuards() {
 	const workflowsStore = useWorkflowsStore();
 	const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 	const workflowDocumentStore = computed(() =>
