@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
 
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	createPasswordRules,
 	N8nButton,
@@ -12,6 +12,8 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nInfoTip,
+	N8nInput,
+	N8nInputLabel,
 	N8nLogo,
 	N8nText,
 } from '@n8n/design-system';
@@ -34,6 +36,7 @@ const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 const password = ref('');
 const loading = ref(false);
 const config = ref<IFormBoxConfig | null>(null);
+const availableMfaMethods = ref<MfaMethod[]>([]);
 const mfaMethod = ref<MfaMethod | null>(null);
 const webauthnPassword = ref('');
 const webauthnPasswordConfirm = ref('');
@@ -44,6 +47,32 @@ const webauthnError = ref('');
 const isWebauthnFlow = computed(
 	() => mfaMethod.value === 'passkey' || mfaMethod.value === 'security_key',
 );
+
+// Cycle target: the next method in `availableMfaMethods` after the active one.
+// With three methods enabled (totp + passkey + security_key) the switcher walks
+// the user through all of them; with two it toggles. Hidden when only one.
+const switcherTarget = computed<MfaMethod | null>(() => {
+	if (availableMfaMethods.value.length < 2 || mfaMethod.value === null) return null;
+	const idx = availableMfaMethods.value.indexOf(mfaMethod.value);
+	if (idx === -1) return availableMfaMethods.value[0] ?? null;
+	return availableMfaMethods.value[(idx + 1) % availableMfaMethods.value.length] ?? null;
+});
+
+const switcherLabelKey = computed<BaseTextKey | null>(() => {
+	if (!switcherTarget.value) return null;
+	if (switcherTarget.value === 'totp') return 'mfa.login.switcher.useTotp';
+	if (switcherTarget.value === 'passkey') return 'mfa.login.switcher.usePasskey';
+	return 'mfa.login.switcher.useSecurityKey';
+});
+
+const switcherIcon = computed(() => (switcherTarget.value === 'totp' ? 'shield' : 'key-round'));
+
+const onSwitcherClick = () => {
+	if (switcherTarget.value) {
+		mfaMethod.value = switcherTarget.value;
+		webauthnError.value = '';
+	}
+};
 
 const passwordsMatch = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
@@ -66,17 +95,17 @@ const getResetToken = () => {
 		: router.currentRoute.value.query.token;
 };
 
-const getMfaEnabled = () => {
-	if (!router.currentRoute.value.query.mfaEnabled) return null;
-	return router.currentRoute.value.query.mfaEnabled === 'true';
-};
-
-const getMfaMethod = (): MfaMethod | null => {
+const getAvailableMfaMethods = (): MfaMethod[] => {
 	const param = router.currentRoute.value.query.mfaMethods;
-	if (typeof param !== 'string') return null;
-	const methods = param
+	if (typeof param !== 'string') return [];
+	return param
 		.split(',')
 		.filter((m): m is MfaMethod => m === 'totp' || m === 'passkey' || m === 'security_key');
+};
+
+// Pick the user's default method when they land on the page. Same priority
+// the screen has always used: passkey > security_key > totp.
+const pickDefaultMethod = (methods: MfaMethod[]): MfaMethod | null => {
 	if (methods.includes('passkey')) return 'passkey';
 	if (methods.includes('security_key')) return 'security_key';
 	if (methods.includes('totp')) return 'totp';
@@ -174,9 +203,9 @@ const onWebauthnVerify = async () => {
 	}
 };
 
-onMounted(async () => {
-	mfaMethod.value = getMfaMethod();
-
+// Build the (TOTP / no-MFA) form config — reactive to `mfaMethod` so toggling
+// the switcher to TOTP mid-flow injects the mfaCode field.
+const buildFormConfig = (): IFormBoxConfig => {
 	const form: IFormBoxConfig = {
 		title: locale.baseText('auth.changePassword'),
 		buttonText: locale.baseText('auth.changePassword'),
@@ -216,11 +245,7 @@ onMounted(async () => {
 		],
 	};
 
-	const token = getResetToken();
-	const mfaEnabled = getMfaEnabled();
-
-	// TOTP path keeps the inline mfaCode field (matches the existing flow).
-	if (mfaEnabled && !isWebauthnFlow.value) {
+	if (mfaMethod.value === 'totp') {
 		form.inputs.push({
 			name: 'mfaCode',
 			initialValue: '',
@@ -235,8 +260,15 @@ onMounted(async () => {
 		});
 	}
 
-	config.value = form;
+	return form;
+};
 
+onMounted(async () => {
+	availableMfaMethods.value = getAvailableMfaMethods();
+	mfaMethod.value = pickDefaultMethod(availableMfaMethods.value);
+	config.value = buildFormConfig();
+
+	const token = getResetToken();
 	try {
 		if (!token) {
 			throw new Error(locale.baseText('auth.changePassword.missingTokenError'));
@@ -247,6 +279,12 @@ onMounted(async () => {
 		toast.showError(e, locale.baseText('auth.changePassword.tokenValidationError'));
 		void router.replace({ name: VIEWS.SIGNIN });
 	}
+});
+
+// Rebuild the TOTP-form config when the user picks a different method via the
+// switcher (TOTP needs the inline mfaCode field; webauthn doesn't).
+watch(mfaMethod, () => {
+	config.value = buildFormConfig();
 });
 
 const releaseChannel = computed(() => settingsStore.settings.releaseChannel);
@@ -265,28 +303,27 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 			</div>
 
 			<div :class="$style.passwordsBlock">
-				<label :class="$style.fieldLabel" for="webauthn-new-password">
-					{{ locale.baseText('auth.newPassword') }}
-				</label>
-				<input
-					id="webauthn-new-password"
-					v-model="webauthnPassword"
-					type="password"
-					autocomplete="new-password"
-					:class="$style.input"
-					:disabled="webauthnVerifying || loading"
-				/>
-				<label :class="$style.fieldLabel" for="webauthn-confirm-password">
-					{{ locale.baseText('auth.changePassword.reenterNewPassword') }}
-				</label>
-				<input
-					id="webauthn-confirm-password"
-					v-model="webauthnPasswordConfirm"
-					type="password"
-					autocomplete="new-password"
-					:class="$style.input"
-					:disabled="webauthnVerifying || loading"
-				/>
+				<N8nInputLabel :label="locale.baseText('auth.newPassword')" :class="$style.field">
+					<N8nInput
+						v-model="webauthnPassword"
+						type="password"
+						autocomplete="new-password"
+						:disabled="webauthnVerifying || loading"
+						data-test-id="change-password-webauthn-new-password"
+					/>
+				</N8nInputLabel>
+				<N8nInputLabel
+					:label="locale.baseText('auth.changePassword.reenterNewPassword')"
+					:class="$style.field"
+				>
+					<N8nInput
+						v-model="webauthnPasswordConfirm"
+						type="password"
+						autocomplete="new-password"
+						:disabled="webauthnVerifying || loading"
+						data-test-id="change-password-webauthn-confirm-password"
+					/>
+				</N8nInputLabel>
 				<N8nText v-if="webauthnPasswordError" color="danger" size="small">
 					{{ webauthnPasswordError }}
 				</N8nText>
@@ -325,6 +362,13 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 				data-test-id="change-password-webauthn-button"
 				@click="onWebauthnVerify"
 			/>
+
+			<div v-if="switcherLabelKey" :class="$style.switcher" data-test-id="change-password-switcher">
+				<button type="button" :class="$style.switcherLink" @click="onSwitcherClick">
+					<N8nIcon :icon="switcherIcon" size="xsmall" />
+					{{ locale.baseText(switcherLabelKey) }}
+				</button>
+			</div>
 		</N8nCard>
 	</div>
 
@@ -358,29 +402,14 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 .passwordsBlock {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--md);
 }
 
-.fieldLabel {
-	font-size: var(--font-size--xs);
-	color: var(--color--text);
-}
-
-.input {
-	width: 100%;
-	background: var(--color--background);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius--xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	outline: none;
-	margin-bottom: var(--spacing--3xs);
-
-	&:focus {
-		border-color: var(--color--primary);
-	}
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 }
 
 .webauthnPrompt {
@@ -453,5 +482,28 @@ const tone = computed(() => (mfaMethod.value === 'passkey' ? 'passkey' : 'securi
 
 .fullWidthButton {
 	width: 100%;
+}
+
+.switcher {
+	margin-top: var(--spacing--sm);
+	padding-top: var(--spacing--sm);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	text-align: center;
+}
+
+.switcherLink {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	background: transparent;
+	border: none;
+	padding: 0;
+	color: var(--color--primary);
+	font-size: var(--font-size--xs);
+	cursor: pointer;
+}
+
+.switcherLink:hover {
+	text-decoration: underline;
 }
 </style>
