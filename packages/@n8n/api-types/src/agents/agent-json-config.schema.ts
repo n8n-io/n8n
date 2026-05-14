@@ -88,6 +88,11 @@ export const AgentJsonConfigSchema = z.object({
 		.string()
 		.min(1)
 		.regex(
+			/**
+			 * [a-z0-9-]+: Provider name (e.g. "anthropic")
+			 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+			 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
+			 */
 			/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
 			'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
 		),
