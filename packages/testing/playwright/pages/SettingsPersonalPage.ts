@@ -130,19 +130,9 @@ export class SettingsPersonalPage extends BasePage {
 		return this.page.getByTestId('enable-passkey-button');
 	}
 
-	/** "Add another passkey" footer button when at least one passkey is registered. */
-	getAddPasskeyButton(): Locator {
-		return this.page.getByTestId('add-passkey-button');
-	}
-
 	/** "Set up" button on the security-key card when no credentials are registered. */
 	getEnableSecurityKeyButton(): Locator {
 		return this.page.getByTestId('mfa-method-security_key-setup');
-	}
-
-	/** "Add another security key" footer button. */
-	getAddSecurityKeyButton(): Locator {
-		return this.page.getByTestId('add-security-key-button');
 	}
 
 	getWebAuthnModal(): Locator {
@@ -177,6 +167,18 @@ export class SettingsPersonalPage extends BasePage {
 		return this.getSecurityKeyCard()
 			.locator('[data-test-id^="security-key-cred-"]')
 			.filter({ hasText: label });
+	}
+
+	/** Trash icon inside a passkey credential row. */
+	getPasskeyDeleteButtonForLabel(label: string): Locator {
+		return this.getPasskeyCredentialByLabel(label).locator('[data-test-id^="remove-passkey-"]');
+	}
+
+	/** Trash icon inside a security-key credential row. */
+	getSecurityKeyDeleteButtonForLabel(label: string): Locator {
+		return this.getSecurityKeyCredentialByLabel(label).locator(
+			'[data-test-id^="remove-security-key-"]',
+		);
 	}
 
 	/**
