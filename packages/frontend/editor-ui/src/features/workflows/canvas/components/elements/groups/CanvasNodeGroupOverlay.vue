@@ -220,7 +220,7 @@ watch(
 	left: 0;
 	width: 100%;
 	background: transparent;
-	border: var(--focus--border-width) dashed var(--border-color);
+	border: var(--border-width) dashed var(--border-color);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
 	pointer-events: none;
