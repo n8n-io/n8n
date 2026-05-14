@@ -1402,7 +1402,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(executionData.metadata?.tracing).toEqual({ kept: 'value' });
 		});
 
-		it('coerces non-string evaluated values to strings', async () => {
+		it('preserves string, number, and boolean evaluated values', async () => {
 			const node: INode = {
 				...mockNode,
 				customTelemetryTags: {
@@ -1418,7 +1418,28 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			await runNodeForTelemetry(executionData);
 
-			expect(executionData.metadata?.tracing).toEqual({ count: '42', enabled: 'true' });
+			expect(executionData.metadata?.tracing).toEqual({ count: 42, enabled: true });
+		});
+
+		it('skips tags when expression evaluates to a non-primitive value', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [
+						{ key: 'obj', value: '={{ $json }}' },
+						{ key: 'ok', value: 'still-here' },
+					],
+				},
+			};
+			getParameterValue.mockImplementation((value: string) =>
+				value === '={{ $json }}' ? { nested: 1 } : value,
+			);
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ ok: 'still-here' });
 		});
 
 		it('ignores tags whose expression evaluates to null or undefined', async () => {

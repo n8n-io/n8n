@@ -1121,12 +1121,12 @@ export class WorkflowExecute {
 		runIndex: number,
 		connectionInputData: INodeExecutionData[],
 		executionData: IExecuteData,
-	): Record<string, string> | undefined {
+	): NonNullable<ITaskMetadata['tracing']> | undefined {
 		const tags = node.customTelemetryTags?.tag;
 		if (!tags?.length) return;
 
 		const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
-		const tracing: Record<string, string> = {};
+		const tracing: NonNullable<ITaskMetadata['tracing']> = {};
 
 		for (const { key, value } of tags) {
 			const trimmedKey = key?.trim();
@@ -1147,7 +1147,21 @@ export class WorkflowExecute {
 					{},
 				);
 				if (evaluated === undefined || evaluated === null) continue;
-				tracing[trimmedKey] = String(evaluated);
+				if (
+					typeof evaluated !== 'string' &&
+					typeof evaluated !== 'number' &&
+					typeof evaluated !== 'boolean'
+				) {
+					Logger.warn(
+						'customTelemetryTags expression resolved to a non-primitive value; skipping',
+						{
+							nodeName: node.name,
+							tagKey: trimmedKey,
+						},
+					);
+					continue;
+				}
+				tracing[trimmedKey] = evaluated;
 			} catch (error) {
 				// failing to evaluate a tag expression is not a critical error and should not block the execution
 				Logger.warn('Failed to evaluate customTelemetryTags expression', {
