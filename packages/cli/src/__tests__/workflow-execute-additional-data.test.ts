@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity, User, Project } from '@n8n/db';
 import { ExecutionRepository, WorkflowPublishHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -26,11 +26,14 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
 import {
+	executeAgent,
 	executeWorkflow,
 	getBase,
 	getRunData,
@@ -757,6 +760,101 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			expect(additionalData.workflowSettings).toBe(workflowSettings);
+		});
+	});
+
+	describe('executeAgent', () => {
+		const ownershipService = mockInstance(OwnershipService);
+		const agentsService = mockInstance(AgentsService);
+
+		const AGENT_ID = 'agent-id';
+		const MESSAGE = 'hello';
+		const EXEC_ID = 'exec-id';
+		const THREAD_ID = 'thread-id';
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			agentsService.executeForWorkflow.mockResolvedValue(
+				mock<Awaited<ReturnType<typeof agentsService.executeForWorkflow>>>(),
+			);
+		});
+
+		it('uses userId and projectId from additionalData when both are present', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData);
+
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+			expect(ownershipService.getPersonalProjectOwnerCached).not.toHaveBeenCalled();
+			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'user-1',
+				'project-1',
+			);
+		});
+
+		it('backfills userId and projectId from the workflow owner when both are missing', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: undefined,
+				projectId: undefined,
+				workflowId: 'workflow-1',
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project-1' }),
+			);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(
+				mock<User>({ id: 'owner-1' }),
+			);
+
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData);
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
+			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith('project-1');
+			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'owner-1',
+				'project-1',
+			);
+		});
+
+		it('throws when userId is missing and the workflow has no personal-project owner', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: undefined,
+				projectId: undefined,
+				workflowId: 'workflow-1',
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project-1' }),
+			);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+
+			await expect(
+				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData),
+			).rejects.toThrow('Cannot execute agent without a userId in additional data');
+			expect(agentsService.executeForWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('throws when userId is missing and no workflowId is available to resolve ownership', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: undefined,
+				projectId: undefined,
+				workflowId: undefined,
+			});
+
+			await expect(
+				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData),
+			).rejects.toThrow('Cannot execute agent without a userId in additional data');
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 		});
 	});
 });

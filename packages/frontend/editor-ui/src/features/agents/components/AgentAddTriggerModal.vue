@@ -380,6 +380,7 @@ function onCreateCredential(integration: ChatIntegrationDescriptor) {
 		props.data.projectId,
 		undefined,
 		undefined,
+		undefined,
 		{
 			hideAskAssistant: true,
 		},
@@ -499,6 +500,7 @@ onMounted(async () => {
 					:flat="true"
 					@status-change="onScheduleStatusChange"
 					@trigger-added="onScheduleTriggerAdded"
+					@canceled="closeModal"
 					@saved="closeModal"
 				/>
 

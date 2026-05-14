@@ -2,7 +2,7 @@ import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { computed, inject, readonly, ref } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
+import type { ExecutionStatus, IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -78,6 +78,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (runData === null) return null;
 			if (!runData.hasOwnProperty(nodeName)) return null;
 			return runData[nodeName];
+		}
+
+		/**
+		 * Returns a shallow snapshot of the current execution as a mutable
+		 * `IExecutionResponse`. Use this when you need to build an updated
+		 * execution to pass back to `setExecution()` — mutating top-level
+		 * fields on the snapshot does not affect store state. For reactive
+		 * reads, use `execution` instead.
+		 */
+		function getExecutionSnapshot(): IExecutionResponse | null {
+			return execution.value === null ? null : { ...execution.value };
 		}
 
 		function setExecution(value: IExecutionResponse | null, opts: SetExecutionOptions = {}) {
@@ -179,6 +190,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			}
 
 			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.UPDATE, nodeName);
 		}
 
@@ -190,6 +204,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (tasksData?.[existingRunIndex]) {
 				tasksData.splice(existingRunIndex, 1, pushData.data);
 				executionResultDataLastUpdate.value = Date.now();
+				if (execution.value) {
+					execution.value = { ...execution.value };
+				}
 				fireChange(CHANGE_ACTION.UPDATE, pushData.nodeName);
 			}
 		}
@@ -199,6 +216,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			const { [nodeName]: _removed, ...remaining } = execution.value.data.resultData.runData;
 			execution.value.data.resultData.runData = remaining;
 			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.DELETE, nodeName);
 		}
 
@@ -278,7 +298,33 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.executedNode = newName;
 			}
 
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
+			fireChange(CHANGE_ACTION.UPDATE);
+		}
+
+		function markAsStopped(stopData?: {
+			status: ExecutionStatus;
+			startedAt: Date;
+			stoppedAt: Date;
+		}) {
+			if (!execution.value?.data) return;
+			const runData = execution.value.data.resultData.runData;
+			for (const nodeName in runData) {
+				runData[nodeName] = runData[nodeName].filter(
+					({ executionStatus }) => executionStatus === 'success',
+				);
+			}
+			if (stopData) {
+				execution.value.status = stopData.status;
+				execution.value.startedAt = stopData.startedAt;
+				execution.value.stoppedAt = stopData.stoppedAt;
+			}
 			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.UPDATE);
 		}
 
@@ -300,6 +346,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),
 			getExecutionRunDataByNodeName,
+			getExecutionSnapshot,
 			// Write API
 			setExecution,
 			setExecutionRunData,
@@ -309,6 +356,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			updateNodeExecutionRunData,
 			clearNodeExecutionData,
 			renameExecutionDataNode,
+			markAsStopped,
 			resetExecutionData,
 			// Events
 			onExecutionDataChange: onExecutionDataChange.on,
