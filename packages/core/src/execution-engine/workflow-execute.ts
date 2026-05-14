@@ -58,11 +58,6 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
-import { ErrorReporter } from '@/errors/error-reporter';
-import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
-import * as NodeExecuteFunctions from '@/node-execute-functions';
-import { assertExecutionDataExists } from '@/utils/assertions';
-
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext, resolveSourceOverwrite } from './node-execution-context';
@@ -82,6 +77,11 @@ import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-r
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 import { convertBinaryData } from '../utils/convert-binary-data';
+
+import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
+import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { assertExecutionDataExists } from '@/utils/assertions';
 
 interface RunWorkflowOptions {
 	workflow: Workflow;
