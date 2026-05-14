@@ -82,7 +82,6 @@ function onContainerClick() {
 }
 
 const currentSettings = computed<AgentTelegramIntegrationSettings>(() => ({
-	type: 'telegram',
 	accessMode: accessMode.value,
 	allowedUsers: [...new Set(entries.value.filter(Boolean))],
 }));
