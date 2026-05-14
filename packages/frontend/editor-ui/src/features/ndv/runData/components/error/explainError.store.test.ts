@@ -250,6 +250,78 @@ describe('useExplainErrorStore', () => {
 		expect(store.result).toBeUndefined();
 	});
 
+	it('captures text from summary messages', async () => {
+		apiSpy.mockImplementation((_ctx, _payload, onMessage, onDone) => {
+			onMessage({
+				sessionId: 'sid',
+				messages: [
+					{
+						role: 'assistant',
+						type: 'summary',
+						title: 'Diagnosis',
+						content: fencedJson,
+					},
+				],
+			});
+			onDone();
+		});
+
+		const store = useExplainErrorStore();
+		await store.explain(sampleError);
+		expect(store.state).toBe('ready');
+		expect(store.result).toEqual({
+			kind: 'structured',
+			summary: 'Auth failed.',
+			culprit: 'API key',
+			nextStep: 'Rotate the key.',
+		});
+	});
+
+	it('captures text from agent-suggestion messages', async () => {
+		apiSpy.mockImplementation((_ctx, _payload, onMessage, onDone) => {
+			onMessage({
+				sessionId: 'sid',
+				messages: [
+					{
+						role: 'assistant',
+						type: 'agent-suggestion',
+						title: 'Suggestion',
+						text: fencedJson,
+					},
+				],
+			});
+			onDone();
+		});
+
+		const store = useExplainErrorStore();
+		await store.explain(sampleError);
+		expect(store.state).toBe('ready');
+		expect(store.result?.kind).toBe('structured');
+	});
+
+	it('transitions to error when the assistant returns no text content', async () => {
+		apiSpy.mockImplementation((_ctx, _payload, onMessage, onDone) => {
+			// Only non-text events — e.g. an intermediate-step that we ignore.
+			onMessage({
+				sessionId: 'sid',
+				messages: [
+					{
+						role: 'assistant',
+						type: 'intermediate-step',
+						text: 'thinking…',
+						step: 'planning',
+					},
+				],
+			});
+			onDone();
+		});
+
+		const store = useExplainErrorStore();
+		await store.explain(sampleError);
+		expect(store.state).toBe('error');
+		expect(store.result).toBeUndefined();
+	});
+
 	it('aborts a previous in-flight request when explain() is called for a different error', async () => {
 		type Call = {
 			onMessage: (chunk: { sessionId: string; messages: unknown[] }) => void;

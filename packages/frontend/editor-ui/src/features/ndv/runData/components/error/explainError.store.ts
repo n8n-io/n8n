@@ -17,6 +17,21 @@ export type ExplainErrorState = 'idle' | 'loading' | 'ready' | 'error';
 
 type ErrorLike = NodeError | NodeApiError | NodeOperationError;
 
+/**
+ * Extracts plain-text content from any of the assistant's response message
+ * shapes. The backend uses `message` for chat-style replies, `summary` for
+ * structured headings, and `agent-suggestion` for next-step suggestions — we
+ * collapse them all into a single buffer that the prompt parser then
+ * interprets as fenced JSON or raw text.
+ */
+function extractText(message: ChatRequest.ResponsePayload['messages'][number]): string {
+	if (!('role' in message) || message.role !== 'assistant') return '';
+	if (message.type === 'message') return message.text;
+	if (message.type === 'summary') return message.content;
+	if (message.type === 'agent-suggestion') return message.text;
+	return '';
+}
+
 function fingerprintError(error: ErrorLike): string {
 	const node = error.node;
 	const nodeKey = node ? `${node.type}:${node.id ?? node.name ?? ''}` : 'unknown';
@@ -75,13 +90,22 @@ export const useExplainErrorStore = defineStore('explainError', () => {
 				payload,
 				(chunk: ChatRequest.ResponsePayload) => {
 					for (const message of chunk.messages ?? []) {
-						if (message.type === 'message') {
-							buffer += message.text;
-						}
+						buffer += extractText(message);
 					}
 				},
 				() => {
 					if (controller.signal.aborted) {
+						resolve();
+						return;
+					}
+					const trimmed = buffer.trim();
+					if (trimmed.length === 0) {
+						telemetry.track('User used Explain this error', {
+							node_type: error.node?.type ?? 'unknown',
+							outcome: 'error',
+						});
+						state.value = 'error';
+						result.value = undefined;
 						resolve();
 						return;
 					}
