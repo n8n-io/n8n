@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -30,6 +30,7 @@ const mockWorkflowDocumentState = reactive({
 });
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockWorkflowDocumentState,
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentState),
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 

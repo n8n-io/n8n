@@ -164,13 +164,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
 			const credentialSnapshot = await buildCredentialSnapshot(context.credentialService);
-			await resolveCredentials(
-				json,
-				workflowId,
-				context,
-				credentialSnapshot.map,
-				credentialSnapshot.list,
-			);
+			await resolveCredentials(json, workflowId, context, credentialSnapshot.list);
 
 			// Strip credential entries that are no longer valid for the current
 			// parameters. Resolution above (and the LLM itself) can re-emit stale

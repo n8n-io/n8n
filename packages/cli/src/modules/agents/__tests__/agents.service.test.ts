@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
-import type { GlobalConfig } from '@n8n/config';
+import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegration } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Telemetry } from '@/telemetry';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -76,6 +77,7 @@ describe('AgentsService', () => {
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let scheduleService: jest.Mocked<AgentScheduleService>;
 	let publisher: jest.Mocked<Publisher>;
+	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
 
 	beforeEach(() => {
@@ -90,6 +92,7 @@ describe('AgentsService', () => {
 		scheduleService = mock<AgentScheduleService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
+		agentsConfig = { modules: [] } as unknown as AgentsConfig;
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
@@ -115,7 +118,9 @@ describe('AgentsService', () => {
 			agentPublishedVersionRepository,
 			new AgentSkillsService(logger, agentRepository),
 			publisher,
+			agentsConfig,
 			globalConfig,
+			mock<Telemetry>(),
 		);
 	});
 
@@ -156,6 +161,33 @@ describe('AgentsService', () => {
 			if (result.valid) return;
 
 			expect(result.error).toContain('inputSchema');
+		});
+
+		it('rejects config.nodeTools.enabled when the node tools module is disabled', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				config: { nodeTools: { enabled: true } },
+			});
+
+			expect(result.valid).toBe(false);
+			if (result.valid) return;
+
+			expect(result.error).toContain('node-tools-searcher');
+		});
+
+		it('allows config.nodeTools.enabled when the node tools module is enabled', async () => {
+			agentsConfig.modules = ['node-tools-searcher'] as unknown as AgentsConfig['modules'];
+
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				config: { nodeTools: { enabled: true } },
+			});
+
+			expect(result.valid).toBe(true);
 		});
 	});
 
@@ -1112,10 +1144,16 @@ describe('AgentsService', () => {
 			expect(mockAgentInstance.resume).toHaveBeenCalledWith(
 				'stream',
 				{ value: 'yes' },
-				{ runId, toolCallId },
+				expect.objectContaining({
+					runId,
+					toolCallId,
+					executionCounter: expect.any(Object),
+				}),
 			);
 			// The n8n publisher ID must not appear in the resume args
 			const resumeArgs = mockAgentInstance.resume.mock.calls[0];
+			const resumeOptions = resumeArgs[2] as Record<string, unknown>;
+			expect(resumeOptions).not.toHaveProperty('resourceId');
 			expect(JSON.stringify(resumeArgs)).not.toContain(n8nPublisherId);
 		});
 	});

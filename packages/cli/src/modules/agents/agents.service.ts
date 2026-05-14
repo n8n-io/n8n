@@ -17,18 +17,18 @@ import {
 import * as agents from '@n8n/agents';
 import { extractFromAIParameters } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	CredentialsRepository,
 	ExecutionRepository,
+	In,
 	ProjectRelationRepository,
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import {
 	deepCopy,
 	OperationalError,
@@ -47,6 +47,7 @@ import { EphemeralNodeExecutor } from '@/node-execution';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -258,8 +259,29 @@ export class AgentsService {
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly publisher: Publisher,
+		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly telemetry: Telemetry,
 	) {}
+
+	private isNodeToolsModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('node-tools-searcher');
+	}
+
+	private createAgentExecutionCounter(agentId: string): agents.AgentExecutionCounter {
+		return {
+			incrementMessageCount: () =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
+			incrementTokenCount: (tokenCount) =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, token_count: tokenCount }),
+			incrementToolCallCount: () =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, tool_call_count: 1 }),
+		};
+	}
+
+	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
+		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
+	}
 
 	/**
 	 * Return the list of registered chat platform integrations with their
@@ -684,7 +706,7 @@ export class AgentsService {
 	 * `fromSchema()`, so this method only handles host-side singletons.
 	 *
 	 * `nodeToolsEnabled` comes from the agent's `config.nodeTools.enabled` flag
-	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
+	 * (opt-in, defaults to false) — see {@link shouldAttachNodeTools}.
 	 */
 	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
@@ -791,6 +813,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -866,11 +889,9 @@ export class AgentsService {
 
 		if (config.credential) {
 			try {
-				const credentialName = config.credential;
+				const credentialId = config.credential;
 				const creds = await credentialProvider.list();
-				const exists = creds.some(
-					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
-				);
+				const exists = creds.some((c) => c.id === credentialId);
 				if (!exists) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
@@ -1011,6 +1032,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1137,6 +1159,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { resourceId: executionId, threadId },
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1252,6 +1275,14 @@ export class AgentsService {
 		}
 
 		const config = parsed.data;
+
+		if (isNodeToolsEnabled(config.config) && !this.isNodeToolsModuleEnabled()) {
+			return {
+				valid: false,
+				error:
+					'config.nodeTools.enabled requires the node-tools-searcher agents module to be enabled.',
+			};
+		}
 
 		try {
 			this.validateNodeToolExpressions(config);
@@ -1715,7 +1746,7 @@ export class AgentsService {
 			agentId: agentEntity.id,
 			projectId: agentEntity.projectId,
 			credentialProvider,
-			nodeToolsEnabled: isNodeToolsEnabled(config.config),
+			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
 			integrationType,
 		});
 

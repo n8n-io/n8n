@@ -2,6 +2,8 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { Time } from '@n8n/constants';
 import type { InstanceAiLivenessPolicy, InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
 
+import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
+
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 export const INSTANCE_AI_RUN_TIMEOUT_REASON = 'timeout';
@@ -39,6 +41,14 @@ export type InstanceAiLivenessSweepResult = {
 	activeThreadIds: string[];
 	suspendedThreadIds: string[];
 	confirmationRequestIds: string[];
+	activeTimeouts?: Record<string, InstanceAiRunTimeoutDetails>;
+	suspendedTimeouts?: Record<string, InstanceAiRunTimeoutDetails>;
+	confirmationTimeouts?: Record<string, InstanceAiRunTimeoutDetails>;
+};
+
+export type InstanceAiConsumedRunTimeout = {
+	timedOut: boolean;
+	details?: InstanceAiRunTimeoutDetails;
 };
 
 export type InstanceAiLivenessRunState<
@@ -86,7 +96,7 @@ export class InstanceAiLivenessService<
 > {
 	private timeoutInterval?: NodeJS.Timeout;
 
-	private readonly timedOutRunIds = new Set<string>();
+	private readonly timedOutRunIds = new Map<string, InstanceAiRunTimeoutDetails | undefined>();
 
 	private readonly timedOutActiveRunThreads = new Set<string>();
 
@@ -117,8 +127,8 @@ export class InstanceAiLivenessService<
 		this.timedOutActiveRunThreads.delete(threadId);
 	}
 
-	markRunTimedOut(runId: string): void {
-		this.timedOutRunIds.add(runId);
+	markRunTimedOut(runId: string, details?: InstanceAiRunTimeoutDetails): void {
+		this.timedOutRunIds.set(runId, details);
 	}
 
 	consumeRunTimedOut(runId: string): boolean {
@@ -127,22 +137,37 @@ export class InstanceAiLivenessService<
 		return timedOut;
 	}
 
+	consumeRunTimeout(runId: string): InstanceAiConsumedRunTimeout {
+		const timedOut = this.timedOutRunIds.has(runId);
+		if (!timedOut) return { timedOut: false };
+
+		const details = this.timedOutRunIds.get(runId);
+		this.timedOutRunIds.delete(runId);
+		return details ? { timedOut: true, details } : { timedOut: true };
+	}
+
 	hasTimedOutActiveRunThread(threadId: string): boolean {
 		return this.timedOutActiveRunThreads.has(threadId);
 	}
 
 	async sweepTimedOutWork(now = Date.now()): Promise<void> {
-		const { activeThreadIds, suspendedThreadIds, confirmationRequestIds } =
-			this.options.runState.sweepTimedOut(this.options.policy, now);
+		const {
+			activeThreadIds,
+			suspendedThreadIds,
+			confirmationRequestIds,
+			activeTimeouts,
+			suspendedTimeouts,
+			confirmationTimeouts,
+		} = this.options.runState.sweepTimedOut(this.options.policy, now);
 
 		for (const threadId of activeThreadIds) {
 			this.options.logger.debug('Cancelling timed-out active run', { threadId });
-			this.cancelTimedOutActiveRun(threadId);
+			this.cancelTimedOutActiveRun(threadId, activeTimeouts?.[threadId]);
 		}
 
 		for (const threadId of suspendedThreadIds) {
 			this.options.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-			this.cancelTimedOutSuspendedRun(threadId);
+			this.cancelTimedOutSuspendedRun(threadId, suspendedTimeouts?.[threadId]);
 		}
 
 		for (const reqId of confirmationRequestIds) {
@@ -152,7 +177,10 @@ export class InstanceAiLivenessService<
 			const pending = this.options.runState.getPendingConfirmation(reqId);
 			if (pending) {
 				const runId = this.options.runState.getActiveRunId(pending.threadId);
-				if (runId) this.publishRunTimeoutNotice(pending.threadId, runId);
+				if (runId) {
+					this.markRunTimedOut(runId, confirmationTimeouts?.[reqId]);
+					this.publishRunTimeoutNotice(pending.threadId, runId);
+				}
 			}
 			this.options.runState.rejectPendingConfirmation(reqId);
 		}
@@ -177,21 +205,21 @@ export class InstanceAiLivenessService<
 		}
 	}
 
-	cancelTimedOutActiveRun(threadId: string): void {
+	cancelTimedOutActiveRun(threadId: string, details?: InstanceAiRunTimeoutDetails): void {
 		const active = this.options.runState.cancelActiveRun(threadId);
 		if (!active) return;
 
-		this.markRunTimedOut(active.runId);
+		this.markRunTimedOut(active.runId, details);
 		this.timedOutActiveRunThreads.add(threadId);
 		this.publishRunTimeoutNotice(threadId, active.runId);
 		active.abortController.abort();
 	}
 
-	cancelTimedOutSuspendedRun(threadId: string): void {
+	cancelTimedOutSuspendedRun(threadId: string, details?: InstanceAiRunTimeoutDetails): void {
 		const suspended = this.options.runState.cancelSuspendedRun(threadId);
 		if (!suspended) return;
 
-		this.markRunTimedOut(suspended.runId);
+		this.markRunTimedOut(suspended.runId, details);
 		suspended.abortController.abort();
 		this.options.finalizeCancelledSuspendedRun(suspended, INSTANCE_AI_RUN_TIMEOUT_REASON);
 	}
