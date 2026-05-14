@@ -1,9 +1,9 @@
-import type { AgentIntegrationSettings } from '@n8n/api-types';
+import { agentTelegramSettingsSchema, type AgentIntegrationSettings } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
 import type { Author } from 'chat';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-workflow';
+import { UnexpectedError, type Logger } from 'n8n-workflow';
 
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -103,11 +103,17 @@ class TelegramTestIntegration extends AgentChatIntegration {
 	}
 	isUserAllowed(author: Author, settings: AgentIntegrationSettings | undefined): boolean {
 		if (!settings) return true;
+		const validConfig = agentTelegramSettingsSchema.safeParse(settings);
+		if (!validConfig.success) {
+			throw new UnexpectedError(
+				`Invalid Telegram integration settings: ${validConfig.error.message}`,
+			);
+		}
 		if (settings.accessMode === 'public') return true;
-		return (
-			settings.allowedUsers.includes(author.userId) ||
-			settings.allowedUsers.includes(author.userName)
-		);
+		return settings.allowedUsers.some((allowed) => {
+			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
+			return normalized === author.userId || normalized === author.userName;
+		});
 	}
 }
 
