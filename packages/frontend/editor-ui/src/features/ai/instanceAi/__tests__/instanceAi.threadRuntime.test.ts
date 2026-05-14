@@ -804,6 +804,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
+			undefined,
 		);
 	});
 
@@ -819,6 +820,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			undefined,
 			expect.any(String),
+			undefined,
 			undefined,
 		);
 	});
