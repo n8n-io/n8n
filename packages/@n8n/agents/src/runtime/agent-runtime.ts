@@ -33,6 +33,7 @@ import type {
 	XaiThinkingConfig,
 } from '../types';
 import { BackgroundTaskTracker } from './background-task-tracker';
+import { DeferredToolManager } from './deferred-tool-manager';
 import { AgentEventBus } from './event-bus';
 import { toJsonValue } from './json-value';
 import { saveMessagesToThread } from './memory-store';
@@ -163,6 +164,10 @@ export interface AgentRuntimeConfig {
 	instructions: string;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
+	deferredTools?: BuiltTool[];
+	toolSearch?: {
+		topK?: number;
+	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
 	lastMessages?: number;
@@ -315,10 +320,15 @@ export class AgentRuntime {
 
 	private observationTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+	private deferredToolManager: DeferredToolManager | undefined;
+
 	/** Resolved telemetry for the current run (own config or inherited from parent). */
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		if (config.deferredTools && config.deferredTools.length > 0) {
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+		}
 		this.runState = new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
 		this.currentState = {
@@ -913,15 +923,7 @@ export class AgentRuntime {
 	/** Core generate loop using generateText (non-streaming). */
 	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
 		const { list, options, runId, pendingResume } = ctx;
-		const {
-			model,
-			toolMap,
-			aiTools,
-			providerOptions,
-			hasTools,
-			outputSpec,
-			effectiveInstructions,
-		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
+		this.hydrateDeferredToolsFromList(list);
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
@@ -931,8 +933,13 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const toolCtx: ToolBatchContext = {
-			toolMap,
+		const staticLoopContext = this.buildStaticLoopContext({
+			...options,
+			persistence: options?.persistence,
+		});
+		const pendingLoopContext = this.buildToolLoopContext(staticLoopContext.aiProviderTools);
+		const pendingToolCtx: ToolBatchContext = {
+			toolMap: pendingLoopContext.toolMap,
 			list,
 			runId,
 			telemetry: runTelemetry,
@@ -940,7 +947,10 @@ export class AgentRuntime {
 		};
 
 		if (pendingResume) {
-			const batch = await this.iteratePendingToolCallsConcurrent({ ...toolCtx, pendingResume });
+			const batch = await this.iteratePendingToolCallsConcurrent({
+				...pendingToolCtx,
+				pendingResume,
+			});
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
@@ -981,15 +991,19 @@ export class AgentRuntime {
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
+			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
+				staticLoopContext.aiProviderTools,
+			);
+
 			const result = await generateText({
-				model,
+				model: staticLoopContext.model,
 				messages: list.forLlm(effectiveInstructions, this.config.instructionProviderOptions),
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
-				...(providerOptions
-					? { providerOptions: providerOptions as Record<string, JSONObject> }
+				...(staticLoopContext.providerOptions
+					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
 					: {}),
-				...(outputSpec ? { output: outputSpec } : {}),
+				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildTelemetryOptions(options),
 			});
 
@@ -1004,7 +1018,7 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
-				if (outputSpec) {
+				if (staticLoopContext.outputSpec) {
 					structuredOutput = result.output;
 				}
 				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
@@ -1012,7 +1026,11 @@ export class AgentRuntime {
 			}
 
 			const batch = await this.iterateToolCallsConcurrent({
-				...toolCtx,
+				toolMap,
+				list,
+				runId,
+				telemetry: runTelemetry,
+				executionCounter: options?.executionCounter,
 				toolCalls: result.toolCalls,
 			});
 
@@ -1141,15 +1159,7 @@ export class AgentRuntime {
 		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
 		const { list, options, runId, pendingResume, writer } = ctx;
-		const {
-			model,
-			toolMap,
-			aiTools,
-			providerOptions,
-			hasTools,
-			outputSpec,
-			effectiveInstructions,
-		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
+		this.hydrateDeferredToolsFromList(list);
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
 			await writer.write(chunk);
@@ -1177,8 +1187,13 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const toolCtx: ToolBatchContext = {
-			toolMap,
+		const staticLoopContext = this.buildStaticLoopContext({
+			...options,
+			persistence: options?.persistence,
+		});
+		const pendingLoopContext = this.buildToolLoopContext(staticLoopContext.aiProviderTools);
+		const pendingToolCtx: ToolBatchContext = {
+			toolMap: pendingLoopContext.toolMap,
 			list,
 			runId,
 			telemetry: runTelemetry,
@@ -1187,7 +1202,7 @@ export class AgentRuntime {
 		if (pendingResume) {
 			try {
 				const batch = await this.iteratePendingToolCallsConcurrent({
-					...toolCtx,
+					...pendingToolCtx,
 					pendingResume,
 				});
 
@@ -1248,16 +1263,19 @@ export class AgentRuntime {
 			if (await handleAbort()) return;
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
+			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
+				staticLoopContext.aiProviderTools,
+			);
 			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
 			const result = streamText({
-				model,
+				model: staticLoopContext.model,
 				messages,
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
-				...(providerOptions
-					? { providerOptions: providerOptions as Record<string, JSONObject> }
+				...(staticLoopContext.providerOptions
+					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
 					: {}),
-				...(outputSpec ? { output: outputSpec } : {}),
+				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildTelemetryOptions(options),
 			});
 
@@ -1301,7 +1319,7 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
-				if (outputSpec) {
+				if (staticLoopContext.outputSpec) {
 					structuredOutput = await result.output;
 				}
 				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
@@ -1311,7 +1329,14 @@ export class AgentRuntime {
 			const toolCalls = await result.toolCalls;
 
 			try {
-				const batch = await this.iterateToolCallsConcurrent({ ...toolCtx, toolCalls });
+				const batch = await this.iterateToolCallsConcurrent({
+					toolMap,
+					list,
+					runId,
+					telemetry: runTelemetry,
+					executionCounter: options?.executionCounter,
+					toolCalls,
+				});
 
 				if (await handleAbort()) return;
 
@@ -1985,26 +2010,53 @@ export class AgentRuntime {
 		};
 	}
 
-	/** Build common LLM call dependencies shared by both the generate and stream loops. */
-	private buildLoopContext(
+	/** Build run-stable LLM call dependencies shared by all iterations. */
+	private buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const allUserTools = this.config.tools ?? [];
-		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
-		const allTools = { ...aiTools, ...aiProviderTools };
 		const model = createModel(this.config.model);
 		return {
 			model,
-			toolMap: buildToolMap(allUserTools),
-			aiTools: allTools,
+			aiProviderTools,
 			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
-			hasTools: Object.keys(allTools).length > 0,
 			outputSpec: this.config.structuredOutput
 				? Output.object({ schema: this.config.structuredOutput })
 				: undefined,
-			effectiveInstructions: this.composeEffectiveInstructions(allUserTools),
 		};
+	}
+
+	/** Build the current local tool view; deferred loads can change this between iterations. */
+	private buildToolLoopContext(aiProviderTools: ReturnType<typeof toAiSdkProviderTools>) {
+		const allUserTools = this.getCurrentTools();
+		const aiTools = toAiSdkTools(allUserTools);
+		const allTools = { ...aiTools, ...aiProviderTools };
+		const aiToolCount = Object.keys(allTools).length;
+		const toolMap = buildToolMap(allUserTools);
+		const effectiveInstructions = this.composeEffectiveInstructions(allUserTools);
+
+		return {
+			toolMap,
+			aiTools: allTools,
+			hasTools: aiToolCount > 0,
+			effectiveInstructions,
+		};
+	}
+
+	private getCurrentTools(): BuiltTool[] {
+		const baseTools = this.config.tools ?? [];
+		if (!this.deferredToolManager?.hasTools) return baseTools;
+
+		return [
+			...baseTools,
+			...this.deferredToolManager.getControllerTools(),
+			...this.deferredToolManager.getLoadedTools(),
+		];
+	}
+
+	private hydrateDeferredToolsFromList(list: AgentMessageList): void {
+		if (!this.deferredToolManager?.hasTools) return;
+		this.deferredToolManager.hydrateLoadedToolsFromMessages(list.serialize().messages);
 	}
 
 	/**
