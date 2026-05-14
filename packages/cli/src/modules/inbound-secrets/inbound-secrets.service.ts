@@ -1,10 +1,20 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { INodeExecutionData, jsonParse } from 'n8n-workflow';
+import { INodeExecutionData, ISecureArtifactsV1, jsonParse } from 'n8n-workflow';
 
 import { InboundSecretsConfig } from './inbound-secrets.config';
 import { SensitiveFieldRules, sensitiveFieldRulesSchema } from './inbound-secrets.schemas';
 import { extractAndClear } from './path-traversal';
+
+// One per-item map keyed by path; values conform to `SecureArtifactsSchemaV1`'s
+// JsonValue leaf type.
+type ArtifactItem = ISecureArtifactsV1['artifacts'][string][number];
+type ArtifactValue = ArtifactItem[string];
+
+export type StripResult = {
+	triggerItems: INodeExecutionData[];
+	artifactsByItem: ArtifactItem[];
+};
 
 @Service()
 export class InboundSecretsService {
@@ -35,18 +45,46 @@ export class InboundSecretsService {
 		this.sensitiveFieldRules = parsedRules.data;
 	}
 
-	strip(items: INodeExecutionData[], triggerNodeType: string): INodeExecutionData[] {
+	strip(
+		items: INodeExecutionData[],
+		triggerNodeType: string,
+		descriptionPaths: string[] = [],
+	): StripResult {
 		const wildcardPaths = this.sensitiveFieldRules['*'] ?? [];
 		const typePaths = this.sensitiveFieldRules[triggerNodeType] ?? [];
-		const paths = [...wildcardPaths, ...typePaths];
+		const paths = Array.from(new Set([...wildcardPaths, ...typePaths, ...descriptionPaths]));
 
-		if (paths.length === 0) return items;
+		const artifactsByItem: ArtifactItem[] = [];
+
+		if (paths.length === 0) {
+			for (let i = 0; i < items.length; i++) artifactsByItem.push({});
+			return { triggerItems: items, artifactsByItem };
+		}
 
 		for (const item of items) {
+			const perItem: ArtifactItem = {};
 			for (const path of paths) {
-				extractAndClear(item.json, path);
+				const extracted = extractAndClear(item.json, path);
+				if (extracted === undefined) continue;
+				const sanitised = toJsonValue(extracted);
+				if (sanitised === undefined) continue;
+				perItem[path] = sanitised;
 			}
+			artifactsByItem.push(perItem);
 		}
-		return items;
+		return { triggerItems: items, artifactsByItem };
+	}
+}
+
+// JSON round-trip scrubs Date/undefined/non-serialisable leaves so the
+// captured value conforms to `JsonValueSchema`. Returns undefined if the
+// value cannot be serialised (e.g. circular ref).
+function toJsonValue(value: unknown): ArtifactValue | undefined {
+	try {
+		const serialised = JSON.stringify(value);
+		if (serialised === undefined) return undefined;
+		return JSON.parse(serialised) as ArtifactValue;
+	} catch {
+		return undefined;
 	}
 }

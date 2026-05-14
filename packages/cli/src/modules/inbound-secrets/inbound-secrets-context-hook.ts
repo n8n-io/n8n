@@ -25,9 +25,45 @@ export class InboundSecretContextHook implements IContextEstablishmentHook {
 
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 		const items = options.triggerItems ?? [];
-		const clearedItems = this.inboundSecretsService.strip(items, options.triggerNode.type);
+		const descriptionPaths = this.resolveDescriptionPaths(options);
+
+		const { triggerItems, artifactsByItem } = this.inboundSecretsService.strip(
+			items,
+			options.triggerNode.type,
+			descriptionPaths,
+		);
+
+		const hasArtifacts = artifactsByItem.some((m) => Object.keys(m).length > 0);
+		if (!hasArtifacts) {
+			return { triggerItems };
+		}
+
 		return {
-			triggerItems: clearedItems,
+			triggerItems,
+			contextUpdate: {
+				secureArtifacts: {
+					version: 1,
+					artifacts: {
+						[options.triggerNode.name]: artifactsByItem,
+					},
+				},
+			},
 		};
+	}
+
+	private resolveDescriptionPaths(options: ContextEstablishmentOptions): string[] {
+		// Fail-open: an unknown trigger type (e.g. uninstalled community node)
+		// shouldn't bypass admin rules. The trigger is firing right now so the
+		// type must be loaded; the try/catch is defence against future callers
+		// that violate that invariant.
+		try {
+			const description = options.workflow.nodeTypes.getByNameAndVersion(
+				options.triggerNode.type,
+				options.triggerNode.typeVersion,
+			).description;
+			return description.sensitiveOutputFields ?? [];
+		} catch {
+			return [];
+		}
 	}
 }
