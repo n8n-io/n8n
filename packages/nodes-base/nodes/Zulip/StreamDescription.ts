@@ -94,7 +94,7 @@ export const streamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'A list of dictionaries containing the the key name and value specifying the name of the stream to subscribe. If the stream does not exist a new stream is created.',
+			'A list of dictionaries containing the key name and value specifying the name of the stream to subscribe. If the stream does not exist a new stream is created.',
 		typeOptions: {
 			multipleValues: true,
 		},
