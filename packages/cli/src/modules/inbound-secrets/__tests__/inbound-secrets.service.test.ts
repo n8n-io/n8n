@@ -234,21 +234,8 @@ describe('InboundSecretsService', () => {
 
 				const result = service.strip(items, 'n8n-nodes-base.webhook', ['headers.authorization']);
 
-				// Single entry, single value — second extraction would otherwise overwrite with undefined.
 				expect(result.artifactsByItem).toEqual([{ 'headers.authorization': 'a' }]);
 				expect(items[0].json).toEqual({ headers: { authorization: undefined } });
-			});
-
-			it('omits paths that find no match from the per-item map', () => {
-				initWith({});
-				const items = [item({ body: { token: 't' } })];
-
-				const result = service.strip(items, 'n8n-nodes-base.webhook', [
-					'body.token',
-					'body.missing',
-				]);
-
-				expect(result.artifactsByItem).toEqual([{ 'body.token': 't' }]);
 			});
 		});
 

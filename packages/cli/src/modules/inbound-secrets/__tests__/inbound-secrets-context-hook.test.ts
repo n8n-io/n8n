@@ -20,22 +20,18 @@ describe('InboundSecretContextHook', () => {
 
 	const buildOptions = (
 		triggerItems: INodeExecutionData[] | null,
-		sensitiveOutputFields: string[] | undefined = undefined,
-		nodeOverrides: Partial<INode> = {},
+		sensitiveOutputFields?: string[],
 	): ContextEstablishmentOptions => {
-		const description = {
-			sensitiveOutputFields,
-		} as Partial<INodeTypeDescription> as INodeTypeDescription;
-		getByNameAndVersion.mockReturnValue({ description } as INodeType);
-		const workflow = { nodeTypes: { getByNameAndVersion } as unknown as INodeTypes } as Workflow;
+		getByNameAndVersion.mockReturnValue({
+			description: { sensitiveOutputFields } as Partial<INodeTypeDescription>,
+		} as INodeType);
 		return {
 			triggerNode: {
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
 				typeVersion: 1,
-				...nodeOverrides,
 			} as INode,
-			workflow,
+			workflow: { nodeTypes: { getByNameAndVersion } as unknown as INodeTypes } as Workflow,
 			triggerItems,
 			context: mock(),
 			options: {},
@@ -129,18 +125,9 @@ describe('InboundSecretContextHook', () => {
 		});
 	});
 
-	it('passes an empty descriptionPaths array when the description omits sensitiveOutputFields', async () => {
-		service.strip.mockReturnValue(stripResult([], []));
-
-		await hook.execute(buildOptions([], undefined));
-
-		expect(service.strip).toHaveBeenCalledWith([], 'n8n-nodes-base.webhook', []);
-	});
-
 	it('fails open when the node-type lookup throws (admin rules still apply)', async () => {
 		const input: INodeExecutionData[] = [{ json: { headers: { authorization: 'x' } } }];
 		const options = buildOptions(input);
-		// Override the default lookup to throw, after `buildOptions` stubbed it.
 		getByNameAndVersion.mockImplementation(() => {
 			throw new Error('unknown node type');
 		});

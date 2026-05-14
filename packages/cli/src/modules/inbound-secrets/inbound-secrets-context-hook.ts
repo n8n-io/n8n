@@ -52,10 +52,7 @@ export class InboundSecretContextHook implements IContextEstablishmentHook {
 	}
 
 	private resolveDescriptionPaths(options: ContextEstablishmentOptions): string[] {
-		// Fail-open: an unknown trigger type (e.g. uninstalled community node)
-		// shouldn't bypass admin rules. The trigger is firing right now so the
-		// type must be loaded; the try/catch is defence against future callers
-		// that violate that invariant.
+		// Fail open on unknown node type so admin rules still apply.
 		try {
 			const description = options.workflow.nodeTypes.getByNameAndVersion(
 				options.triggerNode.type,

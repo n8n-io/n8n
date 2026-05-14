@@ -6,8 +6,6 @@ import { InboundSecretsConfig } from './inbound-secrets.config';
 import { SensitiveFieldRules, sensitiveFieldRulesSchema } from './inbound-secrets.schemas';
 import { extractAndClear } from './path-traversal';
 
-// One per-item map keyed by path; values conform to `SecureArtifactsSchemaV1`'s
-// JsonValue leaf type.
 type ArtifactItem = ISecureArtifactsV1['artifacts'][string][number];
 type ArtifactValue = ArtifactItem[string];
 
@@ -76,9 +74,7 @@ export class InboundSecretsService {
 	}
 }
 
-// JSON round-trip scrubs Date/undefined/non-serialisable leaves so the
-// captured value conforms to `JsonValueSchema`. Returns undefined if the
-// value cannot be serialised (e.g. circular ref).
+// Round-trip scrubs Date/non-serialisable leaves so the value conforms to JsonValueSchema.
 function toJsonValue(value: unknown): ArtifactValue | undefined {
 	try {
 		const serialised = JSON.stringify(value);
