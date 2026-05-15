@@ -122,7 +122,9 @@ describe('workflows tool', () => {
 		});
 
 		it('should support update-version when updateVersion exists', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+			});
 			context.workflowService.listVersions = jest.fn();
 			context.workflowService.getVersion = jest.fn();
 			context.workflowService.restoreVersion = jest.fn();
@@ -141,6 +143,106 @@ describe('workflows tool', () => {
 			);
 
 			expect(result).toEqual({ success: true });
+		});
+
+		it('should block update-version when updateWorkflow permission is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+			context.workflowService.updateVersion = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+				} as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
+		});
+
+		it('should suspend update-version for approval by default', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn();
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+					description: null,
+				} as never,
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Update workflow version "1" — set name to "v1", description to (cleared)?',
+					severity: 'info',
+				}),
+			);
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
+		});
+
+		it('should update-version when approval resumes approved', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+				} as never,
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(context.workflowService.updateVersion).toHaveBeenCalledWith('w1', '1', {
+				name: 'v1',
+				description: undefined,
+			});
+		});
+
+		it('should not update-version when approval resumes denied', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+				} as never,
+				{ resumeData: { approved: false } } as never,
+			);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'User denied the action',
+			});
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
 		});
 	});
 
@@ -448,6 +550,48 @@ describe('workflows tool', () => {
 	});
 
 	describe('setup action', () => {
+		it('should block setup when updateWorkflow permission is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: undefined,
+			} as never);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+		});
+
+		it('should block setup apply when updateWorkflow permission is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					nodeParameters: { Slack: { channel: '#ops' } },
+				},
+			} as never);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+		});
+
 		it('should analyze workflow and suspend for user setup', async () => {
 			const setupRequests = [
 				{

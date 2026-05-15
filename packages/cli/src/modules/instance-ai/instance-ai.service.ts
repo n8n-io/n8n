@@ -2670,6 +2670,18 @@ export class InstanceAiService {
 	}
 
 	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
+		const revalidated = await this.revalidateActiveUser(user.id);
+		if (!revalidated) {
+			this.logger.warn('Cancelling run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+			});
+			this.cancelRun(threadId);
+			return;
+		}
+
+		const activeUser = revalidated;
+
 		const { plannedTaskService } = await this.createPlannedTaskState();
 		const graph = await plannedTaskService.getGraph(threadId);
 		if (!graph) return;
@@ -2687,7 +2699,7 @@ export class InstanceAiService {
 		if (action.type === 'replan') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('replan', action.graph, {
 					failedTask: action.failedTask,
@@ -2710,7 +2722,7 @@ export class InstanceAiService {
 		if (action.type === 'synthesize') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
 				this.runState.getThreadResearchMode(threadId),
@@ -2748,7 +2760,7 @@ export class InstanceAiService {
 				graphAfterMark.tasks.find((t) => t.id === checkpoint.id) ?? checkpoint;
 
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('checkpoint', graphAfterMark, {
 					checkpoint: checkpointRecord,
@@ -2776,7 +2788,7 @@ export class InstanceAiService {
 		}
 
 		const environment = await this.createExecutionEnvironment(
-			user,
+			activeUser,
 			threadId,
 			action.graph.planRunId,
 			createInertAbortSignal(),
@@ -2793,7 +2805,7 @@ export class InstanceAiService {
 			await this.dispatchPlannedTask(task, environment.orchestrationContext, action.graph);
 		}
 
-		await this.doSchedulePlannedTasks(user, threadId);
+		await this.doSchedulePlannedTasks(activeUser, threadId);
 	}
 
 	private async executeRun(
@@ -3724,6 +3736,17 @@ export class InstanceAiService {
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
+		const activeUser = await this.revalidateActiveUser(user.id);
+		if (!activeUser) {
+			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+				requestId,
+			});
+			this.cancelRun(threadId);
+			return false;
+		}
+
 		this.runState.activateSuspendedRun(threadId);
 
 		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
@@ -3747,7 +3770,7 @@ export class InstanceAiService {
 			messageId: nanoid(),
 			messageGroupId,
 			runId,
-			userId: user.id,
+			userId: activeUser.id,
 			modelId,
 			input: {
 				requestId,
@@ -3770,7 +3793,7 @@ export class InstanceAiService {
 			runId,
 			agentRunId,
 			threadId,
-			user,
+			user: activeUser,
 			toolCallId,
 			signal: abortController.signal,
 			abortController,
