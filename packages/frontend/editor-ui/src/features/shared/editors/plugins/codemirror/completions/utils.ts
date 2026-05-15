@@ -1,6 +1,5 @@
 import { HTTP_REQUEST_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -18,8 +17,8 @@ import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
 import {
-	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
 /**
@@ -167,21 +166,33 @@ export const isValidJavascriptIdentifier = (str: string) => {
 //      resolution-based utils
 // ----------------------------------
 
-export async function receivesNoBinaryData(contextNodeName?: string) {
+export async function receivesNoBinaryData(
+	workflowDocumentId: WorkflowDocumentId,
+	contextNodeName?: string,
+) {
 	try {
 		return (
-			(await resolveAutocompleteExpression('={{ $binary }}', contextNodeName))?.data === undefined
+			(await resolveAutocompleteExpression('={{ $binary }}', workflowDocumentId, contextNodeName))
+				?.data === undefined
 		);
 	} catch {
 		return true;
 	}
 }
 
-export async function hasNoParams(toResolve: string, contextNodeName?: string) {
+export async function hasNoParams(
+	toResolve: string,
+	workflowDocumentId: WorkflowDocumentId,
+	contextNodeName?: string,
+) {
 	let params;
 
 	try {
-		params = await resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
+		params = await resolveAutocompleteExpression(
+			`={{ ${toResolve}.params }}`,
+			workflowDocumentId,
+			contextNodeName,
+		);
 	} catch {
 		return true;
 	}
@@ -193,7 +204,11 @@ export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
+export async function resolveAutocompleteExpression(
+	expression: string,
+	workflowDocumentId: WorkflowDocumentId,
+	contextNodeName?: string,
+) {
 	const ndvStore = useNDVStore();
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
@@ -204,7 +219,7 @@ export async function resolveAutocompleteExpression(expression: string, contextN
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
 			: {};
-	return await resolveParameter(expression, {
+	return await resolveParameter(expression, workflowDocumentId, {
 		...inputData,
 		contextNodeName,
 	});
@@ -231,7 +246,10 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
 };
 
-export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) => {
+export const hasActiveNode = (
+	workflowDocumentId: WorkflowDocumentId,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) => {
 	if (useNDVStore().activeNode?.name !== undefined) {
 		return true;
 	}
@@ -240,28 +258,20 @@ export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterCo
 		return false;
 	}
 
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
-
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	return workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName) !== null;
 };
 
-export const isSplitInBatchesAbsent = () => {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
-
+export const isSplitInBatchesAbsent = (workflowDocumentId: WorkflowDocumentId) => {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	return !workflowDocumentStore.allNodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 };
 
-export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+export function autocompletableNodeNames(
+	workflowDocumentId: WorkflowDocumentId,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const activeNode =
 		targetNodeParameterContext === undefined
 			? useNDVStore().activeNode
@@ -275,17 +285,14 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 
 	// This is a tool node, look for the nearest node with main connections
 	if (nonMainChildren.length > 0) {
-		return nonMainChildren.map(getPreviousNodes).flat();
+		return nonMainChildren.map((child) => getPreviousNodes(workflowDocumentId, child)).flat();
 	}
 
-	return getPreviousNodes(activeNodeName);
+	return getPreviousNodes(workflowDocumentId, activeNodeName);
 }
 
-export function getPreviousNodes(nodeName: string) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+export function getPreviousNodes(workflowDocumentId: WorkflowDocumentId, nodeName: string) {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	return workflowDocumentStore
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)

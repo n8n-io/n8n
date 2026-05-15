@@ -6,6 +6,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import userEvent from '@testing-library/user-event';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -28,9 +29,15 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState', () => ({
-	useSurfaceMcpEmptyState: vi.fn(() => surfaceMcpEmptyState),
-}));
+vi.mock('@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState', async () => {
+	const { computed } = await import('vue');
+	return {
+		useSurfaceMcpEmptyState: vi.fn(() => ({
+			showTile: computed(() => surfaceMcpEmptyState.showTile),
+			showReminder: computed(() => surfaceMcpEmptyState.showReminder),
+		})),
+	};
+});
 
 const renderComponent = createComponentRenderer(EmptyStateLayout, {
 	pinia: createTestingPinia(),
@@ -59,6 +66,7 @@ describe('EmptyStateLayout', () => {
 	let recommendedTemplatesStore: ReturnType<
 		typeof mockedStore<typeof useRecommendedTemplatesStore>
 	>;
+	let readyToRunStore: ReturnType<typeof mockedStore<typeof useReadyToRunStore>>;
 	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
 
 	beforeEach(() => {
@@ -66,6 +74,7 @@ describe('EmptyStateLayout', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		recommendedTemplatesStore = mockedStore(useRecommendedTemplatesStore);
+		readyToRunStore = mockedStore(useReadyToRunStore);
 		bannersStore = mockedStore(useBannersStore);
 
 		usersStore.currentUser = {
@@ -91,6 +100,7 @@ describe('EmptyStateLayout', () => {
 		} as unknown as ReturnType<typeof useSourceControlStore>['preferences'];
 
 		bannersStore.bannersHeight = 0;
+		readyToRunStore.userCanClaimOpenAiCredits = false;
 		surfaceMcpEmptyState.showTile = false;
 		surfaceMcpEmptyState.showReminder = false;
 
@@ -191,6 +201,25 @@ describe('EmptyStateLayout', () => {
 
 			expect(getByTestId('mcp-onboarding-card')).toBeInTheDocument();
 			expect(getByTestId('mcp-onboarding-reminder')).toBeInTheDocument();
+		});
+
+		it('should render ready-to-run card when user can claim OpenAI credits and MCP tile is hidden', () => {
+			readyToRunStore.userCanClaimOpenAiCredits = true;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('ready-to-run-card')).toBeInTheDocument();
+		});
+
+		it('should hide ready-to-run card when Surface MCP tile is shown', () => {
+			readyToRunStore.userCanClaimOpenAiCredits = true;
+			surfaceMcpEmptyState.showTile = true;
+
+			const { queryByTestId, getByTestId } = renderComponent();
+
+			expect(queryByTestId('ready-to-run-card')).not.toBeInTheDocument();
+			expect(getByTestId('mcp-onboarding-card')).toBeInTheDocument();
+			expect(getByTestId('new-workflow-card')).toBeInTheDocument();
 		});
 
 		it('should emit click:add event when workflow card is clicked', async () => {
