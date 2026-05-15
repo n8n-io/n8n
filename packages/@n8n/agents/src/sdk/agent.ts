@@ -7,6 +7,7 @@ import { Memory } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
+import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
 import { hasObservationStore } from '../runtime/observation-store';
 import {
@@ -50,6 +51,12 @@ const DEFAULT_LAST_MESSAGES = 10;
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
 
+interface DeferredToolOptions {
+	search?: {
+		topK?: number;
+	};
+}
+
 /**
  * Lightweight read-only view of an agent's configured state.
  * Returned by `Agent.snapshot` for testing and debugging purposes.
@@ -61,7 +68,7 @@ export interface AgentSnapshot {
 	model: { provider: string | null; name: string | null };
 	/** Instruction text passed to `.instructions()`, or null if not set. */
 	instructions: string | null;
-	/** Minimal description of each registered tool. */
+	/** Minimal description of each directly registered tool. */
 	tools: ReadonlyArray<{ name: string; description: string | undefined }>;
 	/** True when `.memory()` has been configured. */
 	hasMemory: boolean;
@@ -99,6 +106,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private instructionsText?: string;
 
 	private tools: BuiltTool[] = [];
+
+	private deferredTools: BuiltTool[] = [];
+
+	private deferredToolSearchTopK: number | undefined;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -188,6 +199,19 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		const built = 'build' in t ? t.build() : t;
 		this.tools.push(built);
+		return this;
+	}
+
+	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
+	deferredTool(t: ToolParameter | ToolParameter[], options?: DeferredToolOptions): this {
+		const tools = Array.isArray(t) ? t : [t];
+		for (const tool of tools) {
+			const built = 'build' in tool ? tool.build() : tool;
+			this.deferredTools.push(built);
+		}
+		if (options?.search?.topK !== undefined) {
+			this.deferredToolSearchTopK = options.search.topK;
+		}
 		return this;
 	}
 
@@ -737,6 +761,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		const finalTools = [...this.tools];
+		const configuredDeferredTools = [...this.deferredTools];
 
 		if (this.workspaceInstance) {
 			const wsTools = this.workspaceInstance.getTools();
@@ -744,15 +769,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		let finalStaticTools = finalTools;
+		let finalDeferredTools = configuredDeferredTools;
 		if (this.requireToolApprovalValue) {
 			finalStaticTools = finalTools.map((t) =>
+				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
+			);
+			finalDeferredTools = configuredDeferredTools.map((t) =>
 				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
 			);
 		}
 
 		// Validate checkpoint requirement from static tools and known MCP approval config
 		// before attempting any network connections (allows fast failure).
-		const staticNeedsCheckpoint = finalStaticTools.some((t) => t.suspendSchema);
+		const staticNeedsCheckpoint =
+			finalStaticTools.some((t) => t.suspendSchema) ||
+			finalDeferredTools.some((t) => t.suspendSchema);
 		const mcpNeedsCheckpoint =
 			(this.requireToolApprovalValue && this.mcpClients.length > 0) ||
 			this.mcpClients.some((c) => c.declaresApproval());
@@ -776,9 +807,30 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		// Detect collisions between MCP tools and static tools.
+		// Detect collisions between direct, deferred, and MCP tools.
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
-		const collisions = mcpTools.filter((t) => staticNames.has(t.name)).map((t) => t.name);
+		const reservedDeferredToolNames = new Set([SEARCH_TOOLS_TOOL_NAME, LOAD_TOOL_TOOL_NAME]);
+		const deferredNames = new Set<string>();
+		const deferredCollisions: string[] = [];
+		for (const tool of finalDeferredTools) {
+			if (
+				staticNames.has(tool.name) ||
+				reservedDeferredToolNames.has(tool.name) ||
+				deferredNames.has(tool.name)
+			) {
+				deferredCollisions.push(tool.name);
+			}
+			deferredNames.add(tool.name);
+		}
+		if (deferredCollisions.length > 0) {
+			throw new Error(
+				`Deferred tool name collision — the following tool names resolve to duplicates or reserved tools: ${deferredCollisions.join(', ')}`,
+			);
+		}
+
+		const collisions = mcpTools
+			.filter((t) => staticNames.has(t.name) || deferredNames.has(t.name))
+			.map((t) => t.name);
 		if (collisions.length > 0) {
 			throw new Error(
 				`MCP tool name collision — the following tool names resolve to duplicates: ${collisions.join(', ')}`,
@@ -789,7 +841,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Validate checkpoint again after discovering actual MCP tools
 		// (catches the case where MCP tools have suspendSchema after listing).
-		const allNeedCheckpoint = allTools.some((t) => t.suspendSchema);
+		const allNeedCheckpoint =
+			allTools.some((t) => t.suspendSchema) || finalDeferredTools.some((t) => t.suspendSchema);
 		if (allNeedCheckpoint && !this.checkpointStore) {
 			throw new Error(
 				`Agent "${this.name}" has tools requiring approval or suspend/resume but no checkpoint storage. ` +
@@ -813,6 +866,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			model: modelConfig,
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
+			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
+			toolSearch:
+				finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
+					? { topK: this.deferredToolSearchTopK }
+					: undefined,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: this.memoryConfig?.memory,

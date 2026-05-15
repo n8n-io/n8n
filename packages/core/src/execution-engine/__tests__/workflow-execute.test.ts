@@ -80,6 +80,36 @@ describe('WorkflowExecute', () => {
 			.mockImplementation(() => {});
 	});
 
+	describe('retryOnFail', () => {
+		it('should not trigger retry when error field is null', async () => {
+			const retryNode: INode = {
+				...createNodeData({ name: 'retryNode' }),
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 1,
+			};
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [retryNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			const runNodeSpy = jest.spyOn(workflowExecute, 'runNode').mockResolvedValue({
+				data: [[{ json: { error: null } }]],
+			});
+
+			await workflowExecute.run({ workflow, startNode: retryNode });
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+			expect(runNodeSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 
