@@ -19,8 +19,12 @@ export class DbStore implements ExecutionDataStore {
 		await repo.upsert({ ...payload, executionId }, ['executionId']);
 	}
 
-	async read({ executionId }: ExecutionRef): Promise<ExecutionDataBundle | null> {
-		const result = await this.repository.findOne({
+	async read(
+		{ executionId }: ExecutionRef,
+		tx?: EntityManager,
+	): Promise<ExecutionDataBundle | null> {
+		const repo = tx ? tx.getRepository(ExecutionData) : this.repository;
+		const result = await repo.findOne({
 			where: { executionId },
 			select: ['data', 'workflowData', 'workflowVersionId'],
 		});
@@ -30,9 +34,9 @@ export class DbStore implements ExecutionDataStore {
 		return { ...result, version: EXECUTION_DATA_BUNDLE_VERSION };
 	}
 
-	async delete(ref: ExecutionRef | ExecutionRef[]) {
+	async delete(ref: ExecutionRef | ExecutionRef[], tx?: EntityManager) {
 		const ids = (Array.isArray(ref) ? ref : [ref]).map((r) => r.executionId);
 
-		await this.repository.deleteMany(ids);
+		await this.repository.deleteMany(ids, tx);
 	}
 }

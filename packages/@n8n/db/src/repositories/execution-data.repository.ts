@@ -33,14 +33,21 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 			.then((results) => results.map(({ workflowData }) => workflowData));
 	}
 
-	async deleteMany(executionIds: string[]) {
+	async deleteMany(executionIds: string[], tx?: EntityManager) {
 		if (executionIds.length === 0) return;
 
 		const executionIdBatches = chunk(executionIds, BATCH_SIZE);
-		await this.manager.transaction(async (transactionManager) => {
+
+		const deleteInTransaction = async (transactionManager: EntityManager) => {
 			for (const batch of executionIdBatches) {
 				await transactionManager.delete(ExecutionData, { executionId: In(batch) });
 			}
-		});
+		};
+
+		if (tx) {
+			await deleteInTransaction(tx);
+		} else {
+			await this.manager.transaction(deleteInTransaction);
+		}
 	}
 }

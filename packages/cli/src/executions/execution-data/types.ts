@@ -25,14 +25,14 @@ export type ExecutionDataBundle = ExecutionDataPayload & {
 	version: 1;
 };
 
+/**
+ * Persistence operations for execution data bundles. Methods accept an
+ * optional `tx` (`EntityManager`) for transactional participation:
+ * `DbStore` uses it; `FsStore` ignores it (the filesystem is not transactional).
+ */
 export interface ExecutionDataStore {
 	init?(): Promise<void>;
-	/**
-	 * @param tx - Optional `EntityManager` for transactional writes.
-	 *   Used by `DbStore` to participate in a wrapping transaction.
-	 *   Ignored by `FsStore` (the filesystem is not transactional).
-	 */
 	write(ref: ExecutionRef, payload: ExecutionDataPayload, tx?: EntityManager): Promise<void>;
-	read(ref: ExecutionRef): Promise<ExecutionDataBundle | null>;
-	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
+	read(ref: ExecutionRef, tx?: EntityManager): Promise<ExecutionDataBundle | null>;
+	delete(ref: ExecutionRef | ExecutionRef[], tx?: EntityManager): Promise<void>;
 }

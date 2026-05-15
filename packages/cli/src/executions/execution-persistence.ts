@@ -128,7 +128,7 @@ export class ExecutionPersistence {
 				if ((result.affected ?? 0) === 0) return false;
 			}
 
-			const existing = await store.read(ref);
+			const existing = await store.read(ref, tx);
 			if (!existing) throw new MissingExecutionDataError(ref);
 
 			await store.write(
