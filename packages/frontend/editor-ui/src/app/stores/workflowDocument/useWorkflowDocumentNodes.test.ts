@@ -16,7 +16,7 @@
  *    need to be rewritten every time internals change; round-trips do not.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import type { Workflow } from 'n8n-workflow';
@@ -453,8 +453,28 @@ describe('useWorkflowDocumentNodes', () => {
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'add',
-				payload: { node },
+				payload: {
+					node: expect.objectContaining({ id: node.id, name: node.name }),
+				},
 			});
+		});
+
+		it('addNode emits the reactive proxy from nodes.value (not the raw input)', () => {
+			// Contract: ADD subscribers must receive the Vue-cached reactive proxy,
+			// not the raw input object. Otherwise, property reads on the payload
+			// node create no reactive dependencies and later mutations are silent.
+			// See CLAUDE.md "Reactivity invariant: events carry reactive references".
+			const hookSpy = vi.fn();
+			const rawNode = createNode({ id: 'a', name: 'Foo' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.addNode(rawNode);
+
+			const payload = hookSpy.mock.calls[0][0].payload as { node: INodeUi };
+			// The emitted node must be the same JS reference Vue caches for the array slot
+			expect(payload.node).toBe(workflowDocumentNodes.nodesById.value.get('a'));
+			expect(payload.node).toBe(workflowDocumentNodes.allNodes.value.find((n) => n.id === 'a'));
 		});
 
 		it('removeNode fires onNodesChange with delete action', () => {
@@ -604,6 +624,57 @@ describe('useWorkflowDocumentNodes', () => {
 				action: 'delete',
 				payload: { name: '', id: 'nonexistent' },
 			});
+		});
+	});
+
+	describe('index reactivity', () => {
+		it('property updates on a newly added node propagate to consumers reading via getNodeByName', async () => {
+			// Regression test for the linter-not-updating bug: when a node was
+			// added via addNode (rather than setNodes), the index stored the raw
+			// input object instead of Vue's cached reactive proxy. Consumers
+			// reading via getNodeByName got the raw object — property reads
+			// created no reactive dependencies, so later mutations through
+			// nodes.value[i] (the proxy) were silent to downstream computeds.
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			const node = createNode({
+				id: 'a',
+				name: 'Foo',
+				parameters: { mode: 'runOnceForAllItems' },
+			});
+			workflowDocumentNodes.addNode(node);
+
+			// Mirrors the ndvStore.activeNode → codeEditorMode chain
+			const observed = computed(() => workflowDocumentNodes.getNodeByName('Foo')?.parameters?.mode);
+			expect(observed.value).toBe('runOnceForAllItems');
+
+			workflowDocumentNodes.setNodeParameters({
+				name: 'Foo',
+				value: { mode: 'runOnceForEachItem' },
+			});
+			await nextTick();
+
+			expect(observed.value).toBe('runOnceForEachItem');
+		});
+
+		it('property updates on a newly added node propagate to consumers reading via getNodeById', async () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			const node = createNode({
+				id: 'a',
+				name: 'Foo',
+				parameters: { mode: 'runOnceForAllItems' },
+			});
+			workflowDocumentNodes.addNode(node);
+
+			const observed = computed(() => workflowDocumentNodes.getNodeById('a')?.parameters?.mode);
+			expect(observed.value).toBe('runOnceForAllItems');
+
+			workflowDocumentNodes.setNodeParameters({
+				name: 'Foo',
+				value: { mode: 'runOnceForEachItem' },
+			});
+			await nextTick();
+
+			expect(observed.value).toBe('runOnceForEachItem');
 		});
 	});
 

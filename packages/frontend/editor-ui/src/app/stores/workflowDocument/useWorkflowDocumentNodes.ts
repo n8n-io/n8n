@@ -147,11 +147,16 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		}
 
 		nodes.value.push(node);
+		// Read back from the reactive array to get Vue's cached proxy.
+		// Emitting the proxy (not the raw input) ensures ADD subscribers
+		// receive a reference whose property reads are tracked and whose
+		// mutations propagate reactivity. See CLAUDE.md "Reactivity invariant".
+		const reactiveNode = nodes.value[nodes.value.length - 1];
 		deps.syncWorkflowObject(nodes.value);
-		deps.nodeMetadata.initNodeMetadata(node.name);
+		deps.nodeMetadata.initNodeMetadata(reactiveNode.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.ADD,
-			payload: { node },
+			payload: { node: reactiveNode },
 		});
 		void onStateDirty.trigger();
 	}
