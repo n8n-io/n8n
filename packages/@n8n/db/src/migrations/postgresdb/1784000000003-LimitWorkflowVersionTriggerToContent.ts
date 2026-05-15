@@ -4,10 +4,10 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * Re-creates the `workflow_version_increment` trigger so `versionCounter`
  * is bumped only when indexable content (`nodes` or `settings`) changes.
  *
- * @timestamp 2026-07-25 17:20:00 UTC (intentionally in future as of
- * migration creation date due to preceding timestamps)
+ * @timestamp 2026-07-14 03:33:20 UTC + 3ms — sits one slot above the current
+ * floor (`1784000000000`) to satisfy the code-health ordering rule.
  */
-export class LimitWorkflowVersionTriggerToContent1785000000000 implements ReversibleMigration {
+export class LimitWorkflowVersionTriggerToContent1784000000003 implements ReversibleMigration {
 	async up({ queryRunner, escape }: MigrationContext) {
 		const incrementFunction = escape.functionName('increment_workflow_version');
 		const versionCounter = escape.columnName('versionCounter');
