@@ -1,4 +1,4 @@
-ARG NODE_VERSION=24.14.1
+ARG NODE_VERSION=24.15.0
 ARG N8N_VERSION=snapshot
 
 # Rebuild native addons for the container platform. The base image has no

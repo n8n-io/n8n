@@ -1,4 +1,4 @@
-ARG NODE_VERSION=24.14.1
+ARG NODE_VERSION=24.15.0
 
 FROM dhi.io/node:${NODE_VERSION}-alpine3.23-dev
 
