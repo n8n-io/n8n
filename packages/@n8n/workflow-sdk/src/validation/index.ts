@@ -42,6 +42,7 @@ export type ValidationErrorCode =
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
 	| 'INVALID_OUTPUT_FOR_MODE'
+	| 'SWITCH_FALLBACK_OUTPUT_DISABLED'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
@@ -190,6 +191,7 @@ interface NodeJSON {
 	typeVersion?: number | string;
 	position?: [number, number];
 	parameters?: Record<string, unknown>;
+	onError?: string;
 }
 
 /**
@@ -506,6 +508,10 @@ export function validateWorkflow(
 		// Reject placeholder() in slots that opt out via builderHint.placeholderSupported === false
 		validatePlaceholderSlots(json, options.nodeTypesProvider, errors);
 	}
+
+	// Switch fallback output validation does not need node metadata. It is derived from
+	// the Switch node's dynamic output contract in rules mode.
+	validateSwitchFallbackOutputConnections(json, warnings);
 
 	// Merge node input-count consistency
 	checkMergeNodeInputCount(json, warnings);
@@ -1011,6 +1017,81 @@ function validateOutputUsage(
 					`'${sourceNode.name}' is ${usedWiring} but its current parameters disable that output. ${conditionDetails}${altSuggestion}`,
 					sourceNode.name,
 					undefined,
+					undefined,
+					'major',
+				),
+			);
+		}
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getSwitchRulesCount(parameters: Record<string, unknown> | undefined): number {
+	const rules = parameters?.rules;
+	if (!isRecord(rules)) return 0;
+
+	const values = rules.values;
+	if (Array.isArray(values)) return values.length;
+
+	const legacyRules = rules.rules;
+	if (Array.isArray(legacyRules)) return legacyRules.length;
+
+	return 0;
+}
+
+function getSwitchFallbackOutput(parameters: Record<string, unknown> | undefined): unknown {
+	const options = parameters?.options;
+	if (!isRecord(options)) return undefined;
+
+	return options.fallbackOutput;
+}
+
+function hasOutputConnections(
+	outputs: Array<Array<{ node: string; type: string; index: number }> | null>,
+	outputIndex: number,
+): boolean {
+	const output = outputs[outputIndex];
+	return Array.isArray(output) && output.length > 0;
+}
+
+/**
+ * Validate that Switch fallback branches are only connected when the node
+ * actually exposes an extra fallback output.
+ */
+function validateSwitchFallbackOutputConnections(
+	json: WorkflowJSON,
+	warnings: ValidationWarning[],
+): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.switch') continue;
+
+		const mode = sourceNode.parameters?.mode;
+		if (mode !== undefined && mode !== 'rules') continue;
+
+		const outgoing = json.connections[sourceNode.name];
+		const mainOutputs = outgoing?.main;
+		if (!Array.isArray(mainOutputs)) continue;
+
+		const rulesCount = getSwitchRulesCount(sourceNode.parameters);
+		const fallbackOutput = getSwitchFallbackOutput(sourceNode.parameters);
+		if (fallbackOutput === 'extra') continue;
+
+		for (let outputIndex = rulesCount; outputIndex < mainOutputs.length; outputIndex++) {
+			if (!hasOutputConnections(mainOutputs, outputIndex)) continue;
+
+			const isErrorOutput =
+				sourceNode.onError === 'continueErrorOutput' && outputIndex === rulesCount;
+			if (isErrorOutput) continue;
+
+			warnings.push(
+				new ValidationWarning(
+					'SWITCH_FALLBACK_OUTPUT_DISABLED',
+					`Switch node '${sourceNode.name}' has a connection from output ${outputIndex}, but rules mode only creates fallback output ${rulesCount} when options.fallbackOutput is set to 'extra'. Set options.fallbackOutput to 'extra' before wiring a catch-all branch, or route unmatched items to an existing rule output with a numeric fallbackOutput value.`,
+					sourceNode.name,
+					'options.fallbackOutput',
 					undefined,
 					'major',
 				),

@@ -89,6 +89,10 @@ const routeByPriority = switchCase({
             }
           }
         ]
+      },
+      options: {
+        fallbackOutput: 'extra',
+        renameFallbackOutput: 'Fallback'
       }
     }
   }
@@ -97,9 +101,9 @@ const routeByPriority = switchCase({
 export default workflow('id', 'name')
   .add(startTrigger)
   .to(routeByPriority
-    .onCase('urgent', processUrgent.to(notifyTeam))
-    .onCase('normal', processNormal)
-    .onDefault(archive));
+    .onCase(0, processUrgent.to(notifyTeam))
+    .onCase(1, processNormal)
+    .onCase(2, archive));
 </pattern>
 </patterns>`,
 					},
@@ -176,7 +180,7 @@ export default workflow('id', 'name')
 					type: 'fixedCollection',
 					builderHint: {
 						propertyHint:
-							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF. Each `outputKey` you define must be wired via `.onCase('<outputKey>')` to the intended downstream node — unwired cases silently drop their items.",
+							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF. Wire rule outputs by zero-based index with `.onCase(index, target)`; `outputKey` is the visible output label, not the `.onCase()` argument. Unwired cases silently drop their items.",
 					},
 					typeOptions: {
 						multipleValues: true,
@@ -283,6 +287,10 @@ export default workflow('id', 'name')
 								loadOptionsDependsOn: ['rules.values', '/rules', '/rules.values'],
 								loadOptionsMethod: 'getFallbackOutputOptions',
 							},
+							builderHint: {
+								propertyHint:
+									"Set this to `'extra'` before wiring a catch-all/default branch. In rules mode, `'extra'` creates a fallback output at index `rules.values.length`; default `'none'` creates no fallback output and drops unmatched items. Numeric values route unmatched items to an existing rule output and do not create a new port.",
+							},
 							default: 'none',
 							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 							description:
@@ -309,6 +317,10 @@ export default workflow('id', 'name')
 							type: 'string',
 							placeholder: 'e.g. Fallback',
 							default: '',
+							builderHint: {
+								propertyHint:
+									"Only labels the extra fallback output. Use it together with `fallbackOutput: 'extra'`; it does not create a fallback output by itself.",
+							},
 							displayOptions: {
 								show: {
 									fallbackOutput: ['extra'],
