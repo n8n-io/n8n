@@ -760,6 +760,205 @@ function makeGenerateWithToolCalls(
 	};
 }
 
+describe('AgentRuntime — deferred tool loading', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('searches and loads deferred tools into the next generate iteration', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-search',
+						toolName: 'search_tools',
+						args: { query: 'deferred capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('ready'));
+
+		const result = await runtime.generate('need the deferred capability');
+
+		expect(generateText).toHaveBeenCalledTimes(3);
+
+		const searchCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'search_tools');
+		expect(searchCall?.output).toEqual({
+			results: [
+				{
+					name: 'deferred_capability',
+					description: 'Mock tool deferred_capability',
+					loaded: false,
+				},
+			],
+		});
+
+		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tool');
+		expect(loadCall?.output).toEqual({
+			status: 'loaded',
+			toolName: 'deferred_capability',
+			tool: {
+				name: 'deferred_capability',
+				description: 'Mock tool deferred_capability',
+				loaded: true,
+			},
+			message: 'Tool "deferred_capability" is loaded and will be available on the next model turn.',
+		});
+
+		const generateTextCalls = generateText.mock.calls as Array<
+			[{ tools: Record<string, unknown> }]
+		>;
+		const firstCall = generateTextCalls[0][0];
+		const firstTools = Object.keys(firstCall.tools);
+		expect(firstTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(firstTools).not.toContain('deferred_capability');
+
+		const secondTools = Object.keys(generateTextCalls[1][0].tools);
+		expect(secondTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(secondTools).not.toContain('deferred_capability');
+
+		const thirdTools = Object.keys(generateTextCalls[2][0].tools);
+		expect(thirdTools).toEqual(
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool', 'deferred_capability']),
+		);
+	});
+
+	it('does not leak loaded deferred tools into the next generate run', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('first done'));
+
+		await runtime.generate('load the deferred capability');
+
+		generateText.mockClear();
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('second done'));
+
+		await runtime.generate('start a fresh run');
+
+		const generateTextCalls = generateText.mock.calls as Array<
+			[{ tools: Record<string, unknown> }]
+		>;
+		const freshRunTools = Object.keys(generateTextCalls[0][0].tools);
+		expect(freshRunTools).toEqual(
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']),
+		);
+		expect(freshRunTools).not.toContain('deferred_capability');
+	});
+
+	it('resumes a suspended deferred tool after it has been loaded', async () => {
+		const deferredTool = makeSuspendingTool('deferred_approval', async (input, ctx) => {
+			if (!ctx.resumeData) {
+				return await ctx.suspend({ reason: 'approve deferred action?' });
+			}
+
+			const resumeData = ctx.resumeData as { approved: boolean };
+			return {
+				approved: resumeData.approved,
+				value: (input as { value?: string }).value,
+			};
+		});
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [deferredTool],
+			checkpointStorage: 'memory',
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_approval' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-deferred',
+						toolName: 'deferred_approval',
+						args: { value: 'needs approval' },
+					},
+				]),
+			);
+
+		const firstResult = await runtime.generate('load and run the deferred approval tool');
+
+		expect(firstResult.finishReason).toBe('tool-calls');
+		expect(firstResult.pendingSuspend).toHaveLength(1);
+		expect(firstResult.pendingSuspend![0].toolName).toBe('deferred_approval');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{
+				runId: firstResult.pendingSuspend![0].runId,
+				toolCallId: firstResult.pendingSuspend![0].toolCallId,
+			},
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tool: 'deferred_approval',
+					output: { approved: true, value: 'needs approval' },
+				}),
+			]),
+		);
+	});
+});
+
 describe('AgentRuntime — concurrent tool execution', () => {
 	beforeEach(() => {
 		generateText.mockReset();

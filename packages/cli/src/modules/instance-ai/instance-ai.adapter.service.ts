@@ -318,6 +318,7 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			telemetry,
 		} = this;
+		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 		const redactParameters = !allowSendingParameterValues;
@@ -509,15 +510,36 @@ export class InstanceAiAdapterService {
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
 
-				// Enforce credential tamper protection — same guard as the
-				// REST controller (workflows.controller PATCH /:workflowId).
-				if (license.isSharingEnabled()) {
-					updateData = await enterpriseWorkflowService.preventTampering(updateData, saved.id, user);
-				}
+				let updated: WorkflowEntity;
+				try {
+					// Enforce credential tamper protection — same guard as the
+					// REST controller (workflows.controller PATCH /:workflowId).
+					if (license.isSharingEnabled()) {
+						updateData = await enterpriseWorkflowService.preventTampering(
+							updateData,
+							saved.id,
+							user,
+						);
+					}
 
-				const updated = await workflowService.update(user, updateData, saved.id, {
-					source: 'n8n-ai',
-				});
+					updated = await workflowService.update(user, updateData, saved.id, {
+						source: 'n8n-ai',
+					});
+				} catch (error) {
+					try {
+						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
+						if (archived && options?.markAsAiTemporary) {
+							await aiBuilderTemporaryWorkflowRepository.unmark(saved.id);
+						}
+					} catch (cleanupError) {
+						logger.warn('Failed to clean up AI-builder workflow shell after create failure', {
+							threadId,
+							workflowId: saved.id,
+							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+						});
+					}
+					throw error;
+				}
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
