@@ -181,6 +181,11 @@ export class McpRegistryService {
 
 	private async saveServers(servers: McpRegistryServer[]): Promise<void> {
 		const entities = servers.map(toEntity);
+		// We don't delete any servers since they are used to
+		// generate node types. If some node types are removed,
+		// it will break workflows that use them.
+		// If we want to stop supporting a server,
+		// we will set its status to 'deprecated' instead.
 		await this.repository.upsert(entities, ['id']);
 	}
 
