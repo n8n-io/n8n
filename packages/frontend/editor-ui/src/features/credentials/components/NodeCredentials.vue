@@ -571,7 +571,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			credential_type: credentialType,
 			node_type: props.node.type,
 			mode: enable ? 'n8n_connect' : 'own',
-			workflow_id: props.standalone ? '' : workflowsStore.workflowId,
+			workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
 		});
 	}
 
