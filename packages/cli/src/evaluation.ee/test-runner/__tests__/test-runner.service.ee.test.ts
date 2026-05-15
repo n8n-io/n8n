@@ -2475,6 +2475,35 @@ describe('TestRunnerService', () => {
 				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 				expect(evaluationCollectionRepository.updateInsightsCache).not.toHaveBeenCalled();
 			});
+
+			test('keeps the run marked completed when the cache bust fails', async () => {
+				// Failure-isolation guarantee: if `updateInsightsCache` throws
+				// the exception must not escape into the outer try/catch in
+				// `runTest`, which would re-mark the (already-persisted)
+				// completed run as `error`. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which the
+				// user can resolve with `forceRegenerate: true`.
+				setupHappyPathMocks(2);
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-cache-fail', collectionId: 'col-y' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockRejectedValueOnce(
+					new Error('db transient failure'),
+				);
+
+				await expect(
+					testRunnerService.runTest(USER as never, WORKFLOW_ID, 1),
+				).resolves.toBeUndefined();
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				// Crucial: the failure path must not have flipped the row
+				// back to `error` via the outer catch block.
+				expect(testRunRepository.markAsError).not.toHaveBeenCalled();
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-y',
+					null,
+				);
+			});
 		});
 	});
 

@@ -1080,8 +1080,27 @@ export class TestRunnerService {
 				// in the repository) because terminal-state setters live
 				// in this service; centralising the bust avoids spreading
 				// the dependency across every call site.
+				//
+				// Failure isolation: an exception from `updateInsightsCache`
+				// must NOT propagate. The run is already persisted as
+				// `completed` with its metrics; if the outer catch sees an
+				// error here it would re-mark the run as `error` and we'd
+				// lose a successful run. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which
+				// the user can resolve with `forceRegenerate: true`.
 				if (testRun.collectionId) {
-					await this.evaluationCollectionRepository.updateInsightsCache(testRun.collectionId, null);
+					try {
+						await this.evaluationCollectionRepository.updateInsightsCache(
+							testRun.collectionId,
+							null,
+						);
+					} catch (cacheError) {
+						this.logger.warn('Failed to bust eval-collection insights cache', {
+							testRunId: testRun.id,
+							collectionId: testRun.collectionId,
+							error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+						});
+					}
 				}
 
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });

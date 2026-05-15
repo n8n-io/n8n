@@ -26,42 +26,61 @@ import { Z } from '../zod-class';
 export const aiInsightsStatusSchema = z.enum(['ok', 'fallback', 'error']);
 export type AiInsightsStatus = z.infer<typeof aiInsightsStatusSchema>;
 
-const winnerSchema = z.object({
-	versionLabel: z.string().min(1),
-	headline: z.string().min(1).max(120),
-	body: z.string().min(1).max(280),
-});
+// Every nested object below is `.strict()` so unknown keys are rejected
+// rather than silently stripped. This serves two paths:
+//   1. LLM-output validation (TRUST-96, when wired): the agent must
+//      produce *exactly* this shape. Hallucinated fields trigger the
+//      retry / fallback flow (spec §9.5).
+//   2. Cached-envelope validation: an envelope cached against an older
+//      schema (e.g. before a field is added) fails parsing and forces
+//      regeneration rather than handing back a partially-stripped
+//      response.
+const winnerSchema = z
+	.object({
+		versionLabel: z.string().min(1),
+		headline: z.string().min(1).max(120),
+		body: z.string().min(1).max(280),
+	})
+	.strict();
 
-const regressionSchema = z.object({
-	versionLabel: z.string().min(1),
-	metric: z.string().min(1),
-	/** Percentage-point delta vs. the best version. Negative = regressed. */
-	delta: z.number(),
-	headline: z.string().min(1).max(120),
-	body: z.string().min(1).max(280),
-});
+const regressionSchema = z
+	.object({
+		versionLabel: z.string().min(1),
+		metric: z.string().min(1),
+		/** Percentage-point delta vs. the best version. Negative = regressed. */
+		delta: z.number(),
+		headline: z.string().min(1).max(120),
+		body: z.string().min(1).max(280),
+	})
+	.strict();
 
-const suggestedNextSchema = z.object({
-	headline: z.string().min(1).max(120),
-	body: z.string().min(1).max(280),
-	/** Structured statement of what experiment isolates. */
-	hypothesis: z.string().min(1).max(280),
-});
+const suggestedNextSchema = z
+	.object({
+		headline: z.string().min(1).max(120),
+		body: z.string().min(1).max(280),
+		/** Structured statement of what experiment isolates. */
+		hypothesis: z.string().min(1).max(280),
+	})
+	.strict();
 
 /** Strict shape the agent is expected to produce. Used to validate LLM output. */
-export const aiInsightsPayloadSchema = z.object({
-	winner: winnerSchema,
-	regressions: z.array(regressionSchema),
-	suggestedNext: suggestedNextSchema,
-});
+export const aiInsightsPayloadSchema = z
+	.object({
+		winner: winnerSchema,
+		regressions: z.array(regressionSchema),
+		suggestedNext: suggestedNextSchema,
+	})
+	.strict();
 
 /** Full response envelope including metadata. */
-export const aiInsightsResponseSchema = z.object({
-	generatedAt: z.string(),
-	modelUsed: z.string(),
-	status: aiInsightsStatusSchema,
-	insights: aiInsightsPayloadSchema,
-});
+export const aiInsightsResponseSchema = z
+	.object({
+		generatedAt: z.string(),
+		modelUsed: z.string(),
+		status: aiInsightsStatusSchema,
+		insights: aiInsightsPayloadSchema,
+	})
+	.strict();
 
 export type AiInsightsWinner = z.infer<typeof winnerSchema>;
 export type AiInsightsRegression = z.infer<typeof regressionSchema>;
