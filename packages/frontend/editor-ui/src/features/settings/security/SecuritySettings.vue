@@ -8,11 +8,14 @@ import {
 	N8nBadge,
 	N8nHeading,
 	N8nNotice,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type {
+	SelectItemProps,
+	SelectValue,
+} from '@n8n/design-system/v2/components/Select/Select.types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionScope } from '@n8n/api-types';
@@ -41,7 +44,12 @@ const dataRedactionTooltipKey = 'settings.security.dataRedaction.unlicensed_tool
 const showPublishingDialog = ref(false);
 const showSharingDialog = ref(false);
 
-const redactionScopeOptions: RedactionScope[] = ['manual-only', 'non-manual', 'all'];
+const redactionScopeOptions = computed<Array<SelectItemProps & { value: RedactionScope }>>(() =>
+	(['manual-only', 'non-manual', 'all'] as RedactionScope[]).map((value) => ({
+		value,
+		label: i18n.baseText(`settings.security.dataRedaction.scope.option.${value}` as BaseTextKey),
+	})),
+);
 
 const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
@@ -231,15 +239,18 @@ const dataRedactionEnforced = computed({
 	},
 });
 
-const dataRedactionScope = computed({
-	get: () => redactionState.value?.redactionScope ?? 'non-manual',
-	set: (value: RedactionScope) => {
-		if (redactionState.value) {
-			redactionState.value = { ...redactionState.value, redactionScope: value };
-		}
-		void updateRedactionEnforcement({ redactionScope: value });
-	},
-});
+const dataRedactionScope = computed<RedactionScope>(
+	() => redactionState.value?.redactionScope ?? 'non-manual',
+);
+
+function onSelectRedactionScope(value: SelectValue | undefined) {
+	if (!value || value === dataRedactionScope.value) return;
+	const scope = value as RedactionScope;
+	if (redactionState.value) {
+		redactionState.value = { ...redactionState.value, redactionScope: scope };
+	}
+	void updateRedactionEnforcement({ redactionScope: scope });
+}
 
 const affectedScopeText = computed(() => {
 	if (!redactionState.value?.redactionEnforced) {
@@ -383,23 +394,14 @@ const affectedScopeText = computed(() => {
 						}}</N8nText>
 					</div>
 					<div :class="$style.settingsContainerAction">
-						<N8nSelect
-							v-model="dataRedactionScope"
+						<N8nSelect2
+							:model-value="dataRedactionScope"
+							:items="redactionScopeOptions"
 							size="medium"
 							:disabled="isManagedByEnv"
 							data-test-id="redaction-enforcement-scope-select"
-						>
-							<N8nOption
-								v-for="option in redactionScopeOptions"
-								:key="option"
-								:value="option"
-								:label="
-									i18n.baseText(
-										`settings.security.dataRedaction.scope.option.${option}` as BaseTextKey,
-									)
-								"
-							/>
-						</N8nSelect>
+							@update:model-value="onSelectRedactionScope"
+						/>
 					</div>
 				</div>
 				<div :class="$style.settingsCountRow" data-test-id="redaction-enforcement-summary">
