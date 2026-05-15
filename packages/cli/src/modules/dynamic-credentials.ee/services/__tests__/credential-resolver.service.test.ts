@@ -88,6 +88,7 @@ describe('DynamicCredentialResolverService', () => {
 
 		mockRegistry = {
 			getResolverByTypename: jest.fn(),
+			getAllResolvers: jest.fn(),
 		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
 
 		mockCipher = {
