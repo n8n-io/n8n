@@ -778,6 +778,14 @@ describe('Expression', () => {
 			});
 		});
 
+		// CAT-3075: feature parity between legacy and VM engines for empty expressions.
+		// The legacy engine returns "" via Tournament.execute's empty-input guard;
+		// the VM engine bypassed that guard and threw
+		// `TypeError: Cannot read properties of undefined (reading 'text')`.
+		it('should resolve "=" (empty expression marker) to "" (CAT-3075)', () => {
+			expect(evaluate('=')).toBe('');
+		});
+
 		describe('additionalKeys', () => {
 			const node = workflow.nodes.node;
 

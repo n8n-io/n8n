@@ -67,7 +67,7 @@ function browserClick(connection: BrowserConnection): ToolDefinition {
 			});
 		},
 		browserClickOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -111,7 +111,7 @@ function browserType(connection: BrowserConnection): ToolDefinition {
 			});
 		},
 		browserTypeOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -135,14 +135,14 @@ function browserSelect(connection: BrowserConnection): ToolDefinition {
 	return createConnectedTool(
 		connection,
 		'browser_select',
-		'Select option(s) in a <select> element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
+		'Select option(s) in a <select> element. Use ref from browser_snapshot (preferred) or a selector as fallback. Always use this for native select elements instead of clicks',
 		browserSelectSchema,
 		async (state, input, pageId) => {
 			const selected = await state.adapter.select(pageId, input.element, input.values);
 			return formatCallToolResult({ selected });
 		},
 		browserSelectOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -173,7 +173,7 @@ function browserDrag(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ dragged: true });
 		},
 		browserDragOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -203,7 +203,7 @@ function browserHover(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ hovered: true });
 		},
 		browserHoverOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -233,7 +233,7 @@ function browserPress(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ pressed: input.keys });
 		},
 		browserPressOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -280,7 +280,7 @@ function browserScroll(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ scrolled: true });
 		},
 		browserScrollOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -314,7 +314,7 @@ function browserUpload(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ uploaded: true, files: input.files });
 		},
 		browserUploadOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }
 
@@ -347,6 +347,6 @@ function browserDialog(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ handled: true, action: input.action, dialogType });
 		},
 		browserDialogOutputSchema,
-		{ autoSnapshot: true, waitForCompletion: true },
+		{ waitForCompletion: true },
 	);
 }

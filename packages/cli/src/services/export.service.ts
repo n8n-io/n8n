@@ -8,6 +8,9 @@ import { DataSource } from '@n8n/typeorm';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
 import { compressFolder } from '@/utils/compression.util';
+import { quoteIdentifier, toTableName } from '@/modules/data-table/utils/sql-utils';
+
+const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 
 @Service()
 export class ExportService {
@@ -90,11 +93,151 @@ export class ExportService {
 		return systemTablesExported;
 	}
 
+	private async loadDataTableIds(): Promise<string[]> {
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const dataTableTableName = `${tablePrefix}data_table`;
+
+		let dataTables: Array<{ id: string }>;
+		try {
+			dataTables = await this.dataSource.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(dataTableTableName)}`,
+			);
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  ${dataTableTableName} registry not found, skipping data-table row export...`,
+				{ error },
+			);
+			return [];
+		}
+
+		if (dataTables.length === 0) {
+			this.logger.info('   ℹ️  No data tables found, nothing to export.');
+			return [];
+		}
+
+		return dataTables.map((t) => t.id);
+	}
+
+	private async exportSingleDataTable(
+		dataTableId: string,
+		outputDir: string,
+		customEncryptionKey: string | undefined,
+	): Promise<number> {
+		const dbType = this.dataSource.options.type;
+		const userTableName = toTableName(dataTableId);
+		const fileBaseName = `${DATA_TABLE_ROWS_FILE_PREFIX}${dataTableId}`;
+
+		this.logger.info(`\n📊 Processing data table: ${userTableName}`);
+
+		await this.clearExistingEntityFiles(outputDir, fileBaseName);
+
+		const idCol = quoteIdentifier('id', dbType);
+		const escapedUserTable = quoteIdentifier(userTableName, dbType);
+		const pageSize = 500;
+		const entitiesPerFile = 500;
+
+		let lastId = 0;
+		let fileIndex = 1;
+		let currentFileEntityCount = 0;
+		let totalEntityCount = 0;
+		let hasNextPage = true;
+
+		do {
+			let pageRows: Array<Record<string, unknown>>;
+			try {
+				pageRows = await this.dataSource.query(
+					`SELECT * FROM ${escapedUserTable} WHERE ${idCol} > ${lastId} ORDER BY "id" LIMIT ${pageSize}`,
+				);
+			} catch (error) {
+				this.logger.warn(
+					`   ⚠️  Could not read rows from ${userTableName}; skipping. The dynamic table may be missing on the source instance.`,
+					{ error },
+				);
+				break;
+			}
+
+			if (pageRows.length === 0) break;
+
+			const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
+			const fileName =
+				targetFileIndex === 1
+					? `${fileBaseName}.jsonl`
+					: `${fileBaseName}.${targetFileIndex}.jsonl`;
+			const filePath = safeJoinPath(outputDir, fileName);
+
+			if (targetFileIndex > fileIndex) {
+				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
+				fileIndex = targetFileIndex;
+				currentFileEntityCount = 0;
+			}
+
+			const rowsJsonl = pageRows.map((row) => JSON.stringify(row)).join('\n');
+			await appendFile(
+				filePath,
+				(await this.cipher.encryptV2(rowsJsonl, customEncryptionKey)) + '\n',
+				'utf8',
+			);
+
+			const lastRowId = Number((pageRows[pageRows.length - 1] as { id: unknown }).id);
+			if (!Number.isFinite(lastRowId)) {
+				throw new Error(
+					`Unexpected non-numeric id in ${userTableName}; cannot continue keyset pagination`,
+				);
+			}
+			lastId = lastRowId;
+
+			totalEntityCount += pageRows.length;
+			currentFileEntityCount += pageRows.length;
+
+			this.logger.info(
+				`      Fetched ${pageRows.length} rows (last id: ${lastId}, total: ${totalEntityCount})`,
+			);
+
+			hasNextPage = pageRows.length >= pageSize;
+		} while (hasNextPage);
+
+		if (currentFileEntityCount > 0) {
+			this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
+		}
+
+		this.logger.info(
+			`   ✅ Completed export for ${userTableName}: ${totalEntityCount} rows in ${fileIndex} file(s)`,
+		);
+
+		return totalEntityCount;
+	}
+
+	private async exportDataTableUserTables(
+		outputDir: string,
+		customEncryptionKey?: string,
+	): Promise<{ totalTables: number; totalRows: number }> {
+		this.logger.info('\n📚 Exporting data table user rows:');
+		this.logger.info('==================================');
+
+		const dataTableIds = await this.loadDataTableIds();
+		if (dataTableIds.length === 0) {
+			return { totalTables: 0, totalRows: 0 };
+		}
+
+		let totalRows = 0;
+		for (const dataTableId of dataTableIds) {
+			totalRows += await this.exportSingleDataTable(dataTableId, outputDir, customEncryptionKey);
+		}
+
+		this.logger.info(
+			`\n📊 Data table row export summary: ${dataTableIds.length} table(s), ${totalRows} row(s)`,
+		);
+
+		return { totalTables: dataTableIds.length, totalRows };
+	}
+
 	async exportEntities(
 		outputDir: string,
 		excludedTables: Set<string> = new Set(),
 		keyFilePath?: string,
+		options: { includeDataTableRows?: boolean } = {},
 	) {
+		const { includeDataTableRows = true } = options;
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 
 		validateDbTypeForExportEntities(this.dataSource.options.type);
@@ -132,6 +275,19 @@ export class ExportService {
 		const entitiesPerFile = 500;
 
 		await this.exportMigrationsTable(outputDir, customEncryptionKey);
+
+		if (includeDataTableRows) {
+			const dataTableRowsExported = await this.exportDataTableUserTables(
+				outputDir,
+				customEncryptionKey,
+			);
+			totalEntitiesExported += dataTableRowsExported.totalRows;
+			totalTablesProcessed += dataTableRowsExported.totalTables;
+		} else {
+			this.logger.info(
+				'\nℹ️  Skipping data-table row export (only schemas will be in the archive).',
+			);
+		}
 
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name

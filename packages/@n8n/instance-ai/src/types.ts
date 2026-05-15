@@ -39,6 +39,7 @@ export interface WorkflowSummary {
 	name: string;
 	versionId: string;
 	activeVersionId: string | null;
+	isArchived: boolean;
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
@@ -149,8 +150,14 @@ export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 	connections: Record<string, unknown>;
 }
 
+export type WorkflowListStatus = 'active' | 'archived' | 'all';
+
 export interface InstanceAiWorkflowService {
-	list(options?: { query?: string; limit?: number }): Promise<WorkflowSummary[]>;
+	list(options?: {
+		query?: string;
+		limit?: number;
+		status?: WorkflowListStatus;
+	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
@@ -166,7 +173,7 @@ export interface InstanceAiWorkflowService {
 		options?: { projectId?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
-	delete(workflowId: string): Promise<void>;
+	unarchive(workflowId: string): Promise<void>;
 	/**
 	 * Clear the AI-builder temporary marker on a workflow — used to promote the
 	 * main deliverable so the run-finish reap leaves it alone.
@@ -244,7 +251,22 @@ export interface CredentialTypeSearchResult {
 }
 
 export interface InstanceAiCredentialService {
-	list(options?: { type?: string }): Promise<CredentialSummary[]>;
+	/**
+	 * List credentials.
+	 *
+	 * Without `workflowId` / `projectId`: returns every credential the user has
+	 * read access to anywhere in the instance. Use this for informational lookups.
+	 *
+	 * With `workflowId` or `projectId`: returns only credentials usable in that
+	 * workflow / project (the same scoping the editor's credential picker uses).
+	 * Use this whenever the result feeds a setup card the user will pick from —
+	 * the save path enforces the same scope and will reject anything outside it.
+	 */
+	list(options?: {
+		type?: string;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<CredentialSummary[]>;
 	get(credentialId: string): Promise<CredentialDetail>;
 	delete(credentialId: string): Promise<void>;
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
@@ -986,6 +1008,8 @@ export interface OrchestrationContext {
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
 	webhookBaseUrl?: string;
+	/** Form base URL for the n8n instance (e.g. http://localhost:5678/form) — distinct from webhookBaseUrl since Form Triggers serve at /form/, not /webhook/ */
+	formBaseUrl?: string;
 	/** Spawn a detached background task that outlives the current orchestrator run */
 	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
@@ -1028,6 +1052,10 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/** Mark the current orchestrator run as making progress. */
+	touchRun?: () => boolean;
+	/** Mark a running background task as making progress. */
+	touchBackgroundTask?: (taskId: string) => boolean;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */

@@ -21,8 +21,7 @@ vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => (
 }));
 
 vi.mock('vue-router', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
+	const actual = await vi.importActual('vue-router');
 	return {
 		...actual,
 		useRoute: () => ({

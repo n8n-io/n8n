@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -16,6 +17,8 @@ const mockGetExpressionHandler = vi.fn().mockReturnValue({});
 const mockWorkflowDocumentStore = {
 	getNodeByName: mockGetNodeByName,
 	getExpressionHandler: mockGetExpressionHandler,
+	workflowTriggerNodes: [],
+	allNodes: [],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -23,6 +26,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	return {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+		injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 	};
 });

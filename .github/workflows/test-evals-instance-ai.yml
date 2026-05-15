@@ -69,6 +69,7 @@ jobs:
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           for i in "${!PORTS[@]}"; do
@@ -79,6 +80,10 @@ jobs:
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
+              -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
+              -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona \
+              -e DAYTONA_API_URL=https://app.daytona.io/api \
+              -e DAYTONA_API_KEY="$DAYTONA_API_KEY" \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
               -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
               -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
@@ -122,6 +127,36 @@ jobs:
               }'
           done
 
+      # Belt-and-suspenders: env vars set sandbox config but persisted admin
+      # settings can override. Per-lane assertion catches env-injection hiccups
+      # or unexpected DB-side state. A single misconfigured lane would
+      # silently route some builds through tool mode and pollute results.
+      - name: Assert sandbox is enabled on every lane
+        run: |
+          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          bad=0
+          for i in "${!PORTS[@]}"; do
+            port="${PORTS[$i]}"
+            lane="$((i+1))"
+            curl -sf -X POST "http://localhost:$port/rest/login" \
+              -H "Content-Type: application/json" \
+              -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' \
+              -c "/tmp/cookies-$port.txt" -o /dev/null
+            cfg=$(curl -sf -b "/tmp/cookies-$port.txt" \
+              "http://localhost:$port/rest/instance-ai/settings" \
+              | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
+            if [ "$cfg" != "true daytona" ]; then
+              echo "::error::lane $lane (port $port): expected 'true daytona', got '$cfg'"
+              bad=$((bad+1))
+            else
+              echo "  lane $lane: sandboxEnabled=true sandboxProvider=daytona ok"
+            fi
+          done
+          if [ "$bad" -gt 0 ]; then
+            echo "::error::$bad lane(s) misconfigured - eval would mix sandbox + tool-mode builds"
+            exit 1
+          fi
+
       - name: Run Instance AI Evals
         continue-on-error: true
         working-directory: packages/@n8n/instance-ai
@@ -143,8 +178,62 @@ jobs:
             --base-url "$BASE_URLS" \
             --concurrency 32 \
             --verbose \
-            --iterations 3 \
+            --iterations 5 \
             ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
+
+      # Captures sandbox/builder/Daytona signals that surface during the eval
+      # (after migrations finish). Two layers of secret-leak defense:
+      #
+      #   1. Filter to specific diagnostic patterns — never tail raw output.
+      #      The grep allowlist scopes the log surface to lines we care
+      #      about for debugging (sandbox lifecycle, builder, errors).
+      #
+      #   2. Re-register secrets via ::add-mask:: so any line that does
+      #      match the allowlist has the secret values replaced with ***
+      #      before reaching the GH Actions log. GitHub auto-masks
+      #      ${{ secrets.X }} references, but the masking is fragile
+      #      against transformed or split values; explicit registration
+      #      reinforces it.
+      #
+      # Runs even on eval failure so we have the post-mortem regardless.
+      - name: Capture n8n container logs (debug)
+        if: ${{ always() }}
+        env:
+          EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+        run: |
+          # Layer 2 — defense in depth: explicitly mask each secret's value.
+          # ::add-mask:: is a single-line workflow command. Multi-line secrets
+          # (e.g. N8N_LICENSE_CERT is PEM-encoded) must be masked one line at
+          # a time, otherwise only the first line is registered.
+          for v in "$EVALS_ANTHROPIC_KEY" "$DAYTONA_API_KEY" \
+                   "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" \
+                   "$N8N_ENCRYPTION_KEY"; do
+            [ -z "$v" ] && continue
+            while IFS= read -r line; do
+              [ -n "$line" ] && echo "::add-mask::$line"
+            done <<< "$v"
+          done
+
+          # Layer 1 — accuracy filter: only surface diagnostic signals.
+          # `tail -100` after the filter so we get the LATEST matching lines
+          # (post-eval failure signal), not the earliest startup-time ones.
+          SIGNALS='sandbox|builder|daytona|instance.?ai|error|warn|reject|exception|fail'
+          for c in $(docker ps -aq --filter "name=n8n-eval-"); do
+            name=$(docker inspect --format '{{.Name}}' "$c" | sed 's|^/||')
+            echo ""
+            echo "============================================================"
+            echo "=== $name (filtered diagnostic signals, last 100 lines) ==="
+            echo "============================================================"
+            docker logs "$c" 2>&1 \
+              | grep -ivE 'migration' \
+              | grep -iE "$SIGNALS" \
+              | tail -100 \
+              || true
+          done
 
       - name: Stop n8n containers
         if: ${{ always() }}
@@ -160,22 +249,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RESULTS_FILE="packages/@n8n/instance-ai/eval-results.json"
-          if [ ! -f "$RESULTS_FILE" ]; then
-            echo "No eval results file found"
+          # The eval CLI writes the full PR comment as eval-pr-comment.md
+          # (see comparison/format.ts:formatComparisonMarkdown). It includes
+          # the alert, aggregate, comparison sections, per-test-case results
+          # collapsed, and failure details collapsed. CI just relays it.
+          COMMENT_FILE="packages/@n8n/instance-ai/eval-pr-comment.md"
+          if [ ! -f "$COMMENT_FILE" ]; then
+            echo "No PR comment file found (eval likely cancelled before writing results)"
             exit 0
           fi
-
-          # Build the full comment body with jq
-          jq -r '
-            "### Instance AI Workflow Eval Results\n\n" +
-            "**\(.summary.built)/\(.summary.testCases) built | \(.totalRuns) run(s) | pass@\(.totalRuns): \(.summary.passAtK * 100 | floor)% | pass^\(.totalRuns): \(.summary.passHatK * 100 | floor)% | iterations: \(.summary.passRatePerIter)**\n\n" +
-            "| Workflow | Build | pass@\(.totalRuns) | pass^\(.totalRuns) |\n|---|---|---|---|\n" +
-            ([.testCases[] as $tc | "| \($tc.name) | \($tc.buildSuccessCount)/\($tc.totalRuns) | \(([$tc.scenarios[] | .passAtK] | add) / ($tc.scenarios | length) * 100 | floor)% | \(([$tc.scenarios[] | .passHatK] | add) / ($tc.scenarios | length) * 100 | floor)% |"] | join("\n")) +
-            "\n\n<details><summary>Failure details</summary>\n\n" +
-            ([.testCases[] as $tc | $tc.scenarios[] | select(.passHatK < 1) | "**\($tc.name) / \(.name)** — \(.passCount)/\(.totalRuns) passed" + "\n" + ([.runs[] | select(.passed == false) | "> Run\(if .failureCategory then " [\(.failureCategory)]" else "" end): \(.reasoning | .[0:200])"] | join("\n"))] | join("\n\n")) +
-            "\n</details>"
-          ' "$RESULTS_FILE" > /tmp/eval-comment.md
+          cp "$COMMENT_FILE" /tmp/eval-comment.md
 
           # Find and update existing eval comment, or create new one
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
