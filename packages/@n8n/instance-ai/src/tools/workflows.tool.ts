@@ -291,7 +291,29 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
-	return await context.workflowService.get(input.workflowId);
+	// Hallucinated workflow IDs (e.g. `wf-foo`, `telegram-chatbot`) come back as
+	// unhandled tool errors otherwise, which the agent then retries with another
+	// invented id. Convert the error into a structured "not found" response
+	// surfacing the list of accessible workflows so the agent can self-correct
+	// without burning more turns guessing.
+	try {
+		return await context.workflowService.get(input.workflowId);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to fetch workflow';
+		const available = await context.workflowService
+			.list({ limit: 25 })
+			.then((items) => items.map((w) => ({ id: w.id, name: w.name })))
+			.catch(() => [] as Array<{ id: string; name: string }>);
+		return {
+			workflowId: input.workflowId,
+			found: false as const,
+			error: message,
+			availableWorkflows: available,
+			hint:
+				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflows(action="list")` for the current set. ' +
+				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
+		};
+	}
 }
 
 async function handleGetAsCode(
