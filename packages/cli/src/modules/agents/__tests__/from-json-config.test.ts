@@ -2,7 +2,10 @@ import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import {
+	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
+} from '../json-config/agent-json-config';
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
@@ -505,6 +508,24 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
 	});
 
+	it('accepts a blank model for draft configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: '',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('requires model and credential for runnable configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: 'Be helpful.',
+		};
+		expect(() => RunnableAgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
 	it('rejects invalid model format (no slash)', () => {
 		const config = {
 			name: 'test',
@@ -710,6 +731,74 @@ describe('AgentJsonConfigSchema', () => {
 			instructions: '',
 			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('validates Telegram private integration settings', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					credentialName: 'Telegram Bot',
+					settings: {
+						accessMode: 'private',
+						allowedUsers: ['123', '123', '456', 'john_doe123'],
+					},
+				},
+			],
+		};
+
+		const parsed = AgentJsonConfigSchema.parse(config);
+
+		expect(parsed.integrations?.[0]).toMatchObject({
+			type: 'telegram',
+			settings: {
+				accessMode: 'private',
+				allowedUsers: ['123', '456', 'john_doe123'],
+			},
+		});
+	});
+
+	it('rejects Telegram private integration settings without valid user IDs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					credentialName: 'Telegram Bot',
+					settings: { accessMode: 'private', allowedUsers: [] },
+				},
+			],
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects Telegram integration settings with entries containing invalid characters', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					credentialName: 'Telegram Bot',
+					settings: { accessMode: 'private', allowedUsers: ['user name'] },
+				},
+			],
+		};
+
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 

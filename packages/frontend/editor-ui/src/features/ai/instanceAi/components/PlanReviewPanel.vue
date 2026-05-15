@@ -43,6 +43,11 @@ const resolvedAction = ref<'approved' | 'changes-requested' | null>(null);
 
 const hasFeedback = computed(() => feedback.value.trim().length > 0);
 const isExpanded = ref(!props.readOnly);
+const titleKey = computed(() =>
+	isResolved.value || props.readOnly
+		? 'instanceAi.planReview.titleResolved'
+		: 'instanceAi.planReview.title',
+);
 
 function getDescription(task: PlannedTaskArg): string {
 	let text = task.spec;
@@ -81,7 +86,7 @@ function handleRequestChanges() {
 			<!-- Header -->
 			<div :class="$style.header">
 				<N8nText bold>
-					{{ i18n.baseText('instanceAi.planReview.title') }}
+					{{ i18n.baseText(titleKey) }}
 				</N8nText>
 			</div>
 		</CollapsibleTrigger>
@@ -152,6 +157,7 @@ function handleRequestChanges() {
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-bottom: var(--border);
+	cursor: pointer;
 }
 
 .tasks {
