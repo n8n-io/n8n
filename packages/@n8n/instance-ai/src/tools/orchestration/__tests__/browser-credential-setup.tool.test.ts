@@ -1,11 +1,20 @@
+import type { BuiltTool } from '@n8n/agents';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 
-const { createBrowserCredentialSetupTool } =
+const {
+	createBrowserCredentialSetupTool,
+	__testHasPermanentBrowserDenial,
+	__testIsPermanentDenialResult,
+	__testWrapBrowserToolsForDenialDetection,
+} =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../browser-credential-setup.tool') as typeof import('../browser-credential-setup.tool');
+
+const PERMANENT_DENIAL_MESSAGE = 'User permanently denied access to browser: https://example.com';
 
 function createMockEventBus(): InstanceAiEventBus {
 	return {
@@ -51,6 +60,14 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		})),
 		cancelBackgroundTask: jest.fn(),
 		...overrides,
+	};
+}
+
+function makeTool(name: string, handler: NonNullable<BuiltTool['handler']>): BuiltTool {
+	return {
+		name,
+		description: name,
+		handler,
 	};
 }
 
@@ -141,5 +158,86 @@ describe('browser-credential-setup tool', () => {
 		);
 
 		expect(result.result).toBe('Browser credential setup requires background task support.');
+	});
+
+	it('detects permanent browser denial in native MCP error results', () => {
+		expect(
+			__testIsPermanentDenialResult({
+				isError: true,
+				structuredContent: { error: PERMANENT_DENIAL_MESSAGE },
+				content: [{ type: 'text', text: JSON.stringify({ error: PERMANENT_DENIAL_MESSAGE }) }],
+			}),
+		).toBe(true);
+
+		expect(
+			__testIsPermanentDenialResult({
+				isError: true,
+				structuredContent: { error: 'User denied access to browser: https://example.com' },
+			}),
+		).toBe(false);
+	});
+
+	it('wraps browser tools to flag permanent denial before nudging', async () => {
+		const onDenied = jest.fn();
+		const registry = createToolRegistry([
+			[
+				'browser_click',
+				makeTool(
+					'browser_click',
+					async () =>
+						await Promise.resolve({
+							isError: true,
+							structuredContent: { error: PERMANENT_DENIAL_MESSAGE },
+							content: [
+								{ type: 'text', text: JSON.stringify({ error: PERMANENT_DENIAL_MESSAGE }) },
+							],
+						}),
+				),
+			],
+		]);
+
+		const wrapped = __testWrapBrowserToolsForDenialDetection(registry, onDenied);
+		await wrapped.get('browser_click')?.handler?.({}, {});
+
+		expect(onDenied).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not flag permanent denial from non-browser tools', async () => {
+		const onDenied = jest.fn();
+		const registry = createToolRegistry([
+			[
+				'research',
+				makeTool(
+					'research',
+					async () =>
+						await Promise.resolve({
+							isError: true,
+							structuredContent: { error: PERMANENT_DENIAL_MESSAGE },
+						}),
+				),
+			],
+		]);
+
+		const wrapped = __testWrapBrowserToolsForDenialDetection(registry, onDenied);
+		await wrapped.get('research')?.handler?.({}, {});
+
+		expect(onDenied).not.toHaveBeenCalled();
+	});
+
+	it('detects permanent browser denial from stream work summaries', () => {
+		expect(
+			__testHasPermanentBrowserDenial({
+				toolCalls: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'browser_click',
+						succeeded: false,
+						errorSummary: PERMANENT_DENIAL_MESSAGE,
+					},
+				],
+				totalToolCalls: 1,
+				totalToolErrors: 1,
+			}),
+		).toBe(true);
 	});
 });
