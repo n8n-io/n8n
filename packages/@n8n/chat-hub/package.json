@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat-hub",
-  "version": "1.13.1",
+  "version": "1.13.2",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
