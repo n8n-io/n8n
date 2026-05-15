@@ -26,12 +26,7 @@ type ErrorReporterInitOptions = {
 	/** Threshold in ms for event loop block detection. Only used if `withEventLoopBlockDetection` is true. */
 	eventLoopBlockThreshold?: number;
 
-	/**
-	 * Max number of event loop block events to report per hour per worker. Acts
-	 * as a leaky-bucket rate cap to suppress flood from routine recurring
-	 * blockers while still surfacing distinct culprits. Only used if
-	 * `withEventLoopBlockDetection` is true.
-	 */
+	/** Max event loop block events per hour per worker. Only used if `withEventLoopBlockDetection` is true. */
 	eventLoopBlockMaxEventsPerHour?: number;
 
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */

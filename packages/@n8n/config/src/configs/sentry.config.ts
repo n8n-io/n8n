@@ -45,16 +45,7 @@ export class SentryConfig {
 	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.number({ coerce: true }).int().positive())
 	eventLoopBlockThreshold: number = 500;
 
-	/**
-	 * Maximum number of event loop block events to report per hour per worker.
-	 * Acts as a leaky-bucket rate cap so repeat events of the same routine
-	 * blocker don't flood Sentry; distinct culprits still surface within the
-	 * cap. Used by `@sentry/node-native`'s `eventLoopBlockIntegration` as
-	 * `maxBlockedEventsPerHour`. Only used if `withEventLoopBlockDetection` is
-	 * true.
-	 *
-	 * @default 5
-	 */
+	/** Leaky-bucket cap on event loop block events reported per hour per worker. @default 5 */
 	@Env(
 		'N8N_SENTRY_EVENT_LOOP_BLOCK_MAX_EVENTS_PER_HOUR',
 		z.number({ coerce: true }).int().positive(),
