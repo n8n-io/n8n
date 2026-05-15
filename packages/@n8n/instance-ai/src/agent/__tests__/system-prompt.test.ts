@@ -244,6 +244,50 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('manual eval setup flow', () => {
+		it('routes user-requested eval setup through metric choice, propose, and eval-setup agent', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**Add-evals flow**');
+			expect(prompt).toContain('evals(action="recommend-metric"');
+			expect(prompt).toContain('evals(action="select-metrics"');
+			expect(prompt).toContain('evals(action="propose"');
+			expect(prompt).toMatch(/[Cc]all `eval-setup-with-agent`/);
+			expect(prompt).toContain('Do NOT call `build-workflow-with-agent` for this case');
+		});
+	});
+
+	describe('post-first-run eval suite chain', () => {
+		it('declares the Post-first-run chain with the full action sequence', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**Post-first-run eval suite chain**');
+			expect(prompt).toMatch(/evals\(action="offer", workflowId, projectId\)/);
+			expect(prompt).toMatch(/evals\(action="recommend-metric", workflowId\)/);
+			expect(prompt).toMatch(/evals\(action="select-metrics", workflowId\)/);
+			expect(prompt).toMatch(/evals\(action="propose"/);
+			expect(prompt).toMatch(/evals\(action="offer-data-population", workflowId\)/);
+			expect(prompt).toContain('eval-setup-with-agent');
+		});
+
+		it('treats every `eligible: false` reason as silent skip', () => {
+			expect(getSystemPrompt({})).toMatch(/skip silently/);
+		});
+
+		it('respects prior user intent to skip evals', () => {
+			expect(getSystemPrompt({})).toMatch(
+				/(previously said|previously declined).+don't want evals/,
+			);
+		});
+
+		it('defers the eval offer to the Post-first-run chain in both post-build and synthesize turns', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do NOT run the eval offer chain during the post-build flow');
+			expect(prompt).toContain('Do NOT run the eval offer chain in the synthesize turn');
+		});
+	});
+
 	describe('multi-credential disambiguation guidance', () => {
 		it('instructs the orchestrator to ask once when a service has more than one credential of the same type', () => {
 			const prompt = getSystemPrompt({});

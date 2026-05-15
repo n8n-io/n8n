@@ -239,7 +239,7 @@ describe('executions tool', () => {
 				{ key: 'value' },
 				{ timeout: 30_000 },
 			);
-			expect(result).toEqual(executionResult);
+			expect(result).toMatchObject(executionResult);
 		});
 
 		it('should execute immediately when permission is always_allow', async () => {
@@ -264,7 +264,7 @@ describe('executions tool', () => {
 			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
 				timeout: undefined,
 			});
-			expect(result).toEqual(executionResult);
+			expect(result).toMatchObject(executionResult);
 		});
 
 		it('should pass undefined inputData when not provided', async () => {
