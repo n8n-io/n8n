@@ -342,13 +342,19 @@ function handleAddTool(nodeType: INodeTypeDescription) {
 		return;
 	}
 
-	addToolRef({
-		...newRef,
-		name: makeUniqueName(
-			newRef.name ?? nodeType.displayName,
-			getExistingToolNames(workingTools.value),
-		),
-	});
+	if (newRef.type === 'node') {
+		addToolRef({
+			...newRef,
+			name: makeUniqueName(
+				newRef.name ?? nodeType.displayName,
+				getExistingToolNames(workingTools.value),
+			),
+		});
+	} else {
+		addToolRef({
+			...newRef,
+		});
+	}
 }
 
 async function handleAddWorkflow(workflow: IWorkflowDb) {

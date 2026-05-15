@@ -92,7 +92,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
@@ -920,11 +920,12 @@ export class InstanceAiService {
 			input: options.input,
 			proxyConfig: options.proxyConfig ?? baseTracing?.proxyConfig,
 			metadata: {
-				n8n_version: N8N_VERSION || undefined,
 				resume_reason: options.resumeReason,
 				agent_id: ORCHESTRATOR_AGENT_ID,
 				...options.metadata,
 			},
+			n8nVersion: N8N_VERSION,
+			workflowSdkVersion: WORKFLOW_SDK_VERSION,
 		});
 
 		if (tracing) {
@@ -2940,9 +2941,8 @@ export class InstanceAiService {
 						modelId,
 						input: traceInput,
 						proxyConfig: orchestrationContext.tracingProxyConfig,
-						metadata: {
-							n8n_version: N8N_VERSION || undefined,
-						},
+						n8nVersion: N8N_VERSION,
+						workflowSdkVersion: WORKFLOW_SDK_VERSION,
 					});
 
 			// When trace replay is enabled but LangSmith isn't configured,

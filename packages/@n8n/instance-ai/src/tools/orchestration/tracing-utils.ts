@@ -80,6 +80,10 @@ export function createDetachedSubAgentTraceFactory(
 		typeof context.tracing.actorRun.metadata?.n8n_version === 'string'
 			? context.tracing.actorRun.metadata.n8n_version
 			: undefined;
+	const parentWorkflowSdkVersion =
+		typeof context.tracing.actorRun.metadata?.workflow_sdk_version === 'string'
+			? context.tracing.actorRun.metadata.workflow_sdk_version
+			: undefined;
 	const activeSpanContext = getCurrentOtelSpanContext();
 	const spawnedByToolCallId = getCurrentTraceToolCallId();
 
@@ -95,10 +99,9 @@ export function createDetachedSubAgentTraceFactory(
 			userId: context.userId,
 			modelId: context.modelId,
 			input: options.inputs,
-			metadata: {
-				...(parentN8nVersion ? { n8n_version: parentN8nVersion } : {}),
-				...options.metadata,
-			},
+			metadata: options.metadata,
+			n8nVersion: parentN8nVersion,
+			workflowSdkVersion: parentWorkflowSdkVersion,
 			agentId: options.agentId,
 			role: options.role,
 			kind: options.kind,

@@ -1,8 +1,8 @@
 import {
+	AgentCredentialIntegrationConfig,
 	isAgentCredentialIntegration,
-	type AgentCredentialIntegration,
-	type AgentIntegrationStatusResponse,
 	type AgentIntegrationSettings,
+	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -92,23 +92,19 @@ export class ChatIntegrationService {
 	 */
 	async broadcastIntegrationChange(
 		agentId: string,
-		type: string,
-		credentialId: string,
+		integration: AgentCredentialIntegrationConfig,
 		action: 'connect' | 'disconnect',
-		settings?: AgentIntegrationSettings,
 	): Promise<void> {
 		if (!this.globalConfig.multiMainSetup.enabled) return;
 		try {
-			const payload = settings
-				? { agentId, type, credentialId, action, settings }
-				: { agentId, type, credentialId, action };
+			const payload = { agentId, integration, action };
 			await this.publisher.publishCommand({
 				command: 'agent-chat-integration-changed',
 				payload,
 			});
 		} catch (error) {
 			this.logger.warn(
-				`[ChatIntegrationService] Failed to publish ${action} for ${type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
+				`[ChatIntegrationService] Failed to publish ${action} for ${integration.type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -139,30 +135,29 @@ export class ChatIntegrationService {
 	 */
 	async connect(
 		agentId: string,
-		credentialId: string,
-		integrationType: string,
+		integration: AgentCredentialIntegrationConfig,
 		userId: string,
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
-		const key = this.connectionKey(agentId, integrationType, credentialId);
+		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
 
 		// Tear down existing connection if reconnecting
 		if (this.connections.has(key)) {
 			await this.disconnectOne(key);
 		}
 
-		const integration = this.integrationRegistry.require(integrationType);
+		const integrationImpl = this.integrationRegistry.require(integration.type);
 
 		const user = await this.resolveUser(userId);
 
 		// Decrypt the integration credential to get platform tokens
-		const decryptedData = await this.decryptCredential(credentialId, user);
+		const decryptedData = await this.decryptCredential(integration.credentialId, user);
 
 		const ctx: AgentChatIntegrationContext = {
 			agentId,
 			projectId,
-			credentialId,
+			credentialId: integration.credentialId,
 			credential: decryptedData,
 			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
 		};
@@ -170,12 +165,12 @@ export class ChatIntegrationService {
 		// Pre-connect hook — webhook-based platforms use this to detect
 		// credential conflicts (e.g. a Telegram bot token already in use) and
 		// abort the connect before we touch any external API.
-		if (integration.onBeforeConnect && !options.skipExternalHooks) {
-			await integration.onBeforeConnect(ctx);
+		if (integrationImpl.onBeforeConnect && !options.skipExternalHooks) {
+			await integrationImpl.onBeforeConnect(ctx);
 		}
 
 		// Delegate adapter construction to the platform implementation.
-		const adapter = await integration.createAdapter(ctx);
+		const adapter = await integrationImpl.createAdapter(ctx);
 
 		// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
 		const { Chat } = await loadChatSdk();
@@ -185,7 +180,7 @@ export class ChatIntegrationService {
 		// bot.webhooks.slack maps correctly to the handler.
 		const chat = new Chat({
 			userName: `n8n-agent-${agentId}`,
-			adapters: { [integrationType]: adapter } as Record<string, never>,
+			adapters: { [integration.type]: adapter } as Record<string, never>,
 			state: createMemoryState(),
 		});
 
@@ -204,8 +199,7 @@ export class ChatIntegrationService {
 			componentMapper,
 			this.logger,
 			projectId,
-			integrationType,
-			options.settings,
+			integration,
 		);
 
 		// Initialize the Chat instance (connects adapters, state adapter, etc.)
@@ -213,9 +207,9 @@ export class ChatIntegrationService {
 
 		// Post-initialize hooks (e.g. Telegram setWebhook) run AFTER chat is live.
 		// If one throws we must shut the chat down, otherwise adapters/timers leak.
-		if (integration.onAfterConnect && !options.skipExternalHooks) {
+		if (integrationImpl.onAfterConnect && !options.skipExternalHooks) {
 			try {
-				await integration.onAfterConnect(ctx);
+				await integrationImpl.onAfterConnect(ctx);
 			} catch (error) {
 				await chat.shutdown().catch((shutdownError: unknown) => {
 					this.logger.warn(
@@ -244,9 +238,14 @@ export class ChatIntegrationService {
 	 * If `type` and `credentialId` are provided, disconnects only that integration.
 	 * Otherwise disconnects all integrations for the agent.
 	 */
-	async disconnect(agentId: string, type?: string, credentialId?: string): Promise<void> {
-		if (type && credentialId) {
-			await this.disconnectOne(this.connectionKey(agentId, type, credentialId));
+	async disconnect(
+		agentId: string,
+		integration?: { credentialId: string; type: string },
+	): Promise<void> {
+		if (integration) {
+			await this.disconnectOne(
+				this.connectionKey(agentId, integration.type, integration.credentialId),
+			);
 		} else {
 			const keysToRemove = [...this.connections.keys()].filter((k) => k.startsWith(`${agentId}:`));
 			for (const k of keysToRemove) {
@@ -306,29 +305,22 @@ export class ChatIntegrationService {
 	 */
 	async syncToConfig(
 		agent: Agent,
-		previous: AgentCredentialIntegration[],
-		next: AgentCredentialIntegration[],
+		previous: AgentCredentialIntegrationConfig[],
+		next: AgentCredentialIntegrationConfig[],
 	): Promise<void> {
-		const key = (i: AgentCredentialIntegration) => `${i.type}:${i.credentialId}`;
+		const key = (i: AgentCredentialIntegrationConfig) => `${i.type}:${i.credentialId}`;
 		const previousKeys = new Set(previous.map(key));
 		const nextKeys = new Set(next.map(key));
 
 		for (const integration of previous) {
 			if (!nextKeys.has(key(integration))) {
 				try {
-					await this.disconnect(agent.id, integration.type, integration.credentialId);
-					await this.broadcastIntegrationChange(
-						agent.id,
-						integration.type,
-						integration.credentialId,
-						'disconnect',
-					);
+					await this.disconnect(agent.id, integration);
+					await this.broadcastIntegrationChange(agent.id, integration, 'disconnect');
 				} catch (error) {
-					this.logger.warn('[ChatIntegrationService] Disconnect during sync failed', {
-						agentId: agent.id,
-						type: integration.type,
-						error,
-					});
+					this.logger.warn(
+						`[ChatIntegrationService] Disconnect during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
+					);
 				}
 			}
 		}
@@ -356,14 +348,7 @@ export class ChatIntegrationService {
 			let connected = false;
 			for (const userId of userIds) {
 				try {
-					await this.connect(
-						agent.id,
-						integration.credentialId,
-						integration.type,
-						userId,
-						agent.projectId,
-						integration.settings ? { settings: integration.settings } : undefined,
-					);
+					await this.connect(agent.id, integration, userId, agent.projectId);
 
 					connected = true;
 					break;
@@ -377,13 +362,7 @@ export class ChatIntegrationService {
 				}
 			}
 			if (connected) {
-				await this.broadcastIntegrationChange(
-					agent.id,
-					integration.type,
-					integration.credentialId,
-					'connect',
-					integration.settings,
-				);
+				await this.broadcastIntegrationChange(agent.id, integration, 'connect');
 			} else {
 				this.logger.warn(
 					'[ChatIntegrationService] Could not connect integration during sync — no project member had credential access',
@@ -499,14 +478,7 @@ export class ChatIntegrationService {
 				let connected = false;
 				for (const userId of userIds) {
 					try {
-						await this.connect(
-							agent.id,
-							integration.credentialId,
-							integration.type,
-							userId,
-							agent.projectId,
-							options,
-						);
+						await this.connect(agent.id, integration, userId, agent.projectId, options);
 						connected = true;
 						break;
 					} catch (error) {
@@ -539,10 +511,11 @@ export class ChatIntegrationService {
 	async handleIntegrationChanged(
 		payload: PubSubCommandMap['agent-chat-integration-changed'],
 	): Promise<void> {
-		const { agentId, type, credentialId, action, settings: integrationSettings } = payload;
+		const { agentId, integration, action } = payload;
+		const { type, credentialId } = integration;
 
 		if (action === 'disconnect') {
-			await this.disconnect(agentId, type, credentialId);
+			await this.disconnect(agentId, integration);
 			return;
 		}
 
@@ -574,10 +547,8 @@ export class ChatIntegrationService {
 				// Telegram setWebhook). We only need local state here — skipping
 				// the hooks also avoids racing the originator into Telegram's 1/sec
 				// rate limit.
-				const options: ConnectOptions = integrationSettings
-					? { skipExternalHooks: true, settings: integrationSettings }
-					: { skipExternalHooks: true };
-				await this.connect(agentId, credentialId, type, userId, agent.projectId, options);
+				const options: ConnectOptions = { skipExternalHooks: true };
+				await this.connect(agentId, integration, userId, agent.projectId, options);
 				return;
 			} catch (error) {
 				this.logger.debug(
@@ -647,10 +618,10 @@ export class ChatIntegrationService {
 	}
 
 	private connectOptionsFor(
-		integration: AgentCredentialIntegration,
+		integration: AgentCredentialIntegrationConfig,
 		skipExternalHooks: boolean,
 	): ConnectOptions {
-		return integration.settings
+		return 'settings' in integration
 			? { skipExternalHooks, settings: integration.settings }
 			: { skipExternalHooks };
 	}

@@ -302,6 +302,20 @@ describe('classifySubmitFailure', () => {
 		});
 		expect(remediation.guidance).toContain('Stop editing');
 	});
+
+	it('routes missing or inaccessible credential save failures to setup', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: Credential "slackApi" is not accessible'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('credential setup');
+	});
 });
 
 describe('normalizeWorkflowNodeParameters', () => {

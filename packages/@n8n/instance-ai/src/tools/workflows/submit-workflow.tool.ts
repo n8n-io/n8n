@@ -235,6 +235,16 @@ export function classifySubmitFailure(
 	reason = 'submit_failed',
 ): RemediationMetadata {
 	const text = errors.join('\n').toLowerCase();
+	if (isCredentialSaveFailure(text)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission failed because a credential is missing or inaccessible. Stop editing and route the user to credential setup.',
+		});
+	}
+
 	if (reason === 'workflow_save_failed') {
 		if (text.includes('workflow structure is invalid') || text.includes('invalid_type')) {
 			return createRemediation({
@@ -275,6 +285,21 @@ export function classifySubmitFailure(
 		reason,
 		guidance: 'Fix the workflow code in one batched edit, then call submit-workflow again.',
 	});
+}
+
+function isCredentialSaveFailure(text: string): boolean {
+	if (!text.includes('credential')) return false;
+
+	return (
+		text.includes('not found') ||
+		text.includes('missing') ||
+		text.includes('not accessible') ||
+		text.includes('no access') ||
+		text.includes('do not have access') ||
+		text.includes("don't have access") ||
+		text.includes('not shared') ||
+		text.includes('unauthorized')
+	);
 }
 
 export function createSubmitWorkflowTool(
