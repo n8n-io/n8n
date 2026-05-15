@@ -1,0 +1,15 @@
+---
+description: Testing and verification discipline for n8n TypeScript, Vue, and package changes
+globs: "**/*.{ts,tsx,js,jsx,vue}"
+alwaysApply: false
+---
+
+# Testing And Verification
+
+- Read nearby tests before adding or changing tests. Match local helpers, fixtures, naming, and assertion style.
+- Test intent and regressions, not just implementation details.
+- Work from the package you changed where practical. Use narrow checks first, then broaden when shared contracts or risky behavior changed.
+- Backend and node packages commonly use Jest; frontend packages commonly use Vitest; E2E uses Playwright under `packages/testing/playwright`.
+- For changed API contracts, verify both producer and consumer packages when feasible.
+- For Playwright changes, read `packages/testing/playwright/AGENTS.md` and run janitor checks for new or modified tests.
+- Never report "tests pass" unless you ran them. Name exactly what was run and what was skipped.

@@ -1,0 +1,13 @@
+---
+description: Git safety and change hygiene for agent work
+alwaysApply: true
+---
+
+# Git Hygiene
+
+- Treat the working tree as shared with the user. Never revert, overwrite, or clean up changes you did not make.
+- Branch from `hsaab-master` unless the user requests a different base. For upstream syncs, compare against `upstream/master`.
+- Before committing, inspect status, diff, and recent log messages. Commit only when explicitly asked.
+- Keep commits scoped to the requested work. Do not include unrelated generated files, secrets, build logs, or local config.
+- Do not run destructive git commands such as hard reset, force push, or checkout-over-files unless explicitly approved.
+- If hooks or formatters modify files, inspect the changes before proceeding.

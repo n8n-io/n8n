@@ -1,0 +1,16 @@
+---
+description: Frontend implementation standards for n8n Vue and design-system changes
+globs: "packages/frontend/**/*.{vue,ts,tsx,js,jsx,scss,css}"
+alwaysApply: false
+---
+
+# Frontend Standards
+
+- Read `packages/frontend/AGENTS.md` before frontend work.
+- Prefer existing `@n8n/design-system` components, composables, stores, and semantic tokens before creating new primitives.
+- Use semantic tokens from design-system stylesheets; avoid hardcoded spacing, colors, or legacy tokens in new code.
+- All user-facing text must go through `@n8n/i18n`.
+- Preserve keyboard access, visible focus, labels, dialog semantics, and screen reader affordances.
+- Use icon names from `updatedIconSet`; do not introduce deprecated icons.
+- Keep Pinia state changes narrow and check for unused computed properties after store changes.
+- For changed UI, verify at least one critical interaction and check console/network failures.

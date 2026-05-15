@@ -1,0 +1,14 @@
+---
+description: n8n monorepo conventions and repository-specific guardrails
+alwaysApply: true
+---
+
+# n8n Core Conventions
+
+- Read the nearest `AGENTS.md` before editing a package; package-level guidance overrides root guidance.
+- Always use `pnpm`. Do not introduce npm, yarn, or unrelated tooling.
+- Prefer package-scoped commands from the directory or `--filter` target you changed before running repo-wide checks.
+- Keep shared contracts in the right package: API shapes in `packages/@n8n/api-types`, workflow primitives in `packages/workflow`, backend logic in `packages/cli`, and frontend UI in `packages/frontend`.
+- Avoid `any`; use `unknown`, existing n8n types, or type guards. Avoid `as` casts except where local tests already use that pattern.
+- Use n8n error classes (`UnexpectedError`, `OperationalError`, `UserError`, `NodeOperationError`, `NodeApiError`) instead of generic or deprecated errors.
+- For security fixes in this public repo, keep branch names, commit messages, test names, and comments neutral. Describe behavior, not attack mechanics.

@@ -1,0 +1,15 @@
+---
+description: n8n built-in node and credential development conventions
+globs: "packages/nodes-base/**/*.ts"
+alwaysApply: false
+---
+
+# Nodes Base Development
+
+- Read `packages/nodes-base/AGENTS.md` before adding or changing built-in nodes or credentials.
+- Choose declarative routing when it fits; use `execute`, `poll`, `trigger`, or `webhook` only when the node type requires custom logic.
+- Keep node operation descriptions, fields, and helpers separated following nearby node structure.
+- Use clear `displayName`, `description`, sensible defaults, and `displayOptions` for conditional fields.
+- Use `NodeOperationError` for user-facing validation failures and `NodeApiError` for API failures.
+- Support `continueOnFail` where surrounding nodes do.
+- Mock external APIs with `nock` and prefer existing `NodeTestHarness` workflow-test patterns.
