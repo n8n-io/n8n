@@ -343,14 +343,14 @@ export class ErrorReporter {
 	private async getEventLoopBlockIntegration(
 		tags: Record<string, string>,
 		threshold?: number,
-		maxBlockedEventsPerHour?: number,
+		maxEventsPerHour?: number,
 	) {
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
 			return [
 				eventLoopBlockIntegration({
 					...(threshold ? { threshold } : {}),
-					...(maxBlockedEventsPerHour ? { maxBlockedEventsPerHour } : {}),
+					...(maxEventsPerHour ? { maxEventsPerHour } : {}),
 					staticTags: tags,
 				}),
 			];

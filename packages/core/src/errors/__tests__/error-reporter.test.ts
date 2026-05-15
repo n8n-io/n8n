@@ -186,18 +186,18 @@ describe('ErrorReporter', () => {
 			eventLoopBlockIntegrationMock.mockClear();
 		});
 
-		it('passes threshold and maxBlockedEventsPerHour through to the Sentry integration', async () => {
+		it('passes threshold and maxEventsPerHour through to the Sentry integration', async () => {
 			// @ts-expect-error - private method
 			await errorReporter.getEventLoopBlockIntegration(tags, 750, 3);
 
 			expect(eventLoopBlockIntegrationMock).toHaveBeenCalledWith({
 				threshold: 750,
-				maxBlockedEventsPerHour: 3,
+				maxEventsPerHour: 3,
 				staticTags: tags,
 			});
 		});
 
-		it('omits maxBlockedEventsPerHour when not provided (back-compat)', async () => {
+		it('omits maxEventsPerHour when not provided (back-compat)', async () => {
 			// @ts-expect-error - private method
 			await errorReporter.getEventLoopBlockIntegration(tags, 500);
 
