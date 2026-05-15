@@ -554,6 +554,29 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			});
 		});
 
+		it('publishes settings alongside a connect broadcast', async () => {
+			const publisher = mock<Publisher>();
+			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
+			const settings = {
+				type: 'telegram' as const,
+				accessMode: 'private' as const,
+				allowedUsers: ['123'],
+			};
+
+			await service.broadcastIntegrationChange('a1', 'telegram', 'c1', 'connect', settings);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-chat-integration-changed',
+				payload: {
+					agentId: 'a1',
+					type: 'telegram',
+					credentialId: 'c1',
+					action: 'connect',
+					settings,
+				},
+			});
+		});
+
 		it('swallows publisher failures so the user-facing flow keeps succeeding', async () => {
 			const publisher = mock<Publisher>();
 			publisher.publishCommand.mockRejectedValue(new Error('redis is down'));

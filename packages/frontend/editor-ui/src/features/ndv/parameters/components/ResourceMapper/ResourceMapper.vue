@@ -34,6 +34,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import ParameterInputFull from '../ParameterInputFull.vue';
 
 import { N8nButton, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
@@ -51,6 +52,7 @@ const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -334,6 +336,7 @@ const createRequestParams = async (methodName: string) => {
 		currentNodeParameters: (await resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
+			workflowDocumentStore.value.documentId,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters,
 		path: props.path,

@@ -42,6 +42,7 @@ export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkfl
 
 interface SubmitGuardOptions {
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	getTerminalRemediation?: () => RemediationMetadata | undefined;
 	currentRunId?: string;
 	onGuardFired?: (event: {
 		workflowId?: string;
@@ -49,6 +50,7 @@ interface SubmitGuardOptions {
 		attemptCount?: number;
 		reason?: string;
 	}) => void;
+	onTerminalRemediation?: (remediation: RemediationMetadata) => void;
 }
 
 interface SubmitBudgetTracker {
@@ -128,10 +130,9 @@ export function wrapSubmitExecuteWithIdentity(
 	async function blockedByTerminalRemediation(
 		workflowId: string | undefined,
 	): Promise<SubmitWorkflowOutput | undefined> {
-		const terminalRemediation = terminalRemediationFromState(
-			await options.getWorkflowLoopState?.(),
-			options.currentRunId,
-		);
+		const terminalRemediation =
+			options.getTerminalRemediation?.() ??
+			terminalRemediationFromState(await options.getWorkflowLoopState?.(), options.currentRunId);
 		if (!terminalRemediation) return undefined;
 
 		options.onGuardFired?.({
@@ -147,6 +148,14 @@ export function wrapSubmitExecuteWithIdentity(
 		};
 	}
 
+	function applyOutputGuards(path: string, output: SubmitWorkflowOutput): SubmitWorkflowOutput {
+		const guardedOutput = options.budgetTracker?.applyToOutput(path, output) ?? output;
+		if (guardedOutput.remediation?.shouldEdit === false) {
+			options.onTerminalRemediation?.(guardedOutput.remediation);
+		}
+		return guardedOutput;
+	}
+
 	return async (input) => {
 		const resolvedPath = resolvePath(input.filePath);
 		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
@@ -159,6 +168,9 @@ export function wrapSubmitExecuteWithIdentity(
 			try {
 				boundId = await existing;
 			} catch (error) {
+				const terminalAfterFailure = await blockedByTerminalRemediation(input.workflowId);
+				if (terminalAfterFailure) return terminalAfterFailure;
+
 				const message = error instanceof Error ? error.message : String(error);
 				return {
 					success: false,
@@ -176,7 +188,7 @@ export function wrapSubmitExecuteWithIdentity(
 			if (terminalAfterWait) return terminalAfterWait;
 
 			const result = await underlying({ ...input, workflowId: boundId });
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return applyOutputGuards(resolvedPath, result);
 		}
 
 		let resolveFn: ((id: string) => void) | undefined;
@@ -198,7 +210,7 @@ export function wrapSubmitExecuteWithIdentity(
 				rejectFn?.(new Error(result.errors?.join(' ') ?? 'submit-workflow failed'));
 				pending.delete(resolvedPath);
 			}
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return applyOutputGuards(resolvedPath, result);
 		} catch (error) {
 			rejectFn?.(error);
 			pending.delete(resolvedPath);
@@ -219,7 +231,9 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	root: string;
 	currentRunId?: string;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	getTerminalRemediation?: SubmitGuardOptions['getTerminalRemediation'];
 	onGuardFired?: SubmitGuardOptions['onGuardFired'];
+	onTerminalRemediation?: SubmitGuardOptions['onTerminalRemediation'];
 	tracingRoot?: InstanceAiTraceRun;
 }) {
 	const budgetTracker = createPreSaveBudgetTracker();
@@ -245,7 +259,9 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			budgetTracker,
 			currentRunId: args.currentRunId,
 			getWorkflowLoopState: args.getWorkflowLoopState,
+			getTerminalRemediation: args.getTerminalRemediation,
 			onGuardFired: args.onGuardFired,
+			onTerminalRemediation: args.onTerminalRemediation,
 		},
 	);
 

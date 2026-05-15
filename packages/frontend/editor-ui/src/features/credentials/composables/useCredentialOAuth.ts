@@ -6,6 +6,7 @@ import {
 	createResultError,
 	createResultOk,
 	type GenericValue,
+	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type Result,
 } from 'n8n-workflow';
@@ -245,6 +246,14 @@ export function useCredentialOAuth() {
 			return null;
 		}
 
+		const data: ICredentialDataDecryptedObject = {};
+		const allowedHttpRequestDomainsProperty = credentialType.properties.find(
+			(prop) => prop.name === 'allowedHttpRequestDomains',
+		);
+		if (!allowedHttpRequestDomainsProperty || allowedHttpRequestDomainsProperty.type !== 'hidden') {
+			data.allowedHttpRequestDomains = 'none';
+		}
+
 		let credential: ICredentialsResponse;
 		try {
 			credential = await credentialsStore.createNewCredential(
@@ -252,7 +261,7 @@ export function useCredentialOAuth() {
 					id: '',
 					name: credentialType.displayName,
 					type: credentialTypeName,
-					data: { allowedHttpRequestDomains: 'none' },
+					data,
 				},
 				projectsStore.currentProject?.id,
 				undefined,

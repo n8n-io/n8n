@@ -120,6 +120,33 @@ describe('TaskRunnerProcess', () => {
 			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
 		});
 
+		it('should build env with a null prototype', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(Object.getPrototypeOf(options.env)).toBeNull();
+		});
+
+		it('should not inherit env keys from Object.prototype', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.maxOldSpaceSize = '';
+			const proto = Object.prototype as Record<string, unknown>;
+			proto.NODE_OPTIONS = '--inherited-value';
+
+			try {
+				await taskRunnerProcess.start();
+
+				// @ts-expect-error The type is not correct
+				const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+				expect(options.env?.NODE_OPTIONS).toBeUndefined();
+			} finally {
+				delete proto.NODE_OPTIONS;
+			}
+		});
+
 		it('should pass N8N_RUNNERS_TASK_TIMEOUT if set', async () => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 			runnerConfig.taskTimeout = 123;

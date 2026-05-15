@@ -22,8 +22,10 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
+import { getExampleFiles, type ExampleFile } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
 
+import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
 import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-fs';
@@ -316,6 +318,45 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
 }
 
 /**
+ * Write the curated workflow examples bundle into `${root}/examples/`.
+ *
+ * Used by `setupSandboxWorkspace` (local provider) and by the Daytona /
+ * n8n-sandbox factory paths, which skip the full setup but still need the
+ * curated reference material the builder agent greps against.
+ *
+ * No-op when the loader returns an empty bundle (e.g. running against a
+ * workspace where the manifest hasn't been fetched).
+ */
+export async function writeCuratedExamples(workspace: Workspace, logger?: Logger): Promise<void> {
+	const start = Date.now();
+	// Examples are nice-to-have — never block the build when loading them fails.
+	let exampleFiles: ExampleFile[];
+	let indexTxt: string;
+	try {
+		({ files: exampleFiles, indexTxt } = getExampleFiles());
+	} catch (error) {
+		logger?.warn('[sandbox-setup] curated examples unavailable, continuing without', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return;
+	}
+	if (exampleFiles.length === 0) return;
+
+	const root = await getWorkspaceRoot(workspace);
+	const fileMap = new Map<string, string>();
+	fileMap.set('examples/index.txt', indexTxt);
+	for (const example of exampleFiles) {
+		fileMap.set(`examples/${example.filename}`, example.content);
+	}
+	await writeWorkspaceFiles(workspace, root, fileMap);
+
+	logger?.debug('[sandbox-setup] prepared curated examples', {
+		count: exampleFiles.length,
+		durationMs: Date.now() - start,
+	});
+}
+
+/**
  * Initialize the sandbox workspace for the workflow builder agent.
  * Idempotent — skips if already initialized (checks marker file).
  *
@@ -372,6 +413,7 @@ export async function setupSandboxWorkspace(
 	// ── Write workspace files ──────────────────────────────────────────────
 
 	await writeWorkspaceFiles(workspace, root, files);
+	await writeCuratedExamples(workspace, context.logger);
 
 	// npm install (must run after package.json is in place)
 	const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);

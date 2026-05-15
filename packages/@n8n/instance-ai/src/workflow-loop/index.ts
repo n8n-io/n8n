@@ -52,3 +52,7 @@ export {
 	remainingPostSubmitRemediations,
 	terminalRemediationFromState,
 } from './remediation';
+export {
+	createTerminalRemediationGuard,
+	type TerminalRemediationGuard,
+} from './terminal-remediation-guard';
