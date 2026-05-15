@@ -1,4 +1,9 @@
-import type { ChatHubMessageStatus, PushMessage, WorkerStatus } from '@n8n/api-types';
+import type {
+	AgentIntegrationSettings,
+	ChatHubMessageStatus,
+	PushMessage,
+	WorkerStatus,
+} from '@n8n/api-types';
 import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
@@ -174,6 +179,15 @@ export type PubSubCommandMap = {
 		testRunId: string;
 	};
 
+	/**
+	 * Cancel every running test run inside an evaluation collection across all
+	 * main instances. Used when a user cancels a collection — each main checks
+	 * its in-flight runs and aborts those that belong to the collection.
+	 */
+	'cancel-collection': {
+		collectionId: string;
+	};
+
 	// #endregion
 
 	// #region Agents
@@ -189,6 +203,7 @@ export type PubSubCommandMap = {
 		type: string;
 		credentialId: string;
 		action: 'connect' | 'disconnect';
+		settings?: AgentIntegrationSettings;
 	};
 
 	/**

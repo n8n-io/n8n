@@ -34,6 +34,21 @@ const NodeToolCredentialSchema = z.object({
 	name: z.string(),
 });
 
+export const AgentModelSchema = z
+	.string()
+	.min(1)
+	.regex(
+		/**
+		 * [a-z0-9-]+: Provider name (e.g. "anthropic")
+		 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+		 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
+		 */
+		/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
+		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+	);
+
+const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
+
 export const NodeConfigSchema = z.object({
 	nodeType: z.string().min(1),
 	nodeTypeVersion: z.number(),
@@ -85,18 +100,7 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
-	model: z
-		.string()
-		.min(1)
-		.regex(
-			/**
-			 * [a-z0-9-]+: Provider name (e.g. "anthropic")
-			 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
-			 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
-			 */
-			/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
-			'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
-		),
+	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
@@ -115,6 +119,13 @@ export const AgentJsonConfigSchema = z.object({
 				.optional(),
 		})
 		.optional(),
+});
+
+export const RunnableAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+	model: AgentModelSchema,
+	credential: z.string().refine((value) => value.trim().length > 0, {
+		message: 'Credential is required',
+	}),
 });
 
 export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
