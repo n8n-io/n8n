@@ -1735,8 +1735,8 @@ importers:
         specifier: workspace:*
         version: link:../api-types
       '@n8n/sandbox-client':
-        specifier: 0.0.1
-        version: 0.0.1
+        specifier: 0.0.4
+        version: 0.0.4
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -8463,8 +8463,8 @@ packages:
     resolution: {integrity: sha512-qmDvJIjcNsZ6tXWy2G9yuCgMPTTn35GMA3dPpSLm7QJVpbQzYdw0ALy1bKoivXnEM3U93/OrK+/M719b+fg84Q==}
     engines: {node: '>=18'}
 
-  '@n8n/sandbox-client@0.0.1':
-    resolution: {integrity: sha512-qvfc8/qv+rPz0nsM/r0pL/tWm5Rcry3X/d80/uxobBkWDtjZs9cFj10NBzU8+yrSs8F3dsk08FIWyVCzSt9jKA==}
+  '@n8n/sandbox-client@0.0.4':
+    resolution: {integrity: sha512-yaCVqz2MCHfmNkPQObiXiM9x3hzy/S+Ey2+WIe3TazFsXz1A02cZudt7eO1MW1J0O7IKU1mqe1xPmchHN3+6Vw==}
     engines: {node: '>=22.16', pnpm: '>=10.22.0'}
 
   '@n8n/typeorm@0.3.20-16':
@@ -28425,7 +28425,7 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/sandbox-client@0.0.1':
+  '@n8n/sandbox-client@0.0.4':
     dependencies:
       axios: 1.16.0
     transitivePeerDependencies:
