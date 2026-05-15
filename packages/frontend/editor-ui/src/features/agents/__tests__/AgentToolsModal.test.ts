@@ -265,8 +265,8 @@ describe('AgentToolsModal', () => {
 
 	function toolRef(
 		nodeType: string,
-		overrides: Partial<AgentJsonToolRef['node']> = {},
-	): AgentJsonToolRef {
+		overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
+	): Extract<AgentJsonToolRef, { type: 'node' }> {
 		return {
 			type: 'node',
 			name: nodeType,
@@ -274,6 +274,7 @@ describe('AgentToolsModal', () => {
 				nodeType,
 				nodeTypeVersion: 1,
 				credentials: { slackApi: { id: 'c', name: 'cred' } },
+				nodeParameters: {},
 				...overrides,
 			},
 		};
@@ -496,7 +497,7 @@ describe('AgentToolsModal', () => {
 		await fireEvent.click(gearButton!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		const editedRef: AgentJsonToolRef = {
+		const editedRef: Extract<AgentJsonToolRef, { type: 'node' }> = {
 			...tool,
 			name: 'Slack renamed',
 		};

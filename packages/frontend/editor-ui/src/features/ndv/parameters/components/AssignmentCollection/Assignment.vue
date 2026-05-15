@@ -17,6 +17,7 @@ import { removeExpressionPrefix } from '@/app/utils/expressions';
 import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { typeFromExpression } from '../../utils/assignmentCollection.utils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 interface Props {
 	path: string;
@@ -48,6 +49,7 @@ const i18n = useI18n();
 const ndvStore = injectNDVStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const assignmentTypeToNodeProperty = (
 	type: string,
@@ -141,7 +143,10 @@ const onValueDrop = async (droppedExpression: string) => {
 	}
 
 	const droppedValue = removeExpressionPrefix(droppedExpression);
-	assignment.value.type = await typeFromExpression(droppedValue);
+	assignment.value.type = await typeFromExpression(
+		droppedValue,
+		workflowDocumentStore.value.documentId,
+	);
 
 	if (!assignment.value.name) {
 		assignment.value.name = propertyNameFromExpression(droppedValue);
