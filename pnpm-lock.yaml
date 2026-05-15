@@ -183,6 +183,9 @@ catalogs:
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
+    isolated-vm:
+      specifier: ^6.1.2
+      version: 6.1.2
     js-base64:
       specifier: 3.7.8
       version: 3.7.8
@@ -1576,7 +1579,7 @@ importers:
         specifier: workspace:*
         version: link:../tournament
       isolated-vm:
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2
       js-base64:
         specifier: 'catalog:'
@@ -2862,7 +2865,7 @@ importers:
         specifier: 3.6.13
         version: 3.6.13
       isolated-vm:
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2
       jose:
         specifier: ^6.2.2
@@ -4349,7 +4352,7 @@ importers:
         specifier: 2.1.15
         version: 2.1.15
       isolated-vm:
-        specifier: ^6.1.2
+        specifier: 'catalog:'
         version: 6.1.2
       js-nacl:
         specifier: 1.4.0
