@@ -70,10 +70,6 @@ const selectedSubtext = computed(() => {
 			</N8nSelect>
 		</div>
 
-		<div v-if="selected" :class="$style.selectedSubtext">
-			<N8nText size="small" color="text-light">{{ selectedSubtext }}</N8nText>
-		</div>
-
 		<div v-if="hasSelection" :class="$style.helper">
 			<span :class="$style.dot" />
 			<N8nText size="small" color="text-base">
@@ -82,6 +78,9 @@ const selectedSubtext = computed(() => {
 						adjustToNumber: matchingVersionsCount,
 					})
 				}}
+			</N8nText>
+			<N8nText v-if="selectedSubtext" size="small" color="text-light">
+				· {{ selectedSubtext }}
 			</N8nText>
 		</div>
 	</div>
@@ -114,10 +113,6 @@ const selectedSubtext = computed(() => {
 
 .select {
 	min-width: 0;
-}
-
-.selectedSubtext {
-	margin-top: var(--spacing--3xs);
 }
 
 .helper {
