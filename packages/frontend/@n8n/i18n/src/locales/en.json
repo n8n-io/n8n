@@ -3858,6 +3858,8 @@
 	"workflowSettings.helpTexts.redactManualData": "Controls whether execution data from manually triggered executions is redacted.",
 	"workflowSettings.redactionPermissionNotice": "You don't have permission to change data redaction settings.",
 	"workflowSettings.redactionPermissionNotice.viewUsers": "View users with access",
+	"workflowSettings.redactionEnforcementNotice": "Enforced at instance level",
+	"workflowSettings.redactionEnforcementNotice.label": "Enforced at instance level",
 	"workflowSettings.redactionMembersModal.title": "Users who can edit data redaction settings",
 	"workflowSettings.redactionMembersModal.description": "These users can change data redaction settings. Contact one of them to request a change.",
 	"workflowSettings.saveManualExecutions": "Save manual executions",
