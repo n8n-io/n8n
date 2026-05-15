@@ -1,6 +1,11 @@
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
-import { BinaryColumn, JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
+import {
+	BinaryColumn,
+	DateTimeColumn,
+	JsonColumn,
+	WithTimestampsAndStringId,
+} from './abstract-entity';
 import { User } from './user';
 
 @Entity('webauthn_credential')
@@ -40,6 +45,6 @@ export class WebauthnCredential extends WithTimestampsAndStringId {
 	@Column({ type: String, length: 255 })
 	label: string;
 
-	@Column({ type: 'datetime', nullable: true })
+	@DateTimeColumn({ nullable: true })
 	lastUsedAt: Date | null;
 }
