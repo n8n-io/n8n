@@ -172,9 +172,14 @@ onMounted(async () => {
 	}
 	let hasSchema = false;
 	const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
+	// deepCopy so state.paramValue does not share nested references (value, schema,
+	// matchingColumns) with the store's node.parameters. The deepCopy in
+	// emitValueChanged is the intended write-out boundary; this is the matching
+	// read-in boundary that prevents in-place mutations (deleteField, addField,
+	// addAllFields) from leaking into the store before the explicit emit/save path.
 	state.paramValue = {
 		...state.paramValue,
-		...nodeValues,
+		...deepCopy(nodeValues),
 	};
 	if (!state.paramValue.schema) {
 		state.paramValue = {

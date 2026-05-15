@@ -358,6 +358,7 @@ describe('GlobalConfig', () => {
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
 			eventLoopBlockThreshold: 500,
+			eventLoopBlockMaxEventsPerHour: 5,
 		},
 		logging: {
 			level: 'info',
