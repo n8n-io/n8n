@@ -89,7 +89,10 @@ class ContainerClass {
 			const paramTypes = (Reflect.getMetadata('design:paramtypes', type) ?? []) as Constructable[];
 
 			const dependencies = paramTypes.map(<P>(paramType: Constructable<P>, index: number) => {
-				if (paramType === undefined) {
+				// SWC's `decoratorMetadata` emits `Object` as a fallback when a paramtype is
+				// unresolved at decoration time (e.g. forward-referenced via a circular import).
+				// tsc emits `undefined` in the same case.
+				if (paramType === undefined || paramType === (Object as unknown as Constructable<P>)) {
 					throw new DIError(
 						`Circular dependency detected in ${type.name} at index ${index}.\n${resolutionStack.map((t) => t.name).join(' -> ')}\n`,
 					);
