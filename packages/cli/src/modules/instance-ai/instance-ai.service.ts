@@ -494,7 +494,7 @@ export class InstanceAiService {
 		);
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const restEndpoint = globalConfig.endpoints.rest;
-		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl().replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
+		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
@@ -4666,7 +4666,7 @@ export class InstanceAiService {
 		if (Array.isArray(content)) {
 			return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
 		}
-		return JSON.stringify(content);
+		return '';
 	}
 
 	/**
