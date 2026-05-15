@@ -1,13 +1,21 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import type { User, TestRun } from '@n8n/db';
-import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import {
+	TestCaseExecutionRepository,
+	TestRun,
+	TestRunRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -80,6 +88,7 @@ export class TestRunnerService {
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly concurrencyControlService: ConcurrencyControlService,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {}
 
 	/**
@@ -539,12 +548,24 @@ export class TestRunnerService {
 	 * The execution loop is detached so callers can return the new
 	 * `testRun.id` without waiting for the run to complete; tests that need
 	 * to observe completion await `finished` directly.
+	 *
+	 * `options` carries the eval-collections context (TRUST-72): when set,
+	 * the new run is pinned to a workflow version (loaded from
+	 * `WorkflowHistory` instead of the live workflow so future edits don't
+	 * disturb cross-run comparability) and tagged with its parent collection
+	 * + the `EvaluationConfig` snapshot captured at run-start.
 	 */
 	async startTestRun(
 		user: User,
 		workflowId: string,
 		concurrency: number = 1,
 		flagEnabledForUser: boolean = false,
+		options?: {
+			collectionId?: string;
+			workflowVersionId?: string;
+			evaluationConfigId?: string;
+			evaluationConfigSnapshot?: IDataObject;
+		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
 		const evaluationLimit = this.executionsConfig.concurrency.evaluationLimit;
@@ -556,14 +577,47 @@ export class TestRunnerService {
 
 		this.logger.debug(
 			`[Eval] runTest called: requestedConcurrency=${requestedConcurrency} effectiveConcurrency=${effectiveConcurrency} evaluationLimit=${evaluationLimit} flagEnabledForUser=${flagEnabledForUser}`,
-			{ workflowId },
+			{
+				workflowId,
+				collectionId: options?.collectionId,
+				workflowVersionId: options?.workflowVersionId,
+			},
 		);
 
-		const workflow = await this.workflowRepository.findById(workflowId);
-		assert(workflow, 'Workflow not found');
+		// When pinned to a workflow version (collection runs), load nodes +
+		// connections from `WorkflowHistory` so the run executes against the
+		// snapshotted JSON, not whatever the live workflow looks like right
+		// now. The base workflow row still supplies `id`, `name`, `settings`
+		// — everything outside the canvas geometry.
+		const baseWorkflow = await this.workflowRepository.findById(workflowId);
+		assert(baseWorkflow, 'Workflow not found');
+
+		let workflow = baseWorkflow;
+		if (options?.workflowVersionId) {
+			const history = await this.workflowHistoryService.findVersion(
+				workflowId,
+				options.workflowVersionId,
+			);
+			assert(history, `Workflow version ${options.workflowVersionId} not found`);
+			// `ExecutionPersistence` records `workflowData.versionId` on the
+			// execution row; keeping `baseWorkflow.versionId` here would tag
+			// historical-canvas executions with the *current* live version
+			// and break the comparability promise of the pinned run.
+			workflow = {
+				...baseWorkflow,
+				versionId: history.versionId,
+				nodes: history.nodes,
+				connections: history.connections,
+			} as typeof baseWorkflow;
+		}
 
 		// 0. Create new Test Run
-		const testRun = await this.testRunRepository.createTestRun(workflowId);
+		const testRun = await this.testRunRepository.createTestRun(workflowId, {
+			collectionId: options?.collectionId ?? null,
+			workflowVersionId: options?.workflowVersionId ?? null,
+			evaluationConfigId: options?.evaluationConfigId ?? null,
+			evaluationConfigSnapshot: options?.evaluationConfigSnapshot ?? null,
+		});
 		assert(testRun, 'Unable to create a test run');
 
 		// Detach the long-running execution from the awaited setup so callers
@@ -1056,6 +1110,10 @@ export class TestRunnerService {
 			// Send telemetry event with complete metadata
 			const telemetryPayload: Record<string, GenericValue> = {
 				...telemetryMeta,
+				// Collection context (TRUST-72). `collection_id` is null for legacy
+				// one-off runs so analytics can split flag-on/off cohorts cleanly.
+				collection_id: testRun.collectionId ?? null,
+				is_part_of_collection: testRun.collectionId !== null,
 			};
 
 			// Add success-specific fields
@@ -1106,6 +1164,109 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Handle cancel-collection pub/sub command from other main instances.
+	 * Each main aborts the in-flight runs it owns that belong to the
+	 * collection — runs not held locally are no-ops, mirroring the per-run
+	 * cancel path's "if not running locally, fall back to DB" semantics.
+	 */
+	@OnPubSubEvent('cancel-collection', { instanceType: 'main' })
+	async handleCancelCollectionCommand({ collectionId }: { collectionId: string }) {
+		this.logger.debug('Received cancel-collection command via pub/sub', { collectionId });
+		await this.cancelCollectionLocally(collectionId);
+	}
+
+	private async cancelCollectionLocally(collectionId: string): Promise<string[]> {
+		// Match the active-status filter `cancelCollection` uses for DB-flag
+		// cancellation. `executeTestRun` registers the abort controller in
+		// `abortControllers` *before* `markAsRunning` flips status from `new`
+		// to `running`, so a freshly-kicked-off run is locally abortable
+		// while still showing as `new` in DB. Querying only `running` here
+		// would silently skip that window on every main — both the
+		// initiator (called from `cancelCollection`) and foreign mains
+		// (called from `handleCancelCollectionCommand`). The result set is
+		// still bounded by the collection size (≤ a handful in practice).
+		const runs = await this.testRunRepository.find({
+			where: [
+				{ collectionId, status: 'running' },
+				{ collectionId, status: 'new' },
+			],
+			select: ['id'],
+		});
+		const cancelledLocally: string[] = [];
+		for (const { id } of runs) {
+			if (this.cancelTestRunLocally(id)) cancelledLocally.push(id);
+		}
+		return cancelledLocally;
+	}
+
+	/**
+	 * Cancels every in-flight run in an evaluation collection. Mirrors
+	 * {@link cancelTestRun}'s multi-main fan-out: each main aborts what it
+	 * holds locally, the DB cancelRequested flag is set per run as a fallback,
+	 * and pubsub broadcasts so foreign mains pick up the signal too.
+	 */
+	async cancelCollection(collectionId: string): Promise<{ cancelledRunIds: string[] }> {
+		// 1. Mark every run in the collection that's still active for
+		// fallback DB-poll cancellation. Runs already terminal stay terminal.
+		const activeRuns = await this.testRunRepository.find({
+			where: [
+				{ collectionId, status: 'running' },
+				{ collectionId, status: 'new' },
+			],
+			select: ['id'],
+		});
+		for (const { id } of activeRuns) {
+			await this.testRunRepository.requestCancellation(id);
+		}
+
+		// 2. Try local cancellation for whatever this main owns.
+		const cancelledLocally = await this.cancelCollectionLocally(collectionId);
+
+		// 3. In multi-main or queue mode, broadcast so foreign mains can
+		// cancel their share.
+		if (this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue') {
+			this.logger.debug('Broadcasting cancel-collection command via pub/sub', { collectionId });
+			await this.publisher.publishCommand({
+				command: 'cancel-collection',
+				payload: { collectionId },
+			});
+		}
+
+		// 4. Anything we didn't own locally and that's still flagged as
+		// pending: mark it cancelled in DB as a fallback (matches
+		// `cancelTestRun`'s contract for unreachable instances).
+		//
+		// Race protection: `activeRuns` was sampled before the requestCancellation
+		// loop and before the pubsub broadcast — by now a foreign main may have
+		// completed a run naturally (status → `completed`/`error`). A plain
+		// `markAsCancelled(id)` would clobber that terminal status with
+		// `cancelled` and corrupt the run record. Scope the update by status
+		// so it only fires on rows that are still active; if 0 rows were
+		// affected, the natural completion wins and we skip the test-case
+		// sweep too (its own status filter would no-op anyway, but skipping
+		// makes the "winner takes all" intent explicit).
+		const localSet = new Set(cancelledLocally);
+		const fallbackRunIds = activeRuns.map((r) => r.id).filter((id) => !localSet.has(id));
+		if (fallbackRunIds.length > 0) {
+			const { manager: dbManager } = this.testRunRepository;
+			await dbManager.transaction(async (trx) => {
+				for (const runId of fallbackRunIds) {
+					const result = await trx.update(
+						TestRun,
+						{ id: runId, status: In(['new', 'running']) },
+						{ status: 'cancelled', completedAt: new Date() },
+					);
+					if (result.affected) {
+						await this.testCaseExecutionRepository.markAllPendingAsCancelled(runId, trx);
+					}
+				}
+			});
+		}
+
+		return { cancelledRunIds: activeRuns.map((r) => r.id) };
+	}
+
+	/**
 	 * Cancels the test run with the given ID.
 	 * In multi-main mode, this broadcasts the cancellation to all instances via pub/sub
 	 * and sets a database flag as a fallback mechanism.
@@ -1126,14 +1287,24 @@ export class TestRunnerService {
 			});
 		}
 
-		// 4. If not running locally, mark as cancelled in DB as a fallback
-		// This handles both single-main (where this is the only instance) and multi-main
-		// (where the running instance may be dead or unreachable via pub/sub)
+		// 4. If not running locally, mark as cancelled in DB as a fallback.
+		// This handles both single-main (where this is the only instance) and
+		// multi-main (where the running instance may be dead or unreachable
+		// via pub/sub). Same race-protection as `cancelCollection`: between
+		// the requestCancellation flag and this update, a foreign main may
+		// have completed the run naturally — scope by status so the
+		// terminal state wins.
 		if (!cancelledLocally) {
 			const { manager: dbManager } = this.testRunRepository;
 			await dbManager.transaction(async (trx) => {
-				await this.testRunRepository.markAsCancelled(testRunId, trx);
-				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
+				const result = await trx.update(
+					TestRun,
+					{ id: testRunId, status: In(['new', 'running']) },
+					{ status: 'cancelled', completedAt: new Date() },
+				);
+				if (result.affected) {
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
+				}
 			});
 		}
 	}

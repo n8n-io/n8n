@@ -1,7 +1,7 @@
-import { isAgentCredentialIntegration } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
+import { isAgentCredentialIntegration } from '@n8n/api-types';
 import { Agent } from '../entities/agent.entity';
 
 @Service()
