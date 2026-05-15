@@ -18,6 +18,7 @@
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",
+    "eval:eval-setup-topology": "tsx evaluations/eval-setup-topology/cli.ts",
     "eval:end-to-end": "tsx evaluations/eval-end-to-end/cli.ts",
     "prompts:print": "tsx scripts/print-prompts.ts"
   },
