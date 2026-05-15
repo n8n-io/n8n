@@ -33,7 +33,7 @@ const close = () => emit('update:open', false);
 </script>
 
 <template>
-	<Transition name="drawer-slide">
+	<Teleport to="body">
 		<aside
 			v-if="open"
 			:class="$style.drawer"
@@ -99,7 +99,7 @@ const close = () => emit('update:open', false);
 				</div>
 			</div>
 		</aside>
-	</Transition>
+	</Teleport>
 </template>
 
 <style module lang="scss">
@@ -114,7 +114,10 @@ const close = () => emit('update:open', false);
 	border-left: 1px solid var(--border-color--base);
 	display: flex;
 	flex-direction: column;
-	z-index: 60;
+	// Reka-ui's N8nDialog overlay sits at z-index 2000. The drawer needs to
+	// float above it since users open it FROM inside the dialog. 2010 keeps
+	// it under app-level toasts (3000+).
+	z-index: 2010;
 }
 
 .header {
