@@ -23,6 +23,7 @@ import fsp from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 
 import {
+	SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE,
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -425,7 +426,9 @@ describe('SourceControlService', () => {
 			workflows: projectBWorkflows,
 		};
 
-		gitService = mock<SourceControlGitService>();
+		gitService = mock<SourceControlGitService>({
+			requiresAdminPushForProjectsMigration: jest.fn().mockResolvedValue(false),
+		});
 		statusService = Container.get(SourceControlStatusService);
 
 		service = new SourceControlService(
@@ -1127,6 +1130,49 @@ describe('SourceControlService', () => {
 				expect(foldersFileContent.folders.map((f: any) => f.id)).toEqual(
 					expect.arrayContaining(projectAScope.folders.map((f) => f.id)),
 				);
+			});
+		});
+
+		describe('legacy environments repository without projects folder', () => {
+			beforeEach(() => {
+				gitService.requiresAdminPushForProjectsMigration.mockResolvedValue(true);
+			});
+
+			afterEach(() => {
+				gitService.requiresAdminPushForProjectsMigration.mockResolvedValue(false);
+			});
+
+			it('should deny push for project admin', async () => {
+				const allChanges = (await service.getStatus(projectAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				})) as SourceControlledFile[];
+
+				await expect(
+					service.pushWorkfolder(projectAdmin, {
+						fileNames: allChanges,
+						commitMessage: 'Test',
+						force: true,
+					}),
+				).rejects.toThrow(new ForbiddenError(SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE));
+			});
+
+			it('should allow push for global admin', async () => {
+				const allChanges = (await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				})) as SourceControlledFile[];
+
+				const result = await service.pushWorkfolder(globalAdmin, {
+					fileNames: allChanges,
+					commitMessage: 'Test',
+					force: true,
+				});
+
+				expect(result.statusCode).toBe(200);
+				expect(gitService.push).toBeCalled();
 			});
 		});
 

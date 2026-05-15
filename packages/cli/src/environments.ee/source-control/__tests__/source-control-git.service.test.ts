@@ -19,6 +19,8 @@ const MOCK_BRANCHES = {
 const mockGitInstance = {
 	branch: jest.fn().mockResolvedValue(MOCK_BRANCHES),
 	env: jest.fn().mockReturnThis(),
+	fetch: jest.fn().mockResolvedValue(undefined),
+	raw: jest.fn().mockResolvedValue(''),
 };
 
 jest.mock('simple-git', () => {
@@ -505,6 +507,50 @@ describe('SourceControlGitService', () => {
 					expect.not.stringContaining('Test"User'), // No unescaped quote in final command
 				);
 			});
+		});
+	});
+
+	describe('requiresAdminPushForProjectsMigration', () => {
+		beforeEach(() => {
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				branchName: 'main',
+			} as SourceControlPreferences);
+		});
+
+		it('should return true when workflows exist on remote but projects do not', async () => {
+			mockGitInstance.raw.mockImplementation(async (args: string[]) => {
+				const path = args[2];
+				if (path === 'workflows') {
+					return '040000 tree abc\tworkflows\n';
+				}
+				throw new Error('path not found');
+			});
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
+				true,
+			);
+		});
+
+		it('should return false when both workflows and projects exist on remote', async () => {
+			mockGitInstance.raw.mockImplementation(async (args: string[]) => {
+				const path = args[2];
+				if (path === 'workflows' || path === 'projects') {
+					return `040000 tree abc\t${path}\n`;
+				}
+				throw new Error('path not found');
+			});
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
+				false,
+			);
+		});
+
+		it('should return false when workflows do not exist on remote', async () => {
+			mockGitInstance.raw.mockRejectedValue(new Error('path not found'));
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
+				false,
+			);
 		});
 	});
 });

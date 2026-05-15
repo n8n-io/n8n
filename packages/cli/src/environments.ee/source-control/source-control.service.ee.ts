@@ -7,12 +7,14 @@ import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import {
+	SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
@@ -245,6 +247,14 @@ export class SourceControlService {
 
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
+	async ensureCanPushWorkfolder(user: User): Promise<void> {
+		if (await this.gitService.requiresAdminPushForProjectsMigration()) {
+			if (!hasGlobalScope(user, 'sourceControl:push')) {
+				throw new ForbiddenError(SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE);
+			}
+		}
+	}
+
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
 		if (!this.gitService.git) {
 			await this.initGitService();
@@ -274,6 +284,8 @@ export class SourceControlService {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
+
+		await this.ensureCanPushWorkfolder(user);
 
 		const context = new SourceControlContext(user);
 
@@ -497,6 +509,11 @@ export class SourceControlService {
 
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
+
+		if (options.direction === 'push') {
+			await this.ensureCanPushWorkfolder(user);
+		}
+
 		return await this.sourceControlStatusService.getStatus(user, options);
 	}
 

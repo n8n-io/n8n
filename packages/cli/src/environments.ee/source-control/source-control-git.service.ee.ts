@@ -22,6 +22,8 @@ import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_ORIGIN,
+	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
+	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
@@ -489,6 +491,46 @@ export class SourceControlGitService {
 				`Could not get content for file: ${filePath}: ${(error as Error)?.message}`,
 				{ cause: error },
 			);
+		}
+	}
+
+	/**
+	 * Instances that used environments before n8n 1.118.0 have workflows on the remote repository
+	 * but no projects directory yet. The first push after upgrading must be done by an instance admin.
+	 */
+	async requiresAdminPushForProjectsMigration(): Promise<boolean> {
+		const workflowsExist = await this.remoteDirectoryExists(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
+		if (!workflowsExist) {
+			return false;
+		}
+
+		const projectsExist = await this.remoteDirectoryExists(SOURCE_CONTROL_PROJECT_EXPORT_FOLDER);
+		return !projectsExist;
+	}
+
+	/**
+	 * Checks whether a directory exists on the remote tracking branch of the connected repository.
+	 */
+	private async remoteDirectoryExists(directory: string): Promise<boolean> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (remoteDirectoryExists)');
+		}
+
+		const branchName = this.sourceControlPreferencesService.getPreferences().branchName;
+		if (!branchName) {
+			return false;
+		}
+
+		try {
+			await this.fetch();
+			const remoteRef = `${SOURCE_CONTROL_ORIGIN}/${branchName}`;
+			const result = await this.git.raw(['ls-tree', remoteRef, directory]);
+			return result.trim().length > 0;
+		} catch (error) {
+			this.logger.debug(`Remote directory "${directory}" not found on connected repository`, {
+				error,
+			});
+			return false;
 		}
 	}
 }

@@ -7,6 +7,7 @@ import type { EventService } from '@/events/event.service';
 
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import { SourceControlController } from '../source-control.controller.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { SourceControlService } from '../source-control.service.ee';
 import type { SourceControlRequest } from '../types/requests';
 import type { SourceControlGetStatus } from '../types/source-control-get-status';
@@ -15,6 +16,7 @@ describe('SourceControlController', () => {
 	let controller: SourceControlController;
 	let sourceControlService: SourceControlService;
 	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let sourceControlScopedService: SourceControlScopedService;
 	let eventService: EventService;
 
 	beforeEach(() => {
@@ -23,15 +25,19 @@ describe('SourceControlController', () => {
 			pullWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
 			getStatus: jest.fn().mockResolvedValue([]),
 			setGitUserDetails: jest.fn(),
+			sanityCheck: jest.fn().mockResolvedValue(undefined),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
+		sourceControlScopedService = {
+			ensureIsAllowedToPush: jest.fn().mockResolvedValue(undefined),
+		} as unknown as SourceControlScopedService;
 		eventService = mock<EventService>();
 
 		controller = new SourceControlController(
 			sourceControlService,
 			sourceControlPreferencesService,
-			mock(),
+			sourceControlScopedService,
 			eventService,
 		);
 	});

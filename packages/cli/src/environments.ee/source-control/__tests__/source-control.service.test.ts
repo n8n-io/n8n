@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { PushResult } from 'simple-git';
 
+import { SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE } from '@/environments.ee/source-control/constants';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -59,6 +60,7 @@ describe('SourceControlService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		jest.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
+		gitService.requiresAdminPushForProjectsMigration.mockResolvedValue(false);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
 	});
@@ -266,6 +268,56 @@ describe('SourceControlService', () => {
 			expect(result).toMatchObject({
 				statusCode: 200,
 			});
+		});
+
+		it('should throw ForbiddenError when projects migration requires admin push', async () => {
+			const user = Object.assign(new User(), {
+				role: GLOBAL_MEMBER_ROLE,
+			});
+			gitService.requiresAdminPushForProjectsMigration.mockResolvedValueOnce(true);
+
+			await expect(sourceControlService.ensureCanPushWorkfolder(user)).rejects.toThrow(
+				new ForbiddenError(SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE),
+			);
+		});
+
+		it('should throw ForbiddenError from pushWorkfolder when projects migration requires admin push', async () => {
+			const user = Object.assign(new User(), {
+				role: GLOBAL_MEMBER_ROLE,
+			});
+			gitService.requiresAdminPushForProjectsMigration.mockResolvedValueOnce(true);
+
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					commitMessage: 'Test',
+				}),
+			).rejects.toThrow(new ForbiddenError(SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE));
+
+			expect(mockStatusService.getStatus).not.toHaveBeenCalled();
+		});
+
+		it('should allow instance admin to push when projects migration requires admin push', async () => {
+			const user = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+			});
+			gitService.requiresAdminPushForProjectsMigration.mockResolvedValueOnce(true);
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			gitService.push.mockResolvedValueOnce(mock<PushResult>());
+
+			await sourceControlService.pushWorkfolder(user, {
+				fileNames: [],
+				commitMessage: 'Test',
+			});
+
+			expect(gitService.requiresAdminPushForProjectsMigration).toHaveBeenCalled();
+			expect(mockStatusService.getStatus).toHaveBeenCalled();
 		});
 
 		it('should throw an error if file path validation fails', async () => {
