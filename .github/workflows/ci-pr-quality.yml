@@ -134,6 +134,7 @@ jobs:
               pnpm-workspace.yaml
               .code-health-baseline.json
               packages/testing/code-health/**
+              .github/workflows/**
 
   check-static-analysis:
     name: Static Analysis

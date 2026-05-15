@@ -38,6 +38,7 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
