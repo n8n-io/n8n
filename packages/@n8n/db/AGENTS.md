@@ -11,26 +11,21 @@ unrecorded migrations in timestamp order, so inserting a value below the
 current max corrupts ordering on databases that have already executed the
 later migrations.
 
-**Picking a timestamp:**
+Use the generator — it picks a safe timestamp, writes the scaffold, and
+registers the migration in the relevant `index.ts` files:
 
 ```sh
-# Highest existing timestamp across all migration directories
-ls packages/@n8n/db/src/migrations/{common,postgresdb,sqlite} \
-  | grep -oE '^[0-9]+' | sort -n | tail -1
+pnpm --filter=@n8n/db migration:new <Name> [--folder=common|postgresdb|sqlite]
 ```
 
-If that value is **less than** `Date.now()` (the normal case), use
-`Date.now()` (Node REPL) or `date +%s%3N` (GNU `date`) for your new file.
-
-If that value is **greater than** `Date.now()` — i.e. someone previously
-merged a fabricated future timestamp — your new migration must be greater
-than the existing max but within 1 second of it (the rule's ceiling buffer).
-Use `max + 1` for a single migration, `max + 1`, `max + 2`, … for several in
-the same PR. This regime self-resolves once real time catches up to the
-fabricated value.
+`<Name>` is PascalCase and describes the change (e.g. `AddTracingToExecution`).
+`--folder` defaults to `common`; use `postgresdb` or `sqlite` only for
+dialect-specific migrations. The generator picks `Date.now()` when it's
+greater than the current head, otherwise `max + 1`.
 
 The `migration-timestamp` rule in `@n8n/code-health` enforces both
-invariants (strict ordering and no far-future fabrication) at lint time.
+invariants (strict ordering and no far-future fabrication) at lint time;
+the generator is the easy path, the rule is the safety net.
 
 ## Migration DSL
 
