@@ -13,6 +13,21 @@ on:
         required: false
         type: string
         default: ''
+      iterations:
+        description: 'Iterations per scenario (5 for PR runs, 10 for baseline refresh)'
+        required: false
+        type: number
+        default: 5
+      experiment_name:
+        description: 'LangSmith experiment prefix. Leave blank to auto-generate; use "instance-ai-baseline" to refresh the comparison baseline (matched by `findLatestBaseline()`).'
+        required: false
+        type: string
+        default: ''
+      timeout_minutes:
+        description: 'Job timeout in minutes (45 for PR runs, 90 for N=10 baseline)'
+        required: false
+        type: number
+        default: 45
   workflow_dispatch:
     inputs:
       branch:
@@ -23,12 +38,26 @@ on:
         description: 'Filter test cases by name (e.g. "contact-form")'
         required: false
         default: ''
+      iterations:
+        description: 'Iterations per scenario (5 for PR runs, 10 for baseline refresh)'
+        required: false
+        type: number
+        default: 5
+      experiment_name:
+        description: 'LangSmith experiment prefix. Leave blank to auto-generate; use "instance-ai-baseline" to refresh the comparison baseline.'
+        required: false
+        default: ''
+      timeout_minutes:
+        description: 'Job timeout in minutes (45 for PR runs, 90 for N=10 baseline)'
+        required: false
+        type: number
+        default: 45
 
 jobs:
   run-evals:
     name: 'Run Evals'
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 45
+    timeout-minutes: ${{ inputs.timeout_minutes }}
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
@@ -178,8 +207,9 @@ jobs:
             --base-url "$BASE_URLS" \
             --concurrency 32 \
             --verbose \
-            --iterations 5 \
-            ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
+            --iterations ${{ inputs.iterations }} \
+            ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }} \
+            ${{ inputs.experiment_name && format('--experiment-name "{0}"', inputs.experiment_name) || '' }}
 
       # Captures sandbox/builder/Daytona signals that surface during the eval
       # (after migrations finish). Two layers of secret-leak defense:
