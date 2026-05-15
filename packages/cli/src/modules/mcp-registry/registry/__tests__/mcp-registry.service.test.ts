@@ -6,13 +6,13 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import type { McpRegistryApiClient, McpRegistryServerMetadata } from './mcp-registry-api.client';
-import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
-import type { McpRegistryServerRepository } from './mcp-registry-server.repository';
-import { McpRegistryService } from './mcp-registry.service';
-import type { McpRegistryServer } from './mcp-registry.types';
-import { toEntity } from './mcp-registry.types';
-import { linearMockServer, notionMockServer } from './mock-servers';
+import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
+import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
+import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
+import { McpRegistryService } from '../mcp-registry.service';
+import type { McpRegistryServer } from '../mcp-registry.types';
+import { toEntity } from '../mcp-registry.types';
+import { linearMockServer, notionMockServer } from '../mock-servers';
 
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 	const now = new Date();

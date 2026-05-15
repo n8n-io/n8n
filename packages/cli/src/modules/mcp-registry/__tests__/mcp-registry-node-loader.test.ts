@@ -7,14 +7,14 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const logger = mock<Logger>();
 
-import { McpRegistryNodeLoader } from './mcp-registry-node-loader';
+import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
-} from './node-description-transform';
-import type { McpRegistryServer } from './registry/mcp-registry.types';
-import { notionMockServer } from './registry/mock-servers';
+} from '../node-description-transform';
+import type { McpRegistryServer } from '../registry/mcp-registry.types';
+import { notionMockServer } from '../registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
