@@ -131,7 +131,7 @@ const close = () => emit('update:open', false);
 	padding: var(--spacing--3xs);
 	cursor: pointer;
 	color: var(--icon-color);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 }
 
 .closeBtn:hover {
@@ -167,7 +167,7 @@ const close = () => emit('update:open', false);
 
 .placeholderCanvas {
 	border: 1px dashed var(--border-color--base);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 	padding: var(--spacing--lg);
 	display: flex;
 	flex-direction: column;

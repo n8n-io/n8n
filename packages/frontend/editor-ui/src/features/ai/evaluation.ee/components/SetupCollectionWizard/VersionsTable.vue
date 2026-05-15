@@ -166,7 +166,7 @@ const formatRunAt = (iso: string | null) => {
 <style module lang="scss">
 .wrap {
 	border: 1px solid var(--border-color--base, var(--color--neutral-200));
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 	background: var(--background--surface);
 	overflow: hidden;
 }

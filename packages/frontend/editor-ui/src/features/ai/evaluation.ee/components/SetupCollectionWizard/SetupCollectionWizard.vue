@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nBadge, N8nButton, N8nDialog, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -52,11 +52,29 @@ const datasetLabel = computed(() => {
 	return configs.value.find((c) => c.id === selectedConfigId.value)?.name ?? '';
 });
 
-const metricNames = computed<string[]>(() => {
+const allMetricNames = computed<string[]>(() => {
 	if (!selectedConfigId.value) return [];
 	const cfg = configs.value.find((c) => c.id === selectedConfigId.value);
 	return (cfg?.metrics ?? []).map((m) => m.name);
 });
+
+// User-toggleable subset of the config's metrics. Defaults to all-selected
+// because the create flow always records every metric in the collection
+// today (no backend payload field carries a subset yet). Deselecting acts
+// as a visual filter on the eventual compare view; selection state is kept
+// in the wizard locally so the user can scope down before submit.
+const selectedMetricNames = ref<Set<string>>(new Set());
+
+watch(allMetricNames, (next) => {
+	selectedMetricNames.value = new Set(next);
+});
+
+const toggleMetric = (name: string) => {
+	const next = new Set(selectedMetricNames.value);
+	if (next.has(name)) next.delete(name);
+	else next.add(name);
+	selectedMetricNames.value = next;
+};
 
 const sourceOptions = computed(() => {
 	const seen = new Set<string>();
@@ -197,6 +215,7 @@ const reset = () => {
 	name.value = '';
 	selectedConfigId.value = null;
 	selectedVersionKeys.value = new Set();
+	selectedMetricNames.value = new Set();
 	state.value = 'collecting';
 	sourceFilter.value = 'all';
 	sortOrder.value = 'recent';
@@ -244,7 +263,7 @@ const onSubmit = async () => {
 <template>
 	<N8nDialog
 		:open="open"
-		size="large"
+		size="xlarge"
 		:show-close-button="true"
 		:header="i18n.baseText('evaluation.setup.title')"
 		:description="i18n.baseText('evaluation.setup.subtitle')"
@@ -336,11 +355,22 @@ const onSubmit = async () => {
 					</N8nText>
 				</div>
 				<div :class="$style.metricsRow">
-					<N8nBadge v-for="metric in metricNames" :key="metric" theme="success" size="small">
-						<N8nIcon icon="check" size="xsmall" />
-						{{ metric }}
-					</N8nBadge>
-					<N8nText v-if="metricNames.length === 0" size="xsmall" color="text-light">
+					<button
+						v-for="metric in allMetricNames"
+						:key="metric"
+						type="button"
+						:class="[
+							$style.metricPill,
+							selectedMetricNames.has(metric) && $style.metricPill_selected,
+						]"
+						:aria-pressed="selectedMetricNames.has(metric)"
+						data-test-id="setup-collection-wizard-metric"
+						@click="toggleMetric(metric)"
+					>
+						<N8nIcon :icon="selectedMetricNames.has(metric) ? 'check' : 'plus'" size="xsmall" />
+						<span>{{ metric }}</span>
+					</button>
+					<N8nText v-if="allMetricNames.length === 0" size="xsmall" color="text-light">
 						{{ i18n.baseText('evaluation.setup.metrics.empty') }}
 					</N8nText>
 				</div>
@@ -414,7 +444,7 @@ const onSubmit = async () => {
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border: 1px solid var(--border-color--base);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 	background: var(--background--surface);
 	cursor: pointer;
 }
@@ -433,6 +463,34 @@ const onSubmit = async () => {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.metricPill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border: 1px solid var(--border-color--base, var(--color--neutral-200));
+	border-radius: var(--radius--full);
+	background: var(--background--surface);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+	cursor: pointer;
+	transition:
+		background-color var(--transition-duration--fast) ease,
+		border-color var(--transition-duration--fast) ease,
+		color var(--transition-duration--fast) ease;
+
+	&:hover {
+		border-color: var(--border-color--strong, var(--color--neutral-300));
+	}
+}
+
+.metricPill_selected {
+	background: var(--background--success, var(--color--green-50));
+	border-color: var(--border-color--success, var(--color--green-200));
+	color: var(--text-color--success, var(--color--green-800));
 }
 
 .footer {

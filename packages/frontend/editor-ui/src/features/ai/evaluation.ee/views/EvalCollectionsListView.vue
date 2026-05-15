@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--md);
 	border: 1px dashed var(--border-color--base);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 	background: var(--background--subtle);
 	color: var(--text-color--subtle);
 }

@@ -68,7 +68,7 @@ const swatch = computed(() => `var(${PALETTE[props.index % PALETTE.length]})`);
 	justify-content: center;
 	color: var(--color--white);
 	font-weight: var(--font-weight--bold);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 	line-height: 1;
 	font-variant-numeric: tabular-nums;
 }
@@ -87,7 +87,7 @@ const swatch = computed(() => `var(${PALETTE[props.index % PALETTE.length]})`);
 
 .dot {
 	display: inline-block;
-	border-radius: var(--border-radius--circle, 50%);
+	border-radius: var(--radius--full);
 }
 
 .dot.small {

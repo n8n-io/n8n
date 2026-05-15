@@ -21,10 +21,10 @@ const props = withDefaults(
 	}>(),
 	{
 		max: 1,
-		barWidth: 8,
-		barGap: 2,
-		groupGap: 16,
-		height: 60,
+		barWidth: 10,
+		barGap: 3,
+		groupGap: 24,
+		height: 52,
 	},
 );
 
@@ -56,6 +56,7 @@ interface RenderedBar {
 interface RenderedGroup {
 	label: string;
 	x: number;
+	width: number;
 	bars: RenderedBar[];
 }
 
@@ -83,7 +84,7 @@ const layout = computed<{ width: number; groups: RenderedGroup[] }>(() => {
 						: `${group.label} · ${Math.round(value * 100)}%`,
 			});
 		});
-		rendered.push({ label: group.label, x, bars });
+		rendered.push({ label: group.label, x, width: groupWidth, bars });
 		x += groupWidth + props.groupGap;
 	}
 
@@ -98,8 +99,8 @@ const layout = computed<{ width: number; groups: RenderedGroup[] }>(() => {
 	<div :class="$style.wrap" data-test-id="grouped-metric-chart">
 		<svg
 			:width="layout.width"
-			:height="height + 18"
-			:viewBox="`0 0 ${layout.width} ${height + 18}`"
+			:height="height"
+			:viewBox="`0 0 ${layout.width} ${height}`"
 			role="img"
 			:aria-label="`Grouped metric chart for ${groups.length} metrics`"
 		>
@@ -111,26 +112,55 @@ const layout = computed<{ width: number; groups: RenderedGroup[] }>(() => {
 					:y="bar.y"
 					:width="bar.width"
 					:height="bar.height"
-					rx="1"
+					rx="1.5"
 					:fill="bar.color"
 				>
 					<title>{{ bar.titleText }}</title>
 				</rect>
-				<text :x="group.x" :y="height + 14" font-size="10" :class="$style.label">
-					{{ group.label }}
-				</text>
 			</g>
 		</svg>
+		<!--
+			HTML labels live outside the SVG so each one can shrink/truncate
+			independently — SVG text would overlap on narrow groups, which
+			is what 4 long metric names × 3 versions hit in the card layout.
+		-->
+		<div :class="$style.labelsRow" :style="{ width: `${layout.width}px` }">
+			<div
+				v-for="group in layout.groups"
+				:key="`label-${group.label}`"
+				:class="$style.label"
+				:style="{ width: `${group.width}px`, marginRight: `${groupGap}px` }"
+				:title="group.label"
+			>
+				{{ group.label }}
+			</div>
+		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .wrap {
 	display: inline-flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.labelsRow {
+	display: flex;
+	flex-wrap: nowrap;
 }
 
 .label {
-	fill: var(--text-color--subtler);
+	font-size: 10px;
 	font-family: var(--font-family);
+	color: var(--text-color--subtler);
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+
+	&:last-child {
+		margin-right: 0 !important;
+	}
 }
 </style>

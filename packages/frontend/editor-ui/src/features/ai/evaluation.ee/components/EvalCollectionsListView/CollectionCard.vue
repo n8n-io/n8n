@@ -26,14 +26,30 @@ const status = computed<'done' | 'running'>(() => {
 	return inFlight ? 'running' : 'done';
 });
 
+// `EvaluationCollectionRunSummary` carries `workflowVersionId` (a UUID)
+// but no friendly label — joining the wizard's per-version label would
+// require a backend change. Until then, the letter-coded VersionAvatar
+// (which doubles as the bar-chart x-axis label) is the chip's identity,
+// with a short hash so cards stay distinguishable when multiple
+// collections share the same versions.
+const letterFor = (i: number) => {
+	if (i < 26) return String.fromCharCode(65 + i);
+	const first = Math.floor(i / 26) - 1;
+	const second = i % 26;
+	return String.fromCharCode(65 + first) + String.fromCharCode(65 + second);
+};
+
+const shortHash = (id: string) => id.slice(0, 6);
+
 const versionChips = computed(() =>
 	(props.detail?.runs ?? []).map((run, idx) => ({
 		key: run.testRunId,
 		index: idx,
+		letter: letterFor(idx),
 		label:
 			run.workflowVersionId === null
 				? i18n.baseText('evaluation.collections.card.currentDraft')
-				: run.workflowVersionId,
+				: shortHash(run.workflowVersionId),
 		score: run.avgScore !== null ? Math.round(run.avgScore * 100) : null,
 	})),
 );
@@ -106,7 +122,8 @@ const ensureDetailLoaded = () => {
 			<div :class="$style.versionsRow">
 				<span v-for="chip in versionChips" :key="chip.key" :class="$style.versionChip">
 					<VersionAvatar :index="chip.index" variant="dot" size="small" />
-					<N8nText size="xsmall">{{ chip.label }}</N8nText>
+					<N8nText size="xsmall" bold>{{ chip.letter }}</N8nText>
+					<N8nText size="xsmall" color="text-light">{{ chip.label }}</N8nText>
 					<N8nText v-if="chip.score !== null" size="xsmall" bold>{{ chip.score }}%</N8nText>
 				</span>
 			</div>
@@ -138,9 +155,9 @@ const ensureDetailLoaded = () => {
 	align-items: center;
 	gap: var(--spacing--md);
 	border: 1px solid var(--border-color--base);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 	background: var(--background--surface);
-	padding: var(--spacing--md);
+	padding: var(--spacing--md) var(--spacing--lg);
 	box-shadow: var(--shadow--xs, 0 1px 2px rgba(0, 0, 0, 0.04));
 }
 
@@ -167,8 +184,8 @@ const ensureDetailLoaded = () => {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: 2px var(--spacing--2xs);
-	border-radius: var(--border-radius--base);
+	padding: 4px 10px;
+	border-radius: var(--radius--full);
 	background: var(--background--subtle);
 }
 

@@ -67,7 +67,7 @@ const formattedDate = computed(() => {
 	gap: var(--spacing--md);
 	padding: var(--spacing--xs) var(--spacing--md);
 	border: 1px solid var(--border-color--subtle);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--md);
 	background: var(--background--surface);
 }
 
