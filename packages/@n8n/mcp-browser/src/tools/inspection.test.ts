@@ -89,6 +89,30 @@ describe('createInspectionTools', () => {
 
 				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, false);
 			});
+
+			it('redacts DOM-derived snapshot text with the host-side analyzer', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+				mockConnection.adapter.snapshot.mockResolvedValue({
+					tree: `- text "Your key is ${secret}" [ref=e1]`,
+					refCount: 1,
+				});
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<p>Your key is ${secret}</p>`,
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(data.snapshot).toBe('- text "Your key is [REDACTED:anthropic_api_key:1]" [ref=e1]');
+				expect(textOf(result)).not.toContain(secret);
+			});
 		});
 	});
 
@@ -242,6 +266,16 @@ describe('createInspectionTools', () => {
 			it('redacts DOM-discovered secrets returned by evaluate', async () => {
 				const secret = 'live-input-secret';
 				mockConnection.adapter.evaluate.mockResolvedValue(secret);
+
+				const result = await getTool().execute({ script: '"secret"' }, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(data.result).toBe('[REDACTED:anthropic_api_key:1]');
+				expect(textOf(result)).not.toContain(secret);
+			});
+
+			it('refuses when the live HTML probe is sensitive', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
 				mockConnection.adapter.probePageHtml.mockResolvedValue({
 					ok: true,
 					root: {

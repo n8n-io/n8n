@@ -16,10 +16,10 @@ describe('applyRedactions', () => {
 
 		applyRedactions(result, sensitivity);
 
-		expect(result.structuredContent).toEqual({ snapshot: '[REDACTED:secret]' });
+		expect(result.structuredContent).toEqual({ snapshot: '[REDACTED:secret:1]' });
 		expect(result.content[0]).toEqual({
 			type: 'text',
-			text: '{\n  "snapshot": "[REDACTED:secret]"\n}',
+			text: '{\n  "snapshot": "[REDACTED:secret:1]"\n}',
 		});
 	});
 
@@ -41,9 +41,37 @@ describe('applyRedactions', () => {
 		applyRedactions(result, sensitivity);
 
 		expect(result.structuredContent).toEqual({
-			text: '[REDACTED:secret]',
-			entries: [{ message: 'prefix [REDACTED:secret] suffix' }],
-			metadata: { echoed: '[REDACTED:secret]' },
+			text: '[REDACTED:secret:1]',
+			entries: [{ message: 'prefix [REDACTED:secret:1] suffix' }],
+			metadata: { echoed: '[REDACTED:secret:1]' },
+		});
+	});
+
+	it('numbers distinct sensitivity hits consistently across content and structuredContent', () => {
+		const result: CallToolResult = {
+			content: [{ type: 'text', text: 'first-secret second-secret first-secret' }],
+			structuredContent: {
+				snapshot: 'second-secret first-secret',
+			},
+		};
+		const sensitivity: SensitivityOk = {
+			ok: true,
+			sensitive: true,
+			sources: ['entropy'],
+			hits: [
+				{ type: 'secret', value: 'first-secret' },
+				{ type: 'secret', value: 'second-secret' },
+			],
+		};
+
+		applyRedactions(result, sensitivity);
+
+		expect(result.content[0]).toEqual({
+			type: 'text',
+			text: '[REDACTED:secret:1] [REDACTED:secret:2] [REDACTED:secret:1]',
+		});
+		expect(result.structuredContent).toEqual({
+			snapshot: '[REDACTED:secret:2] [REDACTED:secret:1]',
 		});
 	});
 
