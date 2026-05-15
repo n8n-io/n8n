@@ -42,7 +42,10 @@ function pickTimestamp(existing) {
 	const max = existing.length === 0 ? 0 : Math.max(...existing);
 	const now = Date.now();
 	if (now > max) return { timestamp: now, source: 'Date.now()' };
-	return { timestamp: max + 1, source: `max + 1 (existing head ${max} is in the future — see AGENTS.md)` };
+	return {
+		timestamp: max + 1,
+		source: `max + 1 (existing head ${max} is in the future — see AGENTS.md)`,
+	};
 }
 
 function migrationTemplate(className) {
@@ -101,7 +104,9 @@ function main() {
 	const args = parseArgs(process.argv.slice(2));
 
 	if (!args.name) {
-		console.error('usage: pnpm --filter=@n8n/db migration:new <Name> [--folder=common|postgresdb|sqlite]');
+		console.error(
+			'usage: pnpm --filter=@n8n/db migration:new <Name> [--folder=common|postgresdb|sqlite]',
+		);
 		process.exit(1);
 	}
 	if (!PASCAL_CASE.test(args.name)) {
@@ -130,7 +135,11 @@ function main() {
 
 	console.log(`created ${relative(PKG_ROOT, targetFile)}`);
 	console.log(`timestamp ${timestamp} (${source})`);
-	console.log(`registered ${className} in ${indexFilesForFolder(args.folder).map((f) => `${f}/index.ts`).join(', ')}`);
+	console.log(
+		`registered ${className} in ${indexFilesForFolder(args.folder)
+			.map((f) => `${f}/index.ts`)
+			.join(', ')}`,
+	);
 }
 
 main();
