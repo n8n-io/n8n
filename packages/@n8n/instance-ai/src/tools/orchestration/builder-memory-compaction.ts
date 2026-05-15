@@ -180,21 +180,6 @@ export async function compactBuilderMemoryThread(
 		};
 	}
 
-	if (
-		typeof memory.getMessages !== 'function' ||
-		typeof memory.saveMessages !== 'function' ||
-		typeof memory.deleteMessages !== 'function'
-	) {
-		return {
-			compacted: false,
-			skippedReason: 'mutation_methods_unavailable',
-			rawMessageCount: 0,
-			compactedMessageCount: 0,
-			rawTokenEstimate: 0,
-			compactedTokenEstimate: 0,
-		};
-	}
-
 	const messages = await memory.getMessages(input.binding.thread);
 	const rawTokenEstimate = messages.reduce(
 		(total, message) => total + estimateTokens(stringifyMessageForTokens(message)),

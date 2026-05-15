@@ -213,18 +213,10 @@ describe('compactBuilderMemoryThread', () => {
 		expect(storedMessages[0].content[0].text).not.toContain('raw builder transcript');
 	});
 
-	it('skips safely when memory storage lacks mutation methods', async () => {
-		const memoryStore = {
-			getMessages: jest.fn(async () => {
-				await Promise.resolve();
-				return [];
-			}),
-		} as unknown as BuiltMemory;
-
-		const result = await compactBuilderMemoryThread(makeCompactionInput(memoryStore));
+	it('skips safely when memory storage is unavailable', async () => {
+		const result = await compactBuilderMemoryThread(makeCompactionInput(undefined));
 
 		expect(result.compacted).toBe(false);
-		expect(result.skippedReason).toBe('mutation_methods_unavailable');
-		expect(memoryStore.getMessages).not.toHaveBeenCalled();
+		expect(result.skippedReason).toBe('store_unavailable');
 	});
 });
