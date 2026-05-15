@@ -47,7 +47,15 @@ export class ReplaceAgentObservationTables1784000000001 implements ReversibleMig
 			.withIndexOn(['scopeKind', 'scopeId', 'status', 'createdAt', 'id'])
 			.withIndexOn(['scopeKind', 'scopeId', 'createdAt', 'id'])
 			.withIndexOn('parentId')
-			.withIndexOn('supersededBy').withTimestamps;
+			.withIndexOn('supersededBy')
+			.withForeignKey('parentId', {
+				tableName: 'agents_observations',
+				columnName: 'id',
+			})
+			.withForeignKey('supersededBy', {
+				tableName: 'agents_observations',
+				columnName: 'id',
+			}).withTimestamps;
 
 		await createTable('agents_observation_cursors').withColumns(
 			column('scopeKind').varchar(20).notNull.primary.withEnumCheck(OBSERVATION_SCOPE_KINDS),
