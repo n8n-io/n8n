@@ -2,12 +2,14 @@ ARG NODE_VERSION=24.15.0
 ARG N8N_VERSION=snapshot
 
 # Rebuild native addons for the container platform. The base image has no
-# package manager or build tools, so we compile in a throwaway builder stage.
+# package manager or build tools, so we compile sqlite3 in a throwaway
+# builder stage. isolated-vm ships musl/glibc prebuilds bundled inside the
+# npm tarball (via prebuildify + node-gyp-build), so no rebuild needed.
 FROM node:${NODE_VERSION}-alpine3.23 AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
 RUN apk add --no-cache python3 make g++ && \
     cd /usr/local/lib/node_modules/n8n && \
-    npm rebuild sqlite3 isolated-vm
+    npm rebuild sqlite3
 
 FROM n8nio/base:${NODE_VERSION}
 
