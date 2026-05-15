@@ -1,4 +1,3 @@
-import { agentTelegramSettingsSchema, type AgentIntegrationSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
@@ -9,6 +8,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
@@ -133,16 +133,20 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 * they are normalized by stripping "@" before comparison. The SDK delivers
 	 * both userId and userName without "@".
 	 */
-	isUserAllowed(author: Author, settings: AgentIntegrationSettings | undefined): boolean {
-		if (!settings) return true;
-		const validConfig = agentTelegramSettingsSchema.safeParse(settings);
-		if (!validConfig.success) {
+	isUserAllowed(
+		author: Author,
+		integration: AgentCredentialIntegrationConfig | undefined,
+	): boolean {
+		if (!integration) return true;
+		if (integration?.type !== 'telegram') {
 			throw new UnexpectedError(
-				`Invalid Telegram integration settings: ${validConfig.error.message}`,
+				`TelegramIntegration received settings with type "${integration?.type}"`,
 			);
 		}
-		if (settings.accessMode === 'public') return true;
-		return settings.allowedUsers.some((allowed) => {
+		if (!integration.settings) return true;
+
+		if (integration.settings.accessMode === 'public') return true;
+		return integration.settings.allowedUsers.some((allowed) => {
 			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
 			return normalized === author.userId || normalized === author.userName;
 		});

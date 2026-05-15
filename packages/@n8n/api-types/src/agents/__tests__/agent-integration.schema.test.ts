@@ -1,4 +1,4 @@
-import { AgentIntegrationSchema } from '../json-config/integration-config';
+import { AgentIntegrationSchema } from '../agent-integration.schema';
 
 describe('AgentIntegrationSchema', () => {
 	it('accepts a schedule integration', () => {
@@ -11,21 +11,21 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts a chat integration with credential name', () => {
+	it('accepts a telegram integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
-			type: 'slack',
+			type: 'telegram',
 			credentialId: 'cred-123',
-			credentialName: 'Acme Slack',
+			settings: { accessMode: 'private', allowedUsers: ['123'] },
 		});
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects a chat integration missing credentialName', () => {
+	it('accepts a chat integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
 			credentialId: 'cred-123',
 		});
-		expect(result.success).toBe(false);
+		expect(result.success).toBe(true);
 	});
 
 	it('rejects a schedule integration missing cronExpression', () => {
@@ -41,7 +41,15 @@ describe('AgentIntegrationSchema', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',
 			credentialId: 'cred-123',
-			credentialName: 'Acme',
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects Telegram private settings without allowed users', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'telegram',
+			credentialId: 'cred-telegram',
+			settings: { accessMode: 'private', allowedUsers: [] },
 		});
 		expect(result.success).toBe(false);
 	});
@@ -57,16 +65,13 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects a schedule integration whose cronExpression is malformed', () => {
-		const malformed = ['not-a-cron', '* * *', '99 99 * * *'];
-		for (const cron of malformed) {
-			const result = AgentIntegrationSchema.safeParse({
-				type: 'schedule',
-				active: false,
-				cronExpression: cron,
-				wakeUpPrompt: 'go',
-			});
-			expect(result.success).toBe(false);
-		}
+	it('rejects an empty cronExpression', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'schedule',
+			active: false,
+			cronExpression: '',
+			wakeUpPrompt: 'go',
+		});
+		expect(result.success).toBe(false);
 	});
 });

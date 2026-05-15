@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { RunnableAgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
 const BuilderPromptMemoryConfigSchema = z.object({
@@ -354,14 +354,14 @@ Two kinds:
 2. **Chat integrations** — connect the agent to a messaging platform. Multiple allowed.
    Shape:
    \`\`\`json
-   { "type": "slack", "credentialId": "<id>", "credentialName": "<name>" }
+   { "type": "slack", "credentialId": "<id>" }
    \`\`\`
 
 ### Workflow for adding integrations
 
 1. Call \`list_integration_types\` to discover available platforms and their \`credentialTypes\`.
 2. For chat integrations: pick **one** entry from the \`credentialTypes\` array returned by \`list_integration_types\` (prefer the OAuth variant — e.g. \`slackOAuth2Api\` over \`slackApi\`) and pass it to \`ask_credential\` as the singular \`credentialType\` arg. It returns \`{ credentialId, credentialName }\`.
-3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, both \`credentialId\` and \`credentialName\` are required and must come from the \`ask_credential\` result. For schedule, write the cron expression directly.
+3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, only persist \`type\` and \`credentialId\`. For schedule, write the cron expression directly.
 
 Never invent credential IDs or names. Always go through \`ask_credential\`.`;
 
