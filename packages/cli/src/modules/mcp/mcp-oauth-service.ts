@@ -248,6 +248,16 @@ export class McpOAuthService implements OAuthServerProvider {
 		};
 	}
 
+	/**
+	 * For refresh-token exchange, `resourceFromRequest` takes precedence over `scopesOrResource`.
+	 *
+	 * `scopesOrResource` may be:
+	 * - `string[]`: scopes (intentionally treated as no resource, resulting in `undefined`)
+	 * - `string` or `URL`: resource indicator
+	 *
+	 * This follows OAuth 2.1 refresh-token behavior, where scopes are not used for token refresh.
+	 * The selected resource is normalized and validated via `resolveAndValidateResourceIndicator()`.
+	 */
 	async exchangeRefreshToken(
 		client: OAuthClientInformationFull,
 		refreshToken: string,
