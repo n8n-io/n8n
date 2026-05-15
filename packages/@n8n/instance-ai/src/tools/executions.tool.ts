@@ -37,7 +37,15 @@ const getAction = z.object({
 });
 
 const runAction = z.object({
-	action: z.literal('run').describe('Execute a workflow and wait for completion'),
+	action: z
+		.literal('run')
+		.describe(
+			'Execute a workflow and wait for completion. ' +
+				'When this returns `{ status: "success" }` for a user-initiated run, you MUST call ' +
+				'`evals(action="offer", workflowId)` in the same turn before ending — see ' +
+				'"Eval offer hard gate" in the system prompt. Exceptions: evals already offered for ' +
+				'this workflowId in this conversation, or the user previously declined.',
+		),
 	workflowId: z.string().describe('Workflow ID'),
 	inputData: z
 		.record(z.unknown())
@@ -179,9 +187,44 @@ async function handleRun(
 	}
 
 	// Approved or always_allow — execute
-	return await context.executionService.run(input.workflowId, input.inputData, {
+	const result = await context.executionService.run(input.workflowId, input.inputData, {
 		timeout: input.timeout,
 	});
+
+	// Runtime nudge for the post-first-run eval offer gate. The system-prompt
+	// alone is unreliable — the orchestrator routinely drifts past the gate
+	// because, after a successful run, its next instinct is to write a
+	// completion recap. Surfacing the directive inside the tool result puts the
+	// requirement directly in the LLM's working set at decision time, where
+	// it's much harder to skip than a paragraph buried in the system-prompt.
+	//
+	// The offer tool itself is the source of truth on eligibility and
+	// "already-configured" gating, so we always emit the directive on success
+	// and let the offer call short-circuit when not applicable.
+	if (isLikelyUserInitiatedSuccess(result)) {
+		return {
+			...result,
+			evalOfferGate: {
+				required: true,
+				workflowId: input.workflowId,
+				instruction:
+					'POST-FIRST-RUN EVAL GATE: Before writing any user-facing reply, you MUST call ' +
+					`evals(action="offer", workflowId="${input.workflowId}") in this same turn. ` +
+					'If it returns { eligible: false } → skip silently, then write your normal recap. ' +
+					'If it returns { eligible: true, message } → output `message` verbatim as your reply and end the turn — do NOT also write a separate execution recap. ' +
+					'Only skip the gate if evals were already offered for this workflowId earlier in this conversation, or the user previously declined evals.',
+			},
+		};
+	}
+
+	return result;
+}
+
+function isLikelyUserInitiatedSuccess(result: unknown): result is { status: 'success' } {
+	if (typeof result !== 'object' || result === null) return false;
+	const status = (result as { status?: unknown }).status;
+	const denied = (result as { denied?: unknown }).denied;
+	return status === 'success' && denied !== true;
 }
 
 async function handleDebug(context: InstanceAiContext, input: Extract<Input, { action: 'debug' }>) {
