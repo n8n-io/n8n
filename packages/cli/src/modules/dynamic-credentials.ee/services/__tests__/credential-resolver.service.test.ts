@@ -12,7 +12,9 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../../constants';
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
+import { SystemResolverModificationError } from '../../errors/system-resolver-modification.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialResolverService } from '../credential-resolver.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
@@ -641,6 +643,66 @@ describe('DynamicCredentialResolverService', () => {
 			);
 
 			expect(mockWorkflowRepository.clearCredentialResolverId).not.toHaveBeenCalled();
+			expect(mockRepository.remove).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findAllPublic', () => {
+		it('returns every resolver except the system one', async () => {
+			const systemRow = createMockEntity({
+				id: SYSTEM_RESOLVER_ID,
+				name: SYSTEM_RESOLVER_NAME,
+				type: SYSTEM_RESOLVER_TYPE,
+			});
+			const customRow = createMockEntity({
+				id: 'custom-1',
+				name: 'Custom',
+				type: 'credential-resolver.oauth2-1.0',
+			});
+			mockRepository.find.mockResolvedValue([systemRow, customRow]);
+			mockCipher.decryptV2.mockResolvedValue('{}');
+
+			const result = await service.findAllPublic();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].id).toBe('custom-1');
+		});
+	});
+
+	describe('getAvailablePublicTypes', () => {
+		it('omits the system N8N resolver type', () => {
+			const systemType = {
+				metadata: { name: SYSTEM_RESOLVER_TYPE, displayName: 'N8N Resolver', options: [] },
+			} as unknown as ICredentialResolver;
+			const oauthType = {
+				metadata: { name: 'credential-resolver.oauth2-1.0', displayName: 'OAuth2', options: [] },
+			} as unknown as ICredentialResolver;
+			mockRegistry.getAllResolvers.mockReturnValue([systemType, oauthType]);
+
+			const result = service.getAvailablePublicTypes();
+
+			expect(result.map((r) => r.metadata.name)).toEqual(['credential-resolver.oauth2-1.0']);
+		});
+	});
+
+	describe('update — system resolver guard', () => {
+		it('refuses to update the system resolver and does not touch the repository', async () => {
+			await expect(
+				service.update(SYSTEM_RESOLVER_ID, { name: 'tampered', user: createMockUser() }),
+			).rejects.toThrow(SystemResolverModificationError);
+
+			expect(mockRepository.findOneBy).not.toHaveBeenCalled();
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('delete — system resolver guard', () => {
+		it('refuses to delete the system resolver and does not touch the repository', async () => {
+			await expect(service.delete(SYSTEM_RESOLVER_ID)).rejects.toThrow(
+				SystemResolverModificationError,
+			);
+
+			expect(mockRepository.findOneBy).not.toHaveBeenCalled();
 			expect(mockRepository.remove).not.toHaveBeenCalled();
 		});
 	});
