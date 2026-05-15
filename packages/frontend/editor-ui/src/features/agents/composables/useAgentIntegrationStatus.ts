@@ -149,7 +149,6 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			await disconnectIntegration(rootStore.restApiContext, projectId, agentId, type, credId);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
-			state.integrationSettings.value[type] = undefined;
 		} finally {
 			state.loadingMap.value[type] = false;
 		}

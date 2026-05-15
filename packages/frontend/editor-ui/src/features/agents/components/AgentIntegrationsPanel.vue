@@ -5,7 +5,10 @@ import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-sys
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
@@ -63,6 +66,10 @@ interface IntegrationConfig {
 	noCredentialsMessage: string;
 }
 
+type CredentialChangeCredential = Parameters<
+	NonNullable<Parameters<typeof listenForCredentialChanges>[0]['onCredentialCreated']>
+>[0];
+
 const integrationConfigs: IntegrationConfig[] = [
 	{
 		type: 'slack',
@@ -116,6 +123,7 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+const wasCredentialModalOpenedFromHere = ref(false);
 
 // One ref per integration type — keyed by config.type so each card's form is
 // read and validated independently.
@@ -300,6 +308,36 @@ async function fetchCredentials() {
 	}
 }
 
+function getConfigForCredentialType(credentialType: string) {
+	return integrationConfigs.find((config) => config.credentialTypes.includes(credentialType));
+}
+
+function toAgentCredentialOption(credential: CredentialChangeCredential): AgentCredentialOption {
+	return {
+		id: credential.id,
+		name: credential.name,
+		typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+		homeProject: credential.homeProject,
+	};
+}
+
+function upsertCredentialOption(configType: string, credential: CredentialChangeCredential) {
+	const options = credentialsByType.value[configType] ?? [];
+	const option = toAgentCredentialOption(credential);
+	const existingIndex = options.findIndex(({ id }) => id === credential.id);
+
+	credentialsByType.value[configType] =
+		existingIndex >= 0
+			? options.map((existing) => (existing.id === credential.id ? option : existing))
+			: [...options, option];
+}
+
+function removeCredentialOption(configType: string, credentialId: string) {
+	credentialsByType.value[configType] = (credentialsByType.value[configType] ?? []).filter(
+		({ id }) => id !== credentialId,
+	);
+}
+
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
@@ -319,13 +357,13 @@ async function onDisconnect(type: string) {
 	const credId = connectedCredentials.value[type] || selectedCredentials.value[type];
 	if (!credId) return;
 	await disconnect(type, credId);
-	selectedCredentials.value[type] = '';
 	emitConnectedTriggers();
 }
 
 function onCreateCredential(type: string) {
 	const config = integrationConfigs.find((c) => c.type === type);
 	if (config) {
+		wasCredentialModalOpenedFromHere.value = true;
 		uiStore.openNewCredential(
 			config.credentialTypes[0],
 			false,
@@ -344,9 +382,40 @@ function onCreateCredential(type: string) {
 function onEditCredential(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (credId) {
+		wasCredentialModalOpenedFromHere.value = true;
 		uiStore.openExistingCredential(credId, { hideAskAssistant: true });
 	}
 }
+
+listenForCredentialChanges({
+	store: credentialsStore,
+	onCredentialCreated: (credential) => {
+		const config = getConfigForCredentialType(credential.type);
+		if (!config) return;
+
+		upsertCredentialOption(config.type, credential);
+
+		if (wasCredentialModalOpenedFromHere.value) {
+			selectedCredentials.value[config.type] = credential.id;
+		}
+	},
+	onCredentialUpdated: (credential) => {
+		const config = getConfigForCredentialType(credential.type);
+		if (!config) return;
+
+		upsertCredentialOption(config.type, credential);
+	},
+	onCredentialDeleted: (deletedCredentialId) => {
+		for (const config of integrationConfigs) {
+			removeCredentialOption(config.type, deletedCredentialId);
+
+			if (selectedCredentials.value[config.type] === deletedCredentialId) {
+				selectedCredentials.value[config.type] =
+					credentialsByType.value[config.type]?.[0]?.id ?? '';
+			}
+		}
+	},
+});
 
 // Re-fetch credentials when the credential edit modal closes
 const credentialModalOpen = computed(
@@ -355,6 +424,7 @@ const credentialModalOpen = computed(
 
 watch(credentialModalOpen, (isOpen, wasOpen) => {
 	if (wasOpen && !isOpen) {
+		wasCredentialModalOpenedFromHere.value = false;
 		void fetchCredentials();
 	}
 });
@@ -419,7 +489,7 @@ onMounted(async () => {
 					</N8nButton>
 				</div>
 
-				<div v-if="!isConnected(config.type)" :class="$style.connectForm">
+				<div :class="$style.connectForm">
 					<label :class="$style.label">
 						<N8nText size="small" bold>{{ config.label }} Credential</N8nText>
 					</label>
@@ -454,7 +524,7 @@ onMounted(async () => {
 					</div>
 				</div>
 
-				<div v-else :class="$style.connectedSection">
+				<div v-if="isConnected(config.type)" :class="$style.connectedSection">
 					<N8nText size="small">
 						{{ config.connectedDescription }}
 					</N8nText>

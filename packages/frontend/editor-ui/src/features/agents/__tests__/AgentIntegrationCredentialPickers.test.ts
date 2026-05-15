@@ -14,15 +14,39 @@ const {
 	connectIntegration,
 	disconnectIntegration,
 	ensureLoaded,
-} = vi.hoisted(() => ({
-	fetchAllCredentialsForWorkflow: vi.fn(),
-	openNewCredential: vi.fn(),
-	openExistingCredential: vi.fn(),
-	getIntegrationStatus: vi.fn(),
-	connectIntegration: vi.fn(),
-	disconnectIntegration: vi.fn(),
-	ensureLoaded: vi.fn(),
-}));
+	listenForCredentialChanges,
+	credentialChangeListeners,
+} = vi.hoisted(() => {
+	const credentialChangeListeners = {
+		current: undefined as
+			| {
+					onCredentialCreated?: (credential: {
+						id: string;
+						name: string;
+						type: string;
+						homeProject?: unknown;
+						isManaged: boolean;
+					}) => void;
+					onCredentialDeleted?: (credentialId: string) => void;
+			  }
+			| undefined,
+	};
+
+	return {
+		fetchAllCredentialsForWorkflow: vi.fn(),
+		openNewCredential: vi.fn(),
+		openExistingCredential: vi.fn(),
+		getIntegrationStatus: vi.fn(),
+		connectIntegration: vi.fn(),
+		disconnectIntegration: vi.fn(),
+		ensureLoaded: vi.fn(),
+		listenForCredentialChanges: vi.fn((listeners) => {
+			credentialChangeListeners.current = listeners;
+			return vi.fn();
+		}),
+		credentialChangeListeners,
+	};
+});
 
 const projectState = vi.hoisted(() => ({
 	currentProject: { id: 'project-1', name: 'Project', scopes: ['credential:create'] },
@@ -73,6 +97,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
+	listenForCredentialChanges,
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
 		fetchAllCredentialsForWorkflow,
@@ -117,6 +142,7 @@ const AgentCredentialSelectStub = {
 		<div
 			data-testid="agent-credential-select-stub"
 			:data-test-id-prop="dataTestId"
+			:data-model-value="modelValue"
 			:data-can-create="String(credentialPermissions.create)"
 			:data-options="credentials.map((credential) => credential.name).join('|')"
 		>
@@ -180,6 +206,7 @@ describe('agent integration credential picker usage', () => {
 			{ id: 'cred-1', name: 'Workspace Slack', type: 'slackOAuth2Api' },
 			{ id: 'cred-telegram', name: 'Telegram Bot', type: 'telegramApi' },
 		]);
+		credentialChangeListeners.current = undefined;
 	});
 
 	it('uses the shared credential picker in the add-trigger modal', async () => {
@@ -250,6 +277,83 @@ describe('agent integration credential picker usage', () => {
 			undefined,
 			{ hideAskAssistant: true },
 		);
+	});
+
+	it('removes a deleted credential from the integrations panel picker', async () => {
+		const wrapper = mount(AgentIntegrationsPanel, {
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				isPublished: true,
+				focusType: 'slack',
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		credentialChangeListeners.current?.onCredentialDeleted?.('cred-1');
+		await flushPromises();
+
+		expect(
+			wrapper.find('[data-testid="agent-credential-select-stub"]').attributes('data-options'),
+		).toBe('');
+	});
+
+	it('selects a credential created from the integrations panel picker', async () => {
+		const wrapper = mount(AgentIntegrationsPanel, {
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				isPublished: true,
+				focusType: 'slack',
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
+		credentialChangeListeners.current?.onCredentialCreated?.({
+			id: 'cred-2',
+			name: 'Created Slack',
+			type: 'slackApi',
+			isManaged: false,
+		});
+		await flushPromises();
+
+		expect(
+			wrapper.find('[data-testid="agent-credential-select-stub"]').attributes('data-options'),
+		).toBe('Workspace Slack|Created Slack');
+		expect(
+			wrapper.find('[data-testid="slack-connect-button"]').attributes('disabled'),
+		).toBeUndefined();
+	});
+
+	it('keeps the previously connected credential selected after disconnecting', async () => {
+		getIntegrationStatus.mockResolvedValue({
+			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+		});
+		disconnectIntegration.mockResolvedValue(undefined);
+
+		const wrapper = mount(AgentIntegrationsPanel, {
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				isPublished: true,
+				focusType: 'slack',
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-disconnect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(
+			wrapper.find('[data-testid="agent-credential-select-stub"]').attributes('data-model-value'),
+		).toBe('cred-1');
 	});
 
 	it('passes denied credential creation permission to the shared picker', async () => {

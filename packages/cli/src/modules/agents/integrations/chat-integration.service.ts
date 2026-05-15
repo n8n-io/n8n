@@ -10,6 +10,7 @@ import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { Chat } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -40,17 +41,8 @@ type WebhookHandler = (
 	options?: { waitUntil?: (task: Promise<unknown>) => void },
 ) => Promise<Response>;
 
-interface ChatInstance {
-	initialize(): Promise<void>;
-	shutdown(): Promise<void>;
-	webhooks: Record<string, WebhookHandler>;
-	onNewMention: (handler: unknown) => void;
-	onSubscribedMessage: (handler: unknown) => void;
-	onAction: (handler: unknown) => void;
-}
-
 interface ChatAgentConnection {
-	chat: ChatInstance;
+	chat: Chat;
 	bridge: AgentChatBridge;
 }
 
@@ -227,13 +219,8 @@ export class ChatIntegrationService {
 			}
 		}
 
-		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
-		// package. Its runtime shape matches our local `ChatInstance` interface.
-		// We validate the required methods exist before storing.
-		const chatInstance = chat as ChatInstance;
-
 		this.connections.set(key, {
-			chat: chatInstance,
+			chat,
 			bridge,
 		});
 		this.logger.info(`[ChatIntegrationService] Connected: ${key}`);
@@ -417,7 +404,7 @@ export class ChatIntegrationService {
 	/**
 	 * Return the first Chat instance for an agent, or undefined if not connected.
 	 */
-	getChatInstance(agentId: string): ChatInstance | undefined {
+	getChatInstance(agentId: string): Chat | undefined {
 		for (const [k, conn] of this.connections) {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}
