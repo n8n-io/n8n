@@ -60,8 +60,6 @@ function makeCompactionInput(
 	return {
 		context: {
 			memory,
-			threadId: 'thread-1',
-			runId: 'run-1',
 			messageGroupId: 'group-1',
 		},
 		binding: {

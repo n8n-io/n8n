@@ -12,8 +12,6 @@ interface BuilderMemoryBinding {
 
 interface BuilderMemoryCompactionContext {
 	memory?: BuiltMemory;
-	threadId: string;
-	runId: string;
 	messageGroupId?: string;
 }
 
