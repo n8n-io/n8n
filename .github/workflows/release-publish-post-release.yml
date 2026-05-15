@@ -70,7 +70,7 @@ jobs:
     name: Ensure correct latest version on npm
     if: |
       inputs.bump == 'minor' ||
-      inputs.track == 'stable'
+      (inputs.track == 'stable' && inputs.release_type != 'rc')
     uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
     secrets: inherit
 
