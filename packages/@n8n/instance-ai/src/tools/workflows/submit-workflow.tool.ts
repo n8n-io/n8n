@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
@@ -72,32 +73,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-/**
- * Node types the bypassPlan post-build verify flow can exercise without user
- * approval (verify-built-workflow injects sidecar pin data matching each
- * trigger's production output shape). Kept in sync with the per-trigger
- * inputData shape block in the orchestrator system prompt.
- */
-const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'n8n-nodes-base.scheduleTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
-]);
-
-/**
- * Whether a node's type should be surfaced in `SubmitWorkflowAttempt.triggerNodes`
- * so the orchestrator can decide if it can verify the build without user input.
- * Known-mockable types feed the post-build verify step directly; other `*Trigger`
- * suffix types are included for visibility but skipped by the verify step.
- * Exported for direct unit coverage.
- */
-export function isTriggerNodeType(nodeType: string | undefined): boolean {
-	if (!nodeType) return false;
-	if (KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType)) return true;
-	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

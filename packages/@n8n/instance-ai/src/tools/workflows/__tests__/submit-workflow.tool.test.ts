@@ -7,10 +7,10 @@ import type { InstanceAiContext } from '../../../types';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
 	classifySubmitFailure,
-	isTriggerNodeType,
 	normalizeWorkflowNodeParameters,
 	type SubmitWorkflowAttempt,
 } from '../submit-workflow.tool';
+import { isTriggerNodeType } from '../workflow-json-utils';
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
