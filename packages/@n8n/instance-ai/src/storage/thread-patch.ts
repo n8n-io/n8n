@@ -16,8 +16,6 @@ export interface PatchableThreadMemory {
 	patchThread?: unknown;
 	getThread?: unknown;
 	saveThread?: unknown;
-	getThreadById?: unknown;
-	updateThread?: unknown;
 }
 
 interface PatchableThreadStore {
@@ -53,17 +51,6 @@ function hasNativeThreadMethods(memory: PatchableThreadMemory): memory is {
 	return typeof memory.getThread === 'function' && typeof memory.saveThread === 'function';
 }
 
-function hasLegacyThreadMethods(memory: PatchableThreadMemory): memory is {
-	getThreadById: (args: { threadId: string }) => Promise<ThreadRecord | null>;
-	updateThread: (args: {
-		id: string;
-		title: string;
-		metadata: Record<string, unknown>;
-	}) => Promise<ThreadRecord | null>;
-} {
-	return typeof memory.getThreadById === 'function' && typeof memory.updateThread === 'function';
-}
-
 function cloneThreadForUpdate(thread: ThreadRecord): ThreadRecord {
 	return {
 		...thread,
@@ -86,10 +73,6 @@ export async function getThread(
 ): Promise<ThreadRecord | null> {
 	if (hasGetThread(memory)) {
 		return await memory.getThread(threadId);
-	}
-
-	if (hasGetThreadById(memory)) {
-		return await memory.getThreadById({ threadId });
 	}
 
 	throw new Error('Memory does not support reading threads');
@@ -125,20 +108,6 @@ export async function patchThread(
 		return updated;
 	}
 
-	if (hasLegacyThreadMethods(memory)) {
-		const thread = await memory.getThreadById({ threadId: args.threadId });
-		if (!thread) return null;
-
-		const patch = args.update(cloneThreadForUpdate(thread));
-		if (!patch) return thread;
-
-		return await memory.updateThread({
-			id: args.threadId,
-			title: patch.title ?? thread.title ?? args.threadId,
-			metadata: patch.metadata ?? thread.metadata ?? {},
-		});
-	}
-
 	throw new Error('Memory does not support patching threads');
 }
 
@@ -146,12 +115,6 @@ function hasGetThread(memory: PatchableThreadMemory): memory is {
 	getThread: (threadId: string) => Promise<ThreadRecord | null>;
 } {
 	return typeof memory.getThread === 'function';
-}
-
-function hasGetThreadById(memory: PatchableThreadMemory): memory is {
-	getThreadById: (args: { threadId: string }) => Promise<ThreadRecord | null>;
-} {
-	return typeof memory.getThreadById === 'function';
 }
 
 function hasGetMemoryStore(memory: PatchableThreadMemory): memory is PatchableThreadMemory & {

@@ -15,11 +15,11 @@ jest.mock('../thread-patch', () => {
 });
 
 const mockedPatchThread = jest.mocked(patchThread);
-type TestMemory = PatchableThreadMemory & { getThreadById: jest.Mock };
+type TestMemory = PatchableThreadMemory & { getThread: jest.Mock };
 
 function makeMemory(): TestMemory {
 	return {
-		getThreadById: jest.fn(),
+		getThread: jest.fn(),
 	};
 }
 
@@ -69,7 +69,7 @@ describe('WorkflowLoopStorage', () => {
 		it('returns work item from thread metadata', async () => {
 			const state = makeState();
 			const attempts = [makeAttempt()];
-			jest.mocked(memory.getThreadById).mockResolvedValue({
+			jest.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {
@@ -84,7 +84,7 @@ describe('WorkflowLoopStorage', () => {
 		});
 
 		it('returns null for unknown work item', async () => {
-			jest.mocked(memory.getThreadById).mockResolvedValue({
+			jest.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {},
@@ -95,7 +95,7 @@ describe('WorkflowLoopStorage', () => {
 		});
 
 		it('returns null when no loop metadata exists', async () => {
-			jest.mocked(memory.getThreadById).mockResolvedValue({
+			jest.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {},
 			});
@@ -152,7 +152,7 @@ describe('WorkflowLoopStorage', () => {
 			const activeState = makeState({ workItemId: 'wi-active', status: 'active' });
 			const doneState = makeState({ workItemId: 'wi-done', status: 'completed' });
 
-			jest.mocked(memory.getThreadById).mockResolvedValue({
+			jest.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {
@@ -169,7 +169,7 @@ describe('WorkflowLoopStorage', () => {
 		it('returns null when no active work item exists', async () => {
 			const doneState = makeState({ workItemId: 'wi-done', status: 'completed' });
 
-			jest.mocked(memory.getThreadById).mockResolvedValue({
+			jest.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {
@@ -182,7 +182,7 @@ describe('WorkflowLoopStorage', () => {
 		});
 
 		it('returns null when no loop metadata', async () => {
-			jest.mocked(memory.getThreadById).mockResolvedValue({
+			jest.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {},
 			});

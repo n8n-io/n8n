@@ -131,10 +131,6 @@ export class TypeORMAgentMemory implements BuiltMemory {
 		return thread ? toThread(thread) : null;
 	}
 
-	async getThreadById({ threadId }: { threadId: string }): Promise<Thread | null> {
-		return await this.getThread(threadId);
-	}
-
 	async listThreads(args: {
 		filter?: { resourceId?: string };
 		perPage?: number;

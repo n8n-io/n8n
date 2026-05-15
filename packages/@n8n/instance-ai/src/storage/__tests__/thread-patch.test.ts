@@ -14,22 +14,18 @@ const baseThread: ThreadRecord = {
 	updatedAt: new Date(),
 };
 
-function makeMemory(
-	overrides: Partial<PatchableThreadMemory> & { getMemoryStore?: () => Promise<unknown> } = {},
-): PatchableThreadMemory & { getMemoryStore?: () => Promise<unknown> } {
+type TestMemory = PatchableThreadMemory & {
+	getThread: jest.Mock;
+	saveThread: jest.Mock;
+	getMemoryStore?: () => Promise<unknown>;
+};
+
+function makeMemory(overrides: Partial<TestMemory> = {}): TestMemory {
 	return {
-		getThreadById: jest.fn().mockResolvedValue({ ...baseThread }),
-		updateThread: jest
-			.fn()
-			.mockImplementation(
-				(args: { id: string; title: string; metadata: Record<string, unknown> }) => ({
-					...baseThread,
-					id: args.id,
-					title: args.title,
-					metadata: args.metadata,
-				}),
-			),
 		...overrides,
+		getThread: overrides.getThread ?? jest.fn().mockResolvedValue({ ...baseThread }),
+		saveThread:
+			overrides.saveThread ?? jest.fn().mockImplementation((thread: ThreadRecord) => thread),
 	};
 }
 
@@ -45,13 +41,10 @@ describe('getThread', () => {
 		expect(result?.title).toBe('Native');
 	});
 
-	it('uses getThreadById when native getThread is absent', async () => {
-		const memory = makeMemory();
-
-		const result = await getThread(memory, 'thread-1');
-
-		expect(memory.getThreadById).toHaveBeenCalledWith({ threadId: 'thread-1' });
-		expect(result?.title).toBe('Original Title');
+	it('throws when native getThread is absent', async () => {
+		await expect(getThread({}, 'thread-1')).rejects.toThrow(
+			'Memory does not support reading threads',
+		);
 	});
 });
 
@@ -89,8 +82,6 @@ describe('patchThread', () => {
 	describe('native getThread + saveThread fallback', () => {
 		it('reads thread, calls update, then saves', async () => {
 			const memory = makeMemory({
-				getThreadById: undefined,
-				updateThread: undefined,
 				getThread: jest.fn().mockResolvedValue({ ...baseThread }),
 				saveThread: jest.fn(),
 			});
@@ -111,26 +102,6 @@ describe('patchThread', () => {
 			);
 			expect(result?.title).toBe('Updated Title');
 		});
-	});
-
-	describe('legacy getThreadById + updateThread fallback', () => {
-		it('reads thread, calls update, then saves', async () => {
-			const memory = makeMemory();
-			const update = jest.fn().mockReturnValue({ title: 'Updated Title' });
-
-			const result = await patchThread(memory, { threadId: 'thread-1', update });
-
-			expect(memory.getThreadById).toHaveBeenCalledWith({ threadId: 'thread-1' });
-			expect(update).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'thread-1', title: 'Original Title' }),
-			);
-			expect(memory.updateThread).toHaveBeenCalledWith({
-				id: 'thread-1',
-				title: 'Updated Title',
-				metadata: { key: 'value' },
-			});
-			expect(result?.title).toBe('Updated Title');
-		});
 
 		it('returns unchanged thread when update returns null', async () => {
 			const memory = makeMemory();
@@ -138,13 +109,13 @@ describe('patchThread', () => {
 
 			const result = await patchThread(memory, { threadId: 'thread-1', update });
 
-			expect(memory.updateThread).not.toHaveBeenCalled();
+			expect(memory.saveThread).not.toHaveBeenCalled();
 			expect(result?.id).toBe('thread-1');
 		});
 
 		it('returns null when thread does not exist', async () => {
 			const memory = makeMemory({
-				getThreadById: jest.fn().mockResolvedValue(null),
+				getThread: jest.fn().mockResolvedValue(null),
 			});
 			const update = jest.fn();
 
@@ -156,7 +127,7 @@ describe('patchThread', () => {
 
 		it('uses threadId as title fallback when thread has no title', async () => {
 			const memory = makeMemory({
-				getThreadById: jest.fn().mockResolvedValue({
+				getThread: jest.fn().mockResolvedValue({
 					...baseThread,
 					title: undefined,
 				}),
@@ -165,7 +136,7 @@ describe('patchThread', () => {
 
 			await patchThread(memory, { threadId: 'thread-1', update });
 
-			expect(memory.updateThread).toHaveBeenCalledWith(
+			expect(memory.saveThread).toHaveBeenCalledWith(
 				expect.objectContaining({ title: 'thread-1' }),
 			);
 		});
@@ -176,7 +147,7 @@ describe('patchThread', () => {
 
 			await patchThread(memory, { threadId: 'thread-1', update });
 
-			expect(memory.updateThread).toHaveBeenCalledWith(
+			expect(memory.saveThread).toHaveBeenCalledWith(
 				expect.objectContaining({ metadata: { newKey: 'newVal' } }),
 			);
 		});
@@ -191,7 +162,7 @@ describe('patchThread', () => {
 			await patchThread(memory, { threadId: 'thread-1', update });
 
 			expect(update).toHaveBeenCalled();
-			expect(memory.updateThread).toHaveBeenCalledWith(
+			expect(memory.saveThread).toHaveBeenCalledWith(
 				expect.objectContaining({ metadata: { key: 'value' } }),
 			);
 		});
