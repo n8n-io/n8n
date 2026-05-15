@@ -83,8 +83,7 @@ export class License implements LicenseProvider {
 		const collectPassthroughData = isMainInstance
 			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
-		const onExpirySoon = !this.instanceSettings.isLeader ? () => this.onExpirySoon() : undefined;
-		const expirySoonOffsetMins = !this.instanceSettings.isLeader ? 120 : undefined;
+		const expirySoonOffsetMins = this.instanceSettings.isLeader ? 24 * 60 : 120;
 
 		const { isLeader } = this.instanceSettings;
 		const { autoRenewalEnabled } = this.globalConfig.license;
@@ -114,7 +113,7 @@ export class License implements LicenseProvider {
 				collectPassthroughData,
 				onFeatureChange,
 				onLicenseRenewed,
-				onExpirySoon,
+				onExpirySoon: () => this.onExpirySoon(),
 				expirySoonOffsetMins,
 			});
 
@@ -518,18 +517,24 @@ export class License implements LicenseProvider {
 	}
 
 	private onExpirySoon() {
-		this.logger.info('License is about to expire soon, reloading license...');
-
-		// reload in background to avoid blocking SDK
-
-		void this.reload()
-			.then(() => {
-				this.logger.info('Reloaded license on expiry soon');
-			})
-			.catch((error) => {
-				this.logger.error('Failed to reload license on expiry soon', {
-					error: error instanceof Error ? error.message : error,
-				});
+		if (this.instanceSettings.isLeader) {
+			this.logger.error('License is expiring within 24h.', {
+				expiryDate: this.getExpiryDate()?.toISOString() ?? null,
 			});
+		} else {
+			this.logger.info('License is about to expire soon, reloading license...');
+
+			// reload in background to avoid blocking SDK
+
+			void this.reload()
+				.then(() => {
+					this.logger.info('Reloaded license on expiry soon');
+				})
+				.catch((error) => {
+					this.logger.error('Failed to reload license on expiry soon', {
+						error: error instanceof Error ? error.message : error,
+					});
+				});
+		}
 	}
 }

@@ -233,30 +233,39 @@ describe('License', () => {
 			{
 				instanceType: 'main' as const,
 				isLeader: true,
-				shouldReload: false,
-				description: 'Leader main should not reload',
+				expectedAction: 'log' as const,
+				expectedOffset: 24 * 60,
+				description: 'Leader main should log critical warning 24h before expiry',
 			},
 			{
 				instanceType: 'main' as const,
 				isLeader: false,
-				shouldReload: true,
-				description: 'Follower main should reload',
+				expectedAction: 'reload' as const,
+				expectedOffset: 120,
+				description: 'Follower main should reload 2h before expiry',
 			},
 			{
 				instanceType: 'worker' as const,
 				isLeader: false,
-				shouldReload: true,
-				description: 'Worker should reload',
+				expectedAction: 'reload' as const,
+				expectedOffset: 120,
+				description: 'Worker should reload 2h before expiry',
 			},
 			{
 				instanceType: 'webhook' as const,
 				isLeader: false,
-				shouldReload: true,
-				description: 'Webhook should reload',
+				expectedAction: 'reload' as const,
+				expectedOffset: 120,
+				description: 'Webhook should reload 2h before expiry',
 			},
-		])('$description', async ({ instanceType, isLeader, shouldReload }) => {
+		])('$description', async ({ instanceType, isLeader, expectedAction, expectedOffset }) => {
 			const logger = mockLogger();
 			const reloadSpy = jest.spyOn(License.prototype, 'reload').mockResolvedValueOnce();
+			if (expectedAction === 'log') {
+				jest
+					.spyOn(License.prototype, 'getExpiryDate')
+					.mockReturnValueOnce(new Date('2026-05-15T00:00:00.000Z'));
+			}
 			const instanceSettings = mock<InstanceSettings>({ instanceType });
 			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
 
@@ -275,13 +284,19 @@ describe('License', () => {
 			const licenseManagerCall = calls[calls.length - 1][0];
 			const onExpirySoon = licenseManagerCall.onExpirySoon;
 
-			if (shouldReload) {
-				expect(onExpirySoon).toBeDefined();
-				onExpirySoon!();
-				expect(reloadSpy).toHaveBeenCalled();
-			} else {
-				expect(onExpirySoon).toBeUndefined();
+			expect(onExpirySoon).toBeDefined();
+			expect(licenseManagerCall.expirySoonOffsetMins).toBe(expectedOffset);
+
+			onExpirySoon!();
+
+			if (expectedAction === 'log') {
+				expect(logger.scoped('license').error).toHaveBeenCalledWith(
+					'License is expiring within 24h.',
+					{ expiryDate: '2026-05-15T00:00:00.000Z' },
+				);
 				expect(reloadSpy).not.toHaveBeenCalled();
+			} else {
+				expect(reloadSpy).toHaveBeenCalled();
 			}
 		});
 	});
