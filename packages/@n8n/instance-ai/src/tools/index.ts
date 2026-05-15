@@ -13,6 +13,7 @@ import { createBrowserCredentialSetupTool } from './orchestration/browser-creden
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createCompleteCheckpointTool } from './orchestration/complete-checkpoint.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createEvalSetupAgentTool } from './orchestration/eval-setup-agent.tool';
 import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
@@ -98,6 +99,7 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
 		'complete-checkpoint': createCompleteCheckpointTool(context),
+		'eval-setup-with-agent': createEvalSetupAgentTool(context),
 		...(context.browserMcpConfig || hasGatewayBrowserTools(context)
 			? {
 					'browser-credential-setup': createBrowserCredentialSetupTool(context),
