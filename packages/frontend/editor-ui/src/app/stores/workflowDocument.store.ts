@@ -369,6 +369,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		}
 
 		return {
+			documentId: id,
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
@@ -406,6 +407,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	})();
 }
 
+export type WorkflowDocumentStore = ReturnType<typeof useWorkflowDocumentStore>;
+
 /**
  * Disposes a workflow document store instance.
  * Call this when a workflow document is unloaded (e.g., when navigating away from NodeView).
@@ -413,7 +416,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
  * Pinia's $dispose removes the store from its registry, but not from pinia.state.
  * Remove the state entry as well so recreating this scoped store starts clean.
  */
-export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflowDocumentStore>) {
+export function disposeWorkflowDocumentStore(store: WorkflowDocumentStore) {
 	const pinia = getActivePinia();
 	store.$dispose();
 
@@ -429,9 +432,7 @@ export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflo
  * Use this in composables/stores that need to interact with the current workflow's
  * document store and avoid calling this outside a component tree.
  */
-export function injectWorkflowDocumentStore(): ShallowRef<
-	ReturnType<typeof useWorkflowDocumentStore>
-> {
+export function injectWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore> {
 	const workflowsStore = useWorkflowsStore();
 	const fallback = computed(() => {
 		// TODO: once usages outside of a component tree is eliminated,

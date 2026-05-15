@@ -23,6 +23,12 @@ describe('model-string utils', () => {
 		it('returns null when slash is leading', () => {
 			expect(parseModelString('/name')).toBeNull();
 		});
+		it.each(['openai/', 'openai//gpt-4o', 'openai/gpt-4o/', 'openai/gpt 4o'])(
+			'returns null for invalid model string %s',
+			(model) => {
+				expect(parseModelString(model)).toBeNull();
+			},
+		);
 	});
 
 	describe('parseProvider', () => {
@@ -37,6 +43,9 @@ describe('model-string utils', () => {
 		});
 		it('returns empty for object with null provider', () => {
 			expect(parseProvider({ provider: null, name: 'x' })).toBe('');
+		});
+		it('returns empty for invalid string form', () => {
+			expect(parseProvider('openai/')).toBe('');
 		});
 	});
 

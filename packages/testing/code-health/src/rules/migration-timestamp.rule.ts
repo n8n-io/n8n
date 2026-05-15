@@ -46,7 +46,7 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 					filePath,
 					1,
 					1,
-					`${fileName} is prefixed with a future timestamp (${timestamp}, ${formatDelta(timestamp - now)} ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.`,
+					`${fileName} is prefixed with a future timestamp (${timestamp}). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.`,
 					"Rename the file using the current millisecond timestamp from Date.now() (or 'date +%s%3N').",
 				),
 			);
@@ -54,14 +54,4 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 
 		return violations;
 	}
-}
-
-function formatDelta(ms: number): string {
-	const abs = Math.abs(ms);
-	const days = Math.floor(abs / 86_400_000);
-	if (days >= 1) return `~${days}d`;
-	const hours = Math.floor(abs / 3_600_000);
-	if (hours >= 1) return `~${hours}h`;
-	const minutes = Math.floor(abs / 60_000);
-	return `~${minutes}m`;
 }

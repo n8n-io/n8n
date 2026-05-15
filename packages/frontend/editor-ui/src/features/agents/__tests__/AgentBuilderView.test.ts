@@ -81,6 +81,7 @@ const createAgentSkillMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
+const updateConfigMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -118,20 +119,34 @@ vi.mock('../composables/useAgentBuilderStatus', () => ({
 interface TestAgentConfig {
 	name: string;
 	instructions: string;
+	model?: string;
+	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
 }
 
-const mockConfig = ref<TestAgentConfig | null>({
-	name: 'Agent One',
-	instructions: 'You are a helpful assistant.',
-});
+const defaultLlmConfig = {
+	model: 'anthropic/claude-sonnet-4-5',
+	credential: 'cred-anthropic',
+} as const;
+
+function withDefaultLlm(config: TestAgentConfig | null): TestAgentConfig | null {
+	return config ? { ...defaultLlmConfig, ...config } : null;
+}
+
+const mockConfig = ref<TestAgentConfig | null>(
+	withDefaultLlm({
+		name: 'Agent One',
+		instructions: 'You are a helpful assistant.',
+	}),
+);
 // Stash the "desired config" separately so the fetchConfig mock can restore
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
 // changed, so the `watch(config, ...)` listener doesn't re-fire.
 let intendedConfig: TestAgentConfig | null = {
 	name: 'Agent One',
+	...defaultLlmConfig,
 	instructions: 'You are a helpful assistant.',
 };
 
@@ -145,6 +160,7 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 		updatedAt: '2026-01-01T00:00:00Z',
 		publishedVersion: null,
 		versionId: 'v1',
+		isRunnable: true,
 		...overrides,
 	};
 }
@@ -155,9 +171,9 @@ vi.mock('../composables/useAgentConfig', () => ({
 		fetchConfig: vi.fn().mockImplementation(async () => {
 			// Mimic the real composable: re-publish the fetched config by touching
 			// the ref, which triggers watchers even when the shape is unchanged.
-			mockConfig.value = intendedConfig ? { ...intendedConfig } : null;
+			mockConfig.value = withDefaultLlm(intendedConfig);
 		}),
-		updateConfig: vi.fn().mockResolvedValue({ versionId: 'v1' }),
+		updateConfig: updateConfigMock,
 	}),
 }));
 
@@ -394,7 +410,9 @@ describe('AgentBuilderView — preview routing', () => {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		updateConfigMock.mockReset();
+		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
@@ -436,10 +454,10 @@ describe('AgentBuilderView — preview routing', () => {
 	it('drops unbuilt agents straight into the build chat on load', async () => {
 		// Unbuilt agents go to the build chat unconditionally so the build
 		// panel mounts, triggers loadHistory, and any prior conversation with
-		// the builder is visible instead of being stranded behind the home
-		// screen (where the Test tab is locked and clicking Build is a no-op).
+		// the builder is visible.
 		intendedConfig = { name: 'Agent One', instructions: '' };
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
@@ -483,7 +501,8 @@ describe('AgentBuilderView — preview routing', () => {
 
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
@@ -504,6 +523,41 @@ describe('AgentBuilderView — preview routing', () => {
 		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(buildPanel.exists()).toBe(true);
 	});
+
+	it('refreshes runnable state from the backend after saving manual config edits', async () => {
+		getAgentMock
+			.mockResolvedValueOnce(makeAgentResponse({ isRunnable: false }))
+			.mockResolvedValueOnce(makeAgentResponse({ isRunnable: true, versionId: 'v2' }));
+		updateConfigMock.mockResolvedValueOnce({ versionId: 'v2', stale: false });
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			isBuilt: boolean;
+			saveConfig: (snapshot: {
+				type: 'config';
+				projectId: string;
+				agentId: string;
+				config: TestAgentConfig;
+			}) => Promise<void>;
+		};
+
+		expect(vm.isBuilt).toBe(false);
+
+		await vm.saveConfig({
+			type: 'config',
+			projectId: 'p1',
+			agentId: 'a1',
+			config: withDefaultLlm({
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+			})!,
+		});
+		await nextTick();
+
+		expect(updateConfigMock).toHaveBeenCalled();
+		expect(getAgentMock).toHaveBeenLastCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
+		expect(vm.isBuilt).toBe(true);
+	});
 });
 
 describe('AgentBuilderView — three-column shell', () => {
@@ -521,7 +575,9 @@ describe('AgentBuilderView — three-column shell', () => {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		updateConfigMock.mockReset();
+		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
@@ -617,7 +673,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			tools: [toolRef],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				tools: {
@@ -652,7 +708,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: {
@@ -693,7 +749,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			tools: [{ type: 'custom', id: 'custom_tool' }],
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: {
@@ -727,7 +783,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			tools: [{ type: 'custom', id: 'custom_tool' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
 		createAgentSkillMock.mockResolvedValueOnce({
 			id: 'skill_0Ab9ZkLm3Pq7Xy2N',
@@ -786,7 +842,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		};
-		mockConfig.value = { ...intendedConfig };
+		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: {

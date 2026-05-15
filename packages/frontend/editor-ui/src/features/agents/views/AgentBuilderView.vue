@@ -139,11 +139,10 @@ const builderTelemetry = useAgentBuilderTelemetry({
 });
 
 /**
- * An agent is considered "built" once it has instructions configured.
- * In that state the home screen + send flow routes to the chat endpoint
- * instead of the builder.
+ * The backend owns runnable validation so the chat entry point either opens
+ * Preview or stays in the builder.
  */
-const isBuilt = computed(() => !!localConfig.value?.instructions?.trim());
+const isBuilt = computed(() => agent.value?.isRunnable === true);
 
 function getMaxChatPanelWidth(containerWidth: number): number {
 	return Math.max(
@@ -191,13 +190,15 @@ const projectName = computed<string | null>(() => {
 	return match?.name ?? null;
 });
 
-async function fetchAgent() {
-	// Capture the target id at call-time so a fetch that resolves after the
+async function fetchAgent(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
+	// Capture the target at call-time so a fetch that resolves after the
 	// user has switched to a different agent is dropped instead of clobbering
 	// the new agent's resource state.
-	const targetAgentId = agentId.value;
-	const data = await getAgent(rootStore.restApiContext, projectId.value, targetAgentId);
-	if (agentId.value !== targetAgentId) return;
+	const data = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+	if (agentId.value !== targetAgentId || projectId.value !== targetProjectId) return;
 	agent.value = data;
 	agentName.value = data.name;
 }
@@ -258,8 +259,8 @@ function startChat(msg: string) {
 		void openPreview(msg, sessionId);
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 	} else {
-		// Fresh agent — route through the same build chat panel the Build tab
-		// uses so the first-build experience matches the ongoing Build UX.
+		// Fresh agent — route through the same build chat panel used for ongoing
+		// Build conversations.
 		initialPrompt.value = msg;
 		telemetry.track('User started agent build', { agent_id: agentId.value });
 
@@ -335,6 +336,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
+	await fetchAgent(snapshot.projectId, snapshot.agentId);
 }
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {

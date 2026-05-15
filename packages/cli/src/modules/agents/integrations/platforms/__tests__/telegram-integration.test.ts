@@ -12,6 +12,7 @@ import type { AgentRepository } from '../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../esm-loader';
 import { TelegramIntegration } from '../telegram-integration';
+import type { Author } from 'chat';
 
 jest.mock('../../esm-loader', () => ({
 	loadTelegramAdapter: jest.fn(),
@@ -147,6 +148,64 @@ describe('TelegramIntegration.requiresLeader', () => {
 		const { integration } = makeIntegration({ urlService });
 
 		expect(integration.requiresLeader()).toBe(false);
+	});
+});
+describe('TelegramIntegration.isUserAllowed', () => {
+	const { integration } = makeIntegration();
+
+	it('allows everyone in public mode', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, {
+				accessMode: 'public',
+				allowedUsers: [],
+			}),
+		).toBe(true);
+	});
+
+	it('allows everyone for legacy connections without saved settings', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, undefined),
+		).toBe(true);
+	});
+
+	it('accepts a whitelisted user by numeric ID in private mode', () => {
+		expect(
+			integration.isUserAllowed({ userId: '123', userName: 'someuser' } as Author, {
+				accessMode: 'private',
+				allowedUsers: ['123', '456'],
+			}),
+		).toBe(true);
+	});
+
+	it('accepts a whitelisted user by username in private mode', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'john_doe123' } as Author, {
+				accessMode: 'private',
+				allowedUsers: ['john_doe123', '456'],
+			}),
+		).toBe(true);
+	});
+
+	it('rejects a user whose ID and username are both absent from the allowlist', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'stranger' } as Author, {
+				accessMode: 'private',
+				allowedUsers: ['123', 'john_doe123'],
+			}),
+		).toBe(false);
+	});
+
+	it('throws UnexpectedError when settings type does not match telegram', () => {
+		expect(() =>
+			integration.isUserAllowed(
+				{ userId: '123', userName: 'user' } as Author,
+				{
+					type: 'slack',
+					accessMode: 'private',
+					allowedUsers: ['123'],
+				} as never,
+			),
+		).toThrow();
 	});
 });
 
