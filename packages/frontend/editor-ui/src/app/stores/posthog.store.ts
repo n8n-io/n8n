@@ -154,6 +154,21 @@ export const usePostHog = defineStore('posthog', () => {
 	});
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
+		// Apply server-evaluated flags up front, before any SDK-init gates.
+		// `getFeatureFlags()` on the backend layers env-var overrides
+		// (e.g. `N8N_EVAL_COLLECTIONS_ENABLED`) on top of PostHog's flag
+		// map, so the override has to flow into `featureFlags.value`
+		// regardless of whether the PostHog browser SDK is loaded or
+		// `posthog.enabled` is `true` — both are typically off in dev.
+		// Without this, `N8N_*_ENABLED` only gates backend controllers
+		// and the frontend never flips, leaving operators with no
+		// non-PostHog escape hatch.
+		const hasBootstrap = !!evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length > 0;
+		if (hasBootstrap) {
+			featureFlags.value = evaluatedFeatureFlags!;
+			resolveFeatureFlagsWaiters(featureFlags.value);
+		}
+
 		if (!window.posthog) {
 			return;
 		}
@@ -184,16 +199,16 @@ export const usePostHog = defineStore('posthog', () => {
 		window.posthog?.init(config.apiKey, options);
 		identify();
 
-		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
-			featureFlags.value = evaluatedFeatureFlags;
-			resolveFeatureFlagsWaiters(featureFlags.value);
+		if (hasBootstrap) {
 			options.bootstrap = {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
-			trackExperimentsDebounced(featureFlags.value);
+			// `featureFlags.value` is non-null here (hoisted assignment above)
+			// but the narrow doesn't propagate; pass the proven-non-null source.
+			trackExperimentsDebounced(evaluatedFeatureFlags!);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			pendingFeatureFlagsEvaluation.value = true;

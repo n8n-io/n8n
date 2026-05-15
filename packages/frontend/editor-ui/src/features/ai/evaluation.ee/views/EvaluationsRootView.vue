@@ -6,6 +6,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
+import { useEvalCollectionsFlag } from '../composables/useEvalCollectionsFlag';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import { computed, watch } from 'vue';
@@ -23,6 +24,7 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
+const isCollectionsEnabled = useEvalCollectionsFlag();
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -42,7 +44,11 @@ const hasRuns = computed(() => {
 	return runs.value.length > 0;
 });
 
-const showWizard = computed(() => !hasRuns.value);
+// Flag-on cohort skips the legacy setup wizard entirely — the new
+// `EvalCollectionsListView` has its own empty state (with the dataset-first
+// `+ New collection` CTA), so the YouTube + setup-wizard combo would be
+// duplicate onboarding.
+const showWizard = computed(() => !hasRuns.value && !isCollectionsEnabled.value);
 
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
