@@ -15,6 +15,7 @@ const props = defineProps<{
 	collection: EvaluationCollectionRecord;
 	detail: EvaluationCollectionDetail | null;
 	workflowId: string;
+	datasetName?: string;
 }>();
 
 const i18n = useI18n();
@@ -24,6 +25,31 @@ const status = computed<'done' | 'running'>(() => {
 	if (!props.detail) return 'done';
 	const inFlight = props.detail.runs.some((r) => r.status === 'new' || r.status === 'running');
 	return inFlight ? 'running' : 'done';
+});
+
+// "today, 09:14" / "May 12, 09:14" — most-recent completed run's timestamp.
+// Falls back to the collection's `updatedAt` if no run has a date yet.
+const lastRunRelative = computed<string | null>(() => {
+	const runs = props.detail?.runs ?? [];
+	const completedAts = runs
+		.map((r) => r.completedAt ?? r.runAt)
+		.filter((v): v is string => !!v)
+		.map((s) => new Date(s).getTime())
+		.filter((n) => !Number.isNaN(n));
+	const ts = completedAts.length
+		? Math.max(...completedAts)
+		: new Date(props.collection.updatedAt ?? 0).getTime();
+	if (!ts || Number.isNaN(ts)) return null;
+	const d = new Date(ts);
+	const today = new Date();
+	const sameDay =
+		d.getFullYear() === today.getFullYear() &&
+		d.getMonth() === today.getMonth() &&
+		d.getDate() === today.getDate();
+	const timeFmt = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+	if (sameDay) return `today, ${timeFmt}`;
+	const dateFmt = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	return `${dateFmt}, ${timeFmt}`;
 });
 
 // `EvaluationCollectionRunSummary` carries `workflowVersionId` (a UUID)
@@ -110,14 +136,13 @@ const ensureDetailLoaded = () => {
 				</N8nBadge>
 			</div>
 			<N8nText size="xsmall" color="text-light">
-				{{
-					i18n.baseText('evaluation.collections.card.meta', {
-						interpolate: {
-							versions: String(detail?.runs.length ?? collection.runCount),
-							runCount: String(detail?.runs.length ?? collection.runCount),
-						},
+				<span>{{
+					i18n.baseText('evaluation.collections.card.meta.versions', {
+						adjustToNumber: detail?.runs.length ?? collection.runCount,
 					})
-				}}
+				}}</span>
+				<span v-if="datasetName"> · {{ datasetName }}</span>
+				<span v-if="lastRunRelative"> · {{ lastRunRelative }}</span>
 			</N8nText>
 			<div :class="$style.versionsRow">
 				<span v-for="chip in versionChips" :key="chip.key" :class="$style.versionChip">

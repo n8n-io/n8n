@@ -31,6 +31,17 @@ const ungroupedRuns = computed(() => {
 		.sort((a, b) => new Date(b.runAt).getTime() - new Date(a.runAt).getTime());
 });
 
+// `evaluationConfigId → name` lookup so each ungrouped row can render the
+// dataset chip without re-fetching. Same map is reused by `CollectionCard`
+// to fill in the meta line's dataset segment.
+const datasetNameByConfigId = computed<Record<string, string>>(() => {
+	const map: Record<string, string> = {};
+	for (const cfg of store.getEvaluationConfigs(props.workflowId)) {
+		map[cfg.id] = cfg.name;
+	}
+	return map;
+});
+
 const onOpenWizard = () => {
 	wizardOpen.value = true;
 };
@@ -43,6 +54,7 @@ onMounted(async () => {
 	try {
 		await Promise.all([
 			store.fetchCollections(props.workflowId),
+			store.fetchEvaluationConfigs(props.workflowId).catch(() => null),
 			evaluationStore.fetchTestRuns(props.workflowId),
 		]);
 		// Pre-fetch first 3 details so mini bar charts render on first paint;
@@ -108,6 +120,7 @@ onBeforeUnmount(() => {
 				:collection="collection"
 				:detail="store.getDetail(collection.id)"
 				:workflow-id="workflowId"
+				:dataset-name="datasetNameByConfigId[collection.evaluationConfigId]"
 			/>
 		</section>
 
@@ -127,7 +140,12 @@ onBeforeUnmount(() => {
 					{{ i18n.baseText('evaluation.collections.section.ungrouped.empty') }}
 				</N8nText>
 			</div>
-			<UngroupedRunRow v-for="run in ungroupedRuns" :key="run.id" :run="run" />
+			<UngroupedRunRow
+				v-for="run in ungroupedRuns"
+				:key="run.id"
+				:run="run"
+				:dataset-name-by-config-id="datasetNameByConfigId"
+			/>
 		</section>
 
 		<SetupCollectionWizard
