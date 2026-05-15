@@ -8,18 +8,26 @@ import {
 	N8nBadge,
 	N8nHeading,
 	N8nNotice,
+	N8nSelect2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type {
+	SelectItemProps,
+	SelectValue,
+} from '@n8n/design-system/v2/components/Select/Select.types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { RedactionScope } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
+import * as redactionEnforcementApi from '@n8n/rest-api-client/api/redaction-enforcement';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -28,11 +36,20 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
+const dataRedactionTooltipKey = 'settings.security.dataRedaction.unlicensed_tooltip';
 const showPublishingDialog = ref(false);
 const showSharingDialog = ref(false);
+
+const redactionScopeOptions = computed<Array<SelectItemProps & { value: RedactionScope }>>(() =>
+	(['manual-only', 'non-manual', 'all'] as RedactionScope[]).map((value) => ({
+		value,
+		label: i18n.baseText(`settings.security.dataRedaction.scope.option.${value}` as BaseTextKey),
+	})),
+);
 
 const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
@@ -40,6 +57,10 @@ const isEnforceMFAEnabled = computed(
 
 const isPersonalSpacePolicyLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy],
+);
+
+const isDataRedactionLicensed = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction],
 );
 
 async function onUpdateMfaEnforced(value: string | number | boolean) {
@@ -75,6 +96,14 @@ const { state } = useAsyncState(async () => {
 		managedByEnv: settings.managedByEnv,
 	};
 }, undefined);
+
+const { state: redactionState } = useAsyncState(
+	async () =>
+		isRedactionEnforcementFlagEnabled.value
+			? await redactionEnforcementApi.getRedactionEnforcement(rootStore.restApiContext)
+			: undefined,
+	undefined,
+);
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 
@@ -163,6 +192,73 @@ const sharingCountText = computed(() => {
 		},
 	});
 });
+
+async function updateRedactionEnforcement(payload: {
+	redactionEnforced?: boolean;
+	redactionScope?: RedactionScope;
+}) {
+	const previous = redactionState.value
+		? {
+				redactionEnforced: redactionState.value.redactionEnforced,
+				redactionScope: redactionState.value.redactionScope,
+			}
+		: undefined;
+	try {
+		await redactionEnforcementApi.updateRedactionEnforcement(rootStore.restApiContext, payload);
+		const isToggling = payload.redactionEnforced !== undefined;
+		showToast({
+			type: 'success',
+			title: isToggling
+				? payload.redactionEnforced
+					? i18n.baseText('settings.security.dataRedaction.enforce.success.enabled')
+					: i18n.baseText('settings.security.dataRedaction.enforce.success.disabled')
+				: i18n.baseText('settings.security.dataRedaction.scope.success'),
+			message: '',
+		});
+	} catch (error) {
+		if (redactionState.value && previous) {
+			redactionState.value = { ...redactionState.value, ...previous };
+		}
+		const isToggling = payload.redactionEnforced !== undefined;
+		showError(
+			error,
+			isToggling
+				? i18n.baseText('settings.security.dataRedaction.enforce.error')
+				: i18n.baseText('settings.security.dataRedaction.scope.error'),
+		);
+	}
+}
+
+const dataRedactionEnforced = computed({
+	get: () => redactionState.value?.redactionEnforced ?? false,
+	set: (value: boolean) => {
+		if (redactionState.value) {
+			redactionState.value = { ...redactionState.value, redactionEnforced: value };
+		}
+		void updateRedactionEnforcement({ redactionEnforced: value });
+	},
+});
+
+const dataRedactionScope = computed<RedactionScope>(
+	() => redactionState.value?.redactionScope ?? 'non-manual',
+);
+
+function onSelectRedactionScope(value: SelectValue | undefined) {
+	if (!value || value === dataRedactionScope.value) return;
+	const scope = value as RedactionScope;
+	if (redactionState.value) {
+		redactionState.value = { ...redactionState.value, redactionScope: scope };
+	}
+	void updateRedactionEnforcement({ redactionScope: scope });
+}
+
+const affectedScopeText = computed(() => {
+	if (!redactionState.value?.redactionEnforced) {
+		return i18n.baseText('settings.security.dataRedaction.affectedScope.none');
+	}
+	const scope = redactionState.value.redactionScope;
+	return i18n.baseText(`settings.security.dataRedaction.affectedScope.${scope}` as BaseTextKey);
+});
 </script>
 
 <template>
@@ -231,6 +327,93 @@ const sharingCountText = computed(() => {
 				</div>
 			</div>
 		</div>
+
+		<template v-if="isRedactionEnforcementFlagEnabled">
+			<N8nHeading tag="h2" size="large" class="mb-l">
+				{{ i18n.baseText('settings.security.dataRedaction.title') }}
+			</N8nHeading>
+
+			<div :class="$style.settingsSection">
+				<div :class="$style.settingsContainer">
+					<div :class="$style.settingsContainerInfo">
+						<N8nText :bold="true"
+							>{{ i18n.baseText('settings.security.dataRedaction.enforce.title') }}
+							<N8nBadge v-if="!isDataRedactionLicensed" class="ml-4xs">{{
+								i18n.baseText('generic.upgrade')
+							}}</N8nBadge>
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.security.dataRedaction.enforce.message') }}
+						</N8nText>
+					</div>
+					<div :class="$style.settingsContainerAction">
+						<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
+							<ElSwitch
+								v-if="redactionState !== undefined"
+								v-model="dataRedactionEnforced"
+								size="large"
+								:disabled="isManagedByEnv"
+								data-test-id="enable-redaction-enforcement"
+							/>
+							<template #fallback>
+								<N8nTooltip>
+									<ElSwitch
+										v-if="redactionState !== undefined"
+										:model-value="dataRedactionEnforced"
+										size="large"
+										:disabled="true"
+										data-test-id="enable-redaction-enforcement"
+									/>
+									<template #content>
+										<I18nT :keypath="dataRedactionTooltipKey" tag="span" scope="global">
+											<template #action>
+												<a @click="goToUpgrade">
+													{{
+														i18n.baseText('settings.security.dataRedaction.unlicensed_tooltip.link')
+													}}
+												</a>
+											</template>
+										</I18nT>
+									</template>
+								</N8nTooltip>
+							</template>
+						</EnterpriseEdition>
+					</div>
+				</div>
+				<div
+					v-if="redactionState !== undefined && dataRedactionEnforced && isDataRedactionLicensed"
+					:class="$style.settingsContainer"
+					data-test-id="redaction-enforcement-scope-row"
+				>
+					<div :class="$style.settingsContainerInfo">
+						<N8nText :bold="true">{{
+							i18n.baseText('settings.security.dataRedaction.scope.title')
+						}}</N8nText>
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('settings.security.dataRedaction.scope.description')
+						}}</N8nText>
+					</div>
+					<div :class="$style.settingsContainerAction">
+						<N8nSelect2
+							:model-value="dataRedactionScope"
+							:items="redactionScopeOptions"
+							size="medium"
+							:disabled="isManagedByEnv"
+							data-test-id="redaction-enforcement-scope-select"
+							@update:model-value="onSelectRedactionScope"
+						/>
+					</div>
+				</div>
+				<div :class="$style.settingsCountRow" data-test-id="redaction-enforcement-summary">
+					<N8nText size="small">
+						{{ i18n.baseText('settings.security.dataRedaction.affectedScope.label') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ affectedScopeText }}
+					</N8nText>
+				</div>
+			</div>
+		</template>
 
 		<N8nHeading tag="h2" size="large" class="mb-l">
 			{{ i18n.baseText('settings.security.personalSpace.title') }}

@@ -8,12 +8,35 @@
  */
 import AdmZip from 'adm-zip';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 const EXAMPLES_DIR = path.resolve(__dirname, '..', 'examples');
 const ZIP_PATH = path.join(EXAMPLES_DIR, 'templates.zip');
 const MANIFEST_PATH = path.join(EXAMPLES_DIR, 'manifest.json');
-const WORKFLOWS_DIR = path.join(EXAMPLES_DIR, 'workflows');
+
+function sdkVersion(): string {
+	try {
+		const pkgPath = path.resolve(__dirname, '..', 'package.json');
+		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Own package.json
+		return (
+			(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { version?: string }).version ??
+			'unversioned'
+		);
+	} catch {
+		return 'unversioned';
+	}
+}
+
+// Tmp cache for unzipped workflows — keyed by SDK version so upgrades extract
+// fresh. We can't unzip back into the package because node_modules is
+// read-only inside n8n's Docker image.
+export const WORKFLOWS_CACHE_DIR = path.join(
+	os.tmpdir(),
+	'n8n-workflow-sdk',
+	sdkVersion(),
+	'workflows',
+);
 
 interface ManifestEntry {
 	slug: string;
@@ -41,7 +64,7 @@ export function needsExtraction(): boolean {
 	const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as ManifestFile;
 	for (const entry of manifest.workflows ?? []) {
 		if (!entry.success || entry.skip) continue;
-		const filePath = path.join(WORKFLOWS_DIR, `${entry.slug}.json`);
+		const filePath = path.join(WORKFLOWS_CACHE_DIR, `${entry.slug}.json`);
 		if (!fs.existsSync(filePath)) return true;
 	}
 	return false;
@@ -55,14 +78,14 @@ export function extractFromZip(): void {
 	if (!fs.existsSync(ZIP_PATH)) {
 		throw new Error(`Examples zip not found: ${ZIP_PATH}`);
 	}
-	if (!fs.existsSync(WORKFLOWS_DIR)) {
-		fs.mkdirSync(WORKFLOWS_DIR, { recursive: true });
+	if (!fs.existsSync(WORKFLOWS_CACHE_DIR)) {
+		fs.mkdirSync(WORKFLOWS_CACHE_DIR, { recursive: true });
 	}
 
 	const zip = new AdmZip(ZIP_PATH);
 	for (const entry of zip.getEntries()) {
 		if (entry.isDirectory) continue;
-		zip.extractEntryTo(entry, WORKFLOWS_DIR, false, true);
+		zip.extractEntryTo(entry, WORKFLOWS_CACHE_DIR, false, true);
 	}
 }
 
