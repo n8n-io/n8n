@@ -8,7 +8,7 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
-export * from './agents';
+export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export {

@@ -1,5 +1,6 @@
+import { AgentJsonConfigSchema } from '@n8n/api-types';
+
 import { MEMORY_PRESETS_SECTION } from '../builder/agents-builder-prompts';
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
 
 const baseConfig = {
 	name: 'Test Agent',
