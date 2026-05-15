@@ -810,6 +810,10 @@ export const orderFields: INodeProperties[] = [
 						value: 'processing',
 					},
 					{
+						name: 'Shipped',
+						value: 'shipped',
+					},
+					{
 						name: 'Refunded',
 						value: 'refunded',
 					},
@@ -1283,7 +1287,7 @@ export const orderFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Postal Code',
-						name: 'postalCode',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -1375,221 +1379,5 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                   order:get                              */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Order ID',
-		name: 'orderId',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['order'],
-				operation: ['get'],
-			},
-		},
-		default: '',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                   order:getAll                           */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['order'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['order'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100,
-		},
-		default: 50,
-		description: 'Max number of results to return',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['order'],
-				operation: ['getAll'],
-			},
-		},
-		options: [
-			{
-				displayName: 'After',
-				name: 'after',
-				type: 'dateTime',
-				default: '',
-				description: 'Limit response to resources published after a given ISO8601 compliant date',
-			},
-			{
-				displayName: 'Before',
-				name: 'before',
-				type: 'dateTime',
-				default: '',
-				description: 'Limit response to resources published before a given ISO8601 compliant date',
-			},
-			{
-				displayName: 'Customer',
-				name: 'customer',
-				type: 'string',
-				default: '',
-				description: 'Limit result set to orders assigned a specific customer',
-			},
-			{
-				displayName: 'Decimal Points',
-				name: 'decimalPoints',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-					maxValue: 10,
-				},
-				default: 2,
-				description: 'Number of decimal points to use in each resource',
-			},
-			{
-				displayName: 'Order',
-				name: 'order',
-				type: 'options',
-				options: [
-					{
-						name: 'ASC',
-						value: 'asc',
-					},
-					{
-						name: 'DESC',
-						value: 'desc',
-					},
-				],
-				default: 'desc',
-				description: 'Order sort attribute ascending or descending',
-			},
-			{
-				displayName: 'Product',
-				name: 'product',
-				type: 'string',
-				default: '',
-				description: 'Limit result set to orders assigned a specific product',
-			},
-			{
-				displayName: 'Order By',
-				name: 'orderBy',
-				type: 'options',
-				options: [
-					{
-						name: 'Date',
-						value: 'date',
-					},
-					{
-						name: 'ID',
-						value: 'id',
-					},
-					{
-						name: 'Include',
-						value: 'include',
-					},
-					{
-						name: 'Slug',
-						value: 'slug',
-					},
-					{
-						name: 'Title',
-						value: 'title',
-					},
-				],
-				default: 'id',
-				description: 'Sort collection by object attribute',
-			},
-			{
-				displayName: 'Search',
-				name: 'search',
-				type: 'string',
-				default: '',
-				description: 'Limit results to those matching a string',
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Any',
-						value: 'any',
-					},
-					{
-						name: 'Cancelled',
-						value: 'cancelled',
-					},
-					{
-						name: 'Completed',
-						value: 'completed',
-					},
-					{
-						name: 'Failed',
-						value: 'failed',
-					},
-					{
-						name: 'On-Hold',
-						value: 'on-hold',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Processing',
-						value: 'processing',
-					},
-					{
-						name: 'Refunded',
-						value: 'refunded',
-					},
-					{
-						name: 'Trash',
-						value: 'trash',
-					},
-				],
-				default: 'any',
-				description: 'Limit result set to orders assigned a specific status',
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                   order:delete                           */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Order ID',
-		name: 'orderId',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['order'],
-				operation: ['delete'],
-			},
-		},
-		default: '',
 	},
 ];
