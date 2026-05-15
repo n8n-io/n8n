@@ -4,8 +4,8 @@ import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
 
 import { SourceControlGitService } from '../source-control-git.service.ee';
-import type { SourceControlPreferences } from '../types/source-control-preferences';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 const MOCK_BRANCHES = {
 	all: ['origin/master', 'origin/feature/branch'],
@@ -523,7 +523,10 @@ describe('SourceControlGitService', () => {
 				if (path === 'workflows') {
 					return '040000 tree abc\tworkflows\n';
 				}
-				throw new Error('path not found');
+				if (path === 'projects') {
+					return '';
+				}
+				return '';
 			});
 
 			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
@@ -537,7 +540,7 @@ describe('SourceControlGitService', () => {
 				if (path === 'workflows' || path === 'projects') {
 					return `040000 tree abc\t${path}\n`;
 				}
-				throw new Error('path not found');
+				return '';
 			});
 
 			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
@@ -546,10 +549,18 @@ describe('SourceControlGitService', () => {
 		});
 
 		it('should return false when workflows do not exist on remote', async () => {
-			mockGitInstance.raw.mockRejectedValue(new Error('path not found'));
+			mockGitInstance.raw.mockResolvedValue('');
 
 			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
 				false,
+			);
+		});
+
+		it('should reject when remote directory check fails (fail closed for migration guard)', async () => {
+			mockGitInstance.raw.mockRejectedValue(new Error('network error'));
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).rejects.toThrow(
+				'network error',
 			);
 		});
 	});

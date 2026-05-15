@@ -510,6 +510,8 @@ export class SourceControlGitService {
 
 	/**
 	 * Checks whether a directory exists on the remote tracking branch of the connected repository.
+	 * On git or network failure, throws — callers must not treat errors as "directory absent", or
+	 * non-admins could bypass the legacy migration admin push requirement (see LIGO-326).
 	 */
 	private async remoteDirectoryExists(directory: string): Promise<boolean> {
 		if (!this.git) {
@@ -521,16 +523,9 @@ export class SourceControlGitService {
 			return false;
 		}
 
-		try {
-			await this.fetch();
-			const remoteRef = `${SOURCE_CONTROL_ORIGIN}/${branchName}`;
-			const result = await this.git.raw(['ls-tree', remoteRef, directory]);
-			return result.trim().length > 0;
-		} catch (error) {
-			this.logger.debug(`Remote directory "${directory}" not found on connected repository`, {
-				error,
-			});
-			return false;
-		}
+		await this.fetch();
+		const remoteRef = `${SOURCE_CONTROL_ORIGIN}/${branchName}`;
+		const result = await this.git.raw(['ls-tree', remoteRef, directory]);
+		return result.trim().length > 0;
 	}
 }
