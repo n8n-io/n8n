@@ -1,6 +1,7 @@
 import type { ProjectPoolSettingsRepository, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
+import type { InstanceRegistryService } from '@/modules/instance-registry/instance-registry.service';
 import { PoolConfigService } from '@/scaling/pool-config.service';
 import type { CacheService } from '@/services/cache/cache.service';
 
@@ -8,14 +9,18 @@ describe('PoolConfigService', () => {
 	const settingsRepository = mock<SettingsRepository>();
 	const projectPoolSettingsRepository = mock<ProjectPoolSettingsRepository>();
 	const cacheService = mock<CacheService>();
+	const instanceRegistryService = mock<InstanceRegistryService>();
 	const service = new PoolConfigService(
 		settingsRepository,
 		projectPoolSettingsRepository,
 		cacheService,
+		instanceRegistryService,
 	);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		// Default: no workers registered in the cluster
+		instanceRegistryService.getAllInstances.mockResolvedValue([]);
 	});
 
 	describe('setPoolAssignment', () => {
@@ -126,6 +131,137 @@ describe('PoolConfigService', () => {
 
 			expect(cacheService.set).toHaveBeenCalledWith(`projectPool:${projectId}:production`, 'gpu');
 			expect(cacheService.set).toHaveBeenCalledWith(`projectPool:${projectId}:manual`, 'cpu');
+		});
+	});
+
+	describe('setProjectPoolSettings', () => {
+		const projectId = 'project-123';
+
+		beforeEach(() => {
+			// By default, no existing row, no cluster context, no instance defaults
+			cacheService.get.mockResolvedValue(undefined);
+			projectPoolSettingsRepository.getSettings.mockResolvedValue(undefined);
+			settingsRepository.findByKey.mockResolvedValue(null);
+		});
+
+		it('writes assignment and allowedPools when both are provided', async () => {
+			const result = await service.setProjectPoolSettings(projectId, {
+				assignment: { production: 'gpu' },
+				allowedPools: ['gpu', 'cpu'],
+			});
+
+			expect(result.assignment).toEqual({ production: 'gpu' });
+			expect(result.allowedPools).toEqual(['gpu', 'cpu']);
+			expect(projectPoolSettingsRepository.setSettings).toHaveBeenCalledWith(projectId, {
+				assignment: { production: 'gpu' },
+				allowedPools: ['gpu', 'cpu'],
+			});
+		});
+
+		it('merges assignment with existing values; keeps unspecified categories', async () => {
+			projectPoolSettingsRepository.getSettings.mockResolvedValueOnce({
+				assignment: { production: 'gpu', manual: 'cpu' },
+				allowedPools: ['gpu', 'cpu'],
+			});
+
+			const result = await service.setProjectPoolSettings(projectId, {
+				assignment: { evaluation: 'cpu' },
+			});
+
+			expect(result.assignment).toEqual({ production: 'gpu', manual: 'cpu', evaluation: 'cpu' });
+			expect(result.allowedPools).toEqual(['gpu', 'cpu']);
+		});
+
+		it('clears a category when assignment value is an empty string', async () => {
+			projectPoolSettingsRepository.getSettings.mockResolvedValueOnce({
+				assignment: { production: 'gpu', manual: 'cpu' },
+				allowedPools: ['gpu', 'cpu'],
+			});
+
+			const result = await service.setProjectPoolSettings(projectId, {
+				assignment: { production: '' },
+			});
+
+			expect(result.assignment).toEqual({ manual: 'cpu' });
+		});
+
+		it('keeps existing allowedPools when not specified in patch', async () => {
+			projectPoolSettingsRepository.getSettings.mockResolvedValueOnce({
+				assignment: { production: 'gpu' },
+				allowedPools: ['gpu', 'cpu'],
+			});
+
+			const result = await service.setProjectPoolSettings(projectId, {
+				assignment: { manual: 'cpu' },
+			});
+
+			expect(result.allowedPools).toEqual(['gpu', 'cpu']);
+		});
+
+		it('rejects when a per-category default is not in allowedPools (new write)', async () => {
+			await expect(
+				service.setProjectPoolSettings(projectId, {
+					assignment: { production: 'gpu' },
+					allowedPools: ['cpu'],
+				}),
+			).rejects.toThrow('production pool "gpu" must be one of allowedPools');
+
+			expect(projectPoolSettingsRepository.setSettings).not.toHaveBeenCalled();
+		});
+
+		it('rejects when shrinking allowedPools below an existing default', async () => {
+			projectPoolSettingsRepository.getSettings.mockResolvedValueOnce({
+				assignment: { production: 'gpu' },
+				allowedPools: ['gpu', 'cpu'],
+			});
+
+			await expect(
+				service.setProjectPoolSettings(projectId, {
+					allowedPools: ['cpu'],
+				}),
+			).rejects.toThrow('production pool "gpu" must be one of allowedPools');
+		});
+
+		it('accepts any pool as a default when allowedPools is empty (no restriction)', async () => {
+			const result = await service.setProjectPoolSettings(projectId, {
+				assignment: { production: 'gpu' },
+				allowedPools: [],
+			});
+
+			expect(result.assignment).toEqual({ production: 'gpu' });
+			expect(result.allowedPools).toEqual([]);
+			expect(projectPoolSettingsRepository.setSettings).toHaveBeenCalledWith(projectId, {
+				assignment: { production: 'gpu' },
+				allowedPools: [],
+			});
+		});
+
+		it('accepts clearing allowedPools while keeping defaults that were previously constrained', async () => {
+			projectPoolSettingsRepository.getSettings.mockResolvedValueOnce({
+				assignment: { production: 'gpu' },
+				allowedPools: ['gpu', 'cpu'],
+			});
+
+			const result = await service.setProjectPoolSettings(projectId, {
+				allowedPools: [],
+			});
+
+			expect(result.assignment).toEqual({ production: 'gpu' });
+			expect(result.allowedPools).toEqual([]);
+		});
+
+		it('invalidates the project caches after a successful write', async () => {
+			await service.setProjectPoolSettings(projectId, {
+				assignment: { production: 'gpu' },
+				allowedPools: ['gpu'],
+			});
+
+			expect(cacheService.deleteMany).toHaveBeenCalledWith([
+				`projectPoolSettings:${projectId}`,
+				`projectPool:${projectId}:production`,
+				`projectPool:${projectId}:manual`,
+				`projectPool:${projectId}:evaluation`,
+			]);
 		});
 	});
 });

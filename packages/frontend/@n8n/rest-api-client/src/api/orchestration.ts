@@ -1,6 +1,7 @@
 import type {
 	PoolAssignment,
 	ProjectPoolSettingsResponse,
+	UpdateProjectPoolSettingsDto,
 	UpdateWorkerPoolAssignmentDto,
 	WorkerPoolsResponse,
 } from '@n8n/api-types';
@@ -32,4 +33,12 @@ export const getProjectPoolSettings = async (
 	projectId: string,
 ): Promise<ProjectPoolSettingsResponse> => {
 	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/pool-settings`);
+};
+
+export const updateProjectPoolSettings = async (
+	context: IRestApiContext,
+	projectId: string,
+	dto: UpdateProjectPoolSettingsDto,
+): Promise<ProjectPoolSettingsResponse> => {
+	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/pool-settings`, dto);
 };
