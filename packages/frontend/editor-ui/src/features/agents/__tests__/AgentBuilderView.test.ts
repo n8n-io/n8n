@@ -481,6 +481,20 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
+	it('does not open preview when the agent is not runnable', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('agent')).toEqual(expect.objectContaining({ isRunnable: false }));
+
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).not.toHaveBeenCalled();
+	});
+
 	it('keeps a known continued session selected even when it has no persisted messages', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'faulty-thread';

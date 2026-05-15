@@ -230,6 +230,8 @@ async function openPreview(seedMessage?: string, preferredSessionId?: string) {
 }
 
 async function onOpenPreview() {
+	if (!isBuilt.value) return;
+
 	try {
 		await flushAutosave();
 	} catch {

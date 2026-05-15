@@ -6095,6 +6095,7 @@
 	"agents.builder.header.saving": "Saving…",
 	"agents.builder.header.saved": "Saved",
 	"agents.builder.preview.button": "Preview",
+	"agents.builder.preview.disabledTooltip": "Add instructions, a model, and credentials before previewing this agent.",
 	"agents.builder.preview.close.ariaLabel": "Close preview",
 	"agents.builder.executions.count": "{count} session | {count} sessions",
 	"agents.builder.raw.description": "Agent JSON configuration",

@@ -14,6 +14,7 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nIcon,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -76,6 +77,10 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 const isPreview = computed(() => props.mode === 'preview');
+const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
+const previewDisabledTooltip = computed(() =>
+	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
+);
 const sessionTitle = computed(
 	() => props.currentSessionTitle ?? i18n.baseText('agents.builder.chat.newChat.label'),
 );
@@ -116,6 +121,11 @@ function onSwitcherSelect(id: string) {
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id !== props.projectId) return;
 	void router.push(projectRoute.value);
+}
+
+function onOpenPreview() {
+	if (isPreviewDisabled.value) return;
+	emit('open-preview');
 }
 </script>
 
@@ -175,7 +185,7 @@ function onBreadcrumbSelect(item: PathItem) {
 		<div :class="$style.right">
 			<template v-if="isPreview">
 				<N8nButton
-					variant="solid"
+					variant="outline"
 					size="medium"
 					icon="plus"
 					data-testid="agent-preview-new-chat-btn"
@@ -206,15 +216,18 @@ function onBreadcrumbSelect(item: PathItem) {
 							: i18n.baseText('agents.builder.header.saved')
 					}}
 				</span>
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					icon="play"
-					data-testid="agent-header-preview-btn"
-					@click="emit('open-preview')"
-				>
-					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
-				</N8nButton>
+				<N8nTooltip :disabled="!isPreviewDisabled" :content="previewDisabledTooltip">
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon="play"
+						:disabled="isPreviewDisabled"
+						data-testid="agent-header-preview-btn"
+						@click="onOpenPreview"
+					>
+						{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
+					</N8nButton>
+				</N8nTooltip>
 				<AgentPublishButton
 					:agent="agent"
 					:project-id="projectId"

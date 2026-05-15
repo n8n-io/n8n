@@ -54,19 +54,21 @@ const sharedInputDraft = ref('');
 		:aria-label="i18n.baseText('agents.builder.chatColumn.ariaLabel')"
 		data-testid="agent-builder-chat-column"
 	>
-		<N8nTooltip v-if="initialized" placement="left" :content="fullWidthToggleLabel">
-			<N8nButton
-				variant="ghost"
-				icon-only
-				size="small"
-				:class="[$style.headerIconBtn, $style.floatingFullWidthToggle]"
-				:aria-label="fullWidthToggleLabel"
-				data-testid="agent-build-chat-full-width-toggle"
-				@click="emit('update:full-width', !isFullWidth)"
-			>
-				<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
-			</N8nButton>
-		</N8nTooltip>
+		<span v-if="initialized" :class="$style.floatingFullWidthToggle">
+			<N8nTooltip placement="left" :content="fullWidthToggleLabel">
+				<N8nButton
+					variant="ghost"
+					icon-only
+					size="small"
+					:class="$style.headerIconBtn"
+					:aria-label="fullWidthToggleLabel"
+					data-testid="agent-build-chat-full-width-toggle"
+					@click="emit('update:full-width', !isFullWidth)"
+				>
+					<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
+				</N8nButton>
+			</N8nTooltip>
+		</span>
 		<div :class="$style.chatBody">
 			<AgentChatPanel
 				v-if="initialized && isBuilderConfigured"
@@ -141,6 +143,7 @@ const sharedInputDraft = ref('');
 	top: var(--spacing--2xs);
 	right: var(--spacing--sm);
 	z-index: 2;
+	display: flex;
 }
 
 .chatBody {
