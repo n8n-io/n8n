@@ -21,9 +21,9 @@ const props = withDefaults(
 	}>(),
 	{
 		max: 1,
-		barWidth: 16,
-		barGap: 4,
-		groupGap: 48,
+		barWidth: 18,
+		barGap: 5,
+		groupGap: 72,
 		height: 72,
 	},
 );
@@ -107,7 +107,10 @@ const layout = computed<{ width: number; groups: RenderedGroup[] }>(() => {
 				v-for="group in layout.groups"
 				:key="`label-${group.label}`"
 				:class="$style.label"
-				:style="{ width: `${group.width}px`, marginRight: `${groupGap}px` }"
+				:style="{
+					width: `${group.width + groupGap}px`,
+					marginRight: 0,
+				}"
 				:title="group.label"
 			>
 				{{ group.label }}
@@ -151,13 +154,14 @@ const layout = computed<{ width: number; groups: RenderedGroup[] }>(() => {
 }
 
 .label {
-	font-size: 10px;
+	font-size: 11px;
 	font-family: var(--font-family);
-	color: var(--text-color--subtler);
-	text-align: center;
+	color: var(--text-color--subtle);
+	text-align: left;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-weight: var(--font-weight--medium);
 
 	&:last-child {
 		margin-right: 0 !important;
