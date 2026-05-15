@@ -38,6 +38,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -81,6 +82,7 @@ const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
+const projectsStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -199,29 +201,35 @@ const workflowOwnerName = computed(() => {
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
+const projectPermissions = computed(() => {
+	const { projectId } = route.query;
+	const project = projectId
+		? projectsStore.myProjects.find((p) => p.id === projectId)
+		: (projectsStore.currentProject ?? projectsStore.personalProject);
+
+	return getResourcePermissions(project?.scopes);
+});
+
 const isDataRedactionLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction],
 );
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
-// Locked when licensed but the user lacks the scope required for the action in that direction.
-// Production: 'default'→'redact' needs enableRedaction; 'redact'→'default' needs disableRedaction.
 const isProductionRedactionLocked = computed(
 	() =>
 		isDataRedactionLicensed.value &&
 		(redactProductionData.value === 'default'
-			? !workflowPermissions.value.enableRedaction
-			: !workflowPermissions.value.disableRedaction),
+			? !projectPermissions.value.workflow.enableRedaction
+			: !projectPermissions.value.workflow.disableRedaction),
 );
 
-// Manual: same direction logic applied to the manual-data toggle.
 const isManualRedactionLocked = computed(
 	() =>
 		isDataRedactionLicensed.value &&
 		(redactManualData.value === 'default'
-			? !workflowPermissions.value.enableRedaction
-			: !workflowPermissions.value.disableRedaction),
+			? !projectPermissions.value.workflow.enableRedaction
+			: !projectPermissions.value.workflow.disableRedaction),
 );
 
 const redactionMembersModalOpen = ref(false);
