@@ -44,6 +44,10 @@ export { createSubAgent } from './agent/sub-agent-factory';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
+export {
+	createSubAgentResourceIdPrefix,
+	SUB_AGENT_RESOURCE_PREFIX,
+} from './tools/orchestration/agent-persistence';
 export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent.prompt';
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
 export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { OrchestrationContext } from '../../types';
 
-const SUB_AGENT_RESOURCE_PREFIX = 'instance-ai-subagent';
+export const SUB_AGENT_RESOURCE_PREFIX = 'instance-ai-subagent';
 
 export function createSubAgentResourceIdPrefix(parentThreadId: string): string {
 	return `${SUB_AGENT_RESOURCE_PREFIX}:${parentThreadId}:`;

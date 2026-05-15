@@ -9,7 +9,12 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { patchThread, type AgentDbMessage, type AgentTreeSnapshot } from '@n8n/instance-ai';
+import {
+	createSubAgentResourceIdPrefix,
+	patchThread,
+	type AgentDbMessage,
+	type AgentTreeSnapshot,
+} from '@n8n/instance-ai';
 
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
@@ -17,12 +22,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { parseStoredMessages } from './message-parser';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-
-const SUB_AGENT_RESOURCE_PREFIX = 'instance-ai-subagent';
-
-function createSubAgentResourceIdPrefix(parentThreadId: string): string {
-	return `${SUB_AGENT_RESOURCE_PREFIX}:${parentThreadId}:`;
-}
 
 @Service()
 export class InstanceAiMemoryService {
