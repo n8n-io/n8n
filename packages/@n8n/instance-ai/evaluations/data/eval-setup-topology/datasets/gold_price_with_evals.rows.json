@@ -1,0 +1,7 @@
+[
+	{
+		"targetUrl": "https://www.eldorado.gg/osrs-gold/g/10-0-0",
+		"priceThresholdDollars": 0.14,
+		"expected_output": "A numeric gold price value only, without a currency symbol or '/ M' suffix."
+	}
+]

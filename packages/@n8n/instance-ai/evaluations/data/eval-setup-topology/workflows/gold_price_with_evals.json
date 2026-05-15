@@ -1,0 +1,261 @@
+{
+	"name": "Gold price (already has evals)",
+	"nodes": [
+		{
+			"parameters": {
+				"content": "I want to scrape a website for specific data. i want to automatically go to https://www.eldorado.gg/osrs-gold/g/10-0-0 and scan for the current price of gold every few minutes, then if the price hits a certain threshold it will notify me.",
+				"height": 240
+			},
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [16, -64],
+			"id": "841988ed-5266-4b8e-8fcf-1e0c609f7abc"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "targetUrl",
+							"value": "https://www.eldorado.gg/osrs-gold/g/10-0-0",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "emailAddress",
+							"value": "<__PLACEHOLDER_VALUE__Your email address for alerts__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "priceThresholdDollars",
+							"value": {},
+							"type": "number"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"position": [240, 224],
+			"id": "f25a84fa-7989-4f4e-98af-ba75b9cd5ed7"
+		},
+		{
+			"parameters": {
+				"rule": { "interval": [{ "field": "minutes" }] }
+			},
+			"name": "Every 5 minutes",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [32, 224],
+			"id": "b1122d38-5d6e-4744-96f5-fba67460da7e"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-5-mini",
+					"mode": "list",
+					"cachedResultName": "gpt-5-mini"
+				},
+				"options": {}
+			},
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [368, 432],
+			"id": "1a09d433-2bb8-4948-84da-d113858374b5"
+		},
+		{
+			"parameters": {
+				"toolDescription": "Visits a website that shows the price of gold and returns its code. The gold price is contained somewhere within it",
+				"url": "={{ $json.targetUrl }}",
+				"options": {}
+			},
+			"name": "Scrape gold price",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [608, 432],
+			"id": "e5724177-c652-4052-bf21-93a92c2690e9"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "0f3d6693-bffb-4fc5-9b1c-e9679e31ab2e",
+							"leftValue": "={{ $json.output }}",
+							"rightValue": "={{ $('Workflow Configuration').item.json.priceThresholdDollars }}",
+							"operator": { "type": "number", "operation": "gt" }
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"name": "Over threshold?",
+			"type": "n8n-nodes-base.filter",
+			"position": [848, 224],
+			"id": "33994ae9-ae2a-476d-a57e-2216f6ffc1ff"
+		},
+		{
+			"parameters": {
+				"sendTo": "={{ $('Workflow Configuration').item.json.emailAddress }}",
+				"subject": "=Gold is now at ${{ $json.output }} / M",
+				"emailType": "text",
+				"message": "=Good news! The OSRS gold price has reached your target threshold.  \n\nCurrent Price: ${{ $json.output }} per million \nYour Threshold: ${{ $('Workflow Configuration').first().json.priceThresholdDollars }} per million \n\nCheck it out here: {{ $('Workflow Configuration').first().json.targetUrl }}",
+				"options": {}
+			},
+			"name": "Send a message",
+			"type": "n8n-nodes-base.gmail",
+			"position": [1008, 224],
+			"webhookId": "a99bdd80-5fef-4412-915b-a6faed0b0e44",
+			"id": "ea18987f-a537-42df-9b08-465c9a79e95f"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Get the price of gold using your tool and return it as a number. On the page, the price is in the format:\n\n€0.1438 / M\n\nDo not output anything else, and don't include the currency sign or the '/ M'",
+				"options": {}
+			},
+			"name": "Get gold price",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [448, 224],
+			"id": "ddf2ca25-a8f4-472f-a3df-df030285dfe5"
+		},
+		{
+			"parameters": {
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "97GO76ceZaR24ot5"
+				}
+			},
+			"name": "Eval Trigger",
+			"type": "n8n-nodes-base.evaluationTrigger",
+			"typeVersion": 4.7,
+			"position": [-240, 640],
+			"id": "1730394d-0b6d-41c1-b36b-4cd8e678e8d0"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "bridge-1",
+							"name": "input",
+							"value": "={{ $json.input }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Eval Shape Bridge",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [0, 640],
+			"id": "0855cbc6-7480-4fcf-9653-c296ee1a1783"
+		},
+		{
+			"parameters": { "operation": "checkIfEvaluating" },
+			"name": "EvalCheckIfEvaluating",
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.8,
+			"position": [704, 224],
+			"id": "f7cfd028-3faa-4cd9-8d36-dc9f1d2cf5e5"
+		},
+		{
+			"parameters": {
+				"dataTableId": { "mode": "id", "value": "97GO76ceZaR24ot5" },
+				"outputs": {
+					"values": [{ "outputName": "actual_output", "outputValue": "={{ $json.output }}" }]
+				}
+			},
+			"name": "EvalSetOutputs",
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.8,
+			"position": [912, 80],
+			"id": "ff09d297-7029-41d4-8d6d-9fbad19234c7"
+		},
+		{
+			"parameters": {
+				"operation": "setMetrics",
+				"expectedAnswer": "={{ $('Eval Trigger').item.json.expected_output }}",
+				"actualAnswer": "={{ $json.output }}",
+				"options": {}
+			},
+			"name": "EvalSetMetricsCorrectness",
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.8,
+			"position": [1104, 80],
+			"id": "fbe5a697-e304-4e79-b706-3c26b8518504"
+		}
+	],
+	"evalDataTable": {
+		"name": "gold-price-evals",
+		"columns": [
+			{ "name": "input", "type": "string" },
+			{ "name": "expected_output", "type": "string" }
+		],
+		"rows": [
+			{ "input": "Get the current gold price", "expected_output": "0.1438" },
+			{ "input": "What is the OSRS gold price right now?", "expected_output": "0.1502" },
+			{ "input": "Fetch the gold price", "expected_output": "0.1389" },
+			{ "input": "Tell me the latest gold price", "expected_output": "0.1612" },
+			{ "input": "How much is gold per million?", "expected_output": "0.1450" },
+			{ "input": "Current gold rate", "expected_output": "0.1475" },
+			{ "input": "Look up the gold price", "expected_output": "0.1410" },
+			{ "input": "Get gold price", "expected_output": "0.1525" },
+			{ "input": "What's the OSRS gold price?", "expected_output": "0.1490" },
+			{ "input": "Read gold price now", "expected_output": "0.1438" }
+		]
+	},
+	"connections": {
+		"Workflow Configuration": {
+			"main": [[{ "node": "Get gold price", "type": "main", "index": 0 }]]
+		},
+		"Every 5 minutes": {
+			"main": [[{ "node": "Workflow Configuration", "type": "main", "index": 0 }]]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{ "node": "Get gold price", "type": "ai_languageModel", "index": 0 },
+					{ "node": "EvalSetMetricsCorrectness", "type": "ai_languageModel", "index": 0 }
+				]
+			]
+		},
+		"Scrape gold price": {
+			"ai_tool": [[{ "node": "Get gold price", "type": "ai_tool", "index": 0 }]]
+		},
+		"Over threshold?": {
+			"main": [[{ "node": "Send a message", "type": "main", "index": 0 }]]
+		},
+		"Get gold price": {
+			"main": [[{ "node": "EvalCheckIfEvaluating", "type": "main", "index": 0 }]]
+		},
+		"Eval Trigger": {
+			"main": [[{ "node": "Eval Shape Bridge", "type": "main", "index": 0 }]]
+		},
+		"Eval Shape Bridge": {
+			"main": [[{ "node": "Get gold price", "type": "main", "index": 0 }]]
+		},
+		"EvalCheckIfEvaluating": {
+			"main": [
+				[{ "node": "EvalSetOutputs", "type": "main", "index": 0 }],
+				[{ "node": "Over threshold?", "type": "main", "index": 0 }]
+			]
+		},
+		"EvalSetOutputs": {
+			"main": [[{ "node": "EvalSetMetricsCorrectness", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

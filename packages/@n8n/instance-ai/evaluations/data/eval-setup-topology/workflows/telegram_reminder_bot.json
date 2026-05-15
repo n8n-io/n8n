@@ -1,0 +1,445 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"content": "telegram bot which act as a smart helper and which can send me the reminders \ni text him like i have a meeting at 17 today, remind me"
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-192, -80],
+			"typeVersion": 1,
+			"id": "4465f0fb-a669-4e63-bf6c-527e6676ed45",
+			"name": "Sticky Note"
+		},
+		{
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"id": "bd5ec472-3462-441c-9650-634727e0126b",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"typeVersion": 1.2,
+			"position": [144, -80],
+			"webhookId": "0b104b32-1ff6-46e2-bf7a-e6ec0212e7e0",
+			"credentials": {
+				"telegramApi": {
+					"id": "kdaX0XZP1ZQO6g0T",
+					"name": "davidr_n8n_bot"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"builtInTools": {},
+				"options": {}
+			},
+			"id": "46bf6901-1e1a-49eb-abc9-750abde560cf",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [576, 240],
+			"credentials": {
+				"openAiApi": {
+					"id": "duGfpDpRGozv47Rf",
+					"name": "OpenAI (David, owned by David)"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"chatId": "={{ $('Workflow configuration').params.assignments.assignments.filter(x => x.name == 'telegramChatId')[0].value }}",
+				"text": "=🔔 Reminder: {{ $json.message }}",
+				"additionalFields": {}
+			},
+			"id": "04f4ad65-8c32-43ad-8f4e-cbba41dc8928",
+			"name": "Send Reminder",
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [816, 448],
+			"webhookId": "6bc348ae-6309-4245-acaf-51439d2d5e5a",
+			"credentials": {
+				"telegramApi": {
+					"id": "kdaX0XZP1ZQO6g0T",
+					"name": "davidr_n8n_bot"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "={{ $('Workflow configuration').params.assignments.assignments.filter(x => x.name == 'sheetUrl')[0].value }}",
+					"mode": "url"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "={{ $('Workflow configuration').params.assignments.assignments.filter(x => x.name == 'sheetUrl')[0].value }}",
+					"mode": "url"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [368, 448],
+			"id": "055540c6-44b9-4d88-b5e2-bbc3b073a59f",
+			"name": "Get row(s) in sheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "kRh5mLeHfd8lkq7s",
+					"name": "Google Sheets account (David, owned by David)"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+				"text": "={{ $json.output }}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [1168, -80],
+			"id": "4affead7-0515-41bf-b8a3-2248bb23bd21",
+			"name": "Reply with message",
+			"webhookId": "d967f74c-ecbc-4294-a82c-35f478c908bb",
+			"credentials": {
+				"telegramApi": {
+					"id": "kdaX0XZP1ZQO6g0T",
+					"name": "davidr_n8n_bot"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"descriptionType": "manual",
+				"toolDescription": "Pass the following fields to this tool:\n- timestamp (when the reminder should happen, as an ISO date string)\n- message (string)",
+				"operation": "append",
+				"documentId": {
+					"__rl": true,
+					"value": "={{ $json.sheetUrl }}",
+					"mode": "url"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "={{ $json.sheetUrl }}",
+					"mode": "url"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": {},
+					"matchingColumns": [],
+					"schema": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"typeVersion": 4.7,
+			"position": [768, 240],
+			"id": "b2bc75ed-98b4-4e9d-8dbf-60e62c71830f",
+			"name": "Set a reminder",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "kRh5mLeHfd8lkq7s",
+					"name": "Google Sheets account (David, owned by David)"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "86876127-89bc-4a52-aa8f-976712a7b563",
+							"name": "sheetUrl",
+							"value": "https://docs.google.com/spreadsheets/d/18C4Zr11ek_1c8rjPctx9bGgFoO57raGaCgzipv30lMQ/edit?gid=0#gid=0",
+							"type": "string"
+						},
+						{
+							"id": "396495aa-5612-4440-b0e2-e3b2742b6c93",
+							"name": "telegramChatId",
+							"value": "8335319691",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [368, 16],
+			"id": "05181db4-7364-4f47-96de-e9f5c1d0e719",
+			"name": "Workflow configuration"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [144, 112],
+			"id": "1793c533-1607-4fbf-8e06-e084916791e0",
+			"name": "When chat message received",
+			"webhookId": "14b26fe3-f93c-4242-b5b0-109ad4190389"
+		},
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes"
+						}
+					]
+				}
+			},
+			"id": "15de9f34-321d-480e-830c-b64ca62cf211",
+			"name": "Every 5 minutes",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [144, 448]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "601f0851-cd47-4545-bd49-9f7363d4640f",
+							"leftValue": "={{ $now.diffTo($json.timestamp, 'minutes') }}",
+							"rightValue": 0,
+							"operator": {
+								"type": "number",
+								"operation": "gt"
+							}
+						},
+						{
+							"id": "853b9f1a-2c53-473b-be72-42a4985f2015",
+							"leftValue": "={{ $now.diffTo($json.timestamp, 'minutes') }}",
+							"rightValue": 5,
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [592, 448],
+			"id": "3fac8891-4331-4fbb-999e-f5e11bee5931",
+			"name": "Due in last 5 mins?"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "e6dbd58b-0e69-4040-ad27-eaf28a04ec47",
+							"leftValue": "={{ $('Telegram Trigger').isExecuted }}",
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [944, 16],
+			"id": "17ead874-e377-470b-a855-9a8bf13b9a95",
+			"name": "Triggered from Telegram?"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1168, 112],
+			"id": "fce255aa-22b8-4164-b526-af7e6a752729",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "={{ $json.chatInput || $('Telegram Trigger').item.json.message.text }}",
+				"options": {
+					"systemMessage": "=You are a smart reminder assistant for Telegram. Your role is to help users create reminders from natural language.\n\nWhen a user asks for a reminder:\n1. Extract the reminder message and time from their input\n2. Store the reminder details including: message text, reminder time, and chat ID\n3. Confirm the reminder was created\n\nExamples:\n- \"I have a meeting at 17 today, remind me\" → Extract: message=\"meeting\", time=\"17:00 today\", chatId from context\n- \"Remind me to call John at 3pm tomorrow\" → Extract: message=\"call John\", time=\"15:00 tomorrow\"\n\nAlways acknowledge the reminder and confirm the time it will be sent.\n\nIt is currently {{ $now }}."
+				}
+			},
+			"id": "1e0fedce-1b58-4e63-a37f-322cf5a6d520",
+			"name": "Reminder Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [592, 16]
+		}
+	],
+	"connections": {
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Workflow configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Reminder Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get row(s) in sheet": {
+			"main": [
+				[
+					{
+						"node": "Due in last 5 mins?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set a reminder": {
+			"ai_tool": [
+				[
+					{
+						"node": "Reminder Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow configuration": {
+			"main": [
+				[
+					{
+						"node": "Reminder Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Workflow configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Every 5 minutes": {
+			"main": [
+				[
+					{
+						"node": "Get row(s) in sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Due in last 5 mins?": {
+			"main": [
+				[
+					{
+						"node": "Send Reminder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Triggered from Telegram?": {
+			"main": [
+				[
+					{
+						"node": "Reply with message",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reminder Agent": {
+			"main": [
+				[
+					{
+						"node": "Triggered from Telegram?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Telegram Trigger": [
+			{
+				"update_id": 853279756,
+				"message": {
+					"message_id": 4,
+					"from": {
+						"id": 8335319691,
+						"is_bot": false,
+						"first_name": "David",
+						"last_name": "R",
+						"language_code": "en"
+					},
+					"chat": {
+						"id": 8335319691,
+						"first_name": "David",
+						"last_name": "R",
+						"type": "private"
+					},
+					"date": 1763398722,
+					"text": "set a reminder to bake pizza in 5 mins"
+				}
+			}
+		]
+	}
+}

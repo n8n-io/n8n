@@ -1,0 +1,6 @@
+[
+	{
+		"input": "No AI node in this workflow.",
+		"expected_output": "No eval setup should be added."
+	}
+]
