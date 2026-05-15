@@ -25,7 +25,7 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
