@@ -52,7 +52,11 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
+import {
+	CREDENTIALS_TOOL_ID,
+	createCredentialsTool,
+	type CredentialAction,
+} from '../credentials.tool';
 import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
 import { ASK_USER_TOOL_ID } from '../shared/ask-user.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
@@ -62,6 +66,7 @@ import {
 	type SubmitWorkflowOutput,
 } from '../workflows/submit-workflow.tool';
 import { isMockableTriggerNodeType } from '../workflows/workflow-json-utils';
+import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 interface BuilderMemoryBinding {
 	resource: string;
@@ -81,6 +86,34 @@ function toToolRegistry(tools: readonly BuiltTool[]): InstanceAiToolRegistry {
 		registry.set(tool.name, tool);
 	}
 	return registry;
+}
+
+const BUILDER_WORKFLOW_ACTIONS = [
+	'list',
+	'get',
+	'get-as-code',
+] as const satisfies readonly WorkflowAction[];
+
+const BUILDER_CREDENTIAL_ACTIONS = [
+	'list',
+	'get',
+	'search-types',
+	'test',
+] as const satisfies readonly CredentialAction[];
+
+function createBuilderWorkflowsTool(context: InstanceAiContext) {
+	return createWorkflowsTool(context, {
+		allowedActions: BUILDER_WORKFLOW_ACTIONS,
+		descriptionPrefix: 'Inspect workflows during build',
+	});
+}
+
+function createBuilderCredentialsTool(context: InstanceAiContext) {
+	return createCredentialsTool(context, {
+		allowedActions: BUILDER_CREDENTIAL_ACTIONS,
+		descriptionPrefix: 'Inspect credentials during build',
+		descriptionSuffix: 'Setup is handled after workflow verification.',
+	});
 }
 
 export function buildWarmBuilderFollowUp(input: {
@@ -827,15 +860,10 @@ export async function startBuildWorkflowAgentTask(
 
 	if (useSandbox) {
 		credMap = await buildCredentialMap(domainContext.credentialService);
+		const builderWorkflowsTool = createBuilderWorkflowsTool(domainContext);
+		const builderCredentialsTool = createBuilderCredentialsTool(domainContext);
 
-		const toolNames = [
-			'nodes',
-			'workflows',
-			CREDENTIALS_TOOL_ID,
-			'executions',
-			DATA_TABLES_TOOL_ID,
-			ASK_USER_TOOL_ID,
-		];
+		const toolNames = ['nodes', 'executions', DATA_TABLES_TOOL_ID, ASK_USER_TOOL_ID];
 
 		builderTools = createToolRegistry();
 		for (const name of toolNames) {
@@ -844,6 +872,8 @@ export async function startBuildWorkflowAgentTask(
 				builderTools.set(name, tool);
 			}
 		}
+		builderTools.set('workflows', builderWorkflowsTool);
+		builderTools.set(CREDENTIALS_TOOL_ID, builderCredentialsTool);
 		if (context.workflowTaskService && context.domainContext) {
 			builderTools.set('verify-built-workflow', createVerifyBuiltWorkflowTool(context));
 		}
@@ -863,6 +893,10 @@ export async function startBuildWorkflowAgentTask(
 			if (tool) {
 				builderTools.set(name, tool);
 			}
+		}
+		if (domainContext) {
+			builderTools.set('workflows', createBuilderWorkflowsTool(domainContext));
+			builderTools.set(CREDENTIALS_TOOL_ID, createBuilderCredentialsTool(domainContext));
 		}
 
 		if (!builderTools.has('build-workflow')) {

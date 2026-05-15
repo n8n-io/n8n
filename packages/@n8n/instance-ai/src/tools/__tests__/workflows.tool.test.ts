@@ -3,7 +3,7 @@ import type { InstanceAiPermissions } from '@n8n/api-types';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
-import { createWorkflowsTool } from '../workflows.tool';
+import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 jest.mock('../workflows/setup-workflow.service', () => ({
@@ -28,7 +28,17 @@ function createMockContext(
 		userId: 'user-1',
 		workflowService: {
 			list: jest.fn(),
-			get: jest.fn(),
+			get: jest.fn().mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			}),
 			getAsWorkflowJSON: jest.fn().mockResolvedValue({
 				name: 'Test WF',
 				nodes: [],
@@ -79,12 +89,27 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
+function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
+	return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
+		.inputSchema;
+}
+
+function getDescription(tool: unknown): string {
+	return (tool as { description: string }).description;
+}
+
 describe('workflows tool', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	describe('surface filtering', () => {
+		const builderWorkflowActions = [
+			'list',
+			'get',
+			'get-as-code',
+		] as const satisfies readonly WorkflowAction[];
+
 		it('should support get-as-code on full surface', async () => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, 'full');
@@ -100,6 +125,68 @@ describe('workflows tool', () => {
 				name: 'Test WF',
 				code: '// generated code',
 			});
+		});
+
+		it('should describe only explicitly allowed actions', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+				descriptionPrefix: 'Inspect workflows during build',
+			});
+
+			expect(getDescription(tool)).toContain('Inspect workflows during build');
+			expect(getDescription(tool)).not.toContain('set up');
+			expect(getDescription(tool)).not.toContain('publish');
+			expect(getDescription(tool)).not.toContain('archive');
+		});
+
+		it.each([
+			[{ action: 'list' }],
+			[{ action: 'get', workflowId: 'w1' }],
+			[{ action: 'get-as-code', workflowId: 'w1' }],
+		])('should support explicitly allowed action %p', (input) => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(true);
+		});
+
+		it.each([
+			[{ action: 'setup', workflowId: 'w1' }],
+			[{ action: 'publish', workflowId: 'w1' }],
+			[{ action: 'unpublish', workflowId: 'w1' }],
+			[{ action: 'delete', workflowId: 'w1' }],
+			[{ action: 'unarchive', workflowId: 'w1' }],
+			[{ action: 'list-versions', workflowId: 'w1' }],
+			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
+			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
+			[{ action: 'update-version', workflowId: 'w1', versionId: 'v1', name: 'v1' }],
+		])('should reject action %p when it is not explicitly allowed', (input) => {
+			const context = createMockContext();
+			context.workflowService.listVersions = jest.fn();
+			context.workflowService.getVersion = jest.fn();
+			context.workflowService.restoreVersion = jest.fn();
+			context.workflowService.updateVersion = jest.fn();
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(false);
+		});
+
+		it('should reject builder-disallowed publish at the schema boundary', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse({ action: 'publish', workflowId: 'w1' }).success).toBe(false);
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
 		});
 	});
 
@@ -523,7 +610,111 @@ describe('workflows tool', () => {
 			expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', {
 				versionId: undefined,
 			});
-			expect(result).toEqual({ success: true, activeVersionId: 'v2' });
+			expect(result).toEqual({
+				success: true,
+				activeVersionId: 'v2',
+				publishedWorkflowIds: ['wf1'],
+			});
+		});
+
+		it('should publish direct Execute Workflow dependencies before the main workflow', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+					{
+						name: 'Call B',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: { value: 'sub-b' } },
+					},
+					{
+						name: 'Call A Again',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+				],
+				connections: {},
+			});
+			(context.workflowService.publish as jest.Mock).mockResolvedValue({
+				activeVersionId: 'v-main',
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
+			} as never);
+
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(2, 'sub-b');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(3, 'wf1', {
+				versionId: undefined,
+			});
+			expect(result).toEqual({
+				success: true,
+				activeVersionId: 'v-main',
+				publishedWorkflowIds: ['sub-a', 'sub-b', 'wf1'],
+				supportingWorkflowIds: ['sub-a', 'sub-b'],
+			});
+		});
+
+		it('should roll back direct Execute Workflow dependencies when the main workflow publish fails', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+					{
+						name: 'Call B',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-b' },
+					},
+				],
+				connections: {},
+			});
+			(context.workflowService.get as jest.Mock).mockImplementation((workflowId: string) => ({
+				id: workflowId,
+				name: workflowId,
+				versionId: `${workflowId}-draft`,
+				activeVersionId: workflowId === 'sub-a' ? 'sub-a-previous' : null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			}));
+			(context.workflowService.publish as jest.Mock).mockImplementation((workflowId: string) => {
+				if (workflowId === 'wf1') throw new Error('Main publish failed');
+				return { activeVersionId: `${workflowId}-active` };
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
+			} as never);
+
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(2, 'sub-b');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(3, 'wf1', {
+				versionId: undefined,
+			});
+			expect(context.workflowService.unpublish).toHaveBeenCalledWith('sub-b');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(4, 'sub-a', {
+				versionId: 'sub-a-previous',
+			});
+			expect(result).toEqual({
+				success: false,
+				error: 'Main publish failed',
+				rolledBackWorkflowIds: ['sub-b', 'sub-a'],
+			});
 		});
 
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
@@ -544,6 +735,37 @@ describe('workflows tool', () => {
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Publish workflow "My WF" (ID: wf1)?',
+				severity: 'warning',
+			});
+		});
+
+		it('should include direct Execute Workflow dependencies in publish confirmation', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'My WF',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+				],
+				connections: {},
+			});
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: 'Publish workflow "My WF" (ID: wf1) and 1 referenced supporting workflow(s)?',
 				severity: 'warning',
 			});
 		});
