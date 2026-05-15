@@ -587,7 +587,7 @@ export function createDataTablesTool(
 	if (surface === 'orchestrator') {
 		const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...readOnlyActions]));
 
-		return new Tool('data-tables')
+		return new Tool(DATA_TABLES_TOOL_ID)
 			.description('Manage data tables — list, get schema, and query rows.')
 			.input(inputSchema)
 			.handler(async (input: ReadOnlyInput) => {
@@ -605,7 +605,7 @@ export function createDataTablesTool(
 
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
-	return new Tool('data-tables')
+	return new Tool(DATA_TABLES_TOOL_ID)
 		.description('Manage data tables — list, query, create, modify columns, and manage rows.')
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)

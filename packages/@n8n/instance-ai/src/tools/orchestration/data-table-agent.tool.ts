@@ -24,8 +24,7 @@ import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/co
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
-
-const DATA_TABLE_TOOL_NAME = 'data-tables';
+import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
 
 export interface StartDataTableAgentInput {
 	task: string;
@@ -47,16 +46,16 @@ export function startDataTableAgentTask(
 ): StartedBackgroundAgentTask {
 	// Grab the consolidated data-tables tool (and parse-file if available) from domain tools
 	const dataTableTools = createToolRegistry();
-	const dataTableTool = context.domainTools.get(DATA_TABLE_TOOL_NAME);
+	const dataTableTool = context.domainTools.get(DATA_TABLES_TOOL_ID);
 	if (dataTableTool) {
-		dataTableTools.set(DATA_TABLE_TOOL_NAME, dataTableTool);
+		dataTableTools.set(DATA_TABLES_TOOL_ID, dataTableTool);
 	}
 	const parseFileTool = context.domainTools.get('parse-file');
 	if (parseFileTool) {
 		dataTableTools.set('parse-file', parseFileTool);
 	}
 
-	if (!dataTableTools.has(DATA_TABLE_TOOL_NAME)) {
+	if (!dataTableTools.has(DATA_TABLES_TOOL_ID)) {
 		return { result: 'Error: data-tables tool not available.', taskId: '', agentId: '' };
 	}
 

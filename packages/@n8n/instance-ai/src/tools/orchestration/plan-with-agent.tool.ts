@@ -45,7 +45,13 @@ import { createTemplatesTool } from '../templates.tool';
 const MESSAGE_HISTORY_COUNT = 5;
 
 /** Read-only discovery tools the planner gets from domainTools. */
-const PLANNER_DOMAIN_TOOL_NAMES = ['nodes', 'credentials', 'data-tables', 'workflows', 'ask-user'];
+const PLANNER_DOMAIN_TOOL_NAMES = [
+	'nodes',
+	CREDENTIALS_TOOL_ID,
+	DATA_TABLES_TOOL_ID,
+	'workflows',
+	ASK_USER_TOOL_ID,
+];
 
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['research'];

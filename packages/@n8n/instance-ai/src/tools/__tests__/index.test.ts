@@ -11,10 +11,12 @@ jest.mock('../attachments/parse-file.tool', () => ({
 }));
 
 jest.mock('../credentials.tool', () => ({
+	CREDENTIALS_TOOL_ID: 'credentials',
 	createCredentialsTool: jest.fn(() => ({ id: 'credentials' })),
 }));
 
 jest.mock('../data-tables.tool', () => ({
+	DATA_TABLES_TOOL_ID: 'data-tables',
 	createDataTablesTool: jest.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `data-tables-${scope}` : 'data-tables',
 	})),
@@ -67,6 +69,7 @@ jest.mock('../research.tool', () => ({
 }));
 
 jest.mock('../shared/ask-user.tool', () => ({
+	ASK_USER_TOOL_ID: 'ask-user',
 	createAskUserTool: jest.fn(() => ({ id: 'ask-user' })),
 }));
 

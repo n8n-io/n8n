@@ -4,8 +4,8 @@ import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
-import { createCredentialsTool } from './credentials.tool';
-import { createDataTablesTool } from './data-tables.tool';
+import { createCredentialsTool, CREDENTIALS_TOOL_ID } from './credentials.tool';
+import { createDataTablesTool, DATA_TABLES_TOOL_ID } from './data-tables.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
@@ -17,7 +17,7 @@ import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
 import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-workflow.tool';
 import { createResearchTool } from './research.tool';
-import { createAskUserTool } from './shared/ask-user.tool';
+import { ASK_USER_TOOL_ID, createAskUserTool } from './shared/ask-user.tool';
 import { createTaskControlTool } from './task-control.tool';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
@@ -32,12 +32,12 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 	const tools: Array<[string, BuiltTool]> = [
 		['workflows', createWorkflowsTool(context)],
 		['executions', createExecutionsTool(context)],
-		['credentials', createCredentialsTool(context)],
-		['data-tables', createDataTablesTool(context)],
+		[CREDENTIALS_TOOL_ID, createCredentialsTool(context)],
+		[DATA_TABLES_TOOL_ID, createDataTablesTool(context)],
 		['workspace', createWorkspaceTool(context)],
 		['research', createResearchTool(context)],
 		['nodes', createNodesTool(context)],
-		['ask-user', createAskUserTool()],
+		[ASK_USER_TOOL_ID, createAskUserTool()],
 		['build-workflow', createBuildWorkflowTool(context)],
 	];
 
@@ -56,12 +56,12 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 	const tools: Array<[string, BuiltTool]> = [
 		['workflows', createWorkflowsTool(context, 'orchestrator')],
 		['executions', createExecutionsTool(context)],
-		['credentials', createCredentialsTool(context)],
-		['data-tables', createDataTablesTool(context, 'orchestrator')],
+		[CREDENTIALS_TOOL_ID, createCredentialsTool(context)],
+		[DATA_TABLES_TOOL_ID, createDataTablesTool(context, 'orchestrator')],
 		['workspace', createWorkspaceTool(context)],
 		['research', createResearchTool(context)],
 		['nodes', createNodesTool(context, 'orchestrator')],
-		['ask-user', createAskUserTool()],
+		[ASK_USER_TOOL_ID, createAskUserTool()],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

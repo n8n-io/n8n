@@ -438,7 +438,7 @@ export function createCredentialsTool(
 ) {
 	const inputSchema = buildInputSchema(options);
 
-	return new Tool('credentials')
+	return new Tool(CREDENTIALS_TOOL_ID)
 		.description(getToolDescription(options))
 		.input(inputSchema)
 		.suspend(suspendSchema)

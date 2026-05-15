@@ -52,6 +52,9 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
+import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
+import { ASK_USER_TOOL_ID } from '../shared/ask-user.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import {
@@ -821,10 +824,10 @@ export async function startBuildWorkflowAgentTask(
 		const toolNames = [
 			'nodes',
 			'workflows',
-			'credentials',
+			CREDENTIALS_TOOL_ID,
 			'executions',
-			'data-tables',
-			'ask-user',
+			DATA_TABLES_TOOL_ID,
+			ASK_USER_TOOL_ID,
 		];
 
 		builderTools = createToolRegistry();
@@ -844,8 +847,8 @@ export async function startBuildWorkflowAgentTask(
 			'build-workflow',
 			'nodes',
 			'workflows',
-			'data-tables',
-			'ask-user',
+			DATA_TABLES_TOOL_ID,
+			ASK_USER_TOOL_ID,
 			...(context.researchMode ? ['research'] : []),
 		];
 		for (const name of toolNames) {
