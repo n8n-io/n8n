@@ -355,5 +355,38 @@ describe('Start - AuthRolesService initialization', () => {
 			// Followers only retry via reload; leaders should fail immediately
 			expect(license.reload).not.toHaveBeenCalled();
 		});
+
+		it('should attempt to renew license before throwing when leader fails the license check', async () => {
+			setupInstanceSettings('main', true, true);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValueOnce(false)
+				.mockReturnValue(true) as unknown as typeof license.isMultiMainLicensed;
+
+			await expect(start.init()).resolves.not.toThrow();
+			expect(license.renew).toHaveBeenCalled();
+		});
+
+		it('should throw FeatureNotLicensedError when leader renewal rejects', async () => {
+			setupInstanceSettings('main', true, true);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
+			license.renew = jest
+				.fn()
+				.mockRejectedValue(
+					new Error('license server unreachable'),
+				) as unknown as typeof license.renew;
+
+			await expect(start.init()).rejects.toThrow(FeatureNotLicensedError);
+			expect(license.renew).toHaveBeenCalled();
+			expect(license.reload).not.toHaveBeenCalled();
+		});
 	});
 });

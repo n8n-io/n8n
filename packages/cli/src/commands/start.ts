@@ -345,6 +345,18 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private async ensureMultiMainLicensed() {
 		if (this.license.isMultiMainLicensed()) return;
 
+		if (this.instanceSettings.isLeader) {
+			try {
+				await this.license.renew();
+			} catch (error) {
+				this.logger.error(
+					'Failed to renew multi-main license during boot; license check will likely fail',
+					{ error: error instanceof Error ? error.message : error },
+				);
+			}
+			if (this.license.isMultiMainLicensed()) return;
+		}
+
 		if (!this.instanceSettings.isLeader) {
 			const maxRetries = 5;
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
