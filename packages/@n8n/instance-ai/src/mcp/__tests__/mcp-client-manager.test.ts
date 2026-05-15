@@ -161,7 +161,7 @@ describe('McpClientManager', () => {
 		it('logs tools skipped during schema sanitization', async () => {
 			const logger: LoggerMock = { warn: jest.fn() };
 			mockedSanitizeMcpToolSchemas.mockImplementationOnce(
-				(_tools: Record<string, unknown>, options?: SanitizeOptions) => {
+				(_tools: unknown, options?: SanitizeOptions) => {
 					options?.onError?.({
 						message: 'MCP schema exceeds maximum depth of 32',
 						details: {

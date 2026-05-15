@@ -11,7 +11,10 @@
  *   z.nullable(z.string())           →  z.string().optional()
  */
 
+import type { BuiltTool } from '@n8n/agents';
 import { z } from 'zod';
+
+import type { InstanceAiToolRegistry } from '../types';
 
 export const MCP_SCHEMA_MAX_DEPTH = 32;
 export const MCP_SCHEMA_MAX_NODES = 1_000;
@@ -646,8 +649,8 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
 }
 
 /**
- * Sanitize all MCP tool schemas in-place for Anthropic compatibility.
- * Mutates the tool objects' inputSchema and outputSchema properties.
+ * Sanitize all MCP tool schemas for Anthropic compatibility.
+ * Keeps the registry instance and replaces updated tool entries.
  *
  * Uses non-strict mode (no build-time errors on conflicts) because external
  * MCP tools are third-party and we can't enforce description harmonization.
@@ -657,14 +660,8 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * action context (e.g. 'For "create": ... For "delete": ...') rather than
  * throwing.
  */
-type ToolSchemaCollection = Record<string, unknown> | Map<string, unknown>;
-
-function getToolSchemaEntries(tools: ToolSchemaCollection): Iterable<[string, unknown]> {
-	return tools instanceof Map ? tools.entries() : Object.entries(tools);
-}
-
-export function sanitizeMcpToolSchemas<TTools extends ToolSchemaCollection>(
-	tools: TTools,
+export function sanitizeMcpToolSchemas(
+	tools: InstanceAiToolRegistry,
 	options: {
 		maxDepth?: number;
 		maxNodes?: number;
@@ -672,17 +669,16 @@ export function sanitizeMcpToolSchemas<TTools extends ToolSchemaCollection>(
 		maxUnionOptions?: number;
 		onError?: (error: McpSchemaSanitizationError) => void;
 	} = {},
-): TTools {
-	for (const [name, tool] of getToolSchemaEntries(tools)) {
-		if (!isRecord(tool)) continue;
-
-		const t = tool as { inputSchema?: unknown; outputSchema?: unknown };
+): InstanceAiToolRegistry {
+	for (const [name, tool] of tools) {
+		let inputSchema: BuiltTool['inputSchema'] = tool.inputSchema;
+		let outputSchema: BuiltTool['outputSchema'] = tool.outputSchema;
 		const budget = { nodes: 0 };
 		try {
-			if (t.inputSchema) {
-				if (t.inputSchema instanceof z.ZodType) {
-					t.inputSchema = ensureTopLevelObject(
-						sanitizeZodType(t.inputSchema, false, {
+			if (inputSchema) {
+				if (inputSchema instanceof z.ZodType) {
+					inputSchema = ensureTopLevelObject(
+						sanitizeZodType(inputSchema, false, {
 							maxDepth: options.maxDepth,
 							maxNodes: options.maxNodes,
 							maxObjectProperties: options.maxObjectProperties,
@@ -693,7 +689,7 @@ export function sanitizeMcpToolSchemas<TTools extends ToolSchemaCollection>(
 						}),
 					);
 				} else {
-					assertMcpJsonSchemaWithinLimits(t.inputSchema, {
+					assertMcpJsonSchemaWithinLimits(inputSchema, {
 						maxDepth: options.maxDepth,
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
@@ -702,9 +698,9 @@ export function sanitizeMcpToolSchemas<TTools extends ToolSchemaCollection>(
 					});
 				}
 			}
-			if (t.outputSchema) {
-				if (t.outputSchema instanceof z.ZodType) {
-					t.outputSchema = sanitizeZodType(t.outputSchema, false, {
+			if (outputSchema) {
+				if (outputSchema instanceof z.ZodType) {
+					outputSchema = sanitizeZodType(outputSchema, false, {
 						maxDepth: options.maxDepth,
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
@@ -714,7 +710,7 @@ export function sanitizeMcpToolSchemas<TTools extends ToolSchemaCollection>(
 						budget,
 					});
 				} else {
-					assertMcpJsonSchemaWithinLimits(t.outputSchema, {
+					assertMcpJsonSchemaWithinLimits(outputSchema, {
 						maxDepth: options.maxDepth,
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
@@ -726,12 +722,18 @@ export function sanitizeMcpToolSchemas<TTools extends ToolSchemaCollection>(
 			}
 		} catch (error) {
 			if (error instanceof McpSchemaSanitizationError) {
-				delete (tools as Record<string, unknown>)[name];
+				tools.delete(name);
 				options.onError?.(error);
 				continue;
 			}
 			throw error;
 		}
+
+		tools.set(name, {
+			...tool,
+			...(inputSchema ? { inputSchema } : {}),
+			...(outputSchema ? { outputSchema } : {}),
+		});
 	}
 
 	return tools;
