@@ -111,6 +111,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(), // redactionEnforcementService
 		);
 	});
 

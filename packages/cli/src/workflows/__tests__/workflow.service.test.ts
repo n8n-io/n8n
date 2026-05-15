@@ -5,6 +5,8 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
@@ -63,6 +65,7 @@ describe('WorkflowService', () => {
 				webhookServiceMock, // webhookService
 				mock(), // licenseState
 				mock(), // projectRepository
+				mock(), // redactionEnforcementService
 			);
 		});
 
@@ -168,6 +171,7 @@ describe('WorkflowService', () => {
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 		let licenseStateMock: MockProxy<LicenseState>;
+		let redactionEnforcementServiceMock: MockProxy<RedactionEnforcementService>;
 		let workflowRepositoryMock: MockProxy<{
 			update: jest.Mock;
 			findOne: jest.Mock;
@@ -178,6 +182,7 @@ describe('WorkflowService', () => {
 			workflowRepositoryMock = mock();
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
+			redactionEnforcementServiceMock = mock<RedactionEnforcementService>();
 
 			const ownershipServiceMock = mock<OwnershipService>();
 			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
@@ -209,6 +214,7 @@ describe('WorkflowService', () => {
 				mock(), // webhookService
 				licenseStateMock, // licenseState
 				mock(), // projectRepository
+				redactionEnforcementServiceMock, // redactionEnforcementService
 			);
 
 			jest.clearAllMocks();
@@ -372,6 +378,45 @@ describe('WorkflowService', () => {
 				expect.objectContaining({
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
+			);
+		});
+
+		test('should reject update with 422 when enforcement is on and redactionPolicy is changing', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+			redactionEnforcementServiceMock.assertPolicyChangeAllowed.mockImplementationOnce(() => {
+				throw new UnprocessableRequestError(
+					'Workflow redaction policy is enforced at the instance level and cannot be modified.',
+				);
+			});
+
+			const user = mock<User>();
+			await expect(
+				workflowService.update(user, createUpdateData({ redactionPolicy: 'all' }), 'workflow-1', {
+					forceSave: true,
+				}),
+			).rejects.toThrow(UnprocessableRequestError);
+
+			expect(redactionEnforcementServiceMock.assertPolicyChangeAllowed).toHaveBeenCalledWith(
+				'none',
+				'all',
+			);
+			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+		});
+
+		test('should not call enforcement check with payload value when settings are absent', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'all' });
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ name: 'renamed' } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(redactionEnforcementServiceMock.assertPolicyChangeAllowed).toHaveBeenCalledWith(
+				'all',
+				undefined,
 			);
 		});
 	});

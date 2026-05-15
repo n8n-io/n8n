@@ -1,5 +1,6 @@
+import type { AgentIntegrationSettings } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
 
 import type { SuspendComponent } from './component-mapper';
 
@@ -125,6 +126,14 @@ export abstract class AgentChatIntegration {
 		fromSdk: (thread: Thread<unknown, unknown>) => string;
 		toSdk: (threadId: string) => string;
 	};
+
+	/**
+	 * Optional per-user authorisation check called on every inbound mention,
+	 * subscribed message, and action before the bridge subscribes / executes.
+	 * Default (no implementation): allow. Telegram uses this to enforce the
+	 * Private-mode allowlist.
+	 */
+	isUserAllowed?(author: Author, settings: AgentIntegrationSettings | undefined): boolean;
 }
 
 /**

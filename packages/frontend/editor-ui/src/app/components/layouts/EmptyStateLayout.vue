@@ -7,6 +7,7 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
+import { useSurfaceMcpEmptyState } from '@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
@@ -14,6 +15,8 @@ import RecommendedTemplatesSection from '@/features/workflows/templates/recommen
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
+import SurfaceMcpEmptyStateReminder from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateReminder.vue';
+import SurfaceMcpEmptyStateTile from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue';
 
 const emit = defineEmits<{
 	'click:add': [];
@@ -38,13 +41,20 @@ const {
 	canCreateWorkflow,
 } = useWorkflowsEmptyState();
 
+const { showTile: showMcpTile, showReminder: showMcpReminder } = useSurfaceMcpEmptyState({
+	canCreateWorkflow: computed(() => Boolean(canCreateWorkflow.value)),
+	showAppSelection: computed(() => Boolean(showAppSelection.value)),
+	showBuilderPrompt: computed(() => Boolean(showBuilderPrompt.value)),
+	showRecommendedTemplatesInline: computed(() => Boolean(showRecommendedTemplatesInline.value)),
+});
+
 const addWorkflow = () => {
 	emit('click:add');
 };
 
 // Check if user can claim credits for ready-to-run
 const showReadyToRunCard = computed(() => {
-	return readyToRunStore.userCanClaimOpenAiCredits && canCreateWorkflow.value;
+	return readyToRunStore.userCanClaimOpenAiCredits && canCreateWorkflow.value && !showMcpTile.value;
 });
 
 const handleReadyToRunClick = async () => {
@@ -157,12 +167,20 @@ const handleAppSelectionContinue = () => {
 					<N8nText tag="p" size="large" color="text-base">
 						{{ emptyStateDescription }}
 					</N8nText>
+					<SurfaceMcpEmptyStateReminder v-if="showMcpReminder" />
 
 					<!-- Two cards or single card depending on ready-to-run availability -->
 					<div
 						v-if="canCreateWorkflow"
-						:class="[$style.actionCardsContainer, { [$style.singleCard]: !showReadyToRunCard }]"
+						:class="[
+							$style.actionCardsContainer,
+							{
+								[$style.singleCard]: !showReadyToRunCard && !showMcpTile,
+							},
+						]"
 					>
+						<SurfaceMcpEmptyStateTile v-if="showMcpTile" :class="$style.actionCard" />
+
 						<!-- Card 1: Try AI workflow (conditional) -->
 						<N8nCard
 							v-if="showReadyToRunCard"
@@ -286,6 +304,7 @@ const handleAppSelectionContinue = () => {
 }
 
 .actionCard {
+	position: relative;
 	width: 192px;
 	height: 230px;
 	text-align: center;

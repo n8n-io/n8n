@@ -58,12 +58,12 @@ function createMockThread() {
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 
 	return reactive({
+		id: 'thread-1',
 		messages,
 		isStreaming,
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
-		currentThreadId: 'thread-1',
 	});
 }
 
