@@ -22,7 +22,7 @@ let cachedMastraStorageKey = '';
 // Tools that are always loaded into the orchestrator's context (no search required).
 // These are used in nearly every conversation per system prompt analysis.
 // All other tools are deferred behind ToolSearchProcessor for on-demand discovery.
-const ALWAYS_LOADED_TOOLS = new Set(['plan', 'delegate', 'ask-user', 'research']);
+const ALWAYS_LOADED_TOOLS = new Set(['plan', 'delegate', 'ask-user', 'research', 'evals']);
 
 function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor {
 	// Deferred tools capture per-run closures via the orchestration context.

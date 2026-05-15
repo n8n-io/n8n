@@ -5,6 +5,7 @@ import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
+import { createEvalsTool } from './evals/evals.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
 import { createNodesTool } from './nodes.tool';
@@ -49,6 +50,7 @@ const ORCHESTRATOR_WORKFLOW_ACTIONS = [
 export function createAllTools(context: InstanceAiContext): ToolsInput {
 	return {
 		workflows: createWorkflowsTool(context),
+		evals: createEvalsTool(context),
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context),
@@ -71,6 +73,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Tools
 		workflows: createWorkflowsTool(context, {
 			allowedActions: ORCHESTRATOR_WORKFLOW_ACTIONS,
 		}),
+		evals: createEvalsTool(context),
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context, 'orchestrator'),

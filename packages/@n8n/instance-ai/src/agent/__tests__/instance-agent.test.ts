@@ -33,6 +33,7 @@ jest.mock('../../tools', () => ({
 	})),
 	createOrchestratorDomainTools: jest.fn((context: { runLabel?: string }) => ({
 		workflows: { id: `workflows-${context.runLabel ?? 'unknown'}` },
+		evals: { id: `evals-${context.runLabel ?? 'unknown'}` },
 	})),
 	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
 		plan: { id: `plan-${context.runId}` },
@@ -239,5 +240,38 @@ describe('createInstanceAgent', () => {
 		expect(agentTools.custom_plan).toMatchObject({ id: 'custom-plan' });
 		expect(mcpContextTools.shared_tool).toMatchObject({ id: 'local-shared' });
 		expect(mcpContextTools.github_workflows).toMatchObject({ id: 'github-workflows' });
+	});
+
+	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
+		Agent.mockClear();
+		ToolSearchProcessor.mockClear();
+		const memoryConfig = { storage: { id: 'memory-store' } } as never;
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'evals-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'evals-test',
+				browserMcpConfig: undefined,
+			},
+			memoryConfig,
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const agentCalls = Agent.mock.calls as Array<[Record<string, unknown>]>;
+		const agentTools = agentCalls[0]?.[0].tools as Record<string, unknown>;
+		expect(agentTools).toMatchObject({
+			evals: { id: 'evals-evals-test' },
+		});
+
+		const toolSearchCalls = ToolSearchProcessor.mock.calls as Array<
+			[{ tools: Record<string, { id: string }> }]
+		>;
+		expect(toolSearchCalls[0]?.[0]?.tools).not.toHaveProperty('evals');
 	});
 });

@@ -45,6 +45,10 @@ jest.mock('../orchestration/delegate.tool', () => ({
 	createDelegateTool: jest.fn(() => ({ id: 'delegate' })),
 }));
 
+jest.mock('../evals/evals.tool', () => ({
+	createEvalsTool: jest.fn(() => ({ id: 'evals' })),
+}));
+
 jest.mock('../orchestration/plan-with-agent.tool', () => ({
 	createPlanWithAgentTool: jest.fn(() => ({ id: 'plan' })),
 }));
