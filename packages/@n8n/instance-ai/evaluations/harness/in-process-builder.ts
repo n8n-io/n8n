@@ -21,10 +21,7 @@
 // ---------------------------------------------------------------------------
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await */
-// `normalizeWorkflow` returns `SimpleWorkflow`, imported transitively from
-// `ai-workflow-builder.ee` whose `@/*` alias collides with instance-ai's own
-// `@/*` mapping; the type resolves to `error` here even though runtime is
-// correct. The `waitForConfirmation` callback must be async to satisfy the
+// The `waitForConfirmation` callback must be async to satisfy the
 // resumable-stream control contract even though the auto-approve path has
 // nothing to await.
 
@@ -42,11 +39,14 @@ import {
 	createInMemoryWorkflowTaskService,
 	type InMemoryWorkflowTaskService,
 } from './stub-workflow-task-service';
-import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
+import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/src/types/workflow';
 import { MAX_STEPS } from '../../src/constants/max-steps';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
-import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
+import {
+	executeResumableStream,
+	normalizeStreamSource,
+} from '../../src/runtime/resumable-stream-executor';
 import { createToolRegistry, toolRegistryValues } from '../../src/tool-registry';
 import { createAllTools } from '../../src/tools';
 import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/build-workflow-agent.prompt';
@@ -327,13 +327,14 @@ export async function buildInProcess(
 
 	let finalText: string | undefined;
 	try {
-		const streamSource = await agent.stream(options.prompt, {
-			maxSteps,
+		const streamResult = await agent.stream(options.prompt, {
+			maxIterations: maxSteps,
 			abortSignal: abortController.signal,
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
 			},
 		});
+		const streamSource = normalizeStreamSource(streamResult);
 
 		const result = await executeResumableStream({
 			agent: asResumable(agent),
@@ -361,12 +362,12 @@ export async function buildInProcess(
 					}
 				},
 				// Match production (`consumeStreamWithHitl`): when a suspension
-				// auto-resumes, pass `maxSteps` and the same providerOptions to
+				// auto-resumes, pass `maxIterations` and the same providerOptions to
 				// `resume`.
 				buildResumeOptions: ({ agentRunId, suspension }) => ({
 					runId: agentRunId,
 					toolCallId: suspension.toolCallId,
-					maxSteps,
+					maxIterations: maxSteps,
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' as const } },
 					},
@@ -374,8 +375,9 @@ export async function buildInProcess(
 			},
 		});
 
-		if (result.text) {
-			finalText = await result.text;
+		const resultText = result.text ?? streamSource.text;
+		if (resultText) {
+			finalText = await resultText;
 		}
 		// Pull stream-level totals when the underlying stream source exposes
 		// them. `finishReason === 'length'` / 'tool-calls' pinpoints
