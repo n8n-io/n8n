@@ -167,7 +167,10 @@ describe('createWorkspace', () => {
 	});
 
 	it('should wrap N8nSandboxServiceSandbox with N8nSandboxFilesystem', () => {
-		const sandbox = new N8nSandboxServiceSandbox({ apiKey: 'key' });
+		const sandbox = new N8nSandboxServiceSandbox({
+			apiKey: 'key',
+			serviceUrl: 'https://sandbox.example.com',
+		});
 
 		const result = createWorkspace(sandbox);
 
