@@ -148,9 +148,15 @@ export class WorkflowService {
 			sharingOptions.workflowRoles = workflowRoles;
 		}
 
+		// Folder inclusion is incompatible with the webhookId filter — folders
+		// have no webhooks, so we route through the flat workflows query when
+		// the filter is set. We track this locally so the merge step below stays
+		// in sync (otherwise it would merge against an empty folder list and
+		// wipe out the results).
+		const includeFoldersInResults = includeFolders && !options?.filter?.webhookId;
+
 		// Use the new subquery-based repository methods
-		// Disable folder inclusion when filtering by webhookId — folders have no webhooks
-		if (includeFolders && !options?.filter?.webhookId) {
+		if (includeFoldersInResults) {
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,
@@ -184,7 +190,7 @@ export class WorkflowService {
 
 		this.cleanupSharedField(workflows);
 
-		if (includeFolders) {
+		if (includeFoldersInResults) {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
