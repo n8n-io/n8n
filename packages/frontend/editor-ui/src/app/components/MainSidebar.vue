@@ -24,7 +24,6 @@ import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
-import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
@@ -285,10 +284,6 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
-		case 'resource-center': {
-			resourceCenterStore.markResourceCenterTooltipDismissed();
-			break;
-		}
 		case 'about': {
 			trackHelpItemClick('about');
 			uiStore.openModal(ABOUT_MODAL_KEY);
@@ -384,7 +379,6 @@ useKeybindings({
 			@select="handleSelect"
 		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
 

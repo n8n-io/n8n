@@ -67,11 +67,14 @@ jobs:
     if: needs.create-release-pr.result == 'success' && needs.create-release-pr.outputs.pull-request-number != ''
     runs-on: ubuntu-latest
     steps:
-      - name: Post to Slack
-        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          method: chat.postMessage
-          token: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
-          payload: |
-            channel: C036AELNMV0
-            text: ":rocket: Patch release PR created for *${{ inputs.track }}* track. <${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.create-release-pr.outputs.pull-request-number }}|View PR> — close it to cancel the release."
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C036AELNMV0 \
+            --text ':rocket: Patch release PR created for *${{ inputs.track }}* track. <${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.create-release-pr.outputs.pull-request-number }}|View PR> — close it to cancel the release.'

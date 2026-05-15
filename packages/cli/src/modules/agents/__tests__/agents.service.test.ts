@@ -191,6 +191,24 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('create', () => {
+		it('creates a draft agent without a default model or credential', async () => {
+			agentRepository.create.mockImplementation((data) => data as Agent);
+			agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+
+			const result = await service.create(projectId, 'New Agent');
+
+			expect(result.schema).toEqual({
+				name: 'New Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				skills: [],
+			});
+			expect(result.schema).not.toHaveProperty('credential');
+		});
+	});
+
 	describe('updateConfig', () => {
 		const config = {
 			name: 'Test Agent',
@@ -1036,6 +1054,56 @@ describe('AgentsService', () => {
 
 		beforeEach(() => {
 			credentialProvider.list.mockResolvedValue([]);
+		});
+
+		it('flags all runnable essentials when there is no config yet', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toEqual(['instructions', 'model', 'credential']);
+		});
+
+		it('flags blank model and missing credential on new draft configs', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: '',
+					instructions: 'Do stuff',
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toEqual(expect.arrayContaining(['model', 'credential']));
+		});
+
+		it('flags missing credential even when the model is valid', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Do stuff',
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('credential');
 		});
 
 		it('flags config skill refs that have no stored body', async () => {
