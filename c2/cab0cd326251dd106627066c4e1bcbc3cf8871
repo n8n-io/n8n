@@ -1,0 +1,72 @@
+packages/cli/test/migration/1778680897918-split-redaction-scope-in-custom-roles.test.ts
+  c4e44203b0e34d6b 1-354,356-451
+packages/cli/src/workflows/workflow.service.ts
+  c4e44203b0e34d6b 403-406
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  c4e44203b0e34d6b 172,344
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  c4e44203b0e34d6b 459,462,542-547
+packages/cli/src/workflows/workflow-creation.service.ts
+  c4e44203b0e34d6b 167-172
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_c4e44203b0e34d::t_d80508af2cc305 1246-1247,1267-1268
+  s_c4e44203b0e34d::t_55699976615c16 2428-2429,2449-2450
+  s_c4e44203b0e34d::t_c8fefbae826efe 857-888
+  s_c4e44203b0e34d::t_c3a2d572ec6e50 3634-3697
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  c4e44203b0e34d6b 179,358
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c4e44203b0e34d::t_c6d334309c1715 2567-2570
+packages/frontend/editor-ui/src/features/project-roles/projectRoleScopes.ts
+  s_c4e44203b0e34d::t_5960d0859f4d2d 28-29
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.vue
+  s_c4e44203b0e34d::t_33a8a2a6bc7015 1194,1200
+  s_c4e44203b0e34d::t_2a5a9a27e2a9ca 208-224
+  s_c4e44203b0e34d::t_637935dbf03e98 1280,1285
+  s_c4e44203b0e34d::t_d2ad341b2fd9ad 1303,1305
+  s_c4e44203b0e34d::t_b6ab829ed1b2f7 1222,1224-1228,1246
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  c4e44203b0e34d6b 266,278-280,289,301-317,319-321,323-324,330,335-347,350-370
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  c4e44203b0e34d6b 167,191-193,199,223-225,231-259
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_c4e44203b0e34d::t_f6dfc781177267 1228
+  s_c4e44203b0e34d::t_1a2a680c6cf7b8 1180-1183
+  s_c4e44203b0e34d::t_7e4a19256bd917 987
+  s_c4e44203b0e34d::t_02ce8603538e6e 1109
+  s_c4e44203b0e34d::t_b8dd48ce28a46f 1069
+  s_c4e44203b0e34d::t_ac88fb9ffdaa86 1151-1179,1184-1205
+  s_c4e44203b0e34d::t_1b38bff823225d 1020
+  s_c4e44203b0e34d::t_942fc3ce2c8339 1038
+packages/@n8n/db/src/migrations/common/1778680897918-SplitRedactionScopeInCustomRoles.ts
+  c4e44203b0e34d6b 1-53,56-58,61-101,104-105,108-109,112-113,116-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "c2cab0cd326251dd106627066c4e1bcbc3cf8871",
+  "prompts": {
+    "c4e44203b0e34d6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d5a43186-0bbe-4d10-b75b-1e9ea2bc6aa1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>",
+      "total_additions": 754,
+      "total_deletions": 42,
+      "accepted_lines": 672,
+      "overriden_lines": 19
+    }
+  },
+  "sessions": {
+    "s_c4e44203b0e34d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d5a43186-0bbe-4d10-b75b-1e9ea2bc6aa1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
