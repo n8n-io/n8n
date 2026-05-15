@@ -1,6 +1,7 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
-import type { InstanceAiToolRegistry, OrchestrationContext, TaskStorage } from '../../../types';
+import { createToolRegistry } from '../../../tool-registry';
+import type { OrchestrationContext, TaskStorage } from '../../../types';
 
 const { createBrowserCredentialSetupTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -18,13 +19,16 @@ function createMockEventBus(): InstanceAiEventBus {
 }
 
 function createMockContext(overrides?: Partial<OrchestrationContext>): OrchestrationContext {
-	const mcpTools: InstanceAiToolRegistry = {
-		browser_click: {
-			name: 'browser_click',
-			description: 'Click in the browser',
-			handler: jest.fn(),
-		},
-	};
+	const mcpTools = createToolRegistry([
+		[
+			'browser_click',
+			{
+				name: 'browser_click',
+				description: 'Click in the browser',
+				handler: jest.fn(),
+			},
+		],
+	]);
 
 	return {
 		threadId: 'thread-123',
@@ -35,7 +39,7 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		subAgentMaxSteps: 10,
 		eventBus: createMockEventBus(),
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-		domainTools: {},
+		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as TaskStorage,
 		browserMcpConfig: { name: 'chrome-devtools', command: 'npx', args: [] },

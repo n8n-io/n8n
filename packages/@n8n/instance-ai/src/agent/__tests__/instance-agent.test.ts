@@ -29,22 +29,31 @@ const mockBuiltTool = (name: string, marker?: string) => ({
 });
 
 jest.mock('../../tools', () => ({
-	createAllTools: jest.fn((context: { runLabel?: string }) => ({
-		workflows: mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`),
-		research: mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`),
-	})),
-	createOrchestratorDomainTools: jest.fn((context: { runLabel?: string }) => ({
-		workflows: mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`),
-		research: mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`),
-	})),
-	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
-		plan: mockBuiltTool(`plan-${context.runId}`),
-		'build-workflow-with-agent': mockBuiltTool(`build-${context.runId}`),
-	})),
+	createAllTools: jest.fn(
+		(context: { runLabel?: string }) =>
+			new Map([
+				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+			]),
+	),
+	createOrchestratorDomainTools: jest.fn(
+		(context: { runLabel?: string }) =>
+			new Map([
+				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+			]),
+	),
+	createOrchestrationTools: jest.fn(
+		(context: { runId: string }) =>
+			new Map([
+				['plan', mockBuiltTool(`plan-${context.runId}`)],
+				['build-workflow-with-agent', mockBuiltTool(`build-${context.runId}`)],
+			]),
+	),
 }));
 
 jest.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
-	createToolsFromLocalMcpServer: jest.fn().mockReturnValue({}),
+	createToolsFromLocalMcpServer: jest.fn().mockReturnValue(new Map()),
 }));
 
 jest.mock('../../tracing/langsmith-tracing', () => ({
@@ -72,8 +81,8 @@ const { createOrchestratorDomainTools } =
 	require('../../tools') as { createOrchestratorDomainTools: jest.Mock };
 
 function createMcpManagerStub(
-	regularTools: Record<string, ReturnType<typeof mockBuiltTool>> = {},
-	browserTools: Record<string, ReturnType<typeof mockBuiltTool>> = {},
+	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
+	browserTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
 ) {
 	return {
 		getRegularTools: jest.fn().mockResolvedValue(regularTools),
@@ -111,7 +120,7 @@ describe('createInstanceAgent', () => {
 		Agent.mockClear();
 		mockAgentInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
-		createToolsFromLocalMcpServer.mockReturnValue({});
+		createToolsFromLocalMcpServer.mockReturnValue(new Map());
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
@@ -216,15 +225,19 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
-		createOrchestratorDomainTools.mockReturnValueOnce({
-			workflows: { id: 'workflows' },
-			browser_connect: { id: 'browser_connect' },
-			browser_navigate: { id: 'browser_navigate' },
-		});
-		createToolsFromLocalMcpServer.mockReturnValue({
-			browser_connect: { id: 'browser_connect' },
-			browser_navigate: { id: 'browser_navigate' },
-		});
+		createOrchestratorDomainTools.mockReturnValueOnce(
+			new Map([
+				['workflows', { id: 'workflows' }],
+				['browser_connect', { id: 'browser_connect' }],
+				['browser_navigate', { id: 'browser_navigate' }],
+			]),
+		);
+		createToolsFromLocalMcpServer.mockReturnValue(
+			new Map([
+				['browser_connect', { id: 'browser_connect' }],
+				['browser_navigate', { id: 'browser_navigate' }],
+			]),
+		);
 
 		const memoryConfig = { storage: { id: 'memory-store' } } as never;
 		const localMcpServer = {
@@ -259,14 +272,12 @@ describe('createInstanceAgent', () => {
 		const localMcpServer = {
 			getToolsByCategory: jest.fn().mockReturnValue([]),
 		};
-		const localTools = {
-			shared_tool: mockBuiltTool('shared_tool', 'local-shared'),
-		};
-		const externalTools = {
-			shared_tool: mockBuiltTool('shared_tool', 'external-shared'),
-			github_workflows: mockBuiltTool('github_workflows', 'github-workflows'),
-			custom_plan: mockBuiltTool('custom_plan', 'custom-plan'),
-		};
+		const localTools = new Map([['shared_tool', mockBuiltTool('shared_tool', 'local-shared')]]);
+		const externalTools = new Map([
+			['shared_tool', mockBuiltTool('shared_tool', 'external-shared')],
+			['github_workflows', mockBuiltTool('github_workflows', 'github-workflows')],
+			['custom_plan', mockBuiltTool('custom_plan', 'custom-plan')],
+		]);
 		const orchestrationContext: Record<string, unknown> = {
 			runId: 'local-priority',
 			browserMcpConfig: undefined,
@@ -287,7 +298,7 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		const agentTools = getDeferredTools();
-		const mcpContextTools = orchestrationContext.mcpTools as Record<
+		const mcpContextTools = orchestrationContext.mcpTools as Map<
 			string,
 			ReturnType<typeof mockBuiltTool>
 		>;
@@ -295,7 +306,7 @@ describe('createInstanceAgent', () => {
 		expect(agentTools.shared_tool).toMatchObject({ marker: 'local-shared' });
 		expect(agentTools.github_workflows).toMatchObject({ marker: 'github-workflows' });
 		expect(agentTools.custom_plan).toMatchObject({ marker: 'custom-plan' });
-		expect(mcpContextTools.shared_tool).toMatchObject({ marker: 'local-shared' });
-		expect(mcpContextTools.github_workflows).toMatchObject({ marker: 'github-workflows' });
+		expect(mcpContextTools.get('shared_tool')).toMatchObject({ marker: 'local-shared' });
+		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
 	});
 });

@@ -657,7 +657,13 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * action context (e.g. 'For "create": ... For "delete": ...') rather than
  * throwing.
  */
-export function sanitizeMcpToolSchemas<TTools extends Record<string, unknown>>(
+type ToolSchemaCollection = Record<string, unknown> | Map<string, unknown>;
+
+function getToolSchemaEntries(tools: ToolSchemaCollection): Iterable<[string, unknown]> {
+	return tools instanceof Map ? tools.entries() : Object.entries(tools);
+}
+
+export function sanitizeMcpToolSchemas<TTools extends ToolSchemaCollection>(
 	tools: TTools,
 	options: {
 		maxDepth?: number;
@@ -667,7 +673,7 @@ export function sanitizeMcpToolSchemas<TTools extends Record<string, unknown>>(
 		onError?: (error: McpSchemaSanitizationError) => void;
 	} = {},
 ): TTools {
-	for (const [name, tool] of Object.entries(tools)) {
+	for (const [name, tool] of getToolSchemaEntries(tools)) {
 		if (!isRecord(tool)) continue;
 
 		const t = tool as { inputSchema?: unknown; outputSchema?: unknown };

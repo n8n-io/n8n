@@ -15,9 +15,10 @@ import type { McpToolNameValidationError } from '../agent/mcp-tool-name-validati
 import { sanitizeMcpToolSchemas } from '../agent/sanitize-mcp-schemas';
 import type { McpSchemaSanitizationError } from '../agent/sanitize-mcp-schemas';
 import type { Logger } from '../logger';
-import type { McpServerConfig } from '../types';
+import { createToolRegistry, createToolRegistryFromTools } from '../tool-registry';
+import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
 
-type McpToolRegistry = Record<string, BuiltTool>;
+type McpToolRegistry = InstanceAiToolRegistry;
 
 /**
  * SSRF policy gate for outbound MCP URLs. The cli's `SsrfProtectionService`
@@ -46,7 +47,7 @@ function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfi
 }
 
 function toolsToRegistry(tools: BuiltTool[]): McpToolRegistry {
-	return Object.fromEntries(tools.map((tool) => [tool.name, tool]));
+	return createToolRegistryFromTools(tools);
 }
 
 function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
@@ -116,7 +117,7 @@ export class McpClientManager {
 
 	async getRegularTools(configs: McpServerConfig[], logger?: Logger): Promise<McpToolRegistry> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
-		if (safeConfigs.length === 0) return {};
+		if (safeConfigs.length === 0) return createToolRegistry();
 
 		const key = JSON.stringify(safeConfigs);
 		return await this.getOrLoad(
@@ -134,10 +135,10 @@ export class McpClientManager {
 		config: McpServerConfig | undefined,
 		logger?: Logger,
 	): Promise<McpToolRegistry> {
-		if (!config) return {};
+		if (!config) return createToolRegistry();
 
 		const [safeConfig] = getSafeMcpServers([config], logger, 'browser MCP');
-		if (!safeConfig) return {};
+		if (!safeConfig) return createToolRegistry();
 
 		const key = JSON.stringify(safeConfig);
 		return await this.getOrLoad(
@@ -229,7 +230,7 @@ export class McpClientManager {
 			onError: warnSkippedMcpSchema(logger, source),
 		});
 
-		const safeTools: McpToolRegistry = {};
+		const safeTools: McpToolRegistry = createToolRegistry();
 		addSafeMcpTools(safeTools, sanitizedTools, {
 			source,
 			claimedToolNames: createClaimedToolNames([]),

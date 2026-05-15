@@ -1,7 +1,8 @@
-import type { BuiltTool } from '@n8n/agents';
 import { isSafeObjectKey } from '@n8n/api-types';
 
-type McpToolRegistry = Record<string, BuiltTool>;
+import type { InstanceAiToolRegistry } from '../types';
+
+type McpToolRegistry = InstanceAiToolRegistry;
 
 export class McpToolNameValidationError extends Error {
 	constructor(
@@ -60,7 +61,7 @@ export function addSafeMcpTools(
 		warn?: (error: McpToolNameValidationError) => void;
 	},
 ): void {
-	for (const [name, tool] of Object.entries(sourceTools)) {
+	for (const [name, tool] of sourceTools) {
 		try {
 			const normalizedName = validateMcpToolName(name, options.source);
 			const claimedBy = options.claimedToolNames.get(normalizedName);
@@ -72,7 +73,7 @@ export function addSafeMcpTools(
 				);
 			}
 			options.claimedToolNames.set(normalizedName, name);
-			target[name] = tool;
+			target.set(name, tool);
 		} catch (error) {
 			if (error instanceof McpToolNameValidationError) {
 				options.warn?.(error);

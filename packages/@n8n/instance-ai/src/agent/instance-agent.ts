@@ -6,6 +6,12 @@ import {
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
 import { getSystemPrompt } from './system-prompt';
+import {
+	createToolRegistry,
+	filterToolRegistry,
+	mergeToolRegistries,
+	toolRegistryValues,
+} from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
@@ -23,14 +29,14 @@ const ALWAYS_LOADED_TOOLS = new Set([
 ]);
 
 function splitDeferredTools(tools: InstanceAiToolRegistry) {
-	const coreTools: InstanceAiToolRegistry = {};
-	const deferredTools: InstanceAiToolRegistry = {};
+	const coreTools = createToolRegistry();
+	const deferredTools = createToolRegistry();
 
-	for (const [name, tool] of Object.entries(tools)) {
+	for (const [name, tool] of tools) {
 		if (ALWAYS_LOADED_TOOLS.has(name)) {
-			coreTools[name] = tool;
+			coreTools.set(name, tool);
 		} else {
-			deferredTools[name] = tool;
+			deferredTools.set(name, tool);
 		}
 	}
 
@@ -60,12 +66,12 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	);
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
-		: {};
+		: createToolRegistry();
 
 	// Browser tool names are excluded from the orchestrator's direct toolset.
 	// They remain available to browser-oriented sub-agents via orchestrationContext.mcpTools.
 	const browserToolNames = new Set([
-		...Object.keys(browserMcpTools),
+		...browserMcpTools.keys(),
 		...(context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? []),
 	]);
 
@@ -80,17 +86,14 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// Build orchestration tools (plan, delegate) — orchestrator-only.
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
-		: {};
+		: createToolRegistry();
 
 	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
-	const reservedToolNames = new Set([
-		...Object.keys(domainTools),
-		...Object.keys(orchestrationTools),
-	]);
+	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
 
 	// Store all MCP tools (external + browser + local gateway) on orchestrationContext for
 	// sub-agents. These are not all given to the orchestrator directly.
-	const allMcpTools: InstanceAiToolRegistry = {};
+	const allMcpTools = createToolRegistry();
 	const mcpContextToolNames = createClaimedToolNames(reservedToolNames);
 	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
 		source: 'local gateway MCP',
@@ -108,40 +111,41 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		warn: warnSkippedMcpTool,
 	});
 
-	const orchestratorLocalMcpTools = Object.fromEntries(
-		Object.entries(rawLocalMcpTools).filter(([name]) => !browserToolNames.has(name)),
+	const orchestratorLocalMcpTools = filterToolRegistry(
+		rawLocalMcpTools,
+		([name]) => !browserToolNames.has(name),
 	);
-	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
+	if (orchestrationContext && allMcpTools.size > 0) {
 		orchestrationContext.mcpTools = allMcpTools;
 	}
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
-	const safeLocalMcpTools: InstanceAiToolRegistry = {};
+	const safeLocalMcpTools = createToolRegistry();
 	addSafeMcpTools(safeLocalMcpTools, orchestratorLocalMcpTools, {
 		source: 'local gateway MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
-	const safeMcpTools: InstanceAiToolRegistry = {};
+	const safeMcpTools = createToolRegistry();
 	addSafeMcpTools(safeMcpTools, mcpTools, {
 		source: 'external MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
 
-	const allOrchestratorTools: InstanceAiToolRegistry = {
-		...orchestratorDomainTools,
-		...orchestrationTools,
-		...safeLocalMcpTools,
-		...safeMcpTools,
-	};
+	const allOrchestratorTools = mergeToolRegistries(
+		orchestratorDomainTools,
+		orchestrationTools,
+		safeLocalMcpTools,
+		safeMcpTools,
+	);
 	const tracedOrchestratorTools =
 		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
-	const hasDeferrableTools = !options.disableDeferredTools && Object.keys(deferredTools).length > 0;
+	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
 	const systemPrompt = getSystemPrompt({
 		researchMode: orchestrationContext?.researchMode,
@@ -169,10 +173,10 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
 		})
-		.tool(Object.values(runtimeTools))
+		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
 	if (hasDeferrableTools) {
-		agent.deferredTool(Object.values(deferredTools), { search: { topK: 5 } });
+		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
 	if (telemetry) {
 		agent.telemetry(telemetry);

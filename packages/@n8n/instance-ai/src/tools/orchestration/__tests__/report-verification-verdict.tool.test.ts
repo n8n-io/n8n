@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 import type { WorkflowLoopAction } from '../../../workflow-loop/workflow-loop-state';
 import { createReportVerificationVerdictTool } from '../report-verification-verdict.tool';
@@ -36,7 +37,7 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-		domainTools: {} as OrchestrationContext['domainTools'],
+		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: jest.fn(),

@@ -1,3 +1,4 @@
+import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiTraceRun } from '../../types';
 
 jest.mock('langsmith', () => {
@@ -423,14 +424,10 @@ describe('createInstanceAiTraceContext', () => {
 			tracing?.actorRun,
 			buildAgentTraceInputs({
 				systemPrompt: ['line 1', 'line 2', 'line 3', 'line 4'].join('\n').repeat(700),
-				tools: {
-					'build-workflow': {
-						description: 'Build or patch a workflow from SDK code.',
-					},
-					'submit-workflow': {
-						description: 'Submit a workflow to n8n.',
-					},
-				} as never,
+				tools: createToolRegistry([
+					['build-workflow', { description: 'Build or patch a workflow from SDK code.' } as never],
+					['submit-workflow', { description: 'Submit a workflow to n8n.' } as never],
+				]),
 				modelId: 'anthropic/claude-sonnet-4-6',
 			}),
 		);
@@ -474,11 +471,12 @@ describe('createInstanceAiTraceContext', () => {
 				tracing?.actorRun,
 				buildAgentTraceInputs({
 					systemPrompt: 'system prompt',
-					tools: {
-						'build-workflow': {
-							description: 'Build or patch a workflow from SDK code.',
-						},
-					} as never,
+					tools: createToolRegistry([
+						[
+							'build-workflow',
+							{ description: 'Build or patch a workflow from SDK code.' } as never,
+						],
+					]),
 					modelId: 'anthropic/claude-sonnet-4-6',
 				}),
 			);
@@ -499,7 +497,7 @@ describe('createInstanceAiTraceContext', () => {
 				url: 'https://custom.endpoint/v1',
 				apiKey: 'sk-super-secret-key',
 			},
-			tools: {} as never,
+			tools: createToolRegistry(),
 		});
 
 		expect(inputs.model).toBe('openai-compat/gpt-4o');
@@ -598,10 +596,10 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		const wrappedTools = tracing!.wrapTools(
-			{ 'ask-user': createAskUserTool() },
+			createToolRegistry([['ask-user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools['ask-user'];
+		const wrappedAskUser = wrappedTools.get('ask-user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
 			throw new Error('Wrapped ask-user tool is not executable');
@@ -675,10 +673,10 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		const wrappedTools = tracing!.wrapTools(
-			{ 'ask-user': createAskUserTool() },
+			createToolRegistry([['ask-user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools['ask-user'];
+		const wrappedAskUser = wrappedTools.get('ask-user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
 			throw new Error('Wrapped ask-user tool is not executable');

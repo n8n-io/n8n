@@ -3,6 +3,7 @@ import { Agent, type CheckpointStore } from '@n8n/agents';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
+import { toolRegistryValues } from '../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type {
 	InstanceAiToolRegistry,
@@ -78,7 +79,7 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
 		})
-		.tool(Object.values(tools))
+		.tool(toolRegistryValues(tools))
 		.checkpoint(options.checkpointStore ?? 'memory');
 	const telemetry = options.tracing?.getTelemetry?.({
 		agentRole: role,

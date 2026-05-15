@@ -6,6 +6,7 @@ import {
 } from '@n8n/api-types';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, InstanceAiContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop';
 import type { WorkflowBuildOutcome, WorkflowLoopState } from '../../../workflow-loop';
@@ -44,6 +45,12 @@ function mockBuiltTool(name: string): BuiltTool {
 	return { name, description: name, handler: jest.fn() };
 }
 
+function mockToolRegistry(
+	tools: Record<string, BuiltTool> = {},
+): OrchestrationContext['domainTools'] {
+	return createToolRegistry(Object.entries(tools));
+}
+
 function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
 	return {
 		threadId: 'test-thread',
@@ -61,7 +68,7 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-		domainTools: {},
+		domainTools: mockToolRegistry(),
 		abortSignal: new AbortController().signal,
 		...overrides,
 	} as OrchestrationContext;
@@ -90,7 +97,7 @@ function createSpawnableContext(
 ): OrchestrationContext {
 	return createMockContext({
 		domainContext: createMockDomainContext(permissionOverrides),
-		domainTools: { 'build-workflow': mockBuiltTool('build-workflow') },
+		domainTools: mockToolRegistry({ 'build-workflow': mockBuiltTool('build-workflow') }),
 		spawnBackgroundTask: jest.fn().mockReturnValue({
 			status: 'started',
 			taskId: 'build-task',
@@ -1165,7 +1172,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 
 	it('does not apply the edit approval gate without domain context', async () => {
 		const context = createMockContext({
-			domainTools: { 'build-workflow': mockBuiltTool('build-workflow') },
+			domainTools: mockToolRegistry({ 'build-workflow': mockBuiltTool('build-workflow') }),
 			spawnBackgroundTask: jest.fn().mockReturnValue({
 				status: 'started',
 				taskId: 'build-task',

@@ -16,8 +16,9 @@ import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../runtime/resumable-stream-executor';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
-import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
+import type { OrchestrationContext } from '../../types';
 import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
 import { createResearchTool } from '../research.tool';
 import { createAskUserTool } from '../shared/ask-user.tool';
@@ -146,7 +147,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 		.handler(async (input: z.infer<typeof browserCredentialSetupToolInputSchema>) => {
 			await Promise.resolve();
 			// Determine tool source: prefer local gateway browser tools over chrome-devtools-mcp
-			const browserTools: InstanceAiToolRegistry = {};
+			const browserTools = createToolRegistry();
 			let toolSource: BrowserToolSource;
 
 			const gatewayBrowserTools = context.localMcpServer?.getToolsByCategory('browser') ?? [];
@@ -158,17 +159,17 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					context.localMcpServer,
 					context.logger,
 				);
-				for (const [name, tool] of Object.entries(allGatewayTools)) {
+				for (const [name, tool] of allGatewayTools) {
 					if (gatewayBrowserNames.has(name)) {
-						browserTools[name] = tool;
+						browserTools.set(name, tool);
 					}
 				}
 				toolSource = 'gateway';
 			} else if (context.browserMcpConfig) {
 				// Chrome DevTools MCP path: use tools from context.mcpTools
-				const mcpTools = context.mcpTools ?? {};
-				for (const [name, tool] of Object.entries(mcpTools)) {
-					browserTools[name] = tool;
+				const mcpTools = context.mcpTools ?? createToolRegistry();
+				for (const [name, tool] of mcpTools) {
+					browserTools.set(name, tool);
 				}
 				toolSource = 'chrome-devtools-mcp';
 			} else {
@@ -178,7 +179,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				};
 			}
 
-			if (Object.keys(browserTools).length === 0) {
+			if (browserTools.size === 0) {
 				return {
 					result:
 						toolSource === 'gateway'
@@ -188,12 +189,12 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			}
 
 			// Add interaction tools
-			browserTools['pause-for-user'] = createPauseForUserTool();
-			browserTools['ask-user'] = createAskUserTool();
+			browserTools.set('pause-for-user', createPauseForUserTool());
+			browserTools.set('ask-user', createAskUserTool());
 
 			// Add consolidated research tool (web-search + fetch-url) from the domain context
 			if (context.domainContext) {
-				browserTools.research = createResearchTool(context.domainContext);
+				browserTools.set('research', createResearchTool(context.domainContext));
 			}
 
 			if (!context.spawnBackgroundTask) {
@@ -242,7 +243,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
 							})
-							.tool(Object.values(tracedBrowserTools))
+							.tool(toolRegistryValues(tracedBrowserTools))
 							.checkpoint(context.checkpointStore ?? 'memory');
 						const telemetry = traceContext?.getTelemetry?.({
 							agentRole: BROWSER_CREDENTIAL_AGENT_ROLE,
@@ -367,7 +368,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				payload: {
 					parentId: context.orchestratorAgentId,
 					role: BROWSER_CREDENTIAL_AGENT_ROLE,
-					tools: Object.keys(browserTools),
+					tools: toolRegistryKeys(browserTools),
 					taskId,
 					kind: 'browser-setup',
 					title: 'Setting up credential',

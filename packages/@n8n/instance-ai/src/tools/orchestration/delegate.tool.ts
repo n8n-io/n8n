@@ -18,6 +18,7 @@ import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
@@ -38,16 +39,24 @@ function resolveDelegateTools(
 	toolNames: string[],
 ): { validTools: InstanceAiToolRegistry; errors: string[] } {
 	const errors: string[] = [];
-	const validTools: InstanceAiToolRegistry = {};
-	const availableMcpTools = context.mcpTools ?? {};
+	const validTools = createToolRegistry();
+	const availableMcpTools = context.mcpTools ?? createToolRegistry();
 
 	for (const name of toolNames) {
 		if (FORBIDDEN_TOOL_NAMES.has(name)) {
 			errors.push(`"${name}" is an orchestration tool and cannot be delegated`);
-		} else if (name in context.domainTools) {
-			validTools[name] = context.domainTools[name];
-		} else if (name in availableMcpTools) {
-			validTools[name] = availableMcpTools[name];
+			continue;
+		}
+
+		const domainTool = context.domainTools.get(name);
+		if (domainTool) {
+			validTools.set(name, domainTool);
+			continue;
+		}
+
+		const mcpTool = availableMcpTools.get(name);
+		if (mcpTool) {
+			validTools.set(name, mcpTool);
 		} else {
 			errors.push(`"${name}" is not a registered domain tool`);
 		}

@@ -33,8 +33,9 @@ import {
 } from './tracing-utils';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
-import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
+import type { OrchestrationContext } from '../../types';
 import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
 import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
 import { ASK_USER_TOOL_ID } from '../shared/ask-user.tool';
@@ -651,28 +652,30 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 		)
 		.handler(async (input: { guidance?: string }) => {
 			// ── Collect planner tools ──────────────────────────────────────
-			const plannerTools: InstanceAiToolRegistry = {};
+			const plannerTools = createToolRegistry();
 
 			for (const name of PLANNER_DOMAIN_TOOL_NAMES) {
-				if (name in context.domainTools) {
-					plannerTools[name] = context.domainTools[name];
+				const tool = context.domainTools.get(name);
+				if (tool) {
+					plannerTools.set(name, tool);
 				}
 			}
 
 			for (const name of PLANNER_RESEARCH_TOOL_NAMES) {
-				if (name in context.domainTools) {
-					plannerTools[name] = context.domainTools[name];
+				const tool = context.domainTools.get(name);
+				if (tool) {
+					plannerTools.set(name, tool);
 				}
 			}
 
 			// Best-practices guidance — planner-exclusive
-			plannerTools.templates = createTemplatesTool();
+			plannerTools.set('templates', createTemplatesTool());
 
 			// Incremental plan accumulation + approval tools
 			const accumulator = new BlueprintAccumulator();
-			plannerTools['add-plan-item'] = createAddPlanItemTool(accumulator, context);
-			plannerTools['remove-plan-item'] = createRemovePlanItemTool(accumulator, context);
-			plannerTools['submit-plan'] = createSubmitPlanTool(accumulator, context);
+			plannerTools.set('add-plan-item', createAddPlanItemTool(accumulator, context));
+			plannerTools.set('remove-plan-item', createRemovePlanItemTool(accumulator, context));
+			plannerTools.set('submit-plan', createSubmitPlanTool(accumulator, context));
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
@@ -696,7 +699,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				payload: {
 					parentId: context.orchestratorAgentId,
 					role: 'planner',
-					tools: Object.keys(plannerTools),
+					tools: toolRegistryKeys(plannerTools),
 					kind: 'planner' as const,
 					title: 'Planning',
 					subtitle: truncateLabel(subtitle),
@@ -725,7 +728,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
 					})
-					.tool(Object.values(tracedPlannerTools))
+					.tool(toolRegistryValues(tracedPlannerTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
 				const telemetry = context.tracing?.getTelemetry?.({
 					agentRole: 'planner',

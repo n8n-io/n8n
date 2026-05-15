@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { createToolRegistry } from '../../../tool-registry';
 import type {
 	CheckpointSettleResult,
 	OrchestrationContext,
@@ -38,7 +39,7 @@ function makeContext(service: PlannedTaskService): OrchestrationContext {
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-		domainTools: {},
+		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: { get: jest.fn(), save: jest.fn() },
 		plannedTaskService: service,

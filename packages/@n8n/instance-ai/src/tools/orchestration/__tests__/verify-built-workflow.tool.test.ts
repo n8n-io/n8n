@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { createToolRegistry } from '../../../tool-registry';
 import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
@@ -60,7 +61,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			warn: jest.fn(),
 			error: jest.fn(),
 		} as unknown as OrchestrationContext['logger'],
-		domainTools: {},
+		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as OrchestrationContext['taskStorage'],
 		workflowTaskService,

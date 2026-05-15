@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 import { delegateInputSchema } from '../delegate.schemas';
 
@@ -30,7 +31,12 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-		domainTools: domainTools as OrchestrationContext['domainTools'],
+		domainTools: createToolRegistry(
+			Object.entries(domainTools).map(([name, tool]) => [
+				name,
+				{ name, description: name, ...(tool as object) },
+			]),
+		),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: jest.fn(),

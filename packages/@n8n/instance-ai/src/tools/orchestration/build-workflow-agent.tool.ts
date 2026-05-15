@@ -7,7 +7,7 @@
  * - Tool mode (fallback): agent uses build-workflow tool with string-based code
  */
 
-import { Agent, Tool } from '@n8n/agents';
+import { Agent, Tool, type BuiltTool } from '@n8n/agents';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { createHash, randomUUID } from 'node:crypto';
@@ -31,6 +31,7 @@ import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
 import type { BuilderSandboxSession } from '../../runtime/builder-sandbox-session-registry';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type {
 	BackgroundTaskResult,
@@ -64,12 +65,10 @@ interface BuilderMemoryBinding {
 	thread: string;
 }
 
-function toToolRegistry(
-	tools: ReadonlyArray<InstanceAiToolRegistry[string]>,
-): InstanceAiToolRegistry {
-	const registry: InstanceAiToolRegistry = {};
+function toToolRegistry(tools: readonly BuiltTool[]): InstanceAiToolRegistry {
+	const registry = createToolRegistry();
 	for (const tool of tools) {
-		registry[tool.name] = tool;
+		registry.set(tool.name, tool);
 	}
 	return registry;
 }
@@ -848,17 +847,18 @@ export async function startBuildWorkflowAgentTask(
 			'ask-user',
 		];
 
-		builderTools = {};
+		builderTools = createToolRegistry();
 		for (const name of toolNames) {
-			if (context.domainTools[name]) {
-				builderTools[name] = context.domainTools[name];
+			const tool = context.domainTools.get(name);
+			if (tool) {
+				builderTools.set(name, tool);
 			}
 		}
 		if (context.workflowTaskService && context.domainContext) {
-			builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(context);
+			builderTools.set('verify-built-workflow', createVerifyBuiltWorkflowTool(context));
 		}
 	} else {
-		builderTools = {};
+		builderTools = createToolRegistry();
 
 		const toolNames = [
 			'build-workflow',
@@ -869,12 +869,13 @@ export async function startBuildWorkflowAgentTask(
 			...(context.researchMode ? ['research'] : []),
 		];
 		for (const name of toolNames) {
-			if (name in context.domainTools) {
-				builderTools[name] = context.domainTools[name];
+			const tool = context.domainTools.get(name);
+			if (tool) {
+				builderTools.set(name, tool);
 			}
 		}
 
-		if (!builderTools['build-workflow']) {
+		if (!builderTools.has('build-workflow')) {
 			return { result: 'Error: build-workflow tool not available.', taskId: '', agentId: '' };
 		}
 	}
@@ -1050,54 +1051,57 @@ export async function startBuildWorkflowAgentTask(
 							}
 
 							const mainWorkflowPath = `${root}/src/workflow.ts`;
-							builderTools['submit-workflow'] = createIdentityEnforcedSubmitWorkflowTool({
-								context: domainContext,
-								workspace,
-								credentialMap: credMap,
-								root,
-								currentRunId: context.runId,
-								getWorkflowLoopState: async () =>
-									await context.workflowTaskService?.getWorkflowLoopState(workItemId),
-								onGuardFired: (event) => {
-									context.trackTelemetry?.('Builder remediation guard fired', {
-										thread_id: context.threadId,
-										run_id: context.runId,
-										work_item_id: workItemId,
-										workflow_id: event.workflowId,
-										category: event.category,
-										attempt_count: event.attemptCount,
-										reason: event.reason,
-									});
-								},
-								onAttempt: async (attempt) => {
-									submitAttempts.set(attempt.filePath, attempt);
-									submitAttemptHistory.push(attempt);
-									if (attempt.filePath !== mainWorkflowPath) {
-										return;
-									}
-									if (attempt.success && attempt.workflowId && activeBuilderSession) {
-										context.builderSandboxSessionRegistry?.aliasWorkflowId(
-											activeBuilderSession.sessionId,
-											attempt.workflowId,
-										);
-									}
-									if (!context.workflowTaskService) {
-										return;
-									}
+							builderTools.set(
+								'submit-workflow',
+								createIdentityEnforcedSubmitWorkflowTool({
+									context: domainContext,
+									workspace,
+									credentialMap: credMap,
+									root,
+									currentRunId: context.runId,
+									getWorkflowLoopState: async () =>
+										await context.workflowTaskService?.getWorkflowLoopState(workItemId),
+									onGuardFired: (event) => {
+										context.trackTelemetry?.('Builder remediation guard fired', {
+											thread_id: context.threadId,
+											run_id: context.runId,
+											work_item_id: workItemId,
+											workflow_id: event.workflowId,
+											category: event.category,
+											attempt_count: event.attemptCount,
+											reason: event.reason,
+										});
+									},
+									onAttempt: async (attempt) => {
+										submitAttempts.set(attempt.filePath, attempt);
+										submitAttemptHistory.push(attempt);
+										if (attempt.filePath !== mainWorkflowPath) {
+											return;
+										}
+										if (attempt.success && attempt.workflowId && activeBuilderSession) {
+											context.builderSandboxSessionRegistry?.aliasWorkflowId(
+												activeBuilderSession.sessionId,
+												attempt.workflowId,
+											);
+										}
+										if (!context.workflowTaskService) {
+											return;
+										}
 
-									await context.workflowTaskService.reportBuildOutcome(
-										buildOutcome(
-											workItemId,
-											context.runId,
-											taskId,
-											attempt,
-											attempt.success
-												? 'Workflow submitted and ready for verification.'
-												: (attempt.errors?.join(' ') ?? 'Workflow submission failed.'),
-										),
-									);
-								},
-							});
+										await context.workflowTaskService.reportBuildOutcome(
+											buildOutcome(
+												workItemId,
+												context.runId,
+												taskId,
+												attempt,
+												attempt.success
+													? 'Workflow submitted and ready for verification.'
+													: (attempt.errors?.join(' ') ?? 'Workflow submission failed.'),
+											),
+										);
+									},
+								}),
+							);
 
 							const tracedBuilderTools = traceSubAgentTools(
 								context,
@@ -1114,7 +1118,7 @@ export async function startBuildWorkflowAgentTask(
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
 								})
-								.tool(Object.values(tracedBuilderTools))
+								.tool(toolRegistryValues(tracedBuilderTools))
 								.workspace(workspace)
 								.checkpoint(context.checkpointStore ?? 'memory');
 							const telemetry = traceContext?.getTelemetry?.({
@@ -1240,7 +1244,7 @@ export async function startBuildWorkflowAgentTask(
 							if (mainWorkflowAttempt.sourceHash !== currentMainWorkflowHash) {
 								// Builder edited the file after its last submit — auto-re-submit
 								// instead of discarding the agent's work.
-								const submitTool = tracedBuilderTools['submit-workflow'];
+								const submitTool = tracedBuilderTools.get('submit-workflow');
 								if (submitTool?.handler) {
 									const resubmit = (await submitTool.handler(
 										{
@@ -1359,7 +1363,7 @@ export async function startBuildWorkflowAgentTask(
 						}
 
 						let fallbackMainWorkflowId: string | undefined;
-						recordSuccessfulWorkflowBuilds(builderTools['build-workflow'], (workflowId) => {
+						recordSuccessfulWorkflowBuilds(builderTools.get('build-workflow'), (workflowId) => {
 							fallbackMainWorkflowId = workflowId;
 						});
 
@@ -1376,7 +1380,7 @@ export async function startBuildWorkflowAgentTask(
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
 							})
-							.tool(Object.values(tracedBuilderTools))
+							.tool(toolRegistryValues(tracedBuilderTools))
 							.checkpoint(context.checkpointStore ?? 'memory');
 						const telemetry = traceContext?.getTelemetry?.({
 							agentRole: 'workflow-builder',
@@ -1490,7 +1494,7 @@ export async function startBuildWorkflowAgentTask(
 		payload: {
 			parentId: context.orchestratorAgentId,
 			role: 'workflow-builder',
-			tools: Object.keys(builderTools),
+			tools: toolRegistryKeys(builderTools),
 			taskId,
 			kind: 'builder',
 			title: 'Building workflow',

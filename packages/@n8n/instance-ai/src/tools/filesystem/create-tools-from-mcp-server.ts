@@ -1,4 +1,4 @@
-import { Tool, type BuiltTool } from '@n8n/agents';
+import { Tool } from '@n8n/agents';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -23,7 +23,8 @@ import {
 	sanitizeMcpToolSchemas,
 } from '../../agent/sanitize-mcp-schemas';
 import type { Logger } from '../../logger';
-import type { LocalMcpServer } from '../../types';
+import { createToolRegistry } from '../../tool-registry';
+import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -152,8 +153,8 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
 	logger?: Logger,
-): Record<string, BuiltTool> {
-	const tools: Record<string, BuiltTool> = {};
+): InstanceAiToolRegistry {
+	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
 	const warnTool = warnSkippedLocalMcpTool(logger);
 	const warnSchema = warnSkippedLocalMcpSchema(logger);
@@ -282,13 +283,13 @@ export function createToolsFromLocalMcpServer(
 			})
 			.build();
 
-		tools[toolName] = tool;
+		tools.set(toolName, tool);
 	}
 
 	const sanitizedTools = sanitizeMcpToolSchemas(tools, {
 		onError: warnSkippedLocalMcpSchema(logger),
 	});
-	const safeTools: Record<string, BuiltTool> = {};
+	const safeTools = createToolRegistry();
 	addSafeMcpTools(safeTools, sanitizedTools, {
 		source: LOCAL_GATEWAY_MCP_SOURCE,
 		claimedToolNames: createClaimedToolNames([]),

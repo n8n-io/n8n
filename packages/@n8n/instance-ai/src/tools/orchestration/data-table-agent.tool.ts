@@ -21,8 +21,9 @@ import {
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
-import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
+import type { OrchestrationContext } from '../../types';
 
 const DATA_TABLE_TOOL_NAME = 'data-tables';
 
@@ -45,15 +46,17 @@ export function startDataTableAgentTask(
 	input: StartDataTableAgentInput,
 ): StartedBackgroundAgentTask {
 	// Grab the consolidated data-tables tool (and parse-file if available) from domain tools
-	const dataTableTools: InstanceAiToolRegistry = {};
-	if (DATA_TABLE_TOOL_NAME in context.domainTools) {
-		dataTableTools[DATA_TABLE_TOOL_NAME] = context.domainTools[DATA_TABLE_TOOL_NAME];
+	const dataTableTools = createToolRegistry();
+	const dataTableTool = context.domainTools.get(DATA_TABLE_TOOL_NAME);
+	if (dataTableTool) {
+		dataTableTools.set(DATA_TABLE_TOOL_NAME, dataTableTool);
 	}
-	if ('parse-file' in context.domainTools) {
-		dataTableTools['parse-file'] = context.domainTools['parse-file'];
+	const parseFileTool = context.domainTools.get('parse-file');
+	if (parseFileTool) {
+		dataTableTools.set('parse-file', parseFileTool);
 	}
 
-	if (!(DATA_TABLE_TOOL_NAME in dataTableTools)) {
+	if (!dataTableTools.has(DATA_TABLE_TOOL_NAME)) {
 		return { result: 'Error: data-tables tool not available.', taskId: '', agentId: '' };
 	}
 
@@ -96,7 +99,7 @@ export function startDataTableAgentTask(
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
 					})
-					.tool(Object.values(tracedDataTableTools))
+					.tool(toolRegistryValues(tracedDataTableTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
 				const telemetry = traceContext?.getTelemetry?.({
 					agentRole: 'data-table-manager',
@@ -176,7 +179,7 @@ export function startDataTableAgentTask(
 		payload: {
 			parentId: context.orchestratorAgentId,
 			role: 'data-table-manager',
-			tools: Object.keys(dataTableTools),
+			tools: toolRegistryKeys(dataTableTools),
 			taskId,
 			kind: 'data-table',
 			title: 'Managing data table',

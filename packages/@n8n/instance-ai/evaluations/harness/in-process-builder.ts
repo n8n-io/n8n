@@ -47,6 +47,7 @@ import { MAX_STEPS } from '../../src/constants/max-steps';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
+import { createToolRegistry, toolRegistryValues } from '../../src/tool-registry';
 import { createAllTools } from '../../src/tools';
 import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/build-workflow-agent.prompt';
 import { createVerifyBuiltWorkflowTool } from '../../src/tools/orchestration/verify-built-workflow.tool';
@@ -195,7 +196,7 @@ export async function buildInProcess(
 	}
 
 	const allTools = createAllTools(services.context);
-	const builderTools: InstanceAiToolRegistry = {};
+	const builderTools: InstanceAiToolRegistry = createToolRegistry();
 
 	let builderWs: BuilderWorkspace;
 	try {
@@ -283,25 +284,28 @@ export async function buildInProcess(
 		'templates',
 	] as const;
 	for (const name of sandboxToolNames) {
-		const tool = (allTools as Record<string, unknown>)[name];
-		if (tool) builderTools[name] = tool;
+		const tool = allTools.get(name);
+		if (tool) builderTools.set(name, tool);
 	}
 
 	// `submit-workflow` reports each attempt back via the onAttempt callback.
 	// Production wires this to `workflowTaskService.reportBuildOutcome` so the
 	// builder loop and `verify-built-workflow` can read it. We mirror that
 	// here so the same prompt contract works in eval.
-	builderTools['submit-workflow'] = createSubmitWorkflowTool(
-		services.context,
-		builderWs.workspace,
-		undefined,
-		async (attempt: SubmitWorkflowAttempt) => {
-			await workflowTaskService.reportBuildOutcome(
-				toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
-			);
-		},
+	builderTools.set(
+		'submit-workflow',
+		createSubmitWorkflowTool(
+			services.context,
+			builderWs.workspace,
+			undefined,
+			async (attempt: SubmitWorkflowAttempt) => {
+				await workflowTaskService.reportBuildOutcome(
+					toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
+				);
+			},
+		),
 	);
-	builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(verifyContext);
+	builderTools.set('verify-built-workflow', createVerifyBuiltWorkflowTool(verifyContext));
 
 	const agent = new Agent(agentId)
 		.model(modelId)
@@ -310,7 +314,7 @@ export async function buildInProcess(
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
 			},
 		})
-		.tool(Object.values(builderTools))
+		.tool(toolRegistryValues(builderTools))
 		.workspace(builderWs.workspace);
 
 	const abortController = new AbortController();

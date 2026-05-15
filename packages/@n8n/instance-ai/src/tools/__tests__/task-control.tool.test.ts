@@ -1,4 +1,5 @@
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { createToolRegistry } from '../../tool-registry';
 import type { OrchestrationContext } from '../../types';
 import { createTaskControlTool } from '../task-control.tool';
 
@@ -17,7 +18,7 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			subscribe: jest.fn(),
 		},
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } as never,
-		domainTools: {},
+		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: jest.fn(),

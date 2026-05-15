@@ -85,7 +85,7 @@ function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): jest.Mocked<LocalMcpS
 /** Build the tool and return its execute function. */
 function getExecute(server: LocalMcpServer, toolName = 'write_file') {
 	const tools = createToolsFromLocalMcpServer(server);
-	const tool = tools[toolName];
+	const tool = tools.get(toolName);
 	if (!tool) throw new Error(`Tool '${toolName}' was not created`);
 	return async (args: Record<string, unknown>, ctx: unknown) =>
 		await executeTool<McpToolCallResult>(tool, args, ctx);
@@ -108,8 +108,8 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('creates a tool for each advertised tool', () => {
 			const server = makeMockServer([SAMPLE_TOOL, { ...SAMPLE_TOOL, name: 'read_file' }]);
 			const tools = createToolsFromLocalMcpServer(server);
-			expect(Object.keys(tools)).toContain('write_file');
-			expect(Object.keys(tools)).toContain('read_file');
+			expect(tools.has('write_file')).toBe(true);
+			expect(tools.has('read_file')).toBe(true);
 		});
 
 		it('falls back to record schema when inputSchema conversion fails', () => {
@@ -122,7 +122,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			]);
 			// Should not throw — the tool must be created even with a bad schema
 			expect(() => createToolsFromLocalMcpServer(server)).not.toThrow();
-			expect(createToolsFromLocalMcpServer(server)['bad_tool']).toBeDefined();
+			expect(createToolsFromLocalMcpServer(server).get('bad_tool')).toBeDefined();
 		});
 
 		it('skips tools with invalid names', () => {
@@ -134,8 +134,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools['bad tool']).toBeUndefined();
-			expect(tools.read_file).toBeDefined();
+			expect(tools.get('bad tool')).toBeUndefined();
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -154,8 +154,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(Object.prototype.hasOwnProperty.call(tools, 'constructor')).toBe(false);
-			expect(tools.read_file).toBeDefined();
+			expect(tools.has('constructor')).toBe(false);
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -174,8 +174,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools.custom_tool).toBeDefined();
-			expect(tools['custom-tool']).toBeUndefined();
+			expect(tools.get('custom_tool')).toBeDefined();
+			expect(tools.get('custom-tool')).toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -194,8 +194,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools['ＴＯＯＬ']).toBeUndefined();
-			expect(tools.read_file).toBeDefined();
+			expect(tools.get('ＴＯＯＬ')).toBeUndefined();
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -221,8 +221,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools.huge_tool).toBeUndefined();
-			expect(tools.read_file).toBeDefined();
+			expect(tools.get('huge_tool')).toBeUndefined();
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsupported schema',
 				expect.objectContaining({

@@ -1,6 +1,7 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
-import type { InstanceAiToolRegistry, OrchestrationContext, TaskStorage } from '../../../types';
+import { createToolRegistry } from '../../../tool-registry';
+import type { OrchestrationContext, TaskStorage } from '../../../types';
 
 const { createResearchWithAgentTool, researchWithAgentInputSchema } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -22,14 +23,17 @@ function createMockEventBus(): InstanceAiEventBus {
 }
 
 function createMockContext(overrides?: Partial<OrchestrationContext>): OrchestrationContext {
-	const domainTools: InstanceAiToolRegistry = {
-		research: { name: 'research', description: 'research', handler: jest.fn() },
-		'list-workflows': {
-			name: 'list-workflows',
-			description: 'list-workflows',
-			handler: jest.fn(),
-		},
-	};
+	const domainTools = createToolRegistry([
+		['research', { name: 'research', description: 'research', handler: jest.fn() }],
+		[
+			'list-workflows',
+			{
+				name: 'list-workflows',
+				description: 'list-workflows',
+				handler: jest.fn(),
+			},
+		],
+	]);
 
 	return {
 		threadId: 'thread-123',
@@ -118,9 +122,12 @@ describe('research-with-agent tool', () => {
 
 		it('returns error when research tool is not available', async () => {
 			const context = createMockContext({
-				domainTools: {
-					'list-workflows': { id: 'list-workflows' } as never,
-				},
+				domainTools: createToolRegistry([
+					[
+						'list-workflows',
+						{ name: 'list-workflows', description: 'list-workflows', handler: jest.fn() },
+					],
+				]),
 			});
 			const tool = createResearchWithAgentTool(context);
 

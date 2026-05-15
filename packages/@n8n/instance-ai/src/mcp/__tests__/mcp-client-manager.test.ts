@@ -6,7 +6,7 @@ jest.mock('@n8n/agents', () => ({
 }));
 
 jest.mock('../../agent/sanitize-mcp-schemas', () => ({
-	sanitizeMcpToolSchemas: jest.fn((tools: Record<string, unknown>) => tools),
+	sanitizeMcpToolSchemas: jest.fn((tools: unknown) => tools),
 }));
 
 import { createResultError, createResultOk, UserError } from 'n8n-workflow';
@@ -146,7 +146,7 @@ describe('McpClientManager', () => {
 					{ name: 'bad name', url: 'https://browser.example.com/mcp' },
 					logger as never,
 				),
-			).resolves.toEqual({});
+			).resolves.toEqual(new Map());
 
 			expect(mockedMcpClient).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -173,7 +173,7 @@ describe('McpClientManager', () => {
 							limit: 32,
 						},
 					});
-					return {};
+					return new Map();
 				},
 			);
 

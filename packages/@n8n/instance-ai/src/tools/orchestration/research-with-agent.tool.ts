@@ -20,8 +20,9 @@ import {
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
-import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
+import type { OrchestrationContext } from '../../types';
 
 export interface StartResearchAgentInput {
 	goal: string;
@@ -42,12 +43,13 @@ export async function startResearchAgentTask(
 	context: OrchestrationContext,
 	input: StartResearchAgentInput,
 ): Promise<StartedResearchAgentTask> {
-	const researchTools: InstanceAiToolRegistry = {};
-	if ('research' in context.domainTools) {
-		researchTools.research = context.domainTools.research;
+	const researchTools = createToolRegistry();
+	const researchTool = context.domainTools.get('research');
+	if (researchTool) {
+		researchTools.set('research', researchTool);
 	}
 
-	if (Object.keys(researchTools).length === 0) {
+	if (researchTools.size === 0) {
 		return { result: 'Error: research tool not available.', taskId: '', agentId: '' };
 	}
 
@@ -97,7 +99,7 @@ export async function startResearchAgentTask(
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
 					})
-					.tool(Object.values(tracedResearchTools))
+					.tool(toolRegistryValues(tracedResearchTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
 				const telemetry = traceContext?.getTelemetry?.({
 					agentRole: 'web-researcher',
@@ -173,7 +175,7 @@ export async function startResearchAgentTask(
 		payload: {
 			parentId: context.orchestratorAgentId,
 			role: 'web-researcher',
-			tools: Object.keys(researchTools),
+			tools: toolRegistryKeys(researchTools),
 			taskId,
 			kind: 'researcher',
 			title: 'Researching',

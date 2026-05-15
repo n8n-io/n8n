@@ -118,7 +118,7 @@ describe('domain tool construction', () => {
 
 		const domainTools = createAllTools(context);
 
-		expect(domainTools).toMatchObject({
+		expect(Object.fromEntries(domainTools)).toMatchObject({
 			workflows: { id: 'workflows' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
@@ -136,7 +136,7 @@ describe('domain tool construction', () => {
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
-		expect(orchestratorTools).toMatchObject({
+		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflows: { id: 'workflows-filtered' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
@@ -158,8 +158,8 @@ describe('domain tool construction', () => {
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
-		expect(orchestratorTools).not.toHaveProperty('browser_connect');
-		expect(orchestratorTools).not.toHaveProperty('browser_navigate');
+		expect(orchestratorTools.has('browser_connect')).toBe(false);
+		expect(orchestratorTools.has('browser_navigate')).toBe(false);
 	});
 
 	it('includes parse-file tools when attachments are parseable', () => {
@@ -168,11 +168,9 @@ describe('domain tool construction', () => {
 			currentUserAttachments: [{ data: '', mimeType: 'text/html', fileName: 'page.html' }],
 		});
 
-		expect(createAllTools(context)).toMatchObject({
-			'parse-file': { id: 'parse-file' },
-		});
-		expect(createOrchestratorDomainTools(context)).toMatchObject({
-			'parse-file': { id: 'parse-file' },
+		expect(createAllTools(context).get('parse-file')).toMatchObject({ id: 'parse-file' });
+		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
+			id: 'parse-file',
 		});
 	});
 });

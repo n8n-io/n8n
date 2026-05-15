@@ -3,6 +3,7 @@ import { Client, RunTree } from 'langsmith';
 import { getCurrentRunTree, withRunTree as withLangSmithRunTree } from 'langsmith/traceable';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
+import { createToolRegistry } from '../tool-registry';
 import type {
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
@@ -262,11 +263,11 @@ function summarizeToolSet(
 	fieldPrefix: 'loaded' | 'deferred' | 'runtime',
 	tools: InstanceAiToolRegistry | undefined,
 ): Record<string, unknown> {
-	if (!tools || Object.keys(tools).length === 0) {
+	if (!tools || tools.size === 0) {
 		return {};
 	}
 
-	const summaries = Object.entries(tools).map(([name, tool]) => ({
+	const summaries = Array.from(tools, ([name, tool]) => ({
 		name,
 		...(summarizeToolDescription(tool) ? { description: summarizeToolDescription(tool) } : {}),
 	}));
@@ -1015,12 +1016,10 @@ function wrapTools(
 	tools: InstanceAiToolRegistry,
 	options?: InstanceAiToolTraceOptions,
 ): InstanceAiToolRegistry {
-	const wrapped: InstanceAiToolRegistry = {};
-	const entries: Array<[string, unknown]> = Object.entries(tools);
+	const wrapped = createToolRegistry();
 
-	for (const [name, tool] of entries) {
-		const originalTool = tools[name];
-		wrapped[name] = isTraceableNativeTool(tool) ? wrapToolHandler(tool, options) : originalTool;
+	for (const [name, tool] of tools) {
+		wrapped.set(name, isTraceableNativeTool(tool) ? wrapToolHandler(tool, options) : tool);
 	}
 
 	return wrapped;
@@ -1084,19 +1083,18 @@ function replayWrapTools(
 	options?: InstanceAiToolTraceOptions,
 ): InstanceAiToolRegistry {
 	const agentRole = options?.agentRole ?? 'orchestrator';
-	const wrapped: InstanceAiToolRegistry = {};
-	const entries: Array<[string, unknown]> = Object.entries(tools);
+	const wrapped = createToolRegistry();
 
-	for (const [name, tool] of entries) {
+	for (const [name, tool] of tools) {
 		if (!isTraceableNativeTool(tool)) {
-			wrapped[name] = tools[name];
+			wrapped.set(name, tool);
 			continue;
 		}
 
 		if (PURE_REPLAY_TOOLS.has(tool.name)) {
-			wrapped[name] = pureReplayWrapTool(tool, traceIndex, idRemapper, agentRole);
+			wrapped.set(name, pureReplayWrapTool(tool, traceIndex, idRemapper, agentRole));
 		} else {
-			wrapped[name] = replayWrapTool(tool, traceIndex, idRemapper, agentRole);
+			wrapped.set(name, replayWrapTool(tool, traceIndex, idRemapper, agentRole));
 		}
 	}
 
@@ -1169,15 +1167,14 @@ function recordWrapTools(
 	options?: InstanceAiToolTraceOptions,
 ): InstanceAiToolRegistry {
 	const agentRole = options?.agentRole ?? 'orchestrator';
-	const wrapped: InstanceAiToolRegistry = {};
-	const entries: Array<[string, unknown]> = Object.entries(tools);
+	const wrapped = createToolRegistry();
 
-	for (const [name, tool] of entries) {
+	for (const [name, tool] of tools) {
 		if (!isTraceableNativeTool(tool)) {
-			wrapped[name] = tools[name];
+			wrapped.set(name, tool);
 			continue;
 		}
-		wrapped[name] = recordWrapTool(tool, traceWriter, agentRole, options);
+		wrapped.set(name, recordWrapTool(tool, traceWriter, agentRole, options));
 	}
 
 	return wrapped;

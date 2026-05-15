@@ -39,7 +39,7 @@ import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory'
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
-export type InstanceAiToolRegistry = Record<string, BuiltTool>;
+export type InstanceAiToolRegistry = Map<string, BuiltTool>;
 
 export interface WorkflowSummary {
 	id: string;
