@@ -8,14 +8,15 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionData, ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, StorageConfig } from 'n8n-core';
 
+import { DbStore } from './execution-data/db-store';
 import { FsStore } from './execution-data/fs-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import type { ExecutionRef, WorkflowSnapshot } from './execution-data/types';
+import type { ExecutionDataStore, ExecutionRef, WorkflowSnapshot } from './execution-data/types';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
@@ -30,6 +31,7 @@ export class ExecutionPersistence {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly fsStore: FsStore,
+		private readonly dbStore: DbStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
@@ -53,21 +55,11 @@ export class ExecutionPersistence {
 			return await this.executionRepository.manager.transaction(async (tx) => {
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
+				const ref = { workflowId: id, executionId };
+				const bundle = { data, workflowData: workflowSnapshot, workflowVersionId };
 
-				if (storedAt === 'db') {
-					await tx.insert(ExecutionData, {
-						executionId,
-						workflowData: workflowSnapshot,
-						data,
-						workflowVersionId,
-					});
-					return executionId;
-				}
+				await this.getStoreFor(storedAt).write(ref, bundle, tx);
 
-				await this.fsStore.write(
-					{ workflowId: id, executionId },
-					{ data, workflowData: workflowSnapshot, workflowVersionId },
-				);
 				return executionId;
 			});
 		} catch (error) {
@@ -91,11 +83,7 @@ export class ExecutionPersistence {
 		const hasDataField = execution.data !== undefined || execution.workflowData !== undefined;
 
 		if (!hasDataField) {
-			return await this.executionRepository.updateExistingExecution(
-				executionId,
-				execution,
-				conditions,
-			);
+			return await this.updateEntityOnly(executionId, execution, conditions);
 		}
 
 		const entity = await this.executionRepository.findOne({
@@ -105,66 +93,97 @@ export class ExecutionPersistence {
 
 		if (!entity) return false;
 
-		if (entity.storedAt === 'db') {
-			return await this.executionRepository.updateExistingExecution(
-				executionId,
-				execution,
-				conditions,
-			);
-		}
+		const ref = { workflowId: entity.workflowId, executionId };
+		const store = this.getStoreFor(entity.storedAt);
 
-		return await this.applyFsUpdate(
-			{ workflowId: entity.workflowId, executionId },
-			execution,
-			conditions,
-		);
+		return await this.applyDataUpdate(ref, store, execution, conditions);
 	}
 
-	private async applyFsUpdate(
-		ref: ExecutionRef,
+	private async updateEntityOnly(
+		executionId: string,
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
+		const executionInformation = this.extractEntityFields(execution);
+		if (Object.keys(executionInformation).length === 0) return true;
+
+		const whereCondition = this.buildEntityWhereCondition(executionId, conditions);
+		const result = await this.executionRepository.update(whereCondition, executionInformation);
+		return (result.affected ?? 0) > 0;
+	}
+
+	private async applyDataUpdate(
+		ref: ExecutionRef,
+		store: ExecutionDataStore,
+		execution: Partial<IExecutionResponse>,
+		conditions?: UpdateExecutionConditions,
+	): Promise<boolean> {
+		const { data, workflowData } = execution;
+		const executionInformation = this.extractEntityFields(execution);
+
+		return await this.executionRepository.manager.transaction(async (tx) => {
+			if (Object.keys(executionInformation).length > 0) {
+				const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
+				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
+				if ((result.affected ?? 0) === 0) return false;
+			}
+
+			const existing = await store.read(ref);
+			if (!existing) throw new MissingExecutionDataError(ref);
+
+			await store.write(
+				ref,
+				{
+					data: data !== undefined ? stringify(data) : existing.data,
+					workflowData: workflowData
+						? this.toWorkflowSnapshot(workflowData)
+						: existing.workflowData,
+					workflowVersionId: existing.workflowVersionId,
+				},
+				tx,
+			);
+
+			return true;
+		});
+	}
+
+	private extractEntityFields(execution: Partial<IExecutionResponse>) {
 		const {
 			id: _id,
-			data,
+			data: _data,
 			workflowId: _workflowId,
-			workflowData,
+			workflowData: _workflowData,
 			workflowVersionId: _workflowVersionId, // immutable, never updated
 			createdAt: _createdAt, // immutable, never updated
 			startedAt: _startedAt, // immutable, never updated
 			customData: _customData,
-			...executionInformation
+			...rest
 		} = execution;
+		return rest;
+	}
 
-		return await this.executionRepository.manager.transaction(async (tx) => {
-			if (Object.keys(executionInformation).length > 0) {
-				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: ref.executionId };
-				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
-				if (conditions?.requireNotFinished) whereCondition.finished = false;
-				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
+	private buildEntityWhereCondition(
+		executionId: string,
+		conditions?: UpdateExecutionConditions,
+	): FindOptionsWhere<ExecutionEntity> {
+		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (conditions?.requireStatus) where.status = conditions.requireStatus;
+		// TODO: `ExecutionEntity.finished` is deprecated and we should only rely on statuses here,
+		// but for now we still use it to filter out finished executions for parity with ExecutionRepository.
+		if (conditions?.requireNotFinished) where.finished = false;
+		if (conditions?.requireNotCanceled) where.status = Not('canceled');
+		return where;
+	}
 
-				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
-				const executionTableAffectedRows = result.affected ?? 0;
-
-				// If conditions were set and the update failed, abort the
-				// transaction early and return false.
-				if (executionTableAffectedRows === 0) {
-					return false;
-				}
-			}
-
-			const existing = await this.fsStore.read(ref);
-			if (!existing) throw new MissingExecutionDataError(ref);
-
-			await this.fsStore.write(ref, {
-				data: data !== undefined ? stringify(data) : existing.data,
-				workflowData: workflowData ? this.toWorkflowSnapshot(workflowData) : existing.workflowData,
-				workflowVersionId: existing.workflowVersionId,
-			});
-
-			return true;
-		});
+	private getStoreFor(location: ExecutionDataStorageLocation): ExecutionDataStore {
+		switch (location) {
+			case 'db':
+				return this.dbStore;
+			case 'fs':
+				return this.fsStore;
+		}
+		const _exhaustive: never = location;
+		throw new Error(`Unknown storage location: ${String(_exhaustive)}`);
 	}
 
 	private toWorkflowSnapshot(
