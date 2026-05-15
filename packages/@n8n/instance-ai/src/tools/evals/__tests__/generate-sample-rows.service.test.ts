@@ -215,6 +215,95 @@ describe('runBatch', () => {
 		expect(rows).toEqual([]);
 		expect(generate).not.toHaveBeenCalled();
 	});
+
+	describe('realExamples few-shot block', () => {
+		function capturePrompt(): string {
+			const calls = (
+				mockCreateEvalAgent.mock.results[0]?.value as {
+					generate: jest.Mock;
+				}
+			).generate.mock.calls as Array<Array<Array<{ content: Array<{ text: string }> }>>>;
+			return calls[0][0][0].content[0].text;
+		}
+
+		it('injects a reference-not-seed block when examples are provided', async () => {
+			setupAgentMock(JSON.stringify([]));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: [{ user_query: 'how do I refund an order?' }],
+			});
+			const promptText = capturePrompt();
+			expect(promptText).toContain('Recent real inputs the agent has received in production');
+			expect(promptText).toContain('REFERENCE, not seeds');
+			expect(promptText).toContain('how do I refund an order?');
+			expect(promptText).toMatch(/Do NOT copy or paraphrase them/);
+		});
+
+		it('omits the block entirely when realExamples is undefined', async () => {
+			setupAgentMock(JSON.stringify([]));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+			});
+			expect(capturePrompt()).not.toContain('Recent real inputs');
+		});
+
+		it('filters examples to the requested columns and drops rows that lack all of them', async () => {
+			setupAgentMock(JSON.stringify([]));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: [
+					{ user_query: 'real one', expected_response: 'should not leak' },
+					{ unrelated: 'dropped' },
+				],
+			});
+			const promptText = capturePrompt();
+			expect(promptText).toContain('real one');
+			expect(promptText).not.toContain('should not leak');
+			expect(promptText).not.toContain('dropped');
+			expect(promptText).not.toContain('unrelated');
+		});
+
+		it('caps the example list at 5 entries', async () => {
+			setupAgentMock(JSON.stringify([]));
+			const examples = Array.from({ length: 8 }, (_, i) => ({ user_query: `q${i}` }));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: examples,
+			});
+			const promptText = capturePrompt();
+			expect(promptText).toContain('q0');
+			expect(promptText).toContain('q4');
+			expect(promptText).not.toContain('q5');
+			expect(promptText).not.toContain('q7');
+		});
+
+		it('truncates values longer than 200 characters with an ellipsis', async () => {
+			setupAgentMock(JSON.stringify([]));
+			const longValue = 'x'.repeat(500);
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: [{ user_query: longValue }],
+			});
+			const promptText = capturePrompt();
+			expect(promptText).toMatch(/x{200}…/);
+			expect(promptText).not.toMatch(/x{201}/);
+		});
+	});
 });
 
 describe('extractAgentContext', () => {
