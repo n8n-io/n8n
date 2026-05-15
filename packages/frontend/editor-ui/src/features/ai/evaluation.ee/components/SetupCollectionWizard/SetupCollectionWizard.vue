@@ -263,7 +263,7 @@ const onSubmit = async () => {
 <template>
 	<N8nDialog
 		:open="open"
-		size="xlarge"
+		size="2xlarge"
 		:show-close-button="true"
 		:header="i18n.baseText('evaluation.setup.title')"
 		:description="i18n.baseText('evaluation.setup.subtitle')"
@@ -477,20 +477,21 @@ const onSubmit = async () => {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--3xs);
 }
 
 .metricPill {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
+	gap: 4px;
+	padding: 4px 10px;
 	border: 1px solid var(--border-color--base, var(--color--neutral-200));
 	border-radius: var(--radius--full);
 	background: var(--background--surface);
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
+	line-height: 1.2;
 	cursor: pointer;
 	transition:
 		background-color var(--transition-duration--fast) ease,
