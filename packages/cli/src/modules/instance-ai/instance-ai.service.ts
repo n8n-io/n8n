@@ -14,9 +14,9 @@ import {
 } from '@n8n/api-types';
 import type { Message } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
-import { ErrorReporter } from 'n8n-core';
-import type { InstanceAiConfig } from '@n8n/config';
+import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
@@ -122,8 +122,6 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-const INSTANCE_AI_CHECKPOINT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
-const INSTANCE_AI_CHECKPOINT_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
 
 function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
@@ -453,6 +451,7 @@ export class InstanceAiService {
 	constructor(
 		logger: Logger,
 		globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
@@ -519,7 +518,7 @@ export class InstanceAiService {
 		});
 
 		this.liveness.start();
-		this.startCheckpointPruning();
+		if (this.instanceSettings.isLeader) this.startCheckpointPruning();
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -1721,18 +1720,21 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	private startCheckpointPruning(): void {
+	@OnLeaderTakeover()
+	startCheckpointPruning(): void {
+		if (this.checkpointPruneTimer || this.instanceAiConfig.snapshotPruneInterval <= 0) return;
 		this.checkpointPruningStopped = false;
 		this.scheduleCheckpointPrune(0);
 	}
 
-	private stopCheckpointPruning(): void {
+	@OnLeaderStepdown()
+	stopCheckpointPruning(): void {
 		this.checkpointPruningStopped = true;
 		clearTimeout(this.checkpointPruneTimer);
 		this.checkpointPruneTimer = undefined;
 	}
 
-	private scheduleCheckpointPrune(delayMs = INSTANCE_AI_CHECKPOINT_PRUNE_INTERVAL_MS): void {
+	private scheduleCheckpointPrune(delayMs = this.instanceAiConfig.snapshotPruneInterval): void {
 		if (this.checkpointPruningStopped) return;
 		this.checkpointPruneTimer = setTimeout(() => {
 			void this.pruneStaleCheckpoints();
@@ -1741,7 +1743,7 @@ export class InstanceAiService {
 	}
 
 	private async pruneStaleCheckpoints(now = Date.now()): Promise<void> {
-		const olderThan = new Date(now - INSTANCE_AI_CHECKPOINT_RETENTION_MS);
+		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
 
 		try {
 			const count = await this.checkpointStore.deleteOlderThan(olderThan);

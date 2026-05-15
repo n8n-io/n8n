@@ -102,6 +102,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 90;
 
+	/** Interval in milliseconds between native persistence pruning runs. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
+	snapshotPruneInterval: number = 60 * 60 * 1000; // 1 hour
+
+	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
+	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
+	snapshotRetention: number = 24 * 60 * 60 * 1000; // 24 hours
+
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 10 * 60 * 1000; // 10 minutes

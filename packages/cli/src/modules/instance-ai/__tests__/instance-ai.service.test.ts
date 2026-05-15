@@ -390,10 +390,18 @@ function createCheckpointService(): ServiceInternals {
 }
 
 type CheckpointPruneServiceInternals = {
+	startCheckpointPruning: () => void;
+	stopCheckpointPruning: () => void;
 	pruneStaleCheckpoints: (now?: number) => Promise<void>;
 	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
 	checkpointStore: {
 		deleteOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
+	};
+	checkpointPruneTimer?: NodeJS.Timeout;
+	checkpointPruningStopped: boolean;
+	instanceAiConfig: {
+		snapshotPruneInterval: number;
+		snapshotRetention: number;
 	};
 	logger: { info: jest.Mock; debug: jest.Mock; warn: jest.Mock };
 };
@@ -405,6 +413,11 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	service.scheduleCheckpointPrune = jest.fn();
 	service.checkpointStore = {
 		deleteOlderThan: jest.fn(async (_olderThan: Date) => 0),
+	};
+	service.checkpointPruningStopped = true;
+	service.instanceAiConfig = {
+		snapshotPruneInterval: 60 * 60 * 1000,
+		snapshotRetention: 7 * 24 * 60 * 60 * 1000,
 	};
 	service.logger = {
 		info: jest.fn(),
@@ -862,6 +875,24 @@ describe('InstanceAiService — checkpoint pruning', () => {
 			new Date('2026-05-06T12:00:00.000Z'),
 		);
 		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('starts checkpoint pruning when configured', () => {
+		const service = createCheckpointPruneService();
+
+		service.startCheckpointPruning();
+
+		expect(service.checkpointPruningStopped).toBe(false);
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith(0);
+	});
+
+	it('does not start checkpoint pruning when disabled', () => {
+		const service = createCheckpointPruneService();
+		service.instanceAiConfig.snapshotPruneInterval = 0;
+
+		service.startCheckpointPruning();
+
+		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
 	});
 });
 
