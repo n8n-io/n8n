@@ -188,8 +188,21 @@ function makeWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
 		updatedAt: '2026-01-02T00:00:00Z',
 		versionId: 'v-1',
 		activeVersionId: null,
+		nodes: [makeWorkflowNode('n8n-nodes-base.manualTrigger', 'Manual Trigger')],
+		connections: {},
 		...overrides,
 	} as IWorkflowDb;
+}
+
+function makeWorkflowNode(type: string, name: string): IWorkflowDb['nodes'][number] {
+	return {
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
 }
 
 describe('AgentToolsModal', () => {
@@ -512,7 +525,9 @@ describe('AgentToolsModal', () => {
 					'n8n-nodes-base.manualTrigger',
 					'n8n-nodes-base.scheduleTrigger',
 					'n8n-nodes-base.formTrigger',
+					'n8n-nodes-base.webhook',
 				]),
+				select: ['id', 'name', 'description', 'isArchived', 'nodes'],
 			});
 		});
 
@@ -535,6 +550,56 @@ describe('AgentToolsModal', () => {
 			expect(list.textContent).toContain('Daily sales digest');
 			// Archived workflows are excluded.
 			expect(queryByText('Old archived')).toBeNull();
+		});
+
+		it('renders webhook workflows that respond with Respond to Webhook', async () => {
+			seedWorkflows([
+				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' }),
+				makeWorkflow({
+					id: 'wf-webhook',
+					name: 'Webhook intake',
+					nodes: [
+						makeWorkflowNode('n8n-nodes-base.webhook', 'Webhook'),
+						makeWorkflowNode('n8n-nodes-base.respondToWebhook', 'Respond to Webhook'),
+					],
+				}),
+			]);
+
+			const { getByTestId, queryByText } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const list = await waitFor(() => getByTestId('agent-tools-available-workflows-list'));
+			expect(list.textContent).toContain('Daily sales digest');
+			expect(queryByText('Webhook intake')).not.toBeNull();
+		});
+
+		it('does not render workflows that contain incompatible wait-style body nodes', async () => {
+			seedWorkflows([
+				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' }),
+				makeWorkflow({
+					id: 'wf-wait',
+					name: 'Wait for callback',
+					nodes: [
+						makeWorkflowNode('n8n-nodes-base.manualTrigger', 'Manual Trigger'),
+						makeWorkflowNode('n8n-nodes-base.wait', 'Wait'),
+					],
+				}),
+			]);
+
+			const { getByTestId, queryByText } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const list = await waitFor(() => getByTestId('agent-tools-available-workflows-list'));
+			expect(list.textContent).toContain('Daily sales digest');
+			expect(queryByText('Wait for callback')).toBeNull();
 		});
 
 		it('keeps already-connected workflows listed under Available (duplicates allowed)', async () => {

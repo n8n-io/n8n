@@ -13,12 +13,14 @@ import type {
 } from '@n8n/db';
 import type {
 	IDataObject,
+	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	createDeferredPromise,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -26,6 +28,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -51,6 +54,7 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	[CHAT_TRIGGER_NODE_TYPE]: 'chat',
 	[SCHEDULE_TRIGGER_NODE_TYPE]: 'schedule',
 	[FORM_TRIGGER_NODE_TYPE]: 'form',
+	[WEBHOOK_NODE_TYPE]: 'webhook',
 };
 
 // Compile-time check: `SUPPORTED_TRIGGERS` must cover every trigger the shared
@@ -67,6 +71,14 @@ const INCOMPATIBLE_NODE_TYPES = new Set<string>(INCOMPATIBLE_WORKFLOW_TOOL_BODY_
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_BYTES = 5_000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
+	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
+}
 
 // ---------------------------------------------------------------------------
 // Context passed from the compile step
@@ -175,6 +187,24 @@ export function normalizeTriggerInput(
 				],
 			};
 			/* eslint-enable @typescript-eslint/naming-convention */
+		}
+
+		case 'webhook': {
+			const { body, headers, params, query } = inputData;
+			return {
+				[triggerNode.name]: [
+					{
+						json: {
+							headers: isRecord(headers) ? headers : {},
+							params: isRecord(params) ? params : {},
+							query: isRecord(query) ? query : {},
+							body: isRecord(body) ? body : inputData,
+							webhookUrl: '',
+							executionMode: 'agent',
+						},
+					},
+				],
+			};
 		}
 
 		default:
@@ -325,7 +355,21 @@ export async function executeWorkflow(
 		}),
 	};
 
-	const executionId = await workflowRunner.run(runData);
+	const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+	let webhookResponse: IExecuteResponsePromiseData | undefined;
+	void responsePromise.promise
+		.then((response) => {
+			webhookResponse = response;
+		})
+		.catch(() => {});
+
+	const executionId = await workflowRunner.run(
+		runData,
+		undefined,
+		undefined,
+		undefined,
+		responsePromise,
+	);
 
 	// Wait for completion with timeout protection
 	const timeoutMs = DEFAULT_TIMEOUT_MS;
@@ -362,7 +406,14 @@ export async function executeWorkflow(
 		}
 	}
 
-	return await extractResult(executionRepository, executionId, allOutputs);
+	const result = await extractResult(executionRepository, executionId, allOutputs);
+	if (isWorkflowToolResponse(webhookResponse)) {
+		result.data = {
+			...(result.data ?? {}),
+			response: truncateResultData({ response: webhookResponse }).response,
+		};
+	}
+	return result;
 }
 
 // ---------------------------------------------------------------------------
