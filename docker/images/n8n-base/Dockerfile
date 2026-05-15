@@ -4,19 +4,21 @@ FROM dhi.io/node:${NODE_VERSION}-alpine3.23-dev
 
 ARG NODE_VERSION
 
-# Install all dependencies in a single layer to minimize image size
-RUN apk add --no-cache busybox-binsh && \
-    # Install fonts
-    apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
+# Install all dependencies in a single layer to minimize image size.
+# DHI's alpine3.23-dev base already provides /bin/sh (via its bundled busybox)
+# and git; we don't reinstall them. Reinstalling busybox-binsh from alpine
+# community pins it to a busybox release that conflicts with DHI's git
+# snapshot version, breaking the build whenever alpine bumps the rebuild.
+RUN apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
     update-ms-fonts && \
     fc-cache -f && \
     apk del .build-deps-fonts && \
     find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
-    # Install OS dependencies. DHI's base image is already current with vetted
-    # pinned versions; `apk upgrade` can race with alpine repo refreshes (e.g.
-    # libssl3 bumped without openssl) and break the build.
+    # Install OS dependencies (git is already in the DHI base). `apk upgrade`
+    # is intentionally omitted: DHI ships vetted pinned versions, and trying
+    # to upgrade can race with alpine repo refreshes (e.g. libssl3 bumped
+    # without a matching openssl rebuild) and break the build.
     apk add --no-cache \
-        git \
         openssh \
         openssl \
         graphicsmagick=1.3.46-r0 `# pinned for build reproducibility` \
