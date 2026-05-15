@@ -190,6 +190,17 @@ const ensureDetailLoaded = () => {
 	background: var(--background--surface);
 	padding: var(--spacing--md) var(--spacing--lg);
 	box-shadow: var(--shadow--xs, 0 1px 2px rgba(0, 0, 0, 0.04));
+	transition:
+		border-color var(--transition-duration--fast) ease,
+		box-shadow var(--transition-duration--fast) ease;
+
+	// Hover preview for the click target TRUST-81 will wire up. The CTA
+	// inside is currently disabled, but the whole card lifts so users
+	// can see it's interactive once the compare route lands.
+	&:hover {
+		border-color: var(--border-color--strong, var(--color--neutral-300));
+		box-shadow: var(--shadow--sm, 0 2px 6px rgba(0, 0, 0, 0.06));
+	}
 }
 
 .cardMain {

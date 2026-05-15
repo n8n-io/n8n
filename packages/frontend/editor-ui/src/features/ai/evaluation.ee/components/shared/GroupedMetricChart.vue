@@ -21,10 +21,10 @@ const props = withDefaults(
 	}>(),
 	{
 		max: 1,
-		barWidth: 14,
+		barWidth: 16,
 		barGap: 4,
-		groupGap: 40,
-		height: 60,
+		groupGap: 48,
+		height: 72,
 	},
 );
 
