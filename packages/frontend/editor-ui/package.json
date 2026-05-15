@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.20.2-exp.0",
+  "version": "2.20.2",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
