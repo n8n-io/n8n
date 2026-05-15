@@ -153,15 +153,18 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			},
 		];
 
-		const extractionActions: Item[] = [
-			{
-				id: 'extract_sub_workflow',
-				divided: true,
-				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
-				shortcut: { altKey: true, keys: ['X'] },
-				disabled: isReadOnly.value,
-			},
-		];
+		const extractionActions: Item[] =
+			nodes.length > 1
+				? [
+						{
+							id: 'extract_sub_workflow',
+							divided: true,
+							label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
+							shortcut: { altKey: true, keys: ['X'] },
+							disabled: isReadOnly.value,
+						},
+					]
+				: [];
 
 		const aiActions: Item[] = [
 			!onlyStickies &&

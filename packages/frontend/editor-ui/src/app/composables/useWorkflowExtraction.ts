@@ -313,9 +313,6 @@ export function useWorkflowExtraction() {
 	) {
 		historyStore.startRecordingUndo();
 
-		// In most cases we're about to move the selection anyway
-		// One remarkable edge case is when a single node is right-clicked on
-		// This allows extraction, but does not necessarily select the node
 		uiStore.resetLastInteractedWith();
 
 		const executeWorkflowNode = (
