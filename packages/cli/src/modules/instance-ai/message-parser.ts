@@ -26,19 +26,10 @@ interface StoredToolInvocation {
 interface StoredContentPart {
 	type: string;
 	text?: string;
-	toolInvocation?: StoredToolInvocation;
 	toolCallId?: string;
 	toolName?: string;
 	input?: Record<string, unknown>;
 	result?: unknown;
-}
-
-interface LegacyContentV2 {
-	format?: number;
-	parts?: StoredContentPart[];
-	toolInvocations?: StoredToolInvocation[];
-	reasoning?: Array<{ text: string }>;
-	content?: string;
 }
 
 export interface StoredAgentMessage {
@@ -60,38 +51,15 @@ type ConversationStoredMessage = (AgentDbMessage | StoredAgentMessage) & {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Type guard: narrows unknown content to legacy structured content. */
-function isV2Content(content: unknown): content is LegacyContentV2 {
-	return content !== null && typeof content === 'object' && !Array.isArray(content);
-}
-
 function extractTextFromContent(content: unknown): string {
 	if (typeof content === 'string') return content;
 	if (Array.isArray(content)) return extractTextFromParts(content);
-	if (!isV2Content(content)) return '';
-
-	// V2 shortcut
-	if (content.content) return content.content;
-
-	// V2 parts array
-	if (content.parts) return extractTextFromParts(content.parts);
-
 	return '';
 }
 
 function extractReasoningFromContent(content: unknown): string {
 	if (typeof content === 'string') return '';
 	if (Array.isArray(content)) return extractReasoningFromParts(content);
-	if (!isV2Content(content)) return '';
-
-	// V2 top-level reasoning array
-	if (content.reasoning?.length) {
-		return content.reasoning.map((r) => r.text).join('');
-	}
-
-	// V2 reasoning parts
-	if (content.parts) return extractReasoningFromParts(content.parts);
-
 	return '';
 }
 
@@ -127,8 +95,7 @@ function extractReasoningFromParts(parts: unknown[]): string {
 
 function extractParts(content: unknown): StoredContentPart[] | undefined {
 	if (Array.isArray(content)) return content.filter(isStoredContentPart);
-	if (!isV2Content(content)) return undefined;
-	return content.parts;
+	return undefined;
 }
 
 function isStoredContentPart(value: unknown): value is StoredContentPart {
@@ -149,7 +116,7 @@ function nativeToolPartToInvocation(part: StoredContentPart): StoredToolInvocati
 			state: 'result',
 			toolCallId: part.toolCallId,
 			toolName: part.toolName,
-			args: {},
+			args: part.input ?? {},
 			result: part.result,
 		};
 	}
@@ -163,18 +130,6 @@ function extractToolInvocations(content: unknown): StoredToolInvocation[] {
 			const invocation = nativeToolPartToInvocation(part);
 			return invocation ? [invocation] : [];
 		});
-	if (!isV2Content(content)) return [];
-
-	// V2 top-level toolInvocations (preferred)
-	if (content.toolInvocations?.length) return content.toolInvocations;
-
-	// V2 parts-based tool invocations
-	if (content.parts) {
-		return content.parts
-			.filter((p) => p.type === 'tool-invocation' && p.toolInvocation)
-			.map((p) => p.toolInvocation!);
-	}
-
 	return [];
 }
 
@@ -191,7 +146,7 @@ function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCal
 }
 
 /**
- * Build a chronological timeline from V2 parts (preserves tool-call vs text ordering).
+ * Build a chronological timeline from native parts (preserves tool-call vs text ordering).
  * Falls back to tool-calls-first heuristic when parts aren't available.
  */
 function buildTimeline(
@@ -205,9 +160,7 @@ function buildTimeline(
 		for (const part of parts) {
 			if (part.type === 'text' && part.text) {
 				timeline.push({ type: 'text', content: part.text });
-			} else if (part.type === 'tool-invocation' && part.toolInvocation) {
-				timeline.push({ type: 'tool-call', toolCallId: part.toolInvocation.toolCallId });
-			} else if (part.type === 'tool-call' && part.toolCallId) {
+			} else if ((part.type === 'tool-call' || part.type === 'tool-result') && part.toolCallId) {
 				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId });
 			}
 		}

@@ -44,15 +44,12 @@ describe('parseStoredMessages', () => {
 			});
 		});
 
-		it('should parse user message with V2 content (parts array)', () => {
+		it('should parse user message with native content parts', () => {
 			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-1',
 					role: 'user',
-					content: {
-						format: 2,
-						parts: [{ type: 'text', text: 'Build me a workflow' }],
-					},
+					content: [{ type: 'text', text: 'Build me a workflow' }],
 					createdAt: makeDate(),
 				},
 			];
@@ -61,21 +58,6 @@ describe('parseStoredMessages', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].content).toBe('Build me a workflow');
-		});
-
-		it('should parse user message with V2 content shortcut', () => {
-			const messages: StoredAgentMessage[] = [
-				{
-					id: 'msg-1',
-					role: 'user',
-					content: { format: 2, content: 'Short version' },
-					createdAt: makeDate(),
-				},
-			];
-
-			const result = parseStoredMessages(messages);
-
-			expect(result[0].content).toBe('Short version');
 		});
 	});
 
@@ -91,7 +73,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: { format: 2, content: 'Hello! How can I help?' },
+					content: [{ type: 'text', text: 'Hello! How can I help?' }],
 					createdAt: makeDate(1),
 				},
 			];
@@ -119,19 +101,16 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						content: 'Here are your workflows',
-						toolInvocations: [
-							{
-								state: 'result',
-								toolCallId: 'tc-1',
-								toolName: 'list-workflows',
-								args: { limit: 10 },
-								result: { workflows: ['wf1'] },
-							},
-						],
-					},
+					content: [
+						{ type: 'text', text: 'Here are your workflows' },
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							toolName: 'list-workflows',
+							input: { limit: 10 },
+							result: { workflows: ['wf1'] },
+						},
+					],
 					createdAt: makeDate(1),
 				},
 			];
@@ -161,18 +140,14 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						content: '',
-						toolInvocations: [
-							{
-								state: 'call',
-								toolCallId: 'tc-2',
-								toolName: 'task-control',
-								args: { tasks: [] },
-							},
-						],
-					},
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-2',
+							toolName: 'task-control',
+							input: { tasks: [] },
+						},
+					],
 					createdAt: makeDate(1),
 				},
 			];
@@ -185,32 +160,7 @@ describe('parseStoredMessages', () => {
 			expect(tc?.renderHint).toBe('tasks');
 		});
 
-		it('should parse assistant message with reasoning', () => {
-			const messages: StoredAgentMessage[] = [
-				{
-					id: 'msg-u',
-					role: 'user',
-					content: 'Think about this',
-					createdAt: makeDate(),
-				},
-				{
-					id: 'msg-a',
-					role: 'assistant',
-					content: {
-						format: 2,
-						content: 'Result',
-						reasoning: [{ text: 'Let me think...' }, { text: ' more thoughts' }],
-					},
-					createdAt: makeDate(1),
-				},
-			];
-
-			const result = parseStoredMessages(messages);
-
-			expect(result[1].reasoning).toBe('Let me think... more thoughts');
-		});
-
-		it('should parse reasoning from parts array', () => {
+		it('should parse reasoning from native parts', () => {
 			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
@@ -221,13 +171,10 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						parts: [
-							{ type: 'reasoning', text: 'Reasoning part' },
-							{ type: 'text', text: 'Answer' },
-						],
-					},
+					content: [
+						{ type: 'reasoning', text: 'Reasoning part' },
+						{ type: 'text', text: 'Answer' },
+					],
 					createdAt: makeDate(1),
 				},
 			];
@@ -249,7 +196,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: { format: 2, content: 'Done!' },
+					content: [{ type: 'text', text: 'Done!' }],
 					createdAt: makeDate(1),
 				},
 			];
@@ -335,7 +282,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a1',
 					role: 'assistant',
-					content: { format: 2, content: 'First assistant response' },
+					content: [{ type: 'text', text: 'First assistant response' }],
 					createdAt: makeDate(1),
 				},
 				{
@@ -382,7 +329,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a2',
 					role: 'assistant',
-					content: { format: 2, content: 'Second assistant response' },
+					content: [{ type: 'text', text: 'Second assistant response' }],
 					createdAt: makeDate(3),
 				},
 			];
@@ -432,27 +379,26 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						content: '',
-						toolInvocations: [
-							{ state: 'result', toolCallId: 'tc-1', toolName: 'delegate', args: {}, result: 'ok' },
-							{
-								state: 'result',
-								toolCallId: 'tc-2',
-								toolName: 'build-workflow-with-agent',
-								args: {},
-								result: 'ok',
-							},
-							{
-								state: 'result',
-								toolCallId: 'tc-3',
-								toolName: 'manage-data-tables-with-agent',
-								args: {},
-								result: 'ok',
-							},
-						],
-					},
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							toolName: 'delegate',
+							result: 'ok',
+						},
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-2',
+							toolName: 'build-workflow-with-agent',
+							result: 'ok',
+						},
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-3',
+							toolName: 'manage-data-tables-with-agent',
+							result: 'ok',
+						},
+					],
 					createdAt: makeDate(1),
 				},
 			];
@@ -476,26 +422,20 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						content: '',
-						toolInvocations: [
-							{
-								state: 'result',
-								toolCallId: 'tc-1',
-								toolName: 'workflow-build-flow',
-								args: {},
-								result: { ok: true },
-							},
-							{
-								state: 'result',
-								toolCallId: 'tc-2',
-								toolName: 'agent-data-table-manager',
-								args: {},
-								result: { ok: true },
-							},
-						],
-					},
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							toolName: 'workflow-build-flow',
+							result: { ok: true },
+						},
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-2',
+							toolName: 'agent-data-table-manager',
+							result: { ok: true },
+						},
+					],
 					createdAt: makeDate(1),
 				},
 			];
@@ -520,7 +460,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a1',
 					role: 'assistant',
-					content: { format: 2, content: 'On it!' },
+					content: [{ type: 'text', text: 'On it!' }],
 					createdAt: makeDate(1),
 				},
 				{
@@ -533,7 +473,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a2',
 					role: 'assistant',
-					content: { format: 2, content: 'Your workflow is ready!' },
+					content: [{ type: 'text', text: 'Your workflow is ready!' }],
 					createdAt: makeDate(3),
 				},
 			];
@@ -622,12 +562,12 @@ describe('parseStoredMessages', () => {
 			expect(result).toHaveLength(0);
 		});
 
-		it('should handle assistant message with empty content gracefully', () => {
+		it('should handle assistant message with empty native content gracefully', () => {
 			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: { format: 2 },
+					content: [],
 					createdAt: makeDate(),
 				},
 			];
@@ -640,7 +580,7 @@ describe('parseStoredMessages', () => {
 			expect(result[0].agentTree).toBeUndefined();
 		});
 
-		it('should extract tool invocations from parts array as fallback', () => {
+		it('should extract tool calls from native parts', () => {
 			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
@@ -651,21 +591,15 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						parts: [
-							{
-								type: 'tool-invocation',
-								toolInvocation: {
-									state: 'result',
-									toolCallId: 'tc-parts',
-									toolName: 'plan',
-									args: { goal: 'x' },
-									result: 'done',
-								},
-							},
-						],
-					},
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-parts',
+							toolName: 'plan',
+							input: { goal: 'x' },
+							result: 'done',
+						},
+					],
 					createdAt: makeDate(1),
 				},
 			];
