@@ -502,11 +502,18 @@ export class AgentsController {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const thread = await this.agentExecutionService.findThreadById(threadId);
-		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
+		// getConversationHistory delegates to getThreadDetail, which validates
+		// thread ownership against both projectId and agentId before returning
+		// execution transcript data.
+		const history = await this.agentsService.getConversationHistory({
+			threadId,
+			projectId,
+			agentId,
+		});
+		if (!history) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return await this.agentsService.getChatMessages(threadId);
+		return history;
 	}
 
 	@Get('/:agentId/build/messages')

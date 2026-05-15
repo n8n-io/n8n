@@ -961,6 +961,59 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('getConversationHistory', () => {
+		it('returns the user-visible transcript from execution history', async () => {
+			agentExecutionService.getThreadDetail.mockResolvedValue({
+				thread: { id: 'thread-1' },
+				executions: [
+					{
+						id: 'execution-1',
+						userMessage: 'Hello',
+						assistantResponse: 'Hi there',
+						error: null,
+					},
+				],
+			} as never);
+
+			const result = await service.getConversationHistory({
+				threadId: 'thread-1',
+				projectId,
+				agentId,
+			});
+
+			expect(agentExecutionService.getThreadDetail).toHaveBeenCalledWith(
+				'thread-1',
+				projectId,
+				agentId,
+			);
+			expect(n8nMemory.getMessages).not.toHaveBeenCalled();
+			expect(result).toEqual([
+				{
+					id: 'execution-1:user',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+				},
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Hi there' }],
+				},
+			]);
+		});
+
+		it('returns null when the requested thread is not in the agent project', async () => {
+			agentExecutionService.getThreadDetail.mockResolvedValue(null);
+
+			const result = await service.getConversationHistory({
+				threadId: 'thread-1',
+				projectId,
+				agentId,
+			});
+
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('getTestChatMessages', () => {
 		it('derives user-scoped fallback test-chat thread ids', () => {
 			expect(chatThreadId(agentId, 'user-1')).toBe('test-agent-1:user-1');
