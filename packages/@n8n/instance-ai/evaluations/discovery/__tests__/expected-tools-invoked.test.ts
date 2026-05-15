@@ -3,7 +3,7 @@ import { runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
 import type { DiscoveryTestCase } from '../types';
 
 function makeOutcome(opts: {
-	toolCalls?: Array<Pick<CapturedToolCall, 'toolName'>>;
+	toolCalls?: Array<Pick<CapturedToolCall, 'toolName'> & Partial<Pick<CapturedToolCall, 'args'>>>;
 	agents?: Array<Pick<AgentActivity, 'role' | 'tools'>>;
 }): EventOutcome {
 	return {
@@ -14,7 +14,7 @@ function makeOutcome(opts: {
 		toolCalls: (opts.toolCalls ?? []).map((tc, i) => ({
 			toolCallId: `call-${i}`,
 			toolName: tc.toolName,
-			args: {},
+			args: tc.args ?? {},
 			durationMs: 0,
 		})),
 		agentActivities: (opts.agents ?? []).map((a, i) => ({
@@ -172,6 +172,65 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 			expect(result.pass).toBe(false);
 			expect(result.comment).toContain('Expected none of');
+		});
+	});
+
+	describe('noneOfToolCalls — actual tool-call guard', () => {
+		const plannerScenario: DiscoveryTestCase = {
+			id: 'test',
+			userMessage: 'Build a Gmail and Calendar workflow',
+			expectedToolInvocations: {
+				anyOf: ['plan', 'spawn_sub_agent:planner'],
+				noneOfToolCalls: [{ toolName: 'ask-user', argsContainAny: ['credential'] }],
+			},
+		};
+
+		it('passes when a spawned planner has ask-user available but does not call it', () => {
+			const result = runExpectedToolsInvokedCheck(
+				plannerScenario,
+				makeOutcome({
+					toolCalls: [{ toolName: 'plan' }],
+					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+			expect(result.invokedTools).toContain('ask-user');
+		});
+
+		it('fails when the forbidden tool call happens with matching args', () => {
+			const result = runExpectedToolsInvokedCheck(
+				plannerScenario,
+				makeOutcome({
+					toolCalls: [
+						{ toolName: 'plan' },
+						{
+							toolName: 'ask-user',
+							args: { question: 'Which Google Calendar credential should I use?' },
+						},
+					],
+					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('Expected no actual tool call matching');
+			expect(result.comment).toContain('credential');
+		});
+
+		it('passes when the same tool is called for unrelated args', () => {
+			const result = runExpectedToolsInvokedCheck(
+				plannerScenario,
+				makeOutcome({
+					toolCalls: [
+						{ toolName: 'plan' },
+						{ toolName: 'ask-user', args: { question: 'Which failure branch should run?' } },
+					],
+					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
 		});
 	});
 
