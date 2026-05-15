@@ -174,7 +174,6 @@ function getEvaluationNode(
 function getMessageAnAgentNode(
 	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
 	settingsStore: ReturnType<typeof useSettingsStore>,
-	i18n: ReturnType<typeof useI18n>,
 ) {
 	if (!settingsStore.isModuleActive('agents')) return [];
 
@@ -207,7 +206,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
-	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore, i18n);
+	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
 
 	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
 	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
