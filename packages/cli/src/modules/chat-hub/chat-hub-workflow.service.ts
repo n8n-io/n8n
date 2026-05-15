@@ -899,7 +899,6 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 				return {
 					...common,
 					parameters: {
-						authentication: 'cloud',
 						model,
 						options: {},
 					},

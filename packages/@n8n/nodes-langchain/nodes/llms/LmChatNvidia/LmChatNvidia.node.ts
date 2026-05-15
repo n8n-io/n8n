@@ -59,20 +59,6 @@ export class LmChatNvidia implements INodeType {
 			{
 				name: 'nvidiaApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['cloud'],
-					},
-				},
-			},
-			{
-				name: 'nvidiaSelfHostedApi',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['selfHosted'],
-					},
-				},
 			},
 		],
 		requestDefaults: {
@@ -80,23 +66,6 @@ export class LmChatNvidia implements INodeType {
 			baseURL: '={{ $credentials?.url }}',
 		},
 		properties: [
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				default: 'cloud',
-				options: [
-					{
-						name: 'NVIDIA Cloud (build.nvidia.com)',
-						value: 'cloud',
-					},
-					{
-						name: 'Self-Hosted NIM',
-						value: 'selfHosted',
-					},
-				],
-			},
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
@@ -255,11 +224,7 @@ export class LmChatNvidia implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const authentication = this.getNodeParameter('authentication', itemIndex) as
-			| 'cloud'
-			| 'selfHosted';
-		const credentialsType = authentication === 'cloud' ? 'nvidiaApi' : 'nvidiaSelfHostedApi';
-		const credentials = await this.getCredentials<OpenAICompatibleCredential>(credentialsType);
+		const credentials = await this.getCredentials<OpenAICompatibleCredential>('nvidiaApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 

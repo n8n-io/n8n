@@ -30,7 +30,7 @@ describe('LmChatNvidia', () => {
 	};
 
 	const setupMockContext = (
-		auth: 'cloud' | 'selfHosted' = 'cloud',
+		credentialOverrides: Partial<{ apiKey: string; url: string }> = {},
 		nodeOverrides: Partial<INode> = {},
 	) => {
 		const nodeDef = { ...mockNodeDef, ...nodeOverrides };
@@ -39,16 +39,13 @@ describe('LmChatNvidia', () => {
 			nodeDef,
 		) as Mocked<ISupplyDataFunctions>;
 
-		ctx.getCredentials = vi
-			.fn()
-			.mockResolvedValue(
-				auth === 'cloud'
-					? { apiKey: 'test-key', url: 'https://integrate.api.nvidia.com/v1' }
-					: { apiKey: '', url: 'http://localhost:8000/v1' },
-			);
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-key',
+			url: 'https://integrate.api.nvidia.com/v1',
+			...credentialOverrides,
+		});
 		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
 		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-			if (paramName === 'authentication') return auth;
 			if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
 			if (paramName === 'options') return {};
 			return undefined;
@@ -74,19 +71,8 @@ describe('LmChatNvidia', () => {
 			});
 		});
 
-		it('should declare both cloud and self-hosted credentials', () => {
-			expect(node.description.credentials).toEqual([
-				{
-					name: 'nvidiaApi',
-					required: true,
-					displayOptions: { show: { authentication: ['cloud'] } },
-				},
-				{
-					name: 'nvidiaSelfHostedApi',
-					required: true,
-					displayOptions: { show: { authentication: ['selfHosted'] } },
-				},
-			]);
+		it('should require a single nvidiaApi credential', () => {
+			expect(node.description.credentials).toEqual([{ name: 'nvidiaApi', required: true }]);
 		});
 
 		it('should output ai_languageModel', () => {
@@ -105,8 +91,8 @@ describe('LmChatNvidia', () => {
 	});
 
 	describe('supplyData', () => {
-		it('should use the cloud credential when authentication is cloud', async () => {
-			const ctx = setupMockContext('cloud');
+		it('should pass credential url to ChatOpenAI configuration', async () => {
+			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);
 
@@ -123,12 +109,11 @@ describe('LmChatNvidia', () => {
 			expect(result).toEqual({ response: expect.any(Object) });
 		});
 
-		it('should use the self-hosted credential when authentication is selfHosted', async () => {
-			const ctx = setupMockContext('selfHosted');
+		it('should accept a self-hosted base URL on the same credential', async () => {
+			const ctx = setupMockContext({ url: 'http://localhost:8000/v1', apiKey: '' });
 
 			await node.supplyData.call(ctx, 0);
 
-			expect(ctx.getCredentials).toHaveBeenCalledWith('nvidiaSelfHostedApi');
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: expect.objectContaining({
@@ -138,8 +123,8 @@ describe('LmChatNvidia', () => {
 			);
 		});
 
-		it('should fall back to a placeholder apiKey when self-hosted credential has none', async () => {
-			const ctx = setupMockContext('selfHosted');
+		it('should fall back to a placeholder apiKey when the credential has none', async () => {
+			const ctx = setupMockContext({ apiKey: '' });
 
 			await node.supplyData.call(ctx, 0);
 
@@ -151,9 +136,8 @@ describe('LmChatNvidia', () => {
 		});
 
 		it('should pass options through to ChatOpenAI', async () => {
-			const ctx = setupMockContext('cloud');
+			const ctx = setupMockContext();
 			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'authentication') return 'cloud';
 				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
 				if (paramName === 'options')
 					return {
@@ -184,9 +168,8 @@ describe('LmChatNvidia', () => {
 		});
 
 		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
-			const ctx = setupMockContext('cloud');
+			const ctx = setupMockContext();
 			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'authentication') return 'cloud';
 				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
 				if (paramName === 'options') return { responseFormat: 'json_object' };
 				return undefined;
@@ -202,7 +185,7 @@ describe('LmChatNvidia', () => {
 		});
 
 		it('should not set modelKwargs when no responseFormat', async () => {
-			const ctx = setupMockContext('cloud');
+			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);
 
