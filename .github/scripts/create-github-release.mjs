@@ -58,7 +58,7 @@ async function createGitHubRelease() {
 			body: BODY,
 			draft: false,
 			prerelease: IS_PRE_RELEASE === 'true',
-			make_latest: MAKE_LATEST === 'true' ? 'true' : 'false',
+			make_latest: MAKE_LATEST === 'true' && isReleaseTrackTag ? 'true' : 'false',
 			target_commitish: COMMIT,
 			owner,
 			repo,
