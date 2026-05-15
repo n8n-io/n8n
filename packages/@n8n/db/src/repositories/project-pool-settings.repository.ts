@@ -41,4 +41,27 @@ export class ProjectPoolSettingsRepository extends Repository<ProjectPoolSetting
 
 		return { assignment, allowedPools: row.allowedPools };
 	}
+
+	async setSettings(
+		projectId: string,
+		next: { assignment: PoolAssignment; allowedPools: string[] },
+	): Promise<void> {
+		const existing = await this.findOneBy({ projectId });
+		const row =
+			existing ??
+			this.create({
+				projectId,
+				productionPool: null,
+				manualPool: null,
+				evaluationPool: null,
+				allowedPools: [],
+			});
+
+		row.productionPool = next.assignment.production ?? null;
+		row.manualPool = next.assignment.manual ?? null;
+		row.evaluationPool = next.assignment.evaluation ?? null;
+		row.allowedPools = next.allowedPools;
+
+		await this.save(row);
+	}
 }
