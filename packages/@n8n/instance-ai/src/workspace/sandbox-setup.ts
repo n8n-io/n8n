@@ -22,7 +22,7 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
-import { getExampleFiles } from '@n8n/workflow-sdk/examples-loader';
+import { getExampleFiles, type ExampleFile } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
@@ -329,7 +329,17 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
  */
 export async function writeCuratedExamples(workspace: Workspace, logger?: Logger): Promise<void> {
 	const start = Date.now();
-	const { files: exampleFiles, indexTxt } = getExampleFiles();
+	// Examples are nice-to-have — never block the build when loading them fails.
+	let exampleFiles: ExampleFile[];
+	let indexTxt: string;
+	try {
+		({ files: exampleFiles, indexTxt } = getExampleFiles());
+	} catch (error) {
+		logger?.warn('[sandbox-setup] curated examples unavailable, continuing without', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return;
+	}
 	if (exampleFiles.length === 0) return;
 
 	const root = await getWorkspaceRoot(workspace);

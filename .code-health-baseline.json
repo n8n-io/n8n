@@ -557,24 +557,24 @@
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1783000000000-CreateAgentTables.ts is prefixed with a future timestamp (1783000000000, ~50d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "d81428d567aa"
+				"message": "1783000000000-CreateAgentTables.ts is prefixed with a future timestamp (1783000000000). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "6599e9e66680"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1783000000001-CreateAgentExecutionTables.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1783000000001-CreateAgentExecutionTables.ts is prefixed with a future timestamp (1783000000001, ~50d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "e33a8a794126"
+				"message": "1783000000001-CreateAgentExecutionTables.ts is prefixed with a future timestamp (1783000000001). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "e55008535c0e"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1784000000000-CreateAgentObservationTables.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1784000000000-CreateAgentObservationTables.ts is prefixed with a future timestamp (1784000000000, ~61d ahead of now). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "4bae5ef065ad"
+				"message": "1784000000000-CreateAgentObservationTables.ts is prefixed with a future timestamp (1784000000000). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
+				"hash": "5f4857aa8248"
 			}
 		]
 	}
