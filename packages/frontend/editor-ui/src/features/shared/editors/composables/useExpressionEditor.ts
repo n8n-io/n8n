@@ -48,9 +48,13 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
-import { TARGET_NODE_PARAMETER_FACET } from '../plugins/codemirror/completions/constants';
+import {
+	TARGET_NODE_PARAMETER_FACET,
+	WORKFLOW_DOCUMENT_FACET,
+} from '../plugins/codemirror/completions/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -76,6 +80,7 @@ export const useExpressionEditor = ({
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const ndvStore = useNDVStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
@@ -241,6 +246,7 @@ export const useExpressionEditor = ({
 						? { nodeName: expressionLocalResolveContext.value.nodeName, parameterPath: '' }
 						: toValue(targetNodeParameterContext),
 				),
+				WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value.documentId),
 				customExtensions.value.of(toValue(extensions)),
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
@@ -388,7 +394,7 @@ export const useExpressionEditor = ({
 				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
 					ndvStore.activeNode?.name ?? ''
 				];
-			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
+			result.resolved = `[${getExpressionErrorMessage(error, workflowDocumentStore.value.getPinDataSnapshot(), hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
 		}

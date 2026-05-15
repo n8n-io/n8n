@@ -11,7 +11,7 @@ import {
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -20,9 +20,13 @@ const emit = defineEmits<{ collapse: [] }>();
 const store = useInstanceAiStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const activeThreadId = computed(() =>
+	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
+);
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{
@@ -69,18 +73,20 @@ const groupedThreads = computed(() => {
 });
 
 function handleNewThread() {
-	if (!store.hasMessages) return;
-	store.newThread();
+	if (!activeThreadId.value) return;
 	void router.push({ name: INSTANCE_AI_VIEW });
 }
 
 async function handleDeleteThread(threadId: string) {
-	const { wasActive } = await store.deleteThread(threadId);
+	const wasActive = threadId === activeThreadId.value;
+	const deleted = await store.deleteThread(threadId);
+	if (!deleted) return;
+
 	if (wasActive) {
 		if (store.threads.length > 0) {
 			void router.push({
 				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: store.currentThreadId },
+				params: { threadId: store.threads[0].id },
 			});
 		} else {
 			void router.push({ name: INSTANCE_AI_VIEW });
@@ -171,7 +177,7 @@ function handleThreadAction(action: string, threadId: string) {
 					<div
 						v-for="thread in group.threads"
 						:key="thread.id"
-						:class="[$style.threadItem, { [$style.active]: thread.id === store.currentThreadId }]"
+						:class="[$style.threadItem, { [$style.active]: thread.id === activeThreadId }]"
 						data-test-id="instance-ai-thread-item"
 					>
 						<!-- Inline rename mode -->

@@ -146,6 +146,7 @@ function onBreadcrumbSelect(item: PathItem) {
 				@reverted="(a: AgentResource) => emit('reverted', a)"
 			/>
 			<N8nActionDropdown
+				v-if="headerActions.length > 0"
 				:items="headerActions"
 				activator-icon="ellipsis"
 				activator-size="medium"

@@ -128,6 +128,7 @@ describe('WorkflowHistory', () => {
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: { workflowId, versionId: versionData.versionId },
+				query: route.query,
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User opened workflow history', {
 				instance_id: '',

@@ -348,6 +348,56 @@ describe('Telemetry', () => {
 		});
 	});
 
+	describe('trackAgentExecution', () => {
+		test('should aggregate agent execution counters by agent ID', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-2', message_count: 1 });
+
+			expect(spyTrack).toHaveBeenCalledTimes(0);
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
+				'agent-1': {
+					message_count: 1,
+					token_count: 15,
+					tool_call_count: 2,
+				},
+				'agent-2': {
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				},
+			});
+		});
+
+		test('should flush agent execution counters and reset the buffer', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 1,
+				token_count: 15,
+				tool_call_count: 2,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+	});
+
 	describe('trackApiInvocation', () => {
 		beforeEach(() => {
 			jest.setSystemTime(testDateTime);

@@ -36,6 +36,7 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
@@ -73,13 +74,20 @@ export type {
 	CompactFn,
 	NewObservation,
 	Observation,
+	ObservationCategory,
 	ObservationCursor,
+	ObservationGapContext,
 	ObservationLockHandle,
 	ObservationalMemoryConfig,
+	ObservationalMemoryTrigger,
 	ObserveFn,
 	ScopeKind,
 } from './sdk/observation';
-export { OBSERVATION_SCHEMA_VERSION } from './sdk/observation';
+export {
+	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
+	OBSERVATION_CATEGORIES,
+	OBSERVATION_SCHEMA_VERSION,
+} from './sdk/observation';
 
 export type {
 	EvalInput,

@@ -14,7 +14,7 @@ import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
@@ -22,8 +22,7 @@ import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
-
-const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -161,12 +160,13 @@ export class AgentsBuilderService {
 				.join('\n') || '(none)';
 
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
+		const modelRecommendationsSection = await getModelRecommendationsSection();
 		const instructions = buildBuilderPrompt({
 			configJson,
 			configHash: getAgentConfigHash(currentConfig),
 			configUpdatedAt: agent.updatedAt.toISOString(),
 			toolList,
-			builderModel: BUILDER_MODEL,
+			modelRecommendationsSection,
 		});
 
 		const tools = this.agentsBuilderToolsService.getTools(

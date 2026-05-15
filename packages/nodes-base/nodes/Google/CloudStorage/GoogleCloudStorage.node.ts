@@ -1,15 +1,21 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
+import { searchProjects } from './GenericFunctions';
 import { objectFields, objectOperations } from './ObjectDescription';
 
 export class GoogleCloudStorage implements INodeType {
+	methods = {
+		listSearch: { searchProjects },
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Storage',
 		name: 'googleCloudStorage',
 		icon: 'file:googleCloudStorage.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Use the Google Cloud Storage API',
 		schemaPath: 'Google/CloudStorage',

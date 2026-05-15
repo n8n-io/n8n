@@ -22,6 +22,7 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
+		canEditAgent?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 	}>(),
@@ -31,6 +32,7 @@ const props = withDefaults(
 		endpoint: 'chat',
 		initialMessage: undefined,
 		continueSessionId: undefined,
+		canEditAgent: true,
 		beforeSend: undefined,
 		inputDraft: undefined,
 	},
@@ -111,10 +113,14 @@ const hasOpenInteractiveQuestion = computed(() =>
 	messages.value.some((message) => message.interactive && !message.interactive.resolvedAt),
 );
 
+const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
+
 const chatPlaceholder = computed(() =>
-	hasOpenInteractiveQuestion.value
-		? locale.baseText('agents.chat.answerQuestionPlaceholder')
-		: locale.baseText('agents.chat.input.placeholder'),
+	isBuilderReadOnly.value
+		? locale.baseText('agents.builder.readonly.placeholder')
+		: hasOpenInteractiveQuestion.value
+			? locale.baseText('agents.chat.answerQuestionPlaceholder')
+			: locale.baseText('agents.chat.input.placeholder'),
 );
 
 function onOpenBuild() {
@@ -126,9 +132,14 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenInteractiveQuestion.value) {
+	if (
+		!text ||
+		isStreaming.value ||
+		isPreparingToSend.value ||
+		isBuilderReadOnly.value ||
+		hasOpenInteractiveQuestion.value
+	)
 		return;
-	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -276,9 +287,11 @@ onBeforeUnmount(() => {
 					!hasOpenInteractiveQuestion &&
 					!isStreaming &&
 					!isPreparingToSend &&
+					!isBuilderReadOnly &&
 					inputText.trim().length > 0
 				"
 				:disabled="
+					isBuilderReadOnly ||
 					hasOpenInteractiveQuestion ||
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
