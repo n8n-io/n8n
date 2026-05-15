@@ -6,14 +6,14 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import {
-	type useWorkflowDocumentStore,
+	type WorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 export function useWorkflowImport(
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>,
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>,
 	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>,
 ) {
 	const route = useRoute();
