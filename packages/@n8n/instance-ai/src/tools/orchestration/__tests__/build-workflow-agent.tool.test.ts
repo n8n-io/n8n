@@ -34,12 +34,7 @@ const {
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
 
-type BuildExecutable = {
-	execute: (
-		input: Record<string, unknown>,
-		ctx?: { agent?: { resumeData?: unknown; suspend?: jest.Mock<Promise<void>, [unknown]> } },
-	) => Promise<{ result: string; taskId: string }>;
-};
+type BuildExecutable = BuiltTool;
 
 function mockBuiltTool(name: string): BuiltTool {
 	return { name, description: name, handler: jest.fn() };
@@ -122,7 +117,7 @@ describe('buildWarmBuilderFollowUp', () => {
 		expect(briefing).toContain('Do NOT stop after a successful submit without verifying');
 		expect(briefing).toContain('verify-built-workflow');
 		expect(briefing).toContain('nodes(action="explore-resources")');
-		expect(briefing).not.toContain('workflows(action="publish")');
+		expect(briefing).toContain('Do NOT call `workflows(action="publish")` for the main workflow');
 		expect(briefing).toContain('<requested-change>');
 		expect(briefing).toContain('Change the Gmail recipient');
 	});
@@ -976,13 +971,13 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
-		const first = await tool.execute({ task: 'one' });
+		const first = await executeTool(tool, { task: 'one' });
 		expect(first.result).toMatch(/^STOP\./);
 
-		const second = await tool.execute({ task: 'two' });
+		const second = await executeTool(tool, { task: 'two' });
 		expect(second.result).toMatch(/^STOP\./);
 
-		await expect(tool.execute({ task: 'three' })).rejects.toThrow(/looped on .* rejections/);
+		await expect(executeTool(tool, { task: 'three' })).rejects.toThrow(/looped on .* rejections/);
 		expect(context.logger.warn).toHaveBeenCalledWith(
 			'build-workflow-with-agent plan-guard rejection limit reached — aborting run',
 			expect.objectContaining({
@@ -997,16 +992,16 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
 		// 1: missing bypassPlan
-		await tool.execute({ task: 'one' });
+		await executeTool(tool, { task: 'one' });
 		// 2: bypassPlan=true but missing workflowId
-		await tool.execute({
+		await executeTool(tool, {
 			task: 'two',
 			bypassPlan: true,
 			reason: 'patch a thing',
 		});
 		// 3: bypassPlan=true + workflowId but missing reason — throws
 		await expect(
-			tool.execute({
+			executeTool(tool, {
 				task: 'three',
 				bypassPlan: true,
 				workflowId: 'WF_EXISTING',
@@ -1021,13 +1016,13 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
 		// Two rejections — counter at 2.
-		await tool.execute({ task: 'one' });
-		await tool.execute({ task: 'two' });
+		await executeTool(tool, { task: 'one' });
+		await executeTool(tool, { task: 'two' });
 
 		// A valid bypassPlan call gets past the guard (startBuildWorkflowAgentTask
 		// short-circuits on missing spawnBackgroundTask, but the counter resets
 		// BEFORE that call, so the counter is back to 0).
-		const past = await tool.execute({
+		const past = await executeTool(tool, {
 			task: 'edit an existing workflow',
 			workflowId: 'WF_EXISTING',
 			bypassPlan: true,
@@ -1036,9 +1031,9 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		expect(past.result).not.toMatch(/^STOP\./);
 
 		// Two more rejections — the counter restarts from 0, so this must NOT throw.
-		const fourth = await tool.execute({ task: 'three' });
+		const fourth = await executeTool(tool, { task: 'three' });
 		expect(fourth.result).toMatch(/^STOP\./);
-		const fifth = await tool.execute({ task: 'four' });
+		const fifth = await executeTool(tool, { task: 'four' });
 		expect(fifth.result).toMatch(/^STOP\./);
 	});
 
@@ -1046,18 +1041,20 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const contextA = createMockContext();
 		const toolA = createBuildWorkflowAgentTool(contextA) as unknown as BuildExecutable;
 
-		await toolA.execute({ task: 'a-one' });
-		await toolA.execute({ task: 'a-two' });
+		await executeTool(toolA, { task: 'a-one' });
+		await executeTool(toolA, { task: 'a-two' });
 
 		// A different tool instance must start with a fresh counter.
 		const contextB = createMockContext();
 		const toolB = createBuildWorkflowAgentTool(contextB) as unknown as BuildExecutable;
 
-		const out = await toolB.execute({ task: 'b-one' });
+		const out = await executeTool(toolB, { task: 'b-one' });
 		expect(out.result).toMatch(/^STOP\./);
 
 		// And toolA, which is at 2, throws on its next call as expected.
-		await expect(toolA.execute({ task: 'a-three' })).rejects.toThrow(/looped on .* rejections/);
+		await expect(executeTool(toolA, { task: 'a-three' })).rejects.toThrow(
+			/looped on .* rejections/,
+		);
 	});
 
 	it('does not increment the counter or throw when the guard is disabled by env flag', async () => {
@@ -1067,7 +1064,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		// Many calls with input shapes that would otherwise trip the guard — none throw.
 		for (let i = 0; i < 5; i++) {
-			const out = await tool.execute({ task: `call-${i}` });
+			const out = await executeTool(tool, { task: `call-${i}` });
 			expect(out.result).not.toMatch(/^STOP\./);
 		}
 	});
@@ -1081,7 +1078,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		// Many follow-up bypasses — none should throw.
 		for (let i = 0; i < 5; i++) {
-			const out = await tool.execute({ task: `replan-${i}` });
+			const out = await executeTool(tool, { task: `replan-${i}` });
 			expect(out.result).not.toMatch(/^STOP\./);
 		}
 	});

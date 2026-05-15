@@ -1577,6 +1577,8 @@ function isBuildViaPlanGuardEnabled(): boolean {
 	return raw.toLowerCase() !== 'false' && raw !== '0';
 }
 
+const PLAN_GUARD_REJECTION_LIMIT = 3;
+
 async function resolveWorkflowNameForEditConfirmation(
 	context: OrchestrationContext,
 	workflowId: string,
@@ -1591,6 +1593,26 @@ async function resolveWorkflowNameForEditConfirmation(
 }
 
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
+	let planGuardRejectionCount = 0;
+
+	const rejectPlanGuardCall = (result: string) => {
+		planGuardRejectionCount++;
+		if (planGuardRejectionCount >= PLAN_GUARD_REJECTION_LIMIT) {
+			context.logger.warn(
+				'build-workflow-with-agent plan-guard rejection limit reached — aborting run',
+				{
+					threadId: context.threadId,
+					rejectionCount: planGuardRejectionCount,
+				},
+			);
+			throw new Error(
+				`build-workflow-with-agent looped on ${planGuardRejectionCount} plan-guard rejections`,
+			);
+		}
+
+		return { result, taskId: '' };
+	};
+
 	return new Tool('build-workflow-with-agent')
 		.description(
 			'Build or modify an n8n workflow using a specialized builder agent. ' +
@@ -1619,34 +1641,28 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							hasWorkflowId: Boolean(input.workflowId),
 						},
 					);
-					return {
-						result:
-							'Error: direct builder calls require `bypassPlan: true` + an existing ' +
+					return rejectPlanGuardCall(
+						'STOP. Direct builder calls require `bypassPlan: true` + an existing ' +
 							'`workflowId` + a one-sentence `reason`. Use that combination for any edit to ' +
 							'an existing workflow. For new workflows, multi-workflow builds, or data-table ' +
 							'schema changes, call `plan` with a `build-workflow` task instead — the planner ' +
 							'discovers credentials, data tables, and best practices, and schedules an ' +
 							'orchestrator-run verification checkpoint.',
-						taskId: '',
-					};
+					);
 				}
 				if (!input.workflowId) {
-					return {
-						result:
-							'Error: `bypassPlan: true` is for edits to an EXISTING workflow and requires a ' +
+					return rejectPlanGuardCall(
+						'STOP. `bypassPlan: true` is for edits to an EXISTING workflow and requires a ' +
 							'`workflowId`. New workflow builds must go through `plan` so an orchestrator-run ' +
 							'verification checkpoint is scheduled. Call `plan` with a `build-workflow` task ' +
 							'instead.',
-						taskId: '',
-					};
+					);
 				}
 				if (!input.reason || input.reason.trim().length === 0) {
-					return {
-						result:
-							'Error: `bypassPlan: true` requires a one-sentence `reason` describing the edit ' +
+					return rejectPlanGuardCall(
+						'STOP. `bypassPlan: true` requires a one-sentence `reason` describing the edit ' +
 							'(e.g. "swap Slack channel", "fix Code node shape issue").',
-						taskId: '',
-					};
+					);
 				}
 				context.logger.warn('build-workflow-with-agent bypassing plan with bypassPlan=true', {
 					threadId: context.threadId,
@@ -1654,6 +1670,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					reason: input.reason,
 				});
 			}
+			planGuardRejectionCount = 0;
 
 			if (input.workflowId && !isPostPlanFollowUpRun && context.domainContext) {
 				const updateWorkflowPermission =
