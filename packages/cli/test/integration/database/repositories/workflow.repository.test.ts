@@ -148,6 +148,27 @@ describe('WorkflowRepository', () => {
 			expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
 			expect(updatedWorkflow?.active).toBe(true);
 		});
+
+		it('should throw when workflow does not exist', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			await expect(workflowRepository.publishVersion('non-existent-id')).rejects.toThrow(
+				'Workflow "non-existent-id" not found.',
+			);
+		});
+
+		it('should throw when workflow is archived', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithTriggerAndHistory({ isArchived: true });
+
+			await expect(workflowRepository.publishVersion(workflow.id)).rejects.toThrow(
+				'Cannot publish archived Workflow',
+			);
+
+			const updatedWorkflow = await getWorkflowById(workflow.id);
+			expect(updatedWorkflow?.activeVersionId).toBeNull();
+			expect(updatedWorkflow?.active).toBe(false);
+		});
 	});
 
 	describe('unpublishAll', () => {
@@ -224,6 +245,19 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(activeIds).toHaveLength(1);
+		});
+	});
+
+	describe('getAllActiveIds', () => {
+		it('should exclude archived workflows', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const activeNonArchived = await createActiveWorkflow();
+			const activeArchived = await createActiveWorkflow();
+			await workflowRepository.update(activeArchived.id, { isArchived: true });
+
+			const activeIds = await workflowRepository.getAllActiveIds();
+
+			expect(activeIds).toEqual([activeNonArchived.id]);
 		});
 	});
 
