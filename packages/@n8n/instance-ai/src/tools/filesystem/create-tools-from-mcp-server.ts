@@ -1,4 +1,10 @@
-import { Tool } from '@n8n/agents';
+import {
+	Tool,
+	type AgentMessage,
+	type BuiltTool,
+	type ContentFile,
+	type ContentText,
+} from '@n8n/agents';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -25,6 +31,8 @@ import {
 import type { Logger } from '../../logger';
 import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
+
+type McpContentBlock = McpToolCallResult['content'][number];
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -58,6 +66,31 @@ function isGatewayResourceDecision(
 	option: string,
 ): option is z.infer<typeof gatewayResourceDecisionSchema> {
 	return gatewayResourceDecisionSchema.safeParse(option).success;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isMcpContentBlock(value: unknown): value is McpContentBlock {
+	if (!isRecord(value)) return false;
+	if (value.type === 'text') return typeof value.text === 'string';
+	if (value.type === 'image') {
+		return typeof value.data === 'string' && typeof value.mimeType === 'string';
+	}
+	return false;
+}
+
+function unwrapMcpToolResult(result: unknown): McpToolCallResult | undefined {
+	const raw = isRecord(result) && 'output' in result ? result.output : result;
+	if (!isRecord(raw) || !Array.isArray(raw.content)) return undefined;
+	if (!raw.content.every(isMcpContentBlock)) return undefined;
+
+	return {
+		content: raw.content,
+		...(isRecord(raw.structuredContent) ? { structuredContent: raw.structuredContent } : {}),
+		...(typeof raw.isError === 'boolean' ? { isError: raw.isError } : {}),
+	};
 }
 
 function tryParseGatewayConfirmationRequired(
@@ -100,6 +133,42 @@ function tryParseGatewayConfirmationRequired(
 	} catch {
 		return null;
 	}
+}
+
+function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFile | undefined {
+	if (block.type === 'text' && block.text) {
+		return { type: 'text', text: block.text };
+	}
+
+	if (block.type === 'image' && block.data) {
+		return {
+			type: 'file',
+			data: block.data,
+			mediaType: block.mimeType || 'image/png',
+		};
+	}
+
+	return undefined;
+}
+
+function mcpBlockToModelTextPart(block: McpContentBlock): { type: 'text'; text: string } {
+	if (block.type === 'text') {
+		return { type: 'text', text: block.text };
+	}
+
+	return { type: 'text', text: `[image: ${block.mimeType || 'image/png'}]` };
+}
+
+function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
+	const raw = unwrapMcpToolResult(result);
+	if (!raw?.content.some((item) => item.type === 'image')) return undefined;
+
+	const content = raw.content
+		.map(mcpBlockToMessagePart)
+		.filter((part): part is ContentText | ContentFile => part !== undefined);
+	if (content.length === 0) return undefined;
+
+	return { role: 'assistant', content };
 }
 
 // ---------------------------------------------------------------------------
@@ -147,8 +216,8 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  * server restarts. On resume, the tool re-calls the daemon with the selected
  * decision token.
  *
- * The `toModelOutput` callback converts MCP content blocks (text and image)
- * into the AI SDK's multimodal format so the LLM receives images.
+ * The `toMessage` callback converts MCP image blocks into native file parts
+ * so the LLM receives gateway screenshots as real multimodal input.
  */
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
@@ -199,7 +268,7 @@ export function createToolsFromLocalMcpServer(
 			inputSchema = z.record(z.unknown());
 		}
 
-		const tool = new Tool(toolName)
+		const baseTool = new Tool(toolName)
 			.description(description)
 			.input(inputSchema)
 			.suspend(gatewayConfirmationSuspendSchema)
@@ -245,14 +314,7 @@ export function createToolsFromLocalMcpServer(
 				return result;
 			})
 			.toModelOutput((result: unknown) => {
-				const raw = (
-					result !== null && typeof result === 'object' && 'output' in result
-						? (result as { output: unknown }).output
-						: result
-				) as {
-					content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
-					structuredContent?: Record<string, unknown>;
-				};
+				const raw = unwrapMcpToolResult(result);
 
 				if (!raw?.content || !Array.isArray(raw.content)) {
 					return { type: 'text', value: JSON.stringify(result) };
@@ -268,20 +330,14 @@ export function createToolsFromLocalMcpServer(
 					};
 				}
 
-				// Convert MCP image content into the native model-output media part.
-				const value = raw.content.map((item) => {
-					if (item.type === 'image') {
-						return {
-							type: 'media' as const,
-							data: item.data ?? '',
-							mediaType: item.mimeType ?? 'image/jpeg',
-						};
-					}
-					return { type: 'text' as const, text: item.text ?? '' };
-				});
+				const value = raw.content.map(mcpBlockToModelTextPart);
 				return { type: 'content', value };
 			})
 			.build();
+		const tool = {
+			...baseTool,
+			toMessage: buildNativeMcpMediaMessage,
+		} satisfies BuiltTool;
 
 		tools.set(toolName, tool);
 	}

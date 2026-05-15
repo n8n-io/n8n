@@ -65,6 +65,13 @@ const SUCCESS_RESULT: McpToolCallResult = {
 	content: [{ type: 'text', text: 'file written' }],
 };
 
+const SCREENSHOT_RESULT: McpToolCallResult = {
+	content: [
+		{ type: 'text', text: 'current browser screenshot' },
+		{ type: 'image', data: 'base64-screenshot', mimeType: 'image/png' },
+	],
+};
+
 const GENERIC_ERROR_RESULT: McpToolCallResult = {
 	content: [{ type: 'text', text: 'Permission denied' }],
 	isError: true,
@@ -231,6 +238,43 @@ describe('createToolsFromLocalMcpServer', () => {
 					limitType: 'objectProperties',
 				}),
 			);
+		});
+	});
+
+	describe('media output', () => {
+		it('returns native file parts from toMessage for gateway image results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			const message = tool?.toMessage?.(SCREENSHOT_RESULT);
+
+			expect(message).toEqual({
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'current browser screenshot' },
+					{ type: 'file', data: 'base64-screenshot', mediaType: 'image/png' },
+				],
+			});
+		});
+
+		it('does not create an extra message for text-only results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
+		});
+
+		it('keeps media payloads out of the JSON tool result shown to the model', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			expect(tool?.toModelOutput?.(SCREENSHOT_RESULT)).toEqual({
+				type: 'content',
+				value: [
+					{ type: 'text', text: 'current browser screenshot' },
+					{ type: 'text', text: '[image: image/png]' },
+				],
+			});
 		});
 	});
 
