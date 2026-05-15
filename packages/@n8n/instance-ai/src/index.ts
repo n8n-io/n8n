@@ -71,6 +71,14 @@ export { createSandbox, createWorkspace } from './workspace/create-workspace';
 export type { SandboxConfig } from './workspace/create-workspace';
 export { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
+export {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+} from './workspace/builder-templates-service';
+export type {
+	BuilderTemplatesBundle,
+	BuilderTemplatesServiceOptions,
+} from './workspace/builder-templates-service';
 export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export {

@@ -22,11 +22,11 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
-import { getExampleFiles } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
+import type { BuilderTemplatesBundle } from './builder-templates-service';
 import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
 import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-fs';
 
@@ -324,24 +324,28 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
  * n8n-sandbox factory paths, which skip the full setup but still need the
  * curated reference material the builder agent greps against.
  *
- * No-op when the loader returns an empty bundle (e.g. running against a
- * workspace where the manifest hasn't been fetched).
+ * No-op when the bundle is null or empty (e.g. `templatesService` was not
+ * configured, or the CDN fetch failed and there was no disk cache).
  */
-export async function writeCuratedExamples(workspace: Workspace, logger?: Logger): Promise<void> {
+export async function writeCuratedExamples(
+	workspace: Workspace,
+	bundle: BuilderTemplatesBundle | null,
+	logger?: Logger,
+): Promise<void> {
+	if (!bundle || bundle.files.length === 0) return;
 	const start = Date.now();
-	const { files: exampleFiles, indexTxt } = getExampleFiles();
-	if (exampleFiles.length === 0) return;
 
 	const root = await getWorkspaceRoot(workspace);
 	const fileMap = new Map<string, string>();
-	fileMap.set('examples/index.txt', indexTxt);
-	for (const example of exampleFiles) {
+	fileMap.set('examples/index.txt', bundle.indexTxt);
+	for (const example of bundle.files) {
 		fileMap.set(`examples/${example.filename}`, example.content);
 	}
 	await writeWorkspaceFiles(workspace, root, fileMap);
 
 	logger?.debug('[sandbox-setup] prepared curated examples', {
-		count: exampleFiles.length,
+		count: bundle.files.length,
+		version: bundle.version,
 		durationMs: Date.now() - start,
 	});
 }
@@ -403,7 +407,8 @@ export async function setupSandboxWorkspace(
 	// ── Write workspace files ──────────────────────────────────────────────
 
 	await writeWorkspaceFiles(workspace, root, files);
-	await writeCuratedExamples(workspace, context.logger);
+	const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+	await writeCuratedExamples(workspace, templatesBundle, context.logger);
 
 	// npm install (must run after package.json is in place)
 	const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);

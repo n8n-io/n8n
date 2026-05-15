@@ -2,6 +2,7 @@ import type { Workspace } from '@mastra/core/workspace';
 import { jsonParse } from 'n8n-workflow';
 
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
+import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { setupSandboxWorkspace as setupSandboxWorkspaceFunction } from '../sandbox-setup';
 import { formatNodeCatalogLine } from '../sandbox-setup';
 
@@ -12,7 +13,9 @@ type RunInSandboxMock = jest.Mock<
 >;
 type ReadFileViaSandboxMock = jest.Mock<Promise<string | null>, [Workspace, string]>;
 
-function createSetupContext(): InstanceAiContext {
+function createSetupContext(
+	templatesBundle: BuilderTemplatesBundle | null = null,
+): InstanceAiContext {
 	return {
 		nodeService: {
 			listSearchable: jest.fn().mockResolvedValue([]),
@@ -20,6 +23,14 @@ function createSetupContext(): InstanceAiContext {
 		workflowService: {
 			list: jest.fn().mockResolvedValue([]),
 		},
+		...(templatesBundle
+			? {
+					templatesService: {
+						getBundle: jest.fn().mockResolvedValue(templatesBundle),
+						getVersion: jest.fn().mockReturnValue(templatesBundle.version),
+					},
+				}
+			: {}),
 	} as unknown as InstanceAiContext;
 }
 
@@ -171,7 +182,36 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('writes the curated examples bundle into examples/', async () => {
+	it('writes the curated examples bundle into examples/ when templatesService returns one', async () => {
+		const runInSandbox: RunInSandboxMock = jest.fn<
+			Promise<{ exitCode: number; stdout: string; stderr: string }>,
+			[Workspace, string, string?]
+		>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
+			Promise<string | null>,
+			[Workspace, string]
+		>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = jest.fn<Promise<void>, [string, string, { recursive: true }]>(async () => {});
+
+		const bundle: BuilderTemplatesBundle = {
+			files: [{ filename: 'demo.ts', content: '// demo template' }],
+			indexTxt: 'demo.ts | Demo | nodes | tag | n8n:1\n',
+			version: 'test-sha',
+		};
+		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext(bundle));
+
+		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
+		expect(writtenPaths).toContain('/sandbox/examples/index.txt');
+		expect(writtenPaths).toContain('/sandbox/examples/demo.ts');
+	});
+
+	it('skips writing examples/ when templatesService is absent', async () => {
 		const runInSandbox: RunInSandboxMock = jest.fn<
 			Promise<{ exitCode: number; stdout: string; stderr: string }>,
 			[Workspace, string, string?]
@@ -191,8 +231,7 @@ describe('setupSandboxWorkspace', () => {
 		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext());
 
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths).toContain('/sandbox/examples/index.txt');
-		expect(writtenPaths.some((p) => /^\/sandbox\/examples\/.+\.ts$/.test(p))).toBe(true);
+		expect(writtenPaths.some((p) => p.startsWith('/sandbox/examples/'))).toBe(false);
 	});
 
 	it('does not write the initialized marker when npm install fails', async () => {

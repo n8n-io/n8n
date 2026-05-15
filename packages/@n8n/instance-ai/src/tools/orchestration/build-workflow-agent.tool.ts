@@ -1115,6 +1115,7 @@ export async function startBuildWorkflowAgentTask(
 								runId: context.runId,
 								workItemId,
 								userRequestExcerpt: input.task,
+								templatesVersion: domainContext.templatesService?.getVersion() ?? null,
 							});
 							telemetryWorkspace = workspace;
 							attachTemplateTelemetrySession(workspace, telemetrySession);

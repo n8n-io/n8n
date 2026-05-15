@@ -1,28 +1,16 @@
 /**
- * Runtime loader for the curated workflow examples.
+ * Pure formatter for the curated workflow examples.
  *
- * Reads `examples/manifest.json` + `examples/workflows/*.json`, runs each
- * through `emitInstanceAi` with a JSDoc header pulled from the manifest entry,
+ * Takes an in-memory bundle (manifest entries + workflow JSONs keyed by slug),
+ * runs each through `emitInstanceAi` with a JSDoc header pulled from the entry,
  * and returns the resulting `.ts` strings plus a flat grep-able `index.txt`.
  *
- * Used by the instance-ai sandbox-setup to populate `${workspaceRoot}/examples/`
- * so the builder agent can grep the index and `cat` matching `.ts` files.
- *
- * Results are memoised — the manifest is committed and immutable per package
- * version, so loading once per process is enough.
+ * Consumers (the instance-ai sandbox setup) own bundle hydration — typically
+ * the `BuilderTemplatesService` fetches manifest + workflows from a CDN, caches
+ * them on disk, and passes the result here.
  */
-import * as fs from 'fs';
-import * as path from 'path';
-
 import { emitInstanceAi } from './codegen/emit-instance-ai';
-import { ensureExtracted } from './examples-zip';
 import type { WorkflowJSON } from './types/base';
-
-// Resolve relative to this file. At runtime this lives at <package>/dist/examples-loader.js,
-// so `../examples` reaches <package>/examples/.
-const EXAMPLES_DIR = path.resolve(__dirname, '..', 'examples');
-const MANIFEST_PATH = path.join(EXAMPLES_DIR, 'manifest.json');
-const WORKFLOWS_DIR = path.join(EXAMPLES_DIR, 'workflows');
 
 const NODES_INLINE_LIMIT = 5;
 const INDEX_NODE_SEPARATOR = ',';
@@ -41,7 +29,7 @@ export interface ExampleFilesBundle {
 	indexTxt: string;
 }
 
-interface ManifestEntry {
+export interface ManifestEntry {
 	id: number;
 	slug: string;
 	name: string;
@@ -57,37 +45,27 @@ interface ManifestEntry {
 	skip?: boolean;
 }
 
-interface ManifestFile {
+export interface ManifestFile {
+	/** ISO timestamp the manifest was stamped at; written by curation CI. */
+	generatedAt?: string;
+	/** Short identifier (e.g. git SHA); used by the runtime cache as a fingerprint. */
+	version?: string;
 	workflows: ManifestEntry[];
 }
 
-let cached: ExampleFilesBundle | null = null;
+export interface RawTemplateBundle {
+	manifest: ManifestFile;
+	/** Workflow JSONs keyed by manifest entry slug. Entries without a workflow are skipped. */
+	workflows: Map<string, WorkflowJSON>;
+}
 
 /**
- * Load and prepare the curated examples for sandbox use. Memoised per process.
- *
- * Returns an empty bundle if the manifest does not exist (e.g. the consumer is
- * running against an unfetched workspace). Sandbox-setup checks for an empty
- * bundle and skips the write.
+ * Format a raw bundle into the per-file output the sandbox writes to disk.
+ * Entries are filtered to `success && !skip` and sorted by score descending,
+ * mirroring how the runtime should surface them to the builder agent.
  */
-export function getExampleFiles(): ExampleFilesBundle {
-	if (cached !== null) return cached;
-	cached = loadFromDisk();
-	return cached;
-}
-
-/** Reset the memoisation cache. Tests use this; production callers should not. */
-export function resetExampleFilesCache(): void {
-	cached = null;
-}
-
-function loadFromDisk(): ExampleFilesBundle {
-	if (!fs.existsSync(MANIFEST_PATH)) return { files: [], indexTxt: '' };
-	ensureExtracted();
-
-	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Internal manifest file
-	const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as ManifestFile;
-	const entries = (manifest.workflows ?? [])
+export function buildExampleFiles(bundle: RawTemplateBundle): ExampleFilesBundle {
+	const entries = (bundle.manifest.workflows ?? [])
 		.filter((e) => e.success && !e.skip)
 		.sort((a, b) => b.score - a.score);
 
@@ -95,10 +73,8 @@ function loadFromDisk(): ExampleFilesBundle {
 	const indexLines: string[] = [];
 
 	for (const entry of entries) {
-		const wfPath = path.join(WORKFLOWS_DIR, `${entry.slug}.json`);
-		if (!fs.existsSync(wfPath)) continue;
-		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Internal workflow fixture
-		const wf = JSON.parse(fs.readFileSync(wfPath, 'utf-8')) as WorkflowJSON;
+		const wf = bundle.workflows.get(entry.slug);
+		if (!wf) continue;
 		const header = buildJsdocHeader(entry);
 		const code = emitInstanceAi(wf, { jsdocHeader: header });
 		files.push({ filename: `${entry.slug}.ts`, content: code });

@@ -48,6 +48,13 @@ export interface TelemetrySessionOptions {
 	workItemId: string;
 	/** Optional NL request from the user; truncated to 120 chars. */
 	userRequestExcerpt?: string;
+	/**
+	 * Version identifier of the curated templates bundle in use this run
+	 * (typically a short git SHA from the n8n-sdk-templates manifest).
+	 * Emitted on every search/read/session event so we can correlate usage
+	 * to specific bundle revisions.
+	 */
+	templatesVersion?: string | null;
 }
 
 export function createTemplateTelemetrySession(
@@ -57,6 +64,7 @@ export function createTemplateTelemetrySession(
 		thread_id: opts.threadId,
 		run_id: opts.runId,
 		work_item_id: opts.workItemId,
+		templates_version: opts.templatesVersion ?? null,
 	};
 
 	let searchCount = 0;
