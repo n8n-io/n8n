@@ -11,8 +11,9 @@ import type { CanvasConnectionPort } from '../../../../canvas.types';
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 
-vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
-	injectWorkflowRenderData: vi.fn(() => ({
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
 		value: {
 			nodeInputsByNodeId: renderNodeInputsMap,
 			nodeOutputsByNodeId: renderNodeOutputsMap,

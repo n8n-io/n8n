@@ -46,8 +46,8 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
-import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
-import { WorkflowRenderDataKey } from '@/app/constants/injectionKeys';
+import type { CanvasRenderData } from '../canvas.utils';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
 	nextTick,
@@ -143,7 +143,7 @@ const props = withDefaults(
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
-		renderData: WorkflowRenderData;
+		renderData: CanvasRenderData;
 		readOnly?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
@@ -174,7 +174,7 @@ const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const renderData = toRef(props, 'renderData');
-provide(WorkflowRenderDataKey, renderData);
+provide(CanvasRenderDataKey, renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();

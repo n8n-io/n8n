@@ -12,10 +12,7 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import {
-	useWorkflowDocumentRenderData,
-	type WorkflowRenderData,
-} from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 export function mapConnections(connections: CanvasConnection[]) {
 	return connections.reduce(
@@ -68,7 +65,7 @@ function createWorkflowDiff(
 	workflowNodes: Ref<INodeUi[]>,
 	workflowConnections: Ref<IConnections>,
 	workflowObjectRef: Ref<Workflow>,
-	renderData: Ref<WorkflowRenderData>,
+	renderData: Ref<CanvasRenderData>,
 ) {
 	// Call useCanvasMapping at setup time, not inside computed
 	// This is required because useCanvasMapping uses inject() internally
@@ -114,7 +111,7 @@ function createWorkflowDiff(
 }
 
 function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>, side: string) {
-	const renderData = shallowRef<WorkflowRenderData>({
+	const renderData = shallowRef<CanvasRenderData>({
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
 	});
@@ -133,7 +130,7 @@ function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>,
 
 		workflowDocumentStore = useWorkflowDocumentStore(docId);
 		workflowDocumentStore.hydrate({ ...wf, versionId } as IWorkflowDb);
-		renderData.value = useWorkflowDocumentRenderData(docId);
+		renderData.value = workflowDocumentStore.render;
 	});
 
 	function dispose() {

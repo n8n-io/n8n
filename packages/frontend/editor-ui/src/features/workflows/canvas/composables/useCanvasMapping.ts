@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { CanvasRenderData } from '../canvas.utils';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -67,7 +67,7 @@ export function useCanvasMapping({
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
-	renderData: Ref<WorkflowRenderData>;
+	renderData: Ref<CanvasRenderData>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();

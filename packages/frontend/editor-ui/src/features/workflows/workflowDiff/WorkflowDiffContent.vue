@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CanvasNode, CanvasConnection } from '@/features/workflows/canvas/canvas.types';
-import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { INodeUi } from '@/Interface';
 import SyncedWorkflowCanvas from './SyncedWorkflowCanvas.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
@@ -15,10 +15,10 @@ import { NodeDiffStatus } from 'n8n-workflow';
 const props = defineProps<{
 	sourceNodes: CanvasNode[];
 	sourceConnections: CanvasConnection[];
-	sourceRenderData: WorkflowRenderData;
+	sourceRenderData: CanvasRenderData;
 	targetNodes: CanvasNode[];
 	targetConnections: CanvasConnection[];
-	targetRenderData: WorkflowRenderData;
+	targetRenderData: CanvasRenderData;
 	sourceLabel: string;
 	targetLabel: string;
 	sourceExists: boolean;

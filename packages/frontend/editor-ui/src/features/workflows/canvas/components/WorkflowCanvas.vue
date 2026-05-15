@@ -6,12 +6,11 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, shallowRef, useCssModule, useTemplateRef } from 'vue';
+import { computed, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 defineOptions({
 	inheritAttrs: false,
@@ -41,7 +40,7 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const renderData = shallowRef(useWorkflowDocumentRenderData(workflowDocumentStore.value.id));
+const renderData = computed(() => workflowDocumentStore.value.render);
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 

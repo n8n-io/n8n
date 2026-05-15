@@ -20,6 +20,7 @@ import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
 import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
+import { useWorkflowDocumentRenderData } from './workflowDocument/useWorkflowDocumentRenderData';
 import { useWorkflowDocumentVersionData } from './workflowDocument/useWorkflowDocumentVersionData';
 import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
 import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
@@ -164,7 +165,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
-		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+		const {
+			onStateDirty: onNodesStateDirty,
+			nodeInputsByNodeId,
+			nodeOutputsByNodeId,
+			...workflowDocumentNodes
+		} = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 			nodeMetadata: workflowDocumentNodeMetadata,
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
@@ -189,6 +195,17 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
 		});
+		const workflowDocumentRenderData = useWorkflowDocumentRenderData({
+			nodes: workflowDocumentNodes.allNodes,
+			getNodeById: (nodeId) => workflowDocumentNodes.getNodeById(nodeId),
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
+			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+			getCommunityNodeType: (typeName) => nodeTypesStore.communityNodeType(typeName),
+			onNodesChange: workflowDocumentNodes.onNodesChange,
+			nodeInputsByNodeId,
+			nodeOutputsByNodeId,
+		});
+
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
 		// store is where cross-concern side effects are wired. When adding new
@@ -395,6 +412,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
+			...workflowDocumentRenderData,
 			removeAllNodes,
 			hydrate,
 			reset,

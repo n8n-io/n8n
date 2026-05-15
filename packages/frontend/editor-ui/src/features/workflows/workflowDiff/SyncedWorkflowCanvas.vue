@@ -6,7 +6,7 @@ import type {
 	CanvasEventBusEvents,
 	CanvasNode,
 } from '@/features/workflows/canvas/canvas.types';
-import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
@@ -17,7 +17,7 @@ const props = defineProps<{
 	id: string;
 	nodes: CanvasNode[];
 	connections: CanvasConnection[];
-	renderData: WorkflowRenderData;
+	renderData: CanvasRenderData;
 	applyLayout?: boolean;
 }>();
 

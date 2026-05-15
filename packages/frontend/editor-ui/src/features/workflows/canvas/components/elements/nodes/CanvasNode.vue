@@ -22,7 +22,7 @@ import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '../handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/app/constants';
-import { injectWorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
@@ -80,7 +80,7 @@ const contextMenu = useContextMenu();
 
 const { connectingHandle, isExperimentalNdvActive } = useCanvas();
 
-const renderData = injectWorkflowRenderData();
+const renderData = injectCanvasRenderData();
 
 /*
   Toolbar slot classes

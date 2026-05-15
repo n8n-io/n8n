@@ -10,8 +10,9 @@ import {
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 
-vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
-	injectWorkflowRenderData: vi.fn(() => ({
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
 		value: {
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),

@@ -12,7 +12,7 @@ import {
 import { isPresent } from '@/app/utils/typesUtils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import type { ComputedRef, Ref } from 'vue';
-import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { CanvasRenderData } from '../canvas.utils';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -54,7 +54,7 @@ const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
 export function useCanvasLayout(
 	canvasId: string,
 	isEmbeddedNdvActive: ComputedRef<boolean>,
-	renderData: Ref<WorkflowRenderData>,
+	renderData: Ref<CanvasRenderData>,
 ) {
 	const {
 		findNode,

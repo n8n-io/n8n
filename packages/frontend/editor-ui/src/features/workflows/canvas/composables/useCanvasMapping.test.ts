@@ -3,7 +3,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref, shallowRef } from 'vue';
-import type { WorkflowRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 import {
 	createTestNode,
@@ -68,12 +68,12 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 
-const testRenderData = shallowRef<WorkflowRenderData>({
+const testRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: renderNodeInputsMap,
 	nodeOutputsByNodeId: renderNodeOutputsMap,
 });
 
-const emptyRenderData = shallowRef<WorkflowRenderData>({
+const emptyRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: new Map(),
 	nodeOutputsByNodeId: new Map(),
 });

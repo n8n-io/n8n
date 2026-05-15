@@ -1,8 +1,9 @@
 import CanvasNodeDisabledStrikeThrough from './CanvasNodeDisabledStrikeThrough.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
-vi.mock('@/app/stores/workflowDocument/useWorkflowDocumentRenderData', () => ({
-	injectWorkflowRenderData: vi.fn(() => ({
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
 		value: {
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),

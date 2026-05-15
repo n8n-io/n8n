@@ -4,6 +4,7 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -16,6 +17,24 @@ import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
+import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+
+/**
+ * Per-node canvas render data (input/output port maps) shape, as produced by
+ * the workflow document store's render composable and consumed by canvas
+ * components.
+ */
+export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>['render'];
+
+/**
+ * Injects the canvas render data from the component tree. Provided by an
+ * ancestor canvas component. Throws if no provider is registered.
+ */
+export function injectCanvasRenderData(): Ref<CanvasRenderData> {
+	return injectStrict(CanvasRenderDataKey);
+}
 
 /**
  * Maps multiple legacy n8n connections to VueFlow connections
