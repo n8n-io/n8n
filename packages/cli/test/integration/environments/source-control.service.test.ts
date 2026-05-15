@@ -12,12 +12,8 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createCredentials } from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
-import { createUser } from '@test-integration/db/users';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
+import { mock, type MockProxy } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
@@ -43,6 +39,10 @@ import type { RemoteResourceOwner } from '@/environments.ee/source-control/types
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { createCredentials } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
+import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
+import { createUser } from '@test-integration/db/users';
 
 jest.mock('fast-glob');
 
@@ -176,7 +176,7 @@ describe('SourceControlService', () => {
 	let deletedOutOfScopeCredential: CredentialsEntity;
 	let deletedInScopeCredential: CredentialsEntity;
 
-	let gitService: SourceControlGitService;
+	let gitService: MockProxy<SourceControlGitService>;
 	let service: SourceControlService;
 	let statusService: SourceControlStatusService;
 
@@ -426,9 +426,8 @@ describe('SourceControlService', () => {
 			workflows: projectBWorkflows,
 		};
 
-		gitService = mock<SourceControlGitService>({
-			requiresAdminPushForProjectsMigration: jest.fn().mockResolvedValue(false),
-		});
+		gitService = mock<SourceControlGitService>();
+		gitService.requiresAdminPushForProjectsMigration.mockResolvedValue(false);
 		statusService = Container.get(SourceControlStatusService);
 
 		service = new SourceControlService(
@@ -813,6 +812,7 @@ describe('SourceControlService', () => {
 		});
 
 		beforeEach(() => {
+			gitService.requiresAdminPushForProjectsMigration.mockResolvedValue(false);
 			fsWriteFile.mockImplementation(async (path, data) => {
 				updatedFiles[path as string] = data as string;
 			});
@@ -1143,11 +1143,14 @@ describe('SourceControlService', () => {
 			});
 
 			it('should deny push for project admin', async () => {
+				// getStatus(direction: 'push') also enforces migration; load changes without that guard first
+				gitService.requiresAdminPushForProjectsMigration.mockResolvedValue(false);
 				const allChanges = (await service.getStatus(projectAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
 				})) as SourceControlledFile[];
+				gitService.requiresAdminPushForProjectsMigration.mockResolvedValue(true);
 
 				await expect(
 					service.pushWorkfolder(projectAdmin, {
