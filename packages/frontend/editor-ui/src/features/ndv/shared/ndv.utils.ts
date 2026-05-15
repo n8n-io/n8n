@@ -92,12 +92,14 @@ export function setValue(
 		// Data is on lower level
 		if (value === null) {
 			// Property should be deleted
-			let tempValue = get(nodeValues.value, nameParts.join('.')) as
-				| INodeParameters
-				| INodeParameters[];
+			const path = nameParts.join('.');
+			let tempValue = get(nodeValues.value, path) as INodeParameters | INodeParameters[];
 
-			if (lastNamePart && !Array.isArray(tempValue)) {
-				tempValue = omitKey(tempValue, lastNamePart);
+			if (isArray && Array.isArray(tempValue) && lastNamePart !== undefined) {
+				tempValue.splice(parseInt(lastNamePart, 10), 1);
+				set(nodeValues.value, path, tempValue);
+			} else if (lastNamePart && tempValue && !Array.isArray(tempValue)) {
+				set(nodeValues.value, path, omitKey(tempValue, lastNamePart));
 			}
 
 			if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
@@ -106,7 +108,11 @@ export function setValue(
 				lastNamePart = nameParts.pop();
 				tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
 				if (lastNamePart) {
-					tempValue = omitKey(tempValue, lastNamePart);
+					if (nameParts.length === 0) {
+						nodeValues.value = omitKey(nodeValues.value, lastNamePart);
+					} else {
+						set(nodeValues.value, nameParts.join('.'), omitKey(tempValue, lastNamePart));
+					}
 				}
 			}
 		} else {

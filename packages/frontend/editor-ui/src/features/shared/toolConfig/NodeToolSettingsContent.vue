@@ -105,6 +105,7 @@ const settingsNodeValues = computed<INodeParameters>(() => {
 	if (!node.value) return { parameters: {} };
 	return {
 		parameters: deepCopy(node.value.parameters),
+		customTelemetryTags: deepCopy(node.value.customTelemetryTags ?? {}),
 	};
 });
 
@@ -232,6 +233,15 @@ function handleChangeSettingsValue(updateData: IUpdateInformation) {
 			...node.value,
 			parameters: newParameters,
 		};
+	} else if (updateData.name.includes('.') || updateData.name.includes('[')) {
+		const newNode = deepCopy(node.value);
+		setParameterValue(newNode as unknown as INodeParameters, updateData.name, updateData.value);
+
+		if (newNode.customTelemetryTags?.tag?.length === 0) {
+			newNode.customTelemetryTags = {};
+		}
+
+		node.value = newNode;
 	} else {
 		node.value = { ...node.value, [updateData.name]: updateData.value };
 	}

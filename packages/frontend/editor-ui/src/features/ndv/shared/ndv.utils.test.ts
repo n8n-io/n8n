@@ -712,4 +712,26 @@ describe('setValue', () => {
 
 		expect(nodeValues.value.newProperty).toBe('newValue');
 	});
+
+	it('deletes array items from nested values', () => {
+		nodeValues.value = {
+			parameters: {},
+			customTelemetryTags: {
+				tag: [
+					{ key: 'environment', value: 'production' },
+					{ key: 'team', value: 'engineering' },
+				],
+			},
+		};
+
+		setValue(nodeValues, 'customTelemetryTags.tag[0]', null);
+
+		expect(nodeValues.value.customTelemetryTags).toEqual({
+			tag: [{ key: 'team', value: 'engineering' }],
+		});
+
+		setValue(nodeValues, 'customTelemetryTags.tag[0]', null);
+
+		expect(nodeValues.value.customTelemetryTags).toEqual({});
+	});
 });
