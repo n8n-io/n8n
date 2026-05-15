@@ -1,7 +1,11 @@
 import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
-import { AgentJsonConfigSchema, RunnableAgentJsonConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
