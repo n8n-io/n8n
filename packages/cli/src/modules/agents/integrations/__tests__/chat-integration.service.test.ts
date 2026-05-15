@@ -1,4 +1,3 @@
-import type { AgentCredentialIntegration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
@@ -17,6 +16,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationService } from '../chat-integration.service';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 /**
  * Test double — exposes the registry without invoking the real Chat SDK
@@ -54,10 +54,9 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-const slackIntegration: AgentCredentialIntegration = {
+const slackIntegration: AgentCredentialIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-1',
-	credentialName: 'Acme Slack',
 };
 
 function buildServiceWith(
@@ -122,7 +121,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 
 		await service.syncToConfig(agent, [slackIntegration], []);
 
-		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', 'slack', 'cred-1');
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
 });
@@ -250,8 +249,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			agentRepository.findPublished.mockResolvedValue([
 				makeAgent({
 					integrations: [
-						{ type: 'telegram', credentialId: 'c1', credentialName: 'Tg' },
-						{ type: 'linear', credentialId: 'c2', credentialName: 'Ln' },
+						{ type: 'telegram', credentialId: 'c1' },
+						{ type: 'linear', credentialId: 'c2' },
 					],
 				}),
 			]);
@@ -274,9 +273,13 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			// Followers must not run external hooks during startup reconnect — the
 			// leader owns Telegram setWebhook etc., so a follower racing it would
 			// just trip Telegram's 1/sec rate limit.
-			expect(connectSpy).toHaveBeenCalledWith('agent-1', 'c2', 'linear', 'u1', 'project-1', {
-				skipExternalHooks: true,
-			});
+			expect(connectSpy).toHaveBeenCalledWith(
+				'agent-1',
+				{ type: 'linear', credentialId: 'c2' },
+				'u1',
+				'project-1',
+				{ skipExternalHooks: true },
+			);
 		});
 
 		it('connects every integration when this main is the leader and runs external hooks', async () => {
@@ -288,8 +291,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			agentRepository.findPublished.mockResolvedValue([
 				makeAgent({
 					integrations: [
-						{ type: 'telegram', credentialId: 'c1', credentialName: 'Tg' },
-						{ type: 'linear', credentialId: 'c2', credentialName: 'Ln' },
+						{ type: 'telegram', credentialId: 'c1' },
+						{ type: 'linear', credentialId: 'c2' },
 					],
 				}),
 			]);
@@ -310,7 +313,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			expect(connectSpy).toHaveBeenCalledTimes(2);
 			for (const call of connectSpy.mock.calls) {
-				expect(call[5]).toEqual({ skipExternalHooks: false });
+				expect(call[4]).toEqual({ skipExternalHooks: false });
 			}
 		});
 
@@ -321,7 +324,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const agentRepository = mock<AgentRepository>();
 			agentRepository.findPublished.mockResolvedValue([
 				makeAgent({
-					integrations: [{ type: 'linear', credentialId: 'c1', credentialName: 'Ln' }],
+					integrations: [{ type: 'linear', credentialId: 'c1' }],
 				}),
 			]);
 
@@ -384,12 +387,14 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'disconnect',
 			});
 
-			expect(disconnectSpy).toHaveBeenCalledWith('a1', 'linear', 'c1');
+			expect(disconnectSpy).toHaveBeenCalledWith('a1', {
+				type: 'linear',
+				credentialId: 'c1',
+			});
 		});
 
 		it('skips connect for a leader-only integration on a follower', async () => {
@@ -402,8 +407,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'telegram',
-				credentialId: 'c1',
+				integration: { type: 'telegram', credentialId: 'c1' },
 				action: 'connect',
 			});
 
@@ -431,17 +435,22 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
 			// External hooks (Telegram setWebhook, DB validation) already ran on
 			// the originator — the peer must skip them to avoid duplicate API
 			// calls and the resulting 429 rate-limit failure.
-			expect(connectSpy).toHaveBeenCalledWith('a1', 'c1', 'linear', 'u1', 'p1', {
-				skipExternalHooks: true,
-			});
+			expect(connectSpy).toHaveBeenCalledWith(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'u1',
+				'p1',
+				{
+					skipExternalHooks: true,
+				},
+			);
 		});
 
 		it('falls through user list until one succeeds', async () => {
@@ -472,15 +481,20 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
 			expect(connectSpy).toHaveBeenCalledTimes(2);
-			expect(connectSpy).toHaveBeenLastCalledWith('a1', 'c1', 'linear', 'u-with-access', 'p1', {
-				skipExternalHooks: true,
-			});
+			expect(connectSpy).toHaveBeenLastCalledWith(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'u-with-access',
+				'p1',
+				{
+					skipExternalHooks: true,
+				},
+			);
 		});
 
 		it('no-ops when the agent has been deleted', async () => {
@@ -496,8 +510,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'gone',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
@@ -518,8 +531,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
@@ -532,7 +544,11 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: false, publisher });
 
-			await service.broadcastIntegrationChange('a1', 'linear', 'c1', 'connect');
+			await service.broadcastIntegrationChange(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'connect',
+			);
 
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
@@ -541,14 +557,17 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
 
-			await service.broadcastIntegrationChange('a1', 'linear', 'c1', 'disconnect');
+			await service.broadcastIntegrationChange(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'disconnect',
+			);
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'agent-chat-integration-changed',
 				payload: {
 					agentId: 'a1',
-					type: 'linear',
-					credentialId: 'c1',
+					integration: { type: 'linear', credentialId: 'c1' },
 					action: 'disconnect',
 				},
 			});
@@ -557,22 +576,23 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		it('publishes settings alongside a connect broadcast', async () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
-			const settings = {
-				type: 'telegram' as const,
-				accessMode: 'private' as const,
-				allowedUsers: ['123'],
+			const integration: AgentCredentialIntegrationConfig = {
+				type: 'telegram',
+				credentialId: 'c1',
+				settings: {
+					accessMode: 'private' as const,
+					allowedUsers: ['123'],
+				},
 			};
 
-			await service.broadcastIntegrationChange('a1', 'telegram', 'c1', 'connect', settings);
+			await service.broadcastIntegrationChange('a1', integration, 'connect');
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'agent-chat-integration-changed',
 				payload: {
 					agentId: 'a1',
-					type: 'telegram',
-					credentialId: 'c1',
+					integration,
 					action: 'connect',
-					settings,
 				},
 			});
 		});
@@ -584,7 +604,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
 
 			await expect(
-				service.broadcastIntegrationChange('a1', 'linear', 'c1', 'connect'),
+				service.broadcastIntegrationChange('a1', { type: 'linear', credentialId: 'c1' }, 'connect'),
 			).resolves.toBeUndefined();
 		});
 	});
