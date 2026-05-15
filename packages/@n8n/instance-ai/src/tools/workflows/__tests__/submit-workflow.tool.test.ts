@@ -9,6 +9,7 @@ import {
 	classifySubmitFailure,
 	normalizeWorkflowNodeParameters,
 	type SubmitWorkflowAttempt,
+	type SubmitWorkflowOutput,
 } from '../submit-workflow.tool';
 import { isTriggerNodeType } from '../workflow-json-utils';
 
@@ -192,6 +193,81 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		expect(attempts[0]).toMatchObject({
 			success: false,
 			errors: ['Action blocked by admin'],
+		});
+	});
+});
+
+describe('createSubmitWorkflowTool — successful submit metadata', () => {
+	beforeEach(() => {
+		mockedValidateWorkflow.mockReset();
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+	});
+
+	it('returns and reports workflow pin-data verification and referenced workflow IDs', async () => {
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const workflowService = {
+			createFromWorkflowJSON: jest.fn(async () => {
+				await Promise.resolve();
+				return { id: 'main-workflow-id' };
+			}),
+		};
+		const workflowJson = {
+			name: 'Main workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: { slackApi: null },
+				},
+				{
+					id: 'node-2',
+					name: 'Call Sub',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {
+						source: 'database',
+						workflowId: 'sub-workflow-id',
+					},
+				},
+			],
+			connections: {},
+			pinData: {
+				Slack: [{ ok: true }],
+			},
+		};
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Main workflow',
+		});
+
+		expect(output).toMatchObject({
+			success: true,
+			workflowId: 'main-workflow-id',
+			usesWorkflowPinDataForVerification: true,
+			referencedWorkflowIds: ['sub-workflow-id'],
+		});
+		expect(attempts).toHaveLength(1);
+		expect(attempts[0]).toMatchObject({
+			success: true,
+			workflowId: 'main-workflow-id',
+			usesWorkflowPinDataForVerification: true,
+			referencedWorkflowIds: ['sub-workflow-id'],
 		});
 	});
 });

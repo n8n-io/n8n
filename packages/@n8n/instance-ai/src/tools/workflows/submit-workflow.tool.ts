@@ -15,7 +15,7 @@ import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
-import { isTriggerNodeType } from './workflow-json-utils';
+import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
@@ -189,6 +189,10 @@ export const submitWorkflowOutputSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/** Sub-workflow IDs referenced by the submitted main workflow. */
+	referencedWorkflowIds: z.array(z.string()).optional(),
 	remediation: z
 		.object({
 			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
@@ -468,6 +472,7 @@ export function createSubmitWorkflowTool(
 				}
 
 				const hasMockedCredentials = mockResult.mockedNodeNames.length > 0;
+				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 
 				// Add mock summary warning when credentials were mocked
 				if (hasMockedCredentials) {
@@ -503,6 +508,10 @@ export function createSubmitWorkflowTool(
 						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 							? mockResult.verificationPinData
 							: undefined,
+					usesWorkflowPinDataForVerification:
+						mockResult.usesWorkflowPinDataForVerification || undefined,
+					referencedWorkflowIds:
+						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 					hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 				});
 				return {
@@ -520,6 +529,10 @@ export function createSubmitWorkflowTool(
 						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 							? mockResult.verificationPinData
 							: undefined,
+					usesWorkflowPinDataForVerification:
+						mockResult.usesWorkflowPinDataForVerification || undefined,
+					referencedWorkflowIds:
+						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 					warnings:
 						informational.length > 0
 							? informational.map((w) => `[${w.code}]: ${w.message}`)
