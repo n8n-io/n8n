@@ -291,11 +291,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
-	// Hallucinated workflow IDs (e.g. `wf-foo`, `telegram-chatbot`) come back as
-	// unhandled tool errors otherwise, which the agent then retries with another
-	// invented id. Convert the error into a structured "not found" response
-	// surfacing the list of accessible workflows so the agent can self-correct
-	// without burning more turns guessing.
+	// Convert hallucinated-id errors into structured not-found responses so the agent stops guessing.
 	try {
 		return await context.workflowService.get(input.workflowId);
 	} catch (error) {

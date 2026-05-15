@@ -1,29 +1,10 @@
 import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
 
-/**
- * Builder hint for the Google Sheets `columns` resourceMapper on the `append`
- * operation. The full resourceMapper object shape is non-obvious, and a bare
- * string like `'autoMapInputData'` silently fails validation. The matching
- * `<patterns>` example lives on the node-level `builderHint.extraTypeDefContent`
- * in `Google/Sheet/GoogleSheets.node.ts`.
- *
- * `append` is plain insert — it does NOT need `matchingColumns`; that field is
- * specific to `appendOrUpdate` / `update` (see `upsertColumnsResourceMapperBuilderHint`).
- */
 export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	propertyHint:
 		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation. `append` is plain insert \u2014 do NOT add `matchingColumns` here (that is for the `appendOrUpdate` and `update` operations).",
 };
 
-/**
- * Builder hint for the `columns` resourceMapper on the `appendOrUpdate` and
- * `update` operations. These read `columns.matchingColumns` at execution time
- * (see `appendOrUpdate.operation.ts` and `update.operation.ts`); when the
- * array is missing or empty the node throws `Could not get parameter` mid-run
- * with no recovery. The agent regularly omits `matchingColumns` because the
- * generated TypeScript type marks it as optional, so we surface the
- * requirement here.
- */
 export const upsertColumnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	propertyHint:
 		"Pass the full resourceMapper object: { mappingMode, value, schema, matchingColumns }. `matchingColumns` is REQUIRED for this operation \u2014 it must be a non-empty `string[]` of header names that uniquely identify the row to update; without it the node throws 'Could not get parameter' at runtime. Use the `append` operation instead if there is no key column to match on. A bare string like 'autoMapInputData' silently fails validation; always send the full resourceMapper object.",
