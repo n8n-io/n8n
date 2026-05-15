@@ -10,16 +10,18 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 
@@ -167,6 +169,7 @@ export class AgentsBuilderService {
 			configUpdatedAt: agent.updatedAt.toISOString(),
 			toolList,
 			builderModel: BUILDER_MODEL,
+			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 		});
 
 		const tools = this.agentsBuilderToolsService.getTools(
