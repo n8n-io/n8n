@@ -671,7 +671,7 @@ export class TestRunnerService {
 			concurrency: effectiveConcurrency,
 			parallel_enabled: effectiveConcurrency > 1,
 			concurrency_limited_by_config: concurrencyLimitedByConfig,
-			concurrency_limit_source: getEvaluationConcurrencyLimitSource(),
+			concurrency_limit_source: getEvaluationConcurrencyLimitSource(this.license),
 			// Realised parallelism observed at runtime — `cases_started` counts
 			// callbacks that actually began (post-throttle, pre-abort), and
 			// `peak_in_flight` is the high-water mark for in-flight cases.

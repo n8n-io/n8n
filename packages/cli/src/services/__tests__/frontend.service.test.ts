@@ -307,6 +307,24 @@ describe('FrontendService', () => {
 			const refreshed = await service.getSettings();
 			expect(refreshed.evaluationConcurrencyLimit).toBe(7);
 		});
+
+		it('surfaces the license-issued evaluation concurrency quota when env is unset', async () => {
+			// `quota:evaluations:concurrencyLimit` lets the license-management
+			// service raise (or lower) a customer's cap without a code change.
+			// With env unset, the FE settings must reflect the license value
+			// rather than the tier default.
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			license.getPlanName.mockReturnValue('Community');
+			(license.getValue as jest.Mock).mockImplementation((feature: string) =>
+				feature === 'quota:evaluations:concurrencyLimit' ? 4 : undefined,
+			);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			// Community tier would otherwise be 1; the license override lifts
+			// it to 4.
+			expect(settings.evaluationConcurrencyLimit).toBe(4);
+		});
 	});
 
 	describe('getPublicSettings', () => {

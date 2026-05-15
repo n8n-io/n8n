@@ -35,7 +35,14 @@ describe('ConcurrencyControlService', () => {
 	// Default plan is `Community` so the tier-default resolver returns `1`
 	// when the env var is unset. Tests that exercise the lazy eval path
 	// override this (Enterprise/Business) and/or set the env var.
-	const license = mock<License>({ getPlanName: jest.fn().mockReturnValue('Community') });
+	// `getValue` returns `undefined` for the license-issued concurrency
+	// quota by default; the license-quota test overrides this to return a
+	// number so the resolver's middle branch fires.
+	const licenseGetValue = jest.fn().mockReturnValue(undefined);
+	const license = mock<License>({
+		getPlanName: jest.fn().mockReturnValue('Community'),
+		getValue: licenseGetValue as never,
+	});
 
 	// Most pre-existing tests configure `evaluationLimit` via globalConfig
 	// directly — that path mirrors an operator-set env var, so make the env
@@ -55,6 +62,7 @@ describe('ConcurrencyControlService', () => {
 		globalConfig.executions.concurrency.evaluationLimit = -1;
 		globalConfig.executions.mode = 'regular';
 		license.getPlanName.mockReturnValue('Community');
+		licenseGetValue.mockReturnValue(undefined);
 
 		jest.clearAllMocks();
 	});
@@ -305,6 +313,37 @@ describe('ConcurrencyControlService', () => {
 			// regardless of tier.
 			// @ts-expect-error Private property
 			expect(service.queues.get('evaluation')).toBeUndefined();
+		});
+
+		it('builds the eval queue at the license-issued quota when env unset and license carries it', async () => {
+			// The license server can override tier defaults per customer via
+			// `quota:evaluations:concurrencyLimit`. With env unset, the
+			// resolver's middle branch fires and the queue is built to match.
+			globalConfig.executions.concurrency.evaluationLimit = -1;
+			license.getPlanName.mockReturnValue('Community');
+			licenseGetValue.mockImplementation((feature: string) =>
+				feature === 'quota:evaluations:concurrencyLimit' ? 4 : undefined,
+			);
+
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventService,
+				globalConfig,
+				license,
+			);
+
+			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
+
+			// Community tier would normally cap at 1; the license-issued cap
+			// of 4 lifts that. The queue is built at 4, not at the tier
+			// default.
+			// @ts-expect-error Private property
+			expect(service.limits.get('evaluation')).toBe(4);
+			// @ts-expect-error Private property
+			const evalQueue = service.queues.get('evaluation') as ConcurrencyQueue;
+			expect(evalQueue).toBeInstanceOf(ConcurrencyQueue);
 		});
 	});
 
