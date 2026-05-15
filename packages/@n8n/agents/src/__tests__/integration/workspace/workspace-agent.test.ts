@@ -69,7 +69,10 @@ describe('workspace agent integration', () => {
 
 		const readResult = toolResults.find((tr) => tr.toolName === 'workspace_read_file');
 		expect(readResult).toBeDefined();
-		expect((readResult!.result as { content: string }).content).toContain('Hello from n8n!');
+		expect(readResult!.state).toBe('resolved');
+		expect((readResult as unknown as { output: { content: string } }).output.content).toContain(
+			'Hello from n8n!',
+		);
 
 		expect(memFs.getFileContent('/greeting.txt')).toBe('Hello from n8n!');
 	});
@@ -103,7 +106,8 @@ describe('workspace agent integration', () => {
 		const toolResults = findAllToolResults(result.messages);
 		const execResult = toolResults.find((tr) => tr.toolName === 'workspace_execute_command');
 		expect(execResult).toBeDefined();
-		expect((execResult!.result as { success: boolean }).success).toBe(true);
+		expect(execResult!.state).toBe('resolved');
+		expect((execResult as unknown as { output: { success: boolean } }).output.success).toBe(true);
 	});
 
 	it('agent uses workspace_mkdir and workspace_list_files together', async () => {
@@ -130,7 +134,8 @@ describe('workspace agent integration', () => {
 		const toolResults = findAllToolResults(result.messages);
 		const listResult = toolResults.find((tr) => tr.toolName === 'workspace_list_files');
 		expect(listResult).toBeDefined();
-		const entries = (listResult!.result as unknown as { entries: FileEntry[] }).entries;
+		expect(listResult!.state).toBe('resolved');
+		const entries = (listResult as unknown as { output: { entries: FileEntry[] } }).output.entries;
 		const names = entries.map((e) => e.name);
 		expect(names).toContain('index.ts');
 		expect(names).toContain('README.md');
@@ -201,7 +206,8 @@ describe('workspace agent integration', () => {
 		const toolResults = findAllToolResults(result.messages);
 		const statResult = toolResults.find((tr) => tr.toolName === 'workspace_file_stat');
 		expect(statResult).toBeDefined();
-		const stat = statResult!.result as { type: string; size: number };
+		expect(statResult!.state).toBe('resolved');
+		const stat = (statResult as unknown as { output: { type: string; size: number } }).output;
 		expect(stat.type).toBe('file');
 		expect(stat.size).toBe(29);
 	});
@@ -233,7 +239,10 @@ describe('workspace agent integration', () => {
 
 		const readResult = toolResults.find((tr) => tr.toolName === 'workspace_read_file');
 		expect(readResult).toBeDefined();
-		expect((readResult!.result as { content: string }).content).toContain('export default {}');
+		expect(readResult!.state).toBe('resolved');
+		expect((readResult as unknown as { output: { content: string } }).output.content).toContain(
+			'export default {}',
+		);
 
 		expect(memFs.getFileContent('/app/config.ts')).toBe('export default {}');
 	});

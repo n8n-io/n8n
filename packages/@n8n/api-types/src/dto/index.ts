@@ -21,10 +21,17 @@ export type {
 export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
 export type {
 	AiGatewayUsageEntry,
+	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
-export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export {
+	InstanceAiConfirmRequestDto,
+	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmRequestKind,
+	type InstanceAiResourceDecision,
+} from './instance-ai/instance-ai-confirm-request.dto';
+export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
@@ -185,20 +192,39 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export {
+	updateDataTableColumnSchema,
+	type UpdateDataTableColumnDto,
+} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
+
+export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
-export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+export {
+	ProvisioningConfigDto,
+	ProvisioningConfigPatchDto,
+	type ProvisioningMode,
+	type ProvisioningModeFlags,
+} from './provisioning/config.dto';
 
 export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+
+export {
+	RedactionEnforcementDto,
+	UpdateRedactionEnforcementDto,
+	redactionScopeSchema,
+	type RedactionScope,
+} from './redaction-enforcement/redaction-enforcement.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
@@ -218,3 +244,11 @@ export {
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
+
+export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
+export {
+	ListEncryptionKeysQueryDto,
+	ENCRYPTION_KEYS_SORT_OPTIONS,
+	type EncryptionKeysSortOption,
+} from './encryption/list-encryption-keys-query.dto';
+export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

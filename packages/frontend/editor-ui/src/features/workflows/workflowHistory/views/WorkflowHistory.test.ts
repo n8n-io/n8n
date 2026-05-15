@@ -128,6 +128,7 @@ describe('WorkflowHistory', () => {
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: { workflowId, versionId: versionData.versionId },
+				query: route.query,
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User opened workflow history', {
 				instance_id: '',
@@ -227,7 +228,7 @@ describe('WorkflowHistory', () => {
 		await waitFor(() => {
 			expect(router.resolve).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: newWorkflowId },
+				params: { workflowId: newWorkflowId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User cloned version', {
 				instance_id: '',

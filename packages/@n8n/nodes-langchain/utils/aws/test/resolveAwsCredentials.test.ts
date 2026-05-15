@@ -1,10 +1,10 @@
-import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions, INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 // Mock the SDK provider factory. Each call returns a function identity we can inspect.
-jest.mock('@aws-sdk/credential-providers', () => ({
-	fromTemporaryCredentials: jest.fn((args: unknown) => {
-		const provider = jest.fn().mockResolvedValue({
+vi.mock('@aws-sdk/credential-providers', () => ({
+	fromTemporaryCredentials: vi.fn((args: unknown) => {
+		const provider = vi.fn().mockResolvedValue({
 			accessKeyId: 'ASIAPROVIDER',
 			secretAccessKey: 'SECRET',
 			sessionToken: 'TOKEN',
@@ -14,12 +14,12 @@ jest.mock('@aws-sdk/credential-providers', () => ({
 	}),
 }));
 
-jest.mock('n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils', () => ({
-	getSystemCredentials: jest.fn(),
+vi.mock('n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils', () => ({
+	getSystemCredentials: vi.fn(),
 }));
 
-jest.mock('@n8n/ai-utilities', () => ({
-	getNodeProxyAgent: jest.fn(),
+vi.mock('@n8n/ai-utilities', () => ({
+	getNodeProxyAgent: vi.fn(),
 }));
 
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
@@ -27,6 +27,10 @@ import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
 
 import { resolveAwsCredentials } from '../resolveAwsCredentials';
+
+const mockedFromTemporaryCredentials = vi.mocked(fromTemporaryCredentials);
+const mockedGetSystemCredentials = vi.mocked(getSystemCredentials);
+const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
 
 function makeContext(opts: {
 	authentication?: 'iam' | 'assumeRole';
@@ -111,7 +115,7 @@ describe('resolveAwsCredentials — IAM path', () => {
 
 describe('resolveAwsCredentials — AssumeRole path', () => {
 	beforeEach(() => {
-		(fromTemporaryCredentials as jest.Mock).mockClear();
+		mockedFromTemporaryCredentials.mockClear();
 	});
 
 	it('returns a provider function built from fromTemporaryCredentials', async () => {
@@ -131,7 +135,7 @@ describe('resolveAwsCredentials — AssumeRole path', () => {
 		expect(result.region).toBe('us-east-1');
 		expect(typeof result.credentials).toBe('function');
 		expect(fromTemporaryCredentials).toHaveBeenCalledTimes(1);
-		const callArg = (fromTemporaryCredentials as jest.Mock).mock.calls[0][0] as {
+		const callArg = mockedFromTemporaryCredentials.mock.calls[0][0] as {
 			params: { RoleArn: string; RoleSessionName: string; ExternalId: string };
 			masterCredentials: unknown;
 		};
@@ -191,12 +195,12 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 
 describe('resolveAwsCredentials — useSystemCredentialsForRole', () => {
 	beforeEach(() => {
-		(getSystemCredentials as jest.Mock).mockReset();
-		(fromTemporaryCredentials as jest.Mock).mockClear();
+		mockedGetSystemCredentials.mockReset();
+		mockedFromTemporaryCredentials.mockClear();
 	});
 
 	it('passes a function (refreshable provider) as masterCredentials, not a snapshot', async () => {
-		(getSystemCredentials as jest.Mock).mockResolvedValue({
+		mockedGetSystemCredentials.mockResolvedValue({
 			accessKeyId: 'AKIASYS',
 			secretAccessKey: 'sysSecret',
 			sessionToken: 'sysToken',
@@ -214,7 +218,7 @@ describe('resolveAwsCredentials — useSystemCredentialsForRole', () => {
 		});
 		await resolveAwsCredentials(context);
 
-		const callArg = (fromTemporaryCredentials as jest.Mock).mock.calls[0][0] as {
+		const callArg = mockedFromTemporaryCredentials.mock.calls[0][0] as {
 			masterCredentials: unknown;
 		};
 		expect(typeof callArg.masterCredentials).toBe('function');
@@ -229,12 +233,12 @@ describe('resolveAwsCredentials — useSystemCredentialsForRole', () => {
 
 describe('resolveAwsCredentials — proxy target URL', () => {
 	beforeEach(() => {
-		(getNodeProxyAgent as jest.Mock).mockReset();
-		(fromTemporaryCredentials as jest.Mock).mockClear();
+		mockedGetNodeProxyAgent.mockReset();
+		mockedFromTemporaryCredentials.mockClear();
 	});
 
 	it('calls getNodeProxyAgent with the concrete STS endpoint URL', async () => {
-		(getNodeProxyAgent as jest.Mock).mockReturnValue(undefined);
+		mockedGetNodeProxyAgent.mockReturnValue(undefined);
 		const context = makeContext({
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: {
@@ -252,7 +256,7 @@ describe('resolveAwsCredentials — proxy target URL', () => {
 	});
 
 	it('builds a NodeHttpHandler only when getNodeProxyAgent returns a proxy', async () => {
-		(getNodeProxyAgent as jest.Mock).mockReturnValue(undefined);
+		mockedGetNodeProxyAgent.mockReturnValue(undefined);
 		const context = makeContext({
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: {
@@ -266,7 +270,7 @@ describe('resolveAwsCredentials — proxy target URL', () => {
 			},
 		});
 		await resolveAwsCredentials(context);
-		const callArg = (fromTemporaryCredentials as jest.Mock).mock.calls[0][0] as {
+		const callArg = mockedFromTemporaryCredentials.mock.calls[0][0] as {
 			clientConfig: { requestHandler?: unknown };
 		};
 		expect(callArg.clientConfig.requestHandler).toBeUndefined();

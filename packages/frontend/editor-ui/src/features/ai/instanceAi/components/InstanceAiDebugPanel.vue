@@ -2,12 +2,12 @@
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
 
 const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const currentThread = useThread();
 const debugStore = useInstanceAiDebugStore();
 
 // --- Tab state ---
@@ -17,7 +17,7 @@ const activeTab = ref<Tab>('events');
 // --- Events tab state ---
 const expandedIndex = ref<number | null>(null);
 const eventListRef = useTemplateRef<HTMLElement>('eventList');
-const events = computed(() => store.debugEvents);
+const events = computed(() => currentThread.debugEvents);
 
 // --- Threads tab state ---
 const expandedMessageIndex = ref<number | null>(null);
@@ -81,7 +81,7 @@ function contentPreview(content: unknown): string {
 }
 
 async function handleCopyTrace() {
-	const trace = store.copyFullTrace();
+	const trace = currentThread.copyFullTrace();
 	await navigator.clipboard.writeText(trace);
 }
 
@@ -116,7 +116,7 @@ function handleRefreshThreads() {
 // Tool call timing summary
 const toolCallTimings = computed(() => {
 	const timings: Array<{ name: string; duration: string; toolCallId: string }> = [];
-	for (const msg of store.messages) {
+	for (const msg of currentThread.messages) {
 		if (!msg.agentTree) continue;
 		const nodes = [msg.agentTree, ...msg.agentTree.children];
 		for (const node of nodes) {
@@ -177,8 +177,8 @@ onMounted(() => {
 		<template v-if="activeTab === 'events'">
 			<!-- Connection status -->
 			<div :class="$style.statusBar">
-				<span :class="$style.statusDot" :data-state="store.sseState" />
-				<span>SSE: {{ store.sseState }}</span>
+				<span :class="$style.statusDot" :data-state="currentThread.sseState" />
+				<span>SSE: {{ currentThread.sseState }}</span>
 				<span :class="$style.eventCount">{{ events.length }} events</span>
 			</div>
 
@@ -244,7 +244,7 @@ onMounted(() => {
 				>
 					<div :class="$style.threadRowMain">
 						<span :class="$style.threadTitle">{{ thread.title || thread.id.slice(0, 8) }}</span>
-						<span v-if="thread.id === store.currentThreadId" :class="$style.currentBadge">
+						<span v-if="thread.id === currentThread.id" :class="$style.currentBadge">
 							{{ i18n.baseText('instanceAi.debug.threads.current') }}
 						</span>
 					</div>

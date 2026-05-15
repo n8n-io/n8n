@@ -5,6 +5,7 @@ import {
 	buildSetupRequests,
 	analyzeWorkflow,
 	applyNodeChanges,
+	applyNodeCredentials,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
@@ -24,9 +25,11 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			createFromWorkflowJSON: jest.fn(),
 			updateFromWorkflowJSON: jest.fn(),
 			archive: jest.fn(),
-			delete: jest.fn(),
+			unarchive: jest.fn(),
 			publish: jest.fn(),
 			unpublish: jest.fn(),
+			clearAiTemporary: jest.fn(),
+			archiveIfAiTemporary: jest.fn(),
 		},
 		executionService: {
 			list: jest.fn(),
@@ -316,7 +319,19 @@ describe('buildSetupRequests', () => {
 		expect(result[0].parameterIssues).toBeDefined();
 	});
 
-	it('auto-applies most recent credential when node has none', async () => {
+	it('auto-applies the only credential when node has none', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBe(true);
+		expect(result[0].existingCredentials?.[0].id).toBe('cred-1');
+	});
+
+	it('does not auto-apply when multiple credentials of the same type exist', async () => {
 		(context.credentialService.list as jest.Mock).mockResolvedValue([
 			{ id: 'cred-2', name: 'Newer Slack', updatedAt: '2025-06-01T00:00:00.000Z' },
 			{ id: 'cred-1', name: 'Older Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
@@ -325,8 +340,12 @@ describe('buildSetupRequests', () => {
 		const node = makeNode();
 		const result = await buildSetupRequests(context, node);
 
-		expect(result[0].isAutoApplied).toBe(true);
-		expect(result[0].existingCredentials?.[0].id).toBe('cred-2');
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toBeUndefined();
+		expect(result[0].existingCredentials).toHaveLength(2);
+		expect(result[0].needsAction).toBe(true);
+		// No credential was picked, so no test was run either.
+		expect(context.credentialService.test).not.toHaveBeenCalled();
 	});
 
 	it('sets isAutoApplied=false when node already has credential', async () => {
@@ -356,6 +375,45 @@ describe('buildSetupRequests', () => {
 
 		// list should only be called once due to caching
 		expect(context.credentialService.list).toHaveBeenCalledTimes(1);
+	});
+
+	it('forwards workflowId to credentialService.list so candidates match save-time scope', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		await buildSetupRequests(context, node, undefined, undefined, 'wf-1');
+
+		expect(context.credentialService.list).toHaveBeenCalledWith({
+			type: 'slackApi',
+			workflowId: 'wf-1',
+		});
+	});
+
+	it('omits workflowId from credentialService.list when not provided', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		await buildSetupRequests(context, node);
+
+		expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
+	});
+
+	it('cache discriminates by workflowId so a shared cache stays correct across workflows', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const cache = createCredentialCache();
+		const node = makeNode();
+
+		await buildSetupRequests(context, node, undefined, cache, 'wf-1');
+		await buildSetupRequests(context, node, undefined, cache, 'wf-1');
+		expect(context.credentialService.list).toHaveBeenCalledTimes(1);
+
+		await buildSetupRequests(context, node, undefined, cache, 'wf-2');
+		expect(context.credentialService.list).toHaveBeenCalledTimes(2);
+		expect(context.credentialService.list).toHaveBeenLastCalledWith({
+			type: 'slackApi',
+			workflowId: 'wf-2',
+		});
 	});
 
 	it('does not generate credential request for HTTP Request with auth=none and stale node.credentials', async () => {
@@ -539,7 +597,7 @@ describe('analyzeWorkflow', () => {
 		expect(result[0].credentialType).toBe('slackApi');
 	});
 
-	it('marks needsAction correctly after credentials are applied', async () => {
+	it('hides credential-only requests whose credential is already set and tests OK', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
 		});
@@ -557,8 +615,89 @@ describe('analyzeWorkflow', () => {
 
 		const result = await analyzeWorkflow(context, 'wf-1');
 
+		expect(result).toHaveLength(0);
+	});
+
+	it('keeps credential-only requests whose credential test fails', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			makeWorkflowJSON([node]),
+		);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as jest.Mock).mockResolvedValue({
+			success: false,
+			message: 'Invalid token',
+		});
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
 		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(true);
+	});
+
+	it('keeps testable trigger requests even when their credential is already valid', async () => {
+		const trigger = makeNode({
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			id: 'n-trigger',
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			makeWorkflowJSON([trigger]),
+		);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: ['trigger'],
+			credentials: [{ name: 'httpHeaderAuth' }],
+			webhooks: [{}],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Auth', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as jest.Mock).mockResolvedValue({ success: true });
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
+		expect(result).toHaveLength(1);
+		expect(result[0].isTrigger).toBe(true);
+		expect(result[0].isTestable).toBe(true);
 		expect(result[0].needsAction).toBe(false);
+	});
+
+	it('keeps requests with parameter issues regardless of credential validity', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			makeWorkflowJSON([node]),
+		);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+			properties: [{ name: 'resource', displayName: 'Resource', type: 'string' }],
+		});
+		(context.nodeService as unknown as Record<string, unknown>).getParameterIssues = jest
+			.fn()
+			.mockResolvedValue({
+				resource: ['Parameter "resource" is required'],
+			});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as jest.Mock).mockResolvedValue({ success: true });
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
+		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(true);
+		expect(result[0].parameterIssues).toBeDefined();
 	});
 
 	it('sorts by execution order with triggers first', async () => {
@@ -596,6 +735,257 @@ describe('analyzeWorkflow', () => {
 		// Trigger should come first (execution order)
 		const names = result.map((r) => r.node.name);
 		expect(names.indexOf('Webhook')).toBeLessThan(names.indexOf('Slack'));
+	});
+
+	describe('subnodeRootNode stamping for sub-nodes', () => {
+		it('stamps subnodeRootNode on every sub-node connected to an agent', async () => {
+			const agent = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+			const model = makeNode({
+				name: 'OpenAI Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'model-1',
+			});
+			const memory = makeNode({
+				name: 'Memory',
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				typeVersion: 1,
+				id: 'memory-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([agent, model, memory], {
+					'OpenAI Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+					Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				if (type === '@n8n/n8n-nodes-langchain.memoryBufferWindow') {
+					return await Promise.resolve({ group: [], credentials: [] });
+				}
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const modelReq = result.find((r) => r.node.name === 'OpenAI Model');
+			expect(modelReq?.subnodeRootNode).toEqual({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+		});
+
+		it('stamps the topmost root node for transitively nested sub-agents', async () => {
+			const agent = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+			const tool = makeNode({
+				name: 'Tool',
+				type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				typeVersion: 1,
+				id: 'tool-1',
+			});
+			const subModel = makeNode({
+				name: 'Sub Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'sub-model-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([agent, tool, subModel], {
+					Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					'Sub Model': {
+						ai_languageModel: [[{ node: 'Tool', type: 'ai_languageModel', index: 0 }]],
+					},
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const subModelReq = result.find((r) => r.node.name === 'Sub Model');
+			expect(subModelReq?.subnodeRootNode?.name).toBe('Agent');
+		});
+
+		it('keeps subnodeRootNode metadata even when the root node itself produced no setup request', async () => {
+			const agent = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+			const model = makeNode({
+				name: 'Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'model-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([agent, model], {
+					Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				// Agent itself returns no credentials → no setup request for it.
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			expect(result.find((r) => r.node.name === 'Agent')).toBeUndefined();
+			const modelReq = result.find((r) => r.node.name === 'Model');
+			expect(modelReq?.subnodeRootNode).toEqual({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+		});
+
+		it('attaches a multi-root sub-node to the first root node in execution order', async () => {
+			const trigger = makeNode({
+				name: 'Trigger',
+				type: 'n8n-nodes-base.webhook',
+				id: 'trigger-1',
+				position: [0, 0] as [number, number],
+			});
+			const agentA = makeNode({
+				name: 'Agent A',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-a',
+				position: [200, 0] as [number, number],
+			});
+			const agentB = makeNode({
+				name: 'Agent B',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-b',
+				position: [400, 0] as [number, number],
+			});
+			const sharedModel = makeNode({
+				name: 'Shared Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'shared-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([trigger, agentA, agentB, sharedModel], {
+					Trigger: {
+						main: [
+							[
+								{ node: 'Agent A', type: 'main', index: 0 },
+								{ node: 'Agent B', type: 'main', index: 0 },
+							],
+						],
+					},
+					'Shared Model': {
+						ai_languageModel: [
+							[
+								{ node: 'Agent A', type: 'ai_languageModel', index: 0 },
+								{ node: 'Agent B', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return await Promise.resolve({
+						group: ['trigger'],
+						credentials: [],
+						webhooks: [{}],
+					});
+				}
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const sharedReq = result.find((r) => r.node.name === 'Shared Model');
+			// Agent A executes first (left-most), so it claims the shared sub-node.
+			expect(sharedReq?.subnodeRootNode?.name).toBe('Agent A');
+		});
+
+		it('does not classify a sub-node by following a Main edge', async () => {
+			const trigger = makeNode({
+				name: 'Trigger',
+				type: 'n8n-nodes-base.webhook',
+				id: 'trigger-1',
+				position: [0, 0] as [number, number],
+			});
+			const httpAction = makeNode({
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				id: 'http-1',
+				position: [200, 0] as [number, number],
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([trigger, httpAction], {
+					Trigger: { main: [[{ node: 'HTTP', type: 'main', index: 0 }]] },
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return await Promise.resolve({
+						group: ['trigger'],
+						credentials: [],
+						webhooks: [{}],
+					});
+				}
+				return await Promise.resolve({
+					group: [],
+					credentials: [{ name: 'httpBasicAuth' }],
+				});
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const httpReq = result.find((r) => r.node.name === 'HTTP');
+			expect(httpReq?.subnodeRootNode).toBeUndefined();
+		});
 	});
 });
 
@@ -730,6 +1120,42 @@ describe('applyNodeChanges', () => {
 		const savedNode = savedJson.nodes.find((n) => n.name === 'HTTP Request');
 		expect(savedNode?.credentials).toEqual({
 			httpHeaderAuth: { id: 'cred-1', name: 'My Header Auth' },
+		});
+	});
+
+	it('persists merged parameter values into the saved workflow JSON', async () => {
+		// Regression: the FE was sending `nodeParameters` correctly on apply but
+		// the saved workflow still had the original (empty) parameter value.
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			parameters: { method: 'GET', url: '', authentication: 'none' },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockResolvedValue(undefined);
+
+		const result = await applyNodeChanges(context, 'wf-1', undefined, {
+			'HTTP Request': { url: 'https://example.com/api' },
+		});
+
+		expect(result.applied).toContain('HTTP Request');
+		expect(result.failed).toHaveLength(0);
+
+		const calls = (context.workflowService.updateFromWorkflowJSON as jest.Mock).mock.calls as Array<
+			[string, WorkflowJSON]
+		>;
+		expect(calls).toHaveLength(1);
+		const savedNode = calls[0][1].nodes.find((n) => n.name === 'HTTP Request');
+		expect(savedNode?.parameters).toEqual({
+			method: 'GET',
+			url: 'https://example.com/api',
+			authentication: 'none',
 		});
 	});
 
@@ -911,5 +1337,124 @@ describe('stripStaleCredentialsFromWorkflow', () => {
 
 		expect(wfJson.nodes[0].credentials).toBeUndefined();
 		expect(context.nodeService.getDescription).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// applyNodeCredentials — credential ownership revalidation (IDOR boundary)
+//
+// `nodeCredentials` arrives in the confirmation payload from the client and
+// can carry arbitrary credential IDs. Each ID must be resolved through
+// `context.credentialService.get()`, which the adapter binds to the
+// requesting user — IDs the user can't access throw and are recorded as
+// failures rather than being silently written to the workflow.
+// ---------------------------------------------------------------------------
+
+describe('applyNodeCredentials — credential ownership revalidation', () => {
+	let context: InstanceAiContext;
+
+	beforeEach(() => {
+		context = createMockContext();
+	});
+
+	it('applies a credential the user is allowed to read', async () => {
+		const node = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockResolvedValue({
+			id: 'cred-mine',
+			name: 'My Slack',
+			type: 'slackApi',
+		});
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Slack: { slackApi: 'cred-mine' },
+		});
+
+		expect(context.credentialService.get).toHaveBeenCalledWith('cred-mine');
+		expect(node.credentials).toEqual({ slackApi: { id: 'cred-mine', name: 'My Slack' } });
+		expect(result.applied).toEqual(['Slack']);
+		expect(result.failed).toEqual([]);
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith('wf-1', wfJson);
+	});
+
+	it('does not write a credential the user cannot access', async () => {
+		const node = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockRejectedValue(
+			new Error('Credential with ID "cred-other" could not be found.'),
+		);
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Slack: { slackApi: 'cred-other' },
+		});
+
+		expect(node.credentials).toBeUndefined();
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toHaveLength(1);
+		expect(result.failed[0]).toMatchObject({ nodeName: 'Slack' });
+		expect(result.failed[0].error).toContain('cred-other');
+	});
+
+	it('applies allowed credentials and rejects forbidden ones in a mixed payload', async () => {
+		const slack = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const github = makeNode({ name: 'GitHub', type: 'n8n-nodes-base.github', id: 'node-2' });
+		const wfJson = makeWorkflowJSON([slack, github]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockImplementation(async (credId: string) => {
+			if (credId === 'cred-mine') {
+				return await Promise.resolve({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+			}
+			throw new Error(`Credential with ID "${credId}" could not be found.`);
+		});
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Slack: { slackApi: 'cred-mine' },
+			GitHub: { githubApi: 'cred-other' },
+		});
+
+		expect(slack.credentials).toEqual({ slackApi: { id: 'cred-mine', name: 'My Slack' } });
+		expect(github.credentials).toBeUndefined();
+		expect(result.applied).toEqual(['Slack']);
+		expect(result.failed).toHaveLength(1);
+		expect(result.failed[0]).toMatchObject({ nodeName: 'GitHub' });
+	});
+
+	it('marks a node as failed when any of its credentials are rejected', async () => {
+		const node = makeNode({ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockImplementation(async (credId: string) => {
+			if (credId === 'cred-mine') {
+				return await Promise.resolve({ id: 'cred-mine', name: 'Auth', type: 'httpHeaderAuth' });
+			}
+			throw new Error(`Credential with ID "${credId}" could not be found.`);
+		});
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			HTTP: { httpHeaderAuth: 'cred-mine', httpQueryAuth: 'cred-other' },
+		});
+
+		// Allowed cred is still written, but the node is reported as failed and
+		// not in `applied` so callers know one of its credentials was rejected.
+		expect(node.credentials).toEqual({ httpHeaderAuth: { id: 'cred-mine', name: 'Auth' } });
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toHaveLength(1);
+		expect(result.failed[0].error).toContain('cred-other');
+	});
+
+	it('skips credentials for nodes not present in the workflow', async () => {
+		const node = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			GhostNode: { slackApi: 'cred-other' },
+		});
+
+		expect(context.credentialService.get).not.toHaveBeenCalled();
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toEqual([]);
 	});
 });

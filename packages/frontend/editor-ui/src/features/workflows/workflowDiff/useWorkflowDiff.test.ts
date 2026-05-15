@@ -13,12 +13,21 @@ import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCan
 // Mock modules at top level
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
-		createWorkflowObject: vi.fn().mockReturnValue({
-			id: 'test-workflow',
-			nodes: [],
-			connections: {},
-		}),
+		workflowId: 'test-workflow',
 	}),
+}));
+
+const mockDocumentStore = vi.hoisted(() => ({
+	createWorkflowObject: vi.fn().mockReturnValue({
+		id: 'test-workflow',
+		nodes: [],
+		connections: {},
+	}),
+}));
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => mockDocumentStore,
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	injectWorkflowDocumentStore: () => ({ value: mockDocumentStore }),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({

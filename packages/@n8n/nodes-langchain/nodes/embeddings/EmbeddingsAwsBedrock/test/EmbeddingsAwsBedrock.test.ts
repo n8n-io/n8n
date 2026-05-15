@@ -3,30 +3,35 @@ import { BedrockEmbeddings } from '@langchain/aws';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 import { EmbeddingsAwsBedrock } from '../EmbeddingsAwsBedrock.node';
 
-jest.mock('@aws-sdk/client-bedrock-runtime');
-jest.mock('@langchain/aws', () => ({
-	BedrockEmbeddings: jest.fn().mockImplementation(() => ({})),
+vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
+	BedrockRuntimeClient: vi.fn(),
 }));
-jest.mock('@n8n/ai-utilities', () => ({
-	getConnectionHintNoticeField: jest
+vi.mock('@langchain/aws', () => ({
+	BedrockEmbeddings: vi.fn().mockImplementation(function () {
+		return {};
+	}),
+}));
+vi.mock('@n8n/ai-utilities', () => ({
+	getConnectionHintNoticeField: vi
 		.fn()
 		.mockReturnValue({ displayName: '', name: 'notice', type: 'notice', default: '' }),
-	getNodeProxyAgent: jest.fn(),
+	getNodeProxyAgent: vi.fn(),
 	logWrapper: <T>(x: T) => x,
 }));
-jest.mock('@utils/aws/resolveAwsCredentials', () => ({
-	resolveAwsCredentials: jest.fn(),
+vi.mock('@utils/aws/resolveAwsCredentials', () => ({
+	resolveAwsCredentials: vi.fn(),
 }));
 
-const MockedBedrockRuntimeClient = jest.mocked(BedrockRuntimeClient);
-const MockedBedrockEmbeddings = jest.mocked(BedrockEmbeddings);
-const mockedGetNodeProxyAgent = jest.mocked(getNodeProxyAgent);
-const mockedResolveAwsCredentials = jest.mocked(resolveAwsCredentials);
+const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
+const MockedBedrockEmbeddings = vi.mocked(BedrockEmbeddings);
+const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
+const mockedResolveAwsCredentials = vi.mocked(resolveAwsCredentials);
 
 describe('EmbeddingsAwsBedrock', () => {
 	const mockNode: INode = {
@@ -42,23 +47,25 @@ describe('EmbeddingsAwsBedrock', () => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			mockNode,
-		) as jest.Mocked<ISupplyDataFunctions>;
-		ctx.getNodeParameter = jest
+		) as Mocked<ISupplyDataFunctions>;
+		ctx.getNodeParameter = vi
 			.fn()
 			.mockImplementation((name: string) => (name === 'model' ? model : undefined));
-		ctx.getCredentials = jest.fn().mockResolvedValue({});
-		ctx.getNode = jest.fn().mockReturnValue(mockNode);
+		ctx.getCredentials = vi.fn().mockResolvedValue({});
+		ctx.getNode = vi.fn().mockReturnValue(mockNode);
 		return ctx;
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockedGetNodeProxyAgent.mockReturnValue(undefined);
-		MockedBedrockRuntimeClient.mockImplementation(() => ({}) as BedrockRuntimeClient);
+		MockedBedrockRuntimeClient.mockImplementation(function () {
+			return {};
+		} as unknown as typeof BedrockRuntimeClient);
 	});
 
 	it('wires resolveAwsCredentials output through BedrockRuntimeClient', async () => {
-		const fakeProvider = jest.fn();
+		const fakeProvider = vi.fn();
 		mockedResolveAwsCredentials.mockResolvedValue({
 			region: 'us-east-1',
 			credentials: fakeProvider,

@@ -8,6 +8,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useToast } from '@/app/composables/useToast';
 import { isChatNode } from '@/app/utils/aiUtils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const RUNNING_STATES: string[] = ['running', 'waiting'];
 
@@ -21,6 +22,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const router = useRouter();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
 	const toast = useToast();
@@ -28,7 +30,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const triggerNodes = computed(() =>
-		workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
+		workflowDocumentStore.value.allNodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
 	);
 
 	// Empty until ready — prevents trigger selection in the execute button while setup is pending
@@ -78,7 +80,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		const selectedTriggerNode =
 			workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
 		const selectedTriggerNodeType = selectedTriggerNode
-			? workflowsStore.getNodeByName(selectedTriggerNode)
+			? workflowDocumentStore.value?.getNodeByName(selectedTriggerNode)
 			: null;
 
 		ensureExecutionWatcher(onExecutionComplete);

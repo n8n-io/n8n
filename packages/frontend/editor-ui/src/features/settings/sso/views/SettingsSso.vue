@@ -114,12 +114,8 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</p>
-		<N8nCallout
-			v-if="ssoStore.ssoManagedByEnv"
-			theme="warning"
-			style="margin-bottom: var(--spacing--lg)"
-		>
-			{{ i18n.baseText('settings.sso.settings.oidc.overrideBanner') }}
+		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
+			{{ i18n.baseText('settings.sso.settings.envConfigBanner') }}
 		</N8nCallout>
 		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
 		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">

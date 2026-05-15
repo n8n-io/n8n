@@ -12,6 +12,7 @@ type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
+	| 'oauth1'
 	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
@@ -49,7 +50,8 @@ type EndpointGroup =
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'
-	| 'workflowDependencies';
+	| 'workflowDependencies'
+	| 'encryption-keys';
 
 type ModuleName =
 	| 'insights'

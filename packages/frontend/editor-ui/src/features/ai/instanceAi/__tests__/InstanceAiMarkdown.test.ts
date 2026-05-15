@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
 import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // Stub ChatMarkdownChunk to expose the processed content as plain text
@@ -14,7 +13,8 @@ vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiMarkdown);
+let thread: ThreadRuntime;
+const renderComponent = createThreadComponentRenderer(InstanceAiMarkdown, {}, () => thread);
 
 function makeRegistry(
 	entries: Array<{ type: string; id: string; name: string; projectId?: string }>,
@@ -27,16 +27,17 @@ function makeRegistry(
 }
 
 describe('InstanceAiMarkdown', () => {
-	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
-
 	beforeEach(() => {
 		createTestingPinia();
-		store = mockedStore(useInstanceAiStore);
+		thread = {
+			id: 'thread-1',
+			resourceNameIndex: new Map<string, ResourceEntry>(),
+		} as unknown as ThreadRuntime;
 	});
 
 	function getProcessedContent(content: string, registry?: Map<string, ResourceEntry>): string {
 		if (registry) {
-			store.resourceNameIndex = registry;
+			thread.resourceNameIndex = registry;
 		}
 		const { getByTestId } = renderComponent({ props: { content } });
 		return getByTestId('markdown-output').textContent ?? '';

@@ -3615,6 +3615,69 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: true". Skip unknown item names instead of throwing',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'number1',
+									displayName: 'Number 1',
+									values: [
+										{
+											displayName: 'Number',
+											name: 'number',
+											type: 'number',
+											default: 0,
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						values: {
+							number1: [{ number: 42 }],
+							and: [{ property: 'Status', filter: 'active' }],
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {

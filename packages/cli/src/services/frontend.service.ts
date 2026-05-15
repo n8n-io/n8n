@@ -59,6 +59,9 @@ export type PublicFrontendSettings = {
 
 		/** Determines forgot password page UX */
 		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+
+		/** Configurable minimum password length for password requirement display */
+		passwordMinLength: FrontendSettings['userManagement']['passwordMinLength'];
 	};
 
 	enterprise: {
@@ -211,6 +214,7 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			evaluationConcurrencyLimit: this.globalConfig.executions.concurrency.evaluationLimit,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -219,6 +223,7 @@ export class FrontendService {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
+			jwksUri: `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`,
 			versionNotifications: {
 				enabled: this.globalConfig.versionNotifications.enabled,
 				endpoint: this.globalConfig.versionNotifications.endpoint,
@@ -249,6 +254,7 @@ export class FrontendService {
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
+				passwordMinLength: this.globalConfig.userManagement.password.minLength,
 			},
 			sso: {
 				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,
@@ -266,6 +272,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			logStreaming: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.logStreamingManagedByEnv,
+			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
@@ -278,6 +287,7 @@ export class FrontendService {
 				},
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
+			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -295,6 +305,8 @@ export class FrontendService {
 			// @TODO: Move to community-packages module
 			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
+			communityNodesManagedByEnv:
+				this.globalConfig.instanceSettingsLoader.communityPackagesManagedByEnv,
 
 			deployment: {
 				type: this.globalConfig.deployment.type,
@@ -375,6 +387,9 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
+			chatTrigger: {
+				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
+			},
 			easyAIWorkflowOnboarded: false,
 			folders: {
 				enabled: false,
@@ -415,6 +430,7 @@ export class FrontendService {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 		};
+		this.settings.jwksUri = `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`;
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
@@ -569,7 +585,7 @@ export class FrontendService {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
@@ -584,6 +600,7 @@ export class FrontendService {
 				authenticationMethod,
 				showSetupOnFirstLoad,
 				smtpSetup,
+				passwordMinLength,
 			},
 			sso: {
 				saml: {
@@ -679,6 +696,23 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			// Inject the per-instance JWKS URI as the default of any `jwksUri`
+			// property on `oAuth2Api` itself or any credential that extends it
+			// and explicitly re-declares the field. Inheritance is blocked by
+			// `doNotInherit: true` on both `jweEnabled` and `jwksUri` so that
+			// extending credentials don't silently inherit half a dependency
+			// pair (which would crash `getParameterResolveOrder`); custom
+			// JWE-aware OAuth2 extensions can re-declare both fields together.
+			const isOAuth2Credential =
+				credential.name === 'oAuth2Api' ||
+				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');
+			if (isOAuth2Credential && credential.properties) {
+				const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
+				credential.properties = credential.properties.map((property) =>
+					property.name === 'jwksUri' ? { ...property, default: jwksUri } : property,
+				);
 			}
 		}
 	}

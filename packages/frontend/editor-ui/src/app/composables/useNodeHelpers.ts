@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useHistoryStore } from '@/app/stores/history.store';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -15,7 +15,6 @@ import type {
 	ICredentialType,
 	INodeIssueObjectProperty,
 	INodeInputConfiguration,
-	Workflow,
 	INodeExecutionData,
 	ITaskDataConnections,
 	IRunData,
@@ -35,9 +34,11 @@ import type {
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { AddedNode, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
+import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -47,11 +48,7 @@ import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-import type { WorkflowObjectAccessors } from '../types';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -72,22 +69,12 @@ export function useNodeHelpers() {
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
 	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
-
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
-
-	function hasProxyAuth(node: INodeUi): boolean {
-		return Object.keys(node.parameters).includes('nodeCredentialType');
-	}
 
 	function isCustomApiCallSelected(nodeValues: INodeParameters): boolean {
 		const { parameters } = nodeValues;
@@ -126,13 +113,14 @@ export function useNodeHelpers() {
 	): boolean {
 		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 		if (node && nodeType) {
-			const workflowNode = workflowObject.value.getNode(node.name);
+			const workflowNode = workflowDocumentStore.value.getNodeByName(node.name);
 
 			const isTriggerNode = !!node && nodeTypesStore.isTriggerNode(node.type);
 			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
+			const expression = workflowDocumentStore.value.getExpressionHandler();
 
 			if (workflowNode) {
-				const inputs = NodeHelpers.getNodeInputs(workflowObject.value, workflowNode, nodeType);
+				const inputs = NodeHelpers.getNodeInputs({ expression }, workflowNode, nodeType);
 				const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
 				if (!inputNames.includes(NodeConnectionTypes.Main) && !isToolNode && !isTriggerNode) {
@@ -161,10 +149,7 @@ export function useNodeHelpers() {
 			return [];
 		}
 
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const usedCredentials = workflowDocumentStore?.usedCredentials ?? {};
+		const usedCredentials = workflowDocumentStore.value.usedCredentials;
 
 		return Object.values(credentials)
 			.map(({ id }) => id)
@@ -196,13 +181,10 @@ export function useNodeHelpers() {
 	function getNodeIssues(
 		nodeType: INodeTypeDescription | null,
 		node: INodeUi,
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const pinDataNodeNames = Object.keys(workflowDocumentStore?.pinData ?? {});
+		const pinDataNodeNames = Object.keys(workflowDocumentStore.value.pinData);
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];
@@ -289,13 +271,18 @@ export function useNodeHelpers() {
 
 	function updateNodeInputIssues(node: INodeUi): void {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+
 		if (!nodeType) {
 			return;
 		}
 
-		const nodeInputIssues = getNodeInputIssues(workflowObject.value, node, nodeType);
+		const nodeInputIssues = getNodeInputIssues(
+			workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+			node,
+			nodeType,
+		);
 
-		workflowDocumentStore.value?.setNodeIssue({
+		workflowDocumentStore.value.setNodeIssue({
 			node: node.name,
 			type: 'input',
 			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
@@ -303,7 +290,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesInputIssues() {
-		const nodes = workflowDocumentStore.value?.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		for (const node of nodes) {
 			updateNodeInputIssues(node);
@@ -311,10 +298,10 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesExecutionIssues() {
-		const nodes = workflowDocumentStore.value?.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		for (const node of nodes) {
-			workflowDocumentStore.value?.setNodeIssue({
+			workflowDocumentStore.value.setNodeIssue({
 				node: node.name,
 				type: 'execution',
 				value: hasNodeExecutionIssues(node) ? true : null,
@@ -323,7 +310,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesParameterIssues() {
-		const nodes = workflowDocumentStore.value?.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		for (const node of nodes) {
 			updateNodeParameterIssues(node);
@@ -331,7 +318,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodeCredentialIssuesByName(name: string): void {
-		const node = workflowDocumentStore.value?.getNodeByName(name) ?? null;
+		const node = workflowDocumentStore.value.getNodeByName(name) ?? null;
 
 		if (node) {
 			updateNodeCredentialIssues(node);
@@ -346,7 +333,7 @@ export function useNodeHelpers() {
 			newIssues = fullNodeIssues.credentials!;
 		}
 
-		workflowDocumentStore.value?.setNodeIssue({
+		workflowDocumentStore.value.setNodeIssue({
 			node: node.name,
 			type: 'credentials',
 			value: newIssues,
@@ -354,7 +341,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodeParameterIssuesByName(name: string): void {
-		const node = workflowDocumentStore.value?.getNodeByName(name) ?? null;
+		const node = workflowDocumentStore.value.getNodeByName(name) ?? null;
 
 		if (node) {
 			updateNodeParameterIssues(node);
@@ -381,7 +368,7 @@ export function useNodeHelpers() {
 			newIssues = fullNodeIssues.parameters!;
 		}
 
-		workflowDocumentStore.value?.setNodeIssue({
+		workflowDocumentStore.value.setNodeIssue({
 			node: node.name,
 			type: 'parameters',
 			value: newIssues,
@@ -389,7 +376,7 @@ export function useNodeHelpers() {
 	}
 
 	function getNodeInputIssues(
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 		node: INodeUi,
 		nodeType?: INodeTypeDescription,
 	): INodeIssues | null {
@@ -431,9 +418,6 @@ export function useNodeHelpers() {
 		nodeType?: INodeTypeDescription,
 	): INodeIssues | null {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
 		if (node.disabled) {
 			// Node is disabled
 			return null;
@@ -472,7 +456,7 @@ export function useNodeHelpers() {
 			// Prevents HTTP Request node from being unusable if a sharee does not have direct
 			// access to a credential
 			const isCredentialUsedInWorkflow =
-				workflowDocumentStore?.usedCredentials?.[
+				workflowDocumentStore.value.usedCredentials?.[
 					node.credentials?.[nodeCredentialType]?.id as string
 				];
 
@@ -560,7 +544,7 @@ export function useNodeHelpers() {
 
 				if (nameMatches.length === 0) {
 					const isCredentialUsedInWorkflow =
-						workflowDocumentStore?.usedCredentials?.[selectedCredentials.id as string];
+						workflowDocumentStore.value.usedCredentials?.[selectedCredentials.id as string];
 
 					if (
 						!isCredentialUsedInWorkflow &&
@@ -613,13 +597,13 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesCredentialsIssues() {
-		const nodes = workflowDocumentStore.value?.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 		let issues: INodeIssues | null;
 
 		for (const node of nodes) {
 			issues = getNodeCredentialIssues(node);
 
-			workflowDocumentStore.value?.setNodeIssue({
+			workflowDocumentStore.value.setNodeIssue({
 				node: node.name,
 				type: 'credentials',
 				value: issues?.credentials ?? null,
@@ -751,7 +735,7 @@ export function useNodeHelpers() {
 				workflow_id: workflowsStore.workflowId,
 			});
 
-			workflowDocumentStore.value?.updateNodeProperties(updateInformation);
+			workflowDocumentStore.value.updateNodeProperties(updateInformation);
 			workflowsStore.clearNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);
@@ -1089,11 +1073,11 @@ export function useNodeHelpers() {
 	}
 
 	return {
-		hasProxyAuth,
 		isCustomApiCallSelected,
 		isNodeExecutable,
 		getForeignCredentialsIfSharingEnabled,
 		displayParameter,
+		getNodeCredentialIssues,
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,

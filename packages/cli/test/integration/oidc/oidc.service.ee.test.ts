@@ -925,7 +925,6 @@ describe('OIDC service', () => {
 			});
 
 			describe('expression-based role mapping', () => {
-				let originalEnvFlag: string | undefined;
 				let roleMappingRuleRepository: RoleMappingRuleRepository;
 				let roleRepository: RoleRepository;
 
@@ -934,17 +933,7 @@ describe('OIDC service', () => {
 					roleRepository = Container.get(RoleRepository);
 				});
 
-				beforeEach(() => {
-					originalEnvFlag = process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
-					process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
-				});
-
 				afterEach(async () => {
-					if (originalEnvFlag === undefined) {
-						delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
-					} else {
-						process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = originalEnvFlag;
-					}
 					await roleMappingRuleRepository.delete({});
 				});
 

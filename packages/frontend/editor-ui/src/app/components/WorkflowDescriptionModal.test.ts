@@ -85,18 +85,7 @@ describe('WorkflowDescriptionModal', () => {
 			description: '',
 			versionId: '2',
 		} as IWorkflowDb);
-		workflowsStore.workflow = {
-			id: 'test-workflow-id',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			versionId: '1',
-			nodes: [],
-			connections: {},
-		};
+		workflowsStore.workflowId = 'test-workflow-id';
 		uiStore.markStateClean();
 	});
 
@@ -459,7 +448,7 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show base tooltip when MCP is disabled', async () => {
 			// Ensure MCP is disabled
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false };
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false, mcpManagedByEnv: false };
 
 			const { getByTestId } = renderModal({
 				props: {
@@ -486,7 +475,7 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show MCP tooltip when MCP is enabled', async () => {
 			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true };
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true, mcpManagedByEnv: false };
 
 			const { getByTestId } = renderModal({
 				props: {

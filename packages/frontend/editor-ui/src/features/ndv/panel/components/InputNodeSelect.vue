@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isPresent } from '@/app/utils/typesUtils';
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const selectedInputNode = computed(
 	() => workflowDocumentStore?.value?.getNodeByName(props.modelValue ?? '') ?? null,

@@ -12,7 +12,15 @@ import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC('imageGenerationModelSearch'),
+	{
+		...modelRLC('imageGenerationModelSearch'),
+		displayOptions: { show: { '@version': [{ _cnd: { lt: 1.2 } }] } },
+	},
+	{
+		...modelRLC('imageGenerationModelSearch'),
+		default: { mode: 'list', value: 'models/gemini-3.1-flash-image-preview' },
+		displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+	},
 	{
 		displayName: 'Prompt',
 		name: 'prompt',
@@ -35,9 +43,13 @@ const properties: INodeProperties[] = [
 				displayName: 'Number of Images',
 				name: 'sampleCount',
 				default: 1,
-				description:
-					'Number of images to generate. Not supported by Gemini models, supported by Imagen models.',
+				description: 'Number of images to generate',
 				type: 'number',
+				displayOptions: {
+					show: {
+						'/modelId': [{ _cnd: { includes: 'imagen' } }],
+					},
+				},
 				typeOptions: {
 					minValue: 1,
 				},
