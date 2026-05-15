@@ -34,6 +34,8 @@ const parseFileFormats = [
 	'docx',
 ] as const;
 
+type ParseFileFormat = (typeof parseFileFormats)[number];
+
 const parseFileOutputFormats = [...parseFileFormats, 'unknown'] as const;
 
 export const parseFileInputSchema = z.object({
@@ -106,21 +108,12 @@ export const parseFileOutputSchema = z.object({
 
 type ParseFileOutputFormat = z.infer<typeof parseFileOutputSchema>['format'];
 
+function isParseFileFormat(format: string | undefined): format is ParseFileFormat {
+	return parseFileFormats.some((parseFileFormat) => parseFileFormat === format);
+}
+
 function toOutputFormat(format: string | undefined): ParseFileOutputFormat {
-	switch (format) {
-		case 'csv':
-		case 'tsv':
-		case 'json':
-		case 'xlsx':
-		case 'text':
-		case 'markdown':
-		case 'html':
-		case 'pdf':
-		case 'docx':
-			return format;
-		default:
-			return 'unknown';
-	}
+	return isParseFileFormat(format) ? format : 'unknown';
 }
 
 function errorFormatFor(
