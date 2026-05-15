@@ -217,6 +217,8 @@ export async function executeResumableStream(
 				};
 			}
 
+			options.context.onActivity?.();
+
 			// Always capture responseId from step-start, regardless of trace hook path.
 			if (isRecord(chunk) && chunk.type === 'step-start') {
 				const stepPayload = getChunkPayload(chunk);

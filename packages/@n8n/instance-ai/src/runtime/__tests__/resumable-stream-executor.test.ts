@@ -175,6 +175,30 @@ describe('executeResumableStream', () => {
 		expect(result.agentRunId).toBe('agent-run-1');
 	});
 
+	it('reports liveness activity for each consumed chunk', async () => {
+		const onActivity = jest.fn();
+
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([textChunk('Working...'), textChunk('Done.')]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				onActivity,
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(onActivity).toHaveBeenCalledTimes(2);
+	});
+
 	it('auto-resumes suspended streams and surfaces queued corrections', async () => {
 		const eventBus = createEventBus();
 		const resume = jest.fn().mockResolvedValue({

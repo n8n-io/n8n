@@ -5,6 +5,7 @@ import {
 	taskListSchema,
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	webSearchMetaSchema,
 } from '@n8n/api-types';
 import type {
 	InstanceAiCredentialRequest,
@@ -13,6 +14,7 @@ import type {
 	PlannedTaskArg,
 	TaskList,
 	GatewayConfirmationRequiredPayload,
+	WebSearchMeta,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -197,6 +199,7 @@ export function mapAgentChunkToEvent(
 			'questions',
 			'plan-review',
 			'resource-decision',
+			'continue',
 		] as const;
 		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
 			? (rawInputType as (typeof validInputTypes)[number])
@@ -244,6 +247,14 @@ export function mapAgentChunkToEvent(
 			typeof rawDomainAccess.host === 'string'
 				? { url: rawDomainAccess.url, host: rawDomainAccess.host }
 				: undefined;
+
+		let webSearch: WebSearchMeta | undefined;
+		if (isRecord(suspendPayload.webSearch)) {
+			const parsed = webSearchMetaSchema.safeParse(suspendPayload.webSearch);
+			if (parsed.success) {
+				webSearch = parsed.data;
+			}
+		}
 
 		const rawCredentialFlow = isRecord(suspendPayload.credentialFlow)
 			? suspendPayload.credentialFlow
@@ -299,6 +310,7 @@ export function mapAgentChunkToEvent(
 				...(projectId ? { projectId } : {}),
 				...(inputType ? { inputType } : {}),
 				...(domainAccess ? { domainAccess } : {}),
+				...(webSearch ? { webSearch } : {}),
 				...(credentialFlow ? { credentialFlow } : {}),
 				...(setupRequests ? { setupRequests } : {}),
 				...(workflowId ? { workflowId } : {}),

@@ -43,6 +43,7 @@ function createPauseForUserTool() {
 				requestId: z.string(),
 				message: z.string(),
 				severity: instanceAiConfirmationSeveritySchema,
+				inputType: z.literal('continue'),
 			}),
 		)
 		.resume(browserCredentialSetupResumeSchema)
@@ -54,6 +55,7 @@ function createPauseForUserTool() {
 					requestId: nanoid(),
 					message: input.message,
 					severity: 'info' as const,
+					inputType: 'continue' as const,
 				});
 			}
 

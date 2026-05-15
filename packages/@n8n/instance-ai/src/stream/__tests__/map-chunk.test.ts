@@ -263,6 +263,7 @@ describe('mapAgentChunkToEvent', () => {
 				questions: [{ invalid: true }],
 				tasks: { tasks: [{ invalid: true }] },
 				domainAccess: { url: 'https://example.com' },
+				webSearch: { invalid: true },
 				credentialFlow: { stage: 'unknown' },
 				setupRequests: [{ invalid: true }],
 				workflowId: 42,
@@ -280,6 +281,36 @@ describe('mapAgentChunkToEvent', () => {
 				args: {},
 				severity: 'warning',
 				message: 'Confirmation required',
+			},
+		});
+	});
+
+	it('maps pause-for-user continue confirmations and web search metadata', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'pause-for-user',
+				suspendPayload: {
+					requestId: 'request-1',
+					inputType: 'continue',
+					message: 'Continue after reviewing results',
+					webSearch: { query: 'n8n agents deferred tools' },
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'pause-for-user',
+				args: {},
+				severity: 'warning',
+				message: 'Continue after reviewing results',
+				inputType: 'continue',
+				webSearch: { query: 'n8n agents deferred tools' },
 			},
 		});
 	});
