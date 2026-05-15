@@ -1,6 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 
 import { useSelectionValidation } from './useSelectionValidation';
@@ -61,7 +61,11 @@ function makeLinearGraph(): LinearGraphFixture {
 	};
 }
 
-function setupGraph(graph: LinearGraphFixture, nodeTypes: Record<string, INodeTypeDescription>) {
+function setupGraph(
+	graph: LinearGraphFixture,
+	nodeTypes: Record<string, INodeTypeDescription>,
+	getSimpleParameterValue: () => unknown = () => undefined,
+) {
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
 	const nodeTypesStore = useNodeTypesStore();
 
@@ -83,7 +87,7 @@ function setupGraph(graph: LinearGraphFixture, nodeTypes: Record<string, INodeTy
 	);
 	vi.spyOn(workflowDocumentStore, 'getExpressionHandler').mockReturnValue({
 		// only the shape is required for NodeHelpers.getNodeInputs/Outputs
-		getSimpleParameterValue: () => undefined,
+		getSimpleParameterValue,
 	} as unknown as ReturnType<typeof workflowDocumentStore.getExpressionHandler>);
 
 	vi.spyOn(workflowDocumentStore, 'getParentNodes').mockImplementation(() => []);
@@ -394,6 +398,51 @@ describe('useSelectionValidation', () => {
 			}),
 		};
 		graph.nodes.b.type = 'n8n-nodes-base.if';
+		setupGraph(graph, nodeTypes);
+
+		const { isSelectionGroupable } = useSelectionValidation();
+		const result = isSelectionGroupable(['a', 'b']);
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.reason).toBe('multiple-output-branches');
+		}
+	});
+
+	it('resolves dynamic outputs before validating end node branch count', () => {
+		const graph = makeLinearGraph();
+		const nodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			'n8n-nodes-base.switch': makeNodeType({
+				name: 'n8n-nodes-base.switch',
+				outputs: '={{ $parameter.rules }}',
+			}),
+		};
+		graph.nodes.b.type = 'n8n-nodes-base.switch';
+		setupGraph(graph, nodeTypes, () => [NodeConnectionTypes.Main, NodeConnectionTypes.Main]);
+
+		const getNodeOutputsSpy = vi.spyOn(NodeHelpers, 'getNodeOutputs');
+
+		const { isSelectionGroupable } = useSelectionValidation();
+		const result = isSelectionGroupable(['a', 'b']);
+
+		expect(getNodeOutputsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ expression: expect.any(Object) }),
+			graph.nodes.b,
+			nodeTypes['n8n-nodes-base.switch'],
+		);
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.reason).toBe('multiple-output-branches');
+		}
+	});
+
+	it('includes the continueErrorOutput branch when validating end node branch count', () => {
+		const graph = makeLinearGraph();
+		const nodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+		};
+		graph.nodes.b.onError = 'continueErrorOutput';
 		setupGraph(graph, nodeTypes);
 
 		const { isSelectionGroupable } = useSelectionValidation();

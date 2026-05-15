@@ -1,9 +1,14 @@
 import type {
 	IConnections,
+	INodeTypeDescription,
 	NodeGroupValidationResult,
 	NodeSelectionValidationResult,
 } from 'n8n-workflow';
-import { validateNodeSelectionForExtraction, validateNodeSelectionForGrouping } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	validateNodeSelectionForExtraction,
+	validateNodeSelectionForGrouping,
+} from 'n8n-workflow';
 import { computed } from 'vue';
 
 import {
@@ -69,10 +74,23 @@ export function useSelectionValidation() {
 
 	function getValidationInput(nodeIds: string[], connectionsBySourceNode?: IConnections) {
 		const store = workflowDocumentStore.value;
-		return {
+		const expression = store?.getExpressionHandler();
+		const workflow = expression ? { expression } : null;
+
+		const input = {
 			nodes: nodeIds.flatMap((id) => store?.getNodeById(id) ?? []),
 			connectionsBySourceNode: connectionsBySourceNode ?? store?.connectionsBySourceNode ?? {},
 			getNodeType: (node: INodeUi) => nodeTypesStore.getNodeType(node.type, node.typeVersion),
+		};
+
+		if (!workflow) return input;
+
+		return {
+			...input,
+			getNodeInputs: (node: INodeUi, nodeType: INodeTypeDescription) =>
+				NodeHelpers.getNodeInputs(workflow, node, nodeType),
+			getNodeOutputs: (node: INodeUi, nodeType: INodeTypeDescription) =>
+				NodeHelpers.getNodeOutputs(workflow, node, nodeType),
 		};
 	}
 

@@ -23,6 +23,14 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
 	connectionsBySourceNode: IConnections;
 	getNodeType: (node: TNode) => INodeTypeDescription | null | undefined;
+	getNodeInputs?: (
+		node: TNode,
+		nodeType: INodeTypeDescription,
+	) => Array<NodeConnectionType | INodeInputConfiguration>;
+	getNodeOutputs?: (
+		node: TNode,
+		nodeType: INodeTypeDescription,
+	) => Array<NodeConnectionType | INodeOutputConfiguration>;
 };
 
 export type NodeSelectionValidationResult<TNode extends INode = INode> =
@@ -45,6 +53,8 @@ export function validateNodeSelectionForExtraction<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
 	getNodeType,
+	getNodeInputs,
+	getNodeOutputs,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
 	if (nodes.length < 2) {
 		return { valid: false, reason: 'too-few-nodes' };
@@ -81,11 +91,17 @@ export function validateNodeSelectionForExtraction<TNode extends INode>({
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 	const { start, end } = selection;
 
-	if (start && !hasSingleMainIO(start, 'inputs', nodesByName, getNodeType)) {
+	if (
+		start &&
+		!hasSingleMainIO(start, 'inputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
+	) {
 		return { valid: false, reason: 'multiple-input-branches', node: start };
 	}
 
-	if (end && !hasSingleMainIO(end, 'outputs', nodesByName, getNodeType)) {
+	if (
+		end &&
+		!hasSingleMainIO(end, 'outputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
+	) {
 		return { valid: false, reason: 'multiple-output-branches', node: end };
 	}
 
@@ -116,13 +132,24 @@ function hasSingleMainIO<TNode extends INode>(
 	direction: IODirection,
 	nodesByName: Map<string, TNode>,
 	getNodeType: (node: TNode) => INodeTypeDescription | null | undefined,
+	getNodeInputs?: (
+		node: TNode,
+		nodeType: INodeTypeDescription,
+	) => Array<NodeConnectionType | INodeInputConfiguration>,
+	getNodeOutputs?: (
+		node: TNode,
+		nodeType: INodeTypeDescription,
+	) => Array<NodeConnectionType | INodeOutputConfiguration>,
 ): boolean {
 	const node = nodesByName.get(nodeName);
 	if (!node) return true;
 	const nodeType = getNodeType(node);
 	if (!nodeType) return true;
 
-	const ios = direction === 'inputs' ? nodeType.inputs : nodeType.outputs;
+	const ios =
+		direction === 'inputs'
+			? (getNodeInputs?.(node, nodeType) ?? nodeType.inputs)
+			: (getNodeOutputs?.(node, nodeType) ?? nodeType.outputs);
 	if (!Array.isArray(ios)) return true;
 	return ios.filter(isMainIo).length <= 1;
 }

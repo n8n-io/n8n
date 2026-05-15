@@ -240,6 +240,29 @@ describe('node grouping validation', () => {
 		}
 	});
 
+	it('uses resolved inputs when checking start node branch count', () => {
+		const graph = makeLinearGraph();
+		graph.nodes[1].type = 'n8n-nodes-base.merge';
+
+		const result = validateNodeSelectionForGrouping({
+			nodes: [graph.nodes[1], graph.nodes[2]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) =>
+				node.type === 'n8n-nodes-base.merge'
+					? makeNodeType({
+							name: 'n8n-nodes-base.merge',
+							inputs: '={{ $parameter.numberInputs }}',
+						})
+					: makeNodeType(),
+			getNodeInputs: () => [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		});
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.reason).toBe('multiple-input-branches');
+		}
+	});
+
 	it('returns multiple-output-branches for an end node with multiple main outputs', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.if';
@@ -254,6 +277,29 @@ describe('node grouping validation', () => {
 				}),
 				'n8n-nodes-base.set': makeNodeType(),
 			},
+		});
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.reason).toBe('multiple-output-branches');
+		}
+	});
+
+	it('uses resolved outputs when checking end node branch count', () => {
+		const graph = makeLinearGraph();
+		graph.nodes[1].type = 'n8n-nodes-base.switch';
+
+		const result = validateNodeSelectionForGrouping({
+			nodes: [graph.nodes[0], graph.nodes[1]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) =>
+				node.type === 'n8n-nodes-base.switch'
+					? makeNodeType({
+							name: 'n8n-nodes-base.switch',
+							outputs: '={{ $parameter.rules }}',
+						})
+					: makeNodeType(),
+			getNodeOutputs: () => [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		});
 
 		expect(result.valid).toBe(false);
