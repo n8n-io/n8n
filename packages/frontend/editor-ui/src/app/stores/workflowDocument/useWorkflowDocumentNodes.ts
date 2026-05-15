@@ -1,5 +1,14 @@
-import { computed, ref, shallowReactive, shallowRef, type ComputedRef, type Ref } from 'vue';
+import {
+	computed,
+	effectScope,
+	ref,
+	shallowReactive,
+	shallowRef,
+	type ComputedRef,
+	type Ref,
+} from 'vue';
 import { createEventHook } from '@vueuse/core';
+import { structuralComputed } from '@n8n/composables/structuralComputed';
 import type {
 	INode,
 	INodeCredentials,
@@ -18,6 +27,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { CanvasConnectionPort } from '@/features/workflows/canvas/canvas.types';
+import { mapLegacyEndpointsToCanvasConnectionPort } from '@/features/workflows/canvas/canvas.utils';
 import { isObject } from '@/app/utils/objectUtils';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
@@ -199,15 +209,94 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	const nodesById = shallowRef(new Map<string, INodeUi>());
 
 	// Per-node canvas render data — input/output port maps keyed by node id.
-	// State ownership lives here (alongside the nodes), but per-entry lifecycle
-	// (computation, effectScope, reconciliation on onNodesChange) is owned by
-	// useWorkflowDocumentRenderData, which receives these maps as deps.
+	// Each node gets its own structuralComputed for inputs and outputs.
+	// Lifecycle is managed via onNodesChange events — O(1) per add/remove,
+	// zero cost on node updates. The structuralComputed handles reactive
+	// re-evaluation (e.g. when workflowObject or node type changes) and
+	// isEqual gates downstream propagation. Exposed to canvas consumers via
+	// useWorkflowDocumentRenderData (a thin grouping façade keyed under
+	// `store.render`).
 	const nodeInputsByNodeId = shallowReactive(
 		new Map<string, ComputedRef<CanvasConnectionPort[]>>(),
 	);
 	const nodeOutputsByNodeId = shallowReactive(
 		new Map<string, ComputedRef<CanvasConnectionPort[]>>(),
 	);
+	const nodePortScopes = new Map<string, () => void>();
+
+	function resolveNodePortContext(nodeId: string) {
+		const node = nodesById.value.get(nodeId);
+		if (!node) return null;
+
+		const nodeTypeDescription =
+			nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+			nodeTypesStore.communityNodeType(node.type)?.nodeDescription ??
+			null;
+
+		const workflowObjectNode = deps.workflowObject.value.getNode(node.name);
+		if (!workflowObjectNode || !nodeTypeDescription) return null;
+
+		return { node, nodeTypeDescription, workflowObjectNode };
+	}
+
+	function computeNodeInputs(nodeId: string): CanvasConnectionPort[] {
+		const ctx = resolveNodePortContext(nodeId);
+		if (!ctx) return [];
+
+		return mapLegacyEndpointsToCanvasConnectionPort(
+			NodeHelpers.getNodeInputs(
+				deps.workflowObject.value,
+				ctx.workflowObjectNode,
+				ctx.nodeTypeDescription,
+			),
+			ctx.nodeTypeDescription.inputNames ?? [],
+		);
+	}
+
+	function computeNodeOutputs(nodeId: string): CanvasConnectionPort[] {
+		const ctx = resolveNodePortContext(nodeId);
+		if (!ctx) return [];
+
+		return mapLegacyEndpointsToCanvasConnectionPort(
+			NodeHelpers.getNodeOutputs(
+				deps.workflowObject.value,
+				ctx.workflowObjectNode,
+				ctx.nodeTypeDescription,
+			),
+			ctx.nodeTypeDescription.outputNames ?? [],
+		);
+	}
+
+	function applyAddPortEntry(nodeId: string) {
+		if (nodePortScopes.has(nodeId)) return;
+		const scope = effectScope();
+		scope.run(() => {
+			nodeInputsByNodeId.set(
+				nodeId,
+				structuralComputed(() => computeNodeInputs(nodeId), isEqual),
+			);
+			nodeOutputsByNodeId.set(
+				nodeId,
+				structuralComputed(() => computeNodeOutputs(nodeId), isEqual),
+			);
+		});
+		nodePortScopes.set(nodeId, () => scope.stop());
+	}
+
+	function applyRemovePortEntry(nodeId: string) {
+		nodePortScopes.get(nodeId)?.();
+		nodePortScopes.delete(nodeId);
+		nodeInputsByNodeId.delete(nodeId);
+		nodeOutputsByNodeId.delete(nodeId);
+	}
+
+	function applyReconcilePortEntries(nodeIds: string[]) {
+		const nextIds = new Set(nodeIds);
+		for (const oldId of nodePortScopes.keys()) {
+			if (!nextIds.has(oldId)) applyRemovePortEntry(oldId);
+		}
+		for (const id of nodeIds) applyAddPortEntry(id);
+	}
 
 	function rebuildNodeIndices() {
 		nodesById.value = new Map(nodes.value.map((n) => [n.id, n]));
@@ -248,6 +337,36 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	});
 
 	rebuildNodeIndices();
+
+	// Port lifecycle — registered after the index subscription so the index
+	// is fresh by the time port handlers run.
+	onNodesChange.on((event) => {
+		switch (event.action) {
+			case CHANGE_ACTION.ADD: {
+				const { node } = event.payload as NodeAddedPayload;
+				applyAddPortEntry(node.id);
+				break;
+			}
+			case CHANGE_ACTION.DELETE: {
+				const { id } = event.payload as NodeRemovedPayload;
+				if (id) {
+					applyRemovePortEntry(id);
+				} else {
+					// removeAllNodes fires DELETE with empty payload
+					applyReconcilePortEntries([]);
+				}
+				break;
+			}
+			case CHANGE_ACTION.SET: {
+				const { nodeIds } = event.payload as NodesSetPayload;
+				applyReconcilePortEntries(nodeIds);
+				break;
+			}
+		}
+	});
+
+	// Initial reconciliation for nodes that exist before event subscription
+	applyReconcilePortEntries(nodes.value.map((n) => n.id));
 
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
