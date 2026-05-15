@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentsService } from '../agents.service';
@@ -27,6 +28,37 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 	handlerName,
 	route,
 }));
+
+function makeController({
+	credentialsService = mock<CredentialsService>(),
+	chatIntegrationService = mock<ChatIntegrationService>(),
+	agentScheduleService = mock<AgentScheduleService>(),
+	agentRepository = mock<AgentRepository>(),
+}: {
+	credentialsService?: jest.Mocked<CredentialsService>;
+	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
+	agentScheduleService?: jest.Mocked<AgentScheduleService>;
+	agentRepository?: jest.Mocked<AgentRepository>;
+} = {}) {
+	const controller = new AgentsController(
+		mock<AgentsService>(),
+		mock<AgentsBuilderService>(),
+		credentialsService,
+		chatIntegrationService,
+		agentScheduleService,
+		agentRepository,
+		mock<AgentExecutionService>(),
+		mock<ChatIntegrationRegistry>(),
+	);
+
+	return {
+		controller,
+		credentialsService,
+		chatIntegrationService,
+		agentScheduleService,
+		agentRepository,
+	};
+}
 
 describe('AgentsController route access scopes', () => {
 	it.each(routeCases)(
@@ -108,5 +140,153 @@ describe('AgentsController integration credentials', () => {
 			{ projectId: 'project-1' },
 		);
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+	});
+
+	it('requires Telegram settings when connecting Telegram', async () => {
+		const { controller, chatIntegrationService } = makeController();
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'telegram', credentialId: 'cred-telegram' },
+			),
+		).rejects.toThrow(BadRequestError);
+
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+	});
+
+	it('persists and broadcasts Telegram settings on connect', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-telegram',
+				name: 'Telegram Bot',
+				type: 'telegramApi',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+			},
+		]);
+
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			publishedVersion: {},
+			integrations: [],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const { controller } = makeController({
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+		});
+		const settings = {
+			type: 'telegram' as const,
+			accessMode: 'private' as const,
+			allowedUsers: ['123'],
+		};
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'telegram', credentialId: 'cred-telegram', settings },
+			),
+		).resolves.toEqual({ status: 'connected' });
+
+		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
+			'agent-1',
+			'cred-telegram',
+			'telegram',
+			'user-1',
+			'project-1',
+			{ settings },
+		);
+		expect(agentRepository.save).toHaveBeenCalledWith({
+			...agent,
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					credentialName: 'Telegram Bot',
+					settings,
+				},
+			],
+		});
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			'agent-1',
+			'telegram',
+			'cred-telegram',
+			'connect',
+			settings,
+		);
+	});
+
+	it('returns Telegram integrations from the persisted agent entry even when the live bridge is empty', async () => {
+		const settings = {
+			type: 'telegram' as const,
+			accessMode: 'private' as const,
+			allowedUsers: ['123'],
+		};
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					credentialName: 'Telegram Bot',
+					settings,
+				},
+			],
+		} as never);
+
+		// In-memory chat-service map is transiently empty (boot / reconnect /
+		// leader-takeover race). Status must still surface the integration
+		// from the persisted entry, otherwise the FE trigger chip flickers.
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getStatus.mockReturnValue({
+			status: 'disconnected',
+			connections: 0,
+			integrations: [],
+		});
+
+		const agentScheduleService = mock<AgentScheduleService>();
+		agentScheduleService.getConfig.mockReturnValue({
+			active: false,
+			cronExpression: '0 0 * * *',
+			wakeUpPrompt: 'tick',
+		});
+
+		const { controller } = makeController({
+			agentRepository,
+			chatIntegrationService,
+			agentScheduleService,
+		});
+
+		await expect(
+			controller.integrationStatus(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toEqual({
+			status: 'connected',
+			integrations: [{ type: 'telegram', credentialId: 'cred-telegram', settings }],
+		});
 	});
 });

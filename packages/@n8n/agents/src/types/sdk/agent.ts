@@ -119,12 +119,20 @@ export interface RunOptions {
 	persistence?: AgentPersistenceOptions;
 }
 
+export interface AgentExecutionCounter {
+	incrementMessageCount(): void;
+	incrementToolCallCount(): void;
+	incrementTokenCount(tokenCount: number): void;
+}
+
 export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
 	/** Inherited telemetry from a parent agent. Used internally by asTool(). */
 	telemetry?: BuiltTelemetry;
+	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
+	executionCounter?: AgentExecutionCounter;
 }
 
 export interface PersistedExecutionOptions {

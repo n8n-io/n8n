@@ -1,6 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
+import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -62,6 +63,7 @@ const localStorageStub = {
 
 const originalLocalStorage = globalThis.localStorage;
 const mockEnsureThread = vi.mocked(ensureThread);
+const mockDeleteThread = vi.mocked(deleteThreadApi);
 
 beforeAll(() => {
 	vi.stubGlobal('localStorage', localStorageStub);
@@ -78,10 +80,47 @@ afterAll(() => {
 	}
 });
 
-describe('useInstanceAiStore - threads', () => {
+describe('useInstanceAiStore - runtime registry', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+	});
+
+	it('returns the same runtime for the same thread id', () => {
+		const store = useInstanceAiStore();
+
+		const first = store.getOrCreateRuntime('thread-1');
+		const second = store.getOrCreateRuntime('thread-1');
+		const other = store.getOrCreateRuntime('thread-2');
+
+		expect(second).toBe(first);
+		expect(other).not.toBe(first);
+	});
+
+	it('disposes and removes a single runtime', () => {
+		const store = useInstanceAiStore();
+		const runtime = store.getOrCreateRuntime('thread-1');
+		const disposeSpy = vi.spyOn(runtime, 'dispose');
+
+		store.disposeRuntime('thread-1');
+
+		expect(disposeSpy).toHaveBeenCalledOnce();
+		expect(store.getRuntime('thread-1')).toBeUndefined();
+	});
+
+	it('disposes and removes all runtimes', () => {
+		const store = useInstanceAiStore();
+		const first = store.getOrCreateRuntime('thread-1');
+		const second = store.getOrCreateRuntime('thread-2');
+		const firstDisposeSpy = vi.spyOn(first, 'dispose');
+		const secondDisposeSpy = vi.spyOn(second, 'dispose');
+
+		store.disposeRuntimes();
+
+		expect(firstDisposeSpy).toHaveBeenCalledOnce();
+		expect(secondDisposeSpy).toHaveBeenCalledOnce();
+		expect(store.getRuntime('thread-1')).toBeUndefined();
+		expect(store.getRuntime('thread-2')).toBeUndefined();
 	});
 
 	it('syncs a thread into the sidebar list', async () => {
@@ -107,6 +146,23 @@ describe('useInstanceAiStore - threads', () => {
 				updatedAt: '2026-01-02T00:00:00.000Z',
 			},
 		]);
+	});
+
+	it('deleteThread deletes persisted threads and disposes their runtime', async () => {
+		const store = useInstanceAiStore();
+		await store.syncThread('thread-1');
+		const runtime = store.getOrCreateRuntime('thread-1');
+		const disposeSpy = vi.spyOn(runtime, 'dispose');
+
+		await expect(store.deleteThread('thread-1')).resolves.toBe(true);
+
+		expect(mockDeleteThread).toHaveBeenCalledWith(
+			expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
+			'thread-1',
+		);
+		expect(disposeSpy).toHaveBeenCalledOnce();
+		expect(store.getRuntime('thread-1')).toBeUndefined();
+		expect(store.threads).toEqual([]);
 	});
 });
 

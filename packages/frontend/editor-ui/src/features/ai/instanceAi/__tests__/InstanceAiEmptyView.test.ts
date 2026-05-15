@@ -7,7 +7,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 
@@ -41,6 +41,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'test-push-ref' }),
 }));
 
+vi.mock('uuid', () => ({
+	v4: () => 'thread-placeholder',
+}));
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
@@ -51,8 +55,9 @@ const InstanceAiInputStub = defineComponent({
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
+		isSubmitting: { type: Boolean, required: false },
 	},
-	emits: ['submit', 'stop'],
+	emits: ['submit'],
 	setup(props, { emit, expose }) {
 		expose({ focus: vi.fn() });
 		return () =>
@@ -83,16 +88,23 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+	let thread: ThreadRuntime;
 
 	beforeEach(() => {
-		// Default `stubActions: true` — every store action becomes a no-op spy.
-		// We only need to assert the call happened; the bodies of store actions
-		// touch the thread runtime (SSE etc.) which we don't exercise here.
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
 		store = mockedStore(useInstanceAiStore);
-		store.currentThreadId = 'thread-placeholder';
+		thread = {
+			id: 'thread-placeholder',
+			isStreaming: false,
+			isSubmitting: false,
+			isAwaitingConfirmation: false,
+			amendContext: null,
+			contextualSuggestion: null,
+			sendMessage: vi.fn().mockResolvedValue(undefined),
+		} as unknown as ThreadRuntime;
+		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 	});
 
@@ -117,11 +129,9 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
-	it('clears the current thread on mount (AI-2408)', () => {
-		// Without this, currentThreadId keeps pointing at the last visited thread
-		// and the sidebar would highlight it alongside the empty main view.
+	it('does not create a runtime before the first send', () => {
 		renderView();
-		expect(store.clearCurrentThread).toHaveBeenCalled();
+		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 	});
 
 	it('navigates to the thread view and dispatches sendMessage when syncThread succeeds', async () => {
@@ -132,7 +142,8 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder');
-		expect(store.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
+		expect(store.getOrCreateRuntime).toHaveBeenCalledWith('thread-placeholder');
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
@@ -148,7 +159,8 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(showErrorMock).toHaveBeenCalled();
-		expect(store.sendMessage).not.toHaveBeenCalled();
+		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
 	});
 });
