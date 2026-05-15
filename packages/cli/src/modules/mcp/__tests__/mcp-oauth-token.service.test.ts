@@ -289,6 +289,30 @@ describe('McpOAuthTokenService', () => {
 			});
 		});
 
+		it('should accept legacy audience when expected audience is provided', async () => {
+			const audience = 'https://n8n.example.com/mcp-server/http';
+			const legacyAudienceToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'mcp-server-api',
+				client_id: 'client-456',
+			});
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({
+					token: legacyAudienceToken,
+					clientId: 'client-456',
+					userId: 'user-123',
+				}),
+			);
+
+			await expect(service.verifyAccessToken(legacyAudienceToken, audience)).resolves.toMatchObject(
+				{
+					token: legacyAudienceToken,
+					clientId: 'client-456',
+				},
+			);
+		});
+
 		it('should throw error when token not found in database', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
