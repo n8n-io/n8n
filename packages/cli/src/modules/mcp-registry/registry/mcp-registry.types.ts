@@ -58,7 +58,7 @@ export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow 
 		slug,
 		status,
 		version,
-		registryUpdatedAt: updatedAt,
+		registryUpdatedAt: new Date(updatedAt),
 		data: rest,
 	};
 }
@@ -68,9 +68,9 @@ export function fromEntity(entity: McpRegistryServerEntity): McpRegistryServer {
 	return {
 		id,
 		slug,
-		status: status as McpRegistryServer['status'],
+		status,
 		version,
-		updatedAt: registryUpdatedAt,
+		updatedAt: registryUpdatedAt.toISOString(),
 		...data,
 	} as McpRegistryServer;
 }

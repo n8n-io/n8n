@@ -1,4 +1,4 @@
-import { JsonColumn, WithTimestamps } from '@n8n/db';
+import { datetimeColumnType, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 export type McpRegistryServerData = {
@@ -37,13 +37,13 @@ export class McpRegistryServerEntity extends WithTimestamps {
 	slug: string;
 
 	@Column('varchar')
-	status: string;
+	status: 'active' | 'deprecated';
 
 	@Column('varchar')
 	version: string;
 
-	@Column('varchar')
-	registryUpdatedAt: string;
+	@Column(datetimeColumnType)
+	registryUpdatedAt: Date;
 
 	@JsonColumn()
 	data: McpRegistryServerData;

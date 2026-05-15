@@ -10,12 +10,19 @@ export class CreateMcpRegistryServerTable1784000000001 implements ReversibleMigr
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('mcp_registry_server')
 			.withColumns(
-				column('id').int.primary.notNull,
+				column('id').int.primary,
 				column('slug').varchar(255).notNull,
-				column('status').varchar(50).notNull,
+				column('status')
+					.varchar(50)
+					.notNull.withEnumCheck(['active', 'deprecated'])
+					.comment(
+						'Server status in the MCP registry. Deprecated servers are not surfaced to users.',
+					),
 				column('version').varchar(50).notNull,
-				column('registryUpdatedAt').varchar(50).notNull,
-				column('data').json.notNull,
+				column('registryUpdatedAt').timestampNoTimezone(3).notNull,
+				column('data')
+					.json.notNull.default("'{}'")
+					.comment('JSON object containing server metadata (icons, remotes, tools, etc.)'),
 			)
 			.withUniqueConstraintOn(['slug']).withTimestamps;
 	}
