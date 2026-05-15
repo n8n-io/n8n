@@ -32,7 +32,7 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
@@ -761,7 +761,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 						persistence,
 					});
 
-					return await result.text;
+					return await requireCompletedHitlText(result, 'Planner sub-agent');
 				});
 
 				await finishTraceRun(context, traceRun, {

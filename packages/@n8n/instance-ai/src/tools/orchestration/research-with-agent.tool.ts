@@ -19,7 +19,7 @@ import {
 } from './tracing-utils';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
@@ -131,7 +131,7 @@ export async function startResearchAgentTask(
 					},
 				});
 
-				const { text } = await consumeStreamWithHitl({
+				const result = await consumeStreamWithHitl({
 					agent: subAgent,
 					stream,
 					runId: context.runId,
@@ -147,7 +147,7 @@ export async function startResearchAgentTask(
 					persistence,
 				});
 
-				return await text;
+				return await requireCompletedHitlText(result, 'Research sub-agent');
 			});
 		},
 	});

@@ -3,6 +3,7 @@ import type { Logger } from '../logger';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
+	type TraceStatus,
 } from '../runtime/resumable-stream-executor';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 
@@ -30,10 +31,31 @@ export interface ConsumeWithHitlOptions {
 }
 
 export interface ConsumeWithHitlResult {
+	/** Final native stream consumption status. */
+	status: TraceStatus;
+	/** Native sub-agent run ID. */
+	agentRunId: string;
 	/** Promise that resolves to the agent's full text output (including post-resume text). */
 	text: Promise<string>;
 	/** Accumulated tool call outcomes observed during stream consumption. */
 	workSummary: WorkSummary;
+}
+
+export async function requireCompletedHitlText(
+	result: ConsumeWithHitlResult,
+	agentLabel: string,
+): Promise<string> {
+	if (result.status === 'completed') {
+		return await result.text;
+	}
+
+	const reason =
+		result.status === 'cancelled'
+			? 'was cancelled'
+			: result.status === 'errored'
+				? 'failed while streaming'
+				: `ended with unexpected status "${result.status}"`;
+	throw new Error(`${agentLabel} ${reason}`);
 }
 
 /**
@@ -79,6 +101,8 @@ export async function consumeStreamWithHitl(
 	});
 
 	return {
+		status: result.status,
+		agentRunId: result.agentRunId,
 		text: result.text ?? stream.text ?? Promise.resolve(''),
 		workSummary: result.workSummary,
 	};

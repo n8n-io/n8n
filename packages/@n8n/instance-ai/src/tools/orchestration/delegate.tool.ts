@@ -17,7 +17,7 @@ import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
@@ -209,7 +209,7 @@ export async function startDetachedDelegateTask(
 					persistence,
 				});
 
-				return await result.text;
+				return await requireCompletedHitlText(result, 'Delegate sub-agent');
 			});
 		},
 	});
@@ -359,7 +359,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					});
 				});
 
-				const resultText = await consumeResult.text;
+				const resultText = await requireCompletedHitlText(consumeResult, 'Delegate sub-agent');
 				const debriefing = buildDebriefing({
 					agentId: subAgentId,
 					role: input.role,

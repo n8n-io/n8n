@@ -399,8 +399,12 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 								},
 							});
 
-							if (result.status === 'cancelled') {
-								throw new Error('Run cancelled while waiting for confirmation');
+							if (result.status !== 'completed') {
+								throw new Error(
+									result.status === 'cancelled'
+										? 'Browser credential setup sub-agent was cancelled'
+										: 'Browser credential setup sub-agent failed while streaming',
+								);
 							}
 
 							if (browserPermanentlyDenied || hasPermanentBrowserDenial(result.workSummary)) {

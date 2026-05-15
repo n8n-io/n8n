@@ -20,7 +20,7 @@ import {
 } from './tracing-utils';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
@@ -151,7 +151,7 @@ export function startDataTableAgentTask(
 					persistence,
 				});
 
-				return await hitlResult.text;
+				return await requireCompletedHitlText(hitlResult, 'Data table sub-agent');
 			});
 		},
 	});

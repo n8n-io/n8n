@@ -30,7 +30,7 @@ import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
 import type { BuilderSandboxSession } from '../../runtime/builder-sandbox-session-registry';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type {
@@ -1159,7 +1159,10 @@ export async function startBuildWorkflowAgentTask(
 									persistence,
 								});
 
-								finalText = await hitlResult.text;
+								finalText = await requireCompletedHitlText(
+									hitlResult,
+									'Workflow builder sub-agent',
+								);
 							} catch (error) {
 								const recovered = resultFromPostStreamError({
 									error,
@@ -1421,7 +1424,10 @@ export async function startBuildWorkflowAgentTask(
 							persistence,
 						});
 
-						const toolFinalText = await hitlResult.text;
+						const toolFinalText = await requireCompletedHitlText(
+							hitlResult,
+							'Workflow builder sub-agent',
+						);
 						await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
 						return { text: toolFinalText };
 					} finally {
