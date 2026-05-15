@@ -262,8 +262,14 @@ export class McpOAuthTokenService {
 	}
 
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
+		if (audiences.length === 0) {
+			throw new Error('At least one audience is required');
+		}
+
 		try {
-			return this.jwtService.verify(token, { audience: audiences });
+			return this.jwtService.verify(token, {
+				audience: audiences as [string, ...string[]],
+			});
 		} catch (error) {
 			for (const audience of audiences) {
 				try {
@@ -272,6 +278,7 @@ export class McpOAuthTokenService {
 					continue;
 				}
 			}
+
 			throw error;
 		}
 	}
