@@ -6,6 +6,7 @@ import {
 } from '@n8n/api-types';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import type { BuilderSandboxSession } from '../../../runtime/builder-sandbox-session-registry';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, InstanceAiContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop';
@@ -28,6 +29,7 @@ const {
 	buildWarmBuilderFollowUp,
 	determineSetupRequirement,
 	determineVerificationReadiness,
+	getBuilderSessionMemory,
 	mergeLatestVerificationIntoOutcome,
 	supportingWorkflowIdsFromSubmitAttempts,
 } =
@@ -118,6 +120,26 @@ describe('buildWarmBuilderFollowUp', () => {
 		expect(briefing).toContain('Do NOT call `workflows(action="publish")` for the main workflow');
 		expect(briefing).toContain('<requested-change>');
 		expect(briefing).toContain('Change the Gmail recipient');
+	});
+});
+
+describe('getBuilderSessionMemory', () => {
+	const session = { sessionId: 'builder-session-1' } as BuilderSandboxSession;
+
+	it('uses memory for retained builder sessions', () => {
+		const memory = {} as OrchestrationContext['memory'];
+
+		expect(getBuilderSessionMemory({ memory }, session)).toBe(memory);
+	});
+
+	it('skips memory when there is no retained builder session', () => {
+		const memory = {} as OrchestrationContext['memory'];
+
+		expect(getBuilderSessionMemory({ memory }, undefined)).toBeUndefined();
+	});
+
+	it('skips memory when the context has no memory store', () => {
+		expect(getBuilderSessionMemory({}, session)).toBeUndefined();
 	});
 });
 

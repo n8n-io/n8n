@@ -68,6 +68,13 @@ interface BuilderMemoryBinding {
 	thread: string;
 }
 
+export function getBuilderSessionMemory(
+	context: Pick<OrchestrationContext, 'memory'>,
+	activeBuilderSession: BuilderSandboxSession | undefined,
+): OrchestrationContext['memory'] {
+	return activeBuilderSession ? context.memory : undefined;
+}
+
 function toToolRegistry(tools: readonly BuiltTool[]): InstanceAiToolRegistry {
 	const registry = createToolRegistry();
 	for (const tool of tools) {
@@ -1093,7 +1100,8 @@ export async function startBuildWorkflowAgentTask(
 								'workflow-builder',
 							);
 							const runtimeWorkspaceTools = toToolRegistry(workspace.getTools());
-							const shouldUseBuilderMemory = false;
+							const builderMemory = getBuilderSessionMemory(context, activeBuilderSession);
+							const shouldUseBuilderMemory = Boolean(builderMemory);
 
 							const subAgent = new Agent('Workflow Builder Agent')
 								.model(context.modelId)
@@ -1105,6 +1113,9 @@ export async function startBuildWorkflowAgentTask(
 								.tool(toolRegistryValues(tracedBuilderTools))
 								.workspace(workspace)
 								.checkpoint(context.checkpointStore ?? 'memory');
+							if (builderMemory) {
+								subAgent.memory(builderMemory);
+							}
 							const telemetry = traceContext?.getTelemetry?.({
 								agentRole: 'workflow-builder',
 								functionId: 'instance-ai.subagent.workflow-builder',
