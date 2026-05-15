@@ -131,10 +131,10 @@ describe('AgentsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-outside-project' },
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'slack', credentialId: 'cred-outside-project' },
 			),
 		).rejects.toThrow(NotFoundError);
 
@@ -153,10 +153,10 @@ describe('AgentsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
+					body: { type: 'telegram', credentialId: 'cred-telegram' },
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'telegram', credentialId: 'cred-telegram' },
 			),
 		).rejects.toThrow(BadRequestError);
 
@@ -204,14 +204,14 @@ describe('AgentsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
+					body: {
+						type: 'telegram',
+						credentialId: 'cred-telegram',
+						settings,
+					},
 				} as never,
 				undefined as never,
 				'agent-1',
-				{
-					type: 'telegram',
-					credentialId: 'cred-telegram',
-					settings,
-				},
 			),
 		).resolves.toEqual({ status: 'connected' });
 
