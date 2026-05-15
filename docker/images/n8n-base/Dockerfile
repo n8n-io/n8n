@@ -1,6 +1,6 @@
 ARG NODE_VERSION=24.14.1
 
-FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
+FROM dhi.io/node:${NODE_VERSION}-alpine3.23-dev
 
 ARG NODE_VERSION
 
@@ -19,7 +19,7 @@ RUN apk add --no-cache busybox-binsh && \
         git \
         openssh \
         openssl \
-        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (AGPL)` \
+        graphicsmagick=1.3.46-r0 `# pinned for build reproducibility` \
         tini \
         tzdata \
         ca-certificates \
@@ -29,7 +29,4 @@ RUN apk add --no-cache busybox-binsh && \
     apk del apk-tools
 
 WORKDIR /home/node
-# DHI images use a non-standard global npm path, so we need to set NODE_PATH
-# to allow externally installed npm packages to be found by require()
-ENV NODE_PATH=/opt/nodejs/node-v${NODE_VERSION}/lib/node_modules
 EXPOSE 5678/tcp
