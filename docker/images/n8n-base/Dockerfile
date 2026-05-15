@@ -12,9 +12,9 @@ RUN apk add --no-cache busybox-binsh && \
     fc-cache -f && \
     apk del .build-deps-fonts && \
     find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
-    # Install OS dependencies
-    apk update && \
-    apk upgrade --no-cache && \
+    # Install OS dependencies. DHI's base image is already current with vetted
+    # pinned versions; `apk upgrade` can race with alpine repo refreshes (e.g.
+    # libssl3 bumped without openssl) and break the build.
     apk add --no-cache \
         git \
         openssh \
