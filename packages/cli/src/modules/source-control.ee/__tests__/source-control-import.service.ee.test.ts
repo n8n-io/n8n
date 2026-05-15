@@ -544,6 +544,56 @@ describe('SourceControlImportService', () => {
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
+		it('should clear active state when local workflow is archived with a lingering active version', async () => {
+			const mockUserId = 'user-id-123';
+			const mockUser = Object.assign(new User(), { id: mockUserId });
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Workflow',
+				nodes: [],
+				connections: {},
+				versionId: 'v2',
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Workflow',
+					active: true,
+					activeVersionId: 'v1',
+					isArchived: true,
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'none');
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow1',
+					active: false,
+					activeVersionId: null,
+				}),
+				['id'],
+			);
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('should unpublish archived workflows even if they were previously published', async () => {
 			const mockUserId = 'user-id-123';
 			const mockUser = Object.assign(new User(), { id: mockUserId });
@@ -2746,7 +2796,7 @@ describe('SourceControlImportService', () => {
 					id: 'dt1',
 					name: 'Test Table 1',
 					projectId: 'project1',
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -2754,7 +2804,7 @@ describe('SourceControlImportService', () => {
 					id: 'dt2',
 					name: 'Test Table 2',
 					projectId: 'project2',
-					columns: [{ id: 'col2', name: 'Column 2', type: 'number', index: 0 }],
+					columns: [{ id: 'col2', name: 'Column2', type: 'number', index: 0 }],
 					createdAt: '2024-01-03T00:00:00.000Z',
 					updatedAt: '2024-01-04T00:00:00.000Z',
 				};
@@ -2824,7 +2874,7 @@ describe('SourceControlImportService', () => {
 						id: 'dt1',
 						name: 'Test Table',
 						projectId: 'project1',
-						columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+						columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 						createdAt: new Date('2024-01-01'),
 						updatedAt: new Date('2024-01-02'),
 						project: {
@@ -2851,7 +2901,7 @@ describe('SourceControlImportService', () => {
 						projectId: 'project1',
 						projectName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					filename: expect.stringContaining('dt1.json'),
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -2960,7 +3010,7 @@ describe('SourceControlImportService', () => {
 						teamId: 'project1',
 						teamName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -3003,7 +3053,7 @@ describe('SourceControlImportService', () => {
 						projectName: 'User Name',
 						personalEmail: 'user@example.com',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -3041,8 +3091,8 @@ describe('SourceControlImportService', () => {
 						teamName: 'Team Project 1',
 					},
 					columns: [
-						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col1', name: 'Column1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column2', type: 'number', index: 1 },
 					],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -3052,12 +3102,12 @@ describe('SourceControlImportService', () => {
 					id: 'dt1',
 					name: 'Old Name',
 					projectId: 'project1',
-					columns: [{ id: 'col1', name: 'Column 1' }],
+					columns: [{ id: 'col1', name: 'Column1' }],
 				};
 
 				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
 				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
-				dataTableColumnRepository.find.mockResolvedValue([{ id: 'col1', name: 'Column 1' }] as any);
+				dataTableColumnRepository.find.mockResolvedValue([{ id: 'col1', name: 'Column1' }] as any);
 				dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
 				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
 
@@ -3126,7 +3176,7 @@ describe('SourceControlImportService', () => {
 						teamId: 'project1',
 						teamName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -3136,16 +3186,16 @@ describe('SourceControlImportService', () => {
 					name: 'Test Table',
 					projectId: 'project1',
 					columns: [
-						{ id: 'col1', name: 'Column 1' },
-						{ id: 'col2', name: 'Column 2' },
+						{ id: 'col1', name: 'Column1' },
+						{ id: 'col2', name: 'Column2' },
 					],
 				};
 
 				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
 				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
 				dataTableColumnRepository.find.mockResolvedValue([
-					{ id: 'col1', name: 'Column 1' },
-					{ id: 'col2', name: 'Column 2' },
+					{ id: 'col1', name: 'Column1' },
+					{ id: 'col2', name: 'Column2' },
 				] as any);
 				dataTableColumnRepository.save.mockResolvedValue({ id: 'col1' } as any);
 				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
@@ -3156,7 +3206,7 @@ describe('SourceControlImportService', () => {
 				// Assert
 				expect(dataTableDDLService.dropColumnFromTable).toHaveBeenCalledWith(
 					'dt1',
-					'Column 2',
+					'Column2',
 					'sqlite',
 					expect.anything(),
 				);
@@ -3183,7 +3233,7 @@ describe('SourceControlImportService', () => {
 						teamId: 'project1',
 						teamName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -3204,13 +3254,81 @@ describe('SourceControlImportService', () => {
 				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
 
+			it('should skip columns with invalid names', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [
+						{ id: 'col1', name: 'validName', type: 'string', index: 0 },
+						{
+							id: 'col2',
+							name: 'invalid" text); create INVALID table; --',
+							type: 'string',
+							index: 1,
+						},
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				dataTableRepository.findOne.mockResolvedValue(null);
+				dataTableColumnRepository.find.mockResolvedValue([]);
+				dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableDDLService.createTableWithColumns).toHaveBeenCalledWith(
+					'dt1',
+					expect.arrayContaining([expect.objectContaining({ id: 'col1', name: 'validName' })]),
+					expect.anything(),
+				);
+				const columns = (dataTableDDLService.createTableWithColumns as jest.Mock).mock.calls[0][1];
+				expect(columns).not.toEqual(
+					expect.arrayContaining([expect.objectContaining({ id: 'col2' })]),
+				);
+			});
+
+			it('should skip data tables with invalid IDs', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'invalid"; create INVALID table;--',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'validName', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
+			});
+
 			it('should not partially import when a name collision exists among multiple tables', async () => {
 				// Arrange — two tables: dt1 is valid, dt2 has a name collision
 				const validTable = {
 					id: 'dt1',
 					name: 'Valid Table',
 					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
-					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'Column1', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -3218,7 +3336,7 @@ describe('SourceControlImportService', () => {
 					id: 'dt2',
 					name: 'Colliding Table',
 					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
-					columns: [{ id: 'col2', name: 'Column 2', type: 'string', index: 0 }],
+					columns: [{ id: 'col2', name: 'Column2', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};

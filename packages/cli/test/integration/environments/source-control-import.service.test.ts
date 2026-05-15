@@ -5,6 +5,7 @@ import {
 	linkUserToProject,
 	createWorkflowWithHistory,
 	randomCredentialPayload,
+	setActiveVersion,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
@@ -1930,6 +1931,38 @@ describe('SourceControlImportService', () => {
 				// Verify workflow was not created in database
 				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
 				expect(workflowInDb).toBeNull();
+			});
+		});
+
+		describe('archived workflows', () => {
+			it('should not preserve active state when existing workflow is archived', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+
+				await createWorkflowWithHistory(
+					{
+						id: workflowId,
+						name: 'Archived Workflow',
+						versionId,
+						active: true,
+						isArchived: true,
+					},
+					importingUser,
+				);
+				await setActiveVersion(workflowId, versionId);
+
+				const imported = makeWorkflowImport({ id: workflowId, isArchived: false });
+				const file = putWorkflowFile(workflowId, imported);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const post = await workflowRepository.findOne({ where: { id: workflowId } });
+				expect(post?.active).toBe(false);
+				expect(post?.activeVersionId).toBeNull();
 			});
 		});
 	});

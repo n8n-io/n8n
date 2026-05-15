@@ -3,15 +3,29 @@ import type { RuleSettingsMap } from '@n8n/rules-engine';
 
 import type { CodeHealthContext } from './context.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
+import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
+import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
+export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
+export { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 const defaultRuleSettings: RuleSettingsMap = {
 	'catalog-violations': {
 		enabled: true,
 		severity: 'error',
 		options: { workspaceFile: 'pnpm-workspace.yaml' },
+	},
+	'workflow-pr-target-safety': {
+		enabled: true,
+		severity: 'error',
+		options: { allowedWorkflows: ['ci-cla-check.yml'] },
+	},
+	'migration-timestamp': {
+		enabled: true,
+		severity: 'error',
+		options: {},
 	},
 };
 
@@ -31,6 +45,8 @@ function mergeSettings(defaults: RuleSettingsMap, overrides?: RuleSettingsMap): 
 export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<CodeHealthContext> {
 	const runner = new RuleRunner<CodeHealthContext>();
 	runner.registerRule(new CatalogViolationsRule());
+	runner.registerRule(new WorkflowPrTargetSafetyRule());
+	runner.registerRule(new MigrationTimestampRule());
 	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
 	return runner;
 }

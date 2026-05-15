@@ -341,6 +341,14 @@ async function handleSetup(
 	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
 	const isFinalize = input.credentialFlow?.stage === 'finalize';
 
+	if (!input.credentials || input.credentials.length === 0) {
+		return {
+			error: 'missing_credentials',
+			message:
+				'The `credentials` array is required for the setup action. Pass an array of { credentialType, reason?, suggestedName? } entries describing each credential to set up.',
+		};
+	}
+
 	// State 1: First call — look up existing credentials per type and suspend.
 	// Scope the lookup to `projectId` when provided so the candidates match what
 	// the workflow being built can actually use.

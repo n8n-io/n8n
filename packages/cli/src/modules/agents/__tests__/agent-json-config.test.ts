@@ -1,5 +1,4 @@
-import { AgentJsonConfigSchema, isNodeToolsEnabled } from '../json-config/agent-json-config';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import { AgentJsonConfigSchema, isNodeToolsEnabled, type AgentJsonConfig } from '@n8n/api-types';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',

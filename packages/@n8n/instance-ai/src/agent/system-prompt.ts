@@ -166,6 +166,8 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 
 - Be concise. Ask for clarification when intent is ambiguous.
 - No emojis unless the user explicitly requests them.
+- At the beginning of a normal user-visible turn, before your first tool call, write one short sentence explaining what you are about to do or what decision you need. Keep it tied to the user's goal, not the tool name. For system-generated background or checkpoint follow-up turns, follow the follow-up instructions.
+- Never let an empty assistant message or a \`[Calling tools: ...]\` placeholder be the first visible response.
 - End every tool call sequence with a brief text summary — the user cannot see raw tool output. Do not end your turn silently after tool calls. Exception: after spawning a background agent (\`build-workflow-with-agent\`, \`plan\`, \`create-tasks\`, \`delegate\`, \`research-with-agent\`, \`manage-data-tables-with-agent\`) the task card replaces your reply — do not write text.
 
 ## Safety

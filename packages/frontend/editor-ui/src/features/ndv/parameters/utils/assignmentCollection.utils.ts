@@ -3,6 +3,7 @@ import type { AssignmentValue, IDataObject } from 'n8n-workflow';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 import { isBinaryLike } from '@/app/utils/typeGuards';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 export function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
@@ -14,9 +15,12 @@ export function inferAssignmentType(value: unknown): string {
 	return 'string';
 }
 
-export async function typeFromExpression(expression: string): Promise<string> {
+export async function typeFromExpression(
+	expression: string,
+	workflowDocumentId: WorkflowDocumentId,
+): Promise<string> {
 	try {
-		const resolved = await resolveParameter(`=${expression}`);
+		const resolved = await resolveParameter(`=${expression}`, workflowDocumentId);
 		return inferAssignmentType(resolved);
 	} catch {
 		return 'string';
