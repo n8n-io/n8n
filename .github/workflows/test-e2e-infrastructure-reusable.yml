@@ -32,22 +32,26 @@ jobs:
         include:
           - lane: ui
             grep: '@bench:ui'
-            shard: ''
+            shards: '[{"shard":1,"images":""}]'
           - lane: webhook
             grep: '@bench:webhook'
-            shard: ''
-          - lane: kafka-1
+            shards: '[{"shard":1,"images":""}]'
+          - lane: kafka
             grep: '@bench:kafka'
-            shard: '--shard=1/2'
-          - lane: kafka-2
-            grep: '@bench:kafka'
-            shard: '--shard=2/2'
+            # 2-shard matrix → reusable workflow spawns two sub-jobs, each runs --shard=N/2.
+            # Lane fan-out (ui + webhook + kafka×2) = 4 parallel runners after one shared
+            # prepare-docker.
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
+      # No quotes around the grep value — the reusable workflow runs $TEST_COMMAND
+      # unquoted and bash word-splits, so any literal " would survive into the arg.
+      # `@bench:<lane>` has no shell-special chars; pnpm forwards it cleanly.
+      test-command: 'pnpm --filter=n8n-playwright test:benchmark --grep ${{ matrix.grep }}'
+      pre-generated-matrix: ${{ matrix.shards }}
       # Each spec brings its own container via `test.use({ capability })`,
-      # so workers stay at 1. Parallelism is across lanes, not within a lane.
-      test-command: 'pnpm --filter=n8n-playwright test:benchmark --grep "${{ matrix.grep }}" ${{ matrix.shard }}'
+      # so workers stay at 1 (one container at a time per shard).
       workers: '1'
       runner: blacksmith-8vcpu-ubuntu-2204
       timeout-minutes: 120
