@@ -1,10 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { computed, type ComputedRef } from 'vue';
 
@@ -12,9 +9,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 	const environmentsStore = useEnvironmentsStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	return computed<ExpressionLocalResolveContext | undefined>(() => {
 		if (!node.value || !workflowDocumentStore.value) {

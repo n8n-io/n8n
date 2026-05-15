@@ -14,7 +14,9 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
@@ -23,11 +25,8 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
-
-interface CredentialOption {
-	id: string;
-	name: string;
-}
+import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -47,6 +46,8 @@ const props = defineProps<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const { publish, publishing } = useAgentPublish();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -64,6 +65,7 @@ const selectedTriggerType = ref<string>(props.data.initialTriggerType ?? '');
 const {
 	statuses,
 	connectedCredentials,
+	integrationSettings,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -74,8 +76,9 @@ const {
 } = useAgentIntegrationStatus(props.data.projectId, props.data.agentId);
 
 const selectedCredentials = ref<Record<string, string>>({});
-const credentialsByType = ref<Record<string, CredentialOption[]>>({});
+const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm>>();
 
 // Track credentials that existed before the user opened the "new credential"
 // modal, keyed by trigger type. After the modal closes we diff against the
@@ -91,6 +94,19 @@ const SCHEDULE_ICON: IconName = 'clock';
 const currentIntegration = computed<ChatIntegrationDescriptor | null>(
 	() => integrations.value.find((i) => i.type === selectedTriggerType.value) ?? null,
 );
+
+const projectForPermissions = computed(() => {
+	if (projectsStore.currentProject?.id === props.data.projectId)
+		return projectsStore.currentProject;
+	if (projectsStore.personalProject?.id === props.data.projectId)
+		return projectsStore.personalProject;
+	return projectsStore.myProjects.find((project) => project.id === props.data.projectId) ?? null;
+});
+
+const credentialPermissions = computed(() => {
+	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
+	return { ...permissions, create: !!permissions.create };
+});
 
 // Backend integration descriptors ship icon names that may include legacy
 // aliases (e.g. `hashtag`, `paper-plane`); N8nIcon resolves them at runtime
@@ -289,14 +305,20 @@ function closeModal() {
 async function fetchCredentials() {
 	credentialsLoading.value = true;
 	try {
-		const allCredentials = await makeRestApiRequest<
-			Array<{ id: string; name: string; type: string }>
-		>(rootStore.restApiContext, 'GET', '/credentials');
+		credentialsStore.setCredentials([]);
+		const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			projectId: props.data.projectId,
+		});
 
 		for (const integration of integrations.value) {
 			credentialsByType.value[integration.type] = allCredentials
 				.filter((c) => integration.credentialTypes.includes(c.type))
-				.map((c) => ({ id: c.id, name: c.name }));
+				.map((c) => ({
+					id: c.id,
+					name: c.name,
+					typeDisplayName: credentialsStore.getCredentialTypeByName(c.type)?.displayName,
+					homeProject: c.homeProject,
+				}));
 		}
 	} catch {
 		for (const integration of integrations.value) {
@@ -328,10 +350,12 @@ async function ensurePublished(): Promise<boolean> {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
+	if (settingsFormRef.value?.validationError) return;
+	const settings = settingsFormRef.value?.currentSettings;
 	const published = await ensurePublished();
 	if (!published) return;
 	try {
-		await connect(type, credId);
+		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
 		props.data.onTriggerAdded({ triggerType: type, triggers });
 		emitConnectedTriggers();
@@ -354,9 +378,18 @@ function onCreateCredential(integration: ChatIntegrationDescriptor) {
 	const existing = credentialsByType.value[integration.type] ?? [];
 	credentialIdsBeforeNew.value[integration.type] = new Set(existing.map((c) => c.id));
 	pendingNewCredentialType.value = integration.type;
-	uiStore.openNewCredential(primaryCredentialType, false, false, undefined, undefined, undefined, {
-		hideAskAssistant: true,
-	});
+	uiStore.openNewCredential(
+		primaryCredentialType,
+		false,
+		false,
+		props.data.projectId,
+		undefined,
+		undefined,
+		undefined,
+		{
+			hideAskAssistant: true,
+		},
+	);
 }
 
 function onEditCredential(type: string) {
@@ -472,6 +505,7 @@ onMounted(async () => {
 					:flat="true"
 					@status-change="onScheduleStatusChange"
 					@trigger-added="onScheduleTriggerAdded"
+					@canceled="closeModal"
 					@saved="closeModal"
 				/>
 
@@ -510,22 +544,17 @@ onMounted(async () => {
 							</N8nText>
 						</label>
 						<div :class="$style.selectRow">
-							<N8nSelect
+							<AgentCredentialSelect
 								v-model="selectedCredentials[currentIntegration.type]"
 								:class="$style.select"
 								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
+								:credentials="credentialsByType[currentIntegration.type] ?? []"
+								:credential-permissions="credentialPermissions"
 								:loading="credentialsLoading"
 								:disabled="isLoading(currentIntegration.type)"
-								size="medium"
-								:data-testid="`${currentIntegration.type}-credential-select`"
-							>
-								<N8nOption
-									v-for="cred in credentialsByType[currentIntegration.type] ?? []"
-									:key="cred.id"
-									:value="cred.id"
-									:label="cred.name"
-								/>
-							</N8nSelect>
+								:data-test-id="`${currentIntegration.type}-credential-select`"
+								@create="onCreateCredential(currentIntegration)"
+							/>
 							<N8nButton
 								v-if="selectedCredentials[currentIntegration.type]"
 								variant="outline"
@@ -536,24 +565,6 @@ onMounted(async () => {
 								@click="onEditCredential(currentIntegration.type)"
 							/>
 						</div>
-
-						<N8nText
-							v-if="hasError(currentIntegration.type)"
-							:class="$style.errorText"
-							size="small"
-						>
-							{{ errorMessages[currentIntegration.type] }}
-							<a
-								v-if="
-									selectedCredentials[currentIntegration.type] &&
-									!errorIsConflict[currentIntegration.type]
-								"
-								:class="$style.link"
-								href="#"
-								@click.prevent="onEditCredential(currentIntegration.type)"
-								>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
-							>
-						</N8nText>
 					</div>
 
 					<div v-else :class="$style.connectedSection">
@@ -561,6 +572,32 @@ onMounted(async () => {
 							{{ integrationConnectedText(currentIntegration.type) }}
 						</N8nText>
 					</div>
+
+					<AgentIntegrationSettingsForm
+						ref="settingsFormRef"
+						:type="currentIntegration.type"
+						:disabled="isConnected(currentIntegration.type) || isLoading(currentIntegration.type)"
+						:connected="isConnected(currentIntegration.type)"
+						:saved-settings="integrationSettings[currentIntegration.type]"
+					/>
+
+					<N8nText
+						v-if="!isConnected(currentIntegration.type) && hasError(currentIntegration.type)"
+						:class="$style.errorText"
+						size="small"
+					>
+						{{ errorMessages[currentIntegration.type] }}
+						<a
+							v-if="
+								selectedCredentials[currentIntegration.type] &&
+								!errorIsConflict[currentIntegration.type]
+							"
+							:class="$style.link"
+							href="#"
+							@click.prevent="onEditCredential(currentIntegration.type)"
+							>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
+						>
+					</N8nText>
 
 					<!-- Slack manifest reference material. Integration actions live
 						 in the modal footer so they stay aligned with other modals. -->
@@ -600,20 +637,12 @@ onMounted(async () => {
 				<div :class="$style.footerActions">
 					<template v-if="!isConnected(currentIntegration.type)">
 						<N8nButton
-							variant="outline"
-							size="small"
-							:data-testid="`${currentIntegration.type}-create-another-credential`"
-							@click="onCreateCredential(currentIntegration)"
-						>
-							<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
-							{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
-						</N8nButton>
-						<N8nButton
 							variant="solid"
 							:disabled="
 								!selectedCredentials[currentIntegration.type] ||
 								isLoading(currentIntegration.type) ||
-								publishing
+								publishing ||
+								!!settingsFormRef?.validationError
 							"
 							:loading="isLoading(currentIntegration.type) || publishing"
 							size="small"

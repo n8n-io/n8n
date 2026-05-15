@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await -- mock implementations kept async for future-proofing */
 import type { Logger } from '@n8n/backend-common';
+import type { AgentsConfig } from '@n8n/config';
 import type {
 	ExecutionRepository,
 	ProjectRelationRepository,
@@ -11,6 +12,7 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -75,7 +77,9 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock(),
 			mock<AgentSkillsService>(),
 			mock(),
+			{ modules: [] } as unknown as AgentsConfig,
 			mock(),
+			mock<Telemetry>(),
 		);
 	});
 

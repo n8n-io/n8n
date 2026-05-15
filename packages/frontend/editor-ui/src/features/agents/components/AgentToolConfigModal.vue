@@ -44,6 +44,8 @@ const props = defineProps<{
 		toolRef: AgentJsonToolRef;
 		customTool?: CustomToolEntry;
 		existingToolNames?: string[];
+		projectId?: string;
+		agentId?: string;
 		onConfirm: (updatedRef: AgentJsonToolRef) => void;
 		onRemove?: () => void;
 	};
@@ -220,6 +222,7 @@ function handleNodeNameUpdate(name: string) {
 							ref="nodeContentRef"
 							:initial-node="initialNode"
 							:existing-tool-names="data.existingToolNames"
+							:project-id="data.projectId"
 							:hide-ask-assistant="true"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"

@@ -1,8 +1,11 @@
 import { deepCopy, type INodeTypeDescription } from 'n8n-workflow';
 
-import { serverToNodeDescription } from './node-description-transform';
+import {
+	serverToNodeDescription,
+	serverToCredentialDescription,
+} from './node-description-transform';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
-import { notionMockServer } from './registry/notion-mock-server';
+import { notionMockServer } from './registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
@@ -46,7 +49,7 @@ describe('serverToNodeDescription', () => {
 		expect(description).toMatchObject({
 			name: 'notion',
 			displayName: 'Notion MCP',
-			description: notionMockServer.description,
+			description: notionMockServer.tagline,
 			iconUrl: notionMockServer.icons[0].src,
 			defaults: { name: 'Notion MCP' },
 			version: 1,
@@ -234,14 +237,14 @@ describe('serverToNodeDescription', () => {
   },
   "credentials": [
     {
-      "name": "mcpOAuth2Api",
+      "name": "notionMcpOAuth2Api",
       "required": true,
     },
   ],
   "defaults": {
     "name": "Notion MCP",
   },
-  "description": "Notion's official MCP server lets you use your Notion workspace as a system of record for knowledge work and software development. Search questions about the codebase and business, fetch links to pages such as tech specs and PRDs, and track tasks with your team.",
+  "description": "Connect to the Notion MCP Server",
   "displayName": "Notion MCP",
   "group": [
     "output",
@@ -274,5 +277,72 @@ describe('serverToNodeDescription', () => {
   "version": 1,
 }
 `);
+	});
+});
+
+describe('serverToCredentialDescription', () => {
+	it('returns a description for servers with OAuth2 auth type', () => {
+		const description = serverToCredentialDescription(notionMockServer);
+
+		expect(description).not.toBeNull();
+		expect(description).toEqual({
+			name: 'notionMcpOAuth2Api',
+			displayName: 'Notion MCP OAuth2',
+			extends: ['mcpOAuth2Api'],
+			icon: 'node:@n8n/mcp-registry.notion',
+			properties: [
+				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: true,
+				},
+				{
+					displayName: 'Server URL',
+					name: 'serverUrl',
+					type: 'hidden',
+					default: 'https://mcp.notion.com/mcp',
+				},
+				{
+					displayName: 'Allowed HTTP Request Domains',
+					name: 'allowedHttpRequestDomains',
+					type: 'hidden',
+					default: 'domains',
+				},
+				{
+					displayName: 'Allowed Domains',
+					name: 'allowedDomains',
+					type: 'hidden',
+					default: 'mcp.notion.com',
+				},
+			],
+		});
+	});
+
+	it('returns null when the auth type is not supported', () => {
+		const unsupportedServer: McpRegistryServer = {
+			...notionMockServer,
+			authType: 'foo' as never,
+		};
+
+		expect(serverToCredentialDescription(unsupportedServer)).toBeNull();
+	});
+
+	it('returns null when no remote is available', () => {
+		const noRemoteServer: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [],
+		};
+
+		expect(serverToCredentialDescription(noRemoteServer)).toBeNull();
+	});
+
+	it('returns null when the endpoint URL is not a valid URL', () => {
+		const invalidUrlServer: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'streamable-http', url: 'invalid-url' }],
+		};
+
+		expect(serverToCredentialDescription(invalidUrlServer)).toBeNull();
 	});
 });
