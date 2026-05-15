@@ -123,7 +123,7 @@ Structure the description using markdown headers. Use the appropriate template:
 If the user provides screenshots, videos, or screen recordings:
 
 - **URLs** — embed directly in the description using markdown image syntax (`![description](url)`)
-- **File paths** — if the user provides a local file path, ask them to upload it to a hosting service (e.g., GitHub, Imgur) or use `mcp__linear-server__create_attachment` to attach it to the Linear ticket after creation
+- **File paths** — if the user provides a local file path, ask them to upload it to a hosting service (e.g., GitHub, Imgur) or use the available Linear MCP attachment tool to attach it to the Linear ticket after creation
 - **Pasted images in conversation** — describe what the image shows in the ticket description and note that a screenshot was provided. You cannot upload binary data directly.
 
 Always mention in the description when visual evidence was provided, even if it cannot be directly embedded.
@@ -153,7 +153,7 @@ Always mention in the description when visual evidence was provided, even if it 
 
 #### Team
 
-- **Try to fetch up-to-date team areas of responsibility from Notion** using `mcp__notion__notion-search` (search for "areas of responsibility" or similar). Use the fetched data to determine the best team for the issue.
+- **Try to fetch up-to-date team areas of responsibility from Notion** using the available Notion MCP search tool (search for "areas of responsibility" or similar). Use the fetched data to determine the best team for the issue.
 - **If Notion MCP is unavailable or the lookup fails**, fall back to these common teams: `Engineering` (N8N), `AI`, `NODES`, `Identity & Access` (IAM), `Catalysts` (CAT), `Lifecycle & Governance` (LIGO), `Cloud Platform`, `Docs` (DOC)
 - **Always ask the user which team** if not obvious from context or the Notion lookup
 - If the issue is node-specific, it likely belongs to `NODES`
@@ -218,7 +218,7 @@ Only set an estimate if the user provides one or explicitly asks for one. Use t-
 
 3. **Wait for user confirmation** — do not create until the user approves
 
-4. **Create the ticket** using `mcp__linear-server__save_issue`:
+4. **Create the ticket** using the available Linear MCP issue-creation tool:
    ```
    title: <title>
    team: <team name>
@@ -237,7 +237,7 @@ Only set an estimate if the user provides one or explicitly asks for one. Use t-
 - Never apply **triage-state**, **release**, or **docs-automation** labels
 - Never set **assignee** unless the user explicitly asks
 - Never set a **cycle** or **milestone** unless the user explicitly asks
-- Never create **duplicate issues** — if the user describes something that sounds like it may exist, search first with `mcp__linear-server__list_issues`
+- Never create **duplicate issues** — if the user describes something that sounds like it may exist, search first with the available Linear MCP issue-search tool
 
 ---
 

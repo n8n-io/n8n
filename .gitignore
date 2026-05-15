@@ -12,6 +12,9 @@ _START_PACKAGE
 .env.local
 .vscode/*
 !.claude
+!.opencode/
+!.opencode/skills/
+!.opencode/skills/**
 !.vscode/extensions.json
 !.vscode/settings.default.json
 .idea

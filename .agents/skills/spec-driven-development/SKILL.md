@@ -1,11 +1,11 @@
 ---
 name: n8n:spec-driven-development
-description: Keeps implementation and specs in sync. Use when working on a feature that has a spec in .claude/specs/, when the user says /spec, or when starting implementation of a documented feature. Also use when the user asks to verify implementation against a spec or update a spec after changes.
+description: Keeps implementation and specs in sync. Use when working on a feature that has a spec in .agents/specs/, when the user says /spec, or when starting implementation of a documented feature. Also use when the user asks to verify implementation against a spec or update a spec after changes.
 ---
 
 # Spec-Driven Development
 
-Specs live in `.claude/specs/`. They are the source of truth for architectural
+Specs live in `.agents/specs/`. They are the source of truth for architectural
 decisions, API contracts, and implementation scope. Implementation and specs
 must stay in sync — neither leads exclusively.
 
@@ -17,10 +17,10 @@ Read spec → Implement → Verify alignment → Update spec or code → Repeat
 
 ## Before Starting Work
 
-1. **Find the spec.** Search `.claude/specs/` for files matching the feature:
+1. **Find the spec.** Search `.agents/specs/` for files matching the feature:
 
 ```bash
-ls .claude/specs/
+ls .agents/specs/
 ```
 
 2. **Read the full spec.** Understand scope, decisions, API contracts, and
@@ -63,7 +63,7 @@ Run a spec verification pass:
 
 ## Spec File Conventions
 
-- One or more markdown files per feature in `.claude/specs/`.
+- One or more markdown files per feature in `.agents/specs/`.
 - Keep specs concise. Use tables for mappings, code blocks for shapes.
 - Use `## Implementation TODO` with checkboxes to track progress.
 - Split into multiple files when it helps (e.g. separate backend/frontend),
