@@ -1,7 +1,10 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
-import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
-import type { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
+import {
+	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+	type AgentJsonToolConfig,
+	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+} from '@n8n/api-types';
 import type {
 	ExecutionRepository,
 	UserRepository,
@@ -31,7 +34,6 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { sanitizeToolName } from '../json-config/agent-config-composition';
-import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
 
 // ---------------------------------------------------------------------------
 // Constants

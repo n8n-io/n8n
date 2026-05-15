@@ -156,8 +156,12 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('allows everyone in public mode', () => {
 		expect(
 			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, {
-				accessMode: 'public',
-				allowedUsers: [],
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'public',
+					allowedUsers: [],
+				},
 			}),
 		).toBe(true);
 	});
@@ -171,8 +175,12 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('accepts a whitelisted user by numeric ID in private mode', () => {
 		expect(
 			integration.isUserAllowed({ userId: '123', userName: 'someuser' } as Author, {
-				accessMode: 'private',
-				allowedUsers: ['123', '456'],
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'private',
+					allowedUsers: ['123', '456'],
+				},
 			}),
 		).toBe(true);
 	});
@@ -180,8 +188,12 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('accepts a whitelisted user by username in private mode', () => {
 		expect(
 			integration.isUserAllowed({ userId: '999', userName: 'john_doe123' } as Author, {
-				accessMode: 'private',
-				allowedUsers: ['john_doe123', '456'],
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'private',
+					allowedUsers: ['john_doe123', '456'],
+				},
 			}),
 		).toBe(true);
 	});
@@ -189,8 +201,12 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	it('rejects a user whose ID and username are both absent from the allowlist', () => {
 		expect(
 			integration.isUserAllowed({ userId: '999', userName: 'stranger' } as Author, {
-				accessMode: 'private',
-				allowedUsers: ['123', 'john_doe123'],
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'private',
+					allowedUsers: ['123', 'john_doe123'],
+				},
 			}),
 		).toBe(false);
 	});
