@@ -96,7 +96,7 @@ function makeCtx(opts: {
 	suspend?: jest.Mock;
 	resumeData?: Record<string, unknown> | null;
 }): unknown {
-	return { agent: { suspend: opts.suspend ?? jest.fn(), resumeData: opts.resumeData ?? null } };
+	return { suspend: opts.suspend ?? jest.fn(), resumeData: opts.resumeData ?? null };
 }
 
 // ---------------------------------------------------------------------------
@@ -325,12 +325,12 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
-		it('does NOT call suspend() when ctx.agent is absent', async () => {
+		it('does NOT call suspend() when suspend is absent from the tool context', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR);
 			const execute = getExecute(server);
 
-			// ctx without agent — suspend is unavailable
+			// Context without suspend — confirmation cannot interrupt.
 			const result = await execute({}, {});
 
 			// Returns the raw error result unchanged

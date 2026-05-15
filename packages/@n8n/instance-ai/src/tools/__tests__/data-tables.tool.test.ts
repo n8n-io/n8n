@@ -36,15 +36,15 @@ function createMockContext(
 }
 
 function suspendCtx(suspendFn: jest.Mock) {
-	return { agent: { resumeData: undefined, suspend: suspendFn } } as never;
+	return { resumeData: undefined, suspend: suspendFn } as never;
 }
 
 function resumeCtx(approved: boolean) {
-	return { agent: { resumeData: { approved } } } as never;
+	return { resumeData: { approved } } as never;
 }
 
 function noSuspendCtx() {
-	return { agent: { resumeData: undefined, suspend: undefined } } as never;
+	return { resumeData: undefined, suspend: undefined } as never;
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────

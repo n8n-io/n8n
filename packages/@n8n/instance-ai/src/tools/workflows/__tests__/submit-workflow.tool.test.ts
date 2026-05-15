@@ -22,13 +22,6 @@ const { createSubmitWorkflowTool } =
 
 const mockedValidateWorkflow = jest.mocked(validateWorkflow);
 
-type Executable = {
-	execute: (input: Record<string, unknown>) => Promise<{
-		success: boolean;
-		errors?: string[];
-	}>;
-};
-
 function makeContext(
 	permissions: InstanceAiContext['permissions'] = {} as InstanceAiContext['permissions'],
 	overrides: Partial<InstanceAiContext> = {},
@@ -109,11 +102,7 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 			nodeTypesProvider,
 		});
 
-		const tool = createSubmitWorkflowTool(
-			context,
-			makeBuildSuccessWorkspace(),
-			new Map(),
-		) as unknown as Executable;
+		const tool = createSubmitWorkflowTool(context, makeBuildSuccessWorkspace(), new Map());
 
 		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
@@ -124,11 +113,7 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 	});
 
 	it('passes undefined nodeTypesProvider when context has none, strictMode still on', async () => {
-		const tool = createSubmitWorkflowTool(
-			makeContext(),
-			makeBuildSuccessWorkspace(),
-			new Map(),
-		) as unknown as Executable;
+		const tool = createSubmitWorkflowTool(makeContext(), makeBuildSuccessWorkspace(), new Map());
 
 		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
@@ -176,7 +161,7 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 			(attempt) => {
 				attempts.push(attempt);
 			},
-		) as unknown as Executable;
+		);
 
 		const out = await executeTool(tool, { filePath: 'src/workflow.ts', name: 'New workflow' });
 
@@ -197,7 +182,7 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 			(attempt) => {
 				attempts.push(attempt);
 			},
-		) as unknown as Executable;
+		);
 
 		const out = await executeTool(tool, { filePath: 'src/workflow.ts', workflowId: 'abc123' });
 

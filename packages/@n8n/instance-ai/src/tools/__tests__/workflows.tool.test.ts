@@ -242,7 +242,8 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
@@ -260,7 +261,8 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(suspend).toHaveBeenCalled();
@@ -274,7 +276,7 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.archive).toHaveBeenCalledWith('wf1');
@@ -286,7 +288,7 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: false } },
+				resumeData: { approved: false },
 			} as never);
 
 			expect(result).toEqual({
@@ -328,7 +330,8 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
@@ -351,7 +354,8 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(result).toBe(suspension);
@@ -363,7 +367,7 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.unarchive).toHaveBeenCalledWith('wf1');
@@ -375,7 +379,7 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: false } },
+				resumeData: { approved: false },
 			} as never);
 
 			expect(result).toEqual({
@@ -411,7 +415,7 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', {
@@ -430,7 +434,8 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
@@ -458,7 +463,8 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1');
@@ -478,7 +484,7 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				agent: { resumeData: undefined },
+				resumeData: undefined,
 			} as never);
 
 			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
@@ -510,12 +516,10 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				agent: {
-					resumeData: {
-						approved: true,
-						action: 'apply',
-						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
-					},
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
 				},
 			} as never);
 
@@ -531,7 +535,7 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.unpublish).toHaveBeenCalledWith('wf1');
@@ -548,7 +552,8 @@ describe('workflows tool', () => {
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');

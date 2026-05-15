@@ -258,24 +258,14 @@ export function parseStoredMessages(
 		(message): message is ConversationStoredMessage => 'role' in message,
 	);
 
-	// Snapshots are stored chronologically. DB-backed snapshots have timestamps,
-	// so use them to place orphan snapshots before, between, or after assistant
-	// rows. Older tests and legacy snapshots may not have timestamps; for those,
-	// keep the positional alignment behavior.
-	const assistantCount = conversationMessages.filter((m) => m.role === 'assistant').length;
-	const hasSnapshotTimestamps = snapshotList.some((snapshot) => snapshot.createdAt !== undefined);
-	const snapshotCount = snapshotList.length;
-	const snapshotOffset =
-		!hasSnapshotTimestamps && snapshotCount <= assistantCount ? assistantCount - snapshotCount : 0;
-	let assistantIdx = 0;
+	// Snapshots are stored chronologically, so use their DB timestamps to place
+	// orphan snapshots before, between, or after assistant rows.
 	let nextSnapshotIdx = 0;
 	const consumedSnapshots = new Set<AgentTreeSnapshot>();
 
 	let lastUserMessageId: string | undefined;
 
 	function appendChronologicalOrphansBefore(message: ConversationStoredMessage): void {
-		if (!hasSnapshotTimestamps) return;
-
 		const messageTimestamp = messageCreatedAtMs(message);
 		while (nextSnapshotIdx < snapshotList.length) {
 			const snapshot = snapshotList[nextSnapshotIdx];
@@ -292,16 +282,6 @@ export function parseStoredMessages(
 		message: ConversationStoredMessage,
 		messageIndex: number,
 	): AgentTreeSnapshot | undefined {
-		if (!hasSnapshotTimestamps) {
-			const snapshotIdx = assistantIdx - snapshotOffset;
-			const snapshot =
-				snapshotIdx >= 0 && snapshotIdx < snapshotList.length
-					? snapshotList[snapshotIdx]
-					: undefined;
-			if (snapshot) consumedSnapshots.add(snapshot);
-			return snapshot;
-		}
-
 		appendChronologicalOrphansBefore(message);
 
 		const snapshot = snapshotList[nextSnapshotIdx];
@@ -313,9 +293,8 @@ export function parseStoredMessages(
 		);
 		const snapshotTimestamp = snapshotCreatedAtMs(snapshot);
 		if (
-			snapshotTimestamp !== undefined &&
-			nextMessageTimestamp !== undefined &&
-			snapshotTimestamp > nextMessageTimestamp
+			snapshotTimestamp === undefined ||
+			(nextMessageTimestamp !== undefined && snapshotTimestamp > nextMessageTimestamp)
 		) {
 			return undefined;
 		}
@@ -354,7 +333,6 @@ export function parseStoredMessages(
 			const parts = extractParts(msg.content);
 
 			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
-			assistantIdx++;
 
 			// Use the native runId from the snapshot (matches SSE events),
 			// falling back to the user-message ID if no snapshot exists.

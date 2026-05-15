@@ -74,17 +74,24 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 					id: 'msg-u',
 					role: 'user',
 					content: 'Hello',
-					createdAt: new Date('2026-01-01'),
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
 				},
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: { format: 2, content: 'Done!' },
-					createdAt: new Date('2026-01-01T00:00:01'),
+					content: [{ type: 'text', text: 'Done!' }],
+					createdAt: new Date('2026-01-01T00:00:01.000Z'),
 				},
 			],
 		});
-		mockDbSnapshotStorage.getAll.mockResolvedValue([{ tree, runId: 'run_abc' }]);
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{
+				tree,
+				runId: 'run_abc',
+				createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
+			},
+		]);
 
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
@@ -104,25 +111,22 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 					id: 'msg-u',
 					role: 'user',
 					content: 'Hi',
-					createdAt: new Date('2026-01-01'),
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
 				},
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						content: 'Here are your workflows',
-						toolInvocations: [
-							{
-								state: 'result',
-								toolCallId: 'tc-1',
-								toolName: 'list-workflows',
-								args: {},
-								result: { workflows: [] },
-							},
-						],
-					},
-					createdAt: new Date('2026-01-01T00:00:01'),
+					content: [
+						{ type: 'text', text: 'Here are your workflows' },
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							toolName: 'list-workflows',
+							input: {},
+							result: { workflows: [] },
+						},
+					],
+					createdAt: new Date('2026-01-01T00:00:01.000Z'),
 				},
 			],
 		});

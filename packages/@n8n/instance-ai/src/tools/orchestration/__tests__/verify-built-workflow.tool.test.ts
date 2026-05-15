@@ -10,10 +10,6 @@ import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
-type Executable = {
-	execute: (input: Record<string, unknown>) => Promise<Record<string, unknown>>;
-};
-
 type VerifyBuiltWorkflowOutput = {
 	success: boolean;
 	error?: string;
@@ -106,7 +102,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			status: 'error',
 			error: 'Gmail credentials are mocked',
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
@@ -143,7 +139,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			status: 'error',
 			error: 'Code node failed: Cannot read properties of undefined',
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
@@ -179,7 +175,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			status: 'error',
 			error: 'Gmail credentials are mocked',
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
@@ -219,7 +215,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 				guidance: 'Stop editing.',
 			}),
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 		const repeatedResult = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
@@ -252,7 +248,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 				guidance: 'Route to setup.',
 			}),
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
@@ -280,7 +276,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 				guidance: 'Verify the latest repair.',
 			}),
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
@@ -314,7 +310,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			status: 'error',
 			error: 'Code node still fails',
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
@@ -341,7 +337,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			status: 'error',
 			error: 'Node parameter value is invalid',
 		});
-		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+		const tool = createVerifyBuiltWorkflowTool(context);
 
 		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 

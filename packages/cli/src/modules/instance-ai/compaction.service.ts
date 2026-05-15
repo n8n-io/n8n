@@ -249,20 +249,13 @@ export class InstanceAiCompactionService {
 
 	/**
 	 * Extract plain text from the persisted message content structure.
-	 * Handles both string content and structured content arrays.
+	 * Handles native string content and structured content arrays.
 	 */
 	private extractTextFromContent(content: unknown): string {
 		if (typeof content === 'string') return content;
 
 		if (Array.isArray(content)) {
 			return this.extractTextParts(content);
-		}
-
-		const inner = (content as Record<string, unknown>)?.content;
-		if (typeof inner === 'string') return inner;
-
-		if (Array.isArray(inner)) {
-			return this.extractTextParts(inner);
 		}
 
 		return '';

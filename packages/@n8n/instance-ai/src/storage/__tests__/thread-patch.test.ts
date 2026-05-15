@@ -17,7 +17,6 @@ const baseThread: ThreadRecord = {
 type TestMemory = PatchableThreadMemory & {
 	getThread: jest.Mock;
 	saveThread: jest.Mock;
-	getMemoryStore?: () => Promise<unknown>;
 };
 
 function makeMemory(overrides: Partial<TestMemory> = {}): TestMemory {
@@ -59,23 +58,6 @@ describe('patchThread', () => {
 
 			expect(patchFn).toHaveBeenCalledWith({ threadId: 'thread-1', update });
 			expect(result?.title).toBe('Patched');
-		});
-	});
-
-	describe('when memory store has patchThread method', () => {
-		it('calls memoryStore.patchThread via getMemoryStore', async () => {
-			const storePatchFn = jest.fn().mockResolvedValue({ ...baseThread, title: 'Store Patched' });
-			const memory = makeMemory({
-				getMemoryStore: jest.fn().mockResolvedValue({
-					patchThread: storePatchFn,
-				}),
-			});
-			const update = jest.fn().mockReturnValue({ title: 'Store Patched' });
-
-			const result = await patchThread(memory, { threadId: 'thread-1', update });
-
-			expect(storePatchFn).toHaveBeenCalledWith({ threadId: 'thread-1', update });
-			expect(result?.title).toBe('Store Patched');
 		});
 	});
 

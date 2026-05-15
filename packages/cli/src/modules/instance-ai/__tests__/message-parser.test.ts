@@ -3,8 +3,10 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { parseStoredMessages } from '../message-parser';
 import type { StoredAgentMessage } from '../message-parser';
 
+const BASE_DATE_MS = Date.UTC(2026, 0, 1);
+
 function makeDate(offset = 0): Date {
-	return new Date(Date.now() + offset);
+	return new Date(BASE_DATE_MS + offset);
 }
 
 function makeSnapshotTree(text = 'Snapshot text'): InstanceAiAgentNode {
@@ -223,8 +225,14 @@ describe('parseStoredMessages', () => {
 				timeline: [],
 			};
 
-			// Snapshot array — positionally matched to the assistant message
-			const snapshots = [{ tree: snapshotTree, runId: 'run_abc123' }];
+			const snapshots = [
+				{
+					tree: snapshotTree,
+					runId: 'run_abc123',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			];
 
 			const result = parseStoredMessages(messages, snapshots);
 
@@ -294,8 +302,20 @@ describe('parseStoredMessages', () => {
 			];
 
 			const result = parseStoredMessages(messages, [
-				{ tree: firstTree, runId: 'run_first', messageGroupId: 'mg_first' },
-				{ tree: orphanTree, runId: 'run_cancelled', messageGroupId: 'mg_cancelled' },
+				{
+					tree: firstTree,
+					runId: 'run_first',
+					messageGroupId: 'mg_first',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+				{
+					tree: orphanTree,
+					runId: 'run_cancelled',
+					messageGroupId: 'mg_cancelled',
+					createdAt: makeDate(3),
+					updatedAt: makeDate(3),
+				},
 			]);
 
 			expect(result).toHaveLength(4);
@@ -409,42 +429,6 @@ describe('parseStoredMessages', () => {
 			expect(toolCalls[0].renderHint).toBe('delegate');
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('data-table');
-		});
-
-		it('should apply renderHint correctly for workflow flow aliases in stored messages', () => {
-			const messages: StoredAgentMessage[] = [
-				{
-					id: 'msg-u',
-					role: 'user',
-					content: 'Go',
-					createdAt: makeDate(),
-				},
-				{
-					id: 'msg-a',
-					role: 'assistant',
-					content: [
-						{
-							type: 'tool-result',
-							toolCallId: 'tc-1',
-							toolName: 'workflow-build-flow',
-							result: { ok: true },
-						},
-						{
-							type: 'tool-result',
-							toolCallId: 'tc-2',
-							toolName: 'agent-data-table-manager',
-							result: { ok: true },
-						},
-					],
-					createdAt: makeDate(1),
-				},
-			];
-
-			const result = parseStoredMessages(messages);
-
-			const toolCalls = result[1].agentTree?.toolCalls ?? [];
-			expect(toolCalls[0].renderHint).toBe('builder');
-			expect(toolCalls[1].renderHint).toBe('data-table');
 		});
 	});
 

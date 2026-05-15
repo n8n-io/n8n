@@ -87,37 +87,23 @@ interface DataTableBrief {
 	name: string;
 }
 
-/** Extract plain text from persisted memory content (string, array of parts, or {format, parts}). */
+/** Extract plain text from persisted native memory content. */
 function extractTextFromMemoryContent(content: unknown): string {
 	if (typeof content === 'string') return content;
-
-	// Legacy structured content: { format: 2, parts: [{ type: 'text', text: '...' }] }
-	if (isStructuredContent(content)) {
-		return extractTextParts(content.parts);
-	}
-
-	// Array of content parts: [{ type: 'text', text: '...' }]
-	if (Array.isArray(content)) {
-		return extractTextParts(content);
-	}
-
-	return typeof content === 'object' && content !== null ? JSON.stringify(content) : '';
-}
-
-function isStructuredContent(value: unknown): value is { format: number; parts: unknown[] } {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'parts' in value &&
-		Array.isArray((value as Record<string, unknown>).parts)
-	);
+	if (Array.isArray(content)) return extractTextParts(content);
+	return '';
 }
 
 function extractTextParts(parts: unknown[]): string {
 	return parts
 		.filter(
 			(c): c is { type: 'text'; text: string } =>
-				typeof c === 'object' && c !== null && 'text' in c,
+				typeof c === 'object' &&
+				c !== null &&
+				'type' in c &&
+				c.type === 'text' &&
+				'text' in c &&
+				typeof c.text === 'string',
 		)
 		.map((c) => c.text)
 		.join('\n');

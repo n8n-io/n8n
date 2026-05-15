@@ -32,14 +32,13 @@ function createMockContext(
 }
 
 function noSuspendCtx() {
-	return { resumeData: undefined, suspend: undefined, agent: { resumeData: undefined } } as never;
+	return { resumeData: undefined, suspend: undefined } as never;
 }
 
 function suspendCtx(suspendFn: jest.Mock = jest.fn()) {
 	return {
 		resumeData: undefined,
 		suspend: suspendFn,
-		agent: { resumeData: undefined, suspend: suspendFn },
 	} as never;
 }
 
@@ -49,7 +48,7 @@ function resumeCtx(resumeData: {
 	autoSetup?: { credentialType: string };
 }) {
 	const suspend = jest.fn();
-	return { resumeData, suspend, agent: { resumeData, suspend } } as never;
+	return { resumeData, suspend } as never;
 }
 
 function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {

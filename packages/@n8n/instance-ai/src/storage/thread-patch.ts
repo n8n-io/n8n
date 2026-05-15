@@ -18,17 +18,6 @@ export interface PatchableThreadMemory {
 	saveThread?: unknown;
 }
 
-interface PatchableThreadStore {
-	patchThread?: (args: {
-		threadId: string;
-		update: (current: ThreadRecord) => ThreadPatch | null | undefined;
-	}) => Promise<ThreadRecord | null>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
 function isPatchableThreadMemory(memory: PatchableThreadMemory): memory is {
 	patchThread: (args: {
 		threadId: string;
@@ -36,12 +25,6 @@ function isPatchableThreadMemory(memory: PatchableThreadMemory): memory is {
 	}) => Promise<ThreadRecord | null>;
 } {
 	return typeof memory.patchThread === 'function';
-}
-
-function isPatchableThreadStore(store: unknown): store is PatchableThreadStore & {
-	patchThread: NonNullable<PatchableThreadStore['patchThread']>;
-} {
-	return isRecord(store) && typeof store.patchThread === 'function';
 }
 
 function hasNativeThreadMethods(memory: PatchableThreadMemory): memory is {
@@ -89,13 +72,6 @@ export async function patchThread(
 		return await memory.patchThread(args);
 	}
 
-	if (hasGetMemoryStore(memory)) {
-		const memoryStore = await memory.getMemoryStore();
-		if (isPatchableThreadStore(memoryStore)) {
-			return await memoryStore.patchThread(args);
-		}
-	}
-
 	if (hasNativeThreadMethods(memory)) {
 		const thread = await memory.getThread(args.threadId);
 		if (!thread) return null;
@@ -115,10 +91,4 @@ function hasGetThread(memory: PatchableThreadMemory): memory is {
 	getThread: (threadId: string) => Promise<ThreadRecord | null>;
 } {
 	return typeof memory.getThread === 'function';
-}
-
-function hasGetMemoryStore(memory: PatchableThreadMemory): memory is PatchableThreadMemory & {
-	getMemoryStore: () => Promise<unknown>;
-} {
-	return isRecord(memory) && typeof memory.getMemoryStore === 'function';
 }

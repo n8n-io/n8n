@@ -34,10 +34,6 @@ function createAgentCtx(opts: { resumeData?: unknown; suspend?: jest.Mock } = {}
 	return {
 		resumeData: opts.resumeData,
 		suspend,
-		agent: {
-			resumeData: opts.resumeData,
-			suspend,
-		},
 	};
 }
 

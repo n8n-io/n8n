@@ -10,10 +10,6 @@ const { createCompleteCheckpointTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../complete-checkpoint.tool') as typeof import('../complete-checkpoint.tool');
 
-type Executable = {
-	execute: (input: unknown) => Promise<{ ok: boolean; result: string }>;
-};
-
 function makeService(overrides: Partial<PlannedTaskService> = {}): PlannedTaskService {
 	return {
 		markCheckpointSucceeded: jest.fn(),
@@ -53,7 +49,7 @@ describe('createCompleteCheckpointTool', () => {
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});
-		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+		const tool = createCompleteCheckpointTool(makeContext(service));
 
 		const res = await executeTool(tool, {
 			taskId: 'verify-1',
@@ -76,7 +72,7 @@ describe('createCompleteCheckpointTool', () => {
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});
-		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+		const tool = createCompleteCheckpointTool(makeContext(service));
 
 		const res = await executeTool(tool, {
 			taskId: 'verify-1',
@@ -97,7 +93,7 @@ describe('createCompleteCheckpointTool', () => {
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});
-		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+		const tool = createCompleteCheckpointTool(makeContext(service));
 
 		await executeTool(tool, {
 			taskId: 'verify-1',
@@ -125,7 +121,7 @@ describe('createCompleteCheckpointTool', () => {
 		const service = makeService({
 			markCheckpointSucceeded: jest.fn().mockResolvedValue(not),
 		});
-		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+		const tool = createCompleteCheckpointTool(makeContext(service));
 
 		const res = await executeTool(tool, { taskId: 'missing', status: 'succeeded' });
 
@@ -142,7 +138,7 @@ describe('createCompleteCheckpointTool', () => {
 		const service = makeService({
 			markCheckpointSucceeded: jest.fn().mockResolvedValue(wk),
 		});
-		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+		const tool = createCompleteCheckpointTool(makeContext(service));
 
 		const res = await executeTool(tool, { taskId: 'wf-1', status: 'succeeded' });
 
@@ -160,7 +156,7 @@ describe('createCompleteCheckpointTool', () => {
 		const service = makeService({
 			markCheckpointSucceeded: jest.fn().mockResolvedValue(ws),
 		});
-		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+		const tool = createCompleteCheckpointTool(makeContext(service));
 
 		const res = await executeTool(tool, { taskId: 'verify-1', status: 'succeeded' });
 
@@ -173,7 +169,7 @@ describe('createCompleteCheckpointTool', () => {
 		const tool = createCompleteCheckpointTool({
 			...makeContext(makeService()),
 			plannedTaskService: undefined,
-		} as OrchestrationContext) as unknown as Executable;
+		} as OrchestrationContext);
 
 		const res = await executeTool(tool, { taskId: 'verify-1', status: 'succeeded' });
 
@@ -187,7 +183,7 @@ describe('createCompleteCheckpointTool', () => {
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});
-		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+		const tool = createCompleteCheckpointTool(makeContext(service));
 
 		await executeTool(tool, {
 			taskId: 'verify-1',

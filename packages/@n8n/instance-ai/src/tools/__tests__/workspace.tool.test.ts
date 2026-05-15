@@ -135,7 +135,7 @@ describe('workspace tool', () => {
 			await executeTool(
 				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', workflowName: 'My WF', tags: ['prod'] },
-				{ agent: { suspend, resumeData: undefined } } as never,
+				{ suspend, resumeData: undefined } as never,
 			);
 
 			expect(suspend).toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe('workspace tool', () => {
 			const result = await executeTool(
 				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
-				{ agent: { resumeData: { approved: true } } } as never,
+				{ resumeData: { approved: true } } as never,
 			);
 
 			expect(context.workspaceService!.tagWorkflow).toHaveBeenCalledWith('wf1', ['prod']);
@@ -167,7 +167,7 @@ describe('workspace tool', () => {
 			const result = await executeTool(
 				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
-				{ agent: { resumeData: { approved: false } } } as never,
+				{ resumeData: { approved: false } } as never,
 			);
 
 			expect(result).toEqual({
@@ -187,7 +187,7 @@ describe('workspace tool', () => {
 			const result = await executeTool(
 				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
-				{ agent: { resumeData: undefined } } as never,
+				{ resumeData: undefined } as never,
 			);
 
 			expect(context.workspaceService!.tagWorkflow).toHaveBeenCalledWith('wf1', ['prod']);
@@ -234,7 +234,7 @@ describe('workspace tool', () => {
 					folderName: 'Old Folder',
 					projectId: 'p1',
 				},
-				{ agent: { suspend, resumeData: undefined } } as never,
+				{ suspend, resumeData: undefined } as never,
 			);
 
 			expect(suspend).toHaveBeenCalled();
@@ -256,7 +256,7 @@ describe('workspace tool', () => {
 			const result = await executeTool(
 				tool,
 				{ action: 'delete-folder', folderId: 'f1', projectId: 'p1' },
-				{ agent: { resumeData: { approved: true } } } as never,
+				{ resumeData: { approved: true } } as never,
 			);
 
 			expect(deleteFolder).toHaveBeenCalledWith('f1', 'p1', undefined);
@@ -278,7 +278,7 @@ describe('workspace tool', () => {
 				tool,
 				{ action: 'cleanup-test-executions', workflowId: 'wf1' },
 				{
-					agent: { resumeData: undefined },
+					resumeData: undefined,
 				} as never,
 			);
 

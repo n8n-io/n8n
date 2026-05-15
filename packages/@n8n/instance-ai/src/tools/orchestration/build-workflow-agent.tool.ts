@@ -127,37 +127,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
 }
 
-type ExecutableTool = Record<string, unknown> & {
-	handler?: (...args: unknown[]) => unknown;
-	execute?: (...args: unknown[]) => unknown;
-};
-
-function isExecutableTool(tool: unknown): tool is ExecutableTool {
-	return (
-		isRecord(tool) && (typeof tool.handler === 'function' || typeof tool.execute === 'function')
-	);
-}
-
 export function recordSuccessfulWorkflowBuilds(
-	tool: unknown,
+	tool: BuiltTool | undefined,
 	onWorkflowId: (workflowId: string) => void,
 ): void {
-	if (!isExecutableTool(tool)) return;
+	if (!tool?.handler) return;
 
-	const original = tool.handler ?? tool.execute;
-	if (!original) return;
-	const wrapped = async (...args: unknown[]) => {
-		const result = await original(...args);
+	const original = tool.handler;
+	const wrapped: NonNullable<BuiltTool['handler']> = async (input, ctx) => {
+		const result = await original(input, ctx);
 		if (isRecord(result) && result.success === true && typeof result.workflowId === 'string') {
 			onWorkflowId(result.workflowId);
 		}
 		return result;
 	};
-	if (tool.handler) {
-		tool.handler = wrapped;
-	} else {
-		tool.execute = wrapped;
-	}
+	Object.assign(tool, { handler: wrapped });
 }
 
 function detectTriggerType(_attempt: SubmitWorkflowAttempt | undefined): TriggerType {
