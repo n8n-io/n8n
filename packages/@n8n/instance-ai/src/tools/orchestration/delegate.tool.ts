@@ -1,7 +1,7 @@
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 
-import { getSubAgentPersistence } from './agent-persistence';
+import { createSubAgentPersistence } from './agent-persistence';
 import { delegateInputSchema, delegateOutputSchema, type DelegateInput } from './delegate.schemas';
 import { truncateLabel } from './display-utils';
 import {
@@ -183,7 +183,7 @@ export async function startDetachedDelegateTask(
 				});
 
 				const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
-				const persistence = getSubAgentPersistence(context);
+				const persistence = await createSubAgentPersistence(context, { agentKind: role });
 				const stream = await subAgent.stream(briefingMessage, {
 					maxIterations,
 					abortSignal: signal,
@@ -332,7 +332,9 @@ export function createDelegateTool(context: OrchestrationContext) {
 				// 4. Stream sub-agent with HITL support
 				const consumeResult = await withTraceRun(context, traceRun, async () => {
 					const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
-					const persistence = getSubAgentPersistence(context);
+					const persistence = await createSubAgentPersistence(context, {
+						agentKind: input.role,
+					});
 					const stream = await subAgent.stream(briefingMessage, {
 						maxIterations,
 						abortSignal: context.abortSignal,

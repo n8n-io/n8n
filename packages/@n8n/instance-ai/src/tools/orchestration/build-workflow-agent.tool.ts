@@ -13,7 +13,7 @@ import { nanoid } from 'nanoid';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { getSubAgentPersistence } from './agent-persistence';
+import { createSubAgentPersistence, createSubAgentResourceId } from './agent-persistence';
 import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
@@ -71,10 +71,6 @@ function toToolRegistry(tools: readonly BuiltTool[]): InstanceAiToolRegistry {
 		registry.set(tool.name, tool);
 	}
 	return registry;
-}
-
-function createBuilderResourceId(userId: string): string {
-	return `${userId}:workflow-builder`;
 }
 
 export function buildWarmBuilderFollowUp(input: {
@@ -882,7 +878,8 @@ export async function startBuildWorkflowAgentTask(
 	const workItemId = reusedBuilderSession?.workItemId ?? baseWorkItemId;
 	const builderThreadId = reusedBuilderSession?.builderThreadId ?? randomUUID();
 	const builderResourceId =
-		reusedBuilderSession?.builderResourceId ?? createBuilderResourceId(context.userId);
+		reusedBuilderSession?.builderResourceId ??
+		createSubAgentResourceId(context.threadId, 'workflow-builder');
 	const builderMemoryBinding: BuilderMemoryBinding = {
 		resource: builderResourceId,
 		thread: builderThreadId,
@@ -1126,7 +1123,11 @@ export async function startBuildWorkflowAgentTask(
 
 							let finalText: string;
 							try {
-								const persistence = getSubAgentPersistence(context);
+								const persistence = await createSubAgentPersistence(context, {
+									agentKind: 'workflow-builder',
+									threadId: builderThreadId,
+									resourceId: builderResourceId,
+								});
 								const resumeOptions: Record<string, unknown> = {
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1389,7 +1390,11 @@ export async function startBuildWorkflowAgentTask(
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
 						};
-						const persistence = getSubAgentPersistence(context);
+						const persistence = await createSubAgentPersistence(context, {
+							agentKind: 'workflow-builder',
+							threadId: builderThreadId,
+							resourceId: builderResourceId,
+						});
 						const stream = await subAgent.stream(briefing, {
 							maxIterations: MAX_STEPS.BUILDER,
 							abortSignal: signal,

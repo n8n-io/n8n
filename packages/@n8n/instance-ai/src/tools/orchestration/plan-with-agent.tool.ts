@@ -19,7 +19,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { createAddPlanItemTool, createRemovePlanItemTool } from './add-plan-item.tool';
-import { getSubAgentPersistence } from './agent-persistence';
+import { createSubAgentPersistence } from './agent-persistence';
 import { BlueprintAccumulator } from './blueprint-accumulator';
 import { truncateLabel } from './display-utils';
 import { PLANNER_AGENT_PROMPT } from './plan-agent-prompt';
@@ -735,7 +735,9 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				);
 
 				const resultText = await withTraceRun(context, traceRun, async () => {
-					const persistence = getSubAgentPersistence(context);
+					const persistence = await createSubAgentPersistence(context, {
+						agentKind: 'planner',
+					});
 					const stream = await subAgent.stream(briefing, {
 						maxIterations: MAX_STEPS.PLANNER,
 						abortSignal: context.abortSignal,

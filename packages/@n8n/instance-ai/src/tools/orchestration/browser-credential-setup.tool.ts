@@ -3,7 +3,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { getSubAgentPersistence } from './agent-persistence';
+import { createSubAgentPersistence } from './agent-persistence';
 import { buildNudgeStreamInput } from './browser-credential-setup.nudge';
 import { buildBrowserAgentPrompt, type BrowserToolSource } from './browser-credential-setup.prompt';
 import {
@@ -345,7 +345,9 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						);
 
 						const briefing = buildCredentialSetupBriefing(input, context);
-						const persistence = getSubAgentPersistence(context);
+						const persistence = await createSubAgentPersistence(context, {
+							agentKind: 'credential-setup-browser',
+						});
 
 						const stream = await subAgent.stream(briefing, {
 							maxIterations: MAX_STEPS.BROWSER,

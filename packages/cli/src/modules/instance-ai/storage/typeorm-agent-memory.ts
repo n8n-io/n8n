@@ -8,7 +8,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import type { MemoryDescriptor } from '@n8n/agents';
 import { Service } from '@n8n/di';
-import { In, LessThan } from '@n8n/typeorm';
+import { In, LessThan, Like } from '@n8n/typeorm';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
@@ -200,6 +200,22 @@ export class TypeORMAgentMemory implements BuiltMemory {
 
 	async deleteThread(threadId: string): Promise<void> {
 		await this.threadRepo.delete({ id: threadId });
+	}
+
+	async deleteThreadsByResourceIdPrefix(resourceIdPrefix: string): Promise<void> {
+		const threads = await this.threadRepo.find({
+			where: { resourceId: Like(`${resourceIdPrefix}%`) },
+		});
+		if (threads.length === 0) return;
+
+		const threadIds = threads.map((thread) => thread.id);
+		const resourceIds = Array.from(new Set(threads.map((thread) => thread.resourceId)));
+
+		await this.resourceRepo.delete({ id: In(resourceIds) });
+		await this.resourceRepo.delete({
+			id: In(threadIds.map((threadId) => `thread:${threadId}`)),
+		});
+		await this.threadRepo.delete({ id: In(threadIds) });
 	}
 
 	async getMessages(

@@ -6,12 +6,14 @@ const mockListMessages = jest.fn();
 const mockGetThread = jest.fn();
 const mockSaveThread = jest.fn();
 const mockDeleteThread = jest.fn();
+const mockDeleteThreadsByResourceIdPrefix = jest.fn();
 const mockListThreads = jest.fn();
 const mockAgentMemory = {
 	listMessages: mockListMessages,
 	getThread: mockGetThread,
 	saveThread: mockSaveThread,
 	deleteThread: mockDeleteThread,
+	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
 	listThreads: mockListThreads,
 };
 
@@ -207,5 +209,25 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(false);
 		expect(result.thread.title).toBe('Existing');
+	});
+});
+
+describe('InstanceAiMemoryService.deleteThread', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('deletes hidden sub-agent threads before deleting the parent thread', async () => {
+		const service = createService();
+
+		await service.deleteThread('00000000-0000-4000-8000-000000000001');
+
+		expect(mockDeleteThreadsByResourceIdPrefix).toHaveBeenCalledWith(
+			'instance-ai-subagent:00000000-0000-4000-8000-000000000001:',
+		);
+		expect(mockDeleteThread).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001');
+		expect(mockDeleteThreadsByResourceIdPrefix.mock.invocationCallOrder[0]).toBeLessThan(
+			mockDeleteThread.mock.invocationCallOrder[0],
+		);
 	});
 });

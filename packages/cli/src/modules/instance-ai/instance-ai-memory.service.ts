@@ -18,6 +18,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parseStoredMessages } from './message-parser';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
+const SUB_AGENT_RESOURCE_PREFIX = 'instance-ai-subagent';
+
+function createSubAgentResourceIdPrefix(parentThreadId: string): string {
+	return `${SUB_AGENT_RESOURCE_PREFIX}:${parentThreadId}:`;
+}
+
 @Service()
 export class InstanceAiMemoryService {
 	private readonly instanceAiConfig: InstanceAiConfig;
@@ -154,6 +160,9 @@ export class InstanceAiMemoryService {
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
+		await this.agentMemory.deleteThreadsByResourceIdPrefix(
+			createSubAgentResourceIdPrefix(threadId),
+		);
 		await this.agentMemory.deleteThread(threadId);
 	}
 
@@ -219,7 +228,7 @@ export class InstanceAiMemoryService {
 				if (thread.updatedAt < cutoff) {
 					try {
 						await onThreadDeleted?.(thread.id);
-						await this.agentMemory.deleteThread(thread.id);
+						await this.deleteThread(thread.id);
 						deletedCount++;
 						deletedInPage++;
 					} catch (error) {
