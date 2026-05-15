@@ -469,7 +469,9 @@ describe('compaction', () => {
 				.mockResolvedValue(0);
 
 			// ACT + ASSERT
-			await expect(insightsCompactionService.compactInsights()).rejects.toThrow('compaction failed');
+			await expect(insightsCompactionService.compactInsights()).rejects.toThrow(
+				'compaction failed',
+			);
 
 			await insightsCompactionService.compactInsights();
 			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
