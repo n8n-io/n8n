@@ -1,5 +1,4 @@
-import { CreateAgentSkillDto } from '../create-agent-skill.dto';
-import { UpdateAgentSkillDto } from '../update-agent-skill.dto';
+import { CreateAgentSkillDto, UpdateAgentSkillDto } from '../dto';
 
 describe('agent skill DTOs', () => {
 	const validSkill = {
