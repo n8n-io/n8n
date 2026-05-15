@@ -22,7 +22,10 @@ async function main(): Promise<void> {
 
 	const rootDir = findMonorepoRoot(process.cwd());
 	const baselinePath = path.join(rootDir, BASELINE_FILENAME);
-	const context: CodeHealthContext = { rootDir };
+	const context: CodeHealthContext = {
+		rootDir,
+		addedFiles: parseAddedFiles(process.env.CODE_HEALTH_ADDED_FILES),
+	};
 
 	const runner = createDefaultRunner();
 
@@ -73,6 +76,15 @@ async function main(): Promise<void> {
 	if (report.summary.totalViolations > 0) {
 		process.exit(1);
 	}
+}
+
+function parseAddedFiles(raw: string | undefined): string[] | undefined {
+	if (!raw) return undefined;
+	const entries = raw
+		.split(/[\n,]/)
+		.map((entry) => entry.trim())
+		.filter((entry) => entry.length > 0);
+	return entries.length > 0 ? entries : undefined;
 }
 
 function findMonorepoRoot(startDir: string): string {

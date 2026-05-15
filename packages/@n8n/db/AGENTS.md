@@ -5,9 +5,32 @@ Extra information specific to the `@n8n/db` package.
 ## Creating Migrations
 
 Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp
-must be the **exact** Unix millisecond timestamp at the time of creation — do
-not round or fabricate a value. Use `Date.now()` in a Node REPL or
-`date +%s%3N` in a shell (GNU `date`) to generate it.
+must be strictly greater than every existing migration timestamp in this
+package (across `common/`, `postgresdb/`, and `sqlite/`). TypeORM runs
+unrecorded migrations in timestamp order, so inserting a value below the
+current max corrupts ordering on databases that have already executed the
+later migrations.
+
+**Picking a timestamp:**
+
+```sh
+# Highest existing timestamp across all migration directories
+ls packages/@n8n/db/src/migrations/{common,postgresdb,sqlite} \
+  | grep -oE '^[0-9]+' | sort -n | tail -1
+```
+
+If that value is **less than** `Date.now()` (the normal case), use
+`Date.now()` (Node REPL) or `date +%s%3N` (GNU `date`) for your new file.
+
+If that value is **greater than** `Date.now()` — i.e. someone previously
+merged a fabricated future timestamp — your new migration must be greater
+than the existing max but within 1 second of it (the rule's ceiling buffer).
+Use `max + 1` for a single migration, `max + 1`, `max + 2`, … for several in
+the same PR. This regime self-resolves once real time catches up to the
+fabricated value.
+
+The `migration-timestamp` rule in `@n8n/code-health` enforces both
+invariants (strict ordering and no far-future fabrication) at lint time.
 
 ## Migration DSL
 
