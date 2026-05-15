@@ -1,3 +1,5 @@
+/* istanbul ignore file -- serialized via Function.prototype.toString() for page-context eval. */
+
 import type { HtmlProbeNode, HtmlProbeResult } from '../types';
 
 interface RawHtmlProbeNode {
