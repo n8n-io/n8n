@@ -4,6 +4,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -24,8 +25,8 @@ export interface ChatIntegrationDescriptor {
  * Node types a workflow can use as its trigger to be eligible as an agent
  * tool. Single source of truth for both the backend compatibility check
  * (`workflow-tool-factory.ts:SUPPORTED_TRIGGERS`) and the frontend Available
- * list's pre-filter. Body-node incompatibility (Wait / RespondToWebhook) is
- * enforced separately at save time.
+ * list's pre-filter. Body-node incompatibility is enforced separately at save
+ * time.
  */
 export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -33,11 +34,12 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	CHAT_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 ] as const;
 
 /**
  * Node types in a workflow's body that disqualify it from being used as an
- * agent tool (execution model can't handle pause/respond-style nodes). Single
+ * agent tool (execution model can't handle pause-style nodes). Single
  * source of truth for the backend `validateCompatibility` check in
  * `workflow-tool-factory.ts` and the frontend pre-check in
  * `AgentToolsModal.vue` so the two sides can't drift.
@@ -45,7 +47,6 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 	'n8n-nodes-base.wait',
 	'n8n-nodes-base.form',
-	'n8n-nodes-base.respondToWebhook',
 ] as const;
 
 export const AGENT_SCHEDULE_TRIGGER_TYPE = 'schedule';
