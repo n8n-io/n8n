@@ -321,8 +321,6 @@ export class AgentRuntime {
 
 	private backgroundTasks = new BackgroundTaskTracker();
 
-	private observationTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
 	private deferredToolManager: DeferredToolManager | undefined;
 
 	/** Resolved telemetry for the current run (own config or inherited from parent). */
