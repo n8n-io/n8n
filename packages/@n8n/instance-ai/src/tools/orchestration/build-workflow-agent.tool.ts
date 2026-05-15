@@ -1055,15 +1055,7 @@ export async function startBuildWorkflowAgentTask(
 							if (!reusedBuilderSession && workflowId && domainContext) {
 								try {
 									const json = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
-									let rawCode = generateWorkflowCode(json);
-									// Preserve the original id so credentials stay bound across saves.
-									// Stripping the id forced resolution through resolveCredentials,
-									// which does last-write-wins by credential type when a user has
-									// multiple credentials of the same type.
-									rawCode = rawCode.replace(
-										/newCredential\('([^']*)',\s*'([^']*)'\)/g,
-										"{ id: '$2', name: '$1' }",
-									);
+									const rawCode = generateWorkflowCode(json);
 									const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
 									if (workspace.filesystem) {
 										await workspace.filesystem.writeFile(`${root}/src/workflow.ts`, code, {
