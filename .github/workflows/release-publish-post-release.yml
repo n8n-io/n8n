@@ -85,6 +85,8 @@ jobs:
 
   send-version-release-notification:
     name: 'Send version release notifications'
+    if: |
+      inputs.release_type != 'rc'
     uses: ./.github/workflows/release-version-release-notification.yml
     with:
       previous-version: ${{ inputs.previous_version }}
