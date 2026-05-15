@@ -214,14 +214,18 @@ export class InstanceAiMemoryService {
 		const cutoff = new Date(Date.now() - ttlDays * 24 * 60 * 60 * 1000);
 		let deletedCount = 0;
 
-		// Page through all threads and delete expired ones.
+		// Page through oldest threads first and delete expired ones.
 		// Always re-fetch page 0 after deletions to avoid skipping threads
 		// when items shift due to deletion during pagination.
 		const perPage = 100;
 		let hasMore = true;
 
 		while (hasMore) {
-			const result = await this.agentMemory.listThreads({ perPage, page: 0 });
+			const result = await this.agentMemory.listThreads({
+				perPage,
+				page: 0,
+				orderBy: { field: 'updatedAt', direction: 'ASC' },
+			});
 			let deletedInPage = 0;
 			for (const thread of result.threads) {
 				if (thread.updatedAt < cutoff) {

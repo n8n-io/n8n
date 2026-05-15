@@ -20,12 +20,13 @@ const mockAgentMemory = {
 // Mock GlobalConfig
 const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
 
-function createService(): InstanceAiMemoryService {
+function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
 			embedderModel: '',
 			lastMessages: 40,
 			semanticRecallTopK: 3,
+			threadTtlDays: options.threadTtlDays ?? 0,
 		},
 		database: {
 			type: 'postgresdb',
@@ -58,6 +59,17 @@ function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode
 		children: [],
 		timeline: [{ type: 'text', content: 'Done!' }],
 		...overrides,
+	};
+}
+
+function makeThread(id: string, updatedAt: string) {
+	return {
+		id,
+		title: id,
+		resourceId: 'user-1',
+		metadata: {},
+		createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		updatedAt: new Date(updatedAt),
 	};
 }
 
@@ -229,5 +241,54 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 		expect(mockDeleteThreadsByResourceIdPrefix.mock.invocationCallOrder[0]).toBeLessThan(
 			mockDeleteThread.mock.invocationCallOrder[0],
 		);
+	});
+});
+
+describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('queries oldest threads first so fresh threads do not hide expired ones', async () => {
+		const dateNow = jest
+			.spyOn(Date, 'now')
+			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
+		const expiredThread = makeThread('expired-thread', '2026-05-01T00:00:00.000Z');
+		const freshThread = makeThread('fresh-thread', '2026-05-14T00:00:00.000Z');
+		let expiredDeleted = false;
+
+		mockListThreads.mockImplementation(
+			async (args: { orderBy?: { direction?: 'ASC' | 'DESC' } }) => {
+				if (args.orderBy?.direction === 'ASC') {
+					return expiredDeleted
+						? { threads: [freshThread], total: 1, page: 0, hasMore: false }
+						: { threads: [expiredThread], total: 2, page: 0, hasMore: true };
+				}
+
+				return {
+					threads: [freshThread],
+					total: 2,
+					page: 0,
+					hasMore: true,
+				};
+			},
+		);
+		mockDeleteThread.mockImplementation(async (threadId: string) => {
+			if (threadId === expiredThread.id) expiredDeleted = true;
+		});
+
+		const service = createService({ threadTtlDays: 7 });
+		const deletedCount = await service.cleanupExpiredThreads();
+
+		expect(deletedCount).toBe(1);
+		expect(mockListThreads).toHaveBeenCalledWith({
+			perPage: 100,
+			page: 0,
+			orderBy: { field: 'updatedAt', direction: 'ASC' },
+		});
+		expect(mockDeleteThread).toHaveBeenCalledWith(expiredThread.id);
+		expect(mockDeleteThread).not.toHaveBeenCalledWith(freshThread.id);
+
+		dateNow.mockRestore();
 	});
 });
