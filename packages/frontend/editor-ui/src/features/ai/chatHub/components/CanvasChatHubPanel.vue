@@ -293,7 +293,7 @@ defineExpose({
 					{{ agentDisplayName }}
 				</N8nText>
 				<span :class="$style.previewBadge">
-					{{ i18n.baseText('generic.preview') }}
+					{{ i18n.baseText('chatHub.canvas.previewBadge') }}
 				</span>
 			</div>
 			<div :class="$style.headerActions">

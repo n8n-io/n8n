@@ -93,7 +93,6 @@
 	"generic.copiedToClipboard": "Copied to clipboard",
 	"generic.beta": "beta",
 	"generic.betaProper": "Beta",
-	"generic.preview": "Preview",
 	"generic.freeCredits": "Free credits",
 	"generic.yes": "Yes",
 	"generic.no": "No",
@@ -586,7 +585,7 @@
 	"chatHub.chat.prompt.placeholder.withModel": "Message {model}...",
 	"chatHub.chat.prompt.placeholder.selectModel": "Select a model",
 	"chatHub.chat.prompt.placeholder.sendPreview": "Send preview message...",
-
+	"chatHub.canvas.previewBadge": "Preview",
 	"chatHub.canvas.floatingTitle": "Chat preview",
 	"chatHub.canvas.session.newChat": "New Chat",
 	"chatHub.canvas.session.noSessions": "No previous sessions for this workflow",

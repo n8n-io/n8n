@@ -101,7 +101,8 @@ export interface NodeViewItem {
 		displayName?: string;
 		tag?: {
 			type?: string;
-			text: string;
+			text?: string;
+			preview?: boolean;
 		};
 		forceIncludeNodes?: string[];
 		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };
@@ -187,8 +188,7 @@ function getMessageAnAgentNode(
 			properties: {
 				...view.properties,
 				tag: {
-					type: 'success',
-					text: i18n.baseText('generic.preview'),
+					preview: true,
 				},
 			},
 		},

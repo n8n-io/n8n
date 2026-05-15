@@ -125,8 +125,7 @@ describe('viewsData', () => {
 
 			expect(messageAgentItem).toBeDefined();
 			expect(messageAgentItem?.properties.tag).toEqual({
-				type: 'success',
-				text: 'Preview',
+				preview: true,
 			});
 
 			const agentItem = result.items.find((item) => item.key === 'agent');
