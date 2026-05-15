@@ -52,11 +52,28 @@ interface ChatInstance {
 interface ChatAgentConnection {
 	chat: ChatInstance;
 	bridge: AgentChatBridge;
+	/**
+	 * Context captured at connect time. Used by `disconnectOne` to invoke
+	 * `onBeforeDisconnect` hooks (e.g. Telegram `deleteWebhook`) with the same
+	 * decrypted credential the connect ran with — re-decrypting at disconnect
+	 * time would fail if the credential was rotated or deleted in between.
+	 */
+	context: AgentChatIntegrationContext;
 }
 
 interface ConnectOptions {
 	skipExternalHooks?: boolean;
 	settings?: AgentIntegrationSettings;
+}
+
+interface DisconnectOptions {
+	/**
+	 * Skip integration-defined external teardown (e.g. Telegram `deleteWebhook`).
+	 * Mirror of `ConnectOptions.skipExternalHooks` — set true on peer mains
+	 * reacting to a PubSub broadcast, in graceful-shutdown paths, and during
+	 * leader-stepdown so the cluster-wide remote release happens exactly once.
+	 */
+	skipExternalHooks?: boolean;
 }
 
 /**
@@ -229,6 +246,7 @@ export class ChatIntegrationService {
 		this.connections.set(key, {
 			chat: chatInstance,
 			bridge,
+			context: ctx,
 		});
 		this.logger.info(`[ChatIntegrationService] Connected: ${key}`);
 	}
@@ -237,19 +255,25 @@ export class ChatIntegrationService {
 	 * Disconnect one or all integrations for an agent.
 	 * If `type` and `credentialId` are provided, disconnects only that integration.
 	 * Otherwise disconnects all integrations for the agent.
+	 *
+	 * `options.skipExternalHooks` skips `onBeforeDisconnect` — set this on peer
+	 * mains reacting to a PubSub broadcast so the cluster-wide remote release
+	 * (e.g. Telegram `deleteWebhook`) happens exactly once.
 	 */
 	async disconnect(
 		agentId: string,
 		integration?: { credentialId: string; type: string },
+		options: DisconnectOptions = {},
 	): Promise<void> {
 		if (integration) {
 			await this.disconnectOne(
 				this.connectionKey(agentId, integration.type, integration.credentialId),
+				options,
 			);
 		} else {
 			const keysToRemove = [...this.connections.keys()].filter((k) => k.startsWith(`${agentId}:`));
 			for (const k of keysToRemove) {
-				await this.disconnectOne(k);
+				await this.disconnectOne(k, options);
 			}
 		}
 	}
@@ -263,7 +287,10 @@ export class ChatIntegrationService {
 	async disconnectAll(): Promise<void> {
 		const keys = [...this.connections.keys()];
 		for (const key of keys) {
-			await this.disconnectOne(key);
+			// Graceful shutdown: don't release cluster-wide remote state (e.g.
+			// Telegram webhooks) — we want the bot to keep receiving when this
+			// main restarts.
+			await this.disconnectOne(key, { skipExternalHooks: true });
 		}
 	}
 
@@ -280,7 +307,10 @@ export class ChatIntegrationService {
 			if (!type) continue;
 			const integration = this.integrationRegistry.get(type);
 			if (integration?.requiresLeader()) {
-				await this.disconnectOne(key);
+				// Leader stepdown is a role transition, not a user-initiated
+				// disconnect — another main is about to take over polling, so we
+				// must not release any remote-side state.
+				await this.disconnectOne(key, { skipExternalHooks: true });
 			}
 		}
 	}
@@ -515,7 +545,11 @@ export class ChatIntegrationService {
 		const { type, credentialId } = integration;
 
 		if (action === 'disconnect') {
-			await this.disconnect(agentId, integration);
+			// The originating main already ran external teardown (Telegram
+			// deleteWebhook etc.). Peers only need to clear local state —
+			// skipping the hook also avoids racing the originator into Telegram's
+			// 1/sec rate limit and 429 ourselves out of a clean release.
+			await this.disconnect(agentId, integration, { skipExternalHooks: true });
 			return;
 		}
 
@@ -565,9 +599,27 @@ export class ChatIntegrationService {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
-	private async disconnectOne(key: string): Promise<void> {
+	private async disconnectOne(key: string, options: DisconnectOptions = {}): Promise<void> {
 		const conn = this.connections.get(key);
 		if (!conn) return;
+
+		// External teardown runs while the chat is still live — symmetric with
+		// `onAfterConnect`, which runs after `chat.initialize()`. Errors are
+		// logged but never re-thrown: local teardown must always complete so a
+		// transient remote failure can't leak in-process resources.
+		if (!options.skipExternalHooks) {
+			const type = this.connectionTypeFromKey(key);
+			const integration = type ? this.integrationRegistry.get(type) : undefined;
+			if (integration?.onBeforeDisconnect) {
+				try {
+					await integration.onBeforeDisconnect(conn.context);
+				} catch (error) {
+					this.logger.warn(
+						`[ChatIntegrationService] onBeforeDisconnect failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			}
+		}
 
 		try {
 			await conn.chat.shutdown();

@@ -126,6 +126,25 @@ export class TelegramIntegration extends AgentChatIntegration {
 	}
 
 	/**
+	 * Mirror of `onAfterConnect`: clear the webhook we registered on Telegram so
+	 * the bot is free for another agent or another application. Polling-mode
+	 * connections never registered a webhook with Telegram, so skip.
+	 */
+	async onBeforeDisconnect(ctx: AgentChatIntegrationContext): Promise<void> {
+		if (this.getMode() !== 'webhook') return;
+		const botToken = this.extractBotToken(ctx.credential);
+		const resp = await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`, {
+			method: 'POST',
+		});
+		if (!resp.ok) {
+			throw new Error(`Failed to deregister Telegram webhook: ${await resp.text()}`);
+		}
+		this.logger.info(
+			`[TelegramIntegration] Webhook deregistered for agent ${ctx.agentId}, credential ${ctx.credentialId}`,
+		);
+	}
+
+	/**
 	 * Enforce the Private-mode allowlist. Public mode (or legacy connections
 	 * without saved settings) accepts every Telegram user; Private mode only
 	 * accepts senders whose numeric user ID or username appears in `allowedUsers`.

@@ -296,3 +296,52 @@ describe('TelegramIntegration secret token', () => {
 		}
 	});
 });
+
+describe('TelegramIntegration.onBeforeDisconnect', () => {
+	let fetchSpy: jest.SpyInstance;
+
+	beforeEach(() => {
+		fetchSpy = jest.spyOn(globalThis, 'fetch');
+	});
+
+	afterEach(() => {
+		fetchSpy.mockRestore();
+	});
+
+	it('calls deleteWebhook on Telegram with the bot token in webhook mode', async () => {
+		fetchSpy.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
+
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.onBeforeDisconnect(makeContext());
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		expect(url).toBe('https://api.telegram.org/botbot-token/deleteWebhook');
+		expect(init.method).toBe('POST');
+	});
+
+	it('skips the API call entirely in polling mode (localhost / non-public URL)', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.onBeforeDisconnect(makeContext());
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it('throws when Telegram rejects deleteWebhook so the caller can log it', async () => {
+		fetchSpy.mockResolvedValue({ ok: false, text: async () => 'invalid token' } as Response);
+
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		const { integration } = makeIntegration({ urlService });
+
+		await expect(integration.onBeforeDisconnect(makeContext())).rejects.toThrow(
+			'Failed to deregister Telegram webhook: invalid token',
+		);
+	});
+});
