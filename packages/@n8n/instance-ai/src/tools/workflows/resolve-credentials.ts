@@ -23,34 +23,6 @@ export interface CredentialEntry {
 export type CredentialMap = Map<string, CredentialEntry[]>;
 
 /**
- * Paired credential snapshot produced from a single `credentialService.list()`
- * call. The flat list validates raw credential ids without losing duplicates
- * of the same type.
- */
-export interface CredentialSnapshot {
-	list: CredentialEntry[];
-}
-
-/**
- * Build a paired credential snapshot from all available credentials.
- * Non-fatal — returns empty structures if listing fails.
- */
-export async function buildCredentialSnapshot(
-	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
-): Promise<CredentialSnapshot> {
-	const list: CredentialEntry[] = [];
-	try {
-		const allCreds = await credentialService.list();
-		for (const cred of allCreds) {
-			list.push({ id: cred.id, name: cred.name, type: cred.type });
-		}
-	} catch {
-		// Non-fatal — credentials will be unresolved
-	}
-	return { list };
-}
-
-/**
  * Build a credential map from all available credentials.
  * Non-fatal — returns an empty map if listing fails.
  */
@@ -101,7 +73,7 @@ export async function resolveCredentials(
 	json: WorkflowJSON,
 	workflowId: string | undefined,
 	ctx: InstanceAiContext,
-	availableCredentials?: CredentialEntry[] | CredentialMap,
+	availableCredentials?: CredentialMap,
 ): Promise<CredentialResolutionResult> {
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
@@ -185,8 +157,7 @@ export async function resolveCredentials(
 				continue;
 			}
 
-			const credentialsForType =
-				availableCredentials instanceof Map ? availableCredentials.get(key) : undefined;
+			const credentialsForType = availableCredentials?.get(key);
 			if (credentialsForType?.length === 1) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
@@ -227,21 +198,15 @@ function getCredentialId(value: unknown): string | undefined {
 function isKnownCredentialForType(
 	value: unknown,
 	credentialType: string,
-	availableCredentials: CredentialEntry[] | CredentialMap | undefined,
+	availableCredentials: CredentialMap | undefined,
 ): boolean {
 	if (!availableCredentials) return true;
 
 	const id = getCredentialId(value);
 	if (!id) return false;
 
-	if (availableCredentials instanceof Map) {
-		return (
-			availableCredentials.get(credentialType)?.some((credential) => credential.id === id) ?? false
-		);
-	}
-
-	return availableCredentials.some(
-		(credential) => credential.id === id && credential.type === credentialType,
+	return (
+		availableCredentials.get(credentialType)?.some((credential) => credential.id === id) ?? false
 	);
 }
 

@@ -5,6 +5,7 @@ import {
 	buildCredentialMap,
 	resolveCredentials,
 	type CredentialEntry,
+	type CredentialMap,
 } from '../resolve-credentials';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,16 @@ function makeWorkflow(overrides: Partial<WorkflowJSON> = {}): WorkflowJSON {
 		connections: {},
 		...overrides,
 	};
+}
+
+function makeCredentialMap(credentials: CredentialEntry[]): CredentialMap {
+	const map: CredentialMap = new Map();
+	for (const credential of credentials) {
+		const entries = map.get(credential.type) ?? [];
+		entries.push(credential);
+		map.set(credential.type, entries);
+	}
+	return map;
 }
 
 // ---------------------------------------------------------------------------
@@ -259,11 +270,11 @@ describe('resolveCredentials', () => {
 	});
 
 	describe('raw credential validation against snapshot', () => {
-		const availableCredentials: CredentialEntry[] = [
+		const availableCredentials = makeCredentialMap([
 			{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
 			{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
 			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2Api' },
-		];
+		]);
 
 		it('keeps a raw credential id that exists in the snapshot for the same type', async () => {
 			const json = makeWorkflow({
@@ -429,9 +440,12 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const result = await resolveCredentials(json, 'wf-123', createMockContext(existingWorkflow), [
-				{ id: 'existing-slack', name: 'Existing Slack', type: 'slackApi' },
-			]);
+			const result = await resolveCredentials(
+				json,
+				'wf-123',
+				createMockContext(existingWorkflow),
+				makeCredentialMap([{ id: 'existing-slack', name: 'Existing Slack', type: 'slackApi' }]),
+			);
 
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(json.nodes[0].credentials).toEqual({
@@ -527,9 +541,12 @@ describe('resolveCredentials', () => {
 				},
 			});
 
-			await resolveCredentials(json, undefined, createMockContext(), [
-				{ id: 'real-id', name: 'Real Slack', type: 'slackApi' },
-			]);
+			await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([{ id: 'real-id', name: 'Real Slack', type: 'slackApi' }]),
+			);
 
 			expect(json.pinData).toEqual({});
 		});
@@ -551,9 +568,12 @@ describe('resolveCredentials', () => {
 				},
 			});
 
-			await resolveCredentials(json, undefined, createMockContext(), [
-				{ id: 'real-id', name: 'Real Slack', type: 'slackApi' },
-			]);
+			await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([{ id: 'real-id', name: 'Real Slack', type: 'slackApi' }]),
+			);
 
 			expect(json.pinData).toEqual({
 				Slack: [{ ok: true, channel: 'C123' }],
