@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { NotConnectedError } from '../errors';
 import { createNavigationTools } from './navigation';
-import { createMockConnection, findTool, structuredOf, TOOL_CONTEXT } from './test-helpers';
+import { createMockConnection, findTool, structuredOf, textOf, TOOL_CONTEXT } from './test-helpers';
 
 describe('createNavigationTools', () => {
 	let mockConnection: ReturnType<typeof createMockConnection>;
@@ -206,6 +206,31 @@ describe('createNavigationTools', () => {
 			const data = structuredOf(result);
 
 			expect(data.snapshot).toBe('- heading "Test"');
+		});
+
+		it('redacts injected auto-snapshot text using host-side sensitivity analysis', async () => {
+			const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+			mockConnection.adapter.snapshot.mockResolvedValue({
+				tree: `- text "API key ${secret}"`,
+				refCount: 0,
+			});
+			mockConnection.adapter.probePageHtml.mockResolvedValue({
+				ok: true,
+				root: {
+					kind: 'document',
+					html: `<p>${secret}</p>`,
+					path: ['document'],
+					children: [],
+					errors: [],
+				},
+			});
+
+			const tool = findTool(tools, 'browser_navigate');
+			const result = await tool.execute({ url: 'http://example.com' }, TOOL_CONTEXT);
+			const data = structuredOf(result);
+
+			expect(data.snapshot).toBe('- text "API key [REDACTED:anthropic_api_key]"');
+			expect(textOf(result)).not.toContain(secret);
 		});
 
 		it('injects modalStates when present', async () => {
