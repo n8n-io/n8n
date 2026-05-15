@@ -210,7 +210,7 @@ describe('AgentsService', () => {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Help the user.',
-				computerUse: { enabled: true },
+				computerUse: { enabled: true, browser: { enabled: true } },
 			});
 
 			expect(result.valid).toBe(true);

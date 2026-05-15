@@ -195,6 +195,9 @@ export interface AgentJsonConfig {
 		shell?: {
 			enabled?: boolean;
 		};
+		browser?: {
+			enabled?: boolean;
+		};
 	};
 	/**
 	 * Triggers (scheduled execution + chat integrations) attached to this agent.

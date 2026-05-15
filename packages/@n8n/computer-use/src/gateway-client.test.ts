@@ -10,6 +10,8 @@
 // Module mocks — must be declared before imports
 // ---------------------------------------------------------------------------
 
+const mockBrowserModuleCreate = jest.fn().mockResolvedValue(null);
+
 // Suppress logger noise during tests
 jest.mock('./logger', () => ({
 	logger: { debug: jest.fn(), info: jest.fn(), error: jest.fn(), warn: jest.fn() },
@@ -37,8 +39,10 @@ jest.mock('./tools/mouse-keyboard', () => ({
 	['MouseKeyboardModule']: { isSupported: jest.fn().mockResolvedValue(false), definitions: [] },
 }));
 jest.mock('./tools/browser', () => ({
-	['BrowserModule']: { create: jest.fn().mockResolvedValue(null) },
+	['BrowserModule']: { create: mockBrowserModuleCreate },
 }));
+
+import { z } from 'zod';
 
 import type { GatewayConfig } from './config';
 import { GatewayAuthError, GatewayClient } from './gateway-client';
@@ -90,6 +94,36 @@ const SHELL_RESOURCE: AffectedResource = {
 	resource: 'npm install',
 	description: 'Run npm install',
 };
+
+const capabilityUploadBodySchema = z.object({
+	toolCategories: z.array(
+		z.object({
+			name: z.string(),
+			enabled: z.boolean(),
+			permissionMode: z.string().optional(),
+		}),
+	),
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			annotations: z
+				.object({
+					category: z.string().optional(),
+				})
+				.optional(),
+		}),
+	),
+});
+
+type CapabilityUploadBody = z.infer<typeof capabilityUploadBodySchema>;
+
+function parseCapabilityUploadBody(value: string): CapabilityUploadBody {
+	try {
+		return capabilityUploadBodySchema.parse(JSON.parse(value));
+	} catch (error) {
+		throw new Error(`Expected capability upload JSON body: ${String(error)}`);
+	}
+}
 
 /** A minimal tool definition that returns a given resource list and a simple result. */
 function makeTool(resources: AffectedResource[]): ToolDefinition {
@@ -274,7 +308,8 @@ describe('GatewayClient.uploadCapabilities', () => {
 	const originalFetch = global.fetch;
 
 	beforeEach(() => {
-		global.fetch = jest.fn();
+		global.fetch = jest.fn() as unknown as typeof fetch;
+		mockBrowserModuleCreate.mockResolvedValue(null);
 	});
 
 	afterEach(() => {
@@ -300,12 +335,13 @@ describe('GatewayClient.uploadCapabilities', () => {
 	}
 
 	function mockFetchResponse(status: number, body = ''): void {
-		(global.fetch as jest.Mock).mockResolvedValueOnce({
+		const fetchMock = global.fetch as jest.MockedFunction<typeof fetch>;
+		fetchMock.mockResolvedValueOnce({
 			ok: status >= 200 && status < 300,
 			status,
 			text: jest.fn().mockResolvedValue(body),
 			json: jest.fn().mockResolvedValue({ data: { ok: true } }),
-		});
+		} as unknown as Response);
 	}
 
 	it('throws GatewayAuthError on 401', async () => {
@@ -329,5 +365,69 @@ describe('GatewayClient.uploadCapabilities', () => {
 		const promise = client['uploadCapabilities']();
 		await expect(promise).rejects.not.toBeInstanceOf(GatewayAuthError);
 		await expect(promise).rejects.toThrow(/Failed to upload capabilities: 500/);
+	});
+
+	it('uploads browser category permission mode when browser tools are advertised', async () => {
+		const shutdown = jest.fn().mockResolvedValue(undefined);
+		mockBrowserModuleCreate.mockResolvedValue({
+			definitions: [
+				{
+					name: 'browser_snapshot',
+					description: 'Snapshot',
+					inputSchema: z.object({}),
+					execute: jest.fn(),
+					getAffectedResources: jest.fn().mockReturnValue([]),
+				},
+			],
+			shutdown,
+			isSupported: () => true,
+		});
+		mockFetchResponse(200);
+		const session = makeSession({ getGroupMode: jest.fn().mockReturnValue('allow') });
+		const client = new GatewayClient({
+			url: 'http://localhost:5678',
+			apiKey: 'tok',
+			config: makeConfig(),
+			session,
+			confirmResourceAccess: jest.fn(),
+		});
+
+		await client['uploadCapabilities']();
+
+		const request = (global.fetch as jest.MockedFunction<typeof fetch>).mock.calls[0]?.[1];
+		if (typeof request?.body !== 'string') throw new Error('Expected capability upload body');
+		const body = parseCapabilityUploadBody(request.body);
+		expect(body.tools).toContainEqual(
+			expect.objectContaining({
+				name: 'browser_snapshot',
+				annotations: { category: 'browser' },
+			}),
+		);
+		expect(body.toolCategories).toContainEqual({
+			name: 'browser',
+			enabled: true,
+			permissionMode: 'allow',
+		});
+	});
+
+	it('shuts down the browser module when the gateway stops', async () => {
+		const shutdown = jest.fn().mockResolvedValue(undefined);
+		mockBrowserModuleCreate.mockResolvedValue({
+			definitions: [],
+			shutdown,
+			isSupported: () => true,
+		});
+		const client = new GatewayClient({
+			url: 'http://localhost:5678',
+			apiKey: 'tok',
+			config: makeConfig(),
+			session: makeSession({ getGroupMode: jest.fn().mockReturnValue('allow') }),
+			confirmResourceAccess: jest.fn(),
+		});
+
+		await client['getAllDefinitions']();
+		await client.stop();
+
+		expect(shutdown).toHaveBeenCalled();
 	});
 });

@@ -49,12 +49,15 @@ const filesystemWriteAvailable = computed(
 	() => status.value?.capabilities.filesystem.write === true,
 );
 const shellAvailable = computed(() => status.value?.capabilities.shell.enabled === true);
+const browserAvailable = computed(() => status.value?.capabilities.browser?.enabled === true);
+const browserReady = computed(() => status.value?.capabilities.browser?.ready === true);
 
 const filesystemEnabled = computed(
 	() => enabled.value && computerUse.value?.filesystem?.enabled !== false,
 );
 const fileWriteEnabled = computed(() => computerUse.value?.filesystem?.write === true);
 const shellEnabled = computed(() => computerUse.value?.shell?.enabled === true);
+const browserEnabled = computed(() => computerUse.value?.browser?.enabled === true);
 
 const mainDisabledReason = computed(() => {
 	if (moduleEnabled.value) return '';
@@ -65,6 +68,15 @@ function capabilityDisabledReason(available: boolean): string {
 	if (!enabled.value) return i18n.baseText('agents.builder.computerUse.disabled.enableFirst');
 	if (!connected.value) return i18n.baseText('agents.builder.computerUse.disabled.disconnected');
 	if (!available) return i18n.baseText('agents.builder.computerUse.disabled.capability');
+	return '';
+}
+
+function browserDisabledReason(): string {
+	const baseReason = capabilityDisabledReason(browserAvailable.value);
+	if (baseReason) return baseReason;
+	if (!browserReady.value) {
+		return i18n.baseText('agents.builder.computerUse.disabled.browserPermission');
+	}
 	return '';
 }
 
@@ -82,6 +94,9 @@ function setEnabled(value: boolean) {
 		shell: {
 			enabled: computerUse.value?.shell?.enabled ?? false,
 		},
+		browser: {
+			enabled: computerUse.value?.browser?.enabled ?? false,
+		},
 	});
 }
 
@@ -90,6 +105,7 @@ function setFilesystemEnabled(value: boolean) {
 		enabled: enabled.value,
 		filesystem: { ...computerUse.value?.filesystem, enabled: value },
 		shell: computerUse.value?.shell,
+		browser: computerUse.value?.browser,
 	});
 }
 
@@ -98,6 +114,7 @@ function setFileWriteEnabled(value: boolean) {
 		enabled: enabled.value,
 		filesystem: { ...computerUse.value?.filesystem, enabled: true, write: value },
 		shell: computerUse.value?.shell,
+		browser: computerUse.value?.browser,
 	});
 }
 
@@ -106,6 +123,16 @@ function setShellEnabled(value: boolean) {
 		enabled: enabled.value,
 		filesystem: computerUse.value?.filesystem,
 		shell: { ...computerUse.value?.shell, enabled: value },
+		browser: computerUse.value?.browser,
+	});
+}
+
+function setBrowserEnabled(value: boolean) {
+	emitComputerUse({
+		enabled: enabled.value,
+		filesystem: computerUse.value?.filesystem,
+		shell: computerUse.value?.shell,
+		browser: { ...computerUse.value?.browser, enabled: value },
 	});
 }
 
@@ -295,6 +322,25 @@ onMounted(() => {
 					:disabled="props.disabled || !enabled || !connected || !shellAvailable"
 					data-testid="agent-computer-use-shell-toggle"
 					@update:model-value="(value) => setShellEnabled(Boolean(value))"
+				/>
+			</div>
+
+			<div :class="$style.row">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.computerUse.browser.label')
+					}}</N8nText>
+					<N8nText size="xsmall" color="text-light">
+						{{
+							browserDisabledReason() || i18n.baseText('agents.builder.computerUse.browser.hint')
+						}}
+					</N8nText>
+				</div>
+				<N8nSwitch2
+					:model-value="browserEnabled"
+					:disabled="props.disabled || !enabled || !connected || !browserReady"
+					data-testid="agent-computer-use-browser-toggle"
+					@update:model-value="(value) => setBrowserEnabled(Boolean(value))"
 				/>
 			</div>
 		</div>

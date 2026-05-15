@@ -22,6 +22,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
+import type { AgentsComputerUseService } from '../computer-use/agents-computer-use.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
@@ -46,6 +47,7 @@ jest.mock('../integrations/rich-interaction-tool', () => ({
 function makeService(
 	agentsToolsService: AgentsToolsService,
 	modules: string[] = [],
+	agentsComputerUseService = mock<AgentsComputerUseService>(),
 ): AgentsService {
 	return new AgentsService(
 		mock<Logger>(),
@@ -62,7 +64,7 @@ function makeService(
 		mock<AgentSecureRuntime>(),
 		mock<EphemeralNodeExecutor>(),
 		agentsToolsService,
-		mock(),
+		agentsComputerUseService,
 		mock<N8nMemory>(),
 		mock<AgentExecutionService>(),
 		mock<AgentPublishedVersionRepository>(),
@@ -94,6 +96,7 @@ type Reconstructable = {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId?: string,
+		options?: { integrationType?: string; computerUseUserId?: string } | string,
 	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }>;
 };
 
@@ -104,15 +107,20 @@ describe('AgentsService.reconstructFromConfig — node tools gating', () => {
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 	});
 
-	function setup(options: { nodeToolsModuleEnabled?: boolean } = {}) {
+	function setup(
+		options: { nodeToolsModuleEnabled?: boolean; computerUseModuleEnabled?: boolean } = {},
+	) {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const agentsComputerUseService = mock<AgentsComputerUseService>();
+		agentsComputerUseService.getRuntimeTools.mockReturnValue([]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeService(
-			agentsToolsService,
-			options.nodeToolsModuleEnabled ? ['node-tools-searcher'] : [],
-		);
-		return { service, agentsToolsService, credentialProvider };
+		const modules = [
+			...(options.nodeToolsModuleEnabled ? ['node-tools-searcher'] : []),
+			...(options.computerUseModuleEnabled ? ['computer-use'] : []),
+		];
+		const service = makeService(agentsToolsService, modules, agentsComputerUseService);
+		return { service, agentsToolsService, agentsComputerUseService, credentialProvider };
 	}
 
 	it.each([
@@ -168,5 +176,36 @@ describe('AgentsService.reconstructFromConfig — node tools gating', () => {
 		} else {
 			expect(agentsToolsService.getRuntimeTools).not.toHaveBeenCalled();
 		}
+	});
+
+	it('attaches computer-use tools only when the runtime passes a test-chat user context', async () => {
+		const { service, agentsComputerUseService, credentialProvider } = setup({
+			computerUseModuleEnabled: true,
+		});
+		const computerTool: BuiltTool = {
+			name: 'browser_connect',
+			description: 'Connect to a browser session',
+		};
+		agentsComputerUseService.getRuntimeTools.mockReturnValue([computerTool]);
+		const entity = makeAgentEntity();
+		if (entity.schema === null) throw new Error('Expected test agent to have a schema');
+		entity.schema.computerUse = { enabled: true, browser: { enabled: true } };
+
+		await (service as unknown as Reconstructable).reconstructFromConfig(
+			entity,
+			credentialProvider,
+			'user-1',
+		);
+
+		expect(agentsComputerUseService.getRuntimeTools).not.toHaveBeenCalled();
+
+		await (service as unknown as Reconstructable).reconstructFromConfig(
+			entity,
+			credentialProvider,
+			'user-1',
+			{ computerUseUserId: 'user-1' },
+		);
+
+		expect(agentsComputerUseService.getRuntimeTools).toHaveBeenCalledWith(entity.schema, 'user-1');
 	});
 });

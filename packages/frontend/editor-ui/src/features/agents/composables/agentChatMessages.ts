@@ -118,7 +118,7 @@ function isComputerUseApprovalInput(value: unknown): value is AgentComputerUseAp
 	return value.resources.every(
 		(resource) =>
 			isRecord(resource) &&
-			['filesystemRead', 'filesystemWrite', 'shell', 'process'].includes(
+			['filesystemRead', 'filesystemWrite', 'shell', 'process', 'browser'].includes(
 				String(resource.toolGroup),
 			) &&
 			typeof resource.resource === 'string' &&

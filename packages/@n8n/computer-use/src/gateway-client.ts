@@ -2,7 +2,7 @@ import { EventSource } from 'eventsource';
 import * as os from 'node:os';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import type { GatewayConfig } from './config';
+import type { GatewayConfig, PermissionMode } from './config';
 import type { GatewaySession } from './gateway-session';
 import {
 	logger,
@@ -78,6 +78,13 @@ interface GatewayDisconnectEvent {
 	type: 'gateway-disconnect';
 }
 
+interface ActiveToolCategory {
+	name: string;
+	enabled: boolean;
+	writeAccess?: boolean;
+	permissionMode?: PermissionMode;
+}
+
 /**
  * Client that connects to the n8n gateway via SSE and
  * handles tool requests by executing MCP tool calls locally.
@@ -99,8 +106,7 @@ export class GatewayClient {
 
 	private allDefinitions: ToolDefinition[] | null = null;
 
-	private activeToolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> =
-		[];
+	private activeToolCategories: ActiveToolCategory[] = [];
 
 	private definitionMap: Map<string, ToolDefinition> = new Map();
 
@@ -195,7 +201,7 @@ export class GatewayClient {
 
 		const { config, session } = this.options;
 		const defs: ToolDefinition[] = [];
-		const categories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> = [];
+		const categories: ActiveToolCategory[] = [];
 
 		// Filesystem
 		const fsReadEnabled = session.getGroupMode('filesystemRead') !== 'deny';
@@ -259,7 +265,8 @@ export class GatewayClient {
 		}
 
 		// Browser
-		if (session.getGroupMode('browser') !== 'deny') {
+		const browserPermissionMode = session.getGroupMode('browser');
+		if (browserPermissionMode !== 'deny') {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
 			this.browserModule = await BrowserModuleClass.create({
 				...config.browser,
@@ -267,16 +274,24 @@ export class GatewayClient {
 			});
 			if (this.browserModule) {
 				defs.push(...tagCategory(this.browserModule.definitions, 'browser'));
-				categories.push({ name: 'browser', enabled: true });
+				categories.push({
+					name: 'browser',
+					enabled: true,
+					permissionMode: browserPermissionMode,
+				});
 			} else {
 				logger.debug('Module not supported on this platform, skipping', {
 					module: 'Browser',
 				});
-				categories.push({ name: 'browser', enabled: false });
+				categories.push({
+					name: 'browser',
+					enabled: false,
+					permissionMode: browserPermissionMode,
+				});
 			}
 		} else {
 			logger.debug('Module denied by permission, skipping', { module: 'Browser' });
-			categories.push({ name: 'browser', enabled: false });
+			categories.push({ name: 'browser', enabled: false, permissionMode: 'deny' });
 		}
 
 		for (const def of defs) {

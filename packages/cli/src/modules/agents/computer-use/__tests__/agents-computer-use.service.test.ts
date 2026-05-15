@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { AgentsConfig } from '@n8n/config';
-import type { McpTool } from '@n8n/api-types';
+import type { McpTool, ToolCategory } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import type { ComputerUseGatewayService } from '@/modules/computer-use-gateway/computer-use-gateway.service';
@@ -35,7 +35,7 @@ function makeConfig(overrides: Partial<AgentJsonConfig['computerUse']> = {}): Ag
 	};
 }
 
-function makeGateway(tools: McpTool[]): jest.Mocked<LocalGateway> {
+function makeGateway(tools: McpTool[], toolCategories?: ToolCategory[]): jest.Mocked<LocalGateway> {
 	return mock<LocalGateway>({
 		isConnected: true,
 		rootPath: '/workspace',
@@ -44,7 +44,7 @@ function makeGateway(tools: McpTool[]): jest.Mocked<LocalGateway> {
 			connectedAt: '2026-05-14T00:00:00.000Z',
 			directory: '/workspace',
 			hostIdentifier: 'user@host',
-			toolCategories: [
+			toolCategories: toolCategories ?? [
 				{ name: 'filesystem', enabled: true, writeAccess: true },
 				{ name: 'shell', enabled: true },
 			],
@@ -55,13 +55,15 @@ function makeGateway(tools: McpTool[]): jest.Mocked<LocalGateway> {
 	} as Partial<LocalGateway>);
 }
 
-function setup(options: { modules?: string[]; tools?: McpTool[] } = {}) {
+function setup(
+	options: { modules?: string[]; tools?: McpTool[]; toolCategories?: ToolCategory[] } = {},
+) {
 	const tools = options.tools ?? [
 		makeTool('read_file', 'filesystem'),
 		makeTool('write_file', 'filesystem'),
 		makeTool('shell_execute', 'shell'),
 	];
-	const gateway = makeGateway(tools);
+	const gateway = makeGateway(tools, options.toolCategories);
 	const gatewayService = mock<ComputerUseGatewayService>({
 		findGateway: () => gateway,
 		getGatewayStatus: () => gateway.getStatus(),
@@ -236,6 +238,180 @@ describe('AgentsComputerUseService', () => {
 		expect(gateway.callTool).toHaveBeenCalledWith({
 			name: 'write_file',
 			arguments: { filePath: 'a.txt', content: 'hello', _confirmation: 'allowOnce' },
+		});
+	});
+
+	it('reports browser status only as ready when daemon permission is allow', () => {
+		const { service } = setup({
+			tools: [makeTool('browser_snapshot', 'browser')],
+			toolCategories: [{ name: 'browser', enabled: true, permissionMode: 'ask' }],
+		});
+
+		expect(service.getStatus(userId).capabilities.browser).toEqual({
+			enabled: true,
+			permissionMode: 'ask',
+			ready: false,
+		});
+
+		const { service: allowService } = setup({
+			tools: [makeTool('browser_snapshot', 'browser')],
+			toolCategories: [{ name: 'browser', enabled: true, permissionMode: 'allow' }],
+		});
+
+		expect(allowService.getStatus(userId).capabilities.browser).toEqual({
+			enabled: true,
+			permissionMode: 'allow',
+			ready: true,
+		});
+	});
+
+	it('exposes only semantic MVP browser tools when config and daemon permission allow it', () => {
+		const { service } = setup({
+			tools: [
+				makeTool('browser_snapshot', 'browser'),
+				makeTool('browser_click', 'browser'),
+				makeTool('browser_evaluate', 'browser'),
+			],
+			toolCategories: [{ name: 'browser', enabled: true, permissionMode: 'allow' }],
+		});
+
+		const tools = service.getRuntimeTools(makeConfig({ browser: { enabled: true } }), userId);
+
+		expect(tools.map((tool) => tool.name)).toEqual(['browser_snapshot', 'browser_click']);
+		expect(getTool(tools, 'browser_click').suspendSchema).toBeDefined();
+		expect(getTool(tools, 'browser_snapshot').suspendSchema).toBeUndefined();
+	});
+
+	it('normalizes top-level browser union schemas into object schemas for model tools', () => {
+		const { service } = setup({
+			tools: [
+				{
+					name: 'browser_scroll',
+					description: 'Scroll the page',
+					inputSchema: {
+						oneOf: [
+							{
+								type: 'object',
+								properties: { mode: { const: 'element' } },
+								required: ['mode'],
+							},
+							{
+								type: 'object',
+								properties: { mode: { const: 'direction' } },
+								required: ['mode'],
+							},
+						],
+					},
+					annotations: { category: 'browser' },
+				},
+			],
+			toolCategories: [{ name: 'browser', enabled: true, permissionMode: 'allow' }],
+		});
+
+		const scroll = getTool(
+			service.getRuntimeTools(makeConfig({ browser: { enabled: true } }), userId),
+			'browser_scroll',
+		);
+
+		expect(scroll.inputSchema).toMatchObject({
+			type: 'object',
+			properties: {
+				mode: { enum: ['element', 'direction'] },
+			},
+			required: ['mode'],
+		});
+		expect(scroll.inputSchema).not.toHaveProperty('oneOf');
+		expect(scroll.inputSchema).not.toHaveProperty('anyOf');
+	});
+
+	it('does not expose browser tools when daemon browser permission is ask', () => {
+		const { service } = setup({
+			tools: [makeTool('browser_snapshot', 'browser')],
+			toolCategories: [{ name: 'browser', enabled: true, permissionMode: 'ask' }],
+		});
+
+		const tools = service.getRuntimeTools(makeConfig({ browser: { enabled: true } }), userId);
+
+		expect(tools).toEqual([]);
+	});
+
+	it('adds a browser action preview before suspending browser mutations', async () => {
+		const { service, gateway } = setup({
+			tools: [makeTool('browser_type', 'browser')],
+			toolCategories: [{ name: 'browser', enabled: true, permissionMode: 'allow' }],
+		});
+		gateway.previewTool.mockResolvedValue({
+			content: [],
+			structuredContent: {
+				resources: [
+					{
+						toolGroup: 'browser',
+						resource: 'example.com',
+						description: 'Browser: example.com',
+					},
+				],
+			},
+		});
+		const browserType = getTool(
+			service.getRuntimeTools(makeConfig({ browser: { enabled: true } }), userId),
+			'browser_type',
+		);
+
+		await expect(
+			browserType.handler?.(
+				{ element: { ref: 'e1' }, text: 'secret-ish value' },
+				makeSuspendContext(),
+			),
+		).resolves.toMatchObject({
+			type: 'approval',
+			toolName: 'browser_type',
+			resources: [
+				{
+					toolGroup: 'browser',
+					resource: 'example.com',
+					preview: {
+						kind: 'text',
+						content: expect.stringContaining('secret-ish value') as string,
+					},
+				},
+			],
+		});
+	});
+
+	it('preserves browser screenshot image content for the model message', async () => {
+		const { service, gateway } = setup({
+			tools: [makeTool('browser_screenshot', 'browser')],
+			toolCategories: [{ name: 'browser', enabled: true, permissionMode: 'allow' }],
+		});
+		gateway.callTool.mockResolvedValue({
+			content: [
+				{ type: 'image', data: 'base64-png', mimeType: 'image/png' },
+				{ type: 'text', text: '{"hint":"visual"}' },
+			],
+		});
+		const screenshot = getTool(
+			service.getRuntimeTools(makeConfig({ browser: { enabled: true } }), userId),
+			'browser_screenshot',
+		);
+
+		const output = await screenshot.handler?.({}, {});
+
+		expect(output).toEqual({
+			content: [
+				{ type: 'image', data: 'base64-png', mimeType: 'image/png' },
+				{ type: 'text', text: '{"hint":"visual"}' },
+			],
+		});
+		expect(screenshot.toModelOutput?.(output)).toEqual({
+			content: '{"hint":"visual"}',
+			images: [{ mimeType: 'image/png' }],
+		});
+		expect(screenshot.toMessage?.(output)).toEqual({
+			role: 'assistant',
+			content: [
+				{ type: 'file', data: 'base64-png', mediaType: 'image/png' },
+				{ type: 'text', text: '{"hint":"visual"}' },
+			],
 		});
 	});
 });

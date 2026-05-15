@@ -528,6 +528,7 @@ export const toolCategorySchema = z.object({
 	name: z.string(),
 	enabled: z.boolean(),
 	writeAccess: z.boolean().optional(),
+	permissionMode: z.enum(['deny', 'ask', 'allow']).optional(),
 });
 export type ToolCategory = z.infer<typeof toolCategorySchema>;
 

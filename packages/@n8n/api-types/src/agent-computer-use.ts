@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const agentComputerUseAffectedResourceSchema = z.object({
-	toolGroup: z.enum(['filesystemRead', 'filesystemWrite', 'shell', 'process']),
+	toolGroup: z.enum(['filesystemRead', 'filesystemWrite', 'shell', 'process', 'browser']),
 	resource: z.string(),
 	description: z.string(),
 	preview: z
@@ -45,6 +45,11 @@ export interface AgentComputerUseStatusResponse {
 		shell: {
 			enabled: boolean;
 			processes: boolean;
+		};
+		browser: {
+			enabled: boolean;
+			permissionMode: 'deny' | 'ask' | 'allow' | null;
+			ready: boolean;
 		};
 	};
 	pairingCommand?: string;

@@ -50,6 +50,11 @@ const ComputerUseConfigSchema = z.object({
 			enabled: z.boolean().optional(),
 		})
 		.optional(),
+	browser: z
+		.object({
+			enabled: z.boolean().optional(),
+		})
+		.optional(),
 });
 
 const NodeToolCredentialSchema = z.object({

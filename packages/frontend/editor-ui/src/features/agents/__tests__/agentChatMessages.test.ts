@@ -102,6 +102,31 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.toolName).toBe('write_file');
 		expect(result?.resolvedAt).toBeUndefined();
 	});
+
+	it('rebuilds a browser-use approval card from its suspension payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'browser_type',
+			toolCallId: 'call-5',
+			input: {
+				type: 'approval',
+				toolName: 'browser_type',
+				args: { element: { ref: 'e1' }, text: 'hello' },
+				resources: [
+					{
+						toolGroup: 'browser',
+						resource: 'example.com',
+						description: 'Browser: example.com',
+						preview: { kind: 'text', content: 'Type text: hello' },
+					},
+				],
+			},
+			state: 'suspended',
+		});
+
+		expect(result).toBeTruthy();
+		expect(result && isComputerUseApprovalPayload(result)).toBe(true);
+		expect(result?.toolName).toBe('browser_type');
+	});
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
