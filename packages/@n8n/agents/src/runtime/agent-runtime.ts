@@ -457,7 +457,10 @@ export class AgentRuntime {
 		const toolCall = state.pendingToolCalls[options.toolCallId];
 		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
 
-		const tool = this.config.tools?.find((t) => t.name === toolCall.toolName);
+		const list = AgentMessageList.deserialize(state.messageList);
+		this.hydrateDeferredToolsFromList(list);
+
+		const tool = this.getCurrentTools().find((t) => t.name === toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
@@ -470,8 +473,6 @@ export class AgentRuntime {
 		}
 
 		try {
-			const list = AgentMessageList.deserialize(state.messageList);
-
 			// Merge persisted execution options with fresh caller options
 			const { runId: _rid, toolCallId: _tcid, ...callerExecOptions } = options;
 			const persisted = state.executionOptions ?? {};
@@ -1519,12 +1520,12 @@ export class AgentRuntime {
 		switch (provider) {
 			case 'anthropic': {
 				const cfg = thinking as AnthropicThinkingConfig;
+				if (cfg.mode === 'adaptive') {
+					return { anthropic: { thinking: { type: 'adaptive' } } };
+				}
 				return {
 					anthropic: {
-						thinking: {
-							type: 'enabled',
-							budgetTokens: cfg.budgetTokens ?? 10000,
-						},
+						thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
 					},
 				};
 			}

@@ -130,6 +130,8 @@ export class DeferredToolManager {
 	}
 
 	hydrateLoadedToolsFromMessages(messages: AgentDbMessage[]): void {
+		this.loadedToolNames.clear();
+
 		for (const message of messages) {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
 			for (const block of message.content) {
