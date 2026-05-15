@@ -5,16 +5,6 @@ import {
 	type AiInsightsResponse,
 } from '../eval-insights.schema';
 
-/**
- * Strict-validation guarantees per master spec §9.3 / §9.5: the schemas
- * used to validate LLM output (and cached envelopes) must reject unknown
- * keys instead of silently stripping them. Without strict mode a
- * hallucinated field on an agent response would pass validation, the
- * cached envelope would lose the extra data on round-trip, and the
- * "retry with stricter prompt" path in `EvalInsightsService` would never
- * fire.
- */
-
 function makeValidPayload(over: Partial<AiInsightsPayload> = {}): AiInsightsPayload {
 	return {
 		winner: { versionLabel: 'A', headline: 'A wins', body: 'A leads on score.' },
@@ -91,6 +81,19 @@ describe('aiInsightsPayloadSchema (strict)', () => {
 		});
 		expect(result.success).toBe(false);
 	});
+
+	it('accepts long strings (no max-length limits — LLMs would trip them)', () => {
+		// Length limits force false rejections on LLM outputs that are
+		// otherwise semantically correct; UI truncation handles overruns.
+		const payload = makeValidPayload({
+			winner: {
+				versionLabel: 'A',
+				headline: 'h'.repeat(500),
+				body: 'b'.repeat(2000),
+			},
+		});
+		expect(aiInsightsPayloadSchema.safeParse(payload).success).toBe(true);
+	});
 });
 
 describe('aiInsightsResponseSchema (strict)', () => {
@@ -101,9 +104,6 @@ describe('aiInsightsResponseSchema (strict)', () => {
 	});
 
 	it('rejects unknown keys at the envelope root', () => {
-		// Forward-compat scenario: a cached envelope from an older app
-		// version may carry a now-unknown field. Strict mode forces the
-		// service to regenerate rather than silently strip the field.
 		const result = aiInsightsResponseSchema.safeParse({
 			...makeValidEnvelope(),
 			cacheGeneratedBy: 'v0.5-legacy',
