@@ -5224,6 +5224,8 @@
 	"evaluation.setup.metrics": "Metrics",
 	"evaluation.setup.metrics.helper": "scores recorded for each version",
 	"evaluation.setup.metrics.empty": "No metrics defined for this dataset yet.",
+	"evaluation.setup.metrics.addMetric": "Add metric",
+	"evaluation.setup.metrics.addComingSoon": "Add new metrics from the dataset editor — wizard support coming soon",
 	"evaluation.setup.footer.summary.pickMore": "Pick 2 or more versions to compare",
 	"evaluation.setup.footer.summary.reuse": "1 version selected · re-using existing run | {count} versions selected · re-using existing runs",
 	"evaluation.setup.footer.summary.mixed": "{total} versions selected · {newCount} will run new",

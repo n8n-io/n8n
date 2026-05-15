@@ -27,6 +27,15 @@ const status = computed<'done' | 'running'>(() => {
 	return inFlight ? 'running' : 'done';
 });
 
+// Append a right arrow so the CTA reads "Open compare →" the way the
+// Figma mock does. N8nButton doesn't accept a trailing icon prop today,
+// so the arrow lives in the label string.
+const ctaLabel = computed(() => {
+	const key =
+		status.value === 'done' ? 'evaluation.compare.openCompare' : 'evaluation.compare.viewProgress';
+	return `${i18n.baseText(key)} →`;
+});
+
 // "today, 09:14" / "May 12, 09:14" — most-recent completed run's timestamp.
 // Falls back to the collection's `updatedAt` if no run has a date yet.
 const lastRunRelative = computed<string | null>(() => {
@@ -160,12 +169,9 @@ const ensureDetailLoaded = () => {
 			<N8nTooltip placement="top" :content="i18n.baseText('evaluation.compare.comingSoon')">
 				<N8nButton
 					variant="outline"
+					size="medium"
 					disabled
-					:label="
-						status === 'done'
-							? i18n.baseText('evaluation.compare.openCompare')
-							: i18n.baseText('evaluation.compare.viewProgress')
-					"
+					:label="ctaLabel"
 					data-test-id="eval-collections-card-cta"
 				/>
 			</N8nTooltip>

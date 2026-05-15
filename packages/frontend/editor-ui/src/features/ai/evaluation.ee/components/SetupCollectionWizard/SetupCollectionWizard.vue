@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nDialog, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nIcon, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -370,6 +370,21 @@ const onSubmit = async () => {
 						<N8nIcon :icon="selectedMetricNames.has(metric) ? 'check' : 'plus'" size="xsmall" />
 						<span>{{ metric }}</span>
 					</button>
+					<N8nTooltip
+						v-if="allMetricNames.length > 0"
+						placement="top"
+						:content="i18n.baseText('evaluation.setup.metrics.addComingSoon')"
+					>
+						<button
+							type="button"
+							disabled
+							:class="[$style.metricPill, $style.metricPill_add]"
+							data-test-id="setup-collection-wizard-add-metric"
+						>
+							<N8nIcon icon="plus" size="xsmall" />
+							<span>{{ i18n.baseText('evaluation.setup.metrics.addMetric') }}</span>
+						</button>
+					</N8nTooltip>
 					<N8nText v-if="allMetricNames.length === 0" size="xsmall" color="text-light">
 						{{ i18n.baseText('evaluation.setup.metrics.empty') }}
 					</N8nText>
@@ -491,6 +506,13 @@ const onSubmit = async () => {
 	background: var(--background--success, var(--color--green-50));
 	border-color: var(--border-color--success, var(--color--green-200));
 	color: var(--text-color--success, var(--color--green-800));
+}
+
+.metricPill_add {
+	border-style: dashed;
+	color: var(--text-color--subtler);
+	cursor: not-allowed;
+	opacity: 0.7;
 }
 
 .footer {

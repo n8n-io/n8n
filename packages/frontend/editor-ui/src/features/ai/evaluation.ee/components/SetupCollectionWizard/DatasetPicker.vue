@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -55,14 +55,20 @@ const selectedSubtext = computed(() => {
 
 <template>
 	<div :class="$style.wrap" data-test-id="dataset-picker">
-		<N8nSelect
-			:model-value="selectedId ?? ''"
-			:placeholder="i18n.baseText('evaluation.setup.dataset.placeholder')"
-			size="medium"
-			@update:model-value="emit('update:selectedId', $event)"
-		>
-			<N8nOption v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.label" />
-		</N8nSelect>
+		<div :class="$style.pickerRow">
+			<span :class="$style.datasetIcon" aria-hidden="true">
+				<N8nIcon icon="database" size="small" />
+			</span>
+			<N8nSelect
+				:class="$style.select"
+				:model-value="selectedId ?? ''"
+				:placeholder="i18n.baseText('evaluation.setup.dataset.placeholder')"
+				size="medium"
+				@update:model-value="emit('update:selectedId', $event)"
+			>
+				<N8nOption v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.label" />
+			</N8nSelect>
+		</div>
 
 		<div v-if="selected" :class="$style.selectedSubtext">
 			<N8nText size="small" color="text-light">{{ selectedSubtext }}</N8nText>
@@ -86,6 +92,28 @@ const selectedSubtext = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.pickerRow {
+	display: grid;
+	grid-template-columns: 32px 1fr;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.datasetIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: var(--radius--xs);
+	background: var(--background--brand, var(--color--orange-500));
+	color: var(--color--white);
+}
+
+.select {
+	min-width: 0;
 }
 
 .selectedSubtext {
