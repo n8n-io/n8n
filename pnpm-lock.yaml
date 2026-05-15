@@ -510,6 +510,9 @@ patchedDependencies:
   vue-tsc@2.2.8:
     hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
     path: patches/vue-tsc@2.2.8.patch
+  vuedraggable@4.1.0:
+    hash: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
+    path: patches/vuedraggable@4.1.0.patch
   z-vue-scan:
     hash: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
     path: patches/z-vue-scan.patch
@@ -4093,7 +4096,7 @@ importers:
         version: 4.1.3
       vuedraggable:
         specifier: 4.1.0
-        version: 4.1.0(vue@3.5.26(typescript@6.0.2))
+        version: 4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2))
       wa-sqlite:
         specifier: github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7
         version: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7
@@ -45369,7 +45372,7 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.2
 
-  vuedraggable@4.1.0(vue@3.5.26(typescript@6.0.2)):
+  vuedraggable@4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       sortablejs: 1.14.0
       vue: 3.5.26(typescript@6.0.2)
