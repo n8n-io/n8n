@@ -34,71 +34,73 @@ const close = () => emit('update:open', false);
 
 <template>
 	<Teleport to="body">
-		<aside
-			v-if="open"
-			:class="$style.drawer"
-			role="dialog"
-			aria-modal="false"
-			data-test-id="version-quick-view"
-		>
-			<header :class="$style.header">
-				<N8nText tag="h3" size="medium" bold>
-					{{ version?.label ?? '' }}
-				</N8nText>
-				<button
-					type="button"
-					:class="$style.closeBtn"
-					:aria-label="i18n.baseText('generic.close')"
-					@click="close"
-				>
-					<N8nIcon icon="x" size="small" />
-				</button>
-			</header>
-
-			<div :class="$style.body">
-				<dl :class="$style.meta">
-					<div :class="$style.metaRow">
-						<dt>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('evaluation.setup.versions.col.version')
-							}}</N8nText>
-						</dt>
-						<dd>
-							<N8nText size="small">{{ version?.sourceLabel ?? '—' }}</N8nText>
-						</dd>
-					</div>
-					<div :class="$style.metaRow">
-						<dt>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('evaluation.setup.versions.col.lastRun', {
-									interpolate: { dataset: datasetLabel },
-								})
-							}}</N8nText>
-						</dt>
-						<dd>
-							<N8nText size="small">{{ formatDate(version?.lastRun?.runAt ?? null) }}</N8nText>
-						</dd>
-					</div>
-					<div :class="$style.metaRow">
-						<dt>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('evaluation.setup.versions.col.avgScore')
-							}}</N8nText>
-						</dt>
-						<dd>
-							<N8nText size="small" bold>{{ scoreLabel }}</N8nText>
-						</dd>
-					</div>
-				</dl>
-
-				<div :class="$style.placeholderCanvas">
-					<N8nIcon icon="eye" size="medium" />
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('evaluation.setup.versions.previewPlaceholder') }}
+		<Transition :enter-from-class="$style.drawerEnter" :leave-to-class="$style.drawerLeave">
+			<aside
+				v-if="open"
+				:class="$style.drawer"
+				role="dialog"
+				aria-modal="false"
+				data-test-id="version-quick-view"
+			>
+				<header :class="$style.header">
+					<N8nText tag="h3" size="medium" bold>
+						{{ version?.label ?? '' }}
 					</N8nText>
+					<button
+						type="button"
+						:class="$style.closeBtn"
+						:aria-label="i18n.baseText('generic.close')"
+						@click="close"
+					>
+						<N8nIcon icon="x" size="small" />
+					</button>
+				</header>
+
+				<div :class="$style.body">
+					<dl :class="$style.meta">
+						<div :class="$style.metaRow">
+							<dt>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('evaluation.setup.versions.col.version')
+								}}</N8nText>
+							</dt>
+							<dd>
+								<N8nText size="small">{{ version?.sourceLabel ?? '—' }}</N8nText>
+							</dd>
+						</div>
+						<div :class="$style.metaRow">
+							<dt>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('evaluation.setup.versions.col.lastRun', {
+										interpolate: { dataset: datasetLabel },
+									})
+								}}</N8nText>
+							</dt>
+							<dd>
+								<N8nText size="small">{{ formatDate(version?.lastRun?.runAt ?? null) }}</N8nText>
+							</dd>
+						</div>
+						<div :class="$style.metaRow">
+							<dt>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('evaluation.setup.versions.col.avgScore')
+								}}</N8nText>
+							</dt>
+							<dd>
+								<N8nText size="small" bold>{{ scoreLabel }}</N8nText>
+							</dd>
+						</div>
+					</dl>
+
+					<div :class="$style.placeholderCanvas">
+						<N8nIcon icon="eye" size="medium" />
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('evaluation.setup.versions.previewPlaceholder') }}
+						</N8nText>
+					</div>
 				</div>
-			</div>
-		</aside>
+			</aside>
+		</Transition>
 	</Teleport>
 </template>
 
@@ -114,10 +116,20 @@ const close = () => emit('update:open', false);
 	border-left: 1px solid var(--border-color--base);
 	display: flex;
 	flex-direction: column;
+	transform: translateX(0);
+	transition:
+		transform var(--transition-duration--base, 180ms) ease,
+		opacity var(--transition-duration--base, 180ms) ease;
 	// Reka-ui's N8nDialog overlay sits at z-index 2000. The drawer needs to
 	// float above it since users open it FROM inside the dialog. 2010 keeps
 	// it under app-level toasts (3000+).
 	z-index: 2010;
+}
+
+.drawerEnter,
+.drawerLeave {
+	transform: translateX(100%);
+	opacity: 0;
 }
 
 .header {
