@@ -14,6 +14,7 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 
 // The webhook route is the single exception: it is `skipAuth: true` (no
 // req.user) and authenticates inbound third-party callbacks via per-platform
@@ -288,5 +289,155 @@ describe('AgentsController integration credentials', () => {
 			status: 'connected',
 			integrations: [{ type: 'telegram', credentialId: 'cred-telegram', settings }],
 		});
+	});
+});
+
+describe('AgentsController agent resource', () => {
+	it('adds runnable state to the single-agent response', async () => {
+		const agentsService = mock<AgentsService>();
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+
+		const controller = new AgentsController(
+			agentsService,
+			mock<AgentsBuilderService>(),
+			mock<CredentialsService>(),
+			mock<ChatIntegrationService>(),
+			mock<AgentScheduleService>(),
+			mock<AgentRepository>(),
+			mock<AgentExecutionService>(),
+			mock<ChatIntegrationRegistry>(),
+		);
+
+		const result = await controller.get(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+		);
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'agent-1',
+				isRunnable: true,
+			}),
+		);
+		expect(agentsService.validateAgentIsRunnable).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			expect.any(AgentsCredentialProvider),
+		);
+	});
+
+	it('marks the single-agent response as not runnable when validation reports missing fields', async () => {
+		const agentsService = mock<AgentsService>();
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({
+			missing: ['credential'],
+		});
+
+		const controller = new AgentsController(
+			agentsService,
+			mock<AgentsBuilderService>(),
+			mock<CredentialsService>(),
+			mock<ChatIntegrationService>(),
+			mock<AgentScheduleService>(),
+			mock<AgentRepository>(),
+			mock<AgentExecutionService>(),
+			mock<ChatIntegrationRegistry>(),
+		);
+
+		const result = await controller.get(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+		);
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'agent-1',
+				isRunnable: false,
+			}),
+		);
+	});
+});
+
+describe('AgentsController chat message history', () => {
+	function makeController() {
+		const agentsService = mock<AgentsService>();
+		const controller = new AgentsController(
+			agentsService,
+			mock<AgentsBuilderService>(),
+			mock<CredentialsService>(),
+			mock<ChatIntegrationService>(),
+			mock<AgentScheduleService>(),
+			mock<AgentRepository>(),
+			mock<AgentExecutionService>(),
+			mock<ChatIntegrationRegistry>(),
+		);
+
+		return { controller, agentsService };
+	}
+
+	it('returns conversation history from the agents service', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue([
+			{
+				id: 'execution-1:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Hello' }],
+			},
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi there' }],
+			},
+		]);
+
+		const messages = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(messages).toEqual([
+			{
+				id: 'execution-1:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Hello' }],
+			},
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi there' }],
+			},
+		]);
+		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
+			threadId: 'thread-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		});
+	});
+
+	it('rejects missing conversation history', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue(null);
+
+		await expect(
+			controller.getChatMessages({
+				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			} as never),
+		).rejects.toThrow(NotFoundError);
 	});
 });

@@ -455,6 +455,15 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 
+### Slack Scripts
+
+See [Slack Notifications](#slack-notifications) for the calling pattern.
+
+| Script                          | Purpose                                                                       |
+|---------------------------------|-------------------------------------------------------------------------------|
+| `slack/notify.mjs`              | CLI + `sendSlackMessage` export. POSTs `chat.postMessage`, fails on `ok:false`. |
+| `slack/build-trivy-blocks.mjs`  | `--blocks trivy` — vulnerability digest                                       |
+
 ---
 
 ## Telemetry
@@ -556,7 +565,7 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 - **Runs on:** stable/nightly/rc Docker builds
 - **Scans:** n8n image, runners image
-- **Output:** Slack `#notify-security-scan-outputs` (all), `#mission-security` (critical)
+- **Output:** Slack `#updates-security` when vulnerabilities are detected
 
 ### SBOM
 
@@ -634,6 +643,44 @@ cosign verify-attestation --type openvex \
 
 ---
 
+## Slack Notifications
+
+All workflows post via `.github/scripts/slack/notify.mjs` — a direct `fetch` to `chat.postMessage` that exits non-zero on any Slack error. No third-party action; no silent swallowing.
+
+```yaml
+notify-on-failure:
+  runs-on: ubuntu-latest
+  needs: [build]
+  if: ${{ always() && contains(needs.*.result, 'failure') }}
+  steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        sparse-checkout: .github/scripts/slack
+        sparse-checkout-cone-mode: false
+    - name: Notify Slack
+      env:
+        SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+      run: |
+        node .github/scripts/slack/notify.mjs \
+          --channel '#alerts-build' \
+          --text 'Build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+```
+
+If notify is a step inside an existing checked-out job, skip the `checkout` and gate with step-level `if: failure()` instead.
+
+> `if: failure()` at the **step** level of a dedicated notify job is a no-op when a `needs:` dependency fails (the job is skipped before steps evaluate). Always gate the **job** with `if: ${{ always() && contains(needs.*.result, 'failure') }}`.
+
+**Rich payloads (Block Kit):** add `build-<name>-blocks.mjs` whose default export returns a blocks array, then pass `--blocks <name>` plus any workflow-specific args. Builders read repo / run context from `GITHUB_*` runner env vars. Kebab-case flags become camelCase keys for the builder (`--image-ref` → `imageRef`).
+
+| Token                        | Bot            | Channels                                                    |
+|------------------------------|----------------|-------------------------------------------------------------|
+| `QBOT_SLACK_TOKEN`           | QBot           | Default — engineering / build / security                    |
+| `RELEASE_HELPER_SLACK_TOKEN` | Release Helper | `#releases` (C036AELNMV0)                                   |
+
+Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
+
+---
+
 ## Secrets
 
 ### By Category
@@ -641,7 +688,7 @@ cosign verify-attestation --type openvex \
 | Category            | Secrets                                                     |
 |---------------------|-------------------------------------------------------------|
 | Package Publishing  | `NPM_TOKEN`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`           |
-| Notifications       | `SLACK_WEBHOOK_URL`, `QBOT_SLACK_TOKEN`                     |
+| Notifications       | `QBOT_SLACK_TOKEN`, `RELEASE_HELPER_SLACK_TOKEN`            |
 | Code Quality        | `CODECOV_TOKEN`, `CHROMATIC_PROJECT_TOKEN`, `CURRENTS_RECORD_KEY` |
 | Error Tracking      | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_*_PROJECT`       |
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |

@@ -8,6 +8,7 @@ import type {
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AGENT_WORKFLOW_TRIGGER_TYPE,
+	type AgentPersistedMessageDto,
 	isAgentCredentialIntegration,
 	isAgentScheduleIntegration,
 	type AgentSkill,
@@ -54,6 +55,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
@@ -66,7 +68,11 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
-import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
+import {
+	AgentJsonConfigSchema,
+	AgentModelSchema,
+	isNodeToolsEnabled,
+} from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
 	AgentJsonConfigRef,
@@ -301,11 +307,10 @@ export class AgentsService {
 	async create(projectId: string, name: string): Promise<Agent> {
 		// New agents start with no instructions so the home screen routes the
 		// first user message to the builder (/build) instead of to the chat
-		// endpoint. The builder fills in instructions and credentials.
+		// endpoint. The builder or manual model picker fills in the LLM config.
 		const defaultConfig: AgentJsonConfig = {
 			name,
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: '',
+			model: '',
 			instructions: '',
 			tools: [],
 			skills: [],
@@ -582,9 +587,22 @@ export class AgentsService {
 		return true;
 	}
 
-	/** Return persisted chat messages for a given session/thread. */
-	async getChatMessages(threadId: string) {
-		return await this.n8nMemory.getMessages(threadId);
+	/**
+	 * Return user-visible conversation history for a persisted chat thread.
+	 *
+	 * Execution records are the source of truth for the UI transcript. SDK
+	 * memory is runtime context for the agent: it can be disabled, windowed, or
+	 * shaped for model input rather than for user-facing history.
+	 */
+	async getConversationHistory(params: {
+		threadId: string;
+		projectId: string;
+		agentId: string;
+	}): Promise<AgentPersistedMessageDto[] | null> {
+		const { threadId, projectId, agentId } = params;
+		const detail = await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId);
+		if (!detail) return null;
+		return executionsToMessagesDto(detail.executions);
 	}
 
 	private getMemoryFactory(): MemoryFactory {
@@ -875,21 +893,22 @@ export class AgentsService {
 		const missing: string[] = [];
 
 		if (!config) {
-			return { missing: ['instructions', 'model'] };
+			return { missing: ['instructions', 'model', 'credential'] };
 		}
 
 		if (!config.instructions?.trim()) {
 			missing.push('instructions');
 		}
 
-		const modelSchema = AgentJsonConfigSchema.shape.model;
-		if (!config.model || !modelSchema.safeParse(config.model).success) {
+		if (!config.model?.trim() || !AgentModelSchema.safeParse(config.model).success) {
 			missing.push('model');
 		}
 
-		if (config.credential) {
+		if (!config.credential?.trim()) {
+			missing.push('credential');
+		} else {
 			try {
-				const credentialId = config.credential;
+				const credentialId = config.credential.trim();
 				const creds = await credentialProvider.list();
 				const exists = creds.some((c) => c.id === credentialId);
 				if (!exists) missing.push('credential');
