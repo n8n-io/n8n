@@ -33,12 +33,31 @@ describe('credential guardrail prompts', () => {
 		);
 	});
 
-	it('tells the planner to ask when a required service has more than one credential of the same type', () => {
+	it('tells the planner not to block planning on credential selection', () => {
+		expect(PLANNER_AGENT_PROMPT).toContain('Handle credentials without blocking planning');
+		expect(PLANNER_AGENT_PROMPT).toContain('If the user already named a credential');
+		expect(PLANNER_AGENT_PROMPT).toContain('If there is exactly one matching credential');
+		expect(PLANNER_AGENT_PROMPT).toContain('auto-select it, do not ask');
+		expect(PLANNER_AGENT_PROMPT).toContain('If there are no matching credentials, do not ask');
+		expect(PLANNER_AGENT_PROMPT).toContain('builder will use a mocked or unresolved credential');
 		expect(PLANNER_AGENT_PROMPT).toContain(
-			'Do ask when a required service has more than one credential of the same type',
+			'If there is more than one credential of the same required type',
 		);
+		expect(PLANNER_AGENT_PROMPT).toContain('ask once with a single-select');
 		expect(PLANNER_AGENT_PROMPT).toContain('cannot be discovered, only chosen');
+		expect(PLANNER_AGENT_PROMPT).toContain('credential-backed resource investigation');
+		expect(PLANNER_AGENT_PROMPT).toContain('Do not turn that into a credential-choice question');
 		expect(PLANNER_AGENT_PROMPT).toContain('Record the chosen credential name in `assumptions`');
+	});
+
+	it('tells the planner to use the contextual timezone before asking', () => {
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			"Never ask for the user's timezone when `<user-timezone>` is present",
+		);
+		expect(PLANNER_AGENT_PROMPT).toContain('use `<current-datetime>` / `<user-timezone>`');
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'Only ask if timezone is missing and a date or schedule cannot be interpreted safely',
+		);
 	});
 
 	it('tells the builder to wrap ambiguous resource matches with placeholder()', () => {

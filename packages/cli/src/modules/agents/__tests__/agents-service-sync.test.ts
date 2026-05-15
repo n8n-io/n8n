@@ -12,6 +12,7 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -78,6 +79,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock(),
 			{ modules: [] } as unknown as AgentsConfig,
 			mock(),
+			mock<Telemetry>(),
 		);
 	});
 
