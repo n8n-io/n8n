@@ -70,6 +70,7 @@ function createDeferred<T>() {
 
 interface PublishedEvent {
 	type: string;
+	responseId?: string;
 	payload?: {
 		requestId?: string;
 		toolCallId?: string;
@@ -197,6 +198,53 @@ describe('executeResumableStream', () => {
 		});
 
 		expect(onActivity).toHaveBeenCalledTimes(2);
+	});
+
+	it('assigns stable response IDs from native start-step chunks', async () => {
+		const eventBus = createEventBus();
+
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{ type: 'start-step' },
+					textChunk('First'),
+					{
+						type: 'tool-call',
+						toolCallId: 'tool-call-1',
+						toolName: 'test-tool',
+						input: {},
+					},
+					textChunk(' step'),
+					{ type: 'finish-step' },
+					{ type: 'start-step' },
+					textChunk('Second step'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(
+			([, event]: [string, PublishedEvent]) => event,
+		);
+		const firstText = publishedEvents.find((event) => event.payload?.text === 'First');
+		const toolCall = publishedEvents.find((event) => event.type === 'tool-call');
+		const firstStepContinuation = publishedEvents.find((event) => event.payload?.text === ' step');
+		const secondText = publishedEvents.find((event) => event.payload?.text === 'Second step');
+
+		expect(firstText?.responseId).toBe('agent-run-1:step:1');
+		expect(toolCall?.responseId).toBe('agent-run-1:step:1');
+		expect(firstStepContinuation?.responseId).toBe('agent-run-1:step:1');
+		expect(secondText?.responseId).toBe('agent-run-1:step:2');
 	});
 
 	it('auto-resumes suspended streams and passes drained corrections to resume data', async () => {

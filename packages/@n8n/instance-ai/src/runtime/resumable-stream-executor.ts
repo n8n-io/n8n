@@ -183,14 +183,6 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 	throw new Error('Unsupported agent stream result');
 }
 
-function getChunkPayload(chunk: unknown): Record<string, unknown> | undefined {
-	if (!isRecord(chunk)) {
-		return undefined;
-	}
-
-	return isRecord(chunk.payload) ? chunk.payload : chunk;
-}
-
 export async function executeResumableStream(
 	options: ExecuteResumableStreamOptions,
 ): Promise<ExecuteResumableStreamResult> {
@@ -200,6 +192,7 @@ export async function executeResumableStream(
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
 
 	let currentResponseId: string | undefined;
+	let nativeStepIndex = 0;
 
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
@@ -220,12 +213,10 @@ export async function executeResumableStream(
 
 			options.context.onActivity?.();
 
-			// Always capture responseId from step-start, regardless of trace hook path.
-			if (isRecord(chunk) && chunk.type === 'step-start') {
-				const stepPayload = getChunkPayload(chunk);
-				const stepMessageId =
-					typeof stepPayload?.messageId === 'string' ? stepPayload.messageId : undefined;
-				currentResponseId = stepMessageId;
+			if (isRecord(chunk) && chunk.type === 'start-step') {
+				nativeStepIndex += 1;
+				const responseRunId = activeAgentRunId || options.context.runId;
+				currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
 			}
 
 			const parsedSuspension = parseSuspension(chunk);
