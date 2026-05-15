@@ -57,7 +57,7 @@ jobs:
   run-evals:
     name: 'Run Evals'
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: ${{ inputs.timeout_minutes }}
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
