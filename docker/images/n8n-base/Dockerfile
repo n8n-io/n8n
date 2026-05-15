@@ -29,4 +29,8 @@ RUN apk add --no-cache busybox-binsh && \
     apk del apk-tools
 
 WORKDIR /home/node
+# npm prefix -g is /usr/local but node's built-in search path is /usr/lib/node_modules.
+# Bridge the two so users extending this image with `RUN npm install -g <pkg>` can
+# `require(<pkg>)` from a Function/Code node at runtime (gh #24191).
+ENV NODE_PATH=/usr/local/lib/node_modules
 EXPOSE 5678/tcp
