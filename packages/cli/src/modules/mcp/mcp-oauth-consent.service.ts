@@ -98,6 +98,7 @@ export class McpOAuthConsentService {
 			sessionPayload.redirectUri,
 			sessionPayload.codeChallenge,
 			sessionPayload.state,
+			sessionPayload.resource,
 		);
 
 		const successRedirectUrl = McpOAuthHelpers.buildSuccessRedirectUrl(

@@ -25,6 +25,7 @@ export class McpOAuthAuthorizationCodeService {
 		redirectUri: string,
 		codeChallenge: string,
 		state: string | null,
+		resource?: string,
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
@@ -36,6 +37,7 @@ export class McpOAuthAuthorizationCodeService {
 			codeChallenge,
 			codeChallengeMethod: 'S256',
 			state,
+			resource: resource ?? null,
 			expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
 			used: false,
 		});
