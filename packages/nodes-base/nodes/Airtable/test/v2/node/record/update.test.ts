@@ -214,4 +214,115 @@ describe('Test AirtableV2, update operation', () => {
 			[{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
 		);
 	});
+
+	it('should update a record by lookup field with array value, autoMapInputData', async () => {
+		(transport.apiRequestAllItems as jest.Mock).mockResolvedValueOnce({
+			records: [
+				{
+					id: 'recAAA',
+					fields: {
+						lookupField: ['lookup_val_1'],
+					},
+				},
+				{
+					id: 'recBBB',
+					fields: {
+						lookupField: ['lookup_val_2'],
+					},
+				},
+			],
+		});
+
+		const nodeParameters = {
+			operation: 'update',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['lookupField'],
+			},
+			options: {},
+		};
+
+		const items = [
+			{
+				json: {
+					lookupField: 'lookup_val_1',
+					name: 'updated name',
+				},
+			},
+		];
+
+		await update.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.batchUpdate).toHaveBeenCalledWith(
+			'appYoLbase/tblltable',
+			{ typecast: false },
+			[{ fields: { lookupField: 'lookup_val_1', name: 'updated name' }, id: 'recAAA' }],
+		);
+	});
+
+	it('should update all matches by lookup field with array value, autoMapInputData', async () => {
+		(transport.apiRequestAllItems as jest.Mock).mockResolvedValueOnce({
+			records: [
+				{
+					id: 'recAAA',
+					fields: {
+						lookupField: ['shared_val'],
+					},
+				},
+				{
+					id: 'recBBB',
+					fields: {
+						lookupField: ['other_val'],
+					},
+				},
+				{
+					id: 'recCCC',
+					fields: {
+						lookupField: ['shared_val'],
+					},
+				},
+			],
+		});
+
+		const nodeParameters = {
+			operation: 'update',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['lookupField'],
+			},
+			options: {
+				updateAllMatches: true,
+			},
+		};
+
+		const items = [
+			{
+				json: {
+					lookupField: 'shared_val',
+					name: 'updated name',
+				},
+			},
+		];
+
+		await update.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.batchUpdate).toHaveBeenCalledWith(
+			'appYoLbase/tblltable',
+			{ typecast: false },
+			[
+				{ fields: { lookupField: 'shared_val', name: 'updated name' }, id: 'recAAA' },
+				{ fields: { lookupField: 'shared_val', name: 'updated name' }, id: 'recCCC' },
+			],
+		);
+	});
 });

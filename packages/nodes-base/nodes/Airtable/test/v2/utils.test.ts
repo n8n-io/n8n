@@ -1,4 +1,9 @@
-import { coerceArrayTypeFields, findMatches, removeIgnored } from '../../v2/helpers/utils';
+import {
+	coerceArrayTypeFields,
+	findMatches,
+	removeIgnored,
+	valuesMatch,
+} from '../../v2/helpers/utils';
 
 const makeColumnsParam = (fields: Array<{ id: string; type: string }>) => ({
 	mappingMode: 'defineBelow',
@@ -178,5 +183,119 @@ describe('test AirtableV2, findMatches', () => {
 				},
 			},
 		]);
+	});
+
+	it('should find match when record field value is an array and input is a scalar', () => {
+		const data = [
+			{
+				fields: {
+					lookupField: ['value1'],
+					data: 'data 1',
+				},
+			},
+			{
+				fields: {
+					lookupField: ['value2'],
+					data: 'data 2',
+				},
+			},
+		];
+
+		const result = findMatches(data, ['lookupField'], {
+			lookupField: 'value1',
+			data: 'updated',
+		});
+
+		expect(result).toEqual([
+			{
+				fields: {
+					lookupField: ['value1'],
+					data: 'data 1',
+				},
+			},
+		]);
+	});
+
+	it('should find all matches when record field values are arrays and input is a scalar', () => {
+		const data = [
+			{
+				fields: {
+					lookupField: ['shared'],
+					data: 'data 1',
+				},
+			},
+			{
+				fields: {
+					lookupField: ['other'],
+					data: 'data 2',
+				},
+			},
+			{
+				fields: {
+					lookupField: ['shared'],
+					data: 'data 3',
+				},
+			},
+		];
+
+		const result = findMatches(
+			data,
+			['lookupField'],
+			{
+				lookupField: 'shared',
+				data: 'updated',
+			},
+			true,
+		);
+
+		expect(result).toHaveLength(2);
+		expect(result[0].fields.lookupField).toEqual(['shared']);
+		expect(result[1].fields.lookupField).toEqual(['shared']);
+	});
+});
+
+describe('test AirtableV2, valuesMatch', () => {
+	it('should match identical scalar values', () => {
+		expect(valuesMatch('foo', 'foo')).toBe(true);
+	});
+
+	it('should not match different scalar values', () => {
+		expect(valuesMatch('foo', 'bar')).toBe(false);
+	});
+
+	it('should match when record value is an array containing the input value', () => {
+		expect(valuesMatch(['foo'], 'foo')).toBe(true);
+	});
+
+	it('should match when record value is a multi-element array containing the input value', () => {
+		expect(valuesMatch(['foo', 'bar'], 'foo')).toBe(true);
+	});
+
+	it('should not match when record value is an array not containing the input value', () => {
+		expect(valuesMatch(['foo'], 'bar')).toBe(false);
+	});
+
+	it('should match identical arrays', () => {
+		expect(valuesMatch(['foo', 'bar'], ['foo', 'bar'])).toBe(true);
+	});
+
+	it('should not match arrays with different lengths', () => {
+		expect(valuesMatch(['foo'], ['foo', 'bar'])).toBe(false);
+	});
+
+	it('should not match arrays with different elements', () => {
+		expect(valuesMatch(['foo', 'baz'], ['foo', 'bar'])).toBe(false);
+	});
+
+	it('should match identical numbers', () => {
+		expect(valuesMatch(42, 42)).toBe(true);
+	});
+
+	it('should not match undefined values to a string', () => {
+		expect(valuesMatch(undefined, 'foo')).toBe(false);
+	});
+
+	it('should match when both are undefined', () => {
+		expect(valuesMatch(undefined, undefined)).toBe(true);
 	});
 });
