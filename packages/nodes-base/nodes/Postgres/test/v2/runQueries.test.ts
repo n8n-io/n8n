@@ -179,6 +179,26 @@ describe('isSelectQuery', () => {
 		["SELECT with ';' inside a string literal", "SELECT 'a;b' AS s WHERE 1 = 0"],
 		['SELECT with a dollar-quoted string', 'SELECT $$DROP TABLE users$$ AS s WHERE 1 = 0'],
 		['SELECT with an E-string and escaped quote', "SELECT E'it\\'s fine' AS s WHERE 1 = 0"],
+		// Doubled single-quote escape (`''`) inside a string literal must not terminate the string
+		[
+			"SELECT with '' (doubled single quote) inside a string literal",
+			"SELECT 'it''s fine' AS s WHERE 1 = 0",
+		],
+		[
+			"doubled single quote keeps a trailing ';UPDATE' contained inside the literal",
+			"SELECT 'a''; UPDATE users SET name = ''x''' AS s WHERE 1 = 0",
+		],
+		// Double-quoted identifiers (table/column names) must be skipped by the classifier
+		['SELECT with a double-quoted identifier', 'SELECT "id" FROM "users" WHERE "id" = 1'],
+		[
+			'SELECT with a double-quoted identifier containing keywords',
+			'SELECT * FROM "UPDATE users SET" WHERE 1 = 0',
+		],
+		[
+			'SELECT with a double-quoted identifier containing an escaped quote',
+			'SELECT "weird\\"name" FROM users WHERE 1 = 0',
+		],
+		['SELECT with an unterminated double-quoted identifier', 'SELECT "unterminated'],
 	])('returns true for %s', (_label, query) => {
 		expect(isSelectQuery(query)).toBe(true);
 	});
