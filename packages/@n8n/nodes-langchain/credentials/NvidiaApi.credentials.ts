@@ -1,7 +1,8 @@
 import type {
-	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -34,14 +35,20 @@ export class NvidiaApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
+	authenticate = async (
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> => {
+		if (!credentials.apiKey) {
+			return requestOptions;
+		}
+		return {
+			...requestOptions,
 			headers: {
-				Authorization:
-					'={{ $credentials.apiKey ? "Bearer " + $credentials.apiKey : undefined }}',
+				...requestOptions.headers,
+				Authorization: `Bearer ${credentials.apiKey as string}`,
 			},
-		},
+		};
 	};
 
 	test: ICredentialTestRequest = {
