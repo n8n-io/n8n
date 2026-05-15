@@ -59,4 +59,27 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_PRUNE_CHECK_INTERVAL_HOURS')
 	pruneCheckIntervalHours: number = 24;
+
+	/**
+	 * The maximum number of compaction batches to process in a single compaction run.
+	 * Set to 0 to disable this limit.
+	 * Default: 1000
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_MAX_BATCHES_PER_RUN')
+	compactionMaxBatchesPerRun: number = 1000;
+
+	/**
+	 * The maximum runtime in seconds for a single compaction run.
+	 * Set to 0 to disable this limit.
+	 * Default: 300
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_MAX_RUNTIME_SECONDS')
+	compactionMaxRuntimeSeconds: number = 300;
+
+	/**
+	 * The delay in milliseconds between full compaction batches.
+	 * Default: 100
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_BATCH_DELAY_MILLISECONDS')
+	compactionBatchDelayMilliseconds: number = 100;
 }

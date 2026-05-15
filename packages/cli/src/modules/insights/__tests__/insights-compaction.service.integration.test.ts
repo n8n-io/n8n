@@ -5,6 +5,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
@@ -337,6 +338,377 @@ describe('compaction', () => {
 				insightsCompactionService.stopCompactionTimer();
 				jest.useRealTimers();
 			}
+		});
+	});
+
+	describe('compactInsights overlap guard', () => {
+		test('skips overlapping compaction and allows a later run after the active run completes', async () => {
+			// ARRANGE
+			const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+				}),
+				logger,
+			);
+
+			let resolveRawToHour!: (numberOfCompactedRawData: number) => void;
+			const firstRawToHourPromise = new Promise<number>((resolve) => {
+				resolveRawToHour = resolve;
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockReturnValueOnce(firstRawToHourPromise)
+				.mockResolvedValue(0);
+			const hourToDaySpy = jest
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValue(0);
+			const dayToWeekSpy = jest
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			const firstCompactionPromise = insightsCompactionService.compactInsights();
+			await Promise.resolve();
+
+			const batchMethodCallsBeforeSkippedRun =
+				rawToHourSpy.mock.calls.length +
+				hourToDaySpy.mock.calls.length +
+				dayToWeekSpy.mock.calls.length;
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Skipping insights compaction because another compaction run is active',
+			);
+			expect(
+				rawToHourSpy.mock.calls.length +
+					hourToDaySpy.mock.calls.length +
+					dayToWeekSpy.mock.calls.length,
+			).toBe(batchMethodCallsBeforeSkippedRun);
+
+			resolveRawToHour(0);
+			await firstCompactionPromise;
+
+			await insightsCompactionService.compactInsights();
+
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+			expect(hourToDaySpy).toHaveBeenCalledTimes(2);
+			expect(dayToWeekSpy).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('compactInsights run limits', () => {
+		const createCompactionService = (config: Partial<InsightsConfig> = {}) => {
+			const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+					compactionMaxBatchesPerRun: 1000,
+					compactionMaxRuntimeSeconds: 300,
+					...config,
+				}),
+				logger,
+			);
+
+			return { insightsCompactionService, logger };
+		};
+
+		afterEach(() => {
+			jest.useRealTimers();
+			jest.restoreAllMocks();
+		});
+
+		test('stops after compactionMaxBatchesPerRun', async () => {
+			// ARRANGE
+			const { insightsCompactionService, logger } = createCompactionService({
+				compactionMaxBatchesPerRun: 2,
+				compactionMaxRuntimeSeconds: 0,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockResolvedValue(2);
+			const hourToDaySpy = jest
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValue(0);
+			const dayToWeekSpy = jest
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+			expect(hourToDaySpy).not.toHaveBeenCalled();
+			expect(dayToWeekSpy).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Stopping insights compaction because a per-run limit was reached',
+				{
+					reason: 'max-batches',
+					stageName: 'raw-to-hour',
+					batchesProcessed: 2,
+					rowsCompacted: 4,
+					compactionMaxBatchesPerRun: 2,
+					compactionMaxRuntimeSeconds: 0,
+				},
+			);
+		});
+
+		test('stops after compactionMaxRuntimeSeconds', async () => {
+			// ARRANGE
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date(0));
+			const { insightsCompactionService, logger } = createCompactionService({
+				compactionMaxBatchesPerRun: 0,
+				compactionMaxRuntimeSeconds: 1,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockImplementation(async () => {
+					jest.setSystemTime(new Date(1000));
+					return 2;
+				});
+			const hourToDaySpy = jest
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValue(0);
+			const dayToWeekSpy = jest
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(1);
+			expect(hourToDaySpy).not.toHaveBeenCalled();
+			expect(dayToWeekSpy).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Stopping insights compaction because a per-run limit was reached',
+				{
+					reason: 'max-runtime',
+					stageName: 'raw-to-hour',
+					batchesProcessed: 1,
+					rowsCompacted: 2,
+					compactionMaxBatchesPerRun: 0,
+					compactionMaxRuntimeSeconds: 1,
+				},
+			);
+		});
+
+		test('does not continue to later stages after a limit is reached', async () => {
+			// ARRANGE
+			const { insightsCompactionService } = createCompactionService({
+				compactionMaxBatchesPerRun: 1,
+				compactionMaxRuntimeSeconds: 0,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockResolvedValue(1);
+			const hourToDaySpy = jest
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValue(0);
+			const dayToWeekSpy = jest
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(1);
+			expect(hourToDaySpy).not.toHaveBeenCalled();
+			expect(dayToWeekSpy).not.toHaveBeenCalled();
+		});
+
+		test('allows additional batches when compactionMaxBatchesPerRun is disabled', async () => {
+			// ARRANGE
+			const { insightsCompactionService, logger } = createCompactionService({
+				compactionMaxBatchesPerRun: 0,
+				compactionMaxRuntimeSeconds: 300,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockResolvedValueOnce(2)
+				.mockResolvedValueOnce(1);
+			const hourToDaySpy = jest
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValue(0);
+			const dayToWeekSpy = jest
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+			expect(hourToDaySpy).toHaveBeenCalledTimes(1);
+			expect(dayToWeekSpy).toHaveBeenCalledTimes(1);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		test('allows additional runtime when compactionMaxRuntimeSeconds is disabled', async () => {
+			// ARRANGE
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date(0));
+			const { insightsCompactionService, logger } = createCompactionService({
+				compactionMaxBatchesPerRun: 0,
+				compactionMaxRuntimeSeconds: 0,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockImplementationOnce(async () => {
+					jest.setSystemTime(new Date(60_000));
+					return 2;
+				})
+				.mockResolvedValueOnce(1);
+			const hourToDaySpy = jest
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValue(0);
+			const dayToWeekSpy = jest
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+			expect(hourToDaySpy).toHaveBeenCalledTimes(1);
+			expect(dayToWeekSpy).toHaveBeenCalledTimes(1);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		test('preserves existing stage behavior when limits are not reached', async () => {
+			// ARRANGE
+			const { insightsCompactionService, logger } = createCompactionService({
+				compactionMaxBatchesPerRun: 10,
+				compactionMaxRuntimeSeconds: 300,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockResolvedValueOnce(2)
+				.mockResolvedValueOnce(1);
+			const hourToDaySpy = jest
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValueOnce(2)
+				.mockResolvedValueOnce(1);
+			const dayToWeekSpy = jest
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+			expect(hourToDaySpy).toHaveBeenCalledTimes(2);
+			expect(dayToWeekSpy).toHaveBeenCalledTimes(1);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('compactInsights batch delay', () => {
+		const createCompactionService = (config: Partial<InsightsConfig> = {}) =>
+			new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 100,
+					compactionMaxBatchesPerRun: 1000,
+					compactionMaxRuntimeSeconds: 300,
+					...config,
+				}),
+				mockLogger(),
+			);
+
+		beforeEach(() => {
+			jest.useFakeTimers();
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+			jest.restoreAllMocks();
+		});
+
+		test('waits before processing the next batch after a full batch', async () => {
+			// ARRANGE
+			const delayMilliseconds = 100;
+			const insightsCompactionService = createCompactionService({
+				compactionBatchDelayMilliseconds: delayMilliseconds,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockResolvedValueOnce(2)
+				.mockResolvedValueOnce(1);
+			jest.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
+			jest.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
+
+			// ACT
+			const compactInsightsPromise = insightsCompactionService.compactInsights();
+			await Promise.resolve();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(1);
+			expect(jest.getTimerCount()).toBe(1);
+
+			await jest.advanceTimersByTimeAsync(delayMilliseconds - 1);
+			expect(rawToHourSpy).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(1);
+			await compactInsightsPromise;
+
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+		});
+
+		test('does not wait after a partial batch', async () => {
+			// ARRANGE
+			const insightsCompactionService = createCompactionService();
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockResolvedValue(1);
+			jest.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
+			jest.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
+
+			// ACT
+			const compactInsightsPromise = insightsCompactionService.compactInsights();
+			await Promise.resolve();
+
+			// ASSERT
+			expect(jest.getTimerCount()).toBe(0);
+			await compactInsightsPromise;
+			expect(rawToHourSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test('skips the wait when the configured delay is zero', async () => {
+			// ARRANGE
+			const insightsCompactionService = createCompactionService({
+				compactionBatchDelayMilliseconds: 0,
+			});
+			const rawToHourSpy = jest
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockResolvedValueOnce(2)
+				.mockResolvedValueOnce(1);
+			jest.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
+			jest.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
+
+			// ACT
+			const compactInsightsPromise = insightsCompactionService.compactInsights();
+			await Promise.resolve();
+
+			// ASSERT
+			expect(jest.getTimerCount()).toBe(0);
+			await compactInsightsPromise;
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
 		});
 	});
 
