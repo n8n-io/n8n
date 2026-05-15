@@ -15,9 +15,15 @@ const STRAPI_ARRAY_LIMIT = 100;
 @Service()
 export class McpRegistryApiClient {
 	async fetchAllServers(): Promise<McpRegistryServer[]> {
-		return await paginatedRequest<McpRegistryServer>(this.getUrl(), {
-			pagination: { page: 1, pageSize: 25 },
-		});
+		return await paginatedRequest<McpRegistryServer>(
+			this.getUrl(),
+			{
+				pagination: { page: 1, pageSize: 25 },
+			},
+			{
+				throwOnError: true,
+			},
+		);
 	}
 
 	async fetchServersMetadata(): Promise<McpRegistryServerMetadata[]> {
@@ -38,10 +44,16 @@ export class McpRegistryApiClient {
 		for (let i = 0; i < ids.length; i += STRAPI_ARRAY_LIMIT) {
 			const batch = ids.slice(i, i + STRAPI_ARRAY_LIMIT);
 			const qs = buildStrapiUpdateQuery(batch);
-			const batchData = await paginatedRequest<McpRegistryServer>(this.getUrl(), {
-				...qs,
-				pagination: { page: 1, pageSize: 25 },
-			});
+			const batchData = await paginatedRequest<McpRegistryServer>(
+				this.getUrl(),
+				{
+					...qs,
+					pagination: { page: 1, pageSize: 25 },
+				},
+				{
+					throwOnError: true,
+				},
+			);
 			data.push(...batchData);
 		}
 

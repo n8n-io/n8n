@@ -36,7 +36,11 @@ describe('McpRegistryApiClient', () => {
 
 			await client.fetchAllServers();
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, expect.any(Object));
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				PRODUCTION_URL,
+				expect.any(Object),
+				expect.any(Object),
+			);
 		});
 
 		it('should use staging URL when ENVIRONMENT is staging', async () => {
@@ -45,7 +49,11 @@ describe('McpRegistryApiClient', () => {
 
 			await client.fetchAllServers();
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(STAGING_URL, expect.any(Object));
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				STAGING_URL,
+				expect.any(Object),
+				expect.any(Object),
+			);
 		});
 
 		it('should use production URL when ENVIRONMENT is production', async () => {
@@ -54,7 +62,11 @@ describe('McpRegistryApiClient', () => {
 
 			await client.fetchAllServers();
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, expect.any(Object));
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				PRODUCTION_URL,
+				expect.any(Object),
+				expect.any(Object),
+			);
 		});
 	});
 
@@ -64,9 +76,13 @@ describe('McpRegistryApiClient', () => {
 
 			await client.fetchAllServers();
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, {
-				pagination: { page: 1, pageSize: 25 },
-			});
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				PRODUCTION_URL,
+				{
+					pagination: { page: 1, pageSize: 25 },
+				},
+				{ throwOnError: true },
+			);
 		});
 
 		it('should return servers from paginatedRequest', async () => {
@@ -117,10 +133,14 @@ describe('McpRegistryApiClient', () => {
 
 			await client.fetchServersByIds([1, 2, 3]);
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, {
-				...buildStrapiUpdateQuery([1, 2, 3]),
-				pagination: { page: 1, pageSize: 25 },
-			});
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				PRODUCTION_URL,
+				{
+					...buildStrapiUpdateQuery([1, 2, 3]),
+					pagination: { page: 1, pageSize: 25 },
+				},
+				{ throwOnError: true },
+			);
 		});
 
 		it('should return fetched servers', async () => {
@@ -148,22 +168,37 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledTimes(3);
 
 			// First batch: ids 1-100
-			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(1, PRODUCTION_URL, {
-				...buildStrapiUpdateQuery(ids.slice(0, 100)),
-				pagination: { page: 1, pageSize: 25 },
-			});
+			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(
+				1,
+				PRODUCTION_URL,
+				{
+					...buildStrapiUpdateQuery(ids.slice(0, 100)),
+					pagination: { page: 1, pageSize: 25 },
+				},
+				{ throwOnError: true },
+			);
 
 			// Second batch: ids 101-200
-			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(2, PRODUCTION_URL, {
-				...buildStrapiUpdateQuery(ids.slice(100, 200)),
-				pagination: { page: 1, pageSize: 25 },
-			});
+			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(
+				2,
+				PRODUCTION_URL,
+				{
+					...buildStrapiUpdateQuery(ids.slice(100, 200)),
+					pagination: { page: 1, pageSize: 25 },
+				},
+				{ throwOnError: true },
+			);
 
 			// Third batch: ids 201-250
-			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(3, PRODUCTION_URL, {
-				...buildStrapiUpdateQuery(ids.slice(200, 250)),
-				pagination: { page: 1, pageSize: 25 },
-			});
+			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(
+				3,
+				PRODUCTION_URL,
+				{
+					...buildStrapiUpdateQuery(ids.slice(200, 250)),
+					pagination: { page: 1, pageSize: 25 },
+				},
+				{ throwOnError: true },
+			);
 		});
 
 		it('should concatenate results from all batches', async () => {
