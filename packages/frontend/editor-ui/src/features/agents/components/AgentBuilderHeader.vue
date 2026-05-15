@@ -137,7 +137,9 @@ function onBreadcrumbSelect(item: PathItem) {
 								:class="$style.switcherButton"
 								:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
 							>
-								<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
+								<span :class="[$style.switcherLabel, $style.agentSwitcherLabel]">
+									{{ agentDisplayName }}
+								</span>
 								<N8nIcon icon="chevron-down" :size="12" />
 							</N8nButton>
 						</template>
@@ -159,7 +161,9 @@ function onBreadcrumbSelect(item: PathItem) {
 									:class="$style.switcherButton"
 									:aria-label="i18n.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
 								>
-									<span :class="$style.switcherLabel">{{ sessionTitle }}</span>
+									<span :class="[$style.switcherLabel, $style.previewSessionLabel]">
+										{{ sessionTitle }}
+									</span>
 									<N8nIcon icon="chevron-down" :size="12" />
 								</N8nButton>
 							</template>
@@ -249,6 +253,16 @@ function onBreadcrumbSelect(item: PathItem) {
 .left {
 	display: flex;
 	align-items: center;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.left :global(.n8n-breadcrumbs) {
+	min-width: 0;
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
+	line-height: var(--line-height--lg);
 }
 
 .crumbSeparator {
@@ -260,14 +274,23 @@ function onBreadcrumbSelect(item: PathItem) {
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--5xs);
+	line-height: var(--line-height--lg);
 }
 
 .switcherLabel {
-	max-width: 200px;
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: var(--line-height--lg);
+}
+
+.agentSwitcherLabel {
+	max-width: 240px;
+}
+
+.previewSessionLabel {
+	max-width: clamp(320px, 42vw, 640px);
 }
 
 .right {
@@ -275,6 +298,7 @@ function onBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .saveStatus {
