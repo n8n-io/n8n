@@ -1344,7 +1344,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
-	validateCookieAuth(cookieValue: string): Promise<void>;
+	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -3239,7 +3239,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
-	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.

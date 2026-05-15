@@ -9,6 +9,7 @@ import type {
 	INodeExecutionData,
 	IRunExecutionData,
 	ITaskDataConnections,
+	IUser,
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -132,11 +133,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	async validateCookieAuth(cookieValue: string): Promise<void> {
+	async validateCookieAuth(cookieValue: string): Promise<IUser> {
 		if (!this.additionalData.validateCookieAuth) {
 			throw new ApplicationError('Cookie auth validation is not available');
 		}
-		await this.additionalData.validateCookieAuth(cookieValue);
+		return await this.additionalData.validateCookieAuth(cookieValue);
 	}
 
 	async getInputConnectionData(

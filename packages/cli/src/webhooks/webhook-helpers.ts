@@ -500,7 +500,13 @@ export async function executeWebhook(
 
 	const authService = Container.get(AuthService);
 	additionalData.validateCookieAuth = async (token: string) => {
-		await authService.validateCookieToken(token);
+		const user = await authService.validateCookieToken(token);
+		return {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+		};
 	};
 
 	let didSendResponse = false;

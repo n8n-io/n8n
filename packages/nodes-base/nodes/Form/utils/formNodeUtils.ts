@@ -1,6 +1,7 @@
 import { type Response } from 'express';
 import {
 	type NodeTypeAndVersion,
+	type IUser,
 	type IWebhookFunctions,
 	type FormFieldsParameter,
 	type IWebhookResponseData,
@@ -8,7 +9,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { handleNewlines, renderForm, sanitizeHtml } from './utils';
+import { generateFormUserAuthToken, handleNewlines, renderForm, sanitizeHtml } from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -16,6 +17,7 @@ export const renderFormNode = async (
 	trigger: NodeTypeAndVersion,
 	fields: FormFieldsParameter,
 	mode: 'test' | 'production',
+	authedUser?: IUser,
 ): Promise<IWebhookResponseData> => {
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
@@ -43,6 +45,12 @@ export const renderFormNode = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
+	// Embed the form auth token so subsequent POSTs can re-authenticate the
+	// user — cookies aren't sent on fetch from a sandboxed form page.
+	const authToken = authedUser
+		? generateFormUserAuthToken(context.getNode(), authedUser)
+		: undefined;
+
 	renderForm({
 		context,
 		res,
@@ -55,6 +63,7 @@ export const renderFormNode = async (
 		appendAttribution,
 		buttonLabel,
 		customCss: options.customCss,
+		authToken,
 	});
 
 	return {

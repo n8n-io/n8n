@@ -27,7 +27,7 @@ import {
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './utils/formCompletionUtils';
 import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
-import { parseFormFields, prepareFormReturnItem } from './utils/utils';
+import { parseFormFields, prepareFormReturnItem, validateFormPageAuth } from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -358,6 +358,23 @@ export class Form extends Node {
 
 		const trigger = getFormTriggerNode(context);
 
+		// JSON.stringify produces a properly-escaped JS string literal, so an
+		// adversarial trigger node name containing `'`, `\`, or `${}` can't
+		// break out of the expression. Critical for the auth gate below; safer
+		// than `'${trigger.name}'` even though n8n constrains node names.
+		const triggerRef = `$(${JSON.stringify(trigger.name)})`;
+
+		const triggerAuth =
+			(context.evaluateExpression(`{{ ${triggerRef}.params.authentication }}`) as string) ?? 'none';
+		const authResult = await validateFormPageAuth(context, triggerAuth);
+		if (authResult.responded) {
+			return { noWebhookResponse: true };
+		}
+		const triggerIncludeUser = context.evaluateExpression(
+			`{{ ${triggerRef}.params.options?.includeUserInOutput }}`,
+		) as boolean | undefined;
+		const userForOutput = triggerIncludeUser === false ? undefined : authResult.authedUser;
+
 		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
 			| 'test'
 			| 'production';
@@ -382,7 +399,7 @@ export class Form extends Node {
 		const method = context.getRequestObject().method;
 
 		if (operation === 'completion' && method === 'GET') {
-			return await renderFormCompletion(context, res, trigger);
+			return await renderFormCompletion(context, res, trigger, authResult.authedUser);
 		}
 
 		if (operation === 'completion' && method === 'POST') {
@@ -392,7 +409,7 @@ export class Form extends Node {
 		}
 
 		if (method === 'GET') {
-			return await renderFormNode(context, res, trigger, fields, mode);
+			return await renderFormNode(context, res, trigger, fields, mode, authResult.authedUser);
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
@@ -403,7 +420,13 @@ export class Form extends Node {
 			useWorkflowTimezone = true;
 		}
 
-		const returnItem = await prepareFormReturnItem(context, fields, mode, useWorkflowTimezone);
+		const returnItem = await prepareFormReturnItem(
+			context,
+			fields,
+			mode,
+			useWorkflowTimezone,
+			userForOutput,
+		);
 
 		return {
 			webhookResponse: { status: 200 },

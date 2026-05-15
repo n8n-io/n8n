@@ -1,10 +1,13 @@
-import type { Response } from 'express';
+import { Container } from '@n8n/di';
+import type { Request, Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
-import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
+	INode,
 	INodeExecutionData,
+	IUser,
 	MultiPartFormData,
 	IDataObject,
 	IWebhookFunctions,
@@ -23,6 +26,7 @@ import {
 	tryToParseJsonToFormFields,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
@@ -34,6 +38,13 @@ import {
 } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
+
+/**
+ * Time-to-live for the form auth token embedded in n8nUserAuth forms.
+ * Long enough for users to fill out a form, short enough to limit damage
+ * if the token leaks (e.g. via malicious HTML in form fields).
+ */
+const FORM_USER_AUTH_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -403,6 +414,7 @@ export async function prepareFormReturnItem(
 	formFields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
+	authedUser?: IUser,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
@@ -492,6 +504,15 @@ export async function prepareFormReturnItem(
 		returnItem.json.formQueryParameters = context.getRequestObject().query;
 	}
 
+	if (authedUser) {
+		returnItem.json.user = {
+			id: authedUser.id,
+			email: authedUser.email,
+			firstName: authedUser.firstName,
+			lastName: authedUser.lastName,
+		};
+	}
+
 	return returnItem;
 }
 
@@ -573,12 +594,150 @@ export function renderForm({
 	res.render('form-trigger', data);
 }
 
+/**
+ * Build the absolute URL the user originally requested, honouring
+ * `x-forwarded-*` headers so it survives behind a reverse proxy. The full URL
+ * is required so the post-signin redirect uses `window.location.href = redirect`
+ * in SigninView.vue (the `router.push` branch only handles SPA routes, and the
+ * public form is served outside the Vue app).
+ *
+ * Security note: `x-forwarded-host` / `x-forwarded-proto` are attacker-controlled
+ * unless the deployer puts a trusted proxy in front (recommended). The redirect
+ * value flows through SigninView.vue's `isRedirectSafe()`, which enforces a
+ * same-origin check (`url.origin === window.location.origin`). So a spoofed
+ * Host header can at worst break the post-signin redirect for that user — it
+ * cannot redirect to an attacker-controlled origin.
+ */
+function buildAbsoluteFormUrl(req: Request): string {
+	const headerValue = (name: string) => {
+		const raw = req.headers[name];
+		return typeof raw === 'string' ? raw.trim() : undefined;
+	};
+	const protocol = headerValue('x-forwarded-proto') ?? req.protocol ?? 'http';
+	const host = headerValue('x-forwarded-host') ?? req.headers.host ?? '';
+	return `${protocol}://${host}${req.originalUrl}`;
+}
+
 export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
 	return nodes.some(
 		(n) =>
 			n.type === FORM_NODE_TYPE || (n.type === WAIT_NODE_TYPE && n.parameters?.resume === 'form'),
 	);
 };
+
+/**
+ * Generate a form auth token for n8nUserAuth. The token embeds the user info
+ * and an HMAC signature so the POST handler can authenticate the submission
+ * without relying on the `n8n-auth` cookie (cookies aren't sent on fetch
+ * requests from the sandboxed form page because the document has a null
+ * origin and the cookie is `SameSite=Lax`).
+ *
+ * Format: `<base64url-user-json>|<timestamp-ms>|<hmac-hex>`
+ * Signature covers: user blob + timestamp + node id + webhook id, signed with
+ * the instance's hmac signature secret.
+ */
+export function generateFormUserAuthToken(node: INode, user: IUser): string {
+	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
+	const userBlob = Buffer.from(
+		JSON.stringify({
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+		}),
+	).toString('base64url');
+	const ts = Date.now().toString();
+	const signature = createHmac('sha256', secret)
+		.update(`${userBlob}|${ts}|${node.id}|${node.webhookId ?? ''}`)
+		.digest('hex');
+	return `${userBlob}|${ts}|${signature}`;
+}
+
+/**
+ * Verify a form auth token issued by `generateFormUserAuthToken`. Returns the
+ * encoded user on success or `null` on any failure (bad format, expired,
+ * wrong signature, wrong node). The caller decides how to surface the failure.
+ */
+export function verifyFormUserAuthToken(token: string, node: INode): IUser | null {
+	const parts = token.split('|');
+	if (parts.length !== 3) return null;
+	const [userBlob, tsStr, signature] = parts;
+	const ts = Number(tsStr);
+	if (!Number.isFinite(ts) || Date.now() - ts > FORM_USER_AUTH_TOKEN_TTL_MS) return null;
+
+	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
+	const expectedSignature = createHmac('sha256', secret)
+		.update(`${userBlob}|${tsStr}|${node.id}|${node.webhookId ?? ''}`)
+		.digest('hex');
+	if (
+		signature.length !== expectedSignature.length ||
+		!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
+	) {
+		return null;
+	}
+
+	// HMAC verified — the payload is what we signed (an IUser).
+	return jsonParse<IUser | null>(Buffer.from(userBlob, 'base64url').toString(), {
+		fallbackValue: null,
+	});
+}
+
+/**
+ * Authenticate an `n8nUserAuth` request via:
+ * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
+ * 2. the `x-auth-token` form auth token (used on POST and multi-step page
+ *    navigations from the sandboxed form page that can't send cookies).
+ *
+ * On success returns the user. On failure sends the appropriate response
+ * (302 to `/signin` on GET, 401 on POST) and returns `null` — the caller
+ * must abort with `noWebhookResponse`.
+ */
+async function authenticateFormUserOrRespond(context: IWebhookFunctions): Promise<IUser | null> {
+	const req = context.getRequestObject();
+
+	// Parse the raw Cookie header rather than `req.cookies` because the webhook
+	// path may bypass cookie-parser middleware in some deployments.
+	const cookieMatch = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
+	if (cookieMatch) {
+		try {
+			return await context.validateCookieAuth(cookieMatch[1].trim());
+		} catch {}
+	}
+
+	const formToken = req.headers['x-auth-token'];
+	if (typeof formToken === 'string' && formToken) {
+		const user = verifyFormUserAuthToken(formToken, context.getNode());
+		if (user) return user;
+	}
+
+	const res = context.getResponseObject();
+	if (req.method === 'GET') {
+		res.writeHead(302, {
+			Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteFormUrl(req))}`,
+		});
+		res.end();
+	} else {
+		res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+		res.status(401).send();
+	}
+	return null;
+}
+
+/**
+ * Multi-step Form/Wait nodes inherit `authentication` from the upstream
+ * Form Trigger. This wrapper short-circuits when n8nUserAuth isn't in use.
+ *
+ * Returns `{ authedUser }` on success, `{ responded: true }` after sending a
+ * 302/401 on failure, or `{}` if the trigger doesn't require auth.
+ */
+export async function validateFormPageAuth(
+	context: IWebhookFunctions,
+	triggerAuthentication: string,
+): Promise<{ authedUser?: IUser; responded?: boolean }> {
+	if (triggerAuthentication !== 'n8nUserAuth') return {};
+	const user = await authenticateFormUserOrRespond(context);
+	return user ? { authedUser: user } : { responded: true };
+}
 
 export async function formWebhook(
 	context: IWebhookFunctions,
@@ -600,6 +759,7 @@ export async function formWebhook(
 		appendAttribution?: boolean;
 		buttonLabel?: string;
 		customCss?: string;
+		includeUserInOutput?: boolean;
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -611,20 +771,31 @@ export async function formWebhook(
 		return { noWebhookResponse: true };
 	}
 
-	try {
-		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
-			throw new WebhookAuthorizationError(403);
+	if (options.ignoreBots && isbot(req.headers['user-agent'])) {
+		res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+		res.status(401).send();
+		return { noWebhookResponse: true };
+	}
+
+	const authentication = (context.getNodeParameter(authProperty) as string) ?? 'none';
+	let authedUser: IUser | undefined;
+	if (node.typeVersion > 1) {
+		if (authentication === 'n8nUserAuth') {
+			const user = await authenticateFormUserOrRespond(context);
+			if (!user) return { noWebhookResponse: true };
+			authedUser = user;
+		} else {
+			try {
+				await validateWebhookAuthentication(context, authProperty);
+			} catch (error) {
+				if (error instanceof WebhookAuthorizationError) {
+					res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+					res.status(401).send();
+					return { noWebhookResponse: true };
+				}
+				throw error;
+			}
 		}
-		if (node.typeVersion > 1) {
-			await validateWebhookAuthentication(context, authProperty);
-		}
-	} catch (error) {
-		if (error instanceof WebhookAuthorizationError) {
-			res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
-			res.status(401).send();
-			return { noWebhookResponse: true };
-		}
-		throw error;
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
@@ -690,7 +861,14 @@ export async function formWebhook(
 
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
-			authToken = await generateFormPostBasicAuthToken(context, authProperty);
+			if (authentication === 'n8nUserAuth' && authedUser) {
+				// Cookies aren't sent on POST from the sandboxed form page
+				// (null origin + SameSite=Lax). Embed an HMAC token so the
+				// POST handler can re-authenticate the user.
+				authToken = generateFormUserAuthToken(node, authedUser);
+			} else {
+				authToken = await generateFormPostBasicAuthToken(context, authProperty);
+			}
 		}
 
 		renderForm({
@@ -720,7 +898,14 @@ export async function formWebhook(
 		useWorkflowTimezone = true;
 	}
 
-	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone);
+	const userForOutput = options.includeUserInOutput === false ? undefined : authedUser;
+	const returnItem = await prepareFormReturnItem(
+		context,
+		formFields,
+		mode,
+		useWorkflowTimezone,
+		userForOutput,
+	);
 
 	return {
 		webhookResponse: { status: 200 },

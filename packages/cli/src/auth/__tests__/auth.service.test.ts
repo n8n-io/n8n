@@ -1001,12 +1001,12 @@ describe('AuthService', () => {
 			jest.resetAllMocks();
 		});
 
-		it('should resolve for a valid token', async () => {
+		it('should resolve with the user for a valid token', async () => {
 			const token = authService.issueJWT(user, false, browserId);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			userRepository.findOne.mockResolvedValue(user);
 
-			await expect(authService.validateCookieToken(token)).resolves.toBeUndefined();
+			await expect(authService.validateCookieToken(token)).resolves.toBe(user);
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalledWith({ token });
 			expect(userRepository.findOne).toHaveBeenCalled();
 		});

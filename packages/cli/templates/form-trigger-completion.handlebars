@@ -231,9 +231,20 @@
 				postUrl = '?signature=' + encodeURIComponent(formSignature);
 			}
 
+			// Double-stash (Handlebars-escaped) so a future change to the token
+			// format can't introduce HTML/JS injection here. The current token
+			// is `<base64url>|<digits>|<hex>` — none of those characters
+			// trigger HTML escaping, so this is a no-op today.
+			const authToken = '{{authToken}}';
+			const headers = {};
+			if (authToken) {
+				headers['x-auth-token'] = authToken;
+			}
+
 			fetch(postUrl, {
 					method: 'POST',
-					body: {}
+					body: {},
+					headers,
 			})
 			.then(async function (response) {
 					if (response.status === 200) {
