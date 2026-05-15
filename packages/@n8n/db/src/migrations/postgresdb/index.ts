@@ -169,8 +169,6 @@ import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddRunIndexToTestCaseExecution1777996709110 } from '../common/1777996709110-AddRunIndexToTestCaseExecution';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
-import { CreateInstanceAiCheckpointTable1778050000000 } from '../common/1778050000000-CreateInstanceAiCheckpointTable';
-import { ResetInstanceAiNativePersistence1778060000000 } from '../common/1778060000000-ResetInstanceAiNativePersistence';
 import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
@@ -178,6 +176,8 @@ import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
+import { CreateInstanceAiCheckpointTable1784000000001 } from '../common/1784000000001-CreateInstanceAiCheckpointTable';
+import { ResetInstanceAiNativePersistence1784000000002 } from '../common/1784000000002-ResetInstanceAiNativePersistence';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -352,8 +352,6 @@ export const postgresMigrations: Migration[] = [
 	ExpandVariablesValueColumnToText1777420800000,
 	AddRunIndexToTestCaseExecution1777996709110,
 	AddExecutionDeduplicationKey1778000000000,
-	CreateInstanceAiCheckpointTable1778050000000,
-	ResetInstanceAiNativePersistence1778060000000,
 	CreateEvaluationConfig1778100000000,
 	AddWorkflowVersionToTestRun1778100001000,
 	AddEvaluationConfigColumnsToTestRun1778100002000,
@@ -361,4 +359,6 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,
+	CreateInstanceAiCheckpointTable1784000000001,
+	ResetInstanceAiNativePersistence1784000000002,
 ];

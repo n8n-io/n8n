@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const checkpointTable = 'instance_ai_checkpoints';
 const runSnapshotsTable = 'instance_ai_run_snapshots';
 
-export class CreateInstanceAiCheckpointTable1778050000000 implements ReversibleMigration {
+export class CreateInstanceAiCheckpointTable1784000000001 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, addColumns, column } }: MigrationContext) {
 		await addColumns(runSnapshotsTable, [
 			column('traceId').varchar(64).comment('OpenTelemetry trace ID for the root Instance AI run.'),
