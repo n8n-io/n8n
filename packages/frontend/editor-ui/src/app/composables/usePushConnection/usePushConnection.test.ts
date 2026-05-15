@@ -1,11 +1,7 @@
 import { usePushConnection } from '@/app/composables/usePushConnection';
-import {
-	testWebhookReceived,
-	builderCreditsUpdated,
-} from '@/app/composables/usePushConnection/handlers';
+import { builderCreditsUpdated } from '@/app/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
-import { useRouter } from 'vue-router';
 import type { OnPushMessageHandler } from '@/app/stores/pushConnection.store';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -19,25 +15,27 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	}),
 }));
 
+const mockTestWebhookReceived = vi.fn();
+
 vi.mock('@/app/composables/usePushConnection/handlers', () => ({
-	testWebhookDeleted: vi.fn(),
-	testWebhookReceived: vi.fn(),
+	useTestWebhookDeleted: vi.fn(() => ({ testWebhookDeleted: vi.fn() })),
+	useTestWebhookReceived: vi.fn(() => ({ testWebhookReceived: mockTestWebhookReceived })),
 	reloadNodeType: vi.fn(),
 	removeNodeType: vi.fn(),
 	nodeDescriptionUpdated: vi.fn(),
-	nodeExecuteBefore: vi.fn(),
-	nodeExecuteAfter: vi.fn(),
+	useNodeExecuteBefore: vi.fn(() => ({ nodeExecuteBefore: vi.fn() })),
+	useNodeExecuteAfter: vi.fn(() => ({ nodeExecuteAfter: vi.fn() })),
 	nodeExecuteAfterData: vi.fn(),
 	executionStarted: vi.fn(),
-	executionWaiting: vi.fn(),
 	sendWorkerStatusMessage: vi.fn(),
 	sendConsoleMessage: vi.fn(),
-	workflowFailedToActivate: vi.fn(),
-	executionFinished: vi.fn(),
-	executionRecovered: vi.fn(),
-	workflowActivated: vi.fn(),
-	workflowDeactivated: vi.fn(),
-	collaboratorsChanged: vi.fn(),
+	useWorkflowFailedToActivate: vi.fn(() => ({ workflowFailedToActivate: vi.fn() })),
+	useExecutionFinished: vi.fn(() => ({ executionFinished: vi.fn() })),
+	useExecutionRecovered: vi.fn(() => ({ executionRecovered: vi.fn() })),
+	useWorkflowActivated: vi.fn(() => ({ workflowActivated: vi.fn() })),
+	useWorkflowDeactivated: vi.fn(() => ({ workflowDeactivated: vi.fn() })),
+	useWorkflowAutoDeactivated: vi.fn(() => ({ workflowAutoDeactivated: vi.fn() })),
+	workflowSettingsUpdated: vi.fn(),
 	builderCreditsUpdated: vi.fn(),
 }));
 
@@ -59,8 +57,7 @@ describe('usePushConnection composable', () => {
 
 		setActivePinia(createPinia());
 
-		const router = useRouter();
-		pushConnection = usePushConnection({ router });
+		pushConnection = usePushConnection();
 	});
 
 	it('should register an event listener on initialize', () => {
@@ -75,7 +72,6 @@ describe('usePushConnection composable', () => {
 		const handler = addEventListener.mock.calls[0][0];
 
 		// Create a test event for one of the handled types.
-		// In this test, we simulate the event type 'testWebhookReceived'.
 		const testEvent: TestWebhookReceived = {
 			type: 'testWebhookReceived',
 			data: {
@@ -91,8 +87,8 @@ describe('usePushConnection composable', () => {
 		await Promise.resolve();
 
 		// Verify that the correct handler was called.
-		expect(testWebhookReceived).toHaveBeenCalledTimes(1);
-		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent, expect.any(Object));
+		expect(mockTestWebhookReceived).toHaveBeenCalledTimes(1);
+		expect(mockTestWebhookReceived).toHaveBeenCalledWith(testEvent);
 	});
 
 	it('should call removeEventListener when terminate is called', () => {

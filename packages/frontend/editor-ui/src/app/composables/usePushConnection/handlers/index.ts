@@ -12,6 +12,7 @@ export * from './sendConsoleMessage';
 export * from './sendWorkerStatusMessage';
 export * from './testWebhookDeleted';
 export * from './testWebhookReceived';
+export * from './trackNodeExecution';
 export * from './workflowActivated';
 export * from './workflowAutoDeactivated';
 export * from './workflowDeactivated';

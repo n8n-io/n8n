@@ -12,7 +12,6 @@ import { useCommunityNodesStore } from '../communityNodes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { onBeforeUnmount, ref, computed, onBeforeMount, onMounted } from 'vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/app/composables/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
@@ -24,8 +23,7 @@ const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
 
-const router = useRouter();
-const pushConnection = usePushConnection({ router });
+const pushConnection = usePushConnection();
 const pushStore = usePushConnectionStore();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();

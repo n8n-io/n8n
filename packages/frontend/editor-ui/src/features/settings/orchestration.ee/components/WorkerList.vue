@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
 import { useOrchestrationStore } from '../orchestration.store';
@@ -22,9 +21,8 @@ withDefaults(
 	},
 );
 
-const router = useRouter();
 const i18n = useI18n();
-const pushConnection = usePushConnection({ router });
+const pushConnection = usePushConnection();
 const documentTitle = useDocumentTitle();
 const telemetry = useTelemetry();
 

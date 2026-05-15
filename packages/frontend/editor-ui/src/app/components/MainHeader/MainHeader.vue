@@ -30,7 +30,7 @@ import { useToast } from '@/app/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
-const pushConnection = usePushConnection({ router });
+const pushConnection = usePushConnection();
 const toast = useToast();
 const ndvStore = injectNDVStore();
 const uiStore = useUIStore();

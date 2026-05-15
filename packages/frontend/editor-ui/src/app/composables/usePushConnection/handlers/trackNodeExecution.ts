@@ -1,25 +1,25 @@
-import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { PushPayload } from '@n8n/api-types';
 import { TelemetryHelpers } from 'n8n-workflow';
 
-export async function trackNodeExecution(
-	pushData: PushPayload<'nodeExecuteAfter'>,
-	workflowId: string,
-): Promise<void> {
-	const nodeName = pushData.nodeName;
+export function useTrackNodeExecution() {
+	const telemetry = useTelemetry();
+	const workflowHelpers = useWorkflowHelpers();
+	const settingsStore = useSettingsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	if (pushData.data.error) {
-		const telemetry = useTelemetry();
-		const workflowHelpers = useWorkflowHelpers();
-		const settingsStore = useSettingsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		const node = workflowDocumentStore.getNodeByName(nodeName);
+	async function trackNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): Promise<void> {
+		const nodeName = pushData.nodeName;
+
+		if (!pushData.data.error) {
+			return;
+		}
+
+		const node = workflowDocumentStore.value.getNodeByName(nodeName);
+
 		telemetry.track('Manual exec errored', {
 			error_title: pushData.data.error.message,
 			node_type: node?.type,
@@ -27,7 +27,7 @@ export async function trackNodeExecution(
 			node_id: node?.id,
 			node_graph_string: JSON.stringify(
 				TelemetryHelpers.generateNodesGraph(
-					workflowDocumentStore.serialize(),
+					workflowDocumentStore.value.serialize(),
 					workflowHelpers.getNodeTypes(),
 					{
 						isCloudDeployment: settingsStore.isCloudDeployment,
@@ -36,4 +36,6 @@ export async function trackNodeExecution(
 			),
 		});
 	}
+
+	return { trackNodeExecution };
 }

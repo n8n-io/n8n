@@ -17,6 +17,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import {
 	createWorkflowExecutionStateId,
@@ -49,8 +50,8 @@ import {
 	TelemetryHelpers,
 	createRunExecutionData,
 } from 'n8n-workflow';
-import type { useRouter } from 'vue-router';
-import { type WorkflowState } from '@/app/composables/useWorkflowState';
+import { useRouter } from 'vue-router';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 export type SimplifiedExecution = Pick<
@@ -58,477 +59,416 @@ export type SimplifiedExecution = Pick<
 	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
 
-export type ExecutionFinishedOptions = {
-	router: ReturnType<typeof useRouter>;
-	workflowState: WorkflowState;
-};
-
-/**
- * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
- */
-export async function executionFinished(
-	{ data }: ExecutionFinished,
-	options: ExecutionFinishedOptions,
-) {
+export function useExecutionFinished() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunStore = useReadyToRunStore();
+	const builderStore = useBuilderStore();
 
-	options.workflowState.executingNode.lastAddedExecutingNode = null;
-	options.workflowState.executingNode.clearNodeExecutionQueue();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
-		return;
-	}
+	const router = useRouter();
+	const workflowState = injectWorkflowState();
 
+	const toast = useToast();
+	const i18n = useI18n();
 	const telemetry = useTelemetry();
+	const documentTitle = useDocumentTitle();
+	const externalHooks = useExternalHooks();
+	const nodeHelpers = useNodeHelpers();
+	const workflowHelpers = useWorkflowHelpers();
+	const workflowSaving = useWorkflowSaving({ router });
+	const { runWorkflow } = useRunWorkflow({ router });
 
-	clearPopupWindowState();
+	async function executionFinished({ data }: ExecutionFinished) {
+		workflowState.executingNode.lastAddedExecutingNode = null;
+		workflowState.executingNode.clearNodeExecutionQueue();
 
-	const workflow = workflowsListStore.getWorkflowById(data.workflowId);
-	const templateId = workflow?.meta?.templateId;
-
-	if (templateId) {
-		const isEasyAIWorkflow = templateId === SampleTemplates.EasyAiTemplate;
-		if (isEasyAIWorkflow) {
-			telemetry.track('User executed test AI workflow', {
-				status: data.status,
-			});
-		} else if (templateId.startsWith('035_template_onboarding')) {
-			aiTemplatesStarterCollectionStore.trackUserExecutedWorkflow(
-				templateId.split('-').pop() ?? '',
-				data.status,
-			);
-		} else if (
-			templateId === 'ready-to-run-ai-workflow' ||
-			templateId === 'ready-to-run-ai-workflow-v5' ||
-			templateId === 'ready-to-run-ai-workflow-v6'
-		) {
-			if (data.status === 'success') {
-				readyToRunStore.trackExecuteAiWorkflowSuccess();
-			} else {
-				readyToRunStore.trackExecuteAiWorkflow(data.status);
-			}
-		} else if (isTutorialTemplateId(templateId)) {
-			telemetry.track('User executed tutorial template', {
-				template: templateId,
-				status: data.status,
-			});
-		}
-	}
-
-	uiStore.setProcessingExecutionResults(true);
-
-	let successToastAlreadyShown = false;
-
-	if (data.status === 'success') {
-		handleExecutionFinishedWithSuccessOrOther(
-			options.workflowState,
-			data.status,
-			successToastAlreadyShown,
-		);
-		successToastAlreadyShown = true;
-	}
-
-	const execution = await fetchExecutionData(data.executionId);
-
-	/**
-	 * This accounts for the case where the execution is not stored.
-	 * We clear the active execution id and set processing to false and return early.
-	 * Returning early presists existing run data up to this point.
-	 */
-	if (!execution) {
-		options.workflowState.setActiveExecutionId(undefined);
-		uiStore.setProcessingExecutionResults(false);
-		return;
-	}
-
-	const runExecutionData = getRunExecutionData(execution);
-	uiStore.setProcessingExecutionResults(false);
-
-	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill(data.workflowId, options);
-	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
-	} else {
-		handleExecutionFinishedWithSuccessOrOther(
-			options.workflowState,
-			execution.status,
-			successToastAlreadyShown,
-		);
-	}
-
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
-
-	continueEvaluationLoop(execution, options);
-}
-
-/**
- * Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
- * @param execution
- * @param router
- */
-export function continueEvaluationLoop(
-	execution: SimplifiedExecution,
-	opts: ExecutionFinishedOptions,
-) {
-	if (execution.status !== 'success' || execution.data?.startData?.destinationNode !== undefined) {
-		return;
-	}
-
-	// check if we have an evaluation trigger in our workflow and whether it has any run data
-	const evaluationTrigger = execution.workflowData.nodes.find(
-		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
-	);
-	const triggerRunData = evaluationTrigger
-		? execution?.data?.resultData?.runData[evaluationTrigger.name]
-		: undefined;
-
-	if (!evaluationTrigger || triggerRunData === undefined) {
-		return;
-	}
-
-	const mainData = triggerRunData[0]?.data?.main[0];
-	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
-
-	if (rowsLeft && rowsLeft > 0) {
-		const { runWorkflow } = useRunWorkflow(opts);
-		void runWorkflow({
-			triggerNode: evaluationTrigger.name,
-			// pass output of previous node run to trigger next run
-			nodeData: triggerRunData[0],
-			rerunTriggerNode: true,
-		});
-	}
-}
-
-/**
- * Fetches the execution data from the server and returns a simplified execution object
- */
-export async function fetchExecutionData(
-	executionId: string,
-): Promise<SimplifiedExecution | undefined> {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
-
-	try {
-		const executionResponse = await workflowsStore.fetchExecutionDataById(executionId);
-		if (!executionResponse?.data) {
+		// No workflow is actively running, therefore we ignore this event
+		if (typeof workflowsStore.activeExecutionId === 'undefined') {
 			return;
 		}
 
-		return {
-			id: executionId,
-			workflowId: executionResponse.workflowId,
-			workflowData: workflowDocumentStore.getSnapshot(),
-			data: executionResponse.data,
-			status: executionResponse.status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
-			stoppedAt: new Date(),
-		};
-	} catch {
-		return;
-	}
-}
+		clearPopupWindowState();
 
-/**
- * Returns the run execution data from the execution object in a normalized format
- */
-export function getRunExecutionData(execution: SimplifiedExecution): IRunExecutionData {
-	return createRunExecutionData({
-		...execution.data,
-		startData: execution.data?.startData,
-		resultData: execution.data?.resultData ?? { runData: {} },
-		executionData: execution.data?.executionData,
-	});
-}
+		const workflow = workflowsListStore.getWorkflowById(data.workflowId);
+		const templateId = workflow?.meta?.templateId;
 
-/**
- * Returns the error message for the execution run data if the execution status is crashed or canceled,
- * or a fallback error message otherwise
- */
-export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
-	const i18n = useI18n();
-
-	if (execution.status === 'crashed') {
-		return i18n.baseText('pushConnection.executionFailed.message');
-	} else if (execution.status === 'canceled') {
-		const workflowsStore = useWorkflowsStore();
-
-		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
-		});
-	}
-
-	return getExecutionErrorMessage({
-		error: execution.data?.resultData.error,
-		lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
-	});
-}
-
-/**
- * Handle the case when the workflow execution finished with `waitTill`,
- * meaning that it's in a waiting state.
- */
-export function handleExecutionFinishedWithWaitTill(
-	workflowId: string,
-	options: {
-		router: ReturnType<typeof useRouter>;
-	},
-) {
-	const workflowsStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
-	const workflowSaving = useWorkflowSaving(options);
-
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-	const workflowSettings = workflowDocumentStore.settings;
-	const saveManualExecutions =
-		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
-
-	if (!saveManualExecutions) {
-		const uiStore = useUIStore();
-
-		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
-			key: 'open-settings',
-			action: async () => {
-				if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId])
-					await workflowSaving.saveAsNewWorkflow();
-				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-			},
-		});
-	}
-
-	// Workflow did start but had been put to wait
-	useDocumentTitle().setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-}
-
-/**
- * Handle the case when the workflow execution finished with an `error` or `canceled` status.
- */
-export function handleExecutionFinishedWithErrorOrCanceled(
-	execution: SimplifiedExecution,
-	runExecutionData: IRunExecutionData,
-) {
-	const toast = useToast();
-	const i18n = useI18n();
-	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
-	const documentTitle = useDocumentTitle();
-	const workflowHelpers = useWorkflowHelpers();
-
-	documentTitle.setDocumentTitle(workflowDocumentStore.name, 'ERROR');
-
-	if (
-		runExecutionData.resultData.error?.name === 'ExpressionError' &&
-		(runExecutionData.resultData.error as ExpressionError).functionality === 'pairedItem'
-	) {
-		const error = runExecutionData.resultData.error as ExpressionError;
-
-		const workflowData = workflowDocumentStore.serialize();
-		const eventData: IDataObject = {
-			caused_by_credential: false,
-			error_message: error.description,
-			error_title: error.message,
-			error_type: error.context.type,
-			node_graph_string: JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-				).nodeGraph,
-			),
-			workflow_id: workflowsStore.workflowId,
-		};
-
-		if (
-			error.context.nodeCause &&
-			['paired_item_no_info', 'paired_item_invalid_info'].includes(error.context.type as string)
-		) {
-			const node = workflowDocumentStore.getNodeByName(error.context.nodeCause as string);
-
-			if (node) {
-				eventData.is_pinned = !!workflowDocumentStore.pinData?.[node.name];
-				eventData.mode = node.parameters.mode;
-				eventData.node_type = node.type;
-				eventData.operation = node.parameters.operation;
-				eventData.resource = node.parameters.resource;
+		if (templateId) {
+			const isEasyAIWorkflow = templateId === SampleTemplates.EasyAiTemplate;
+			if (isEasyAIWorkflow) {
+				telemetry.track('User executed test AI workflow', {
+					status: data.status,
+				});
+			} else if (templateId.startsWith('035_template_onboarding')) {
+				aiTemplatesStarterCollectionStore.trackUserExecutedWorkflow(
+					templateId.split('-').pop() ?? '',
+					data.status,
+				);
+			} else if (
+				templateId === 'ready-to-run-ai-workflow' ||
+				templateId === 'ready-to-run-ai-workflow-v5' ||
+				templateId === 'ready-to-run-ai-workflow-v6'
+			) {
+				if (data.status === 'success') {
+					readyToRunStore.trackExecuteAiWorkflowSuccess();
+				} else {
+					readyToRunStore.trackExecuteAiWorkflow(data.status);
+				}
+			} else if (isTutorialTemplateId(templateId)) {
+				telemetry.track('User executed tutorial template', {
+					template: templateId,
+					status: data.status,
+				});
 			}
 		}
 
-		telemetry.track('Instance FE emitted paired item error', eventData);
+		uiStore.setProcessingExecutionResults(true);
+
+		let successToastAlreadyShown = false;
+
+		if (data.status === 'success') {
+			handleExecutionFinishedWithSuccessOrOther(data.status, successToastAlreadyShown);
+			successToastAlreadyShown = true;
+		}
+
+		const execution = await fetchExecutionData(data.executionId);
+
+		/**
+		 * This accounts for the case where the execution is not stored.
+		 * We clear the active execution id and set processing to false and return early.
+		 * Returning early presists existing run data up to this point.
+		 */
+		if (!execution) {
+			workflowState.setActiveExecutionId(undefined);
+			uiStore.setProcessingExecutionResults(false);
+			return;
+		}
+
+		const runExecutionData = getRunExecutionData(execution);
+		uiStore.setProcessingExecutionResults(false);
+
+		if (execution.data?.waitTill !== undefined) {
+			handleExecutionFinishedWithWaitTill(data.workflowId);
+		} else if (execution.status === 'error' || execution.status === 'canceled') {
+			handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		} else {
+			handleExecutionFinishedWithSuccessOrOther(execution.status, successToastAlreadyShown);
+		}
+
+		setRunExecutionData(execution, runExecutionData);
+
+		continueEvaluationLoop(execution);
 	}
 
-	if (execution.status === 'canceled') {
-		// Do not show the error message if the workflow got canceled
-		toast.showMessage({
-			title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
-			type: 'success',
+	// check if we have an evaluation trigger in our workflow and whether it has any run data
+	function continueEvaluationLoop(execution: SimplifiedExecution) {
+		if (
+			execution.status !== 'success' ||
+			execution.data?.startData?.destinationNode !== undefined
+		) {
+			return;
+		}
+
+		const evaluationTrigger = execution.workflowData.nodes.find(
+			(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+		);
+		const triggerRunData = evaluationTrigger
+			? execution?.data?.resultData?.runData[evaluationTrigger.name]
+			: undefined;
+
+		if (!evaluationTrigger || triggerRunData === undefined) {
+			return;
+		}
+
+		const mainData = triggerRunData[0]?.data?.main[0];
+		const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
+
+		if (rowsLeft && rowsLeft > 0) {
+			// pass output of previous node run to trigger next run
+			void runWorkflow({
+				triggerNode: evaluationTrigger.name,
+				nodeData: triggerRunData[0],
+				rerunTriggerNode: true,
+			});
+		}
+	}
+
+	async function fetchExecutionData(executionId: string): Promise<SimplifiedExecution | undefined> {
+		try {
+			const executionResponse = await workflowsStore.fetchExecutionDataById(executionId);
+			if (!executionResponse?.data) {
+				return;
+			}
+
+			return {
+				id: executionId,
+				workflowId: executionResponse.workflowId,
+				workflowData: workflowDocumentStore.value.getSnapshot(),
+				data: executionResponse.data,
+				status: executionResponse.status,
+				startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+				stoppedAt: new Date(),
+			};
+		} catch {
+			return;
+		}
+	}
+
+	/**
+	 * Returns the run execution data from the execution object in a normalized format
+	 */
+	function getRunExecutionData(execution: SimplifiedExecution): IRunExecutionData {
+		return createRunExecutionData({
+			...execution.data,
+			startData: execution.data?.startData,
+			resultData: execution.data?.resultData ?? { runData: {} },
+			executionData: execution.data?.executionData,
 		});
-	} else if (execution.data?.resultData.error) {
-		const { message, title } = getExecutionErrorToastConfiguration({
-			error: execution.data.resultData.error,
+	}
+
+	/**
+	 * Returns the error message for the execution run data if the execution status is crashed or canceled,
+	 * or a fallback error message otherwise
+	 */
+	function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
+		if (execution.status === 'crashed') {
+			return i18n.baseText('pushConnection.executionFailed.message');
+		} else if (execution.status === 'canceled') {
+			return i18n.baseText('executionsList.showMessage.stopExecution.message', {
+				interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
+			});
+		}
+
+		return getExecutionErrorMessage({
+			error: execution.data?.resultData.error,
 			lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 		});
-
-		toast.showMessage({ title, message, type: 'error', duration: 0 });
-
-		useBuilderStore().incrementManualExecutionStats('error');
 	}
-}
 
-/**
- * Handle the case when the workflow execution finished successfully.
- *
- * On successful completion without data, we show a success toast
- * immediately, even though we still need to fetch and deserialize the
- * full execution data, to minimize perceived latency.
- */
-function handleExecutionFinishedSuccessfully(
-	workflowName: string,
-	message: string,
-	workflowState: WorkflowState,
-) {
-	const toast = useToast();
+	/**
+	 * Handle the case when the workflow execution finished with `waitTill`,
+	 * meaning that it's in a waiting state.
+	 */
+	function handleExecutionFinishedWithWaitTill(eventWorkflowId: string) {
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(eventWorkflowId));
+		const workflowSettings = docStore.settings;
+		const saveManualExecutions =
+			workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 
-	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
-	workflowState.setActiveExecutionId(undefined);
-	toast.showMessage({
-		title: message,
-		type: 'success',
-	});
-}
+		if (!saveManualExecutions) {
+			globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
+				key: 'open-settings',
+				action: async () => {
+					if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+						await workflowSaving.saveAsNewWorkflow();
+					}
+					uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+				},
+			});
+		}
 
-/**
- * Handle the case when the workflow execution finished successfully.
- */
-export function handleExecutionFinishedWithSuccessOrOther(
-	workflowState: WorkflowState,
-	executionStatus: ExecutionStatus,
-	successToastAlreadyShown: boolean,
-) {
-	const workflowsStore = useWorkflowsStore();
-	const toast = useToast();
-	const i18n = useI18n();
-	const nodeTypesStore = useNodeTypesStore();
+		// Workflow did start but had been put to wait
+		documentTitle.setDocumentTitle(docStore.name, 'IDLE');
+	}
 
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
-	const workflowName = workflowDocumentStore.name;
+	function handleExecutionFinishedWithErrorOrCanceled(
+		execution: SimplifiedExecution,
+		runExecutionData: IRunExecutionData,
+	) {
+		documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'ERROR');
 
-	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
+		if (
+			runExecutionData.resultData.error?.name === 'ExpressionError' &&
+			(runExecutionData.resultData.error as ExpressionError).functionality === 'pairedItem'
+		) {
+			const error = runExecutionData.resultData.error as ExpressionError;
 
-	const workflowExecution = workflowsStore.getWorkflowExecution;
-	if (workflowExecution?.executedNode) {
-		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
-		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const nodeOutput =
-			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
+			const workflowData = workflowDocumentStore.value.serialize();
+			const eventData: IDataObject = {
+				caused_by_credential: false,
+				error_message: error.description,
+				error_title: error.message,
+				error_type: error.context.type,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						workflowHelpers.getNodeTypes(),
+					).nodeGraph,
+				),
+				workflow_id: workflowsStore.workflowId,
+			};
 
-		if (nodeType?.polling && !nodeOutput) {
+			if (
+				error.context.nodeCause &&
+				['paired_item_no_info', 'paired_item_invalid_info'].includes(error.context.type as string)
+			) {
+				const node = workflowDocumentStore.value.getNodeByName(error.context.nodeCause as string);
+
+				if (node) {
+					eventData.is_pinned = !!workflowDocumentStore.value.pinData?.[node.name];
+					eventData.mode = node.parameters.mode;
+					eventData.node_type = node.type;
+					eventData.operation = node.parameters.operation;
+					eventData.resource = node.parameters.resource;
+				}
+			}
+
+			telemetry.track('Instance FE emitted paired item error', eventData);
+		}
+
+		// Do not show the error message if the workflow got canceled
+		if (execution.status === 'canceled') {
 			toast.showMessage({
-				title: i18n.baseText('pushConnection.pollingNode.dataNotFound', {
-					interpolate: {
-						service: getTriggerNodeServiceName(nodeType),
-					},
-				}),
-				message: i18n.baseText('pushConnection.pollingNode.dataNotFound.message', {
-					interpolate: {
-						service: getTriggerNodeServiceName(nodeType),
-					},
-				}),
+				title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
 				type: 'success',
 			});
-		} else if (!nodeOutput && !successToastAlreadyShown) {
-			toast.showMessage({
-				title: i18n.baseText('pushConnection.nodeNotExecuted'),
-				message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
-				type: 'warning',
+		} else if (execution.data?.resultData.error) {
+			const { message, title } = getExecutionErrorToastConfiguration({
+				error: execution.data.resultData.error,
+				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 			});
-		} else if (!successToastAlreadyShown) {
-			handleExecutionFinishedSuccessfully(
-				workflowName,
-				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
-				workflowState,
-			);
+
+			toast.showMessage({ title, message, type: 'error', duration: 0 });
+
+			builderStore.incrementManualExecutionStats('error');
 		}
-	} else if (!successToastAlreadyShown) {
-		handleExecutionFinishedSuccessfully(
-			workflowName,
-			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
-			workflowState,
-		);
 	}
 
 	// Execution finished is triggered multiple times
 	// use "successToastAlreadyShown" flag to avoid double counting executions
-	if (executionStatus === 'success' && !successToastAlreadyShown) {
-		useBuilderStore().incrementManualExecutionStats('success');
-	}
-}
-
-export function setRunExecutionData(
-	execution: SimplifiedExecution,
-	runExecutionData: IRunExecutionData,
-	workflowState: WorkflowState,
-) {
-	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
-	);
-	const nodeHelpers = useNodeHelpers();
-	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
-
-	workflowState.executingNode.clearNodeExecutionQueue();
-
-	const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
-	const workflowExecution = executionDataStore.getExecutionSnapshot();
-
-	if (workflowExecution === null) {
-		return;
-	}
-
-	executionDataStore.setExecution({
-		...workflowExecution,
-		status: execution.status,
-		id: execution.id,
-		stoppedAt: execution.stoppedAt,
-	});
-	executionDataStore.setExecutionRunData(runExecutionData);
-	stateStore.setActiveExecutionId(undefined);
-
-	// Set the node execution issues on all the nodes which produced an error so that
-	// it can be displayed in the node-view
-	nodeHelpers.updateNodesExecutionIssues();
-
-	const lastNodeExecuted: string | undefined = runExecutionData.resultData.lastNodeExecuted;
-	let itemsCount = 0;
-	if (
-		lastNodeExecuted &&
-		runExecutionData.resultData.runData[lastNodeExecuted] &&
-		!runDataExecutedErrorMessage
+	function handleExecutionFinishedWithSuccessOrOther(
+		executionStatus: ExecutionStatus,
+		successToastAlreadyShown: boolean,
 	) {
-		itemsCount =
-			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
+		const workflowName = workflowDocumentStore.value.name;
+
+		documentTitle.setDocumentTitle(workflowName, 'IDLE');
+
+		const workflowExecution = workflowsStore.getWorkflowExecution;
+		if (workflowExecution?.executedNode) {
+			const node =
+				workflowDocumentStore.value.getNodeByName(workflowExecution.executedNode) ?? null;
+			const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			const nodeOutput =
+				workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
+
+			if (nodeType?.polling && !nodeOutput) {
+				toast.showMessage({
+					title: i18n.baseText('pushConnection.pollingNode.dataNotFound', {
+						interpolate: {
+							service: getTriggerNodeServiceName(nodeType),
+						},
+					}),
+					message: i18n.baseText('pushConnection.pollingNode.dataNotFound.message', {
+						interpolate: {
+							service: getTriggerNodeServiceName(nodeType),
+						},
+					}),
+					type: 'success',
+				});
+			} else if (!nodeOutput && !successToastAlreadyShown) {
+				toast.showMessage({
+					title: i18n.baseText('pushConnection.nodeNotExecuted'),
+					message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
+					type: 'warning',
+				});
+			} else if (!successToastAlreadyShown) {
+				handleExecutionFinishedSuccessfully(
+					workflowName,
+					i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
+				);
+			}
+		} else if (!successToastAlreadyShown) {
+			handleExecutionFinishedSuccessfully(
+				workflowName,
+				i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+			);
+		}
+
+		if (executionStatus === 'success' && !successToastAlreadyShown) {
+			builderStore.incrementManualExecutionStats('success');
+		}
 	}
 
-	stateStore.setActiveExecutionId(undefined);
+	function handleExecutionFinishedSuccessfully(workflowName: string, message: string) {
+		documentTitle.setDocumentTitle(workflowName, 'IDLE');
+		workflowState.setActiveExecutionId(undefined);
+		toast.showMessage({
+			title: message,
+			type: 'success',
+		});
+	}
 
-	void useExternalHooks().run('pushConnection.executionFinished', {
-		itemsCount,
-		nodeName: runExecutionData.resultData.lastNodeExecuted,
-		errorMessage: runDataExecutedErrorMessage,
-		runDataExecutedStartData: runExecutionData.startData,
-		resultDataError: runExecutionData.resultData.error,
-	});
+	function setRunExecutionData(
+		execution: SimplifiedExecution,
+		runExecutionData: IRunExecutionData,
+	) {
+		const stateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(workflowsStore.workflowId),
+		);
+		const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 
-	const lineNumber = runExecutionData.resultData?.error?.lineNumber;
-	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
+		workflowState.executingNode.clearNodeExecutionQueue();
+
+		const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
+		const workflowExecution = executionDataStore.getExecutionSnapshot();
+
+		if (workflowExecution === null) {
+			return;
+		}
+
+		executionDataStore.setExecution({
+			...workflowExecution,
+			status: execution.status,
+			id: execution.id,
+			stoppedAt: execution.stoppedAt,
+		});
+		executionDataStore.setExecutionRunData(runExecutionData);
+		stateStore.setActiveExecutionId(undefined);
+
+		// Set the node execution issues on all the nodes which produced an error so that
+		// it can be displayed in the node-view
+		nodeHelpers.updateNodesExecutionIssues();
+
+		const lastNodeExecuted: string | undefined = runExecutionData.resultData.lastNodeExecuted;
+		let itemsCount = 0;
+		if (
+			lastNodeExecuted &&
+			runExecutionData.resultData.runData[lastNodeExecuted] &&
+			!runDataExecutedErrorMessage
+		) {
+			itemsCount =
+				runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
+		}
+
+		stateStore.setActiveExecutionId(undefined);
+
+		void externalHooks.run('pushConnection.executionFinished', {
+			itemsCount,
+			nodeName: runExecutionData.resultData.lastNodeExecuted,
+			errorMessage: runDataExecutedErrorMessage,
+			runDataExecutedStartData: runExecutionData.startData,
+			resultDataError: runExecutionData.resultData.error,
+		});
+
+		const lineNumber = runExecutionData.resultData?.error?.lineNumber;
+		codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
+	}
+
+	return {
+		executionFinished,
+		continueEvaluationLoop,
+		fetchExecutionData,
+		getRunDataExecutedErrorMessage,
+		handleExecutionFinishedWithWaitTill,
+		handleExecutionFinishedWithErrorOrCanceled,
+		handleExecutionFinishedWithSuccessOrOther,
+		setRunExecutionData,
+		getRunExecutionData,
+	};
 }

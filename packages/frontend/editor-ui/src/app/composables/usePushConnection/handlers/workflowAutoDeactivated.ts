@@ -6,29 +6,36 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
-export async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowsListStore = useWorkflowsListStore();
+export function useWorkflowAutoDeactivated() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { initializeWorkspace } = useCanvasOperations();
+	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
 
-	workflowsStore.setWorkflowInactive(data.workflowId);
+	async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated) {
+		workflowsStore.setWorkflowInactive(data.workflowId);
 
-	if (workflowsStore.workflowId === data.workflowId) {
-		// Only update workflow if there are no unsaved changes
+		if (workflowDocumentStore.value.workflowId !== data.workflowId) {
+			return;
+		}
+
 		if (!uiStore.stateIsDirty) {
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(data.workflowId);
 			if (!updatedWorkflow.checksum) {
 				throw new Error('Failed to fetch workflow');
 			}
-			// initializeWorkspace calls initState which sets the document store
 			await initializeWorkspace(updatedWorkflow);
 		} else {
-			workflowDocumentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentStore.value.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
 		}
 
 		bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');
 	}
+
+	return { workflowAutoDeactivated };
 }

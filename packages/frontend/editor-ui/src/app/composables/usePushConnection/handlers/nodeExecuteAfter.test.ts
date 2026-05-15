@@ -1,12 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { nodeExecuteAfter } from './nodeExecuteAfter';
+import { useNodeExecuteAfter } from './nodeExecuteAfter';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { mock } from 'vitest-mock-extended';
-import type { Mocked } from 'vitest';
 import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
@@ -26,17 +25,35 @@ vi.mock('@/features/execution/executions/executions.utils', async (importOrigina
 	return { ...actual, openFormPopupWindow: vi.fn() };
 });
 
+vi.mock('./trackNodeExecution', () => ({
+	useTrackNodeExecution: vi.fn(() => ({
+		trackNodeExecution: vi.fn(),
+	})),
+}));
+
+const mockWorkflowState = mock<WorkflowState>({
+	executingNode: {
+		removeExecutingNode: vi.fn(),
+	},
+});
+
+vi.mock('@/app/composables/useWorkflowState', () => ({
+	injectWorkflowState: vi.fn(() => mockWorkflowState),
+}));
+
 import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 
 describe('nodeExecuteAfter', () => {
-	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
+	let nodeExecuteAfter: ReturnType<typeof useNodeExecuteAfter>['nodeExecuteAfter'];
 
 	beforeEach(() => {
 		vi.mocked(openFormPopupWindow).mockClear();
 		setActivePinia(createPinia());
+
+		({ nodeExecuteAfter } = useNodeExecuteAfter());
 
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('test-wf');
@@ -54,14 +71,6 @@ describe('nodeExecuteAfter', () => {
 		);
 
 		stateStore.setActiveExecutionId('exec-1');
-
-		mockOptions = {
-			workflowState: mock<WorkflowState>({
-				executingNode: {
-					removeExecutingNode: vi.fn(),
-				},
-			}),
-		};
 	});
 
 	it('should update node execution data with placeholder and remove executing node', async () => {
@@ -82,12 +91,10 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event);
 
-		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
-		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith(
-			'Test Node',
-		);
+		expect(mockWorkflowState.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
+		expect(mockWorkflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith('Test Node');
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 
@@ -122,7 +129,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node'][0].data).toEqual({
@@ -155,7 +162,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node'][0].data).toEqual({
@@ -179,7 +186,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		const taskData = runData?.['Test Node'][0];
@@ -216,7 +223,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		// Should only contain main connection, invalid_connection should be filtered out
@@ -247,7 +254,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event);
 
 		expect(openFormPopupWindow).toHaveBeenCalledWith(formUrl);
 	});
@@ -269,7 +276,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event);
 
 		expect(openFormPopupWindow).not.toHaveBeenCalled();
 	});

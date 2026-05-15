@@ -1,18 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import {
-	continueEvaluationLoop,
-	executionFinished,
-	getRunExecutionData,
-	handleExecutionFinishedWithSuccessOrOther,
-	handleExecutionFinishedWithErrorOrCanceled,
-	type SimplifiedExecution,
-} from './executionFinished';
+import { useExecutionFinished, type SimplifiedExecution } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { Router } from 'vue-router';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -28,10 +20,24 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-const opts = {
-	workflowState: mock<WorkflowState>(),
-	router: mock<Router>(),
-};
+const mockWorkflowState = mock<WorkflowState>({
+	executingNode: {
+		lastAddedExecutingNode: null,
+	},
+});
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: vi.fn(() => ({
+		push: vi.fn(),
+		replace: vi.fn(),
+		currentRoute: { value: {} },
+	})),
+}));
+
+vi.mock('@/app/composables/useWorkflowState', () => ({
+	injectWorkflowState: vi.fn(() => mockWorkflowState),
+}));
 
 const mockShowMessage = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
@@ -54,12 +60,40 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	})),
 }));
 
+vi.mock('@/app/composables/useNodeHelpers', () => ({
+	useNodeHelpers: vi.fn(() => ({
+		updateNodesExecutionIssues: vi.fn(),
+	})),
+}));
+
+vi.mock('@/app/composables/useWorkflowHelpers', () => ({
+	useWorkflowHelpers: vi.fn(() => ({
+		getNodeTypes: vi.fn(() => ({})),
+	})),
+}));
+
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: vi.fn(() => ({
+		saveAsNewWorkflow: vi.fn(),
+	})),
+}));
+
+vi.mock('@/app/composables/useExternalHooks', () => ({
+	useExternalHooks: vi.fn(() => ({
+		run: vi.fn(),
+	})),
+}));
+
 describe('continueEvaluationLoop()', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 	});
 
 	it('should call runWorkflow() if workflow has eval trigger that executed successfully with rows left', () => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+
+		const { continueEvaluationLoop } = useExecutionFinished();
 		const evalTriggerNodeName = 'eval-trigger';
 		const evalTriggerNodeData = mock<ITaskData>({
 			data: {
@@ -95,7 +129,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, opts);
+		continueEvaluationLoop(execution);
 
 		expect(runWorkflow).toHaveBeenCalledWith({
 			triggerNode: evalTriggerNodeName,
@@ -105,6 +139,10 @@ describe('continueEvaluationLoop()', () => {
 	});
 
 	it('should not call runWorkflow() if workflow execution status is not success', () => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+
+		const { continueEvaluationLoop } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			status: 'error',
 			workflowData: {
@@ -122,12 +160,16 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, opts);
+		continueEvaluationLoop(execution);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('should not call runWorkflow() if eval trigger node does not exist in workflow', () => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+
+		const { continueEvaluationLoop } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			status: 'success',
 			workflowData: {
@@ -140,12 +182,16 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, opts);
+		continueEvaluationLoop(execution);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('should not call runWorkflow() if eval trigger node exists but has no run data', () => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+
+		const { continueEvaluationLoop } = useExecutionFinished();
 		const evalTriggerNodeName = 'eval-trigger';
 		const execution = mock<SimplifiedExecution>({
 			status: 'success',
@@ -164,12 +210,16 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, opts);
+		continueEvaluationLoop(execution);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('should not call runWorkflow() if eval trigger node run data has no rows left', () => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+
+		const { continueEvaluationLoop } = useExecutionFinished();
 		const evalTriggerNodeName = 'eval-trigger';
 		const evalTriggerNodeData = mock<ITaskData>({
 			data: {
@@ -205,7 +255,7 @@ describe('continueEvaluationLoop()', () => {
 			},
 		});
 
-		continueEvaluationLoop(execution, opts);
+		continueEvaluationLoop(execution);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
@@ -213,6 +263,7 @@ describe('continueEvaluationLoop()', () => {
 
 describe('getRunExecutionData()', () => {
 	it('should preserve pushRef from execution data', () => {
+		const { getRunExecutionData } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			data: {
 				pushRef: 'test-push-ref-12345',
@@ -228,6 +279,7 @@ describe('getRunExecutionData()', () => {
 	});
 
 	it('should handle missing pushRef gracefully', () => {
+		const { getRunExecutionData } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			data: {
 				resultData: {
@@ -249,33 +301,26 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
-		const workflowState = mock<WorkflowState>({
-			executingNode: {
-				lastAddedExecutingNode: 'test-node',
+		const { executionFinished } = useExecutionFinished();
+		mockWorkflowState.executingNode.lastAddedExecutingNode = 'test-node';
+
+		await executionFinished({
+			type: 'executionFinished',
+			data: {
+				executionId: '1',
+				workflowId: '1',
+				status: 'success',
 			},
 		});
-		await executionFinished(
-			{
-				type: 'executionFinished',
-				data: {
-					executionId: '1',
-					workflowId: '1',
-					status: 'success',
-				},
-			},
-			{
-				router: mock<Router>(),
-				workflowState,
-			},
-		);
 
-		expect(workflowState.executingNode.lastAddedExecutingNode).toBeNull();
+		expect(mockWorkflowState.executingNode.lastAddedExecutingNode).toBeNull();
 	});
 
 	describe('ready-to-run AI workflow tracking', () => {
 		it('should track successful execution of ready-to-run-ai-workflow', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { executionFinished } = useExecutionFinished();
 
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
@@ -293,26 +338,14 @@ describe('executionFinished', () => {
 				'trackExecuteAiWorkflowSuccess',
 			);
 
-			const workflowState = mock<WorkflowState>({
-				executingNode: {
-					lastAddedExecutingNode: null,
+			await executionFinished({
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'success',
 				},
 			});
-
-			await executionFinished(
-				{
-					type: 'executionFinished',
-					data: {
-						executionId: '123',
-						workflowId: '1',
-						status: 'success',
-					},
-				},
-				{
-					router: mock<Router>(),
-					workflowState,
-				},
-			);
 
 			expect(trackExecuteAiWorkflowSuccess).toHaveBeenCalled();
 		});
@@ -320,6 +353,7 @@ describe('executionFinished', () => {
 		it('should track failed execution of ready-to-run-ai-workflow', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { executionFinished } = useExecutionFinished();
 
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
@@ -334,26 +368,14 @@ describe('executionFinished', () => {
 
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
 
-			const workflowState = mock<WorkflowState>({
-				executingNode: {
-					lastAddedExecutingNode: null,
+			await executionFinished({
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'error',
 				},
 			});
-
-			await executionFinished(
-				{
-					type: 'executionFinished',
-					data: {
-						executionId: '123',
-						workflowId: '1',
-						status: 'error',
-					},
-				},
-				{
-					router: mock<Router>(),
-					workflowState,
-				},
-			);
 
 			expect(trackExecuteAiWorkflow).toHaveBeenCalledWith('error');
 		});
@@ -361,6 +383,7 @@ describe('executionFinished', () => {
 		it('should track execution of ready-to-run-ai-workflow-v5', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { executionFinished } = useExecutionFinished();
 
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
@@ -378,26 +401,14 @@ describe('executionFinished', () => {
 				'trackExecuteAiWorkflowSuccess',
 			);
 
-			const workflowState = mock<WorkflowState>({
-				executingNode: {
-					lastAddedExecutingNode: null,
+			await executionFinished({
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'success',
 				},
 			});
-
-			await executionFinished(
-				{
-					type: 'executionFinished',
-					data: {
-						executionId: '123',
-						workflowId: '1',
-						status: 'success',
-					},
-				},
-				{
-					router: mock<Router>(),
-					workflowState,
-				},
-			);
 
 			expect(trackExecuteAiWorkflowSuccess).toHaveBeenCalled();
 		});
@@ -405,6 +416,7 @@ describe('executionFinished', () => {
 		it('should track execution of ready-to-run-ai-workflow-v6', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { executionFinished } = useExecutionFinished();
 
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
@@ -419,26 +431,14 @@ describe('executionFinished', () => {
 
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
 
-			const workflowState = mock<WorkflowState>({
-				executingNode: {
-					lastAddedExecutingNode: null,
+			await executionFinished({
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'canceled',
 				},
 			});
-
-			await executionFinished(
-				{
-					type: 'executionFinished',
-					data: {
-						executionId: '123',
-						workflowId: '1',
-						status: 'canceled',
-					},
-				},
-				{
-					router: mock<Router>(),
-					workflowState,
-				},
-			);
 
 			expect(trackExecuteAiWorkflow).toHaveBeenCalledWith('canceled');
 		});
@@ -446,6 +446,7 @@ describe('executionFinished', () => {
 		it('should not track execution for non-ready-to-run workflows', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { executionFinished } = useExecutionFinished();
 
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
@@ -464,26 +465,14 @@ describe('executionFinished', () => {
 			);
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
 
-			const workflowState = mock<WorkflowState>({
-				executingNode: {
-					lastAddedExecutingNode: null,
+			await executionFinished({
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'success',
 				},
 			});
-
-			await executionFinished(
-				{
-					type: 'executionFinished',
-					data: {
-						executionId: '123',
-						workflowId: '1',
-						status: 'success',
-					},
-				},
-				{
-					router: mock<Router>(),
-					workflowState,
-				},
-			);
 
 			expect(trackExecuteAiWorkflowSuccess).not.toHaveBeenCalled();
 			expect(trackExecuteAiWorkflow).not.toHaveBeenCalled();
@@ -500,15 +489,14 @@ describe('executionFinished', () => {
 		});
 
 		setActivePinia(pinia);
+		const { executionFinished } = useExecutionFinished();
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const uiStore = mockedStore(useUIStore);
 
-		// Set activeExecutionId directly on the store
 		workflowsStore.activeExecutionId = '123';
 
-		// Mock getWorkflowById to return a workflow
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 			id: '1',
 			name: 'Test Workflow',
@@ -522,34 +510,17 @@ describe('executionFinished', () => {
 
 		const setProcessingExecutionResultsSpy = vi.spyOn(uiStore, 'setProcessingExecutionResults');
 
-		const workflowState = mock<WorkflowState>({
-			executingNode: {
-				lastAddedExecutingNode: 'test-node',
+		await executionFinished({
+			type: 'executionFinished',
+			data: {
+				executionId: '123',
+				workflowId: '1',
+				status: 'error',
 			},
-			setActiveExecutionId: vi.fn(),
 		});
 
-		await executionFinished(
-			{
-				type: 'executionFinished',
-				data: {
-					executionId: '123',
-					workflowId: '1',
-					status: 'error',
-				},
-			},
-			{
-				router: mock<Router>(),
-				workflowState,
-			},
-		);
-
-		// Verify that setActiveExecutionId was called with undefined
-		expect(workflowState.setActiveExecutionId).toHaveBeenCalledWith(undefined);
-
-		// Verify that processing was set to false
+		expect(mockWorkflowState.setActiveExecutionId).toHaveBeenCalledWith(undefined);
 		expect(setProcessingExecutionResultsSpy).toHaveBeenCalledWith(false);
-
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
 
@@ -563,6 +534,7 @@ describe('executionFinished', () => {
 		});
 
 		setActivePinia(pinia);
+		const { executionFinished } = useExecutionFinished();
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
@@ -578,72 +550,38 @@ describe('executionFinished', () => {
 			settings: {},
 		} as unknown as ReturnType<typeof workflowsListStore.getWorkflowById>);
 
-		// Simulate the iframe scenario: fetch returns no data
 		vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(null);
 
-		const clearNodeExecutionQueue = vi.fn();
-		const workflowState = mock<WorkflowState>({
-			executingNode: {
-				lastAddedExecutingNode: 'LastNode',
-				clearNodeExecutionQueue,
+		await executionFinished({
+			type: 'executionFinished',
+			data: {
+				executionId: '123',
+				workflowId: '1',
+				status: 'success',
 			},
-			setActiveExecutionId: vi.fn(),
 		});
 
-		await executionFinished(
-			{
-				type: 'executionFinished',
-				data: {
-					executionId: '123',
-					workflowId: '1',
-					status: 'success',
-				},
-			},
-			{
-				router: mock<Router>(),
-				workflowState,
-			},
-		);
-
-		// The executing node queue must be cleared so nodes don't stay stuck
-		// with a spinner after the execution finishes.
-		expect(clearNodeExecutionQueue).toHaveBeenCalled();
+		expect(mockWorkflowState.executingNode.clearNodeExecutionQueue).toHaveBeenCalled();
 	});
 
 	it('should clear executing node queue when activeExecutionId is undefined (iframe preview)', async () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
+		const { executionFinished } = useExecutionFinished();
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		// In iframe preview after resetWorkspace, activeExecutionId can be undefined
 		workflowsStore.activeExecutionId = undefined;
 
-		const clearNodeExecutionQueue = vi.fn();
-		const workflowState = mock<WorkflowState>({
-			executingNode: {
-				lastAddedExecutingNode: 'LastNode',
-				clearNodeExecutionQueue,
+		await executionFinished({
+			type: 'executionFinished',
+			data: {
+				executionId: '123',
+				workflowId: '1',
+				status: 'success',
 			},
 		});
 
-		await executionFinished(
-			{
-				type: 'executionFinished',
-				data: {
-					executionId: '123',
-					workflowId: '1',
-					status: 'success',
-				},
-			},
-			{
-				router: mock<Router>(),
-				workflowState,
-			},
-		);
-
-		// Even when activeExecutionId is undefined (iframe early return),
-		// the executing node queue must be cleared.
-		expect(clearNodeExecutionQueue).toHaveBeenCalled();
+		expect(mockWorkflowState.executingNode.clearNodeExecutionQueue).toHaveBeenCalled();
 	});
 });
 
@@ -656,11 +594,12 @@ describe('manual execution stats tracking', () => {
 		it('increments success stats on successful execution', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
 
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther('success', false);
 
 			expect(incrementSpy).toHaveBeenCalledWith('success');
 		});
@@ -668,11 +607,12 @@ describe('manual execution stats tracking', () => {
 		it('does not increment success stats when successToastAlreadyShown is true', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
 
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+			handleExecutionFinishedWithSuccessOrOther('success', true);
 
 			expect(incrementSpy).not.toHaveBeenCalled();
 		});
@@ -680,11 +620,12 @@ describe('manual execution stats tracking', () => {
 		it('does not increment stats for non-success status', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
 
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'error', false);
+			handleExecutionFinishedWithSuccessOrOther('error', false);
 
 			expect(incrementSpy).not.toHaveBeenCalled();
 		});
@@ -698,6 +639,7 @@ describe('manual execution stats tracking', () => {
 		it('shows success toast when executed node has run data', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -722,7 +664,7 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther('success', false);
 
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});
@@ -730,6 +672,7 @@ describe('manual execution stats tracking', () => {
 		it('shows warning toast when executed node was not reached', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -752,7 +695,7 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther('success', false);
 
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 		});
@@ -760,6 +703,7 @@ describe('manual execution stats tracking', () => {
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -782,7 +726,7 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+			handleExecutionFinishedWithSuccessOrOther('success', true);
 
 			expect(mockShowMessage).not.toHaveBeenCalled();
 		});
@@ -792,6 +736,7 @@ describe('manual execution stats tracking', () => {
 		it('increments error stats on execution error', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithErrorOrCanceled } = useExecutionFinished();
 
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
@@ -816,6 +761,7 @@ describe('manual execution stats tracking', () => {
 		it('does not increment stats for canceled executions', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
+			const { handleExecutionFinishedWithErrorOrCanceled } = useExecutionFinished();
 
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');

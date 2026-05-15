@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, provide, onBeforeUnmount, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
 import { NDVStoreKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
@@ -46,7 +46,7 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 // from the parent) are processed for node highlighting, execution state, etc.
 // When canExecute is enabled, the iframe also establishes its own WebSocket
 // connection for user-triggered executions (pushConnect below).
-const pushConnection = usePushConnection({ router: useRouter(), workflowState });
+const pushConnection = usePushConnection();
 const pushConnectionStore = usePushConnectionStore();
 
 // When canExecute is disabled (read-only preview), set activeExecutionId to null

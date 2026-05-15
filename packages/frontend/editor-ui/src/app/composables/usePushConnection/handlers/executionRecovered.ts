@@ -1,54 +1,55 @@
 import type { ExecutionRecovered } from '@n8n/api-types/push/execution';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	fetchExecutionData,
-	getRunExecutionData,
-	handleExecutionFinishedWithSuccessOrOther,
-	handleExecutionFinishedWithErrorOrCanceled,
-	handleExecutionFinishedWithWaitTill,
-	setRunExecutionData,
-} from './executionFinished';
+import { useExecutionFinished } from './executionFinished';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import type { useRouter } from 'vue-router';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
-export async function executionRecovered(
-	{ data }: ExecutionRecovered,
-	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
-) {
+export function useExecutionRecovered() {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
-	);
 	const uiStore = useUIStore();
+	const {
+		fetchExecutionData,
+		handleExecutionFinishedWithWaitTill,
+		handleExecutionFinishedWithErrorOrCanceled,
+		handleExecutionFinishedWithSuccessOrOther,
+		setRunExecutionData,
+		getRunExecutionData,
+	} = useExecutionFinished();
 
-	// No workflow is actively running, therefore we ignore this event
-	if (typeof stateStore.activeExecutionId === 'undefined') {
-		return;
-	}
+	async function executionRecovered({ data }: ExecutionRecovered) {
+		const stateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(workflowsStore.workflowId),
+		);
 
-	uiStore.setProcessingExecutionResults(true);
+		// No workflow is actively running, therefore we ignore this event
+		if (typeof stateStore.activeExecutionId === 'undefined') {
+			return;
+		}
 
-	const execution = await fetchExecutionData(data.executionId);
-	if (!execution) {
+		uiStore.setProcessingExecutionResults(true);
+
+		const execution = await fetchExecutionData(data.executionId);
+		if (!execution) {
+			uiStore.setProcessingExecutionResults(false);
+			return;
+		}
+
+		const runExecutionData = getRunExecutionData(execution);
 		uiStore.setProcessingExecutionResults(false);
-		return;
+
+		if (execution.data?.waitTill !== undefined) {
+			handleExecutionFinishedWithWaitTill(execution.workflowId ?? '');
+		} else if (execution.status === 'error' || execution.status === 'canceled') {
+			handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		} else {
+			handleExecutionFinishedWithSuccessOrOther(execution.status, false);
+		}
+
+		setRunExecutionData(execution, runExecutionData);
 	}
 
-	const runExecutionData = getRunExecutionData(execution);
-	uiStore.setProcessingExecutionResults(false);
-
-	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
-	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
-	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
-	}
-
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
+	return { executionRecovered };
 }
