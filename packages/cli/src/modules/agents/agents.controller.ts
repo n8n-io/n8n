@@ -4,7 +4,6 @@ import {
 	AgentChatMessageDto,
 	AgentCredentialIntegrationSchema,
 	type AgentBuilderMessagesResponse,
-	type AgentCredentialIntegrationDto,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentScheduleConfig,
@@ -649,9 +648,8 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentCredentialIntegrationDto,
 	) {
-		const integration = await this.validateIntegration(payload);
+		const integration = await this.validateIntegration(req.body);
 		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -876,7 +874,7 @@ export class AgentsController {
 		res.send(body);
 	}
 
-	private async validateIntegration(dto: AgentCredentialIntegrationDto) {
+	private async validateIntegration(dto: unknown) {
 		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(dto);
 		if (!integrationParseResult.success) {
 			throw new BadRequestError(integrationParseResult.error.message);

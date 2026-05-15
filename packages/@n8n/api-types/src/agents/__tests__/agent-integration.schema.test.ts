@@ -11,6 +11,15 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts a telegram integration with credential id', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'telegram',
+			credentialId: 'cred-123',
+			settings: { accessMode: 'private', allowedUsers: ['123'] },
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('accepts a chat integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
