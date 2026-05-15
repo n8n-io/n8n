@@ -3,6 +3,7 @@ import type {
 	AuthorizationParams,
 	OAuthServerProvider,
 } from '@modelcontextprotocol/sdk/server/auth/provider';
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import type {
 	OAuthClientInformationFull,
@@ -14,6 +15,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
+import { UrlService } from '@/services/url.service';
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
@@ -39,6 +41,7 @@ export class McpOAuthService implements OAuthServerProvider {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
+		private readonly urlService: UrlService,
 		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly tokenService: McpOAuthTokenService,
@@ -163,15 +166,34 @@ export class McpOAuthService implements OAuthServerProvider {
 		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
+			const resource = this.resolveAndValidateResourceIndicator(
+				this.getResourceIndicatorFromAuthorizationParams(params),
+			);
+
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
 				codeChallenge: params.codeChallenge,
 				state: params.state ?? null,
+				resource,
 			});
 
 			res.redirect('/oauth/consent');
 		} catch (error) {
+			if (error instanceof InvalidResourceIndicatorError) {
+				this.logger.warn('Rejecting OAuth authorization request with invalid resource', {
+					clientId: client.client_id,
+					resource: error.resource,
+					expectedResource: error.expectedResource,
+				});
+				this.oauthSessionService.clearSession(res);
+				res.status(400).json({
+					error: 'invalid_resource',
+					error_description: 'Invalid resource indicator',
+				});
+				return;
+			}
+
 			this.logger.error('Error in authorize method', { error, clientId: client.client_id });
 			this.oauthSessionService.clearSession(res);
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
@@ -203,6 +225,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,
 			client.client_id,
+			authRecord.resource ?? undefined,
 		);
 
 		await this.tokenService.saveTokenPair(
@@ -228,13 +251,64 @@ export class McpOAuthService implements OAuthServerProvider {
 	async exchangeRefreshToken(
 		client: OAuthClientInformationFull,
 		refreshToken: string,
-		_scopes?: string[],
+		scopesOrResource?: string[] | string | URL,
+		resourceFromRequest?: string | URL,
 	): Promise<OAuthTokens> {
-		return await this.tokenService.validateAndRotateRefreshToken(refreshToken, client.client_id);
+		const rawResource = resourceFromRequest ?? scopesOrResource;
+		const resource =
+			typeof rawResource === 'string'
+				? rawResource
+				: rawResource instanceof URL
+					? rawResource.toString()
+					: undefined;
+
+		return await this.tokenService.validateAndRotateRefreshToken(
+			refreshToken,
+			client.client_id,
+			this.resolveAndValidateResourceIndicator(resource),
+		);
 	}
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
 		return await this.tokenService.verifyAccessToken(token);
+	}
+
+	private getCanonicalMcpResourceUrl(): string {
+		return `${this.urlService.getInstanceBaseUrl()}/mcp-server/http`;
+	}
+
+	private getResourceIndicatorFromAuthorizationParams(
+		params: AuthorizationParams,
+	): string | undefined {
+		const hasResource = Reflect.has(params, 'resource');
+		if (!hasResource) {
+			return undefined;
+		}
+
+		const resource = Reflect.get(params, 'resource');
+
+		if (typeof resource === 'string') {
+			return resource;
+		}
+
+		if (resource instanceof URL) {
+			return resource.toString();
+		}
+
+		throw new InvalidResourceIndicatorError(String(resource), this.getCanonicalMcpResourceUrl());
+	}
+
+	private resolveAndValidateResourceIndicator(resource: string | undefined): string | undefined {
+		if (resource === undefined) {
+			return undefined;
+		}
+
+		const canonicalResource = this.getCanonicalMcpResourceUrl();
+		if (resource !== canonicalResource) {
+			throw new InvalidResourceIndicatorError(resource, canonicalResource);
+		}
+
+		return resource;
 	}
 
 	async revokeToken(
@@ -306,5 +380,16 @@ export class McpOAuthService implements OAuthServerProvider {
 			clientId,
 			clientName: client.name,
 		});
+	}
+}
+
+class InvalidResourceIndicatorError extends OAuthError {
+	static readonly errorCode = 'invalid_resource';
+
+	constructor(
+		public readonly resource: string,
+		public readonly expectedResource: string,
+	) {
+		super('Invalid resource indicator');
 	}
 }
