@@ -173,6 +173,7 @@ import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-Cre
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558-CreateEvaluationCollection';
+import { AddResourceToOAuthAuthorizationCodes1778855321995 } from '../common/1778855321995-AddResourceToOAuthAuthorizationCodes';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
@@ -296,6 +297,7 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowHistoryAutoSaveFields1762847206508,
 	AddToolsColumnToChatHubTables1761830340990,
 	ChangeOAuthStateColumnToUnboundedVarchar1763572724000,
+	AddResourceToOAuthAuthorizationCodes1778855321995,
 	AddAttachmentsToChatHubMessages1761773155024,
 	AddActiveVersionIdColumn1763047800000,
 	CreateBinaryDataTable1763716655000,
