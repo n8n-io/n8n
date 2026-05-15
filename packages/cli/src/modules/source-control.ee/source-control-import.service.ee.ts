@@ -683,7 +683,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
