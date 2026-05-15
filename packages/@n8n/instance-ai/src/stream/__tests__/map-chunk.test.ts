@@ -132,6 +132,82 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps native tool result Error objects to their messages', () => {
+		expect(
+			map({
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				output: new Error('Browser access denied'),
+				isError: true,
+			}),
+		).toEqual({
+			type: 'tool-error',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				error: 'Browser access denied',
+			},
+		});
+	});
+
+	it('maps native MCP text error content to tool errors', () => {
+		expect(
+			map({
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				output: {
+					content: [{ type: 'text', text: 'File too large' }],
+					isError: true,
+				},
+				isError: true,
+			}),
+		).toEqual({
+			type: 'tool-error',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				error: 'File too large',
+			},
+		});
+	});
+
+	it('maps structured native MCP error content to tool errors', () => {
+		expect(
+			map({
+				type: 'message',
+				message: {
+					role: 'tool',
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							result: {
+								content: [
+									{
+										type: 'text',
+										text: JSON.stringify({ error: { message: 'Access denied by user' } }),
+									},
+								],
+								isError: true,
+							},
+							isError: true,
+						},
+					],
+				},
+			}),
+		).toEqual({
+			type: 'tool-error',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				error: 'Access denied by user',
+			},
+		});
+	});
+
 	it('maps native suspension chunks to confirmation requests', () => {
 		const validSetupNode = {
 			node: {

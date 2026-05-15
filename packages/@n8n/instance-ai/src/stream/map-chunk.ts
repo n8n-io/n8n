@@ -40,6 +40,71 @@ function getRecordProperty(value: unknown, key: string): Record<string, unknown>
 	return isRecord(recordValue) ? recordValue : undefined;
 }
 
+const DEFAULT_TOOL_ERROR_MESSAGE = 'Tool execution failed';
+
+function tryParseJson(text: string): unknown {
+	try {
+		return JSON.parse(text) as unknown;
+	} catch {
+		return undefined;
+	}
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function extractTextContent(content: unknown[]): string | undefined {
+	const text = content
+		.flatMap((part) => {
+			if (!isRecord(part) || part.type !== 'text') return [];
+			const textPart = nonEmptyString(part.text);
+			return textPart ? [textPart] : [];
+		})
+		.join('\n');
+
+	return nonEmptyString(text);
+}
+
+function extractToolErrorText(error: unknown): string {
+	return extractToolErrorTextInner(error) ?? DEFAULT_TOOL_ERROR_MESSAGE;
+}
+
+function extractToolErrorTextInner(error: unknown): string | undefined {
+	if (error instanceof Error) return nonEmptyString(error.message);
+
+	if (typeof error === 'string') {
+		const parsed = tryParseJson(error);
+		if (parsed !== undefined && typeof parsed !== 'string') {
+			return extractToolErrorTextInner(parsed) ?? nonEmptyString(error);
+		}
+
+		return nonEmptyString(error);
+	}
+
+	if (!isRecord(error)) return undefined;
+
+	for (const key of ['error', 'message', 'errorMessage']) {
+		const text = nonEmptyString(error[key]);
+		if (text) return text;
+	}
+
+	const nestedError = getRecordProperty(error, 'error');
+	const nestedErrorText = extractToolErrorTextInner(nestedError);
+	if (nestedErrorText) return nestedErrorText;
+
+	const structuredContentText = extractToolErrorTextInner(error.structuredContent);
+	if (structuredContentText) return structuredContentText;
+
+	const content = getArrayProperty(error, 'content');
+	if (content) {
+		const contentText = extractTextContent(content);
+		if (contentText) return extractToolErrorTextInner(contentText) ?? contentText;
+	}
+
+	return extractToolErrorTextInner(error.output);
+}
+
 const agentStreamChunkTypes = new Set<string>([
 	'finish',
 	'text-delta',
@@ -145,7 +210,7 @@ export function mapAgentChunkToEvent(
 				...base,
 				payload: {
 					toolCallId: chunk.toolCallId,
-					error: typeof chunk.output === 'string' ? chunk.output : 'Tool execution failed',
+					error: extractToolErrorText(chunk.output),
 				},
 			};
 		}
@@ -351,8 +416,7 @@ export function mapAgentChunkToEvent(
 					...base,
 					payload: {
 						toolCallId: typeof toolResult.toolCallId === 'string' ? toolResult.toolCallId : '',
-						error:
-							typeof toolResult.result === 'string' ? toolResult.result : 'Tool execution failed',
+						error: extractToolErrorText(toolResult.result),
 					},
 				};
 			}
