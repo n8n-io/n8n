@@ -7,7 +7,9 @@
 		"target": "es2023",
 		"lib": ["es2023"],
 		"types": ["node"],
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true
 	},
 	"include": ["src/**/*.ts"]
 }

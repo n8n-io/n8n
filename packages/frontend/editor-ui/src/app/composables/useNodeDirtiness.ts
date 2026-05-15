@@ -9,10 +9,7 @@ import {
 } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
@@ -125,9 +122,7 @@ export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	function getIncomingConnections(nodeName: string): INodeConnections {
 		return workflowDocumentStore.value.incomingConnectionsByNodeName(nodeName);

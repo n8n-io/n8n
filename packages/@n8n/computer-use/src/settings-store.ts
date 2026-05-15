@@ -9,6 +9,7 @@ import {
 	permissionModeSchema,
 	TOOL_GROUP_DEFINITIONS,
 } from './config';
+import { getTemplate } from './config-templates';
 import { logger } from './logger';
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,33 @@ export class SettingsStore {
 	// ---------------------------------------------------------------------------
 	// Factory
 	// ---------------------------------------------------------------------------
+
+	static async ensureInitialized(config: GatewayConfig): Promise<void> {
+		const filePath = getSettingsFilePath();
+
+		// Never overwrite an existing settings file.
+		try {
+			await fs.access(filePath);
+			return;
+		} catch {
+			// File does not exist yet.
+		}
+
+		const template = getTemplate('default');
+		const permissions = { ...template.permissions, ...config.permissions };
+		const initialSettings: PersistentSettings = {
+			permissions,
+			filesystemDir: '',
+			resourcePermissions: {},
+		};
+
+		const dir = path.dirname(filePath);
+		await fs.mkdir(dir, { recursive: true });
+		await fs.writeFile(filePath, JSON.stringify(initialSettings, null, 2), {
+			encoding: 'utf-8',
+			mode: 0o600,
+		});
+	}
 
 	static async create(): Promise<SettingsStore> {
 		const filePath = getSettingsFilePath();

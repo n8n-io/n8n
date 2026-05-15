@@ -30,11 +30,27 @@ export type StartNodeParams = {
 	node: NodeTracingParams;
 };
 
+type EndNodeError = { message: string; constructor: { name: string }; stack?: string };
+
+export function isEndNodeError(error: unknown): error is EndNodeError {
+	if (typeof error !== 'object' || error === null) return false;
+
+	const record = error as Record<string, unknown>;
+	if (typeof record.message !== 'string') return false;
+
+	const ctor = record.constructor;
+	if (typeof ctor?.name !== 'string') return false;
+
+	if ('stack' in record && typeof record.stack !== 'string') return false;
+
+	return true;
+}
+
 export type EndNodeParams = {
 	executionId: string;
 	node: NodeTracingParams;
 	inputItemCount: number;
 	outputItemCount: number;
-	error?: { message: string; constructor: { name: string }; stack?: string };
+	error?: EndNodeError;
 	customAttributes?: Record<string, string>;
 };

@@ -32,8 +32,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 vi.mock('vue-router', async (importOriginal) => ({
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	...(await importOriginal<typeof import('vue-router')>()),
+	...(await importOriginal()),
 	useRoute: vi.fn().mockReturnValue({
 		params: { workflowId: 'test' },
 		query: { parentFolderId: '1' },
@@ -200,7 +199,7 @@ describe('WorkflowDetails', () => {
 			'123': workflow,
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
-		workflowsStore.workflowId = workflow.id;
+		workflowsStore.setWorkflowId(workflow.id);
 		workflowDocumentStoreRef.value?.setChecksum('test-checksum');
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;

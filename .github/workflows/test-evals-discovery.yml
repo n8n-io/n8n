@@ -1,0 +1,123 @@
+name: 'Test: Instance AI Discovery Evals'
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        type: string
+        default: 'master'
+      filter:
+        description: 'Filter scenarios by id (e.g. "slack-oauth")'
+        required: false
+        type: string
+        default: ''
+      trials:
+        description: 'Trials per scenario'
+        required: false
+        type: number
+        default: 3
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        default: 'master'
+      filter:
+        description: 'Filter scenarios by id (e.g. "slack-oauth")'
+        required: false
+        default: ''
+      trials:
+        description: 'Trials per scenario'
+        required: false
+        default: '3'
+
+jobs:
+  run-discovery-evals:
+    name: 'Run Discovery Evals'
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build'
+
+      - name: Export Node Types
+        run: |
+          ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
+
+      - name: Run Discovery Evals
+        id: eval
+        working-directory: packages/@n8n/instance-ai
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          LANGSMITH_TRACING: 'true'
+          LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+          LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+          LANGSMITH_REVISION_ID: ${{ github.sha }}
+          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          FILTER: ${{ inputs.filter }}
+          TRIALS: ${{ inputs.trials || 3 }}
+        run: |
+          set -o pipefail
+          if [ -n "$FILTER" ]; then
+            pnpm eval:discovery --filter "$FILTER" --trials "$TRIALS" 2>&1 | tee discovery-eval-output.txt
+          else
+            pnpm eval:discovery --trials "$TRIALS" 2>&1 | tee discovery-eval-output.txt
+          fi
+
+      - name: Post eval results to PR
+        if: ${{ always() && github.event_name == 'pull_request' && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVAL_OUTCOME: ${{ steps.eval.outcome }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVAL_OUTCOME" = "success" ]; then
+            STATUS_ICON="✅"
+          else
+            STATUS_ICON="❌"
+          fi
+          {
+            echo "### Instance AI Discovery Eval ${STATUS_ICON}"
+            echo ""
+            echo "Branch: \`${HEAD_REF}\` · Commit: \`${COMMIT_SHA}\`"
+            echo ""
+            echo "<details><summary>Eval output</summary>"
+            echo ""
+            echo '```'
+            cat packages/@n8n/instance-ai/discovery-eval-output.txt
+            echo '```'
+            echo ""
+            echo "</details>"
+          } > /tmp/discovery-comment.md
+
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --jq '.[] | select(.body | startswith("### Instance AI Discovery Eval")) | .id' | tail -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" -X PATCH -F body=@/tmp/discovery-comment.md
+          else
+            gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/discovery-comment.md
+          fi
+
+      - name: Upload Results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: instance-ai-discovery-eval-results
+          path: packages/@n8n/instance-ai/discovery-eval-output.txt
+          retention-days: 14
