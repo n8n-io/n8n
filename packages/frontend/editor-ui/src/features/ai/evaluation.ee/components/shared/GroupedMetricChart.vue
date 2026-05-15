@@ -97,6 +97,22 @@ const layout = computed<{ width: number; groups: RenderedGroup[] }>(() => {
 
 <template>
 	<div :class="$style.wrap" data-test-id="grouped-metric-chart">
+		<!--
+			Labels sit ABOVE the bars per Figma — HTML divs instead of SVG
+			text so each label can ellipsis to its own group's width when
+			the metric name is too long for the column.
+		-->
+		<div :class="$style.labelsRow" :style="{ width: `${layout.width}px` }">
+			<div
+				v-for="group in layout.groups"
+				:key="`label-${group.label}`"
+				:class="$style.label"
+				:style="{ width: `${group.width}px`, marginRight: `${groupGap}px` }"
+				:title="group.label"
+			>
+				{{ group.label }}
+			</div>
+		</div>
 		<svg
 			:width="layout.width"
 			:height="height"
@@ -119,22 +135,6 @@ const layout = computed<{ width: number; groups: RenderedGroup[] }>(() => {
 				</rect>
 			</g>
 		</svg>
-		<!--
-			HTML labels live outside the SVG so each one can shrink/truncate
-			independently — SVG text would overlap on narrow groups, which
-			is what 4 long metric names × 3 versions hit in the card layout.
-		-->
-		<div :class="$style.labelsRow" :style="{ width: `${layout.width}px` }">
-			<div
-				v-for="group in layout.groups"
-				:key="`label-${group.label}`"
-				:class="$style.label"
-				:style="{ width: `${group.width}px`, marginRight: `${groupGap}px` }"
-				:title="group.label"
-			>
-				{{ group.label }}
-			</div>
-		</div>
 	</div>
 </template>
 

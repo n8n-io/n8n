@@ -63,24 +63,16 @@ const lastRunRelative = computed<string | null>(() => {
 
 // `EvaluationCollectionRunSummary` carries `workflowVersionId` (a UUID)
 // but no friendly label — joining the wizard's per-version label would
-// require a backend change. Until then, the letter-coded VersionAvatar
-// (which doubles as the bar-chart x-axis label) is the chip's identity,
-// with a short hash so cards stay distinguishable when multiple
-// collections share the same versions.
-const letterFor = (i: number) => {
-	if (i < 26) return String.fromCharCode(65 + i);
-	const first = Math.floor(i / 26) - 1;
-	const second = i % 26;
-	return String.fromCharCode(65 + first) + String.fromCharCode(65 + second);
-};
-
-const shortHash = (id: string) => id.slice(0, 6);
+// require a backend change. Until then, render a short hash inline next
+// to the colored dot so the chip stays compact and matches the Figma
+// shape (`● <name> <score>`). Identity-by-color is already encoded by
+// the VersionAvatar dot index.
+const shortHash = (id: string) => id.slice(0, 7);
 
 const versionChips = computed(() =>
 	(props.detail?.runs ?? []).map((run, idx) => ({
 		key: run.testRunId,
 		index: idx,
-		letter: letterFor(idx),
 		label:
 			run.workflowVersionId === null
 				? i18n.baseText('evaluation.collections.card.currentDraft')
@@ -131,60 +123,60 @@ const ensureDetailLoaded = () => {
 		data-test-id="eval-collections-card"
 		@mouseenter="ensureDetailLoaded"
 	>
-		<div :class="$style.cardMain">
-			<div :class="$style.cardHeading">
-				<N8nText size="medium" bold>{{ collection.name }}</N8nText>
-				<N8nBadge :theme="status === 'done' ? 'success' : 'tertiary'" size="small">
-					{{
-						i18n.baseText(
-							status === 'done'
-								? 'evaluation.collections.card.done'
-								: 'evaluation.collections.card.running',
-						)
-					}}
-				</N8nBadge>
+		<div :class="$style.cardTopRow">
+			<div :class="$style.cardHeader">
+				<div :class="$style.cardHeading">
+					<N8nText size="medium" bold>{{ collection.name }}</N8nText>
+					<N8nBadge :theme="status === 'done' ? 'success' : 'tertiary'" size="small">
+						{{
+							i18n.baseText(
+								status === 'done'
+									? 'evaluation.collections.card.done'
+									: 'evaluation.collections.card.running',
+							)
+						}}
+					</N8nBadge>
+				</div>
+				<N8nText size="xsmall" color="text-light">
+					<span>{{
+						i18n.baseText('evaluation.collections.card.meta.versions', {
+							adjustToNumber: detail?.runs.length ?? collection.runCount,
+						})
+					}}</span>
+					<span v-if="datasetName"> · {{ datasetName }}</span>
+					<span v-if="lastRunRelative"> · {{ lastRunRelative }}</span>
+				</N8nText>
 			</div>
-			<N8nText size="xsmall" color="text-light">
-				<span>{{
-					i18n.baseText('evaluation.collections.card.meta.versions', {
-						adjustToNumber: detail?.runs.length ?? collection.runCount,
-					})
-				}}</span>
-				<span v-if="datasetName"> · {{ datasetName }}</span>
-				<span v-if="lastRunRelative"> · {{ lastRunRelative }}</span>
-			</N8nText>
-			<div :class="$style.versionsRow">
-				<span v-for="chip in versionChips" :key="chip.key" :class="$style.versionChip">
-					<VersionAvatar :index="chip.index" variant="dot" size="small" />
-					<N8nText size="xsmall" bold>{{ chip.letter }}</N8nText>
-					<N8nText size="xsmall" color="text-light">{{ chip.label }}</N8nText>
-					<N8nText v-if="chip.score !== null" size="xsmall" bold>{{ chip.score }}%</N8nText>
-				</span>
-			</div>
-			<div v-if="groups.length > 0" :class="$style.cardChart">
-				<GroupedMetricChart :groups="groups" :max="1" />
+			<div :class="$style.cardCta">
+				<N8nTooltip placement="top" :content="i18n.baseText('evaluation.compare.comingSoon')">
+					<N8nButton
+						variant="outline"
+						size="medium"
+						disabled
+						:label="ctaLabel"
+						data-test-id="eval-collections-card-cta"
+					/>
+				</N8nTooltip>
 			</div>
 		</div>
-		<div :class="$style.cardCta">
-			<N8nTooltip placement="top" :content="i18n.baseText('evaluation.compare.comingSoon')">
-				<N8nButton
-					variant="outline"
-					size="medium"
-					disabled
-					:label="ctaLabel"
-					data-test-id="eval-collections-card-cta"
-				/>
-			</N8nTooltip>
+		<div :class="$style.versionsRow">
+			<span v-for="chip in versionChips" :key="chip.key" :class="$style.versionChip">
+				<VersionAvatar :index="chip.index" variant="dot" size="small" />
+				<N8nText size="xsmall" color="text-base">{{ chip.label }}</N8nText>
+				<N8nText v-if="chip.score !== null" size="xsmall" bold>{{ chip.score }}%</N8nText>
+			</span>
+		</div>
+		<div v-if="groups.length > 0" :class="$style.cardChart">
+			<GroupedMetricChart :groups="groups" :max="1" />
 		</div>
 	</article>
 </template>
 
 <style module lang="scss">
 .card {
-	display: grid;
-	grid-template-columns: 1fr auto;
-	align-items: center;
-	gap: var(--spacing--md);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 	border: 1px solid var(--border-color--base);
 	border-radius: var(--radius--md);
 	background: var(--background--surface);
@@ -203,10 +195,20 @@ const ensureDetailLoaded = () => {
 	}
 }
 
-.cardMain {
+// Title + meta on the left, CTA on the right — Figma puts the "Open
+// compare" button on the same horizontal row as the collection name
+// rather than vertically centred against the chart.
+.cardTopRow {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--md);
+}
+
+.cardHeader {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--3xs);
 	min-width: 0;
 }
 

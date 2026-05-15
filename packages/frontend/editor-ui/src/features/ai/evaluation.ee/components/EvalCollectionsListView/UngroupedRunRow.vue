@@ -64,21 +64,19 @@ const datasetName = computed<string | null>(() => {
 	return props.datasetNameByConfigId?.[cfgId] ?? null;
 });
 
+// Inline date, mirroring Figma's `May 4 · 18:04` separator-joined format.
 const formattedDate = computed(() => {
 	const d = new Date(props.run.runAt);
 	if (Number.isNaN(d.getTime())) return props.run.runAt;
-	return d.toLocaleString(undefined, {
-		month: 'short',
-		day: 'numeric',
-		hour: '2-digit',
-		minute: '2-digit',
-	});
+	const datePart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	const timePart = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+	return `${datePart} · ${timePart}`;
 });
 </script>
 
 <template>
 	<div :class="$style.runRow" data-test-id="eval-collections-ungrouped-row">
-		<div :class="$style.runMeta">
+		<div :class="$style.runId">
 			<N8nText size="small" bold>#{{ run.id.slice(0, 8) }}</N8nText>
 			<N8nText size="xsmall" color="text-light">{{ formattedDate }}</N8nText>
 		</div>
@@ -90,16 +88,23 @@ const formattedDate = computed(() => {
 				i18n.baseText('evaluation.collections.row.noDataset')
 			}}</N8nText>
 		</span>
-		<N8nText v-if="score !== null" size="small" bold>{{ score }}%</N8nText>
-		<N8nText v-else size="small" color="text-light">—</N8nText>
-		<N8nBadge :theme="statusTheme" size="small">{{ statusLabel }}</N8nBadge>
+		<div :class="$style.progressTrack" :aria-hidden="score === null">
+			<div v-if="score !== null" :class="$style.progressFill" :style="{ width: `${score}%` }" />
+		</div>
+		<N8nText v-if="score !== null" size="small" bold :class="$style.scoreText"
+			>{{ score }}%</N8nText
+		>
+		<N8nText v-else size="small" color="text-light" :class="$style.scoreText">—</N8nText>
+		<N8nBadge :theme="statusTheme" size="small" :class="$style.statusPill">{{
+			statusLabel
+		}}</N8nBadge>
 	</div>
 </template>
 
 <style module lang="scss">
 .runRow {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(120px, auto) 80px 96px;
+	grid-template-columns: minmax(0, 1.4fr) minmax(80px, auto) minmax(120px, 1fr) 56px 96px;
 	align-items: center;
 	gap: var(--spacing--md);
 	padding: var(--spacing--xs) var(--spacing--md);
@@ -108,10 +113,12 @@ const formattedDate = computed(() => {
 	background: var(--background--surface);
 }
 
-.runMeta {
-	display: flex;
-	flex-direction: column;
+.runId {
+	display: inline-flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
 	min-width: 0;
+	flex-wrap: wrap;
 }
 
 .datasetChip {
@@ -120,5 +127,32 @@ const formattedDate = computed(() => {
 
 .datasetEmpty {
 	display: inline-block;
+}
+
+.progressTrack {
+	position: relative;
+	height: 8px;
+	border-radius: var(--radius--full);
+	background: var(--background--subtle, var(--color--neutral-100));
+	overflow: hidden;
+}
+
+.progressFill {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	background: var(--color--success, var(--color--green-500));
+	border-radius: var(--radius--full);
+	transition: width var(--transition-duration--base, 180ms) ease;
+}
+
+.scoreText {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.statusPill {
+	justify-self: end;
 }
 </style>
