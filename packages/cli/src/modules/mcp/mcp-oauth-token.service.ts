@@ -42,10 +42,13 @@ export class McpOAuthTokenService {
 	generateTokenPair(
 		userId: string,
 		clientId: string,
+		resource?: string,
 	): { accessToken: string; refreshToken: string } {
+		const audience = resource ?? this.MCP_AUDIENCE;
+
 		const accessToken = this.jwtService.sign({
 			sub: userId,
-			aud: this.MCP_AUDIENCE,
+			aud: audience,
 			client_id: clientId,
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
@@ -85,6 +88,7 @@ export class McpOAuthTokenService {
 	async validateAndRotateRefreshToken(
 		refreshToken: string,
 		clientId: string,
+		resource?: string,
 	): Promise<OAuthTokens> {
 		return await withTransaction(this.refreshTokenRepository.manager, undefined, async (trx) => {
 			const now = Date.now();
@@ -114,6 +118,7 @@ export class McpOAuthTokenService {
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
+				resource,
 			);
 
 			await trx.insert(AccessToken, {
@@ -143,12 +148,19 @@ export class McpOAuthTokenService {
 		});
 	}
 
-	async verifyAccessToken(token: string): Promise<AuthInfo> {
-		let decoded;
+	async verifyAccessToken(token: string, expectedAudience?: string): Promise<AuthInfo> {
+		let decoded: unknown;
 
 		try {
-			decoded = this.jwtService.verify(token, { audience: this.MCP_AUDIENCE });
+			const allowedAudiences = this.getAllowedAudiences(expectedAudience);
+			decoded = this.verifyJwtWithAllowedAudiences(token, allowedAudiences);
 		} catch (error) {
+			throw new JWTVerificationError();
+		}
+
+		const clientId = this.getStringClaim(decoded, 'client_id');
+		const userId = this.getStringClaim(decoded, 'sub');
+		if (!clientId || !userId) {
 			throw new JWTVerificationError();
 		}
 
@@ -162,19 +174,22 @@ export class McpOAuthTokenService {
 
 		return {
 			token,
-			clientId: decoded.client_id,
+			clientId,
 			scopes: [],
 			extra: {
-				userId: decoded.sub,
+				userId,
 			},
 		};
 	}
 
-	async verifyOAuthAccessToken(token: string): Promise<UserWithContext> {
+	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
 		try {
-			const authInfo = await this.verifyAccessToken(token);
+			const authInfo = await this.verifyAccessToken(token, expectedAudience);
 
-			const userId = authInfo.extra?.userId as string;
+			const userId =
+				authInfo.extra && typeof authInfo.extra === 'object'
+					? this.getStringClaim(authInfo.extra, 'userId')
+					: null;
 			if (!userId) {
 				return { user: null, context: { reason: 'user_id_not_in_auth_info', auth_type: 'oauth' } };
 			}
@@ -236,5 +251,37 @@ export class McpOAuthTokenService {
 		}
 
 		return revoked;
+	}
+
+	private getAllowedAudiences(expectedAudience?: string): string[] {
+		if (expectedAudience && expectedAudience !== this.MCP_AUDIENCE) {
+			return [expectedAudience, this.MCP_AUDIENCE];
+		}
+
+		return [this.MCP_AUDIENCE];
+	}
+
+	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
+		try {
+			return this.jwtService.verify(token, { audience: audiences });
+		} catch (error) {
+			for (const audience of audiences) {
+				try {
+					return this.jwtService.verify(token, { audience });
+				} catch {
+					continue;
+				}
+			}
+			throw error;
+		}
+	}
+
+	private getStringClaim(payload: unknown, claim: string): string | null {
+		if (!payload || typeof payload !== 'object') {
+			return null;
+		}
+
+		const claimValue = Reflect.get(payload, claim);
+		return typeof claimValue === 'string' ? claimValue : null;
 	}
 }
