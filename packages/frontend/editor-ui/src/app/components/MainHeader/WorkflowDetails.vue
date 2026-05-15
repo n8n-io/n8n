@@ -617,9 +617,18 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
 				await onSaveButtonClick();
+				const status = await sourceControlStore.prefetchPushStatus();
+				if (!status.length) {
+					toast.showMessage({
+						title: locale.baseText('settings.sourceControl.modals.push.everythingIsUpToDate'),
+						message: '',
+						type: 'info',
+					});
+					break;
+				}
 
 				// Navigate to route with sourceControl param - modal will handle data loading and loading states
-				void router.push({
+				await router.push({
 					query: {
 						...route.query,
 						sourceControl: 'push',

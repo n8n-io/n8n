@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useToast } from '@/app/composables/useToast';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRoute, useRouter } from 'vue-router';
@@ -15,9 +16,11 @@ defineProps<{
 const sourceControlStore = useSourceControlStore();
 const projectStore = useProjectsStore();
 const i18n = useI18n();
+const toast = useToast();
 const route = useRoute();
 const router = useRouter();
 const tooltipOpenDelay = ref(300);
+const isLoadingPushStatus = ref(false);
 
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
@@ -45,13 +48,34 @@ const sourceControlAvailable = computed(
 );
 
 async function pushWorkfolder() {
-	// Navigate to route with sourceControl param - modal will handle data loading and loading states
-	void router.push({
-		query: {
-			...route.query,
-			sourceControl: 'push',
-		},
-	});
+	if (isLoadingPushStatus.value) {
+		return;
+	}
+
+	isLoadingPushStatus.value = true;
+	try {
+		const status = await sourceControlStore.prefetchPushStatus();
+
+		if (!status.length) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.modals.push.everythingIsUpToDate'),
+				message: '',
+				type: 'info',
+			});
+			return;
+		}
+
+		await router.push({
+			query: {
+				...route.query,
+				sourceControl: 'push',
+			},
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+	} finally {
+		isLoadingPushStatus.value = false;
+	}
 }
 
 function pullWorkfolder() {
@@ -134,7 +158,12 @@ function pullWorkfolder() {
 					<N8nButton
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
-						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+						:disabled="
+							sourceControlStore.preferences.branchReadOnly ||
+							!hasPushPermission ||
+							isLoadingPushStatus
+						"
+						:loading="isLoadingPushStatus"
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
 						type="tertiary"
