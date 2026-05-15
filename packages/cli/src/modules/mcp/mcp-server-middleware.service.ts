@@ -5,6 +5,7 @@ import { ensureError } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
@@ -24,6 +25,7 @@ export class McpServerMiddlewareService {
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
 		private readonly mcpAuthTokenService: McpOAuthTokenService,
 		private readonly jwtService: JwtService,
+		private readonly urlService: UrlService,
 		private readonly telemetry: Telemetry,
 	) {}
 
@@ -47,7 +49,8 @@ export class McpServerMiddlewareService {
 		}
 
 		if (decoded?.meta?.isOAuth === true) {
-			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token);
+			const expectedAudience = `${this.urlService.getInstanceBaseUrl()}/mcp-server/http`;
+			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token, expectedAudience);
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);
