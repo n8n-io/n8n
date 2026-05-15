@@ -5,6 +5,7 @@ import { mock, mockDeep } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
@@ -27,6 +28,7 @@ const jwtService = new JwtService(instanceSettings, mock());
 let mcpServerApiKeyService: jest.Mocked<McpServerApiKeyService>;
 let oauthTokenService: jest.Mocked<McpOAuthTokenService>;
 let telemetry: jest.Mocked<Telemetry>;
+let urlService: jest.Mocked<UrlService>;
 let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
@@ -36,11 +38,14 @@ describe('McpServerMiddlewareService', () => {
 		) as jest.Mocked<McpServerApiKeyService>;
 		oauthTokenService = mockInstance(McpOAuthTokenService) as jest.Mocked<McpOAuthTokenService>;
 		telemetry = mockInstance(Telemetry);
+		urlService = mockInstance(UrlService);
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 
 		service = new McpServerMiddlewareService(
 			mcpServerApiKeyService,
 			oauthTokenService,
 			jwtService,
+			urlService,
 			telemetry,
 		);
 	});
@@ -63,7 +68,10 @@ describe('McpServerMiddlewareService', () => {
 			const result = await service.getUserForToken(oauthToken);
 
 			expect(result).toEqual({ user, authType: 'oauth' });
-			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(oauthToken);
+			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(
+				oauthToken,
+				'https://n8n.example.com/mcp-server/http',
+			);
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
 

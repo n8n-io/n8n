@@ -85,6 +85,17 @@ describe('McpOAuthTokenService', () => {
 			expect(refreshToken).toMatch(/^[a-f0-9]{64}$/);
 		});
 
+		it('should set aud to resource when resource is provided', () => {
+			const { accessToken } = service.generateTokenPair(
+				'user-123',
+				'client-456',
+				'https://n8n.example.com/mcp-server/http',
+			);
+
+			const decoded = jwtService.decode(accessToken);
+			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
+		});
+
 		it('should generate different tokens on each call', () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
@@ -158,6 +169,29 @@ describe('McpOAuthTokenService', () => {
 			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
 		});
 
+		it('should honor resource when rotating refresh token', async () => {
+			const refreshToken = 'old-refresh-token';
+			const clientId = 'client-123';
+			const refreshTokenRecord = mock<RefreshToken>({
+				token: refreshToken,
+				clientId,
+				userId: 'user-456',
+				expiresAt: Date.now() + 1000000,
+			});
+
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+
+			const result = await service.validateAndRotateRefreshToken(
+				refreshToken,
+				clientId,
+				'https://n8n.example.com/mcp-server/http',
+			);
+
+			const decoded = jwtService.decode(result.access_token);
+			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
+		});
+
 		it('should throw error when refresh token not found', async () => {
 			mockTransactionManager.findOne.mockResolvedValue(null);
 
@@ -227,6 +261,32 @@ describe('McpOAuthTokenService', () => {
 			await expect(service.verifyAccessToken(wrongAudienceToken)).rejects.toThrow(
 				'JWT Verification Failed',
 			);
+		});
+
+		it('should accept tokens with canonical audience when expected audience is provided', async () => {
+			const audience = 'https://n8n.example.com/mcp-server/http';
+			const canonicalAudienceToken = jwtService.sign({
+				sub: 'user-123',
+				aud: audience,
+				client_id: 'client-456',
+			});
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({
+					token: canonicalAudienceToken,
+					clientId: 'client-456',
+					userId: 'user-123',
+				}),
+			);
+
+			await expect(service.verifyAccessToken(canonicalAudienceToken, audience)).resolves.toEqual({
+				token: canonicalAudienceToken,
+				clientId: 'client-456',
+				scopes: [],
+				extra: {
+					userId: 'user-123',
+				},
+			});
 		});
 
 		it('should throw error when token not found in database', async () => {

@@ -162,6 +162,7 @@ describe('McpOAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-abc',
 				state: 'state-xyz',
+				resource: 'https://n8n.example.com/mcp-server/http',
 			};
 			const authCode = 'generated-auth-code';
 
@@ -187,6 +188,7 @@ describe('McpOAuthConsentService', () => {
 				'https://example.com/callback',
 				'challenge-abc',
 				'state-xyz',
+				'https://n8n.example.com/mcp-server/http',
 			);
 			expect(logger.info).toHaveBeenCalledWith('Consent approved', {
 				clientId: 'client-123',
@@ -213,6 +215,14 @@ describe('McpOAuthConsentService', () => {
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).not.toContain('state=');
+			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+				'client-123',
+				'user-123',
+				'https://example.com/callback',
+				'challenge-abc',
+				null,
+				undefined,
+			);
 		});
 
 		it('should handle re-authorization for existing consent by upserting', async () => {

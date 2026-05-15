@@ -25,6 +25,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			const redirectUri = 'https://example.com/callback';
 			const codeChallenge = 'challenge-abc';
 			const state = 'state-xyz';
+			const resource = 'https://n8n.example.com/mcp-server/http';
 
 			authorizationCodeRepository.insert.mockResolvedValue(mock());
 
@@ -34,6 +35,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				redirectUri,
 				codeChallenge,
 				state,
+				resource,
 			);
 
 			expect(result).toHaveLength(64); // 32 bytes hex = 64 characters
@@ -45,6 +47,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				codeChallenge,
 				codeChallengeMethod: 'S256',
 				state,
+				resource,
 				expiresAt: expect.any(Number),
 				used: false,
 			});
@@ -64,6 +67,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			expect(authorizationCodeRepository.insert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					state: null,
+					resource: null,
 				}),
 			);
 		});

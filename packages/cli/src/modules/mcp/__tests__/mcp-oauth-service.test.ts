@@ -4,6 +4,8 @@ import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import { UrlService } from '@/services/url.service';
+
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
@@ -20,6 +22,7 @@ let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
+let urlService: jest.Mocked<UrlService>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
@@ -29,10 +32,13 @@ describe('McpOAuthService', () => {
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
+		urlService = mockInstance(UrlService);
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 
 		service = new McpOAuthService(
 			logger,
 			mockInstance(GlobalConfig),
+			urlService,
 			oauthSessionService,
 			oauthClientRepository,
 			tokenService,
@@ -206,6 +212,7 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				state: 'state-xyz',
+				resource: 'https://n8n.example.com/mcp-server/http',
 			};
 
 			const res = mock<Response>();
@@ -217,6 +224,7 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				state: 'state-xyz',
+				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
 		});
@@ -248,6 +256,41 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				state: null,
+				resource: undefined,
+			});
+		});
+
+		it('should reject invalid resource indicators', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				resource: 'https://attacker.example.com/mcp-server/http',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+			expect(oauthSessionService.clearSession).toHaveBeenCalledWith(res);
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				error: 'invalid_resource',
+				error_description: 'Invalid resource indicator',
 			});
 		});
 
@@ -336,6 +379,7 @@ describe('McpOAuthService', () => {
 			const authRecord = {
 				userId: 'user-456',
 				clientId: 'client-123',
+				resource: 'https://n8n.example.com/mcp-server/http',
 			} as AuthorizationCode;
 
 			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
@@ -358,7 +402,11 @@ describe('McpOAuthService', () => {
 				'client-123',
 				'https://example.com/callback',
 			);
-			expect(tokenService.generateTokenPair).toHaveBeenCalledWith('user-456', 'client-123');
+			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+				'user-456',
+				'client-123',
+				'https://n8n.example.com/mcp-server/http',
+			);
 			expect(tokenService.saveTokenPair).toHaveBeenCalledWith(
 				'access-token-123',
 				'refresh-token-456',
@@ -389,6 +437,7 @@ describe('McpOAuthService', () => {
 			const authRecord = {
 				userId: 'user-456',
 				clientId: 'client-123',
+				resource: null,
 			} as AuthorizationCode;
 
 			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
@@ -401,6 +450,11 @@ describe('McpOAuthService', () => {
 
 			expect(authorizationCodeService.validateAndConsumeAuthorizationCode).toHaveBeenCalledWith(
 				'auth-code-123',
+				'client-123',
+				undefined,
+			);
+			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+				'user-456',
 				'client-123',
 				undefined,
 			);
@@ -430,13 +484,74 @@ describe('McpOAuthService', () => {
 
 			tokenService.validateAndRotateRefreshToken.mockResolvedValue(newTokens);
 
-			const result = await service.exchangeRefreshToken(client, 'old-refresh-token', ['read']);
+			const result = await service.exchangeRefreshToken(
+				client,
+				'old-refresh-token',
+				['read'],
+				'https://n8n.example.com/mcp-server/http',
+			);
 
 			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
 				'old-refresh-token',
 				'client-123',
+				'https://n8n.example.com/mcp-server/http',
 			);
 			expect(result).toEqual(newTokens);
+		});
+
+		it('should keep legacy behavior when resource is omitted', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			tokenService.validateAndRotateRefreshToken.mockResolvedValue({
+				access_token: 'new-access-token',
+				token_type: 'Bearer',
+				expires_in: 3600,
+				refresh_token: 'new-refresh-token',
+			});
+
+			await service.exchangeRefreshToken(client, 'old-refresh-token', ['read']);
+
+			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
+				'old-refresh-token',
+				'client-123',
+				undefined,
+			);
+		});
+
+		it('should throw invalid_resource for invalid resource indicators', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			await expect(
+				service.exchangeRefreshToken(
+					client,
+					'old-refresh-token',
+					['read'],
+					'https://attacker.example.com/mcp-server/http',
+				),
+			).rejects.toMatchObject({
+				message: 'Invalid resource indicator',
+				errorCode: 'invalid_resource',
+			});
 		});
 	});
 
