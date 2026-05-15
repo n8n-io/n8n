@@ -24,7 +24,7 @@ async function main(): Promise<void> {
 	const baselinePath = path.join(rootDir, BASELINE_FILENAME);
 	const context: CodeHealthContext = {
 		rootDir,
-		addedFiles: parseAddedFiles(process.env.CODE_HEALTH_ADDED_FILES),
+		changedFiles: parseChangedFiles(process.env.CODE_HEALTH_CHANGED_FILES),
 	};
 
 	const runner = createDefaultRunner();
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
 	}
 }
 
-function parseAddedFiles(raw: string | undefined): string[] | undefined {
+function parseChangedFiles(raw: string | undefined): string[] | undefined {
 	if (!raw) return undefined;
 	const entries = raw
 		.split(/[\n,]/)

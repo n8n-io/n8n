@@ -1,11 +1,11 @@
 export interface CodeHealthContext {
 	rootDir: string;
 	/**
-	 * Repo-relative paths of files newly added in the current change set
-	 * (typically computed by CI from `git diff --diff-filter=A`). When
-	 * supplied, rules that distinguish "new" from "historical" content can
-	 * scope their checks to just these paths. When omitted, rules fall back
-	 * to whole-tree behaviour.
+	 * Repo-relative paths of files changed in the current change set
+	 * (typically the `changed-files` output from the `ci-filter` action).
+	 * When supplied, rules that need to scope checks to "files touched in
+	 * this PR" can use this set. When omitted, rules fall back to
+	 * whole-tree behaviour.
 	 */
-	addedFiles?: string[];
+	changedFiles?: string[];
 }

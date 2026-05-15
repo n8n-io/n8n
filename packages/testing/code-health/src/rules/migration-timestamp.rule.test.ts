@@ -40,8 +40,8 @@ describe('MigrationTimestampRule', () => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	function context(addedFiles?: string[]): CodeHealthContext {
-		return { rootDir: tmpDir, addedFiles };
+	function context(changedFiles?: string[]): CodeHealthContext {
+		return { rootDir: tmpDir, changedFiles };
 	}
 
 	describe('future-jump invariant (always on)', () => {
@@ -91,9 +91,9 @@ describe('MigrationTimestampRule', () => {
 		});
 	});
 
-	describe('ordering invariant (only when addedFiles is supplied)', () => {
-		it('does NOT flag historical sub-max files when addedFiles is omitted', async () => {
-			// Without CI-provided addedFiles, the rule does not run the
+	describe('ordering invariant (only when changedFiles is supplied)', () => {
+		it('does NOT flag historical sub-max files when changedFiles is omitted', async () => {
+			// Without CI-provided changedFiles, the rule does not run the
 			// ordering check at all — preventing 237 false positives on the
 			// existing migration tree.
 			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Old.ts');
@@ -126,8 +126,8 @@ describe('MigrationTimestampRule', () => {
 			const violations = await rule.analyze(context([newlyAdded]));
 
 			// Head is the new file but it's at the top — no ordering issue.
-			// The two pre-existing sub-max files are NOT in addedFiles, so
-			// they're not checked.
+			// The two pre-existing sub-max files are NOT in changedFiles,
+			// so they're not checked.
 			expect(violations).toHaveLength(0);
 		});
 
@@ -172,6 +172,25 @@ describe('MigrationTimestampRule', () => {
 			const found = violations.find((v) => v.file.endsWith('Below.ts'));
 			expect(found).toBeDefined();
 		});
+
+		it('flags a modified historical migration if listed in changedFiles', async () => {
+			// Documented trade-off: changedFiles comes from ci-filter's
+			// changed-files output, which includes modifications. A PR that
+			// edits an existing migration (rare — bug fix in up/down) will
+			// trip ordering here even though the timestamp didn't change.
+			// Author should either bump the timestamp (preferred when the
+			// edit changes semantics) or add to the baseline. This test
+			// pins that behaviour so anyone re-introducing added-files-only
+			// semantics has to revisit it intentionally.
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
+			const modified = writeMigration(tmpDir, COMMON_DIR, '1620000000000-Historical.ts');
+
+			const violations = await rule.analyze(context([modified]));
+
+			const historical = violations.find((v) => v.file.endsWith('Historical.ts'));
+			expect(historical).toBeDefined();
+			expect(historical!.message).toContain('at or below');
+		});
 	});
 
 	describe('ceiling configuration', () => {
@@ -206,7 +225,7 @@ describe('MigrationTimestampRule', () => {
 			const violations = await rule.analyze(context([common, postgres, sqlite]));
 
 			// Common and Postgres are below Sqlite's head — both trip
-			// ordering, proving every directory is scanned and addedFiles
+			// ordering, proving every directory is scanned and changedFiles
 			// matches across directories.
 			const files = violations.map((v) => path.basename(v.file)).sort();
 			expect(files).toEqual(['1700000000000-Common.ts', '1750000000000-Postgres.ts']);
