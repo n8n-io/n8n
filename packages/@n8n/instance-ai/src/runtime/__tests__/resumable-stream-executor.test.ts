@@ -199,13 +199,14 @@ describe('executeResumableStream', () => {
 		expect(onActivity).toHaveBeenCalledTimes(2);
 	});
 
-	it('auto-resumes suspended streams and surfaces queued corrections', async () => {
+	it('auto-resumes suspended streams and passes drained corrections to resume data', async () => {
 		const eventBus = createEventBus();
 		const resume = jest.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
 		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
+		let hasDrainedCorrection = false;
 
 		const result = await executeResumableStream({
 			agent: { resume },
@@ -234,14 +235,24 @@ describe('executeResumableStream', () => {
 			control: {
 				mode: 'auto',
 				waitForConfirmation,
-				drainCorrections: () => ['Prefer Slack instead of email'],
+				drainCorrections: () => {
+					if (hasDrainedCorrection) {
+						return [];
+					}
+
+					hasDrainedCorrection = true;
+					return ['Prefer Slack instead of email'];
+				},
 			},
 		});
 
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
 		expect(resume).toHaveBeenCalledWith(
 			'stream',
-			{ approved: true },
+			expect.objectContaining({
+				__correctionOverride: true,
+				corrections: ['Prefer Slack instead of email'],
+			}),
 			{ runId: 'agent-run-1', toolCallId: 'tool-call-1' },
 		);
 		expect(result.status).toBe('completed');

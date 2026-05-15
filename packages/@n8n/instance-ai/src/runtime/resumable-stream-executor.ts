@@ -207,6 +207,7 @@ export async function executeResumableStream(
 		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 		let confirmationEvent: ConfirmationRequestEvent | undefined;
 		let confirmationEventPublished = false;
+		const drainedCorrectionsForResume: string[] = [];
 		for await (const chunk of activeStream) {
 			if (options.context.signal.aborted) {
 				return {
@@ -289,7 +290,9 @@ export async function executeResumableStream(
 			}
 
 			if (options.control.mode === 'auto' && options.control.drainCorrections) {
-				publishCorrections(options.context, options.control.drainCorrections());
+				const corrections = options.control.drainCorrections();
+				publishCorrections(options.context, corrections);
+				drainedCorrectionsForResume.push(...corrections);
 			}
 		}
 
@@ -329,6 +332,7 @@ export async function executeResumableStream(
 			confirmationPromise,
 			options.control,
 			options.context,
+			drainedCorrectionsForResume,
 		);
 		const resumeOptions = options.control.buildResumeOptions?.({
 			agentRunId: activeAgentRunId,
@@ -358,6 +362,16 @@ function publishCorrections(context: ResumableStreamContext, corrections: string
 			payload: { text: `\n[USER CORRECTION]: ${correction}\n` },
 		});
 	}
+}
+
+function buildCorrectionResumeData(corrections: string[]): Record<string, unknown> {
+	return {
+		__correctionOverride: true,
+		message:
+			'The user sent a correction while this run was active. ' +
+			'The confirmation has been skipped. Apply the correction and continue.',
+		corrections,
+	};
 }
 
 function isErrorChunk(chunk: unknown): boolean {
@@ -403,7 +417,13 @@ async function waitForConfirmationOrCorrection(
 	confirmationPromise: Promise<Record<string, unknown>>,
 	control: AutoResumeControl,
 	context: ResumableStreamContext,
+	drainedCorrectionsForResume: string[],
 ): Promise<Record<string, unknown>> {
+	if (drainedCorrectionsForResume.length > 0) {
+		void confirmationPromise.catch(() => undefined);
+		return buildCorrectionResumeData(drainedCorrectionsForResume);
+	}
+
 	if (!control.waitForCorrection) {
 		return await waitForConfirmation(signal, confirmationPromise);
 	}
@@ -419,13 +439,7 @@ async function waitForConfirmationOrCorrection(
 	if (result === correctionSentinel) {
 		const corrections = control.drainCorrections?.() ?? [];
 		publishCorrections(context, corrections);
-		return {
-			__correctionOverride: true,
-			message:
-				'The user sent a correction while this tool was waiting for confirmation. ' +
-				'The confirmation has been skipped. Apply the correction and continue.',
-			corrections,
-		};
+		return buildCorrectionResumeData(corrections);
 	}
 
 	return result;
