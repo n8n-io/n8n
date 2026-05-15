@@ -2299,7 +2299,7 @@
 	"contextMenu.deselectAll": "Clear selection",
 	"contextMenu.tidyUpWorkflow": "Tidy up workflow",
 	"contextMenu.tidyUpSelection": "Tidy up selection",
-	"contextMenu.extract": "Convert node to sub-workflow | Convert {count} nodes to sub-workflow",
+	"contextMenu.extract": "Convert {count} nodes to sub-workflow",
 	"contextMenu.replace": "Replace",
 	"contextMenu.duplicate": "Duplicate | Duplicate {count} {subject}",
 	"contextMenu.open": "Open...",

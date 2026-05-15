@@ -2,6 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
+import { createApp, shallowRef } from 'vue';
 
 import { useSelectionValidation } from './useSelectionValidation';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -11,8 +12,10 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const TEST_WF_ID = 'test-wf-validation';
+const INJECTED_WF_ID = 'injected-wf-validation';
 
 function makeNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return {
@@ -65,8 +68,9 @@ function setupGraph(
 	graph: LinearGraphFixture,
 	nodeTypes: Record<string, INodeTypeDescription>,
 	getSimpleParameterValue: () => unknown = () => undefined,
+	workflowId = TEST_WF_ID,
 ) {
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	const nodeTypesStore = useNodeTypesStore();
 
 	const nodesById = new Map<string, INodeUi>();
@@ -103,6 +107,8 @@ function setupGraph(
 	vi.spyOn(nodeTypesStore as any, 'isTriggerNode', 'get').mockReturnValue(
 		(type: string) => !!nodeTypes[type]?.group.includes('trigger'),
 	);
+
+	return workflowDocumentStore;
 }
 
 describe('useSelectionValidation', () => {
@@ -124,6 +130,28 @@ describe('useSelectionValidation', () => {
 
 		const { isSelectionGroupable } = useSelectionValidation();
 		const result = isSelectionGroupable(['a', 'b']);
+
+		expect(result.valid).toBe(true);
+	});
+
+	it('uses the injected workflow document store when one is provided', () => {
+		const graph = makeLinearGraph();
+		const injectedStore = setupGraph(
+			graph,
+			{
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			},
+			() => undefined,
+			INJECTED_WF_ID,
+		);
+
+		const app = createApp({});
+		app.provide(WorkflowDocumentStoreKey, shallowRef(injectedStore));
+
+		const result = app.runWithContext(() => {
+			const { isSelectionGroupable } = useSelectionValidation();
+			return isSelectionGroupable(['a', 'b']);
+		});
 
 		expect(result.valid).toBe(true);
 	});

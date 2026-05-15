@@ -5,36 +5,44 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 
-const { mockWorkflowsStore, mockWorkflowDocumentStore, mockNodeTypesStore, mockCanvasOperations } =
-	vi.hoisted(() => ({
-		mockWorkflowsStore: {
-			workflowId: 'parent-workflow-id',
-			createNewWorkflow: vi.fn(),
-			publishWorkflow: vi.fn(),
-		},
-		mockWorkflowDocumentStore: {
-			allNodes: [] as INodeUi[],
-			connectionsBySourceNode: {} as IConnections,
-			homeProject: { id: 'home-project' },
-			parentFolder: null as { id: string } | null,
-			getNodeById: vi.fn(),
-			getNodeByName: vi.fn(),
-			getChildNodes: vi.fn().mockReturnValue([]),
-			getExpressionHandler: vi.fn().mockReturnValue({}),
-		},
-		mockNodeTypesStore: {
-			getNodeType: vi.fn().mockReturnValue({
-				inputs: ['main'],
-				outputs: ['main'],
-			}),
-		},
-		mockCanvasOperations: {
-			addNodes: vi.fn().mockResolvedValue([{ id: 'execute-node-id' }]),
-			replaceNodeConnections: vi.fn(),
-			deleteNodes: vi.fn(),
-			replaceNodeParameters: vi.fn(),
-		},
-	}));
+const {
+	mockWorkflowsStore,
+	mockWorkflowDocumentStore,
+	mockNodeTypesStore,
+	mockCanvasOperations,
+	mockTelemetry,
+} = vi.hoisted(() => ({
+	mockWorkflowsStore: {
+		workflowId: 'parent-workflow-id',
+		createNewWorkflow: vi.fn(),
+		publishWorkflow: vi.fn(),
+	},
+	mockWorkflowDocumentStore: {
+		allNodes: [] as INodeUi[],
+		connectionsBySourceNode: {} as IConnections,
+		homeProject: { id: 'home-project' },
+		parentFolder: null as { id: string } | null,
+		getNodeById: vi.fn(),
+		getNodeByName: vi.fn(),
+		getChildNodes: vi.fn().mockReturnValue([]),
+		getExpressionHandler: vi.fn().mockReturnValue({}),
+	},
+	mockNodeTypesStore: {
+		getNodeType: vi.fn().mockReturnValue({
+			inputs: ['main'],
+			outputs: ['main'],
+		}),
+	},
+	mockCanvasOperations: {
+		addNodes: vi.fn().mockResolvedValue([{ id: 'execute-node-id' }]),
+		replaceNodeConnections: vi.fn(),
+		deleteNodes: vi.fn(),
+		replaceNodeParameters: vi.fn(),
+	},
+	mockTelemetry: {
+		track: vi.fn(),
+	},
+}));
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue(mockWorkflowsStore),
@@ -75,7 +83,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
-	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
+	useTelemetry: vi.fn().mockReturnValue(mockTelemetry),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -117,9 +125,20 @@ describe('useWorkflowExtraction', () => {
 		mockCanvasOperations.replaceNodeConnections.mockClear();
 		mockCanvasOperations.deleteNodes.mockClear();
 		mockCanvasOperations.replaceNodeParameters.mockClear();
+		mockTelemetry.track.mockClear();
 		mockWorkflowDocumentStore.getChildNodes.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];
 		mockWorkflowDocumentStore.connectionsBySourceNode = {};
+	});
+
+	describe('extractWorkflow', () => {
+		it('does not track start telemetry for a single-node selection', () => {
+			const { extractWorkflow } = useWorkflowExtraction();
+
+			extractWorkflow(['id-A']);
+
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('extractNodesIntoSubworkflow', () => {

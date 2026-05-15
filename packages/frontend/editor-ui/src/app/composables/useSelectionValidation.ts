@@ -9,29 +9,17 @@ import {
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
 } from 'n8n-workflow';
-import { computed } from 'vue';
 
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 
 export type SelectionValidationResult = NodeSelectionValidationResult<INodeUi>;
 export type GroupValidationResult = NodeGroupValidationResult<INodeUi>;
 
 export function useSelectionValidation() {
-	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-
-	const workflowDocumentStore = computed(() => {
-		if (workflowsStore.workflowId) {
-			return useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
-		}
-		return null;
-	});
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	/**
 	 * Expands a selection of node ids to include all sub-nodes (memory, tools,

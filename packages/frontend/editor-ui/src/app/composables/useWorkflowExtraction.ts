@@ -527,6 +527,8 @@ export function useWorkflowExtraction() {
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
 	function extractWorkflow(nodeIds: string[]) {
+		if (nodeIds.length < 2) return;
+
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);
 	}
