@@ -5,6 +5,7 @@ import {
 	markLifecycleDropped,
 	markLifecycleSuperseded,
 	normalizeFlatReflectionActions,
+	uniqueStrings,
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
 import type {
@@ -146,9 +147,27 @@ export class InMemoryMemory
 				this.locksByScope.delete(key);
 			}
 		}
+		const affectedEntryIds = uniqueStrings(
+			this.episodicMemorySources
+				.filter((source) => source.threadId === threadId)
+				.map((source) => source.memoryEntryId),
+		);
 		this.episodicMemorySources = this.episodicMemorySources.filter(
 			(source) => source.threadId !== threadId,
 		);
+		if (affectedEntryIds.length > 0) {
+			const entriesWithSources = new Set(
+				this.episodicMemorySources.map((source) => source.memoryEntryId),
+			);
+			for (const memoryEntry of this.episodicMemory) {
+				const hasLostLastSource =
+					affectedEntryIds.includes(memoryEntry.id) && !entriesWithSources.has(memoryEntry.id);
+				if (hasLostLastSource) {
+					markLifecycleDropped(memoryEntry);
+					memoryEntry.updatedAt = new Date();
+				}
+			}
+		}
 		for (const key of this.episodicMemoryCursorsByScope.keys()) {
 			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
 				this.episodicMemoryCursorsByScope.delete(key);

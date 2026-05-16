@@ -125,6 +125,61 @@ describe('createRecallMemoryTool', () => {
 	});
 });
 
+describe('InMemoryMemory episodic source cleanup', () => {
+	it('drops active entries that lose their last source when deleting a thread', async () => {
+		const memory = new InMemoryMemory();
+		const [orphaned, shared] = await memory.saveEpisodicMemoryEntries([
+			{
+				agentId: 'agent-1',
+				resourceId: 'user-1',
+				content: 'User chose Postgres for durable memory storage.',
+			},
+			{
+				agentId: 'agent-1',
+				resourceId: 'user-1',
+				content: 'User prefers source-backed cross-session recall.',
+			},
+		]);
+		await memory.saveEpisodicMemoryEntrySources([
+			{
+				memoryEntryId: orphaned.id,
+				observationId: 'obs-orphaned',
+				threadId: 'thread-1',
+				evidenceText: 'User chose Postgres',
+			},
+			{
+				memoryEntryId: shared.id,
+				observationId: 'obs-shared-1',
+				threadId: 'thread-1',
+				evidenceText: 'source-backed',
+			},
+			{
+				memoryEntryId: shared.id,
+				observationId: 'obs-shared-2',
+				threadId: 'thread-2',
+				evidenceText: 'cross-session recall',
+			},
+		]);
+
+		await memory.deleteThread('thread-1');
+
+		await expect(
+			memory.searchEpisodicMemoryEntries(
+				{ agentId: 'agent-1', resourceId: 'user-1' },
+				'Postgres recall',
+				{ topK: 10 },
+			),
+		).resolves.toEqual([expect.objectContaining({ id: shared.id })]);
+		await expect(
+			memory.searchEpisodicMemoryEntries(
+				{ agentId: 'agent-1', resourceId: 'user-1' },
+				'Postgres storage',
+				{ includeStatuses: ['dropped'], topK: 10 },
+			),
+		).resolves.toEqual([expect.objectContaining({ id: orphaned.id, status: 'dropped' })]);
+	});
+});
+
 describe('runEpisodicMemoryIndexer', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();

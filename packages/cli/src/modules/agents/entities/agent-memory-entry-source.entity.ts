@@ -12,7 +12,7 @@ export class AgentMemoryEntrySourceEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	observationId: string;
 
-	@Column({ type: 'varchar', length: 36 })
+	@Column({ type: 'varchar', length: 255 })
 	threadId: string;
 
 	@Column({ type: 'text' })

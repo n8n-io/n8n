@@ -3,8 +3,8 @@ import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { AgentMemoryEntryCursorEntity } from '../../entities/agent-memory-entry-cursor.entity';
-import type { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
+import { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
@@ -64,15 +64,6 @@ describe('N8nMemory', () => {
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
 		memoryEntryCursorRepository = mock<AgentMemoryEntryCursorRepository>();
 		transactionDelete = jest.fn().mockResolvedValue({ affected: 1, raw: {} });
-		runInTransaction = jest.fn(
-			async (callback: (trx: { delete: typeof transactionDelete }) => Promise<void>) => {
-				await callback({ delete: transactionDelete });
-			},
-		);
-		Object.defineProperty(threadRepository, 'manager', {
-			value: { transaction: runInTransaction },
-		});
-
 		transactionObservationCreate = jest.fn((input) => ({ ...input }) as AgentObservationEntity);
 		transactionObservationFind = jest.fn().mockResolvedValue([]);
 		transactionObservationSave = jest.fn(async (input: AgentObservationEntity[]) =>
@@ -123,6 +114,27 @@ describe('N8nMemory', () => {
 				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
 			})),
 		);
+		runInTransaction = jest.fn(
+			async (
+				callback: (trx: {
+					delete: typeof transactionDelete;
+					getRepository: jest.Mock;
+				}) => Promise<void>,
+			) => {
+				await callback({
+					delete: transactionDelete,
+					getRepository: jest.fn((entity) => {
+						if (entity === AgentMemoryEntryEntity) {
+							return { update: transactionMemoryEntryUpdate };
+						}
+						return { find: transactionMemoryEntrySourceFind };
+					}),
+				});
+			},
+		);
+		Object.defineProperty(threadRepository, 'manager', {
+			value: { transaction: runInTransaction },
+		});
 		memoryEntryRunInTransaction = jest.fn(
 			async (callback: (trx: { getRepository: jest.Mock }) => Promise<unknown>) =>
 				await callback({
@@ -481,6 +493,44 @@ describe('N8nMemory', () => {
 			expect(threadRepository.delete).not.toHaveBeenCalled();
 		});
 
+		it('drops active episodic entries that lose their last source when deleting a thread', async () => {
+			transactionMemoryEntrySourceFind
+				.mockResolvedValueOnce([
+					makeMemoryEntrySourceEntity({
+						memoryEntryId: 'orphaned-memory',
+						threadId: 'thread-1',
+					}),
+					makeMemoryEntrySourceEntity({
+						memoryEntryId: 'shared-memory',
+						threadId: 'thread-1',
+					}),
+				])
+				.mockResolvedValueOnce([
+					makeMemoryEntrySourceEntity({
+						memoryEntryId: 'shared-memory',
+						threadId: 'thread-2',
+					}),
+				]);
+
+			await memory.deleteThread('thread-1');
+
+			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(1, {
+				select: { memoryEntryId: true },
+				where: { threadId: 'thread-1' },
+			});
+			expect(transactionDelete).toHaveBeenCalledWith(AgentMemoryEntrySourceEntity, {
+				threadId: 'thread-1',
+			});
+			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(2, {
+				select: { memoryEntryId: true },
+				where: { memoryEntryId: In(['orphaned-memory', 'shared-memory']) },
+			});
+			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
+				{ id: In(['orphaned-memory']), status: 'active' },
+				{ status: 'dropped', supersededBy: null },
+			);
+		});
+
 		it('deletes thread-scoped observation state by thread id prefix in one transaction', async () => {
 			await memory.deleteThreadsByPrefix('test-agent-1');
 
@@ -515,6 +565,30 @@ describe('N8nMemory', () => {
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
 			expect(threadRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('drops source-less episodic entries when deleting threads by prefix', async () => {
+			transactionMemoryEntrySourceFind
+				.mockResolvedValueOnce([
+					makeMemoryEntrySourceEntity({
+						memoryEntryId: 'prefix-orphaned-memory',
+						threadId: 'test-agent-1:run-1',
+					}),
+				])
+				.mockResolvedValueOnce([]);
+
+			await memory.deleteThreadsByPrefix('test-agent-1');
+
+			const threadId = Like('test-agent-1%');
+			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(1, {
+				select: { memoryEntryId: true },
+				where: { threadId },
+			});
+			expect(transactionDelete).toHaveBeenCalledWith(AgentMemoryEntrySourceEntity, { threadId });
+			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
+				{ id: In(['prefix-orphaned-memory']), status: 'active' },
+				{ status: 'dropped', supersededBy: null },
+			);
 		});
 	});
 

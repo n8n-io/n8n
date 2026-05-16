@@ -37,7 +37,7 @@ import {
 	type Thread,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
-import type { FindOptionsWhere } from '@n8n/typeorm';
+import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
@@ -134,6 +134,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 
 	async deleteThread(threadId: string): Promise<void> {
 		await this.threadRepository.manager.transaction(async (trx) => {
+			await this.dropEpisodicEntriesWithoutSources(trx, threadId);
 			const legacyScope = { scopeKind: 'thread' as const, scopeId: threadId };
 			const resourceScope = {
 				scopeKind: 'thread' as const,
@@ -152,6 +153,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		const scopeId = Like(`${threadIdPrefix}%`);
 		const resourceScopeId = Like(`${createObservationLogThreadScopePrefix(threadIdPrefix)}%`);
 		await this.threadRepository.manager.transaction(async (trx) => {
+			await this.dropEpisodicEntriesWithoutSources(trx, scopeId);
 			for (const scope of [
 				{ scopeKind: 'thread' as const, scopeId },
 				{ scopeKind: 'thread' as const, scopeId: resourceScopeId },
@@ -162,6 +164,33 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			}
 			await trx.delete(AgentThreadEntity, { id: scopeId });
 		});
+	}
+
+	private async dropEpisodicEntriesWithoutSources(
+		trx: EntityManager,
+		threadId: string | FindOperator<string>,
+	): Promise<void> {
+		const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
+		const affectedSources = await sourceRepo.find({
+			select: { memoryEntryId: true },
+			where: { threadId },
+		});
+		const affectedEntryIds = uniqueStrings(affectedSources.map((source) => source.memoryEntryId));
+		if (affectedEntryIds.length === 0) return;
+
+		await trx.delete(AgentMemoryEntrySourceEntity, { threadId });
+
+		const remainingSources = await sourceRepo.find({
+			select: { memoryEntryId: true },
+			where: { memoryEntryId: In(affectedEntryIds) },
+		});
+		const entriesWithSources = new Set(remainingSources.map((source) => source.memoryEntryId));
+		const orphanedEntryIds = affectedEntryIds.filter((id) => !entriesWithSources.has(id));
+		if (orphanedEntryIds.length === 0) return;
+
+		await trx
+			.getRepository(AgentMemoryEntryEntity)
+			.update({ id: In(orphanedEntryIds), status: 'active' }, droppedLifecycleState());
 	}
 
 	// ── Message persistence ──────────────────────────────────────────────

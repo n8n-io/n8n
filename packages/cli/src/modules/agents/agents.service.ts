@@ -1167,7 +1167,7 @@ export class AgentsService {
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
 
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { resourceId: executionId, threadId },
+			persistence: { resourceId: executionId, threadId, agentId },
 			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 

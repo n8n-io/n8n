@@ -19,7 +19,9 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
-const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
+const episodicMemoryEnabled = computed(
+	() => memory.value !== null && episodicMemory.value?.enabled === true,
+);
 const episodicMemoryCredential = computed(() =>
 	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
 );
@@ -38,7 +40,11 @@ function onEnableMemory() {
 
 function onDisableMemory() {
 	emit('update:config', {
-		memory: { ...(props.config?.memory ?? { storage: 'n8n' as const }), enabled: false },
+		memory: {
+			...(props.config?.memory ?? { storage: 'n8n' as const }),
+			enabled: false,
+			episodicMemory: { enabled: false },
+		},
 	});
 }
 

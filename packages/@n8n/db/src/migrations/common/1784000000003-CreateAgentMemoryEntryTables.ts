@@ -46,7 +46,7 @@ export class CreateAgentMemoryEntryTables1784000000003 implements ReversibleMigr
 				column('id').varchar(36).primary.notNull,
 				column('memoryEntryId').varchar(36).notNull,
 				column('observationId').varchar(36).notNull,
-				column('threadId').varchar(36).notNull,
+				column('threadId').varchar(255).notNull,
 				column('evidenceText').text.notNull,
 			)
 			.withIndexOn(['memoryEntryId', 'observationId', 'evidenceText'], true)
