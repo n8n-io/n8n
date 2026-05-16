@@ -138,12 +138,6 @@ export class HttpRequestV3 implements INodeType {
 		const errorItems: { [key: string]: string } = {};
 		const requestPromises = [];
 
-		let fullResponse = false;
-
-		let autoDetectResponseFormat = false;
-
-		let responseFileName: string | undefined;
-
 		// Can not be defined on a per item level
 		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
 			rawExpressions: true,
@@ -169,6 +163,7 @@ export class HttpRequestV3 implements INodeType {
 			options: IRequestOptions;
 			authKeys: IAuthDataSanitizeKeys;
 			credentialType?: string;
+			responseFileName?: string;
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
@@ -312,13 +307,11 @@ export class HttpRequestV3 implements INodeType {
 					sendCredentialsOnCrossOriginRedirect?: boolean;
 				};
 
-				responseFileName = response?.response?.outputPropertyName;
+				const responseFileName = response?.response?.outputPropertyName;
 
 				const responseFormat = response?.response?.responseFormat || 'autodetect';
 
-				fullResponse = response?.response?.fullResponse || false;
-
-				autoDetectResponseFormat = responseFormat === 'autodetect';
+				const autoDetectResponseFormat = responseFormat === 'autodetect';
 
 				// defaults batch size to 1 of it's set to 0
 				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
@@ -611,6 +604,7 @@ export class HttpRequestV3 implements INodeType {
 					options: requestOptions,
 					authKeys: authDataKeys,
 					credentialType: nodeCredentialType ?? genericCredentialType,
+					responseFileName,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -820,6 +814,21 @@ export class HttpRequestV3 implements INodeType {
 					continue;
 				}
 
+				let responseFormat = this.getNodeParameter(
+					'options.response.response.responseFormat',
+					itemIndex,
+					'autodetect',
+				) as string;
+
+				const fullResponse = this.getNodeParameter(
+					'options.response.response.fullResponse',
+					itemIndex,
+					false,
+				) as boolean;
+
+				const autoDetectResponseFormat = responseFormat === 'autodetect';
+				const { responseFileName } = requests[itemIndex];
+
 				if (responseData!.status !== 'fulfilled') {
 					if (responseData.reason.statusCode === 429) {
 						responseData.reason.message =
@@ -868,18 +877,6 @@ export class HttpRequestV3 implements INodeType {
 					responses = [responseData.value];
 				}
 
-				let responseFormat = this.getNodeParameter(
-					'options.response.response.responseFormat',
-					0,
-					'autodetect',
-				) as string;
-
-				fullResponse = this.getNodeParameter(
-					'options.response.response.fullResponse',
-					0,
-					false,
-				) as boolean;
-
 				// eslint-disable-next-line prefer-const
 				for (let [index, response] of Object.entries(responses)) {
 					if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
@@ -903,7 +900,7 @@ export class HttpRequestV3 implements INodeType {
 							if (!response.__bodyResolved) {
 								const neverError = this.getNodeParameter(
 									'options.response.response.neverError',
-									0,
+									itemIndex,
 									false,
 								) as boolean;
 
@@ -950,7 +947,7 @@ export class HttpRequestV3 implements INodeType {
 					if (responseFormat === 'file') {
 						const outputPropertyName = this.getNodeParameter(
 							'options.response.response.outputPropertyName',
-							0,
+							itemIndex,
 							'data',
 						) as string;
 
@@ -993,7 +990,7 @@ export class HttpRequestV3 implements INodeType {
 
 						preparedBinaryData.fileName = setFilename(
 							preparedBinaryData,
-							requestOptions,
+							requests[itemIndex].options,
 							responseFileName,
 						);
 
@@ -1003,7 +1000,7 @@ export class HttpRequestV3 implements INodeType {
 					} else if (responseFormat === 'text') {
 						const outputPropertyName = this.getNodeParameter(
 							'options.response.response.outputPropertyName',
-							0,
+							itemIndex,
 							'data',
 						) as string;
 						if (fullResponse) {
