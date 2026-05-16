@@ -28,7 +28,9 @@ import {
 	METHODS_SECTION,
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
+	WORKFLOW_DOCUMENT_FACET,
 } from './constants';
+
 import set from 'lodash/set';
 import uniqBy from 'lodash/uniqBy';
 import { mockNodes } from '@/__tests__/mocks';
@@ -45,7 +47,7 @@ export async function completions(docWithCursor: string, explicit = false) {
 	const state = EditorState.create({
 		doc,
 		selection: { anchor: cursorPosition },
-		extensions: [n8nLang()],
+		extensions: [n8nLang(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 
 	const context = new CompletionContext(state, cursorPosition, explicit);

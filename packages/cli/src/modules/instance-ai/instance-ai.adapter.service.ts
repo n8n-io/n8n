@@ -125,6 +125,40 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
+/**
+ * Fill in defaults for properties whose visibility depends on sibling values
+ * (e.g. OpenAI v2's per-resource `operation`). A naive single-pass loop picks
+ * the first variant of a duplicated property name, which leaves dependent
+ * properties (like `modelId` for `text`/`response`) out of view of the issue
+ * and credential checkers. `getNodeParameters` walks the dependency graph and
+ * fills only displayed properties.
+ */
+function resolveDisplayedDefaults(
+	nodeProperties: INodeProperties[],
+	parameters: Record<string, unknown>,
+	nodeType: string,
+	typeVersion: number,
+	desc: INodeTypeDescription,
+): INodeParameters {
+	const stubNode: INode = {
+		id: '',
+		name: '',
+		type: nodeType,
+		typeVersion,
+		parameters: parameters as INodeParameters,
+		position: [0, 0],
+	};
+	const resolved = NodeHelpers.getNodeParameters(
+		nodeProperties,
+		parameters as INodeParameters,
+		true,
+		false,
+		stubNode,
+		desc,
+	);
+	return resolved ?? (parameters as INodeParameters);
+}
+
 @Service()
 export class InstanceAiAdapterService {
 	private readonly logger: Logger;
@@ -284,6 +318,7 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			telemetry,
 		} = this;
+		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 		const redactParameters = !allowSendingParameterValues;
@@ -475,15 +510,36 @@ export class InstanceAiAdapterService {
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
 
-				// Enforce credential tamper protection — same guard as the
-				// REST controller (workflows.controller PATCH /:workflowId).
-				if (license.isSharingEnabled()) {
-					updateData = await enterpriseWorkflowService.preventTampering(updateData, saved.id, user);
-				}
+				let updated: WorkflowEntity;
+				try {
+					// Enforce credential tamper protection — same guard as the
+					// REST controller (workflows.controller PATCH /:workflowId).
+					if (license.isSharingEnabled()) {
+						updateData = await enterpriseWorkflowService.preventTampering(
+							updateData,
+							saved.id,
+							user,
+						);
+					}
 
-				const updated = await workflowService.update(user, updateData, saved.id, {
-					source: 'n8n-ai',
-				});
+					updated = await workflowService.update(user, updateData, saved.id, {
+						source: 'n8n-ai',
+					});
+				} catch (error) {
+					try {
+						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
+						if (archived && options?.markAsAiTemporary) {
+							await aiBuilderTemporaryWorkflowRepository.unmark(saved.id);
+						}
+					} catch (cleanupError) {
+						logger.warn('Failed to clean up AI-builder workflow shell after create failure', {
+							threadId,
+							workflowId: saved.id,
+							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+						});
+					}
+					throw error;
+				}
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
@@ -963,6 +1019,30 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				// Setup flows scope to a workflow or project so the candidates match what
+				// the save path will accept. `preventTampering` (workflow.service.ee.ts)
+				// uses `getCredentialsAUserCanUseInAWorkflow` for the same intersection,
+				// so the editor's credential picker and the AI's setup card stay aligned.
+				if (options?.workflowId || options?.projectId) {
+					const scoped = options.workflowId
+						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								workflowId: options.workflowId,
+							})
+						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								projectId: options.projectId!,
+							});
+
+					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;
+
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+						}),
+					);
+				}
+
 				const credentials = await credentialsService.getMany(user, {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,
@@ -1834,21 +1914,20 @@ export class InstanceAiAdapterService {
 				if (!desc) return {};
 
 				const nodeProperties = desc.properties;
-
-				// Fill in default values for parameters not explicitly set
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of nodeProperties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					nodeProperties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
 
 				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
 
@@ -1880,7 +1959,7 @@ export class InstanceAiAdapterService {
 						if (
 							prop.displayOptions &&
 							!NodeHelpers.displayParameter(
-								paramsWithDefaults as INodeParameters,
+								paramsWithDefaults,
 								prop,
 								minimalNode,
 								desc as unknown as INodeTypeDescription,
@@ -1904,31 +1983,32 @@ export class InstanceAiAdapterService {
 
 				const credentialTypes = new Set<string>();
 
-				// 1. Displayable credentials from node type description
-				const nodeCredentials = desc.credentials ?? [];
-				// Fill defaults before evaluating display options
-				const paramsWithDefaultsForCreds: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaultsForCreds) && prop.default !== undefined) {
-						paramsWithDefaultsForCreds[prop.name] = prop.default;
-					}
-				}
-				const credCheckNode: INode = {
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					desc.properties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
+				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaultsForCreds as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
+
+				// 1. Displayable credentials from node type description
+				const nodeCredentials = desc.credentials ?? [];
 				for (const cred of nodeCredentials) {
 					// Check if credential is displayable given current parameters
 					if (cred.displayOptions) {
 						if (
 							!NodeHelpers.displayParameter(
-								paramsWithDefaultsForCreds as INodeParameters,
+								paramsWithDefaults,
 								cred,
-								credCheckNode,
+								minimalNode,
 								desc as unknown as INodeTypeDescription,
 							)
 						) {
@@ -1939,20 +2019,6 @@ export class InstanceAiAdapterService {
 				}
 
 				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
-				const minimalNode: INode = {
-					id: '',
-					name: '',
-					type: nodeType,
-					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
-					position: [0, 0],
-				};
 				const issues = NodeHelpers.getNodeParametersIssues(
 					desc.properties,
 					minimalNode,
