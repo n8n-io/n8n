@@ -1,6 +1,6 @@
 import { z, type ZodError } from 'zod';
 
-import { AgentIntegrationSchema } from './integration-config';
+import { AgentIntegrationSchema } from './agent-integration.schema';
 
 const SemanticRecallSchema = z.object({
 	topK: z.number().int().min(1).max(100),
@@ -14,7 +14,6 @@ const SemanticRecallSchema = z.object({
 	embedder: z.string().optional(),
 });
 
-// TODO: Create a list of all supported memory storages, define connection params for each storage
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n', 'sqlite', 'postgres']),
@@ -33,6 +32,21 @@ const NodeToolCredentialSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 });
+
+export const AgentModelSchema = z
+	.string()
+	.min(1)
+	.regex(
+		/**
+		 * [a-z0-9-]+: Provider name (e.g. "anthropic")
+		 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+		 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
+		 */
+		/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
+		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+	);
+
+const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
 
 export const NodeConfigSchema = z.object({
 	nodeType: z.string().min(1),
@@ -85,18 +99,7 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
-	model: z
-		.string()
-		.min(1)
-		.regex(
-			/**
-			 * [a-z0-9-]+: Provider name (e.g. "anthropic")
-			 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
-			 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
-			 */
-			/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
-			'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
-		),
+	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
@@ -117,13 +120,23 @@ export const AgentJsonConfigSchema = z.object({
 		.optional(),
 });
 
+export const RunnableAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+	model: AgentModelSchema,
+	credential: z.string().refine((value) => value.trim().length > 0, {
+		message: 'Credential is required',
+	}),
+});
+
 export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
+export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
+export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
+export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
-export type AgentJsonConfigRef = AgentJsonToolConfig | AgentJsonSkillConfig;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
+export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;
@@ -152,13 +165,6 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 	}));
 }
 
-/**
- * Returns whether the built-in node tool chain (search_nodes, get_node_types,
- * list_credentials, run_node_tool) should be attached to an agent runtime.
- *
- * Absent or partial config defaults to disabled — only an explicit
- * `nodeTools: { enabled: true }` opts an agent in.
- */
 export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
 	return config?.nodeTools?.enabled === true;
 }

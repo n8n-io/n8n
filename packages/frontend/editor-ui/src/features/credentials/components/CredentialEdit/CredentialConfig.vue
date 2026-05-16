@@ -310,7 +310,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
+					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless
