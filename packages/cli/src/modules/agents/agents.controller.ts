@@ -12,6 +12,7 @@ import {
 	type ChatIntegrationDescriptor,
 	CreateAgentDto,
 	CreateAgentSkillDto,
+	ExtractAgentFromWorkflowDto,
 	isAgentCredentialIntegration,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
@@ -41,6 +42,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentExtractionService } from './services/agent-extraction.service';
 import { messagesToDto } from './agent-message-mapper';
 import {
 	type FlushableResponse,
@@ -104,6 +106,7 @@ export class AgentsController {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly agentExtractionService: AgentExtractionService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -148,6 +151,62 @@ export class AgentsController {
 
 		const agent = await this.agentsService.create(projectId, payload.name);
 		return await this.withRunnableState(agent, projectId, req.user);
+	}
+
+	/**
+	 * Create a first-class Agent from an Agent node inside an existing
+	 * workflow. The agent subgraph (Agent node + connected language model,
+	 * memory, and tool nodes) is mapped into an `AgentJsonConfig` and persisted
+	 * as a new Agent in the same project. The source workflow is not modified.
+	 */
+	@Post('/extract-from-workflow')
+	@ProjectScope('agent:create')
+	async extractFromWorkflow(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Body payload: ExtractAgentFromWorkflowDto,
+	) {
+		const { projectId } = req.params;
+
+		const { config, provider, model, credentialId, warnings } =
+			await this.agentExtractionService.buildConfig({
+				workflowId: payload.workflowId,
+				nodeName: payload.nodeName,
+				projectId,
+				name: payload.name,
+				description: payload.description,
+			});
+
+		const agent = await this.agentsService.create(projectId, config.name);
+
+		// Seed denormalized columns up-front so the publish snapshot path picks
+		// them up without an extra round-trip — `updateConfig` only writes
+		// `schema`.
+		if (provider || model || credentialId) {
+			agent.provider = provider ?? null;
+			agent.model = model ?? null;
+			agent.credentialId = credentialId ?? null;
+			await this.agentRepository.save(agent);
+		}
+
+		try {
+			await this.agentsService.updateConfig(agent.id, projectId, config);
+		} catch (error) {
+			// Roll back the empty agent we just created so a failing mapping
+			// doesn't leave an orphan row visible in the agents list.
+			await this.agentsService.delete(agent.id, projectId).catch(() => {});
+			throw error;
+		}
+
+		const finalAgent = await this.agentsService.findById(agent.id, projectId);
+		if (!finalAgent) {
+			throw new NotFoundError(`Agent "${agent.id}" not found`);
+		}
+
+		return {
+			agent: await this.withRunnableState(finalAgent, projectId, req.user),
+			warnings,
+		};
 	}
 
 	@Get('/')
