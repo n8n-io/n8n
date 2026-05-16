@@ -26,6 +26,7 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -64,6 +65,7 @@ const selectedTriggerType = ref<string>(props.data.initialTriggerType ?? '');
 const {
 	statuses,
 	connectedCredentials,
+	integrationSettings,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -76,6 +78,7 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm>>();
 
 // Track credentials that existed before the user opened the "new credential"
 // modal, keyed by trigger type. After the modal closes we diff against the
@@ -347,10 +350,12 @@ async function ensurePublished(): Promise<boolean> {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
+	if (settingsFormRef.value?.validationError) return;
+	const settings = settingsFormRef.value?.currentSettings;
 	const published = await ensurePublished();
 	if (!published) return;
 	try {
-		await connect(type, credId);
+		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
 		props.data.onTriggerAdded({ triggerType: type, triggers });
 		emitConnectedTriggers();
@@ -560,24 +565,6 @@ onMounted(async () => {
 								@click="onEditCredential(currentIntegration.type)"
 							/>
 						</div>
-
-						<N8nText
-							v-if="hasError(currentIntegration.type)"
-							:class="$style.errorText"
-							size="small"
-						>
-							{{ errorMessages[currentIntegration.type] }}
-							<a
-								v-if="
-									selectedCredentials[currentIntegration.type] &&
-									!errorIsConflict[currentIntegration.type]
-								"
-								:class="$style.link"
-								href="#"
-								@click.prevent="onEditCredential(currentIntegration.type)"
-								>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
-							>
-						</N8nText>
 					</div>
 
 					<div v-else :class="$style.connectedSection">
@@ -585,6 +572,32 @@ onMounted(async () => {
 							{{ integrationConnectedText(currentIntegration.type) }}
 						</N8nText>
 					</div>
+
+					<AgentIntegrationSettingsForm
+						ref="settingsFormRef"
+						:type="currentIntegration.type"
+						:disabled="isConnected(currentIntegration.type) || isLoading(currentIntegration.type)"
+						:connected="isConnected(currentIntegration.type)"
+						:saved-settings="integrationSettings[currentIntegration.type]"
+					/>
+
+					<N8nText
+						v-if="!isConnected(currentIntegration.type) && hasError(currentIntegration.type)"
+						:class="$style.errorText"
+						size="small"
+					>
+						{{ errorMessages[currentIntegration.type] }}
+						<a
+							v-if="
+								selectedCredentials[currentIntegration.type] &&
+								!errorIsConflict[currentIntegration.type]
+							"
+							:class="$style.link"
+							href="#"
+							@click.prevent="onEditCredential(currentIntegration.type)"
+							>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
+						>
+					</N8nText>
 
 					<!-- Slack manifest reference material. Integration actions live
 						 in the modal footer so they stay aligned with other modals. -->
@@ -628,7 +641,8 @@ onMounted(async () => {
 							:disabled="
 								!selectedCredentials[currentIntegration.type] ||
 								isLoading(currentIntegration.type) ||
-								publishing
+								publishing ||
+								!!settingsFormRef?.validationError
 							"
 							:loading="isLoading(currentIntegration.type) || publishing"
 							size="small"

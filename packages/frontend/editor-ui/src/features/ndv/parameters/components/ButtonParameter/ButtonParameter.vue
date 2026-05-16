@@ -17,6 +17,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{
@@ -32,6 +33,8 @@ export type Props = {
 const props = defineProps<Props>();
 
 const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+
 const activeNode = computed(() => ndvStore.activeNode);
 
 const i18n = useI18n();
@@ -106,6 +109,7 @@ async function onSubmit() {
 				const updateInformation = await generateCodeForAiTransform(
 					prompt.value,
 					getPath(target as string),
+					workflowDocumentStore.value.documentId,
 					5,
 				);
 				if (!updateInformation) return;
@@ -158,7 +162,7 @@ function onPromptInput(inputValue: string) {
 }
 
 onMounted(() => {
-	parentNodes.value = getParentNodes();
+	parentNodes.value = getParentNodes(workflowDocumentStore.value.documentId);
 });
 
 function cleanTextareaRowsData() {
