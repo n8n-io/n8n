@@ -23,21 +23,20 @@ jobs:
 
   benchmark:
     needs: [prepare-docker]
-    name: ${{ matrix.profile }}
+    name: benchmarking
     strategy:
       fail-fast: false
       matrix:
         include:
-          - profile: benchmark-direct
-            runner: blacksmith-4vcpu-ubuntu-2204
-          - profile: benchmark-queue
-            runner: blacksmith-8vcpu-ubuntu-2204
-          - profile: benchmark-queue-tuned
-            runner: blacksmith-8vcpu-ubuntu-2204
+          - runner: blacksmith-8vcpu-ubuntu-2204
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright test:all --project=${{ matrix.profile }}:infrastructure --workers=1
+      # Runs the full benchmark suite. Each spec brings its own container via
+      # `test.use({ capability })`, so workers must be 1 (one container at a time).
+      test-command: 'pnpm --filter=n8n-playwright test:benchmark'
+      workers: '1'
       runner: ${{ matrix.runner }}
-      timeout-minutes: 60
+      timeout-minutes: 120
+      artifact-prefix: benchmark
     secrets: inherit

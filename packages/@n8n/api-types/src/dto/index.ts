@@ -29,6 +29,7 @@ export {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmRequestKind,
+	type InstanceAiResourceDecision,
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
@@ -198,6 +199,8 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
+export * from './evaluations';
+
 export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
@@ -215,6 +218,13 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+
+export {
+	RedactionEnforcementDto,
+	UpdateRedactionEnforcementDto,
+	redactionScopeSchema,
+	type RedactionScope,
+} from './redaction-enforcement/redaction-enforcement.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
@@ -236,5 +246,9 @@ export { VersionSinceDateQueryDto } from './instance-version-history/version-sin
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
-export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export {
+	ListEncryptionKeysQueryDto,
+	ENCRYPTION_KEYS_SORT_OPTIONS,
+	type EncryptionKeysSortOption,
+} from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

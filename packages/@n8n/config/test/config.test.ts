@@ -352,6 +352,7 @@ describe('GlobalConfig', () => {
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
 			eventLoopBlockThreshold: 500,
+			eventLoopBlockMaxEventsPerHour: 5,
 		},
 		logging: {
 			level: 'info',
@@ -544,6 +545,12 @@ describe('GlobalConfig', () => {
 			logStreamingDestinations: '',
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
+			communityPackagesManagedByEnv: false,
+			communityPackages: '',
+		},
+		agents: {
+			checkpointTtlSeconds: 345600,
+			modules: [],
 		},
 	} satisfies GlobalConfigShape;
 

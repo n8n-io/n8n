@@ -3,7 +3,7 @@ import { validateWorkflow } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypes } from 'n8n-workflow';
 
-import type { InstanceAiContext } from '../../../types';
+import type { InstanceAiContext, InstanceAiTraceRun } from '../../../types';
 import {
 	classifySubmitFailure,
 	isTriggerNodeType,
@@ -14,10 +14,21 @@ jest.mock('@mastra/core/tools', () => ({
 	createTool: jest.fn((config: Record<string, unknown>) => config),
 }));
 
-jest.mock('@n8n/workflow-sdk', () => ({
-	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
-	layoutWorkflowJSON: jest.fn((wf: unknown) => wf),
-}));
+jest.mock(
+	'@n8n/utils',
+	() => ({
+		hasPlaceholderDeep: jest.fn(() => false),
+	}),
+	{ virtual: true },
+);
+
+jest.mock(
+	'@n8n/workflow-sdk',
+	() => ({
+		validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
+	}),
+	{ virtual: true },
+);
 
 // `require` (rather than `import`) is needed because `submit-workflow.tool`
 // transitively pulls in @mastra/core (ESM-only); the require call here runs
@@ -32,6 +43,7 @@ const mockedValidateWorkflow = jest.mocked(validateWorkflow);
 type Executable = {
 	execute: (input: Record<string, unknown>) => Promise<{
 		success: boolean;
+		usesWorkflowPinDataForVerification?: boolean;
 		errors?: string[];
 	}>;
 };
@@ -119,7 +131,6 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 		const tool = createSubmitWorkflowTool(
 			context,
 			makeBuildSuccessWorkspace(),
-			new Map(),
 		) as unknown as Executable;
 
 		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
@@ -134,7 +145,6 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext(),
 			makeBuildSuccessWorkspace(),
-			new Map(),
 		) as unknown as Executable;
 
 		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
@@ -179,7 +189,6 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ createWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
-			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
@@ -200,7 +209,6 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ updateWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
-			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
@@ -218,7 +226,183 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 	});
 });
 
+describe('createSubmitWorkflowTool — credential verification metadata', () => {
+	it('surfaces workflow pin-data availability when mocked credentials reuse saved pin data', async () => {
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const context = makeContext({} as InstanceAiContext['permissions'], {
+			workflowService: {
+				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-1' }),
+			} as unknown as InstanceAiContext['workflowService'],
+		});
+		const tool = createSubmitWorkflowTool(
+			context,
+			makeBuildSuccessWorkspace({
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {},
+						credentials: { slackApi: null },
+					},
+				],
+				connections: {},
+				pinData: { Slack: [{ ok: true }] },
+			}),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		) as unknown as Executable;
+
+		const out = await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+
+		expect(out.success).toBe(true);
+		expect(out.usesWorkflowPinDataForVerification).toBe(true);
+		expect(attempts[0]).toMatchObject({
+			success: true,
+			workflowId: 'wf-1',
+			usesWorkflowPinDataForVerification: true,
+		});
+	});
+
+	it('appends successful workflowId to the tracingRoot metadata', async () => {
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+		const context = makeContext({} as InstanceAiContext['permissions'], {
+			workflowService: {
+				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-1' }),
+			} as unknown as InstanceAiContext['workflowService'],
+		});
+		const tracingRoot = {
+			id: 'root-1',
+			name: 'subagent:workflow-builder',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-1',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+		} as InstanceAiTraceRun;
+
+		const tool = createSubmitWorkflowTool(
+			context,
+			makeBuildSuccessWorkspace({ name: 'Test', nodes: [], connections: {} }),
+			undefined,
+			undefined,
+			tracingRoot,
+		) as unknown as Executable;
+
+		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+
+		expect(tracingRoot.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+	});
+
+	it('does not write tracingRoot metadata when submission fails', async () => {
+		mockedValidateWorkflow.mockReturnValue({
+			errors: [{ code: 'INVALID_PARAM', message: 'bad', nodeName: 'X' }],
+			warnings: [],
+		} as never);
+		const context = makeContext();
+		const tracingRoot = {
+			id: 'root-2',
+			name: 'subagent:workflow-builder',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-2',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+		} as InstanceAiTraceRun;
+
+		const tool = createSubmitWorkflowTool(
+			context,
+			makeBuildSuccessWorkspace(),
+			undefined,
+			undefined,
+			tracingRoot,
+		) as unknown as Executable;
+
+		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+
+		expect(tracingRoot.metadata?.generated_workflow_ids).toBeUndefined();
+	});
+
+	it('reports Execute Workflow references from the submitted workflow', async () => {
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const context = makeContext({} as InstanceAiContext['permissions'], {
+			workflowService: {
+				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-main' }),
+			} as unknown as InstanceAiContext['workflowService'],
+		});
+		const tool = createSubmitWorkflowTool(
+			context,
+			makeBuildSuccessWorkspace({
+				name: 'Main',
+				nodes: [
+					{
+						id: '1',
+						name: 'Run Chunk',
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1.2,
+						position: [0, 0],
+						parameters: {
+							source: 'database',
+							workflowId: { __rl: true, mode: 'id', value: 'wf-chunk' },
+						},
+					},
+				],
+				connections: {},
+			}),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		) as unknown as Executable;
+
+		await tool.execute({ filePath: 'src/workflow.ts', name: 'Main' });
+
+		expect(attempts[0]).toMatchObject({
+			success: true,
+			workflowId: 'wf-main',
+			referencedWorkflowIds: ['wf-chunk'],
+		});
+	});
+});
+
 describe('classifySubmitFailure', () => {
+	it('routes credential access save failures to setup instead of code remediation', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: You do not have access to the credentials "mock-gmail-oauth2"'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('credential');
+	});
+
+	it('routes missing credential save failures to setup instead of code remediation', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: Credentials not found for id WHATSAPP_CREDENTIAL_ID'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('credential');
+	});
+
 	it('treats workflow save failures as terminal blockers', () => {
 		const remediation = classifySubmitFailure(
 			['Workflow save failed: database unavailable'],

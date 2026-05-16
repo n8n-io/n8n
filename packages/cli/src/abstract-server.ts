@@ -1,4 +1,4 @@
-import { inTest, inDevelopment, Logger } from '@n8n/backend-common';
+import { inDevelopment, inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -9,14 +9,14 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
 
+import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
-import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
+import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -25,6 +25,12 @@ import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
 @Service()
 export abstract class AbstractServer {
+	/**
+	 * Path patterns that allow bot user agents through the bot filter.
+	 * Populated by ControllerRegistry when routes with { allowBots: true } are registered.
+	 */
+	static readonly botAllowedPaths: string[] = [];
+
 	protected logger: Logger;
 
 	protected server: Server;
@@ -273,11 +279,21 @@ export abstract class AbstractServer {
 			this.app.all(`/${this.endpointMcpTest}/*path`, createWebhookHandlerFor(testWebhooks, 'mcp'));
 		}
 
-		// Block bots from scanning the application
+		// Block bots from scanning the application.
+		// Routes with { allowBots: true } are registered in botAllowedPaths
+		// by the ControllerRegistry and exempted from this filter.
 		const checkIfBot = isbot.spawn(['bot']);
 		this.app.use((req, res, next) => {
 			const userAgent = req.headers['user-agent'];
 			if (userAgent && checkIfBot(userAgent)) {
+				// Check if this path matches a route with { allowBots: true }
+				const allowed = AbstractServer.botAllowedPaths.some((pattern) =>
+					new RegExp(`^${pattern}$`).test(req.path),
+				);
+				if (allowed) {
+					next();
+					return;
+				}
 				this.logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
 				res.status(204).end();
 			} else next();

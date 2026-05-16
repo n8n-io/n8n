@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.14.1 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 24.15.0 by default for reproducible builds.'
     required: false
-    default: '24.14.1'
+    default: '24.15.0'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -45,6 +45,13 @@ runs:
             mkdir -p "$PNPM_STORE_PATH"
         fi
 
+    - name: Configure SafeChain
+      shell: bash
+      run: |
+        # SafeChain only reads configs from this directory https://github.com/AikidoSec/safe-chain#configuration-options-1
+        mkdir -p "$HOME/.safe-chain"
+        cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
+
     - name: Install Aikido SafeChain
       run: |
         VERSION="1.5.1"
@@ -60,6 +67,7 @@ runs:
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
+        SAFE_CHAIN_LOGGING: verbose
       run: |
         $INSTALL_COMMAND
       shell: bash

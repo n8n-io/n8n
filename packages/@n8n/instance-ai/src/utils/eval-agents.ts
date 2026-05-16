@@ -1,9 +1,4 @@
-/**
- * Shared agent factory for eval LLM calls.
- *
- * Centralizes model config, API key resolution, and text extraction
- * for the 3 eval call sites (hint generation, mock responses, pin data).
- */
+/** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
 import { Agent, Tool, type GenerateResult } from '@n8n/agents';
 
@@ -49,6 +44,13 @@ export function createEvalAgent(
 		model?: string;
 		instructions: string;
 		cache?: boolean;
+		/**
+		 * Extended-thinking config:
+		 * - 'adaptive' (default): model decides per request.
+		 * - 'off': no thinking.
+		 * - { budgetTokens: N }: fixed budget mode.
+		 */
+		thinking?: 'adaptive' | 'off' | { budgetTokens: number };
 	},
 ): Agent {
 	const agent = new Agent(name).model({
@@ -60,6 +62,13 @@ export function createEvalAgent(
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);
 	} else {
 		agent.instructions(options.instructions);
+	}
+
+	const thinking = options.thinking ?? 'adaptive';
+	if (thinking === 'adaptive') {
+		agent.thinking('anthropic', { mode: 'adaptive' });
+	} else if (typeof thinking === 'object') {
+		agent.thinking('anthropic', { mode: 'enabled', budgetTokens: thinking.budgetTokens });
 	}
 
 	return agent;

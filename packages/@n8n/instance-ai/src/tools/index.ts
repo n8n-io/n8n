@@ -1,4 +1,6 @@
-import { isStructuredAttachment } from '../parsers/structured-file-parser';
+import type { ToolsInput } from '@mastra/core/agent';
+
+import { isParseableAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
@@ -19,14 +21,32 @@ import { createAskUserTool } from './shared/ask-user.tool';
 import { createTaskControlTool } from './task-control.tool';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
-import { createWorkflowsTool } from './workflows.tool';
+import { createWorkflowsTool, type WorkflowAction } from './workflows.tool';
 import { createWorkspaceTool } from './workspace.tool';
+
+function hasParseableAttachment(context: InstanceAiContext): boolean {
+	return context.currentUserAttachments?.some(isParseableAttachment) ?? false;
+}
+
+const ORCHESTRATOR_WORKFLOW_ACTIONS = [
+	'list',
+	'get',
+	'delete',
+	'unarchive',
+	'setup',
+	'publish',
+	'unpublish',
+	'list-versions',
+	'get-version',
+	'restore-version',
+	'update-version',
+] as const satisfies readonly WorkflowAction[];
 
 /**
  * Creates all native n8n domain tools with the full action surface.
- * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
+ * Agents with narrower surfaces pass explicit action lists at their wiring sites.
  */
-export function createAllTools(context: InstanceAiContext) {
+export function createAllTools(context: InstanceAiContext): ToolsInput {
 	return {
 		workflows: createWorkflowsTool(context),
 		executions: createExecutionsTool(context),
@@ -38,9 +58,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
-		...(context.currentUserAttachments?.some(isStructuredAttachment)
-			? { 'parse-file': createParseFileTool(context) }
-			: {}),
+		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
 	};
 }
 
@@ -48,9 +66,11 @@ export function createAllTools(context: InstanceAiContext) {
  * Creates orchestrator-scoped domain tools — restricted action surfaces
  * for tools where the orchestrator should not have write/builder access.
  */
-export function createOrchestratorDomainTools(context: InstanceAiContext) {
+export function createOrchestratorDomainTools(context: InstanceAiContext): ToolsInput {
 	return {
-		workflows: createWorkflowsTool(context, 'orchestrator'),
+		workflows: createWorkflowsTool(context, {
+			allowedActions: ORCHESTRATOR_WORKFLOW_ACTIONS,
+		}),
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context, 'orchestrator'),
@@ -59,6 +79,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
 		nodes: createNodesTool(context, 'orchestrator'),
 		'ask-user': createAskUserTool(),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
+		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
 	};
 }
 

@@ -101,6 +101,7 @@ export interface FrontendSettings {
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
 	concurrency: number;
+	evaluationConcurrencyLimit: number;
 	authCookie: {
 		secure: boolean;
 	};
@@ -175,6 +176,7 @@ export interface FrontendSettings {
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	unverifiedCommunityNodesEnabled: boolean;
+	communityNodesManagedByEnv: boolean;
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
@@ -292,7 +294,6 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
-		optinModalDismissed: boolean;
 		cloudManaged: boolean;
 	};
 
@@ -315,6 +316,19 @@ export type FrontendModuleSettings = {
 		roleBasedAccess: boolean;
 		/** Whether system roles (admin, editor) have external secrets scopes. */
 		systemRolesEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the agents module.
+	 */
+	agents?: {
+		/**
+		 * Enabled agent sub-feature modules. Each token unlocks a specific
+		 * capability inside the agents module (see the backend's
+		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
+		 * `N8N_AGENTS_MODULES` (comma-separated).
+		 */
+		modules: string[];
 	};
 };
 

@@ -5,10 +5,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import { getNodeAuthOptions, getAuthTypeForNodeCredential } from '@/app/utils/nodeTypesUtils';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
@@ -39,7 +36,7 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const i18n = useI18n();
-const { isOAuthCredentialType } = useCredentialOAuth();
+const { isOAuthCredentialType, hasManualCredentialInputFields } = useCredentialOAuth();
 
 const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.activeNode);
 const activeNodeType = computed<INodeTypeDescription | null>(() => {
@@ -57,6 +54,9 @@ const selectedAuthType = computed(() => {
 
 const isOAuthCredential = computed(() => isOAuthCredentialType(props.credentialType.name));
 const hasManagedOAuth = computed(() => isOAuthCredential.value && props.showManagedOauthOptions);
+const hasManualCredentialFields = computed(() =>
+	hasManualCredentialInputFields(props.credentialType),
+);
 
 const managedOAuthOptions = computed<Option[]>(() => [
 	{
@@ -111,16 +111,17 @@ const options = computed<Option[]>(() => {
 	if (!qc) return manual;
 
 	// When QC is available but no manual auth options exist (single-credential nodes),
-	// add a generic "Enter manually" option so the user can switch between QC and manual
-	const manualOrFallback =
-		manual.length > 0
-			? manual
-			: [
+	// add a generic "Enter manually" option only when manual input fields exist
+	const manualOrFallback = manual.length
+		? manual
+		: hasManualCredentialFields.value
+			? [
 					{
 						name: i18n.baseText('credentialEdit.credentialConfig.setupManually'),
 						value: { type: '' },
 					},
-				];
+				]
+			: [];
 
 	return [qc, ...manualOrFallback];
 });

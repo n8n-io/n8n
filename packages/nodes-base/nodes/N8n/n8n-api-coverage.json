@@ -77,6 +77,9 @@
 		"PUT /executions/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
 		"POST /tags": {
 			"status": "gap"
 		},

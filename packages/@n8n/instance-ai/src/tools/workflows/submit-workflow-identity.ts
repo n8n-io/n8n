@@ -17,7 +17,7 @@
 import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
 
-import type { CredentialMap } from './resolve-credentials';
+import type { CredentialEntry } from './resolve-credentials';
 import {
 	createSubmitWorkflowTool,
 	resolveSandboxWorkflowFilePath,
@@ -27,7 +27,7 @@ import {
 	type SubmitWorkflowInput,
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, InstanceAiTraceRun } from '../../types';
 import {
 	MAX_PRE_SAVE_SUBMIT_FAILURES,
 	createRemediation,
@@ -42,6 +42,7 @@ export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkfl
 
 interface SubmitGuardOptions {
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	getTerminalRemediation?: () => RemediationMetadata | undefined;
 	currentRunId?: string;
 	onGuardFired?: (event: {
 		workflowId?: string;
@@ -49,6 +50,7 @@ interface SubmitGuardOptions {
 		attemptCount?: number;
 		reason?: string;
 	}) => void;
+	onTerminalRemediation?: (remediation: RemediationMetadata) => void;
 }
 
 interface SubmitBudgetTracker {
@@ -128,10 +130,9 @@ export function wrapSubmitExecuteWithIdentity(
 	async function blockedByTerminalRemediation(
 		workflowId: string | undefined,
 	): Promise<SubmitWorkflowOutput | undefined> {
-		const terminalRemediation = terminalRemediationFromState(
-			await options.getWorkflowLoopState?.(),
-			options.currentRunId,
-		);
+		const terminalRemediation =
+			options.getTerminalRemediation?.() ??
+			terminalRemediationFromState(await options.getWorkflowLoopState?.(), options.currentRunId);
 		if (!terminalRemediation) return undefined;
 
 		options.onGuardFired?.({
@@ -147,6 +148,14 @@ export function wrapSubmitExecuteWithIdentity(
 		};
 	}
 
+	function applyOutputGuards(path: string, output: SubmitWorkflowOutput): SubmitWorkflowOutput {
+		const guardedOutput = options.budgetTracker?.applyToOutput(path, output) ?? output;
+		if (guardedOutput.remediation?.shouldEdit === false) {
+			options.onTerminalRemediation?.(guardedOutput.remediation);
+		}
+		return guardedOutput;
+	}
+
 	return async (input) => {
 		const resolvedPath = resolvePath(input.filePath);
 		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
@@ -159,6 +168,9 @@ export function wrapSubmitExecuteWithIdentity(
 			try {
 				boundId = await existing;
 			} catch (error) {
+				const terminalAfterFailure = await blockedByTerminalRemediation(input.workflowId);
+				if (terminalAfterFailure) return terminalAfterFailure;
+
 				const message = error instanceof Error ? error.message : String(error);
 				return {
 					success: false,
@@ -176,7 +188,7 @@ export function wrapSubmitExecuteWithIdentity(
 			if (terminalAfterWait) return terminalAfterWait;
 
 			const result = await underlying({ ...input, workflowId: boundId });
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return applyOutputGuards(resolvedPath, result);
 		}
 
 		let resolveFn: ((id: string) => void) | undefined;
@@ -198,7 +210,7 @@ export function wrapSubmitExecuteWithIdentity(
 				rejectFn?.(new Error(result.errors?.join(' ') ?? 'submit-workflow failed'));
 				pending.delete(resolvedPath);
 			}
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return applyOutputGuards(resolvedPath, result);
 		} catch (error) {
 			rejectFn?.(error);
 			pending.delete(resolvedPath);
@@ -214,21 +226,25 @@ export function wrapSubmitExecuteWithIdentity(
 export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	context: InstanceAiContext;
 	workspace: Workspace;
-	credentialMap?: CredentialMap;
+	availableCredentials?: CredentialEntry[];
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;
 	currentRunId?: string;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	getTerminalRemediation?: SubmitGuardOptions['getTerminalRemediation'];
 	onGuardFired?: SubmitGuardOptions['onGuardFired'];
+	onTerminalRemediation?: SubmitGuardOptions['onTerminalRemediation'];
+	tracingRoot?: InstanceAiTraceRun;
 }) {
 	const budgetTracker = createPreSaveBudgetTracker();
 	const underlying = createSubmitWorkflowTool(
 		args.context,
 		args.workspace,
-		args.credentialMap,
 		async (attempt) => {
 			await args.onAttempt(budgetTracker.recordAttempt(attempt));
 		},
+		args.availableCredentials,
+		args.tracingRoot,
 	);
 
 	const underlyingExecute = underlying.execute as SubmitExecute | undefined;
@@ -243,7 +259,9 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			budgetTracker,
 			currentRunId: args.currentRunId,
 			getWorkflowLoopState: args.getWorkflowLoopState,
+			getTerminalRemediation: args.getTerminalRemediation,
 			onGuardFired: args.onGuardFired,
+			onTerminalRemediation: args.onTerminalRemediation,
 		},
 	);
 

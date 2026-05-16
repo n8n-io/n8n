@@ -90,7 +90,7 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredential(
+	async getCredentialForUpdate(
 		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
 	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
@@ -102,13 +102,13 @@ export class OauthService {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:read'],
+			['credential:update'],
 		);
 
 		if (!credential) {
 			this.logger.error(
 				'OAuth credential authorization failed because the current user does not have the correct permissions',
-				{ userId: req.user.id },
+				{ userId: req.user.id, credentialId },
 			);
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
@@ -250,7 +250,7 @@ export class OauthService {
 	protected async decodeCsrfState(
 		encodedState: string,
 		req: AuthenticatedRequest,
-	): Promise<CsrfState & CreateCsrfStateData> {
+	): Promise<[CsrfState & CreateCsrfStateData, CredentialsEntity | null]> {
 		const errorMessage = 'Invalid state format';
 		const decodedState = Buffer.from(encodedState, 'base64').toString();
 		const decoded = jsonParse<CsrfState>(decodedState, {
@@ -270,28 +270,31 @@ export class OauthService {
 
 		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
 		if (decryptedState.origin === 'dynamic-credential') {
-			return {
-				...decoded,
-				...decryptedState,
-			};
+			return [
+				{ ...decoded, ...decryptedState },
+				await this.getCredentialWithoutUser(decryptedState.cid),
+			];
 		}
 
 		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true (e.g. embed/iframe)
 		if (skipAuthOnOAuthCallback) {
-			return {
-				...decoded,
-				...decryptedState,
-			};
+			return [
+				{ ...decoded, ...decryptedState },
+				await this.getCredentialWithoutUser(decryptedState.cid),
+			];
 		}
 
 		if (req.user?.id === undefined || decryptedState.userId !== req.user.id) {
 			throw new AuthError('Unauthorized');
 		}
 
-		return {
-			...decoded,
-			...decryptedState,
-		};
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			decryptedState.cid,
+			req.user,
+			['credential:update'],
+		);
+
+		return [{ ...decoded, ...decryptedState }, credential];
 	}
 
 	protected verifyCsrfState(
@@ -313,10 +316,9 @@ export class OauthService {
 		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
 	> {
 		const { state: encodedState } = req.query;
-		const state = await this.decodeCsrfState(encodedState, req);
-		const credential = await this.getCredentialWithoutUser(state.cid);
+		const [state, credential] = await this.decodeCsrfState(encodedState, req);
 		if (!credential) {
-			throw new UnexpectedError('OAuth callback failed because of insufficient permissions');
+			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
 		const additionalData = await this.getAdditionalData();
@@ -451,6 +453,8 @@ export class OauthService {
 							`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
 							// 3. OpenID Connect Discovery 1.0 (path appending)
 							`${authorizationServerUrl}/.well-known/openid-configuration`,
+							// 4. RFC 8414 origin-only fallback (matches MCP TypeScript SDK behavior)
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
 						]
 					: [
 							// For root-level issuers or already-well-known paths

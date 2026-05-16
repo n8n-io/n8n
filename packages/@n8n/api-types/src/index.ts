@@ -8,7 +8,9 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
+export * from './agents';
 export * from './instance-registry-types';
+export * from './redaction-enforcement';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -177,6 +179,13 @@ export {
 } from './schemas/user.schema';
 
 export {
+	encryptionKeySchema,
+	encryptionKeysListSchema,
+	type EncryptionKey,
+	type EncryptionKeysList,
+} from './schemas/encryption-key.schema';
+
+export {
 	DATA_TABLE_COLUMN_REGEX,
 	DATA_TABLE_COLUMN_MAX_LENGTH,
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
@@ -188,6 +197,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
 export type {
@@ -291,8 +301,11 @@ export {
 	UNLIMITED_CREDITS,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
+	webSearchMetaSchema,
 	credentialFlowSchema,
+	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	instanceGatewayResourceDecisionSchema,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -368,8 +381,11 @@ export type {
 	InstanceAiTargetResource,
 	DomainAccessAction,
 	DomainAccessMeta,
+	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
+	InstanceGatewayResourceDecision,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	PlannedTaskArg,
@@ -377,6 +393,7 @@ export type {
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
+	InstanceAiEvalMockedCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,
@@ -399,8 +416,30 @@ export {
 	type StartTestRunPayload,
 } from './schemas/evaluations.schema';
 
+export {
+	EVAL_COLLECTIONS_FLAG,
+	evalCollectionVersionEntrySchema,
+	createEvaluationCollectionSchema,
+	CreateEvaluationCollectionDto,
+	updateEvaluationCollectionSchema,
+	UpdateEvaluationCollectionDto,
+	addRunToCollectionSchema,
+	AddRunToCollectionDto,
+	type EvalCollectionVersionEntry,
+	type CreateEvaluationCollectionPayload,
+	type UpdateEvaluationCollectionPayload,
+	type AddRunToCollectionPayload,
+	type EvalCollectionRunStatus,
+	type EvaluationCollectionRecord,
+	type EvaluationCollectionRunSummary,
+	type EvaluationCollectionDetail,
+	type EvalVersionEntry,
+	type EvalVersionsResponse,
+} from './schemas/eval-collections.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
+export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,
