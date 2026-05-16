@@ -550,7 +550,7 @@ describe('McpOAuthService', () => {
 				),
 			).rejects.toMatchObject({
 				message: 'Invalid resource indicator',
-				errorCode: 'invalid_resource',
+				errorCode: 'invalid_target',
 			});
 		});
 	});
