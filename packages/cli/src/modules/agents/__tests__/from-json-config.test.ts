@@ -9,6 +9,33 @@ import {
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
+type EmbeddingProviderOpts = {
+	apiKey?: string;
+	baseURL?: string;
+};
+
+jest.mock('@ai-sdk/openai', () => ({
+	createOpenAI: (opts?: EmbeddingProviderOpts) =>
+		Object.assign(
+			(model: string) => ({
+				provider: 'openai',
+				modelId: model,
+				apiKey: opts?.apiKey,
+				baseURL: opts?.baseURL,
+				specificationVersion: 'v3',
+			}),
+			{
+				embeddingModel: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					specificationVersion: 'v2',
+				}),
+			},
+		),
+}));
+
 // ---------------------------------------------------------------------------
 // buildFromJson() tests
 // ---------------------------------------------------------------------------
@@ -558,7 +585,13 @@ describe('buildFromJson()', () => {
 	});
 
 	it('configures episodic memory with the OpenAI embedding credential', async () => {
-		const credentialProvider = makeMockCredentialProvider();
+		const credentialProvider = {
+			resolve: jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				url: 'https://custom.example/v1',
+			}),
+			list: jest.fn().mockResolvedValue([]),
+		};
 		const config = makeConfig({
 			memory: {
 				enabled: true,
@@ -584,6 +617,7 @@ describe('buildFromJson()', () => {
 
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('openai-key');
 		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
+		const embedder = getMemoryConfig(agent)?.episodicMemory?.embedder as Record<string, unknown>;
 		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
 			topK: 7,
 			maxEntryLength: 800,
@@ -592,6 +626,8 @@ describe('buildFromJson()', () => {
 			extract: expect.any(Function),
 			reflect: expect.any(Function),
 		});
+		expect(embedder.apiKey).toBe('test-api-key');
+		expect(embedder.baseURL).toBe('https://custom.example/v1');
 	});
 
 	it('can disable observational memory while keeping message memory', async () => {

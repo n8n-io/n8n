@@ -339,7 +339,10 @@ async function resolveEpisodicMemoryConfig(
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const raw = await credentialProvider.resolve(config.credential);
 	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	const apiKey = typeof mapped.apiKey === 'string' ? mapped.apiKey : undefined;
+	const embeddingCredentials = {
+		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
+		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
+	};
 
 	return {
 		enabled: true,
@@ -347,7 +350,7 @@ async function resolveEpisodicMemoryConfig(
 		...(config.halfLifeDays !== undefined && { halfLifeDays: config.halfLifeDays }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		...(config.maxEntryLength !== undefined && { maxEntryLength: config.maxEntryLength }),
-		embedder: createEmbeddingModel(embeddingModel, apiKey),
+		embedder: createEmbeddingModel(embeddingModel, embeddingCredentials),
 		embeddingModel,
 		extract: createN8nEpisodicMemoryExtractFn(modelConfig),
 		reflect: createN8nEpisodicMemoryReflectFn(modelConfig),
