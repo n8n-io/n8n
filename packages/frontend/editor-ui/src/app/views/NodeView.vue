@@ -119,6 +119,7 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
+import { useAgentExtraction } from '@/app/composables/useAgentExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -253,6 +254,7 @@ const {
 	fitView,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
+const { extractAgent } = useAgentExtraction();
 
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
@@ -432,6 +434,10 @@ function onTidyUp(
 
 function onExtractWorkflow(nodeIds: string[]) {
 	extractWorkflow(nodeIds);
+}
+
+function onExtractAgent(nodeId: string) {
+	void extractAgent(nodeId);
 }
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
@@ -1905,6 +1911,7 @@ onBeforeUnmount(() => {
 			@tidy-up="onTidyUp"
 			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
+			@extract-agent="onExtractAgent"
 			@start-chat="onToggleChat"
 		>
 			<Suspense v-if="!isCanvasReadOnly">

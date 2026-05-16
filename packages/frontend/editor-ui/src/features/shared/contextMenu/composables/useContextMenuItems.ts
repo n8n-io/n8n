@@ -39,7 +39,10 @@ export type ContextMenuAction =
 	| 'open_sub_workflow'
 	| 'tidy_up'
 	| 'extract_sub_workflow'
+	| 'extract_as_agent'
 	| 'focus_ai_on_selected';
+
+const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
@@ -323,6 +326,14 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						label: i18n.baseText('contextMenu.openSubworkflow'),
 						shortcut: { shiftKey: true, metaKey: true, keys: ['O'] },
 						disabled: !canOpenSubworkflow.value,
+					});
+				}
+
+				if (nodes[0].type === AGENT_NODE_TYPE) {
+					singleNodeActions.push({
+						id: 'extract_as_agent',
+						label: i18n.baseText('contextMenu.extractAsAgent'),
+						disabled: isReadOnly.value,
 					});
 				}
 				// Add actions only available for a single node

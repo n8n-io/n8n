@@ -131,6 +131,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
+	'extract-agent': [id: string];
 	'save:workflow': [];
 }>();
 
@@ -848,6 +849,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return await onTidyUp({ source: 'context-menu' });
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
+		case 'extract_as_agent':
+			return emit('extract-agent', nodeIds[0]);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}

@@ -7,6 +7,7 @@ import type {
 	AgentScheduleConfig,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
+	ExtractAgentWarning,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -45,6 +46,24 @@ export const createAgent = async (
 		'POST',
 		`/projects/${projectId}/agents/v2`,
 		{ name },
+	);
+};
+
+export interface ExtractAgentResponse {
+	agent: AgentResource;
+	warnings: ExtractAgentWarning[];
+}
+
+export const extractAgentFromWorkflow = async (
+	context: IRestApiContext,
+	projectId: string,
+	payload: { workflowId: string; nodeName: string; name?: string; description?: string },
+): Promise<ExtractAgentResponse> => {
+	return await makeRestApiRequest<ExtractAgentResponse>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/extract-from-workflow`,
+		payload,
 	);
 };
 
