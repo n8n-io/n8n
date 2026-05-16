@@ -1035,5 +1035,62 @@ describe('HttpRequestV3', () => {
 			// setFilename returns preparedBinaryData.fileName unchanged when already set
 			expect(result[0][0].binary?.data.fileName).toBe('custom.txt');
 		});
+
+		it('should not crash when an earlier item fails with continueOnFail (requests[] alignment)', async () => {
+			// Item 0 has an invalid URL → fails in request-build loop → continueOnFail
+			// Item 1 has a valid URL → must still be processed correctly
+			// Without the requests[] placeholder fix, requests[1] === undefined → TypeError
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, itemIndex: number, fallback: unknown) => {
+					if (paramName === 'url') {
+						// Item 0 → null URL (triggers NodeOperationError in build loop)
+						// Item 1 → valid URL
+						return itemIndex === 0 ? null : 'http://example.com/ok';
+					}
+					if (paramName === 'method') return 'GET';
+					if (paramName === 'authentication') return 'none';
+					if (paramName === 'options') {
+						return {
+							batching: { batch: { batchSize: 1, batchInterval: 0 } },
+							redirect: '',
+							proxy: '',
+							timeout: '',
+							allowUnauthorizedCerts: false,
+							queryParameterArrays: '',
+							lowercaseHeaders: true,
+							response: {
+								response: {
+									responseFormat: 'json',
+									outputPropertyName: 'data',
+									fullResponse: false,
+									neverError: false,
+								},
+							},
+						};
+					}
+					if (paramName === 'options.response.response.responseFormat') return 'json';
+					if (paramName === 'options.response.response.fullResponse') return false;
+					if (paramName === 'options.response.response.neverError') return false;
+					if (paramName === 'options.response.response.outputPropertyName') return 'data';
+					return fallback;
+				},
+			);
+
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: { ok: true },
+			});
+
+			const result = await node.execute.call(executeFunctions);
+
+			// Item 0 → error output (continueOnFail)
+			expect(result[0][0].json.error).toBeDefined();
+			// Item 1 → valid response, no crash
+			expect(result[0][1].json.ok).toBe(true);
+		});
 	});
 });

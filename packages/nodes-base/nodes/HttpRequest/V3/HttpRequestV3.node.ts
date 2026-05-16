@@ -771,6 +771,10 @@ export class HttpRequestV3 implements INodeType {
 
 				errorItems[itemIndex] = error.message;
 
+				// Push a placeholder so requests[] stays index-aligned with requestPromises[]/items[].
+				// Without this, items after a failed item would access requests[itemIndex] === undefined.
+				requests.push({ options: {} as IRequestOptions, authKeys: {} });
+
 				continue;
 			}
 		}
