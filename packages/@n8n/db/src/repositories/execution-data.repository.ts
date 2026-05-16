@@ -7,7 +7,7 @@ import chunk from 'lodash/chunk';
 
 import { ExecutionData } from '../entities';
 
-const BATCH_SIZE = 900;
+export const BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionDataRepository extends Repository<ExecutionData> {
