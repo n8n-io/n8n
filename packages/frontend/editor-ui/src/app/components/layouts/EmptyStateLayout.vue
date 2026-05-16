@@ -54,7 +54,7 @@ const addWorkflow = () => {
 
 // Check if user can claim credits for ready-to-run
 const showReadyToRunCard = computed(() => {
-	return readyToRunStore.userCanClaimOpenAiCredits && canCreateWorkflow.value;
+	return readyToRunStore.userCanClaimOpenAiCredits && canCreateWorkflow.value && !showMcpTile.value;
 });
 
 const handleReadyToRunClick = async () => {
@@ -176,7 +176,6 @@ const handleAppSelectionContinue = () => {
 							$style.actionCardsContainer,
 							{
 								[$style.singleCard]: !showReadyToRunCard && !showMcpTile,
-								[$style.threeCards]: showReadyToRunCard && showMcpTile,
 							},
 						]"
 					>
@@ -295,10 +294,6 @@ const handleAppSelectionContinue = () => {
 
 	&.singleCard {
 		grid-template-columns: 192px;
-	}
-
-	&.threeCards {
-		grid-template-columns: repeat(3, 192px);
 	}
 
 	@media (max-width: vars.$breakpoint-xs) {

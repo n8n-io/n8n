@@ -285,6 +285,7 @@ export function useNodeExecution(
 			const updateInformation = await generateCodeForAiTransform(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
+				workflowDocumentStore.value.documentId,
 				5,
 			);
 

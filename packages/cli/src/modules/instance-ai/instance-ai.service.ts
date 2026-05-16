@@ -3755,6 +3755,7 @@ export class InstanceAiService {
 			});
 
 			if (result.status === 'completed') {
+				await this.countCreditsIfFirst(opts.user, opts.threadId, opts.runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,

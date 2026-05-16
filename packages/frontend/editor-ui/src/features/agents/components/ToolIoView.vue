@@ -25,21 +25,28 @@ import type { WorkflowObjectAccessors } from '@/app/types/workflow';
  * workflows store with the synthesized execution, and tears it all down on
  * unmount.
  */
-const props = defineProps<{
-	name: string;
-	input: unknown;
-	output: unknown;
-	nodeType?: string;
-	nodeTypeVersion?: number;
-	/**
-	 * Configured node parameters from the agent's JSON config (channel,
-	 * operation, `$fromAI(...)` templates, etc.). Set on the synthesised tool
-	 * node so the IO viewer can render the actual node config — without this
-	 * the synthetic execution shows an empty parameters block, which makes a
-	 * failed node call read as "input == output".
-	 */
-	nodeParameters?: Record<string, unknown>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		name: string;
+		input: unknown;
+		output: unknown;
+		/**
+		 * Configured node parameters from the agent's JSON config (channel,
+		 * operation, `$fromAI(...)` templates, etc.). Set on the synthesised tool
+		 * node so the IO viewer can render the actual node config — without this
+		 * the synthetic execution shows an empty parameters block, which makes a
+		 * failed node call read as "input == output".
+		 */
+		nodeParameters?: Record<string, unknown>;
+		/**
+		 * Whether the underlying tool call succeeded. Drives the synthesised
+		 * execution status so RunData can show error styling for a failed call
+		 * rather than rendering as if the call had completed cleanly.
+		 */
+		success?: boolean;
+	}>(),
+	{ success: true },
+);
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -91,11 +98,23 @@ const synthExecution = computed<IExecutionResponse>(() => {
 		position: [0, 0],
 		parameters: {},
 	};
+	// The synth tool node deliberately uses `set` (a plain main-IO node) rather
+	// than the real tool variant (`...telegramTool` etc.). Two reasons:
+	//   1. `RunData` derives its `connectionType` from the synth node's
+	//      *outputs* (see `RunData.vue:init`). Tool variants expose `AiTool`
+	//      outputs, so it would look for data under `inputOverride.AiTool`
+	//      while we always populate `inputOverride.main` — leaving both
+	//      panes empty.
+	//   2. `nodeViewUtils.getGenericHints` fires a "No parameters set up by AI"
+	//      hint whenever the node type contains "tool" and the stringified
+	//      parameters lack `$fromAI`. After we resolve `$fromAI` placeholders
+	//      into their LLM values, that substring is gone, so the hint always
+	//      fires falsely. Stripping the tool-variant type sidesteps it.
 	const toolNode: INodeUi = {
 		id: props.name,
 		name: props.name,
-		type: props.nodeType ?? 'n8n-nodes-base.set',
-		typeVersion: props.nodeTypeVersion ?? 1,
+		type: 'n8n-nodes-base.set',
+		typeVersion: 1,
 		position: [220, 0],
 		// `nodeParameters` is typed loosely on the wire (Record<string, unknown>)
 		// because it round-trips through JSON storage, but at this point it
@@ -142,7 +161,7 @@ const synthExecution = computed<IExecutionResponse>(() => {
 				startTime: 0,
 				executionIndex: 0,
 				executionTime: 0,
-				executionStatus: 'success',
+				executionStatus: props.success ? 'success' : 'error',
 				source: [{ previousNode: INPUT_NODE_NAME, previousNodeOutput: 0, previousNodeRun: 0 }],
 				data: { main: [outputItems] },
 				// `RunData` reads the input pane from `inputOverride` (see
