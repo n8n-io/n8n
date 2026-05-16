@@ -418,6 +418,6 @@ class InvalidResourceIndicatorError extends OAuthError {
 		public readonly resource: string,
 		public readonly expectedResource: string,
 	) {
-		super('Invalid resource indicator');
+		super('invalid_target', 'Invalid resource indicator');
 	}
 }
