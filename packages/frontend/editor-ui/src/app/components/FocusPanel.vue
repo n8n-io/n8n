@@ -699,8 +699,12 @@ function onRenameNode(value: string) {
 				display: flex;
 				height: 100%;
 				width: 100%;
-				align-items: normal;
+				align-items: stretch;
 				font-size: var(--font-size--2xs);
+
+				:global(.n8n-input__wrapper) {
+					height: 100%;
+				}
 
 				textarea {
 					height: 100%;
