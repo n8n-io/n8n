@@ -93,6 +93,7 @@ export function hasEpisodicMemoryStore(
 	return (
 		typeof Reflect.get(memory, 'saveEpisodicMemoryEntries') === 'function' &&
 		typeof Reflect.get(memory, 'saveEpisodicMemoryEntrySources') === 'function' &&
+		typeof Reflect.get(memory, 'saveEpisodicMemoryEntryWithSources') === 'function' &&
 		typeof Reflect.get(memory, 'searchEpisodicMemoryEntries') === 'function' &&
 		typeof Reflect.get(memory, 'supersedeEpisodicMemoryEntries') === 'function' &&
 		typeof Reflect.get(memory, 'getEpisodicMemoryEntrySources') === 'function' &&
@@ -361,7 +362,7 @@ async function saveCandidate(
 	embedding: number[],
 ): Promise<EpisodicMemoryEntry | null> {
 	const now = opts.now ?? new Date();
-	const [entry] = await opts.memory.saveEpisodicMemoryEntries([
+	return await opts.memory.saveEpisodicMemoryEntryWithSources(
 		{
 			...opts.scope,
 			content: candidate.content,
@@ -371,19 +372,13 @@ async function saveCandidate(
 			createdAt: now,
 			lastSeenAt: now,
 		},
-	]);
-	if (!entry) return null;
-
-	await opts.memory.saveEpisodicMemoryEntrySources(
 		candidate.sources.map((source) => ({
-			memoryEntryId: entry.id,
 			observationId: source.observationId,
 			threadId: opts.threadId,
 			evidenceText: source.evidence,
 			createdAt: now,
 		})),
 	);
-	return entry;
 }
 
 async function runEpisodicMemoryReflection(

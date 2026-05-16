@@ -244,6 +244,55 @@ describe('runEpisodicMemoryIndexer', () => {
 		).resolves.toEqual({ status: 'skipped', reason: 'no-observations' });
 	});
 
+	it('does not leave searchable entries behind when source persistence fails', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				scopeKind: 'thread',
+				scopeId: 'thread:thread-1:resource:user-1',
+				marker: 'important',
+				text: 'User chose Postgres for cross-session memory.',
+				createdAt: new Date('2026-05-12T10:00:00.000Z'),
+			},
+		]);
+		const sourceError = new Error('source write failed');
+		jest.spyOn(memory, 'saveEpisodicMemoryEntrySources').mockRejectedValueOnce(sourceError);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User chose Postgres for cross-session memory.',
+						sources: [{ observationId: observation.id, evidence: 'User chose Postgres' }],
+					},
+				],
+			});
+
+		await expect(
+			runEpisodicMemoryIndexer({
+				memory,
+				config: { embedder: fakeEmbedder, extract },
+				scope: { agentId: 'agent-1', resourceId: 'user-1' },
+				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+				threadId: 'thread-1',
+				eventBus: new AgentEventBus(),
+				now: new Date('2026-05-12T10:01:00.000Z'),
+			}),
+		).rejects.toThrow(sourceError);
+
+		await expect(
+			memory.searchEpisodicMemoryEntries(
+				{ agentId: 'agent-1', resourceId: 'user-1' },
+				'Postgres memory',
+			),
+		).resolves.toEqual([]);
+		await expect(
+			memory.getEpisodicMemoryCursor({
+				scopeKind: 'thread',
+				scopeId: 'thread:thread-1:resource:user-1',
+			}),
+		).resolves.toBeNull();
+	});
+
 	it('stores exact evidence for each source observation', async () => {
 		const memory = new InMemoryMemory();
 		const [decision, reason] = await memory.appendObservationLogEntries([

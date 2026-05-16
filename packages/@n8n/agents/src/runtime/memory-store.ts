@@ -22,6 +22,7 @@ import type {
 	NewEpisodicMemoryCursor,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
+	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
 	Thread,
 } from '../types';
@@ -529,6 +530,26 @@ export class InMemoryMemory
 			saved.push(cloneEpisodicMemorySource(row));
 		}
 		return saved;
+	}
+
+	async saveEpisodicMemoryEntryWithSources(
+		entry: NewEpisodicMemoryEntry,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<EpisodicMemoryEntry | null> {
+		const memorySnapshot = this.episodicMemory.map(cloneEpisodicMemoryEntry);
+		const sourceSnapshot = this.episodicMemorySources.map(cloneEpisodicMemorySource);
+		try {
+			const [saved] = await this.saveEpisodicMemoryEntries([entry]);
+			if (!saved) return null;
+			await this.saveEpisodicMemoryEntrySources(
+				sources.map((source) => ({ ...source, memoryEntryId: saved.id })),
+			);
+			return saved;
+		} catch (error) {
+			this.episodicMemory = memorySnapshot;
+			this.episodicMemorySources = sourceSnapshot;
+			throw error;
+		}
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await

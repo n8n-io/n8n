@@ -25,6 +25,7 @@ import {
 	type NewEpisodicMemoryCursor,
 	type NewEpisodicMemoryEntry,
 	type NewEpisodicMemoryEntrySource,
+	type NewEpisodicMemoryEntrySourceForEntry,
 	type NewObservationLogEntry,
 	type ObservationCursor,
 	type ObservationLogEntry,
@@ -584,6 +585,74 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			}
 		}
 		return saved;
+	}
+
+	async saveEpisodicMemoryEntryWithSources(
+		entry: NewEpisodicMemoryEntry,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<EpisodicMemoryEntry | null> {
+		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
+			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
+			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
+			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
+			const now = new Date();
+			const entity = entryRepo.create({
+				agentId: entry.agentId,
+				resourceId: entry.resourceId,
+				content: entry.content,
+				contentHash,
+				...activeLifecycleState(),
+				embeddingModel: entry.embeddingModel ?? null,
+				embedding: entry.embedding ?? null,
+				metadata: entry.metadata ?? null,
+				createdAt: entry.createdAt ?? now,
+				lastSeenAt: entry.lastSeenAt ?? now,
+			});
+
+			let persisted: AgentMemoryEntryEntity | null = null;
+			try {
+				const [saved] = await entryRepo.save([entity]);
+				persisted = saved ?? null;
+			} catch (error) {
+				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
+				const existing = await entryRepo.findOneBy({
+					agentId: entry.agentId,
+					resourceId: entry.resourceId,
+					contentHash,
+				});
+				if (!existing) throw error;
+				markLifecycleActive(existing);
+				existing.lastSeenAt = entry.lastSeenAt ?? now;
+				existing.updatedAt = now;
+				const [saved] = await entryRepo.save([existing]);
+				persisted = saved ?? existing;
+			}
+
+			if (!persisted) return null;
+
+			for (const source of sources) {
+				const sourceEntity = sourceRepo.create({
+					memoryEntryId: persisted.id,
+					observationId: source.observationId,
+					threadId: source.threadId,
+					evidenceText: source.evidenceText,
+					createdAt: source.createdAt,
+				});
+				try {
+					await sourceRepo.save([sourceEntity]);
+				} catch (error) {
+					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
+					const existing = await sourceRepo.findOneBy({
+						memoryEntryId: persisted.id,
+						observationId: source.observationId,
+						evidenceText: source.evidenceText,
+					});
+					if (!existing) throw error;
+				}
+			}
+
+			return this.toEpisodicMemoryEntry(persisted);
+		});
 	}
 
 	async searchEpisodicMemoryEntries(

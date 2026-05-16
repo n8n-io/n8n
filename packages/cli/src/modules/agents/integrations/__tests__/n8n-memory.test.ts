@@ -49,6 +49,7 @@ describe('N8nMemory', () => {
 	let transactionMemoryEntryUpdate: jest.Mock;
 	let transactionMemoryEntrySourceCreate: jest.Mock;
 	let transactionMemoryEntrySourceFind: jest.Mock;
+	let transactionMemoryEntrySourceFindOneBy: jest.Mock;
 	let transactionMemoryEntrySourceSave: jest.Mock;
 
 	beforeEach(() => {
@@ -106,6 +107,7 @@ describe('N8nMemory', () => {
 			(input) => ({ ...input }) as AgentMemoryEntrySourceEntity,
 		);
 		transactionMemoryEntrySourceFind = jest.fn().mockResolvedValue([]);
+		transactionMemoryEntrySourceFindOneBy = jest.fn().mockResolvedValue(null);
 		transactionMemoryEntrySourceSave = jest.fn(async (input: AgentMemoryEntrySourceEntity[]) =>
 			input.map((entity, index) => ({
 				...entity,
@@ -151,6 +153,7 @@ describe('N8nMemory', () => {
 						return {
 							create: transactionMemoryEntrySourceCreate,
 							find: transactionMemoryEntrySourceFind,
+							findOneBy: transactionMemoryEntrySourceFindOneBy,
 							save: transactionMemoryEntrySourceSave,
 						};
 					}),
@@ -1202,6 +1205,83 @@ describe('N8nMemory', () => {
 				memoryEntryId: 'memory-1',
 				observationId: 'obs-1',
 			});
+		});
+
+		it('stores an episodic entry and its sources in one transaction', async () => {
+			transactionMemoryEntrySave.mockResolvedValueOnce([
+				makeMemoryEntryEntity({
+					id: 'memory-atomic',
+					content: 'User chose Postgres for durable memory storage.',
+				}),
+			]);
+			transactionMemoryEntrySourceSave.mockResolvedValueOnce([
+				makeMemoryEntrySourceEntity({
+					id: 'source-atomic',
+					memoryEntryId: 'memory-atomic',
+					observationId: 'obs-atomic',
+					evidenceText: 'User chose Postgres',
+				}),
+			]);
+
+			const result = await memory.saveEpisodicMemoryEntryWithSources(
+				{
+					agentId: 'agent-1',
+					resourceId: 'resource-1',
+					content: 'User chose Postgres for durable memory storage.',
+					embedding: [1, 0],
+					embeddingModel: 'openai/text-embedding-3-small',
+				},
+				[
+					{
+						observationId: 'obs-atomic',
+						threadId: 'thread-1',
+						evidenceText: 'User chose Postgres',
+					},
+				],
+			);
+
+			expect(memoryEntryRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
+			expect(memoryEntrySourceRepository.save).not.toHaveBeenCalled();
+			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
+				expect.objectContaining({
+					memoryEntryId: 'memory-atomic',
+					observationId: 'obs-atomic',
+					evidenceText: 'User chose Postgres',
+				}),
+			]);
+			expect(result).toEqual(expect.objectContaining({ id: 'memory-atomic' }));
+		});
+
+		it('rolls back the episodic entry transaction when source persistence fails', async () => {
+			transactionMemoryEntrySave.mockResolvedValueOnce([
+				makeMemoryEntryEntity({
+					id: 'memory-atomic',
+					content: 'User chose Postgres for durable memory storage.',
+				}),
+			]);
+			transactionMemoryEntrySourceSave.mockRejectedValueOnce(new Error('source write failed'));
+
+			await expect(
+				memory.saveEpisodicMemoryEntryWithSources(
+					{
+						agentId: 'agent-1',
+						resourceId: 'resource-1',
+						content: 'User chose Postgres for durable memory storage.',
+					},
+					[
+						{
+							observationId: 'obs-atomic',
+							threadId: 'thread-1',
+							evidenceText: 'User chose Postgres',
+						},
+					],
+				),
+			).rejects.toThrow('source write failed');
+
+			expect(memoryEntryRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
+			expect(memoryEntrySourceRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('reads source links for episodic entries', async () => {

@@ -98,6 +98,10 @@ export interface BuiltMemory {
 	saveEpisodicMemoryEntrySources?(
 		sources: NewEpisodicMemoryEntrySource[],
 	): Promise<EpisodicMemoryEntrySource[]>;
+	saveEpisodicMemoryEntryWithSources?(
+		entry: NewEpisodicMemoryEntry,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<EpisodicMemoryEntry | null>;
 	searchEpisodicMemoryEntries?(
 		scope: EpisodicMemoryScope,
 		query: string,
@@ -175,6 +179,11 @@ export type NewEpisodicMemoryEntrySource = Omit<EpisodicMemoryEntrySource, 'id' 
 	createdAt?: Date;
 };
 
+export type NewEpisodicMemoryEntrySourceForEntry = Omit<
+	NewEpisodicMemoryEntrySource,
+	'memoryEntryId'
+>;
+
 export interface EpisodicMemoryCursor extends ObservationLogScope {
 	lastIndexedObservationId: string;
 	lastIndexedObservationCreatedAt: Date;
@@ -205,6 +214,10 @@ export interface BuiltEpisodicMemoryStore {
 	saveEpisodicMemoryEntrySources(
 		sources: NewEpisodicMemoryEntrySource[],
 	): Promise<EpisodicMemoryEntrySource[]>;
+	saveEpisodicMemoryEntryWithSources(
+		entry: NewEpisodicMemoryEntry,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<EpisodicMemoryEntry | null>;
 	searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
 		query: string,

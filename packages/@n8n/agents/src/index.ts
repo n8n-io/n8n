@@ -56,6 +56,7 @@ export type {
 	NewEpisodicMemoryCursor,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
+	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
 	SemanticRecallConfig,
 	ResumeOptions,

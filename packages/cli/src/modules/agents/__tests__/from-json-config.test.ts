@@ -124,6 +124,7 @@ describe('buildFromJson()', () => {
 		releaseObservationLogTaskLock: jest.fn(),
 		saveEpisodicMemoryEntries: jest.fn(),
 		saveEpisodicMemoryEntrySources: jest.fn(),
+		saveEpisodicMemoryEntryWithSources: jest.fn(),
 		searchEpisodicMemoryEntries: jest.fn(),
 		supersedeEpisodicMemoryEntries: jest.fn(),
 		getEpisodicMemoryCursor: jest.fn(),

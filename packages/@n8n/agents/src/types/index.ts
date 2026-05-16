@@ -84,6 +84,7 @@ export type {
 	NewEpisodicMemoryCursor,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
+	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
 	ObservationCapableMemory,
 	MemoryDescriptor,
