@@ -100,6 +100,30 @@ describe('rankEpisodicMemoryEntries', () => {
 
 		expect(results.map((result) => result.id)).toEqual(['current-state', 'stale-planning']);
 	});
+
+	it('returns no entries when the query has no lexical or vector match', () => {
+		const now = new Date();
+		const newest = entry({
+			id: 'newest-unrelated',
+			content: 'User chose Postgres for durable memory storage.',
+			createdAt: now,
+			lastSeenAt: now,
+		});
+		const older = entry({
+			id: 'older-unrelated',
+			content: 'User prefers concise answers in implementation reviews.',
+			createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+			lastSeenAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+		});
+
+		const results = rankEpisodicMemoryEntries(
+			[older, newest],
+			'prior travel itinerary hotel booking',
+			{ topK: 5 },
+		);
+
+		expect(results).toEqual([]);
+	});
 });
 
 describe('createRecallMemoryTool', () => {
@@ -166,7 +190,7 @@ describe('InMemoryMemory episodic source cleanup', () => {
 		await expect(
 			memory.searchEpisodicMemoryEntries(
 				{ agentId: 'agent-1', resourceId: 'user-1' },
-				'Postgres recall',
+				'source-backed',
 				{ topK: 10 },
 			),
 		).resolves.toEqual([expect.objectContaining({ id: shared.id })]);

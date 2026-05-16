@@ -282,19 +282,19 @@ export function rankEpisodicMemoryEntries(
 		score.rrfScore += RECENCY_RRF_WEIGHT / (RRF_K + rank + 1);
 	}
 	return [...scores.values()]
+		.filter((score) => score.rrfScore > 0)
 		.map((score) => {
 			const recencyFactor = computeRecencyFactor(
 				getEntryRecencyDate(score.entry),
 				opts.halfLifeDays,
 			);
-			const baseScore = score.rrfScore > 0 ? score.rrfScore : recencyFactor * 0.0001;
 			return {
 				...score.entry,
 				lexicalScore: score.lexicalScore,
 				vectorScore: score.vectorScore,
 				rrfScore: score.rrfScore,
 				recencyFactor,
-				finalScore: baseScore * recencyFactor,
+				finalScore: score.rrfScore * recencyFactor,
 			};
 		})
 		.sort(
