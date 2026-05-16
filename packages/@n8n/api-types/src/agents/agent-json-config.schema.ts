@@ -23,12 +23,27 @@ const ObservationalMemoryConfigSchema = z.object({
 	lockTtlMs: z.number().int().min(0).optional(),
 });
 
+const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
+	z.object({
+		enabled: z.literal(false),
+	}),
+	z.object({
+		enabled: z.literal(true),
+		credential: z.string().min(1),
+		topK: z.number().int().min(1).max(100).optional(),
+		halfLifeDays: z.number().int().min(1).optional(),
+		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+		maxEntryLength: z.number().int().min(1).max(4_000).optional(),
+	}),
+]);
+
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
 	lastMessages: z.number().int().min(1).max(200).optional(),
 	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
+	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
 
 const ThinkingConfigSchema = z.object({

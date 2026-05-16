@@ -3,6 +3,7 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
 	BuiltEval,
 	RunOptions,
@@ -33,6 +34,29 @@ export type {
 	ObservationCapableMemory,
 	TitleGenerationConfig,
 	Thread,
+	EpisodicMemoryConfig,
+	EpisodicMemoryCursor,
+	EpisodicMemoryEntry,
+	EpisodicMemoryEntrySource,
+	EpisodicMemoryExtractFn,
+	EpisodicMemoryExtraction,
+	EpisodicMemoryExtractionCandidate,
+	EpisodicMemoryExtractorInput,
+	EpisodicMemoryPrompts,
+	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflection,
+	EpisodicMemoryReflectionApply,
+	EpisodicMemoryReflectionApplyMerge,
+	EpisodicMemoryReflectionMerge,
+	EpisodicMemoryReflectionResult,
+	EpisodicMemoryReflectorInput,
+	EpisodicMemoryScope,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryStatus,
+	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryEntry,
+	NewEpisodicMemoryEntrySource,
+	RetrievedEpisodicMemoryEntry,
 	SemanticRecallConfig,
 	ResumeOptions,
 	McpServerConfig,
@@ -129,7 +153,30 @@ export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
+export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
+export {
+	activeLifecycleState,
+	droppedLifecycleState,
+	markLifecycleActive,
+	markLifecycleDropped,
+	markLifecycleSuperseded,
+	normalizeFlatReflectionActions,
+	supersededLifecycleState,
+	uniqueStrings,
+} from './runtime/memory-lifecycle';
+export {
+	RECALL_MEMORY_TOOL_NAME,
+	createRecallMemoryTool,
+	getEpisodicMemoryScope,
+	hashEpisodicMemoryContent,
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	rankEpisodicMemoryEntries,
+	runEpisodicMemoryIndexer,
+	withEpisodicMemoryDefaults,
+} from './runtime/episodic-memory';
+export type { MemoryLifecycleState, MemoryLifecycleStatus } from './runtime/memory-lifecycle';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

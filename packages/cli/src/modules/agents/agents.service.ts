@@ -1040,7 +1040,7 @@ export class AgentsService {
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId },
+			persistence: { threadId, resourceId, agentId },
 			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 

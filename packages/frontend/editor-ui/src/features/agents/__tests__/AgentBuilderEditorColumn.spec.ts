@@ -9,8 +9,17 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.memory.title': 'Session Memory',
 				'agents.builder.memory.description':
 					'Keeps recent messages from this session available as context.',
+				'agents.builder.memory.episodicMemory.label': 'Cross-session recall',
+				'agents.builder.memory.episodicMemory.hint':
+					'Retrieves source-backed memories from previous conversations.',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
+	}),
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({
+		openModalWithData: vi.fn(),
 	}),
 }));
 
@@ -59,14 +68,16 @@ async function mountColumn() {
 }
 
 describe('AgentBuilderEditorColumn', () => {
-	it('renders only the session memory row in the builder memory card', async () => {
+	it('renders session memory and cross-session recall controls in the builder memory card', async () => {
 		const wrapper = await mountColumn();
 
 		expect(wrapper.text()).toContain('Session Memory');
 		expect(wrapper.text()).toContain(
 			'Keeps recent messages from this session available as context.',
 		);
-		expect(wrapper.text()).not.toContain('Automatic memory');
-		expect(wrapper.find('[data-test-id="agent-observational-memory-toggle"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('Cross-session recall');
+		expect(wrapper.text()).toContain(
+			'Retrieves source-backed memories from previous conversations.',
+		);
 	});
 });

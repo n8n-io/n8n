@@ -7,7 +7,7 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
+import { Agent, createEmbeddingModel, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
 import { z } from 'zod';
 import type {
 	AgentSkill,
@@ -28,6 +28,11 @@ import {
 	createN8nObservationLogReflectFn,
 	DEFAULT_REFLECTOR_THRESHOLD_TOKENS,
 } from '../observation-log-reflector';
+import {
+	createN8nEpisodicMemoryExtractFn,
+	createN8nEpisodicMemoryReflectFn,
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+} from '../episodic-memory';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -99,7 +104,13 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(agent, config.memory, options.memoryFactory, resolvedModelConfig);
+		await applyMemoryFromConfig(
+			agent,
+			config.memory,
+			options.memoryFactory,
+			resolvedModelConfig,
+			options.credentialProvider,
+		);
 	}
 
 	// Config options
@@ -267,6 +278,7 @@ async function applyMemoryFromConfig(
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
 	modelConfig: ModelConfig,
+	credentialProvider: CredentialProvider,
 ) {
 	const memory = new Memory();
 
@@ -279,6 +291,16 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.semanticRecall) {
 		memory.semanticRecall(memoryConfig.semanticRecall);
+	}
+
+	if (memoryConfig.episodicMemory?.enabled === true) {
+		memory.episodicMemory(
+			await resolveEpisodicMemoryConfig(
+				memoryConfig.episodicMemory,
+				credentialProvider,
+				modelConfig,
+			),
+		);
 	}
 
 	if (memoryConfig.observationalMemory?.enabled !== false) {
@@ -309,6 +331,29 @@ async function applyMemoryFromConfig(
 	agent.memory(memory);
 }
 
+async function resolveEpisodicMemoryConfig(
+	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
+	credentialProvider: CredentialProvider,
+	modelConfig: ModelConfig,
+) {
+	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
+	const apiKey = typeof mapped.apiKey === 'string' ? mapped.apiKey : undefined;
+
+	return {
+		enabled: true,
+		...(config.topK !== undefined && { topK: config.topK }),
+		...(config.halfLifeDays !== undefined && { halfLifeDays: config.halfLifeDays }),
+		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		...(config.maxEntryLength !== undefined && { maxEntryLength: config.maxEntryLength }),
+		embedder: createEmbeddingModel(embeddingModel, apiKey),
+		embeddingModel,
+		extract: createN8nEpisodicMemoryExtractFn(modelConfig),
+		reflect: createN8nEpisodicMemoryReflectFn(modelConfig),
+	};
+}
+
 async function resolveModelConfig(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
@@ -320,4 +365,9 @@ async function resolveModelConfig(
 	const raw = await credentialProvider.resolve(config.credential);
 	const mapped = mapCredentialForProvider(providerPrefix, raw);
 	return { id: config.model, ...mapped } as ModelConfig;
+}
+
+function getProviderPrefix(modelId: string): string {
+	const slashIdx = modelId.indexOf('/');
+	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }

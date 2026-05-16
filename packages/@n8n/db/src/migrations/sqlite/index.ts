@@ -171,6 +171,8 @@ import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
 import { ReplaceAgentObservationTables1784000000001 } from '../common/1784000000001-ReplaceAgentObservationTables';
 import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/1784000000002-DropAgentExecutionWorkingMemory';
+import { CreateAgentMemoryEntryTables1784000000003 } from '../common/1784000000003-CreateAgentMemoryEntryTables';
+import { RemoveAgentObservationLockTaskKindCheck1784000000004 } from '../common/1784000000004-RemoveAgentObservationLockTaskKindCheck';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -347,6 +349,8 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentObservationTables1784000000000,
 	ReplaceAgentObservationTables1784000000001,
 	DropAgentExecutionWorkingMemory1784000000002,
+	CreateAgentMemoryEntryTables1784000000003,
+	RemoveAgentObservationLockTaskKindCheck1784000000004,
 ];
 
 export { sqliteMigrations };

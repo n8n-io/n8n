@@ -1,7 +1,13 @@
+import {
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	withEpisodicMemoryDefaults,
+} from '../runtime/episodic-memory';
 import { InMemoryMemory } from '../runtime/memory-store';
 import { hasObservationLogStore } from '../runtime/observation-log-store';
 import type {
 	BuiltMemory,
+	EpisodicMemoryConfig,
 	MemoryConfig,
 	ObservationalMemoryConfig,
 	SemanticRecallConfig,
@@ -63,6 +69,8 @@ export class Memory {
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
+	private episodicMemoryConfig?: EpisodicMemoryConfig;
+
 	private memoryBackend?: BuiltMemory;
 
 	private titleGenerationConfig?: TitleGenerationConfig;
@@ -98,6 +106,16 @@ export class Memory {
 	/** Enable semantic recall (RAG-based retrieval of relevant past messages). */
 	semanticRecall(config: SemanticRecallConfig): this {
 		this.semanticRecallConfig = config;
+		return this;
+	}
+
+	/** Enable source-backed cross-session episodic memory. */
+	episodicMemory(config: EpisodicMemoryConfig = {}): this {
+		if (config.enabled === false) {
+			this.episodicMemoryConfig = undefined;
+		} else {
+			this.episodicMemoryConfig = config;
+		}
 		return this;
 	}
 
@@ -148,10 +166,20 @@ export class Memory {
 			}
 		}
 
+		if (isEpisodicMemoryEnabled(this.episodicMemoryConfig)) {
+			if (!hasEpisodicMemoryStore(memory)) {
+				throw new Error(
+					'Episodic memory requires a storage backend that implements BuiltEpisodicMemoryStore.',
+				);
+			}
+			withEpisodicMemoryDefaults(this.episodicMemoryConfig);
+		}
+
 		const baseConfig = {
 			memory,
 			lastMessages: this.lastMessagesValue,
 			semanticRecall: this.semanticRecallConfig,
+			episodicMemory: this.episodicMemoryConfig,
 			titleGeneration: this.titleGenerationConfig,
 		};
 

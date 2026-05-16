@@ -61,6 +61,16 @@ describe('buildFromJson()', () => {
 						observe?: unknown;
 						reflect?: unknown;
 					};
+					episodicMemory?: {
+						topK?: number;
+						halfLifeDays?: number;
+						maxEntriesPerRun?: number;
+						maxEntryLength?: number;
+						embedder?: unknown;
+						embeddingModel?: string;
+						extract?: unknown;
+						reflect?: unknown;
+					};
 				};
 			}
 		).memoryConfig;
@@ -85,6 +95,14 @@ describe('buildFromJson()', () => {
 		setCursor: jest.fn(),
 		acquireObservationLogTaskLock: jest.fn(),
 		releaseObservationLogTaskLock: jest.fn(),
+		saveEpisodicMemoryEntries: jest.fn(),
+		saveEpisodicMemoryEntrySources: jest.fn(),
+		searchEpisodicMemoryEntries: jest.fn(),
+		supersedeEpisodicMemoryEntries: jest.fn(),
+		getEpisodicMemoryCursor: jest.fn(),
+		setEpisodicMemoryCursor: jest.fn(),
+		getEpisodicMemoryEntrySources: jest.fn(),
+		applyEpisodicMemoryReflection: jest.fn(),
 		describe: jest
 			.fn()
 			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
@@ -535,6 +553,43 @@ describe('buildFromJson()', () => {
 			reflectorThresholdTokens: 8_000,
 			lockTtlMs: 30_000,
 			observe: expect.any(Function),
+			reflect: expect.any(Function),
+		});
+	});
+
+	it('configures episodic memory with the OpenAI embedding credential', async () => {
+		const credentialProvider = makeMockCredentialProvider();
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'openai-key',
+					topK: 7,
+					maxEntryLength: 800,
+				},
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('openai-key');
+		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
+		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
+			topK: 7,
+			maxEntryLength: 800,
+			embeddingModel: 'openai/text-embedding-3-small',
+			embedder: expect.any(Object),
+			extract: expect.any(Function),
 			reflect: expect.any(Function),
 		});
 	});

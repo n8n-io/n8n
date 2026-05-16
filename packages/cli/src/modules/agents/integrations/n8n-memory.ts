@@ -1,11 +1,30 @@
 import {
+	activeLifecycleState,
+	droppedLifecycleState,
 	normalizeObservationLogReflection,
 	createObservationLogThreadScopePrefix,
+	hashEpisodicMemoryContent,
+	markLifecycleActive,
+	normalizeFlatReflectionActions,
+	rankEpisodicMemoryEntries,
+	supersededLifecycleState,
+	uniqueStrings,
 	type AgentDbMessage,
 	type AgentMessage,
+	type BuiltEpisodicMemoryStore,
 	type BuiltMemory,
 	type BuiltObservationLogStore,
+	type EpisodicMemoryCursor,
+	type EpisodicMemoryEntry,
+	type EpisodicMemoryEntrySource,
+	type EpisodicMemoryReflectionApply,
+	type EpisodicMemoryReflectionResult,
+	type EpisodicMemoryScope,
+	type EpisodicMemorySearchOptions,
 	type MemoryDescriptor,
+	type NewEpisodicMemoryCursor,
+	type NewEpisodicMemoryEntry,
+	type NewEpisodicMemoryEntrySource,
 	type NewObservationLogEntry,
 	type ObservationCursor,
 	type ObservationLogEntry,
@@ -14,6 +33,7 @@ import {
 	type ObservationLogReflectionResult,
 	type ObservationLogScope,
 	type ObservationLogScopeKind,
+	type RetrievedEpisodicMemoryEntry,
 	type Thread,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
@@ -22,12 +42,19 @@ import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { isUniqueConstraintError } from '@/response-helper';
+
+import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
+import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
+import { AgentMemoryEntryCursorRepository } from '../repositories/agent-memory-entry-cursor.repository';
+import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
+import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
 import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
 import { AgentObservationRepository } from '../repositories/agent-observation.repository';
@@ -36,7 +63,7 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 
-type ObservationLogTaskKind = 'observer' | 'reflector';
+type ObservationLogTaskKind = 'observer' | 'reflector' | 'episodic-indexer';
 
 interface ObservationLogTaskLockHandle {
 	scopeKind: ObservationLogScopeKind;
@@ -47,7 +74,7 @@ interface ObservationLogTaskLockHandle {
 }
 
 @Service()
-export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
+export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEpisodicMemoryStore {
 	constructor(
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly messageRepository: AgentMessageRepository,
@@ -55,6 +82,9 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		private readonly observationRepository: AgentObservationRepository,
 		private readonly observationCursorRepository: AgentObservationCursorRepository,
 		private readonly observationLockRepository: AgentObservationLockRepository,
+		private readonly memoryEntryRepository: AgentMemoryEntryRepository,
+		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
 
 	// ── Thread management ────────────────────────────────────────────────
@@ -222,8 +252,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 				text: row.text,
 				parentId: row.parentId ?? null,
 				tokenCount: row.tokenCount ?? estimateObservationTokens(row.text),
-				status: 'active',
-				supersededBy: null,
+				...activeLifecycleState(),
 				createdAt: row.createdAt,
 			}),
 		);
@@ -292,17 +321,14 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 
 	async dropObservationLogEntries(ids: string[]): Promise<void> {
 		if (ids.length === 0) return;
-		await this.observationRepository.update(
-			{ id: In(ids) },
-			{ status: 'dropped', supersededBy: null },
-		);
+		await this.observationRepository.update({ id: In(ids) }, droppedLifecycleState());
 	}
 
 	async supersedeObservationLogEntries(ids: string[], supersededBy: string): Promise<void> {
 		if (ids.length === 0) return;
 		await this.observationRepository.update(
 			{ id: In(ids) },
-			{ status: 'superseded', supersededBy },
+			supersededLifecycleState(supersededBy),
 		);
 	}
 
@@ -334,8 +360,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 								text: entry.text,
 								parentId: entry.parentId ?? null,
 								tokenCount: entry.tokenCount ?? estimateObservationTokens(entry.text),
-								status: 'active',
-								supersededBy: null,
+								...activeLifecycleState(),
 								createdAt: entry.createdAt,
 							}),
 						),
@@ -345,7 +370,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			if (normalized.drop.length > 0) {
 				await repo.update(
 					{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(normalized.drop) },
-					{ status: 'dropped', supersededBy: null },
+					droppedLifecycleState(),
 				);
 			}
 
@@ -354,7 +379,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 				if (replacement && merge.supersedes.length > 0) {
 					await repo.update(
 						{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(merge.supersedes) },
-						{ status: 'superseded', supersededBy: replacement.id },
+						supersededLifecycleState(replacement.id),
 					);
 				}
 			}
@@ -457,6 +482,320 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		});
 	}
 
+	// ── Episodic memory ──────────────────────────────────────────────────
+
+	async saveEpisodicMemoryEntries(
+		entries: NewEpisodicMemoryEntry[],
+	): Promise<EpisodicMemoryEntry[]> {
+		const saved: EpisodicMemoryEntry[] = [];
+
+		for (const entry of entries) {
+			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
+			const now = new Date();
+			const entity = this.memoryEntryRepository.create({
+				agentId: entry.agentId,
+				resourceId: entry.resourceId,
+				content: entry.content,
+				contentHash,
+				...activeLifecycleState(),
+				embeddingModel: entry.embeddingModel ?? null,
+				embedding: entry.embedding ?? null,
+				metadata: entry.metadata ?? null,
+				createdAt: entry.createdAt ?? now,
+				lastSeenAt: entry.lastSeenAt ?? now,
+			});
+
+			try {
+				const persisted = await this.memoryEntryRepository.save(entity);
+				saved.push(this.toEpisodicMemoryEntry(persisted));
+			} catch (error) {
+				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
+
+				const existing = await this.memoryEntryRepository.findOneBy({
+					agentId: entry.agentId,
+					resourceId: entry.resourceId,
+					contentHash,
+				});
+				if (!existing) throw error;
+				markLifecycleActive(existing);
+				existing.lastSeenAt = entry.lastSeenAt ?? now;
+				existing.updatedAt = now;
+				const updated = await this.memoryEntryRepository.save(existing);
+				saved.push(this.toEpisodicMemoryEntry(updated));
+			}
+		}
+
+		return saved;
+	}
+
+	async saveEpisodicMemoryEntrySources(
+		sources: NewEpisodicMemoryEntrySource[],
+	): Promise<EpisodicMemoryEntrySource[]> {
+		const saved: EpisodicMemoryEntrySource[] = [];
+		for (const source of sources) {
+			const entity = this.memoryEntrySourceRepository.create({
+				memoryEntryId: source.memoryEntryId,
+				observationId: source.observationId,
+				threadId: source.threadId,
+				evidenceText: source.evidenceText,
+				createdAt: source.createdAt,
+			});
+			try {
+				const persisted = await this.memoryEntrySourceRepository.save(entity);
+				saved.push(this.toEpisodicMemoryEntrySource(persisted));
+			} catch (error) {
+				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
+				const existing = await this.memoryEntrySourceRepository.findOneBy({
+					memoryEntryId: source.memoryEntryId,
+					observationId: source.observationId,
+					evidenceText: source.evidenceText,
+				});
+				if (!existing) throw error;
+				saved.push(this.toEpisodicMemoryEntrySource(existing));
+			}
+		}
+		return saved;
+	}
+
+	async searchEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
+		query: string,
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]> {
+		const statuses = opts?.includeStatuses ?? ['active'];
+		const entities = await this.memoryEntryRepository.find({
+			where: { agentId: scope.agentId, resourceId: scope.resourceId, status: In(statuses) },
+		});
+		return rankEpisodicMemoryEntries(
+			entities.map((entity) => this.toEpisodicMemoryEntry(entity)),
+			query,
+			opts,
+		);
+	}
+
+	async supersedeEpisodicMemoryEntries(ids: string[], supersededBy: string): Promise<void> {
+		const filteredIds = ids.filter((id) => id !== supersededBy);
+		if (filteredIds.length === 0) return;
+		await this.memoryEntryRepository.update(
+			{ id: In(filteredIds), status: 'active' },
+			supersededLifecycleState(supersededBy),
+		);
+	}
+
+	async getEpisodicMemoryEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]> {
+		if (entryIds.length === 0) return [];
+		const entities = await this.memoryEntrySourceRepository.find({
+			where: { memoryEntryId: In(entryIds) },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		return entities.map((entity) => this.toEpisodicMemoryEntrySource(entity));
+	}
+
+	async applyEpisodicMemoryReflection(
+		scope: EpisodicMemoryScope,
+		reflection: EpisodicMemoryReflectionApply,
+	): Promise<EpisodicMemoryReflectionResult> {
+		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
+			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
+			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
+			const actionIds = uniqueStrings([
+				...reflection.drop,
+				...reflection.merge.flatMap((merge) => merge.supersedes),
+			]);
+			if (actionIds.length === 0) return { droppedIds: [], supersededIds: [], inserted: [] };
+
+			const activeEntries = await entryRepo.find({
+				where: {
+					agentId: scope.agentId,
+					resourceId: scope.resourceId,
+					id: In(actionIds),
+					status: 'active',
+				},
+			});
+			const activeIds = new Set(activeEntries.map((entry) => entry.id));
+			const normalized = normalizeFlatReflectionActions({
+				activeIds,
+				drop: reflection.drop,
+				merge: reflection.merge,
+				normalizeMerge: (entry, supersedes) => ({ ...entry, supersedes }),
+			});
+
+			const now = new Date();
+			const replacementHashes = uniqueStrings(
+				normalized.merge.map(
+					(item) => item.entry.contentHash ?? hashEpisodicMemoryContent(item.entry.content),
+				),
+			);
+			const existingReplacements = replacementHashes.length
+				? await entryRepo.find({
+						where: {
+							agentId: scope.agentId,
+							resourceId: scope.resourceId,
+							contentHash: In(replacementHashes),
+						},
+					})
+				: [];
+			const existingByHash = new Map(
+				existingReplacements.map((entry) => [entry.contentHash, entry]),
+			);
+			const replacements: AgentMemoryEntryEntity[] = [];
+			for (const item of normalized.merge) {
+				const contentHash = item.entry.contentHash ?? hashEpisodicMemoryContent(item.entry.content);
+				const existing = existingByHash.get(contentHash);
+				const update: QueryDeepPartialEntity<AgentMemoryEntryEntity> = {
+					...activeLifecycleState(),
+					lastSeenAt: item.entry.lastSeenAt ?? now,
+					updatedAt: now,
+				};
+				if (item.entry.embedding !== undefined) update.embedding = item.entry.embedding;
+				if (item.entry.embeddingModel !== undefined) {
+					update.embeddingModel = item.entry.embeddingModel;
+				}
+				if (item.entry.metadata !== undefined) update.metadata = item.entry.metadata;
+
+				if (existing) {
+					await entryRepo.update(
+						{ agentId: scope.agentId, resourceId: scope.resourceId, id: existing.id },
+						update,
+					);
+					replacements.push({
+						...existing,
+						...update,
+					} as AgentMemoryEntryEntity);
+					continue;
+				}
+
+				const entity = entryRepo.create({
+					agentId: scope.agentId,
+					resourceId: scope.resourceId,
+					content: item.entry.content,
+					contentHash,
+					...activeLifecycleState(),
+					embeddingModel: item.entry.embeddingModel ?? null,
+					embedding: item.entry.embedding ?? null,
+					metadata: item.entry.metadata ?? null,
+					createdAt: item.entry.createdAt ?? now,
+					lastSeenAt: item.entry.lastSeenAt ?? now,
+				});
+				try {
+					const [persisted] = await entryRepo.save([entity]);
+					if (persisted) {
+						existingByHash.set(contentHash, persisted);
+						replacements.push(persisted);
+					}
+				} catch (error) {
+					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
+					const persisted = await entryRepo.findOneBy({
+						agentId: scope.agentId,
+						resourceId: scope.resourceId,
+						contentHash,
+					});
+					if (!persisted) throw error;
+					await entryRepo.update(
+						{ agentId: scope.agentId, resourceId: scope.resourceId, id: persisted.id },
+						update,
+					);
+					existingByHash.set(contentHash, persisted);
+					replacements.push({
+						...persisted,
+						...update,
+					} as AgentMemoryEntryEntity);
+				}
+			}
+			const replacementIds = new Set(replacements.map((entry) => entry.id));
+			const effectiveDrop = normalized.drop.filter((id) => !replacementIds.has(id));
+
+			if (effectiveDrop.length > 0) {
+				await entryRepo.update(
+					{
+						agentId: scope.agentId,
+						resourceId: scope.resourceId,
+						id: In(effectiveDrop),
+						status: 'active',
+					},
+					droppedLifecycleState(),
+				);
+			}
+
+			const supersededIds: string[] = [];
+			for (const [index, item] of normalized.merge.entries()) {
+				const replacement = replacements[index];
+				if (!replacement) continue;
+				const sourceRows = await sourceRepo.find({
+					where: { memoryEntryId: In(item.supersedes) },
+					order: { createdAt: 'ASC', id: 'ASC' },
+				});
+				const existingReplacementSources = await sourceRepo.find({
+					where: { memoryEntryId: replacement.id },
+				});
+				const existingKeys = new Set(
+					existingReplacementSources.map(
+						(source) => `${source.observationId}\n${source.evidenceText}`,
+					),
+				);
+				const copiedSources = sourceRows.flatMap((source) => {
+					const key = `${source.observationId}\n${source.evidenceText}`;
+					if (existingKeys.has(key)) return [];
+					existingKeys.add(key);
+					return [
+						sourceRepo.create({
+							memoryEntryId: replacement.id,
+							observationId: source.observationId,
+							threadId: source.threadId,
+							evidenceText: source.evidenceText,
+							createdAt: now,
+						}),
+					];
+				});
+				if (copiedSources.length > 0) await sourceRepo.save(copiedSources);
+				const itemSupersededIds = item.supersedes.filter((id) => id !== replacement.id);
+				if (itemSupersededIds.length > 0) {
+					await entryRepo.update(
+						{
+							agentId: scope.agentId,
+							resourceId: scope.resourceId,
+							id: In(itemSupersededIds),
+							status: 'active',
+						},
+						supersededLifecycleState(replacement.id),
+					);
+					supersededIds.push(...itemSupersededIds);
+				}
+			}
+
+			return {
+				droppedIds: effectiveDrop,
+				supersededIds,
+				inserted: replacements.map((entry) => this.toEpisodicMemoryEntry(entry)),
+			};
+		});
+	}
+
+	async getEpisodicMemoryCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null> {
+		const entity = await this.memoryEntryCursorRepository.findOneBy(scope);
+		if (!entity) return null;
+		return {
+			scopeKind: entity.scopeKind,
+			scopeId: entity.scopeId,
+			lastIndexedObservationId: entity.lastIndexedObservationId,
+			lastIndexedObservationCreatedAt: entity.lastIndexedObservationCreatedAt,
+			updatedAt: entity.updatedAt,
+		};
+	}
+
+	async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
+		await this.memoryEntryCursorRepository.upsert(
+			{
+				scopeKind: cursor.scopeKind,
+				scopeId: cursor.scopeId,
+				lastIndexedObservationId: cursor.lastIndexedObservationId,
+				lastIndexedObservationCreatedAt: cursor.lastIndexedObservationCreatedAt,
+				updatedAt: cursor.updatedAt ?? new Date(),
+			},
+			{ conflictPaths: ['scopeKind', 'scopeId'], skipUpdateIfNoValuesChanged: false },
+		);
+	}
+
 	// ── Descriptor ───────────────────────────────────────────────────────
 
 	describe(): MemoryDescriptor {
@@ -483,6 +822,37 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			tokenCount: Number(entity.tokenCount),
 			status: entity.status,
 			supersededBy: entity.supersededBy,
+			createdAt: entity.createdAt,
+		};
+	}
+
+	private toEpisodicMemoryEntry(entity: AgentMemoryEntryEntity): EpisodicMemoryEntry {
+		return {
+			id: entity.id,
+			agentId: entity.agentId,
+			resourceId: entity.resourceId,
+			content: entity.content,
+			contentHash: entity.contentHash,
+			status: entity.status,
+			supersededBy: entity.supersededBy,
+			...(entity.embedding ? { embedding: entity.embedding } : {}),
+			...(entity.embeddingModel ? { embeddingModel: entity.embeddingModel } : {}),
+			metadata: entity.metadata,
+			createdAt: entity.createdAt,
+			updatedAt: entity.updatedAt,
+			lastSeenAt: entity.lastSeenAt,
+		};
+	}
+
+	private toEpisodicMemoryEntrySource(
+		entity: AgentMemoryEntrySourceEntity,
+	): EpisodicMemoryEntrySource {
+		return {
+			id: entity.id,
+			memoryEntryId: entity.memoryEntryId,
+			observationId: entity.observationId,
+			threadId: entity.threadId,
+			evidenceText: entity.evidenceText,
 			createdAt: entity.createdAt,
 		};
 	}
