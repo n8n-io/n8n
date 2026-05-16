@@ -1660,6 +1660,9 @@ export class WorkflowExecute {
 						await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					}
 					let maxTries = 1;
+					const isErrorValue = (v: unknown) => v !== undefined && v !== null && v !== false;
+					const checkFailure = (data: IRunNodeResponse | EngineRequest) =>
+						!isEngineRequest(data) && isErrorValue(data.data?.[0]?.[0]?.json?.error);
 					if (executionData.node.retryOnFail === true) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
@@ -1729,9 +1732,7 @@ export class WorkflowExecute {
 									subNodeExecutionResults,
 								);
 
-								let nodeFailed =
-									!isEngineRequest(runNodeData) &&
-									runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
+								let nodeFailed = checkFailure(runNodeData);
 
 								while (nodeFailed && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1746,9 +1747,7 @@ export class WorkflowExecute {
 										this.abortController.signal,
 									);
 
-									nodeFailed =
-										!isEngineRequest(runNodeData) &&
-										runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
+									nodeFailed = checkFailure(runNodeData);
 									tryIndex++;
 								}
 

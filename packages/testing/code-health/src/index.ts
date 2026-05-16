@@ -3,10 +3,12 @@ import type { RuleSettingsMap } from '@n8n/rules-engine';
 
 import type { CodeHealthContext } from './context.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
+import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
+export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 export { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 const defaultRuleSettings: RuleSettingsMap = {
@@ -19,6 +21,11 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: true,
 		severity: 'error',
 		options: { allowedWorkflows: ['ci-cla-check.yml'] },
+	},
+	'migration-timestamp': {
+		enabled: true,
+		severity: 'error',
+		options: {},
 	},
 };
 
@@ -39,6 +46,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	const runner = new RuleRunner<CodeHealthContext>();
 	runner.registerRule(new CatalogViolationsRule());
 	runner.registerRule(new WorkflowPrTargetSafetyRule());
+	runner.registerRule(new MigrationTimestampRule());
 	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
 	return runner;
 }

@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SecuritySettings from './SecuritySettings.vue';
@@ -10,10 +11,17 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
+const getRedactionEnforcement = vi.fn();
+const updateRedactionEnforcement = vi.fn();
 
 vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
+}));
+
+vi.mock('@n8n/rest-api-client/api/redaction-enforcement', () => ({
+	getRedactionEnforcement: (...args: unknown[]) => getRedactionEnforcement(...args),
+	updateRedactionEnforcement: (...args: unknown[]) => updateRedactionEnforcement(...args),
 }));
 
 const showToast = vi.fn();
@@ -46,12 +54,27 @@ describe('SecuritySettings', () => {
 		managedByEnv: false,
 	};
 
+	const defaultRedactionEnforcement = {
+		redactionEnforced: false,
+		redactionScope: 'non-manual' as const,
+	};
+
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
+
+	const enableRedactionEnforcementFlag = (enabled: boolean) => {
+		if (!settingsStore.settings) {
+			settingsStore.settings = {} as FrontendSettings;
+		}
+		settingsStore.settings.envFeatureFlags = enabled
+			? { N8N_ENV_FEAT_REDACTION_ENFORCEMENT: 'true' }
+			: {};
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getSecuritySettings.mockResolvedValue(defaultSettings);
+		getRedactionEnforcement.mockResolvedValue(defaultRedactionEnforcement);
 
 		settingsStore = mockedStore(useSettingsStore);
 		usersStore = mockedStore(useUsersStore);
@@ -59,6 +82,8 @@ describe('SecuritySettings', () => {
 		settingsStore.isMFAEnforced = false;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] = true;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = true;
+		enableRedactionEnforcementFlag(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 	});
 
@@ -477,6 +502,164 @@ describe('SecuritySettings', () => {
 			await userEvent.click(sharingToggle);
 
 			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Data redaction section', () => {
+		it('should not render section when REDACTION_ENFORCEMENT flag is off', async () => {
+			enableRedactionEnforcementFlag(false);
+			const { queryByTestId, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('enable-redaction-enforcement')).not.toBeInTheDocument();
+			expect(queryByTestId('redaction-enforcement-summary')).not.toBeInTheDocument();
+		});
+
+		it('should render toggle and summary when flag is on', async () => {
+			enableRedactionEnforcementFlag(true);
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('Affected scope');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+		});
+
+		it('should not render scope dropdown when enforcement is off', async () => {
+			enableRedactionEnforcementFlag(true);
+			const { queryByTestId, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('redaction-enforcement-scope-row')).not.toBeInTheDocument();
+		});
+
+		it('should render scope dropdown when enforcement is on', async () => {
+			enableRedactionEnforcementFlag(true);
+			getRedactionEnforcement.mockResolvedValue({
+				redactionEnforced: true,
+				redactionScope: 'non-manual',
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Production executions',
+			);
+		});
+
+		it('should call updateRedactionEnforcement with redactionEnforced=true on toggle', async () => {
+			enableRedactionEnforcementFlag(true);
+			updateRedactionEnforcement.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(updateRedactionEnforcement).toHaveBeenCalledWith(expect.anything(), {
+					redactionEnforced: true,
+				});
+			});
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+
+		it('should show error toast when toggle update fails', async () => {
+			enableRedactionEnforcementFlag(true);
+			updateRedactionEnforcement.mockRejectedValue(new Error('boom'));
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+		});
+
+		it('should show upgrade badge when DataRedaction feature is not licensed', async () => {
+			enableRedactionEnforcementFlag(true);
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+		});
+
+		it('should not render scope dropdown when unlicensed even if enforced=true', async () => {
+			enableRedactionEnforcementFlag(true);
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getRedactionEnforcement.mockResolvedValue({
+				redactionEnforced: true,
+				redactionScope: 'non-manual',
+			});
+
+			const { getByTestId, queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('redaction-enforcement-scope-row')).not.toBeInTheDocument();
+		});
+
+		it('should disable toggle when managed by env', async () => {
+			enableRedactionEnforcementFlag(true);
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+		});
+
+		it('should render correct affected-scope summary for each policy value', async () => {
+			enableRedactionEnforcementFlag(true);
+			getRedactionEnforcement.mockResolvedValue({
+				redactionEnforced: true,
+				redactionScope: 'all',
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+					'Manual and production executions',
+				);
+			});
 		});
 	});
 });
