@@ -160,10 +160,11 @@ export class HttpRequestV3 implements INodeType {
 		};
 
 		const requests: Array<{
-			options: IRequestOptions;
+			options?: IRequestOptions;
 			authKeys: IAuthDataSanitizeKeys;
 			credentialType?: string;
 			responseFileName?: string;
+			responseFormat?: string;
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
@@ -605,6 +606,7 @@ export class HttpRequestV3 implements INodeType {
 					authKeys: authDataKeys,
 					credentialType: nodeCredentialType ?? genericCredentialType,
 					responseFileName,
+					responseFormat,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -773,7 +775,8 @@ export class HttpRequestV3 implements INodeType {
 
 				// Push a placeholder so requests[] stays index-aligned with requestPromises[]/items[].
 				// Without this, items after a failed item would access requests[itemIndex] === undefined.
-				requests.push({ options: {} as IRequestOptions, authKeys: {} });
+				// options is intentionally absent — error items are skipped before options is ever read.
+				requests.push({ authKeys: {} });
 
 				continue;
 			}
@@ -790,7 +793,9 @@ export class HttpRequestV3 implements INodeType {
 							try {
 								// Secrets need to be read after the request because secrets could have changed
 								// For example: OAuth token refresh, preAuthentication
-								const { options, authKeys, credentialType } = requests[itemIndex];
+								// options is always set here: error items are filtered out above via errorItems[itemIndex]
+								const { options: options_, authKeys, credentialType } = requests[itemIndex];
+								const options = options_!;
 								let secrets: string[] = [];
 								if (credentialType) {
 									const credentials = await this.getCredentials(credentialType, itemIndex);
@@ -818,20 +823,16 @@ export class HttpRequestV3 implements INodeType {
 					continue;
 				}
 
-				let responseFormat = this.getNodeParameter(
-					'options.response.response.responseFormat',
-					itemIndex,
-					'autodetect',
-				) as string;
-
 				const fullResponse = this.getNodeParameter(
 					'options.response.response.fullResponse',
 					itemIndex,
 					false,
 				) as boolean;
 
+				const { responseFileName, responseFormat: storedResponseFormat } = requests[itemIndex];
+				let responseFormat = storedResponseFormat ?? 'autodetect';
+
 				const autoDetectResponseFormat = responseFormat === 'autodetect';
-				const { responseFileName } = requests[itemIndex];
 
 				if (responseData!.status !== 'fulfilled') {
 					if (responseData.reason.statusCode === 429) {
@@ -994,7 +995,8 @@ export class HttpRequestV3 implements INodeType {
 
 						preparedBinaryData.fileName = setFilename(
 							preparedBinaryData,
-							requests[itemIndex].options,
+							// options is always set here: error items are skipped before this branch
+							requests[itemIndex].options!,
 							responseFileName,
 						);
 

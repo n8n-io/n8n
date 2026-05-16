@@ -1036,6 +1036,46 @@ describe('HttpRequestV3', () => {
 			expect(result[0][0].binary?.data.fileName).toBe('custom.txt');
 		});
 
+		it('should apply per-item neverError when autodetecting an invalid-JSON response body', async () => {
+			// Item 0: neverError=true  → invalid JSON falls back to {}
+			// Item 1: neverError=false → invalid JSON surfaces as a continueOnFail error
+			// Regression: the old code read neverError with itemIndex=0 for every item, so
+			// item 1 would silently borrow item 0's neverError=true and return {} instead of erroring.
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/a',
+						responseFormat: 'autodetect',
+						neverError: true,
+					},
+				},
+				{
+					json: {
+						url: 'http://example.com/b',
+						responseFormat: 'autodetect',
+						neverError: false,
+					},
+				},
+			]);
+			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+
+			// Both items return a response with content-type: application/json but an invalid body.
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				statusCode: 422,
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from('not valid json'),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+
+			// Item 0 (neverError=true): invalid JSON falls back to {} — no error key
+			expect(result[0][0].json.error).toBeUndefined();
+			expect(result[0][0].json).toEqual({});
+
+			// Item 1 (neverError=false): invalid JSON surfaces as an error via continueOnFail
+			expect(result[0][1].json.error).toBeDefined();
+		});
+
 		it('should not crash when an earlier item fails with continueOnFail (requests[] alignment)', async () => {
 			// Item 0 has an invalid URL → fails in request-build loop → continueOnFail
 			// Item 1 has a valid URL → must still be processed correctly
