@@ -86,7 +86,7 @@ export class McpOAuthAuthorizationCodeService {
 		});
 
 		if (!authCode) return null;
-		if (authCode.expiresAt <= Date.now()) return null;
+		if (authCode.expiresAt < Date.now()) return null;
 		if (redirectUri && authCode.redirectUri !== redirectUri) return null;
 
 		return authCode;
