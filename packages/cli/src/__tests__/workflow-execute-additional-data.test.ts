@@ -1,7 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity, User, Project } from '@n8n/db';
-import { ExecutionRepository, WorkflowPublishHistoryRepository, WorkflowRepository } from '@n8n/db';
+import {
+	ExecutionDataRepository,
+	ExecutionRepository,
+	WorkflowPublishHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { ExternalSecretsProxy } from 'n8n-core';
@@ -104,6 +109,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
+	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
