@@ -787,9 +787,6 @@ describe('getPromptInputByType', () => {
 		mockCtx.getNodeParameter.mockReturnValueOnce('define').mockReturnValueOnce(value);
 	}
 
-	// ════════════════════════════════════════════════════════════════
-	// GROUP 1 — Happy path
-	// ════════════════════════════════════════════════════════════════
 	describe('Happy path', () => {
 		it('auto + chatInput valid → returns chatInput', () => {
 			setupAuto('Hello from chat');
@@ -837,9 +834,6 @@ describe('getPromptInputByType', () => {
 		});
 	});
 
-	// ════════════════════════════════════════════════════════════════
-	// GROUP 2 — null and undefined inputs — the bug fix
-	// ════════════════════════════════════════════════════════════════
 	describe('null and undefined inputs — the bug fix', () => {
 		it('auto + both null → throws NodeOperationError', () => {
 			setupAuto(null, null);
@@ -872,9 +866,6 @@ describe('getPromptInputByType', () => {
 		});
 	});
 
-	// ════════════════════════════════════════════════════════════════
-	// GROUP 3 — Invalid type inputs
-	// ════════════════════════════════════════════════════════════════
 	describe('Invalid type inputs', () => {
 		it('auto + chatInput object → throws NodeOperationError', () => {
 			setupAuto({ key: 'value' });
@@ -892,9 +883,6 @@ describe('getPromptInputByType', () => {
 		});
 	});
 
-	// ════════════════════════════════════════════════════════════════
-	// GROUP 4 — Empty and whitespace-only strings
-	// ════════════════════════════════════════════════════════════════
 	describe('Empty and whitespace-only strings', () => {
 		it('auto + chatInput "" → throws NodeOperationError', () => {
 			setupAuto('');
@@ -917,9 +905,6 @@ describe('getPromptInputByType', () => {
 		});
 	});
 
-	// ════════════════════════════════════════════════════════════════
-	// GROUP 5 — Error message content
-	// ════════════════════════════════════════════════════════════════
 	describe('Error message content', () => {
 		it('auto both null → error.message === "No prompt specified"', () => {
 			setupAuto(null, null);
@@ -999,9 +984,6 @@ describe('getPromptInputByType', () => {
 		});
 	});
 
-	// ════════════════════════════════════════════════════════════════
-	// GROUP 6 — itemIndex in errors
-	// ════════════════════════════════════════════════════════════════
 	describe('itemIndex in errors', () => {
 		it('auto both null at i=0 → itemIndex === 0', () => {
 			setupAuto(null, null);
@@ -1044,9 +1026,6 @@ describe('getPromptInputByType', () => {
 		});
 	});
 
-	// ════════════════════════════════════════════════════════════════
-	// GROUP 7 — Correct method called per promptType
-	// ════════════════════════════════════════════════════════════════
 	describe('Correct method called per promptType', () => {
 		it('auto → evaluateExpression called with chatInput expression first', () => {
 			setupAuto('test');
