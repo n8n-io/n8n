@@ -217,7 +217,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		redirectUri?: string,
 		resource?: URL,
 	): Promise<OAuthTokens> {
-		const authRecord = await this.authorizationCodeService.validateAndConsumeAuthorizationCode(
+		const authRecord = await this.authorizationCodeService.findAuthorizationCode(
 			authorizationCode,
 			client.client_id,
 			redirectUri,
@@ -242,6 +242,8 @@ export class McpOAuthService implements OAuthServerProvider {
 		} else {
 			finalResource = tokenResource ?? codeResource;
 		}
+
+		await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode);
 
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,

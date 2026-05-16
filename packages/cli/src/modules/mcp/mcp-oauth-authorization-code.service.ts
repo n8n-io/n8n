@@ -72,6 +72,26 @@ export class McpOAuthAuthorizationCodeService {
 		return authRecord;
 	}
 
+	async findAuthorizationCode(
+		code: string,
+		clientId: string,
+		redirectUri?: string,
+	): Promise<AuthorizationCode | null> {
+		const authCode = await this.authorizationCodeRepository.findOne({
+			where: {
+				code,
+				clientId,
+				used: false,
+			},
+		});
+
+		if (!authCode) return null;
+		if (authCode.expiresAt <= Date.now()) return null;
+		if (redirectUri && authCode.redirectUri !== redirectUri) return null;
+
+		return authCode;
+	}
+
 	/**
 	 * Validate and consume authorization code
 	 * Returns the auth record if valid, throws if invalid/expired/used
@@ -99,6 +119,18 @@ export class McpOAuthAuthorizationCodeService {
 
 		authRecord.used = true;
 		return authRecord;
+	}
+
+	async markAuthorizationCodeAsUsed(authorizationCode: string): Promise<void> {
+		const result = await this.authorizationCodeRepository.update(
+			{ code: authorizationCode, used: false },
+			{ used: true },
+		);
+
+		const numAffected = result.affected ?? 0;
+		if (numAffected < 1) {
+			throw new Error('Authorization code already used');
+		}
 	}
 
 	/**
