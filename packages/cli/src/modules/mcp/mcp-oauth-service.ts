@@ -215,6 +215,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		authorizationCode: string,
 		_codeVerifier?: string,
 		redirectUri?: string,
+		resource?: URL,
 	): Promise<OAuthTokens> {
 		const authRecord = await this.authorizationCodeService.validateAndConsumeAuthorizationCode(
 			authorizationCode,
@@ -222,10 +223,30 @@ export class McpOAuthService implements OAuthServerProvider {
 			redirectUri,
 		);
 
+		if (!authRecord) {
+			throw new Error('Invalid authorization code');
+		}
+
+		// Convert URL to string if provided
+		const resourceStr = resource?.toString();
+		const tokenResource = this.resolveAndValidateResourceIndicator(resourceStr);
+
+		let finalResource: string | undefined;
+		const codeResource = authRecord.resource ?? undefined;
+
+		if (tokenResource && codeResource) {
+			if (tokenResource !== codeResource) {
+				throw new InvalidResourceIndicatorError(tokenResource, codeResource);
+			}
+			finalResource = tokenResource;
+		} else {
+			finalResource = tokenResource ?? codeResource;
+		}
+
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,
 			client.client_id,
-			authRecord.resource ?? undefined,
+			finalResource,
 		);
 
 		await this.tokenService.saveTokenPair(
@@ -234,11 +255,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			client.client_id,
 			authRecord.userId,
 		);
-
-		this.logger.info('Authorization code exchanged for tokens', {
-			clientId: client.client_id,
-			userId: authRecord.userId,
-		});
 
 		return {
 			access_token: accessToken,
@@ -394,7 +410,7 @@ export class McpOAuthService implements OAuthServerProvider {
 }
 
 class InvalidResourceIndicatorError extends OAuthError {
-	static readonly errorCode = 'invalid_resource';
+	static readonly errorCode = 'invalid_target';
 
 	constructor(
 		public readonly resource: string,
