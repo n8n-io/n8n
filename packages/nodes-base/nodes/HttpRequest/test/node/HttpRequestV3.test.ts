@@ -1060,11 +1060,14 @@ describe('HttpRequestV3', () => {
 			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
 
 			// Both items return a response with content-type: application/json but an invalid body.
-			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+			// Use mockImplementation (not mockResolvedValue) so each call gets a fresh object —
+			// the node mutates response.body in-place, which would leak item 0's state into item 1
+			// if the same reference were shared.
+			(executeFunctions.helpers.request as jest.Mock).mockImplementation(async () => ({
 				statusCode: 422,
 				headers: { 'content-type': 'application/json' },
 				body: Buffer.from('not valid json'),
-			});
+			}));
 
 			const result = await node.execute.call(executeFunctions);
 
