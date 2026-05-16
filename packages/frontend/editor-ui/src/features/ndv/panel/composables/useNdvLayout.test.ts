@@ -1,16 +1,16 @@
-import { ref, type Ref } from 'vue';
+import { nextTick, ref, type Ref } from 'vue';
 import { useNdvLayout } from './useNdvLayout';
 import { LOCAL_STORAGE_NDV_PANEL_WIDTH } from '@/features/ndv/shared/ndv.constants';
 import { mock } from 'vitest-mock-extended';
 
-vi.mock('@vueuse/core', () => {
-	return {
-		useElementSize: () => ({
-			width: ref(1000),
-			height: ref(500),
-		}),
-	};
-});
+const containerWidth = ref(1000);
+
+vi.mock('@vueuse/core', () => ({
+	useElementSize: vi.fn(() => ({
+		width: containerWidth,
+		height: ref(500),
+	})),
+}));
 
 describe('useNdvLayout', () => {
 	let containerRef: HTMLDivElement;
@@ -23,6 +23,7 @@ describe('useNdvLayout', () => {
 		container = ref(containerRef);
 		hasInputPanel = ref(true);
 		paneType = ref('regular');
+		containerWidth.value = 1000;
 
 		localStorage.clear();
 	});
@@ -83,5 +84,29 @@ describe('useNdvLayout', () => {
 		const spy = vi.spyOn(localStorage.__proto__, 'setItem');
 		onResizeEnd();
 		expect(spy).toHaveBeenCalledWith(expect.stringContaining('_REGULAR'), expect.any(String));
+	});
+
+	it('restores correct proportions after container width changes (zoom simulation)', async () => {
+		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
+
+		localStorage.setItem(key, JSON.stringify({ left: 29, main: 42, right: 29 }));
+
+		const { panelWidthPercentage } = useNdvLayout({
+			container,
+			hasInputPanel,
+			paneType,
+		});
+
+		containerWidth.value = 600;
+		await nextTick();
+		await nextTick();
+
+		containerWidth.value = 1000;
+		await nextTick();
+		await nextTick();
+
+		expect(panelWidthPercentage.value.left).toBeCloseTo(29);
+		expect(panelWidthPercentage.value.main).toBeCloseTo(42);
+		expect(panelWidthPercentage.value.right).toBeCloseTo(29);
 	});
 });
