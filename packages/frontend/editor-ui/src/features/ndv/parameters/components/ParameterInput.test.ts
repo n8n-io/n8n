@@ -15,12 +15,10 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	createTestExpressionLocalResolveContext,
 	createMockEnterpriseSettings,
-	createTestNode,
-	createTestWorkflowObject,
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
+import { type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
@@ -723,16 +721,7 @@ describe('ParameterInput.vue', () => {
 	});
 
 	describe('data mapper', () => {
-		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
-			connections: {
-				n1: {
-					[NodeConnectionTypes.Main]: [[{ node: 'n0', index: 0, type: NodeConnectionTypes.Main }]],
-				},
-			},
-		});
 		const ctx = createTestExpressionLocalResolveContext({
-			workflow,
 			nodeName: 'n0',
 			inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
 		});

@@ -21,7 +21,6 @@ permissions:
   contents: read
 
 env:
-  QBOT_SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
   SLACK_CHANNEL_ID: C0AHNJU9XFA #updates-security
 
 jobs:
@@ -37,6 +36,7 @@ jobs:
             security/trivy.yaml
             security/trivy-ignore-policy.rego
             .github/scripts/retry.mjs
+            .github/scripts/slack
           sparse-checkout-cone-mode: false
 
       - name: Pull Docker image with retry
@@ -166,98 +166,16 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Generate Slack Blocks JSON
+      - name: Send Slack notification
         if: steps.process_results.outputs.vulnerabilities_found == 'true'
-        id: generate_blocks
         env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
           IMAGE_REF: ${{ inputs.image_ref }}
         run: |
-          BLOCKS_JSON=$(jq -c --arg image_ref "$IMAGE_REF" \
-          --arg repo_url "${{ github.server_url }}/${{ github.repository }}" \
-          --arg repo_name "${{ github.repository }}" \
-          --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-          --arg critical_count "${{ steps.process_results.outputs.critical_count }}" \
-          --arg high_count "${{ steps.process_results.outputs.high_count }}" \
-          --arg medium_count "${{ steps.process_results.outputs.medium_count }}" \
-          --arg low_count "${{ steps.process_results.outputs.low_count }}" \
-          --arg unique_cves "${{ steps.process_results.outputs.unique_cves }}" \
-          '
-          # Function to create a vulnerability block with emoji indicators
-          def vuln_block: {
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": "\(if .Severity == "CRITICAL" then ":red_circle:" elif .Severity == "HIGH" then ":large_orange_circle:" elif .Severity == "MEDIUM" then ":large_yellow_circle:" else ":large_green_circle:" end) *<https://nvd.nist.gov/vuln/detail/\(.VulnerabilityID)|\(.VulnerabilityID)>* (CVSS: `\(.CVSS.nvd.V3Score // "N/A")`)\n*Package:* `\(.PkgName)@\(.InstalledVersion)` → `\(.FixedVersion // "No fix available")`"
-              }
-            };
-
-          # Main structure
-          [
-            {
-              "type": "header",
-              "text": { "type": "plain_text", "text": ":warning: Trivy Scan: Vulnerabilities Detected" }
-            },
-            {
-              "type": "section",
-              "fields": [
-                { "type": "mrkdwn", "text": "*Repository:*\n<\($repo_url)|\($repo_name)>" },
-                { "type": "mrkdwn", "text": "*Image:*\n`\($image_ref)`" },
-                { "type": "mrkdwn", "text": "*Critical:*\n:red_circle: \($critical_count)" },
-                { "type": "mrkdwn", "text": "*High:*\n:large_orange_circle: \($high_count)" },
-                { "type": "mrkdwn", "text": "*Medium:*\n:large_yellow_circle: \($medium_count)" },
-                { "type": "mrkdwn", "text": "*Low:*\n:large_green_circle: \($low_count)" }
-              ]
-            },
-            {
-              "type": "context",
-              "elements": [
-                { "type": "mrkdwn", "text": ":shield: \($unique_cves) unique CVEs affecting packages" }
-              ]
-            },
-            { "type": "divider" }
-          ] +
-          (
-            # Group vulnerabilities by CVE to avoid duplicates in notification
-            [.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[]] |
-            group_by(.VulnerabilityID) |
-            map(.[0]) |
-            sort_by(
-              (if .Severity == "CRITICAL" then 0
-               elif .Severity == "HIGH" then 1
-               elif .Severity == "MEDIUM" then 2
-               elif .Severity == "LOW" then 3
-               else 4 end),
-              -((.CVSS.nvd.V3Score // 0) | tonumber? // 0)
-            ) |
-            .[:8] |
-            map(. | vuln_block)
-          ) +
-          [
-            { "type": "divider" },
-            {
-              "type": "actions",
-              "elements": [
-                {
-                  "type": "button",
-                  "text": { "type": "plain_text", "text": ":github: View Full Report" },
-                  "style": "primary",
-                  "url": $run_url
-                }
-              ]
-            }
-          ]
-          ' trivy-results.json)
-
-          echo "slack_blocks=$BLOCKS_JSON" >> "$GITHUB_OUTPUT"
-
-      - name: Send Slack Notification
-        if: steps.process_results.outputs.vulnerabilities_found == 'true'
-        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.QBOT_SLACK_TOKEN }}
-          payload: |
-            channel: ${{ env.SLACK_CHANNEL_ID }}
-            text: "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in ${{ inputs.image_ref }}"
-            blocks: ${{ steps.generate_blocks.outputs.slack_blocks }}
+          node .github/scripts/slack/notify.mjs \
+            --channel "$SLACK_CHANNEL_ID" \
+            --text "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in $IMAGE_REF" \
+            --blocks trivy \
+            --results trivy-results.json \
+            --image-ref "$IMAGE_REF"
 

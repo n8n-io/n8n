@@ -1,10 +1,10 @@
-ARG NODE_VERSION=24.14.1
+ARG NODE_VERSION=24.15.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine3.22 AS javascript-runner-builder
+FROM node:${NODE_VERSION}-alpine3.23 AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
@@ -86,7 +86,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22 AS launcher-downloader
+FROM alpine:3.23 AS launcher-downloader
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION=1.4.5
 
@@ -108,7 +108,7 @@ RUN set -e; \
 # ==============================================================================
 # STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine3.22 AS node-alpine
+FROM node:${NODE_VERSION}-alpine3.23 AS node-alpine
 
 # ==============================================================================
 # STAGE 5: Runtime

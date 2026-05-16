@@ -102,6 +102,14 @@ export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
 
 export const FLOATING_CHAT_HUB_PANEL_EXPERIMENT = createExperiment('078_floating_chat_hub_panel');
+export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
+	'081_surface_mcp_to_new_cloud_users',
+	{
+		control: 'control',
+		variant1: 'variant-1',
+		variant2: 'variant-2',
+	},
+);
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -129,4 +137,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	AA_EXPERIMENT_CHECK.name,
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
+	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 ];
