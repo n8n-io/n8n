@@ -382,7 +382,7 @@ describe('McpOAuthService', () => {
 				resource: 'https://n8n.example.com/mcp-server/http',
 			} as AuthorizationCode;
 
-			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
@@ -397,10 +397,13 @@ describe('McpOAuthService', () => {
 				'https://example.com/callback',
 			);
 
-			expect(authorizationCodeService.validateAndConsumeAuthorizationCode).toHaveBeenCalledWith(
+			expect(authorizationCodeService.findAuthorizationCode).toHaveBeenCalledWith(
 				'auth-code-123',
 				'client-123',
 				'https://example.com/callback',
+			);
+			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
+				'auth-code-123',
 			);
 			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
 				'user-456',
@@ -440,7 +443,7 @@ describe('McpOAuthService', () => {
 				resource: null,
 			} as AuthorizationCode;
 
-			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
@@ -448,10 +451,13 @@ describe('McpOAuthService', () => {
 
 			await service.exchangeAuthorizationCode(client, 'auth-code-123', 'verifier-123');
 
-			expect(authorizationCodeService.validateAndConsumeAuthorizationCode).toHaveBeenCalledWith(
+			expect(authorizationCodeService.findAuthorizationCode).toHaveBeenCalledWith(
 				'auth-code-123',
 				'client-123',
 				undefined,
+			);
+			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
+				'auth-code-123',
 			);
 			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
 				'user-456',
