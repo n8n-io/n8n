@@ -16,6 +16,7 @@ permissions:
 
 env:
   OTA_NO_UPDATE_CHECK: '1'
+  OTA_GIT_BRANCH: bobai/tool-chain-and-providers
 
 jobs:
   native:
@@ -52,8 +53,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup ota
-        uses: ota-run/setup@4ec459ee7956050be33e5c30f7e070f1f155c023 # v1
+      - name: Setup ota (source branch)
+        shell: bash
+        run: |
+          curl -fsSL https://dist.ota.run/install.sh | sh -s -- --from-git --setup-path
 
       - name: Verify ota install [bash]
         if: matrix.run_shell == 'bash'
@@ -212,8 +215,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup ota
-        uses: ota-run/setup@4ec459ee7956050be33e5c30f7e070f1f155c023 # v1
+      - name: Setup ota (source branch)
+        shell: bash
+        run: |
+          curl -fsSL https://dist.ota.run/install.sh | sh -s -- --from-git --setup-path
 
       - name: Verify Docker and ota
         shell: bash
