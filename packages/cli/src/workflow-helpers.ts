@@ -71,7 +71,7 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 
 	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
 
-	let lastNodePinData = pinData[lastNodeExecuted];
+	let lastNodePinData = pinData ? pinData[lastNodeExecuted] : undefined;
 
 	if (lastNodePinData && inputData.mode === 'manual') {
 		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
