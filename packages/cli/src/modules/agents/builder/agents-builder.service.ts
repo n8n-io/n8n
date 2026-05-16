@@ -14,7 +14,7 @@ import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';

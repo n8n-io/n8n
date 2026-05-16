@@ -31,18 +31,20 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 }));
 
 function makeController({
+	agentsService = mock<AgentsService>(),
 	credentialsService = mock<CredentialsService>(),
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentScheduleService = mock<AgentScheduleService>(),
 	agentRepository = mock<AgentRepository>(),
 }: {
+	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
 	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
 	agentScheduleService?: jest.Mocked<AgentScheduleService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
 } = {}) {
 	const controller = new AgentsController(
-		mock<AgentsService>(),
+		agentsService,
 		mock<AgentsBuilderService>(),
 		credentialsService,
 		chatIntegrationService,
@@ -54,6 +56,7 @@ function makeController({
 
 	return {
 		controller,
+		agentsService,
 		credentialsService,
 		chatIntegrationService,
 		agentScheduleService,
@@ -129,10 +132,10 @@ describe('AgentsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-outside-project' },
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'slack', credentialId: 'cred-outside-project' },
 			),
 		).rejects.toThrow(NotFoundError);
 
@@ -151,10 +154,10 @@ describe('AgentsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
+					body: { type: 'telegram', credentialId: 'cred-telegram' },
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'telegram', credentialId: 'cred-telegram' },
 			),
 		).rejects.toThrow(BadRequestError);
 
@@ -185,13 +188,14 @@ describe('AgentsController integration credentials', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
+		const agentsService = mock<AgentsService>();
 		const { controller } = makeController({
+			agentsService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
 		});
 		const settings = {
-			type: 'telegram' as const,
 			accessMode: 'private' as const,
 			allowedUsers: ['123'],
 		};
@@ -201,44 +205,36 @@ describe('AgentsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
+					body: {
+						type: 'telegram',
+						credentialId: 'cred-telegram',
+						settings,
+					},
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'telegram', credentialId: 'cred-telegram', settings },
 			),
 		).resolves.toEqual({ status: 'connected' });
 
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
-			'cred-telegram',
-			'telegram',
+			{
+				type: 'telegram',
+				credentialId: 'cred-telegram',
+				settings,
+			},
 			'user-1',
 			'project-1',
-			{ settings },
 		);
-		expect(agentRepository.save).toHaveBeenCalledWith({
-			...agent,
-			integrations: [
-				{
-					type: 'telegram',
-					credentialId: 'cred-telegram',
-					credentialName: 'Telegram Bot',
-					settings,
-				},
-			],
-		});
-		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
-			'agent-1',
-			'telegram',
-			'cred-telegram',
-			'connect',
+		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, {
+			type: 'telegram',
+			credentialId: 'cred-telegram',
 			settings,
-		);
+		});
 	});
 
 	it('returns Telegram integrations from the persisted agent entry even when the live bridge is empty', async () => {
 		const settings = {
-			type: 'telegram' as const,
 			accessMode: 'private' as const,
 			allowedUsers: ['123'],
 		};
@@ -250,7 +246,6 @@ describe('AgentsController integration credentials', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-telegram',
-					credentialName: 'Telegram Bot',
 					settings,
 				},
 			],
@@ -287,7 +282,13 @@ describe('AgentsController integration credentials', () => {
 			),
 		).resolves.toEqual({
 			status: 'connected',
-			integrations: [{ type: 'telegram', credentialId: 'cred-telegram', settings }],
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					settings,
+				},
+			],
 		});
 	});
 });
@@ -370,5 +371,74 @@ describe('AgentsController agent resource', () => {
 				isRunnable: false,
 			}),
 		);
+	});
+});
+
+describe('AgentsController chat message history', () => {
+	function makeController() {
+		const agentsService = mock<AgentsService>();
+		const controller = new AgentsController(
+			agentsService,
+			mock<AgentsBuilderService>(),
+			mock<CredentialsService>(),
+			mock<ChatIntegrationService>(),
+			mock<AgentScheduleService>(),
+			mock<AgentRepository>(),
+			mock<AgentExecutionService>(),
+			mock<ChatIntegrationRegistry>(),
+		);
+
+		return { controller, agentsService };
+	}
+
+	it('returns conversation history from the agents service', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue([
+			{
+				id: 'execution-1:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Hello' }],
+			},
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi there' }],
+			},
+		]);
+
+		const messages = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		} as never);
+
+		expect(messages).toEqual([
+			{
+				id: 'execution-1:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Hello' }],
+			},
+			{
+				id: 'execution-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi there' }],
+			},
+		]);
+		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
+			threadId: 'thread-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		});
+	});
+
+	it('rejects missing conversation history', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue(null);
+
+		await expect(
+			controller.getChatMessages({
+				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			} as never),
+		).rejects.toThrow(NotFoundError);
 	});
 });

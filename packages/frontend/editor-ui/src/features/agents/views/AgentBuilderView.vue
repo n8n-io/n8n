@@ -21,7 +21,7 @@ import {
 	createAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolRef, AgentSkill } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolConfig, AgentSkill } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -636,7 +636,7 @@ function onOpenAddToolModal() {
 			tools: localConfig.value?.tools ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolRef[]) => onConfigFieldUpdate({ tools }),
+			onConfirm: (tools: AgentJsonToolConfig[]) => onConfigFieldUpdate({ tools }),
 		},
 	});
 }
@@ -672,9 +672,9 @@ function onOpenToolFromList(index: number) {
 			projectId: projectId.value,
 			agentId: agentId.value,
 			existingToolNames: tools
-				.map((toolRef, i) => (i === index ? null : toolRef.name))
+				.map((toolRef, i) => (i === index || toolRef.type === 'custom' ? null : toolRef.name))
 				.filter((name): name is string => !!name),
-			onConfirm: (updatedTool: AgentJsonToolRef) => {
+			onConfirm: (updatedTool: AgentJsonToolConfig) => {
 				const nextTools = [...(localConfig.value?.tools ?? [])];
 				nextTools[index] = updatedTool;
 				onConfigFieldUpdate({ tools: nextTools });
@@ -797,7 +797,7 @@ function onOpenAddSkillModal() {
 	});
 }
 
-function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
+function onQuickActionAddTool(tools: AgentJsonToolConfig[]) {
 	onConfigFieldUpdate({ tools });
 }
 

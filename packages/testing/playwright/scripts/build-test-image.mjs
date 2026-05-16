@@ -51,7 +51,7 @@ function buildTestImage(targetImage) {
 		writeFileSync(
 			dockerfilePath,
 			`FROM ${targetImage}
-COPY e2e.controller.js /usr/local/lib/node_modules/n8n/dist/controllers/e2e.controller.js
+COPY e2e.controller.js /usr/lib/node_modules/n8n/dist/controllers/e2e.controller.js
 `,
 		);
 
