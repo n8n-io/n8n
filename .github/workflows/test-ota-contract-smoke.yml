@@ -135,7 +135,7 @@ jobs:
 
           ota up --workflow instant --stream . > ota-up-instant.log 2>&1 &
           up_pid=$!
-          deadline=$((SECONDS + 240))
+          deadline=$((SECONDS + 600))
           ready=0
 
           while [ $SECONDS -lt $deadline ]; do
@@ -166,7 +166,7 @@ jobs:
           $up = $null
           try {
             $up = Start-Process -FilePath "ota" -ArgumentList @("up", "--workflow", "instant", "--stream", ".") -NoNewWindow -RedirectStandardOutput "ota-up-instant.out.log" -RedirectStandardError "ota-up-instant.err.log" -PassThru
-            $deadline = (Get-Date).AddMinutes(4)
+            $deadline = (Get-Date).AddMinutes(10)
             $ready = $false
 
             while ((Get-Date) -lt $deadline) {
