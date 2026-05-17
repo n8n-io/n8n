@@ -276,7 +276,7 @@ describe('WorkflowService', () => {
 			);
 
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
-				workflowId: 'workflow-1',
+				projectId: 'project-1',
 			});
 			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
 				'workflow-1',
@@ -299,7 +299,7 @@ describe('WorkflowService', () => {
 			);
 
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
-				workflowId: 'workflow-1',
+				projectId: 'project-1',
 			});
 			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
 				'workflow-1',
@@ -322,7 +322,7 @@ describe('WorkflowService', () => {
 			);
 
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:disableRedaction'], false, {
-				workflowId: 'workflow-1',
+				projectId: 'project-1',
 			});
 			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
 				'workflow-1',
@@ -345,7 +345,7 @@ describe('WorkflowService', () => {
 			);
 
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:disableRedaction'], false, {
-				workflowId: 'workflow-1',
+				projectId: 'project-1',
 			});
 			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
 				'workflow-1',
@@ -368,7 +368,7 @@ describe('WorkflowService', () => {
 			);
 
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
-				workflowId: 'workflow-1',
+				projectId: 'project-1',
 			});
 		});
 

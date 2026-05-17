@@ -403,7 +403,9 @@ export class WorkflowService {
 			const isDisabling = workflowUpdateData.settings.redactionPolicy === 'none';
 			const requiredScope = isDisabling ? 'workflow:disableRedaction' : 'workflow:enableRedaction';
 
-			const canUpdate = await userHasScopes(user, [requiredScope], false, { workflowId });
+			const canUpdate = await userHasScopes(user, [requiredScope], false, {
+				projectId: ownerProject.id,
+			});
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
 			}

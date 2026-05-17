@@ -566,9 +566,12 @@ export class InstanceAiAdapterService {
 						? 'workflow:disableRedaction'
 						: 'workflow:enableRedaction';
 
-					const canUpdateRedaction = await userHasScopes(user, [requiredScope], false, {
-						workflowId,
-					});
+					const ownerProject = await sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+
+					const canUpdateRedaction =
+						ownerProject &&
+						(await userHasScopes(user, [requiredScope], false, { projectId: ownerProject.id }));
+
 					if (!canUpdateRedaction) {
 						delete settings.redactionPolicy;
 					}
