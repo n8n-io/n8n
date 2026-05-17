@@ -1,12 +1,11 @@
-// User-proxy agent factory. Short-lived (built per decide call);
-// createEvalAgent's cache makes that cheap.
-
 import { SYSTEM_PROMPT, TOOL_DESCRIPTIONS } from './prompts';
 import { decisionSchema, type Decision } from './tools';
 import { createEvalAgent } from '../../../src/utils/eval-agents';
+import type { EvalLogger } from '../../harness/logger';
 
 export interface UserProxyAgentConfig {
 	modelId?: string;
+	logger?: EvalLogger;
 }
 
 export interface UserProxyAgent {
@@ -26,8 +25,17 @@ export function createUserProxyAgent(config: UserProxyAgentConfig = {}): UserPro
 
 			try {
 				const result = await agent.generate(userPrompt);
-				return (result.structuredOutput as Decision | undefined) ?? undefined;
-			} catch {
+				const decision = (result.structuredOutput as Decision | undefined) ?? undefined;
+				if (!decision) {
+					const failure = (result as { error?: unknown }).error;
+					const message =
+						failure instanceof Error ? `${failure.name}: ${failure.message}` : 'undefined';
+					config.logger?.warn(`[user-proxy] no structuredOutput; error=${message}`);
+				}
+				return decision;
+			} catch (caught) {
+				const msg = caught instanceof Error ? caught.message : String(caught);
+				config.logger?.warn(`[user-proxy] agent.generate threw: ${msg}`);
 				return undefined;
 			}
 		},

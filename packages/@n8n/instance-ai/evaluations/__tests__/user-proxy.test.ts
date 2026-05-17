@@ -270,7 +270,9 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
-			nodeParameters: { 'Send Slack Message': { channelId: 'general', text: 'hi' } },
+			nodeParametersJson: JSON.stringify({
+				'Send Slack Message': { channelId: 'general', text: 'hi' },
+			}),
 		});
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'post hi to #general' }],
@@ -338,7 +340,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
-			nodeParameters: { Node1: { p1: 'v1' } },
+			nodeParametersJson: JSON.stringify({ Node1: { p1: 'v1' } }),
 		});
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],

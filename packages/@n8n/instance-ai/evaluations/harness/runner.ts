@@ -171,6 +171,7 @@ async function driveMultiTurnConversation(config: MultiTurnDriverConfig): Promis
 	const proxy = new UserProxyLlm({
 		conversation: config.conversation,
 		messageBudget: config.messageBudget,
+		logger: config.logger,
 	});
 
 	const confirmationStrategy: ConfirmationStrategy = async (event) =>

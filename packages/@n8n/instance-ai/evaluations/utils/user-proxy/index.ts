@@ -11,6 +11,7 @@ import { buildConfirmationPrompt, buildFollowUpPrompt } from './prompts';
 import { encodeConfirmationDecision } from './tools';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
+import type { EvalLogger } from '../../harness/logger';
 import type { CapturedEvent, ConversationTurn } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -27,6 +28,7 @@ export interface UserProxyConfig {
 	conversation: ConversationTurn[];
 	messageBudget?: number;
 	modelId?: string;
+	logger?: EvalLogger;
 	/** Test seam — inject a fake agent. */
 	agent?: UserProxyAgent;
 }
@@ -39,6 +41,7 @@ export class UserProxyLlm {
 	private readonly conversation: ConversationTurn[];
 	private readonly messageBudget: number;
 	private readonly agent: UserProxyAgent;
+	private readonly logger?: EvalLogger;
 
 	private messagesSent = 0;
 	private ingestedEventCount = 0;
@@ -48,7 +51,9 @@ export class UserProxyLlm {
 	constructor(config: UserProxyConfig) {
 		this.conversation = config.conversation;
 		this.messageBudget = config.messageBudget ?? DEFAULT_MESSAGE_BUDGET;
-		this.agent = config.agent ?? createUserProxyAgent({ modelId: config.modelId });
+		this.logger = config.logger;
+		this.agent =
+			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
 		this.rollingTranscript = [...config.conversation];
 	}
 
@@ -93,10 +98,34 @@ export class UserProxyLlm {
 
 		const prompt = buildConfirmationPrompt(this.promptContext(), event);
 		const decision = await this.agent.decide(prompt);
-		if (!decision) return buildAutoApprovePayload(event);
+		if (!decision) {
+			this.logger?.warn(`[user-proxy] no decision; event=${summarizeEvent(event)}`);
+			return buildAutoApprovePayload(event);
+		}
 
 		const encoded = encodeConfirmationDecision(decision);
-		return encoded ?? buildAutoApprovePayload(event);
+		if (!encoded) {
+			this.logger?.warn(
+				`[user-proxy] action=${decision.action} did not encode to a confirmation payload`,
+			);
+			return buildAutoApprovePayload(event);
+		}
+
+		this.logIfDismissalLike(encoded, event);
+		return encoded;
+	}
+
+	private logIfDismissalLike(encoded: InstanceAiConfirmRequest, event: CapturedEvent): void {
+		const empty =
+			(encoded.kind === 'questions' &&
+				(encoded.answers.length === 0 || encoded.answers.every((a) => a.skipped))) ||
+			(encoded.kind === 'setupWorkflowApply' &&
+				(!encoded.nodeParameters || Object.keys(encoded.nodeParameters).length === 0));
+		if (empty) {
+			this.logger?.warn(
+				`[user-proxy] dismissal-like response kind=${encoded.kind}; event=${summarizeEvent(event)}`,
+			);
+		}
 	}
 
 	async decideFollowUp(): Promise<NextMessageDecision> {
@@ -169,4 +198,11 @@ function extractRequestId(event: CapturedEvent): string | undefined {
 		if (id) return id;
 	}
 	return getString(event.data, 'requestId');
+}
+
+/** Compact JSON of the event payload, truncated for log readability. */
+function summarizeEvent(event: CapturedEvent): string {
+	const payload = getNestedRecord(event.data, 'payload') ?? event.data;
+	const summary = JSON.stringify(payload);
+	return summary.length > 800 ? `${summary.slice(0, 800)}…` : summary;
 }

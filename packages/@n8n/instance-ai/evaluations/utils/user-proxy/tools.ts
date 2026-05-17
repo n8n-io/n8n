@@ -21,7 +21,9 @@ export const decisionSchema = z.discriminatedUnion('action', [
 	}),
 	z.object({
 		action: z.literal('apply_setup_wizard'),
-		nodeParameters: z.record(z.string(), z.record(z.string(), z.unknown())),
+		// JSON-encoded object mapping nodeId -> parameter map. Emitted as a string
+		// because Anthropic structured output rejects nested z.record schemas.
+		nodeParametersJson: z.string(),
 	}),
 	z.object({
 		action: z.literal('approve_or_reject'),
@@ -53,9 +55,9 @@ export type Decision = z.infer<typeof decisionSchema>;
 
 export const TOOL_DESCRIPTIONS = `Available actions:
 
-- answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). For each question, pick option(s) from the list, provide free text, or skip if genuinely unanswerable from the conversation.
+- answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Only set skipped=true when the question has no plausible answer of any shape.
 
-- apply_setup_wizard(nodeParameters): The agent fired a setup-wizard event with placeholder parameters. Fill in each placeholder from values the user has stated. Leave a placeholder unset if the user has not stated a value for it — do NOT invent. Never set credentials.
+- apply_setup_wizard(nodeParametersJson): The agent fired a setup-wizard event with placeholder parameters. Emit a JSON string that decodes to { "<nodeId>": { "<paramName>": <value>, ... }, ... }. Fill every non-credential placeholder with a plausible value — stated → implied → invented. Never set credentials.
 
 - approve_or_reject(approved, userInput?): The agent showed a plan (plan-review) or asked an open free-text question (inputType=text). Approve if the plan matches user intent; reject with reason if it diverges.
 
@@ -82,7 +84,10 @@ export function encodeConfirmationDecision(decision: Decision): InstanceAiConfir
 			return { kind: 'questions', answers: decision.answers };
 
 		case 'apply_setup_wizard':
-			return { kind: 'setupWorkflowApply', nodeParameters: decision.nodeParameters };
+			return {
+				kind: 'setupWorkflowApply',
+				nodeParameters: parseNodeParametersJson(decision.nodeParametersJson),
+			};
 
 		case 'approve_or_reject':
 			return {
@@ -103,4 +108,16 @@ export function encodeConfirmationDecision(decision: Decision): InstanceAiConfir
 		case 'declare_done':
 			return null;
 	}
+}
+
+function parseNodeParametersJson(json: string): Record<string, Record<string, unknown>> {
+	try {
+		const parsed: unknown = JSON.parse(json);
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			return parsed as Record<string, Record<string, unknown>>;
+		}
+	} catch {
+		// fall through
+	}
+	return {};
 }
