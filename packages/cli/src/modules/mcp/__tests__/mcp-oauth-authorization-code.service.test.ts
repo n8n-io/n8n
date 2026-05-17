@@ -100,7 +100,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 
 			await expect(
 				service.findAndValidateAuthorizationCode('invalid-code', 'client-123'),
-			).rejects.toThrow('Invalid authorization code');
+			).rejects.toThrow('invalid_grant');
 		});
 
 		it('should throw error and remove when authorization code expired', async () => {
@@ -115,7 +115,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 
 			await expect(
 				service.findAndValidateAuthorizationCode('code-123', 'client-123'),
-			).rejects.toThrow('Authorization code expired');
+			).rejects.toThrow('invalid_grant');
 
 			expect(authorizationCodeRepository.remove).toHaveBeenCalledWith(authRecord);
 		});
@@ -162,7 +162,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 
 			await expect(
 				service.validateAndConsumeAuthorizationCode('code-123', 'client-123'),
-			).rejects.toThrow('Authorization code already used');
+			).rejects.toThrow('invalid_grant');
 		});
 
 		it('should throw error when redirect URI mismatch', async () => {
@@ -227,7 +227,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			authorizationCodeRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.getCodeChallenge('invalid-code', 'client-123')).rejects.toThrow(
-				'Invalid authorization code',
+				'invalid_grant',
 			);
 		});
 	});
