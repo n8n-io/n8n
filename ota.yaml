@@ -17,7 +17,9 @@ toolchains:
 tools:
   npx:
     version: ">=10.22.0"
-  docker: "*"
+  docker:
+    version: "*"
+    required: false
 native_prerequisites:
   node-native-build-tools:
     description: Host-native build tooling for workspace packages with native addons
@@ -333,7 +335,9 @@ tasks:
           target: /home/node/.n8n
     requirements:
       tools:
-        docker: "*"
+        docker:
+          version: "*"
+          required: true
     runtime:
       kind: service
       surfaces:
