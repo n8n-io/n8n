@@ -20,7 +20,6 @@ permissions:
 
 env:
   OTA_NO_UPDATE_CHECK: '1'
-  OTA_GIT_BRANCH: bobai/tool-chain-and-providers
 
 jobs:
   native:
@@ -35,22 +34,18 @@ jobs:
             os: ubuntu-latest
             run_shell: bash
             full_backend: true
-            allow_packaged_quickstart_failure: false
           - name: macos-bash
             os: macos-latest
             run_shell: bash
             full_backend: true
-            allow_packaged_quickstart_failure: false
           - name: windows-pwsh
             os: windows-latest
             run_shell: pwsh
             full_backend: false
-            allow_packaged_quickstart_failure: true
           - name: windows-git-bash
             os: windows-latest
             run_shell: bash
             full_backend: false
-            allow_packaged_quickstart_failure: true
 
     steps:
       - name: Checkout
@@ -77,10 +72,8 @@ jobs:
           corepack prepare pnpm@10.32.1 --activate
           pnpm --version
 
-      - name: Setup ota (source branch)
-        shell: bash
-        run: |
-          curl -fsSL https://dist.ota.run/install.sh | sh -s -- --from-git --setup-path
+      - name: Setup ota
+        uses: ota-run/setup@v1
 
       - name: Verify ota install [bash]
         if: matrix.run_shell == 'bash'
@@ -114,151 +107,26 @@ jobs:
           ota tasks --workflow instant .
           ota execution topology --json .
 
-      - name: Validate instant workflow readiness [bash]
-        id: instant_bash
-        if: matrix.run_shell == 'bash'
-        shell: bash
-        run: |
-          up_pid=""
-          cleanup() {
-            ota clean . || true
-            if [ -n "${up_pid:-}" ] && kill -0 "$up_pid" 2>/dev/null; then
-              kill "$up_pid" 2>/dev/null || true
-              for _ in 1 2 3 4 5; do
-                if ! kill -0 "$up_pid" 2>/dev/null; then
-                  break
-                fi
-                sleep 1
-              done
-              kill -9 "$up_pid" 2>/dev/null || true
-            fi
-            if [ -n "${up_pid:-}" ]; then
-              wait "$up_pid" 2>/dev/null || true
-            fi
-          }
-
-          ota clean . || true
-          trap cleanup EXIT INT TERM
-
-          ota up --workflow instant --stream . > ota-up-instant.log 2>&1 &
-          up_pid=$!
-          deadline=$((SECONDS + 600))
-          ready=0
-
-          while [ $SECONDS -lt $deadline ]; do
-            if ota doctor --workflow instant --json . > ota-doctor-instant.json 2> ota-doctor-instant.err; then
-              ready=1
-              break
-            fi
-
-            if ! kill -0 "$up_pid" 2>/dev/null; then
-              wait "$up_pid"
-              exit 1
-            fi
-
-            sleep 5
-          done
-
-          if [ "$ready" -ne 1 ]; then
-            cat ota-up-instant.log
-            exit 1
-          fi
-        continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
-
-      - name: Validate instant workflow readiness [pwsh]
-        id: instant_pwsh
-        if: matrix.run_shell == 'pwsh'
-        shell: pwsh
-        run: |
-          & ota clean . *> $null
-
-          $up = $null
-          try {
-            $up = Start-Process -FilePath "ota" -ArgumentList @("up", "--workflow", "instant", "--stream", ".") -NoNewWindow -RedirectStandardOutput "ota-up-instant.out.log" -RedirectStandardError "ota-up-instant.err.log" -PassThru
-            $deadline = (Get-Date).AddMinutes(10)
-            $ready = $false
-
-            while ((Get-Date) -lt $deadline) {
-              & ota doctor --workflow instant --json . 1> ota-doctor-instant.json 2> ota-doctor-instant.err
-              if ($LASTEXITCODE -eq 0) {
-                $ready = $true
-                break
-              }
-
-              if ($up.HasExited) {
-                throw "ota up exited before instant workflow became ready"
-              }
-
-              Start-Sleep -Seconds 5
-            }
-
-            if (-not $ready) {
-              Get-Content ota-up-instant.out.log -ErrorAction SilentlyContinue
-              Get-Content ota-up-instant.err.log -ErrorAction SilentlyContinue
-              throw "timed out waiting for instant workflow readiness"
-            }
-          }
-          finally {
-            & ota clean . *> $null
-            if ($null -ne $up) {
-              try {
-                Wait-Process -Id $up.Id -Timeout 30 -ErrorAction SilentlyContinue
-              }
-              catch {
-              }
-            }
-          }
-        continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
-
-      - name: Report packaged quickstart signal [windows]
-        if: ${{ always() && matrix.allow_packaged_quickstart_failure }}
-        shell: pwsh
-        run: |
-          $bashOutcome = '${{ steps.instant_bash.outcome }}'
-          $pwshOutcome = '${{ steps.instant_pwsh.outcome }}'
-
-          if ($bashOutcome -eq 'failure' -or $pwshOutcome -eq 'failure') {
-            Write-Host "::warning::Windows packaged quickstart signal failed (npx quickstart is unstable on this runner/shell path); contributor/backend proofs remain hard-gated on Linux/macOS."
-          } else {
-            Write-Host "Windows packaged quickstart signal passed."
-          }
-
-      - name: Upload packaged quickstart signal artifacts [windows]
-        if: ${{ always() && matrix.allow_packaged_quickstart_failure }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - name: Proof packaged quickstart workflow
+        uses: ota-run/action@v1
         with:
-          name: ota-packaged-quickstart-signal-${{ matrix.name }}
-          path: |
-            ota-up-instant.log
-            ota-up-instant.out.log
-            ota-up-instant.err.log
-            ota-doctor-instant.json
-            ota-doctor-instant.err
-          if-no-files-found: ignore
-          retention-days: 7
+          command: proof
+          workflow: instant
+          install: never
+          comment-pr: false
+          artifact-name: ota-proof-instant-${{ matrix.name }}
+          output-path: .ota-proof-instant-${{ matrix.name }}.json
 
-      - name: Proof contributor backend workflow [bash]
-        if: matrix.full_backend && matrix.run_shell == 'bash'
-        shell: bash
-        run: |
-          ota clean . || true
-          ota proof runtime --workflow backend --json .
-          ota clean . || true
-
-      - name: Proof contributor backend workflow [pwsh]
-        if: matrix.full_backend && matrix.run_shell == 'pwsh'
-        shell: pwsh
-        run: |
-          & ota clean . *> $null
-          try {
-            & ota proof runtime --workflow backend --json .
-            if ($LASTEXITCODE -ne 0) {
-              exit $LASTEXITCODE
-            }
-          }
-          finally {
-            & ota clean . *> $null
-          }
+      - name: Proof contributor backend workflow
+        if: matrix.full_backend
+        uses: ota-run/action@v1
+        with:
+          command: proof
+          workflow: backend
+          install: never
+          comment-pr: false
+          artifact-name: ota-proof-backend-${{ matrix.name }}
+          output-path: .ota-proof-backend-${{ matrix.name }}.json
 
       - name: Upload failure artifacts
         if: ${{ failure() }}
@@ -266,11 +134,8 @@ jobs:
         with:
           name: ota-contract-matrix-${{ matrix.name }}
           path: |
-            ota-up-instant.log
-            ota-up-instant.out.log
-            ota-up-instant.err.log
-            ota-doctor-instant.json
-            ota-doctor-instant.err
+            .ota-proof-instant-${{ matrix.name }}.json
+            .ota-proof-backend-${{ matrix.name }}.json
             .ota/
           retention-days: 7
 
@@ -288,10 +153,8 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup ota (source branch)
-        shell: bash
-        run: |
-          curl -fsSL https://dist.ota.run/install.sh | sh -s -- --from-git --setup-path
+      - name: Setup ota
+        uses: ota-run/setup@v1
 
       - name: Verify Docker and ota
         shell: bash
@@ -300,11 +163,15 @@ jobs:
           ota --version
 
       - name: Proof packaged Docker workflow
-        shell: bash
-        run: |
-          ota clean . || true
-          ota proof runtime --workflow docker --json .
-          ota clean .
+        uses: ota-run/action@v1
+        with:
+          command: proof
+          workflow: docker
+          execution-mode: container
+          install: never
+          comment-pr: false
+          artifact-name: ota-proof-docker-linux
+          output-path: .ota-proof-docker-linux.json
 
       - name: Upload failure artifacts
         if: ${{ failure() }}
@@ -312,5 +179,6 @@ jobs:
         with:
           name: ota-contract-matrix-docker-linux
           path: |
+            .ota-proof-docker-linux.json
             .ota/
           retention-days: 7
