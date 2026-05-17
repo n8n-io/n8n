@@ -115,7 +115,7 @@ export class McpOAuthAuthorizationCodeService {
 
 		const numAffected = result.affected ?? 0;
 		if (numAffected < 1) {
-			throw new Error('Authorization code already used');
+			throw new OAuthError('invalid_grant', 'Authorization code already used');
 		}
 
 		authRecord.used = true;
@@ -123,6 +123,7 @@ export class McpOAuthAuthorizationCodeService {
 	}
 
 	async markAuthorizationCodeAsUsed(authorizationCode: string): Promise<void> {
+		// Atomic: UPDATE sets used=true only if used=false; checks affected rows.
 		const result = await this.authorizationCodeRepository.update(
 			{ code: authorizationCode, used: false },
 			{ used: true },
@@ -130,7 +131,7 @@ export class McpOAuthAuthorizationCodeService {
 
 		const numAffected = result.affected ?? 0;
 		if (numAffected < 1) {
-			throw new Error('Authorization code already used');
+			throw new OAuthError('invalid_grant', 'Authorization code already used');
 		}
 	}
 

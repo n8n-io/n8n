@@ -334,6 +334,25 @@ describe('McpOAuthService', () => {
 				error_description: 'Internal server error',
 			});
 		});
+
+		it('should accept resource with trailing slash', async () => {
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+				resource: 'https://n8n.example.com/mcp-server/http/',
+			};
+			const res = mock<Response>();
+			res.redirect.mockReturnThis();
+			await service.authorize(client, params, res);
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(
+				res,
+				expect.objectContaining({
+					resource: 'https://n8n.example.com/mcp-server/http/', // original preserved in session
+				}),
+			);
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
 	});
 
 	describe('challengeForAuthorizationCode', () => {

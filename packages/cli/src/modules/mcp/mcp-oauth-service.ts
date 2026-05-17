@@ -315,6 +315,10 @@ export class McpOAuthService implements OAuthServerProvider {
 
 		const resource = Reflect.get(params, 'resource');
 
+		if (resource === null || resource === undefined) {
+			return undefined;
+		}
+
 		if (typeof resource === 'string') {
 			return resource;
 		}
@@ -332,7 +336,8 @@ export class McpOAuthService implements OAuthServerProvider {
 		}
 
 		const canonicalResource = this.getCanonicalMcpResourceUrl();
-		if (resource !== canonicalResource) {
+		const normalizedResource = resource.replace(/\/$/, '');
+		if (normalizedResource !== canonicalResource) {
 			throw new InvalidResourceIndicatorError(resource, canonicalResource);
 		}
 
@@ -415,8 +420,8 @@ class InvalidResourceIndicatorError extends OAuthError {
 	static readonly errorCode = 'invalid_target';
 
 	constructor(
-		public readonly resource: string,
-		public readonly expectedResource: string,
+		readonly resource: string,
+		readonly expectedResource: string,
 	) {
 		super('invalid_target', 'Invalid resource indicator');
 	}
