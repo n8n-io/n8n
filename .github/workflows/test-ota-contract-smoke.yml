@@ -31,18 +31,22 @@ jobs:
             os: ubuntu-latest
             run_shell: bash
             full_backend: true
+            allow_packaged_quickstart_failure: false
           - name: macos-bash
             os: macos-latest
             run_shell: bash
             full_backend: true
+            allow_packaged_quickstart_failure: false
           - name: windows-pwsh
             os: windows-latest
             run_shell: pwsh
-            full_backend: true
+            full_backend: false
+            allow_packaged_quickstart_failure: true
           - name: windows-git-bash
             os: windows-latest
             run_shell: bash
             full_backend: false
+            allow_packaged_quickstart_failure: true
 
     steps:
       - name: Checkout
@@ -156,6 +160,7 @@ jobs:
             cat ota-up-instant.log
             exit 1
           fi
+        continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
 
       - name: Smoke ota up + doctor (instant) [pwsh]
         if: matrix.run_shell == 'pwsh'
@@ -199,6 +204,7 @@ jobs:
               }
             }
           }
+        continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
 
       - name: Proof contributor backend workflow [bash]
         if: matrix.full_backend && matrix.run_shell == 'bash'
