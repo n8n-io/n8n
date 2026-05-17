@@ -88,15 +88,15 @@ describe('useNdvLayout', () => {
 
 	it('restores correct proportions after container width changes (zoom simulation)', async () => {
 		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
-
 		localStorage.setItem(key, JSON.stringify({ left: 29, main: 42, right: 29 }));
 
-		const { panelWidthPercentage } = useNdvLayout({
-			container,
-			hasInputPanel,
-			paneType,
-		});
+		const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
 
+		// Manually corrupt in-memory state to simulate what the old code did when
+		// zooming in inflated minMainPanelWidthPercentage and clamped main upward.
+		panelWidthPercentage.value = { left: 15, main: 70, right: 15 };
+
+		// Simulate zoom in — should reload from storage and restore correct proportions.
 		containerWidth.value = 600;
 		await nextTick();
 		await nextTick();
