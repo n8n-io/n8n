@@ -6,7 +6,11 @@ import {
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { UserCalledMCPToolEventPayload } from '../../mcp.types';
+
 import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 
 /**
  * Look up a node type's declared outputs. Returns `undefined` when the type is
@@ -124,5 +128,41 @@ export function createNodeOutputsResolver(nodeTypes: NodeTypes): NodeOutputsReso
 		} catch {
 			return undefined;
 		}
+	};
+}
+
+/**
+ * Run the invalid-ai_tool-source check and, if any violations are found,
+ * track a failure telemetry event and return an MCP error response. Returns
+ * `null` when the workflow is clean so the caller can continue normally.
+ *
+ * The caller controls the structured output shape via `buildOutput`, since
+ * `validate_workflow_code` returns `{ valid: false, errors: [...] }` while
+ * `create_workflow_from_code` returns `{ error }`.
+ */
+export function buildInvalidAiToolSourceErrorResponse<T extends Record<string, unknown>>(
+	workflow: WorkflowJSON,
+	nodeTypes: NodeTypes,
+	buildOutput: (errorMessage: string) => T,
+	telemetryPayload: UserCalledMCPToolEventPayload,
+	telemetry: Telemetry,
+): {
+	content: Array<{ type: 'text'; text: string }>;
+	structuredContent: T;
+	isError: true;
+} | null {
+	const violations = findInvalidAiToolSources(workflow, createNodeOutputsResolver(nodeTypes));
+	if (violations.length === 0) return null;
+
+	const errorMessage = formatInvalidAiToolSourceMessage(violations);
+
+	telemetryPayload.results = { success: false, error: errorMessage };
+	telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+	const output = buildOutput(errorMessage);
+	return {
+		content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+		structuredContent: output,
+		isError: true,
 	};
 }
