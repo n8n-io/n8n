@@ -195,6 +195,13 @@ async function driveMultiTurnConversation(config: MultiTurnDriverConfig): Promis
 		confirmationStrategy,
 		nextMessageDecider,
 	});
+
+	const stats = proxy.getDecisionStats();
+	const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
+	if (entries.length > 0) {
+		const summary = entries.map(([k, v]) => `${k}=${String(v)}`).join(', ');
+		config.logger.info(`  Proxy decisions: ${summary}`);
+	}
 }
 
 // ---------------------------------------------------------------------------

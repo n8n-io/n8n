@@ -8,7 +8,7 @@ import {
 	tryDeterministicConfirmationResponse,
 } from './deterministic';
 import { buildConfirmationPrompt, buildFollowUpPrompt } from './prompts';
-import { encodeConfirmationDecision } from './tools';
+import { encodeConfirmationDecision, type Decision } from './tools';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
@@ -111,17 +111,26 @@ export class UserProxyLlm {
 			return buildAutoApprovePayload(event);
 		}
 
-		this.logIfDismissalLike(encoded, event);
+		this.recordDecision(decision, encoded, event);
 		return encoded;
 	}
 
-	private logIfDismissalLike(encoded: InstanceAiConfirmRequest, event: CapturedEvent): void {
-		const empty =
-			(encoded.kind === 'questions' &&
-				(encoded.answers.length === 0 || encoded.answers.every((a) => a.skipped))) ||
-			(encoded.kind === 'setupWorkflowApply' &&
-				(!encoded.nodeParameters || Object.keys(encoded.nodeParameters).length === 0));
-		if (empty) {
+	/** Counts of proxy decisions by category. Read after the build completes. */
+	getDecisionStats(): Readonly<Record<string, number>> {
+		return { ...this.decisionStats };
+	}
+
+	private decisionStats: Record<string, number> = {};
+
+	private recordDecision(
+		decision: Decision,
+		encoded: InstanceAiConfirmRequest,
+		event: CapturedEvent,
+	): void {
+		const category = classifyDecision(encoded);
+		this.decisionStats[category] = (this.decisionStats[category] ?? 0) + 1;
+		this.logger?.verbose(`[user-proxy] decision action=${decision.action} category=${category}`);
+		if (category === 'dismissal') {
 			this.logger?.warn(
 				`[user-proxy] dismissal-like response kind=${encoded.kind}; event=${summarizeEvent(event)}`,
 			);
@@ -205,4 +214,18 @@ function summarizeEvent(event: CapturedEvent): string {
 	const payload = getNestedRecord(event.data, 'payload') ?? event.data;
 	const summary = JSON.stringify(payload);
 	return summary.length > 800 ? `${summary.slice(0, 800)}…` : summary;
+}
+
+/** Coarse category for accounting: how the proxy responded to a confirmation. */
+function classifyDecision(encoded: InstanceAiConfirmRequest): string {
+	if (
+		(encoded.kind === 'questions' &&
+			(encoded.answers.length === 0 || encoded.answers.every((a) => a.skipped))) ||
+		(encoded.kind === 'setupWorkflowApply' &&
+			(!encoded.nodeParameters || Object.keys(encoded.nodeParameters).length === 0))
+	) {
+		return 'dismissal';
+	}
+	if (encoded.kind === 'approval' && !encoded.approved) return 'rejection';
+	return encoded.kind;
 }

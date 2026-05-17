@@ -2,7 +2,7 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "We track bugs in GitHub but our PM wants a Notion view of the same list. Can you sync them daily?"
+			"text": "We track bugs in GitHub but our PM wants a Notion view. Build a daily workflow that creates a Notion page per open bug."
 		},
 		{
 			"role": "assistant",

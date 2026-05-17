@@ -69,3 +69,22 @@ See `docs/e2e-tests.md` for the full recording/replay architecture.
 - **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
 - **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
 - **Memory**: observational memory = thread-scoped, working memory is disabled
+
+## Anthropic structured-output gotchas
+
+When designing Zod schemas for `agent.structuredOutput(schema)` against
+Anthropic models, avoid nested `z.record(z.string(), z.record(...))`. It
+compiles to JSON schema with `additionalProperties: <object>`, which
+Anthropic's structured-output API rejects with:
+
+```
+AI_APICallError: output_config.format.schema: For 'object' type,
+'additionalProperties: object' is not supported.
+Please set 'additionalProperties' to false.
+```
+
+The error returns silently — `result.structuredOutput` is undefined and
+`result.error` carries the message. Failure looks like the model "ignoring"
+the schema. Workaround: emit the inner record as a JSON string field
+(`z.string()`) and `JSON.parse` it after the call. See
+`evaluations/utils/user-proxy/tools.ts:nodeParametersJson` for an example.
