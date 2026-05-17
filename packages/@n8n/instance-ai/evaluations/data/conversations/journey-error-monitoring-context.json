@@ -1,0 +1,76 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I need a workflow that monitors our error reporting system."
+		},
+		{
+			"role": "assistant",
+			"text": "Which error reporting system, and what should happen when an error fires?"
+		},
+		{
+			"role": "user",
+			"text": "We use Sentry. The Sentry project is 'payment-service-prod'. When a new error fires, Sentry will POST to a webhook at /sentry-alert. I want the workflow to post a notification to Slack."
+		},
+		{
+			"role": "assistant",
+			"text": "Which Slack channel, and what should the message contain?"
+		},
+		{
+			"role": "user",
+			"text": "Channel is #alerts. Include just the error title and a link back to the Sentry event — no stack trace."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: webhook at /sentry-alert, then a Slack post to #alerts with the error title and Sentry link. Approve?"
+		},
+		{
+			"role": "user",
+			"text": "Yes."
+		},
+		{
+			"role": "assistant",
+			"text": "Built. Ready to receive Sentry events."
+		},
+		{
+			"role": "user",
+			"text": "Now extend it: when the severity is 'fatal', also create a Linear issue in our 'engineering' team. Use the same Sentry link in the Linear issue body. Non-fatal severities should still only go to Slack."
+		},
+		{
+			"role": "assistant",
+			"text": "Adding a conditional after the webhook. For severity='fatal' the flow branches to a Linear create-issue node in the 'engineering' team; the Slack notification fires for every event."
+		},
+		{
+			"role": "user",
+			"text": "Right, thanks."
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"journey",
+		"build",
+		"cross-turn-context",
+		"multi-service",
+		"sentry",
+		"slack",
+		"linear",
+		"webhook",
+		"conditional"
+	],
+	"triggerType": "webhook",
+	"messageBudget": 8,
+	"executionScenarios": [
+		{
+			"name": "non-fatal-error",
+			"description": "A non-fatal error posts to Slack only, no Linear issue created",
+			"dataSetup": "The webhook receives a POST at /sentry-alert with body { project: 'payment-service-prod', level: 'warning', title: 'Slow query on /api/checkout', web_url: 'https://sentry.io/payment-service-prod/issues/9001/' }. The Slack node returns a success response. The Linear node, if reached, would return a success response.",
+			"successCriteria": "The workflow runs without errors. A Slack post is sent to the #alerts channel containing the error title ('Slow query on /api/checkout') and the Sentry URL. NO Linear issue is created — the conditional correctly routed away from Linear because severity is 'warning', not 'fatal'."
+		},
+		{
+			"name": "fatal-error",
+			"description": "A fatal error posts to Slack AND creates a Linear issue in the engineering team",
+			"dataSetup": "The webhook receives a POST at /sentry-alert with body { project: 'payment-service-prod', level: 'fatal', title: 'Unhandled exception in payment processor', web_url: 'https://sentry.io/payment-service-prod/issues/9002/' }. The Slack node returns a success response. The Linear node returns a success response with a new issue ID.",
+			"successCriteria": "The workflow runs without errors. A Slack post is sent to the #alerts channel with the error title and Sentry link. A Linear issue is created in the 'engineering' team whose body or description contains the Sentry URL 'https://sentry.io/payment-service-prod/issues/9002/'. CRITICAL: both the Linear team name and the use of the Sentry URL came from earlier turns in the conversation — these must be preserved correctly in the final workflow."
+		}
+	]
+}

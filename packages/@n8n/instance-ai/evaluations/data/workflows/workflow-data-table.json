@@ -1,9 +1,14 @@
 {
-	"prompt": "I want you to build a workflow that will read n8n workflow databases and extract certain information and then populate that information in a data table called 'workflows'.\n\nThe schema of the data table should be as follows:\n- instanceId\n- workflowId\n- workflowName\n- tags\n\nIf the workflow is run multiple times it should update the current rows rather than creating dupes.\n\nThe instance with the workflows is https://wonderman.users.n8n.cloud/. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want you to build a workflow that will read n8n workflow databases and extract certain information and then populate that information in a data table called 'workflows'.\n\nThe schema of the data table should be as follows:\n- instanceId\n- workflowId\n- workflowName\n- tags\n\nIf the workflow is run multiple times it should update the current rows rather than creating dupes.\n\nThe instance with the workflows is https://wonderman.users.n8n.cloud/. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+		}
+	],
 	"complexity": "complex",
 	"tags": ["build", "schedule", "data-table", "n8n-api"],
 	"triggerType": "schedule",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "Data table is populated",

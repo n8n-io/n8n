@@ -1,9 +1,14 @@
 {
-	"prompt": "Every day, fetch all open GitHub issues from repository 'acme-corp/backend' that have the label 'bug'. For each issue, create a page in a Notion database (database ID: 'a1b2c3d4e5f6789012345678abcdef01') with properties: Name (issue title), URL (issue html_url), Created (issue created_at date), Assignee (assignee login name or 'Unassigned'), and Status set to 'Open'. Use the HTTP Request node to call the GitHub API directly (GET https://api.github.com/repos/acme-corp/backend/issues?labels=bug&state=open) with a Bearer token authorization header. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day, fetch all open GitHub issues from repository 'acme-corp/backend' that have the label 'bug'. For each issue, create a page in a Notion database (database ID: 'a1b2c3d4e5f6789012345678abcdef01') with properties: Name (issue title), URL (issue html_url), Created (issue created_at date), Assignee (assignee login name or 'Unassigned'), and Status set to 'Open'. Use the HTTP Request node to call the GitHub API directly (GET https://api.github.com/repos/acme-corp/backend/issues?labels=bug&state=open) with a Bearer token authorization header. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+		}
+	],
 	"complexity": "complex",
 	"tags": ["build", "schedule", "http-request", "notion", "github-api", "data-sync"],
 	"triggerType": "schedule",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "GitHub returns issues, each is synced to Notion",

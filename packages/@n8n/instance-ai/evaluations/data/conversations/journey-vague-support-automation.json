@@ -1,0 +1,97 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to automate our support process."
+		},
+		{
+			"role": "assistant",
+			"text": "Support is broad — what part do you want to start with? Triage of new tickets, auto-replies to common questions, routing tickets to the right person, reporting, or something else?"
+		},
+		{
+			"role": "user",
+			"text": "Routing. New tickets need to land with the right person on my team."
+		},
+		{
+			"role": "assistant",
+			"text": "Where do tickets come from — email, a contact form, a help-desk tool like Zendesk?"
+		},
+		{
+			"role": "user",
+			"text": "We use Zendesk. It can fire a webhook when a new ticket is created."
+		},
+		{
+			"role": "assistant",
+			"text": "What's the routing rule? By topic, region, round-robin?"
+		},
+		{
+			"role": "user",
+			"text": "By topic. We have three: billing, technical, onboarding."
+		},
+		{
+			"role": "assistant",
+			"text": "How should the workflow detect the topic — based on a Zendesk field, or by reading the ticket body?"
+		},
+		{
+			"role": "user",
+			"text": "Zendesk has a 'category' field on every ticket. Use that."
+		},
+		{
+			"role": "assistant",
+			"text": "Who's on each team?"
+		},
+		{
+			"role": "user",
+			"text": "Billing: alice@example.com. Technical: bob@example.com. Onboarding: carol@example.com. The workflow should send each new ticket as an email to the right person, with the Zendesk ticket link and a short summary."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: webhook receives Zendesk new-ticket events at /zendesk-new-ticket. Switch on the category field. Each branch emails the right team member with the ticket title and link. Approve?"
+		},
+		{
+			"role": "user",
+			"text": "Yes."
+		},
+		{
+			"role": "assistant",
+			"text": "Built."
+		},
+		{
+			"role": "user",
+			"text": "Thanks."
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"journey",
+		"build",
+		"vague-intent",
+		"progressive-clarification",
+		"sparse-reference",
+		"zendesk",
+		"email",
+		"webhook"
+	],
+	"triggerType": "webhook",
+	"messageBudget": 10,
+	"executionScenarios": [
+		{
+			"name": "billing-ticket",
+			"description": "A billing-category ticket routes to alice@example.com",
+			"dataSetup": "The webhook receives a POST at /zendesk-new-ticket with body { id: 5001, subject: 'Charged twice for July invoice', category: 'billing', url: 'https://example.zendesk.com/tickets/5001' }. The email node returns a success response with messageId.",
+			"successCriteria": "The workflow runs without errors. An email is sent to alice@example.com. The email subject or body contains the ticket title ('Charged twice for July invoice') and the Zendesk URL. NO email is sent to bob or carol. The Switch routed correctly based on category='billing'."
+		},
+		{
+			"name": "technical-ticket",
+			"description": "A technical-category ticket routes to bob@example.com",
+			"dataSetup": "The webhook receives a POST at /zendesk-new-ticket with body { id: 5002, subject: 'API returning 500 on /workflows endpoint', category: 'technical', url: 'https://example.zendesk.com/tickets/5002' }. The email node returns a success response.",
+			"successCriteria": "The workflow runs without errors. An email is sent to bob@example.com. The email contains the ticket title and Zendesk URL. NO email is sent to alice or carol. The Switch routed correctly based on category='technical'."
+		},
+		{
+			"name": "onboarding-ticket",
+			"description": "An onboarding-category ticket routes to carol@example.com",
+			"dataSetup": "The webhook receives a POST at /zendesk-new-ticket with body { id: 5003, subject: 'New to n8n — where do I start?', category: 'onboarding', url: 'https://example.zendesk.com/tickets/5003' }. The email node returns a success response.",
+			"successCriteria": "The workflow runs without errors. An email is sent to carol@example.com. The email contains the ticket title and Zendesk URL. NO email is sent to alice or bob. The Switch routed correctly based on category='onboarding'."
+		}
+	]
+}

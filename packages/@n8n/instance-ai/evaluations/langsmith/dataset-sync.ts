@@ -22,7 +22,6 @@ import type { EvalLogger } from '../harness/logger';
  * workflow a scenario belongs to (metadata is hidden by default).
  */
 export const datasetExampleInputsSchema = z.object({
-	prompt: z.string(),
 	testCaseFile: z.string(),
 	scenarioName: z.string(),
 	scenarioDescription: z.string(),
@@ -101,7 +100,6 @@ export async function syncDataset(
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
 
 		const inputs: DatasetExampleInputs = {
-			prompt: scenario.prompt,
 			testCaseFile: scenario.testCaseFile,
 			scenarioName: scenario.scenarioName,
 			scenarioDescription: scenario.scenarioDescription,
@@ -177,7 +175,6 @@ export async function syncDataset(
 // ---------------------------------------------------------------------------
 
 interface FlatScenario {
-	prompt: string;
 	testCaseFile: string;
 	scenarioName: string;
 	scenarioDescription: string;
@@ -197,11 +194,10 @@ interface FlatScenario {
 function buildRoundRobinScenarios(
 	testCasesWithFiles: Array<{
 		testCase: {
-			prompt: string;
 			complexity?: 'simple' | 'medium' | 'complex';
 			tags?: string[];
 			triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-			scenarios: Array<{
+			executionScenarios: Array<{
 				name: string;
 				description: string;
 				dataSetup: string;
@@ -212,14 +208,16 @@ function buildRoundRobinScenarios(
 	}>,
 ): FlatScenario[] {
 	const result: FlatScenario[] = [];
-	const maxScenarios = Math.max(...testCasesWithFiles.map((tc) => tc.testCase.scenarios.length), 0);
+	const maxScenarios = Math.max(
+		...testCasesWithFiles.map((tc) => tc.testCase.executionScenarios.length),
+		0,
+	);
 
 	for (let i = 0; i < maxScenarios; i++) {
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenario = testCase.scenarios[i];
+			const scenario = testCase.executionScenarios[i];
 			if (scenario) {
 				result.push({
-					prompt: testCase.prompt,
 					testCaseFile: fileSlug,
 					scenarioName: scenario.name,
 					scenarioDescription: scenario.description,
@@ -241,7 +239,6 @@ function buildRoundRobinScenarios(
 
 const existingInputsSchema = z
 	.object({
-		prompt: z.string().default(''),
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
 		scenarioDescription: z.string().default(''),
@@ -266,7 +263,6 @@ function hasInputsChanged(existing: unknown, incoming: DatasetExampleInputs): bo
 	if (!parsed.success) return true;
 	const e = parsed.data;
 	return (
-		e.prompt !== incoming.prompt ||
 		e.testCaseFile !== incoming.testCaseFile ||
 		e.dataSetup !== incoming.dataSetup ||
 		e.successCriteria !== incoming.successCriteria ||

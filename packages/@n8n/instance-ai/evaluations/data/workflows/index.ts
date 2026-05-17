@@ -29,14 +29,28 @@ function parseSubstringList(value: string | undefined): string[] {
 		.filter((s) => s.length > 0);
 }
 
-function getJsonFiles(filter?: string, exclude?: string): string[] {
-	const dir = __dirname;
-	let files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+/**
+ * Directories scanned for test-case JSON files. Single-prompt scenarios live
+ * under `workflows/`; multi-turn conversation scenarios live under
+ * `conversations/`. The loader walks both and merges by basename.
+ *
+ * Slugs (basenames) MUST be unique across directories — they're used as
+ * LangSmith split keys and as the cache key in the build runner.
+ */
+const SCENARIO_DIRS = [__dirname, join(__dirname, '..', 'conversations')];
 
+function getJsonFiles(filter?: string, exclude?: string): string[] {
+	const allFiles = SCENARIO_DIRS.flatMap((dir) =>
+		readdirSync(dir)
+			.filter((f) => f.endsWith('.json'))
+			.map((f) => join(dir, f)),
+	);
+
+	let files = allFiles;
 	const includeTokens = parseSubstringList(filter);
 	if (includeTokens.length > 0) {
 		files = files.filter((f) => {
-			const lower = f.toLowerCase();
+			const lower = basename(f).toLowerCase();
 			return includeTokens.some((t) => lower.includes(t));
 		});
 	}
@@ -44,12 +58,12 @@ function getJsonFiles(filter?: string, exclude?: string): string[] {
 	const excludeTokens = parseSubstringList(exclude);
 	if (excludeTokens.length > 0) {
 		files = files.filter((f) => {
-			const lower = f.toLowerCase();
+			const lower = basename(f).toLowerCase();
 			return !excludeTokens.some((t) => lower.includes(t));
 		});
 	}
 
-	return files.map((f) => join(dir, f));
+	return files;
 }
 
 /** Load test cases with their file slugs (for LangSmith dataset sync derived IDs). */

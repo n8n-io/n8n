@@ -1,0 +1,60 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a workflow to back up form responses to a spreadsheet."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll use n8n's built-in data table to store the responses — that's the simplest option for keeping a record."
+		},
+		{
+			"role": "user",
+			"text": "No, use Google Sheets specifically, not the n8n data table. Document ID is 1AbCdEfGhIjKlMnOp, sheet name 'Form Responses'."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. Building a webhook trigger that appends each new response to Google Sheets at the document and sheet you specified."
+		},
+		{
+			"role": "user",
+			"text": "Use the plain 'append' operation, not 'appendOrUpdate'. I don't want deduplication — every submission should be a new row."
+		},
+		{
+			"role": "assistant",
+			"text": "Updated to plain append. Workflow is built."
+		},
+		{
+			"role": "user",
+			"text": "Also, the form posts to /form-submit. The workflow should respond to the webhook with a JSON message like { ok: true } so the form gets a clean confirmation."
+		},
+		{
+			"role": "assistant",
+			"text": "Adding a respond-to-webhook node returning { ok: true }."
+		},
+		{
+			"role": "user",
+			"text": "Looks good, thanks."
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"journey",
+		"build",
+		"plan-rejection",
+		"mid-build-correction",
+		"feature-addition",
+		"google-sheets",
+		"webhook"
+	],
+	"triggerType": "webhook",
+	"messageBudget": 7,
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Plan rejection + operation correction + feature addition all in one conversation; final workflow uses Google Sheets append (not data-table, not appendOrUpdate) and responds to the webhook",
+			"dataSetup": "The webhook receives a POST at /form-submit with body { name: 'Jane Doe', email: 'jane@example.com', message: 'Demo request' }. The Google Sheets append node returns a success response with the inserted row metadata.",
+			"successCriteria": "The workflow runs without errors. A webhook trigger is configured at path /form-submit accepting POST. A Google Sheets node appends a row to documentId '1AbCdEfGhIjKlMnOp', sheet 'Form Responses', using the 'append' operation (NOT 'appendOrUpdate'). The workflow contains a respond-to-webhook node (or equivalent) returning a JSON body that contains 'ok' or 'true'. The workflow does NOT contain any n8n data-table insert/append nodes."
+		}
+	]
+}

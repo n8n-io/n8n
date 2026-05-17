@@ -1,9 +1,14 @@
 {
-	"prompt": "Every hour, fetch all records from an Airtable table. Use the HTTP Request node to call GET https://api.airtable.com/v0/app123abc/Tasks with a Bearer token auth header — Airtable responds with a JSON object of the shape { \"records\": [...] } where each record has an id and a fields object. For each record, post a message to the Slack channel #daily-tasks containing the task name ({{ fields.Name }}) and status ({{ fields.Status }}). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every hour, fetch all records from an Airtable table. Use the HTTP Request node to call GET https://api.airtable.com/v0/app123abc/Tasks with a Bearer token auth header — Airtable responds with a JSON object of the shape { \"records\": [...] } where each record has an id and a fields object. For each record, post a message to the Slack channel #daily-tasks containing the task name ({{ fields.Name }}) and status ({{ fields.Status }}). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+		}
+	],
 	"complexity": "medium",
 	"tags": ["build", "schedule", "http-request", "airtable", "slack", "split-out"],
 	"triggerType": "schedule",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "Airtable returns a named 'records' array with 3 tasks; each is posted to Slack",

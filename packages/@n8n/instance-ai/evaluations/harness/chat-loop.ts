@@ -63,6 +63,8 @@ export async function startSseConnection(
 // Wait for all activity: run-finish -> background tasks -> possible new run
 // ---------------------------------------------------------------------------
 
+export type ConfirmationStrategy = (event: CapturedEvent) => Promise<InstanceAiConfirmRequest>;
+
 export interface WaitConfig {
 	client: N8nClient;
 	threadId: string;
@@ -71,6 +73,7 @@ export interface WaitConfig {
 	startTime: number;
 	timeoutMs: number;
 	logger: EvalLogger;
+	confirmationStrategy?: ConfirmationStrategy;
 }
 
 export async function waitForAllActivity(config: WaitConfig): Promise<void> {
@@ -173,6 +176,46 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 }
 
 // ---------------------------------------------------------------------------
+// Multi-turn conversation loop
+// ---------------------------------------------------------------------------
+
+export type NextMessageDecision = { kind: 'followUp'; message: string } | { kind: 'done' };
+
+export interface MultiTurnConfig extends WaitConfig {
+	nextMessageDecider: () => Promise<NextMessageDecision>;
+}
+
+export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
+	while (true) {
+		await waitForAllActivity(config);
+
+		if (Date.now() - config.startTime > config.timeoutMs) {
+			config.logger.verbose(
+				`[multi-turn] Timeout reached after ${String(Date.now() - config.startTime)}ms — exiting loop`,
+			);
+			return;
+		}
+
+		const decision = await config.nextMessageDecider();
+		if (decision.kind === 'done') {
+			config.logger.verbose('[multi-turn] Proxy returned done — exiting loop');
+			return;
+		}
+
+		config.logger.verbose(
+			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
+		);
+		try {
+			await config.client.sendMessage(config.threadId, decision.message);
+		} catch (error: unknown) {
+			const msg = error instanceof Error ? error.message : String(error);
+			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);
+			return;
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Confirmation auto-approval
 // ---------------------------------------------------------------------------
 
@@ -180,6 +223,7 @@ const confirmationRetries = new Map<string, number>();
 
 export async function processConfirmationRequests(config: WaitConfig): Promise<void> {
 	const confirmationEvents = config.events.filter((e) => e.type === 'confirmation-request');
+	const strategy = config.confirmationStrategy ?? defaultAutoApproveStrategy;
 
 	for (const event of confirmationEvents) {
 		const requestId = extractConfirmationRequestId(event);
@@ -193,21 +237,27 @@ export async function processConfirmationRequests(config: WaitConfig): Promise<v
 		}
 
 		if (retryCount === 0) {
-			config.logger.verbose(`[auto-approve] Approving confirmation: ${requestId}`);
+			config.logger.verbose(`[confirm] Responding to confirmation: ${requestId}`);
 		}
 
 		try {
-			await config.client.confirmAction(requestId, buildAutoApprovePayload(event));
+			const payload = await strategy(event);
+			await config.client.confirmAction(requestId, payload);
 			config.approvedRequests.add(requestId);
 			confirmationRetries.delete(requestId);
 		} catch (error: unknown) {
 			confirmationRetries.set(requestId, retryCount + 1);
 			const msg = error instanceof Error ? error.message : String(error);
 			config.logger.verbose(
-				`[auto-approve] Failed to approve ${requestId} (attempt ${String(retryCount + 1)}/${String(MAX_CONFIRMATION_RETRIES)}): ${msg}`,
+				`[confirm] Failed to respond to ${requestId} (attempt ${String(retryCount + 1)}/${String(MAX_CONFIRMATION_RETRIES)}): ${msg}`,
 			);
 		}
 	}
+}
+
+// eslint-disable-next-line @typescript-eslint/require-await
+async function defaultAutoApproveStrategy(event: CapturedEvent): Promise<InstanceAiConfirmRequest> {
+	return buildAutoApprovePayload(event);
 }
 
 /** Map a confirmation-request event to the most-permissive approval payload of the

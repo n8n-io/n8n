@@ -1,9 +1,14 @@
 {
-	"prompt": "Create a workflow that handles contact form submissions via a webhook. It should send an auto-reply email to the person who submitted the form, notify my team on Telegram, and log each submission to Google Sheets. For the Google Sheets node use documentId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms' and sheet name: 'Contact Submissions'. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a workflow that handles contact form submissions via a webhook. It should send an auto-reply email to the person who submitted the form, notify my team on Telegram, and log each submission to Google Sheets. For the Google Sheets node use documentId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms' and sheet name: 'Contact Submissions'. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+		}
+	],
 	"complexity": "medium",
 	"tags": ["build", "webhook", "gmail", "telegram", "google-sheets", "multi-action"],
 	"triggerType": "webhook",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "A valid contact form submission triggers all 3 actions",

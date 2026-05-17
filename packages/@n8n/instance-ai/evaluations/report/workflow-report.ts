@@ -10,7 +10,13 @@
 import fs from 'fs';
 import path from 'path';
 
-import type { WorkflowTestCaseResult, ScenarioResult } from '../types';
+import type {
+	ConversationMetrics,
+	ExecutionScenarioResult,
+	TraceNode,
+	TurnCounter,
+	WorkflowTestCaseResult,
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,7 +35,7 @@ function escapeHtml(str: string): string {
 // Scenario rendering
 // ---------------------------------------------------------------------------
 
-function renderScenario(sr: ScenarioResult, index: number): string {
+function renderScenario(sr: ExecutionScenarioResult, index: number): string {
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
 
@@ -61,7 +67,7 @@ function renderScenario(sr: ScenarioResult, index: number): string {
 	</div>`;
 }
 
-function renderScenarioDetail(sr: ScenarioResult): string {
+function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 	let html = '';
 
 	if (!sr.evalResult) {
@@ -187,11 +193,293 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 }
 
 // ---------------------------------------------------------------------------
+// Conversation metrics (per-turn deterministic counters)
+// ---------------------------------------------------------------------------
+
+function renderConversationMetrics(metrics: ConversationMetrics | undefined): string {
+	if (!metrics || metrics.perTurn.length === 0) return '';
+
+	const turnRows = metrics.perTurn.map((turn) => renderTurnRow(turn)).join('');
+	const finishBadge = metrics.reachedRunFinishCleanly
+		? '<span class="badge badge-pass">finished cleanly</span>'
+		: '<span class="badge badge-fail">incomplete</span>';
+
+	const byKindBits = Object.entries(metrics.confirmationAskedByKind)
+		.map(([kind, count]) => `${escapeHtml(kind)}×${String(count)}`)
+		.join(' · ');
+
+	const summary = [
+		`<strong>${String(metrics.turnCount)}</strong> turn${metrics.turnCount === 1 ? '' : 's'}`,
+		`<strong>${String(metrics.confirmationAskedTotal)}</strong> confirmation${metrics.confirmationAskedTotal === 1 ? '' : 's'} asked${byKindBits ? ` (${byKindBits})` : ''}`,
+		finishBadge,
+	].join(' · ');
+
+	return `<details class="section"><summary>Conversation metrics</summary>
+		<div class="conv-summary">${summary}</div>
+		<table class="conv-table">
+			<thead><tr>
+				<th>Turn</th><th>Tool calls</th><th>Tool errors</th><th>Confirmations</th>
+				<th>Replan after error</th><th>Repeat questions</th><th>Finish status</th>
+			</tr></thead>
+			<tbody>${turnRows}</tbody>
+		</table>
+	</details>`;
+}
+
+function renderTurnRow(turn: TurnCounter): string {
+	const status = turn.runFinishStatus ?? '—';
+	const statusClass =
+		turn.runFinishStatus === 'completed'
+			? 'turn-status-ok'
+			: turn.runFinishStatus === undefined
+				? 'turn-status-pending'
+				: 'turn-status-fail';
+	const confByKind = Object.entries(turn.confirmationAskedByKind)
+		.map(([kind, count]) => `${escapeHtml(kind)}×${String(count)}`)
+		.join(', ');
+	const confDetail = confByKind ? ` <span class="muted">(${confByKind})</span>` : '';
+	return `<tr>
+		<td>#${String(turn.turn)}</td>
+		<td>${String(turn.toolCallCount)}</td>
+		<td>${String(turn.toolErrorCount)}</td>
+		<td>${String(turn.confirmationAskedTotal)}${confDetail}</td>
+		<td>${String(turn.replanAfterErrorCount)}</td>
+		<td>${String(turn.repeatQuestionCount)}</td>
+		<td class="${statusClass}">${escapeHtml(status)}</td>
+	</tr>`;
+}
+
+// ---------------------------------------------------------------------------
+// Conversation transcript — chat-style view extracted from trace data
+// ---------------------------------------------------------------------------
+
+function renderConversationTranscript(trace: TraceNode[] | undefined): string {
+	if (!trace || trace.length === 0) return '';
+	const turns = trace.filter((node) => node.name === 'message_turn');
+	if (turns.length === 0) return '';
+
+	const turnsHtml = turns.map((turn, i) => renderTranscriptTurn(turn, i + 1)).join('');
+
+	return `<details class="section" open><summary>Conversation transcript</summary>
+		<div class="transcript">${turnsHtml}</div>
+	</details>`;
+}
+
+function plannedFollowUpType(message: string): string | null {
+	if (!message.startsWith('<planned-task-follow-up')) return null;
+	const match = message.match(/type="([^"]+)"/);
+	return match ? match[1] : 'unknown';
+}
+
+function renderTranscriptTurn(turn: TraceNode, turnNum: number): string {
+	const userMessage = pickString(turn.inputs, 'message');
+	const assistantResponse = pickString(turn.outputs, 'response');
+	const reasoning = collectReasoning(turn);
+	const toolsUsed = collectToolNames(turn);
+	const followUpType = plannedFollowUpType(userMessage);
+
+	const headerLabel = followUpType
+		? `Turn ${String(turnNum)} — internal ${followUpType}`
+		: `Turn ${String(turnNum)}`;
+	const userIcon = followUpType ? '📋' : '👤';
+	const userClass = followUpType
+		? 'transcript-line transcript-internal'
+		: 'transcript-line transcript-user';
+
+	const parts: string[] = [`<div class="transcript-turn-header">${headerLabel}</div>`];
+	if (userMessage) {
+		// For internal follow-ups, the message body is a long JSON marker —
+		// collapse it behind a details so the transcript stays readable but
+		// the full payload is one click away.
+		if (followUpType) {
+			parts.push(
+				`<details class="${userClass}"><summary><span class="transcript-icon">${userIcon}</span><span class="transcript-text">orchestrator self-message (${escapeHtml(followUpType)})</span></summary><pre class="json-block"><code>${escapeHtml(userMessage)}</code></pre></details>`,
+			);
+		} else {
+			parts.push(
+				`<div class="${userClass}"><span class="transcript-icon">${userIcon}</span><span class="transcript-text">${escapeHtml(userMessage)}</span></div>`,
+			);
+		}
+	}
+	if (assistantResponse) {
+		parts.push(
+			`<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(assistantResponse)}</span></div>`,
+		);
+	}
+	if (reasoning) {
+		parts.push(
+			`<details class="transcript-aside"><summary>💭 reasoning</summary><div class="transcript-reasoning">${escapeHtml(reasoning)}</div></details>`,
+		);
+	}
+	if (toolsUsed.length > 0) {
+		parts.push(
+			`<div class="transcript-tools">🔧 ${toolsUsed.map((t) => escapeHtml(t)).join(', ')}</div>`,
+		);
+	}
+	return `<div class="transcript-turn">${parts.join('')}</div>`;
+}
+
+function pickString(value: unknown, key: string): string {
+	if (!isPlainObject(value)) return '';
+	const v = value[key];
+	return typeof v === 'string' ? v : '';
+}
+
+function collectReasoning(turn: TraceNode): string {
+	const parts: string[] = [];
+	walkDescendants(turn, (node) => {
+		if (node.runType !== 'llm' || !isPlainObject(node.outputs)) return;
+		const messages = node.outputs.messages;
+		if (!Array.isArray(messages)) return;
+		for (const msg of messages) {
+			if (!isPlainObject(msg) || !Array.isArray(msg.content)) continue;
+			for (const item of msg.content) {
+				if (isPlainObject(item) && item.type === 'thinking' && typeof item.text === 'string') {
+					parts.push(item.text.trim());
+				}
+			}
+		}
+	});
+	return parts.join('\n\n');
+}
+
+function collectToolNames(turn: TraceNode): string[] {
+	const tools = new Set<string>();
+	walkDescendants(turn, (node) => {
+		if (node.runType === 'tool') tools.add(node.name);
+	});
+	return [...tools].sort();
+}
+
+function walkDescendants(node: TraceNode, visit: (n: TraceNode) => void): void {
+	for (const child of node.children) {
+		visit(child);
+		walkDescendants(child, visit);
+	}
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// ---------------------------------------------------------------------------
+// Conversation trace (full LangSmith run tree — for drill-in)
+// ---------------------------------------------------------------------------
+
+const TRACE_TYPE_META: Record<string, { icon: string; cssClass: string }> = {
+	chain: { icon: '⛓', cssClass: 'trace-type-chain' },
+	llm: { icon: '🧠', cssClass: 'trace-type-llm' },
+	tool: { icon: '🔧', cssClass: 'trace-type-tool' },
+	agent: { icon: '👥', cssClass: 'trace-type-agent' },
+	retriever: { icon: '🔍', cssClass: 'trace-type-retriever' },
+	prompt: { icon: '📝', cssClass: 'trace-type-prompt' },
+	parser: { icon: '🔄', cssClass: 'trace-type-parser' },
+	embedding: { icon: '🧬', cssClass: 'trace-type-embedding' },
+};
+
+function renderConversationTrace(
+	trace: TraceNode[] | undefined,
+	threadId: string | undefined,
+): string {
+	if (!trace || trace.length === 0) {
+		if (!threadId) return '';
+		return `<details class="section"><summary>Conversation trace</summary>
+			<div class="muted">No trace data pulled from LangSmith (thread <code>${escapeHtml(threadId)}</code>). The eval still recorded per-turn counters above.</div>
+		</details>`;
+	}
+
+	const totalRuns = countNodes(trace);
+	const totalMs = trace.reduce((sum, root) => sum + (root.durationMs ?? 0), 0);
+
+	const summary = [
+		`<strong>${String(totalRuns)}</strong> run${totalRuns === 1 ? '' : 's'}`,
+		`across <strong>${String(trace.length)}</strong> root${trace.length === 1 ? '' : 's'}`,
+		`<strong>${(totalMs / 1000).toFixed(1)}s</strong> total`,
+	].join(' · ');
+
+	const treeHtml = trace.map((node) => renderTraceNode(node, 0)).join('');
+
+	return `<details class="section"><summary>Conversation trace</summary>
+		<div class="trace-summary">${summary}</div>
+		<div class="trace-tree">${treeHtml}</div>
+	</details>`;
+}
+
+function countNodes(nodes: TraceNode[]): number {
+	let n = 0;
+	for (const node of nodes) {
+		n += 1 + countNodes(node.children);
+	}
+	return n;
+}
+
+function renderTraceNode(node: TraceNode, depth: number): string {
+	const meta = TRACE_TYPE_META[node.runType] ?? {
+		icon: '·',
+		cssClass: 'trace-type-other',
+	};
+	const lat = node.durationMs !== null ? `${String(Math.round(node.durationMs))}ms` : '—';
+	const tokens = node.tokenUsage
+		? `${String(node.tokenUsage.total ?? (node.tokenUsage.input ?? 0) + (node.tokenUsage.output ?? 0))} tok`
+		: '';
+	const errorBadge = node.error ? '<span class="trace-error-badge">error</span>' : '';
+
+	const bodyParts: string[] = [];
+
+	if (node.error) {
+		bodyParts.push(`<div class="trace-error-box">${escapeHtml(node.error)}</div>`);
+	}
+
+	if (node.inputs !== null && node.inputs !== undefined) {
+		bodyParts.push(
+			`<details class="trace-io"><summary>Input</summary><pre class="json-block"><code>${escapeHtml(stableStringify(node.inputs))}</code></pre></details>`,
+		);
+	}
+
+	if (node.outputs !== null && node.outputs !== undefined) {
+		bodyParts.push(
+			`<details class="trace-io"><summary>Output</summary><pre class="json-block"><code>${escapeHtml(stableStringify(node.outputs))}</code></pre></details>`,
+		);
+	}
+
+	if (Object.keys(node.metadata).length > 0) {
+		bodyParts.push(
+			`<details class="trace-io"><summary>Metadata</summary><pre class="json-block"><code>${escapeHtml(stableStringify(node.metadata))}</code></pre></details>`,
+		);
+	}
+
+	if (node.children.length > 0) {
+		bodyParts.push(
+			`<div class="trace-children">${node.children.map((c) => renderTraceNode(c, depth + 1)).join('')}</div>`,
+		);
+	}
+
+	return `<details class="trace-node ${meta.cssClass}">
+		<summary>
+			<span class="trace-icon">${meta.icon}</span>
+			<span class="trace-type">${escapeHtml(node.runType)}</span>
+			<span class="trace-name">${escapeHtml(node.name)}</span>
+			<span class="trace-meta">${lat}${tokens ? ' · ' + tokens : ''}${node.children.length > 0 ? ' · ' + String(node.children.length) + ' child' + (node.children.length === 1 ? '' : 'ren') : ''}</span>
+			${errorBadge}
+		</summary>
+		<div class="trace-body">${bodyParts.join('')}</div>
+	</details>`;
+}
+
+function stableStringify(value: unknown): string {
+	try {
+		return JSON.stringify(value, null, 2);
+	} catch {
+		return String(value);
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Workflow summary
 // ---------------------------------------------------------------------------
 
 function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
-	const firstEval = result.scenarioResults[0]?.evalResult;
+	const firstEval = result.executionScenarioResults[0]?.evalResult;
 
 	let nodesHtml = '';
 	if (firstEval) {
@@ -227,8 +515,8 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	const passCount = result.scenarioResults.filter((sr) => sr.success).length;
-	const totalCount = result.scenarioResults.length;
+	const passCount = result.executionScenarioResults.filter((sr) => sr.success).length;
+	const totalCount = result.executionScenarioResults.length;
 	const allPass = passCount === totalCount && totalCount > 0;
 	const statusClass = result.workflowBuildSuccess ? (allPass ? 'pass' : 'mixed') : 'fail';
 
@@ -241,11 +529,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			? `<span class="badge badge-${allPass ? 'pass' : 'fail'}">${String(passCount)}/${String(totalCount)}</span>`
 			: '';
 
-	const prompt = result.testCase.prompt;
+	const prompt = result.testCase.conversation[0].text;
 	const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
 
 	// Inline scenario indicators for quick triage without expanding
-	const scenarioIndicators = result.scenarioResults
+	const scenarioIndicators = result.executionScenarioResults
 		.map(
 			(sr) =>
 				`<span class="scenario-indicator ${sr.success ? 'pass' : 'fail'}" title="${escapeHtml(sr.scenario.name)}">${sr.success ? '✓' : '✗'} ${escapeHtml(sr.scenario.name)}</span>`,
@@ -253,8 +541,8 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		.join(' ');
 
 	let scenariosHtml = '';
-	if (result.scenarioResults.length > 0) {
-		scenariosHtml = result.scenarioResults
+	if (result.executionScenarioResults.length > 0) {
+		scenariosHtml = result.executionScenarioResults
 			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i))
 			.join('');
 	} else if (!result.workflowBuildSuccess) {
@@ -278,6 +566,9 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		</div>
 		<div class="test-case-detail">
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
+			${renderConversationMetrics(result.conversationMetrics)}
+			${renderConversationTranscript(result.conversationTrace)}
+			${renderConversationTrace(result.conversationTrace, result.threadId)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}
 		</div>
@@ -291,7 +582,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 export function generateWorkflowReport(results: WorkflowTestCaseResult[]): string {
 	const totalTestCases = results.length;
 	const builtCount = results.filter((r) => r.workflowBuildSuccess).length;
-	const allScenarios = results.flatMap((r) => r.scenarioResults);
+	const allScenarios = results.flatMap((r) => r.executionScenarioResults);
 	const passCount = allScenarios.filter((sr) => sr.success).length;
 	const failCount = allScenarios.length - passCount;
 	const totalScenarios = allScenarios.length;
@@ -442,6 +733,61 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 
 	/* Utilities */
 	.muted { color: var(--text-muted); font-size: 12px; }
+
+	/* Conversation metrics */
+	.conv-summary { color: var(--text-secondary); font-size: 12px; padding: 6px 0; }
+	.conv-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+	.conv-table th, .conv-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border-light); }
+	.conv-table th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+	.conv-table td { font-family: monospace; }
+	.turn-status-ok { color: var(--color-pass); }
+	.turn-status-fail { color: var(--color-fail); }
+	.turn-status-pending { color: var(--text-muted); }
+
+	/* Conversation transcript */
+	.transcript { padding: 4px 0; }
+	.transcript-turn { padding: 8px 0; border-bottom: 1px dashed var(--border-light); }
+	.transcript-turn:last-child { border-bottom: none; }
+	.transcript-turn-header { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+	.transcript-line { display: flex; gap: 8px; padding: 4px 0; align-items: flex-start; font-size: 13px; line-height: 1.5; }
+	.transcript-icon { width: 18px; text-align: center; flex-shrink: 0; }
+	.transcript-text { color: var(--text-primary); white-space: pre-wrap; }
+	.transcript-user .transcript-text { color: var(--text-primary); }
+	.transcript-assistant .transcript-text { color: var(--text-secondary); }
+	.transcript-internal > summary { cursor: pointer; padding: 4px 0; font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; align-items: flex-start; }
+	.transcript-internal > summary:hover { color: var(--text-secondary); }
+	.transcript-internal .transcript-text { color: var(--text-muted); font-style: italic; }
+	.transcript-aside { margin: 4px 0 4px 26px; }
+	.transcript-aside > summary { cursor: pointer; color: var(--text-muted); font-size: 11px; padding: 2px 0; }
+	.transcript-reasoning { color: var(--text-muted); font-size: 12px; line-height: 1.5; padding: 6px 8px; background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; margin-top: 4px; }
+	.transcript-tools { color: var(--text-muted); font-size: 11px; font-family: monospace; padding: 4px 0 0 26px; }
+
+	/* Conversation trace */
+	.trace-summary { color: var(--text-muted); font-size: 12px; padding: 4px 0 8px; }
+	.trace-tree > .trace-node { margin: 2px 0; }
+	.trace-node { border-left: 2px solid var(--border-light); padding-left: 8px; margin: 2px 0; }
+	.trace-node > summary { cursor: pointer; padding: 3px 4px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+	.trace-node > summary:hover { background: var(--bg-tertiary); }
+	.trace-node[open] > summary { background: var(--bg-tertiary); }
+	.trace-icon { width: 18px; text-align: center; }
+	.trace-type { font-family: monospace; font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg-tertiary); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+	.trace-name { color: var(--text-primary); font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.trace-meta { color: var(--text-muted); font-size: 11px; font-family: monospace; white-space: nowrap; }
+	.trace-error-badge { color: var(--color-fail); background: var(--color-fail-bg); padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+	.trace-body { margin-left: 16px; padding: 4px 0; }
+	.trace-io { margin: 4px 0; }
+	.trace-io > summary { cursor: pointer; color: var(--color-info); font-size: 11px; padding: 2px 0; }
+	.trace-error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin: 4px 0; border-left: 3px solid var(--color-fail); white-space: pre-wrap; }
+	.trace-children { margin-top: 4px; }
+	.trace-type-chain { border-left-color: var(--color-info); }
+	.trace-type-llm { border-left-color: var(--color-purple); }
+	.trace-type-tool { border-left-color: var(--color-pass); }
+	.trace-type-agent { border-left-color: var(--color-warn); }
+	.trace-type-retriever { border-left-color: var(--text-muted); }
+	.trace-type-prompt { border-left-color: var(--text-muted); }
+	.trace-type-parser { border-left-color: var(--text-muted); }
+	.trace-type-embedding { border-left-color: var(--text-muted); }
+	.trace-type-other { border-left-color: var(--border); }
 </style>
 </head>
 <body>
