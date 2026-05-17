@@ -4738,6 +4738,9 @@ importers:
       '@types/autocannon':
         specifier: ^7.12.7
         version: 7.12.7
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.12
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10

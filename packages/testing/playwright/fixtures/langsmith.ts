@@ -20,10 +20,17 @@ export const langsmithFixtures: Fixtures<LangSmithFixtures, LangSmithWorkerFixtu
 			const client = process.env.LANGSMITH_API_KEY ? new Client() : undefined;
 			await use(client);
 			if (client) {
-				await Promise.race([
-					client.awaitPendingTraceBatches(),
-					new Promise<void>((resolve) => setTimeout(resolve, 30_000)),
-				]);
+				let timer: NodeJS.Timeout | undefined;
+				try {
+					await Promise.race([
+						client.awaitPendingTraceBatches(),
+						new Promise<void>((resolve) => {
+							timer = setTimeout(resolve, 30_000);
+						}),
+					]);
+				} finally {
+					if (timer) clearTimeout(timer);
+				}
 			}
 		},
 		{ scope: 'worker' },
@@ -37,6 +44,7 @@ export const langsmithFixtures: Fixtures<LangSmithFixtures, LangSmithWorkerFixtu
 				run_type: 'chain',
 				client: langsmithClient,
 				project_name: process.env.LANGSMITH_PROJECT,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				on_start: (runTree) => {
 					capturedRunId = runTree?.id;
 				},

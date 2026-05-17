@@ -13,6 +13,7 @@ import { LANGSMITH_RUN_ID_ANNOTATION } from '../fixtures/langsmith';
 
 const log = debug('langsmith-eval');
 
+// eslint-disable-next-line import-x/no-default-export
 export default class LangSmithEvalReporter implements Reporter {
 	private client: Client | undefined;
 
@@ -47,7 +48,7 @@ export default class LangSmithEvalReporter implements Reporter {
 				this.feedbackPromises.push(
 					this.client
 						.createFeedback(runId, 'passed', { score, comment })
-						.catch((err: unknown) => log('feedback failed runId=%s err=%o', runId, err)),
+						.catch((error: unknown) => log('feedback failed runId=%s err=%o', runId, error)),
 				);
 			}
 		}

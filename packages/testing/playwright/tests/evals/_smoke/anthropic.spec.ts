@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import Anthropic from '@anthropic-ai/sdk';
 
 import { test, expect } from '../../../fixtures/eval-base';
