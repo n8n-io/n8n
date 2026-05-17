@@ -113,6 +113,7 @@ jobs:
           ota execution topology --json .
 
       - name: Smoke ota up + doctor (instant) [bash]
+        id: instant_bash
         if: matrix.run_shell == 'bash'
         shell: bash
         run: |
@@ -163,6 +164,7 @@ jobs:
         continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
 
       - name: Smoke ota up + doctor (instant) [pwsh]
+        id: instant_pwsh
         if: matrix.run_shell == 'pwsh'
         shell: pwsh
         run: |
@@ -205,6 +207,33 @@ jobs:
             }
           }
         continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
+
+      - name: Report packaged quickstart signal [windows]
+        if: ${{ always() && matrix.allow_packaged_quickstart_failure }}
+        shell: pwsh
+        run: |
+          $bashOutcome = '${{ steps.instant_bash.outcome }}'
+          $pwshOutcome = '${{ steps.instant_pwsh.outcome }}'
+
+          if ($bashOutcome -eq 'failure' -or $pwshOutcome -eq 'failure') {
+            Write-Host "::warning::Windows packaged quickstart signal failed (npx quickstart is unstable on this runner/shell path); contributor/backend proofs remain hard-gated on Linux/macOS."
+          } else {
+            Write-Host "Windows packaged quickstart signal passed."
+          }
+
+      - name: Upload packaged quickstart signal artifacts [windows]
+        if: ${{ always() && matrix.allow_packaged_quickstart_failure }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ota-packaged-quickstart-signal-${{ matrix.name }}
+          path: |
+            ota-up-instant.log
+            ota-up-instant.out.log
+            ota-up-instant.err.log
+            ota-doctor-instant.json
+            ota-doctor-instant.err
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Proof contributor backend workflow [bash]
         if: matrix.full_backend && matrix.run_shell == 'bash'
