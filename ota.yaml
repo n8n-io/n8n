@@ -288,8 +288,6 @@ tasks:
     requirements:
       toolchains:
         - node
-      tools:
-        npx: "*"
     runtime:
       kind: service
       surfaces:
