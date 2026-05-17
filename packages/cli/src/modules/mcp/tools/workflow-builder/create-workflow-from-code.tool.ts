@@ -1,6 +1,11 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
+import {
+	createNodeOutputsResolver,
+	findInvalidAiToolSources,
+	formatInvalidAiToolSourceMessage,
+} from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -149,6 +154,24 @@ export const createCreateWorkflowFromCodeTool = (
 			const result = await handler.parseAndValidate(strippedCode);
 
 			const workflowJson = result.workflow;
+
+			const invalidToolSources = findInvalidAiToolSources(
+				workflowJson,
+				createNodeOutputsResolver(nodeTypes),
+			);
+			if (invalidToolSources.length > 0) {
+				const errorMessage = formatInvalidAiToolSourceMessage(invalidToolSources);
+
+				telemetryPayload.results = { success: false, error: errorMessage };
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				const output = { error: errorMessage };
+				return {
+					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+					structuredContent: output,
+					isError: true,
+				};
+			}
 
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {

@@ -5,6 +5,13 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
+import {
+	createNodeOutputsResolver,
+	findInvalidAiToolSources,
+	formatInvalidAiToolSourceMessage,
+} from './connection-structure-check';
+
+import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -50,6 +57,7 @@ const outputSchema = {
 export const createValidateWorkflowCodeTool = (
 	user: User,
 	telemetry: Telemetry,
+	nodeTypes: NodeTypes,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
@@ -79,6 +87,24 @@ export const createValidateWorkflowCodeTool = (
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+
+			const invalidToolSources = findInvalidAiToolSources(
+				result.workflow,
+				createNodeOutputsResolver(nodeTypes),
+			);
+			if (invalidToolSources.length > 0) {
+				const errorMessage = formatInvalidAiToolSourceMessage(invalidToolSources);
+
+				telemetryPayload.results = { success: false, error: errorMessage };
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				const output = { valid: false, errors: [errorMessage] };
+				return {
+					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+					structuredContent: output,
+					isError: true,
+				};
+			}
 
 			telemetryPayload.results = {
 				success: true,
