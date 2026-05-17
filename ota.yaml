@@ -8,13 +8,15 @@ execution:
   contexts:
     host:
       backend: native
+toolchains:
+  node:
+    provider: corepack
+    version: ">=22.16"
+    package_managers:
+      pnpm: "10.32.1"
 tools:
-  pnpm:
+  npx:
     version: ">=10.22.0"
-    acquisition:
-      provider: corepack
-      package: pnpm
-      version: "10.22.0"
 native_prerequisites:
   node-native-build-tools:
     description: Host-native build tooling for workspace packages with native addons
@@ -78,10 +80,8 @@ tasks:
     category: setup
     run: pnpm install
     requirements:
-      runtimes:
-        node: ">=24"
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       native:
         - node-native-build-tools
     depends_on:
@@ -96,8 +96,8 @@ tasks:
     category: build
     run: pnpm build
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -112,8 +112,8 @@ tasks:
     category: build
     run: pnpm build:docker
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -127,8 +127,8 @@ tasks:
     category: setup
     run: pnpm build
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -140,8 +140,8 @@ tasks:
     category: test
     run: pnpm typecheck
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -153,8 +153,8 @@ tasks:
     category: test
     run: pnpm lint
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -166,8 +166,8 @@ tasks:
     category: test
     run: pnpm test
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -182,8 +182,8 @@ tasks:
     category: dev
     run: pnpm dev
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -205,8 +205,8 @@ tasks:
     category: dev
     run: pnpm dev:be
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -224,8 +224,8 @@ tasks:
     category: dev
     run: pnpm dev:fe
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -243,8 +243,8 @@ tasks:
     category: dev
     run: pnpm dev:ai
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -262,8 +262,8 @@ tasks:
     category: dev
     run: pnpm start
     requirements:
-      tools:
-        pnpm: ">=10.22.0"
+      toolchains:
+        - node
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -286,8 +286,8 @@ tasks:
         - --yes
         - n8n
     requirements:
-      runtimes:
-        node: ">=24"
+      toolchains:
+        - node
       tools:
         npx: "*"
     runtime:
