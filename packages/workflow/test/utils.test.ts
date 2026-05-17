@@ -700,6 +700,26 @@ describe('isDomainAllowed', () => {
 			).toBe(true);
 		});
 
+		it('should keep matching after repeated allow-list normalization', () => {
+			const allowedDomains = 'api.example.com,*.example.org';
+
+			expect(isDomainAllowed('https://api.example.com', { allowedDomains })).toBe(true);
+			expect(isDomainAllowed('https://sub.example.org', { allowedDomains })).toBe(true);
+			expect(isDomainAllowed('https://example.org', { allowedDomains })).toBe(false);
+
+			for (let i = 0; i < 130; i++) {
+				expect(
+					isDomainAllowed(`https://site-${i}.example.com`, {
+						allowedDomains: `site-${i}.example.com`,
+					}),
+				).toBe(true);
+			}
+
+			expect(isDomainAllowed('https://api.example.com', { allowedDomains })).toBe(true);
+			expect(isDomainAllowed('https://sub.example.org', { allowedDomains })).toBe(true);
+			expect(isDomainAllowed('https://example.org', { allowedDomains })).toBe(false);
+		});
+
 		it('should block non-matching domains', () => {
 			expect(
 				isDomainAllowed('https://malicious.com', {
