@@ -1,4 +1,4 @@
-name: 'Test: Ota contract smoke'
+name: 'Test: Ota contract matrix'
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
       - '.github/workflows/test-ota-contract-smoke.yml'
 
 concurrency:
-  group: ota-contract-smoke-${{ github.workflow }}-${{ github.ref }}
+  group: ota-contract-matrix-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -24,7 +24,7 @@ env:
 
 jobs:
   native:
-    name: Native smoke (${{ matrix.name }})
+    name: Ota Contract Matrix (Native - ${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -116,7 +116,7 @@ jobs:
           ota tasks --workflow instant .
           ota execution topology --json .
 
-      - name: Smoke ota up + doctor (instant) [bash]
+      - name: Validate instant workflow readiness [bash]
         id: instant_bash
         if: matrix.run_shell == 'bash'
         shell: bash
@@ -167,7 +167,7 @@ jobs:
           fi
         continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
 
-      - name: Smoke ota up + doctor (instant) [pwsh]
+      - name: Validate instant workflow readiness [pwsh]
         id: instant_pwsh
         if: matrix.run_shell == 'pwsh'
         shell: pwsh
@@ -266,7 +266,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ota-contract-smoke-${{ matrix.name }}
+          name: ota-contract-matrix-${{ matrix.name }}
           path: |
             ota-up-instant.log
             ota-up-instant.out.log
@@ -277,7 +277,7 @@ jobs:
           retention-days: 7
 
   docker-linux:
-    name: Docker smoke (ubuntu)
+    name: Ota Contract Matrix (Container - ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -312,7 +312,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ota-contract-smoke-docker-linux
+          name: ota-contract-matrix-docker-linux
           path: |
             .ota/
           retention-days: 7
