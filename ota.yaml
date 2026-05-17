@@ -17,6 +17,7 @@ toolchains:
 tools:
   npx:
     version: ">=10.22.0"
+  docker: "*"
 native_prerequisites:
   node-native-build-tools:
     description: Host-native build tooling for workspace packages with native addons
@@ -82,6 +83,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       native:
         - node-native-build-tools
     depends_on:
@@ -98,6 +101,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -114,6 +119,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -129,6 +136,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -142,6 +151,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -155,6 +166,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -168,6 +181,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -184,6 +199,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -207,6 +224,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -226,6 +245,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -245,6 +266,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:
@@ -264,6 +287,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      tools:
+        pnpm: "10.32.1"
       checks:
         - workspace-dependencies-installed
     depends_on:

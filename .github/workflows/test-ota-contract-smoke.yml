@@ -2,6 +2,10 @@ name: 'Test: Ota contract smoke'
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'ota.yaml'
+      - '.github/workflows/test-ota-contract-smoke.yml'
   push:
     paths:
       - 'ota.yaml'
