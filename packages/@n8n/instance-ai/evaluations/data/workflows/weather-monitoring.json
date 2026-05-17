@@ -2,7 +2,7 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Hourly weather monitoring for three cities — and an alert if it gets too hot anywhere."
+			"text": "I want a workflow that monitors weather hourly for three cities and alerts me if it gets too hot anywhere."
 		},
 		{
 			"role": "assistant",
