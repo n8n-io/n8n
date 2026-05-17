@@ -289,7 +289,7 @@ describe('McpOAuthService', () => {
 			expect(oauthSessionService.clearSession).toHaveBeenCalledWith(res);
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith({
-				error: 'invalid_resource',
+				error: 'invalid_target',
 				error_description: 'Invalid resource indicator',
 			});
 		});
@@ -534,7 +534,7 @@ describe('McpOAuthService', () => {
 			);
 		});
 
-		it('should throw invalid_resource for invalid resource indicators', async () => {
+		it('should reject invalid resource indicators on refresh token exchange', async () => {
 			const client = {
 				client_id: 'client-123',
 				client_name: 'Test Client',

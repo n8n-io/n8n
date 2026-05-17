@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 
 import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
 import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors';
 
 /**
  * Handles OAuth 2.1 authorization code lifecycle for MCP server
@@ -61,12 +62,12 @@ export class McpOAuthAuthorizationCodeService {
 		});
 
 		if (!authRecord) {
-			throw new Error('Invalid authorization code');
+			throw new OAuthError('invalid_grant', 'Invalid authorization code');
 		}
 
 		if (authRecord.expiresAt < Date.now()) {
 			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code expired');
+			throw new OAuthError('invalid_grant', 'Authorization code expired');
 		}
 
 		return authRecord;

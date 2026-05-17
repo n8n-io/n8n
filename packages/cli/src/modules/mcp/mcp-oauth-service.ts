@@ -188,7 +188,7 @@ export class McpOAuthService implements OAuthServerProvider {
 				});
 				this.oauthSessionService.clearSession(res);
 				res.status(400).json({
-					error: 'invalid_resource',
+					error: 'invalid_target',
 					error_description: 'Invalid resource indicator',
 				});
 				return;
@@ -224,7 +224,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		);
 
 		if (!authRecord) {
-			throw new Error('Invalid authorization code');
+			throw new OAuthError('invalid_grant', 'Invalid authorization code');
 		}
 
 		// Convert URL to string if provided
