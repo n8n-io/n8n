@@ -29,22 +29,10 @@ function parseSubstringList(value: string | undefined): string[] {
 		.filter((s) => s.length > 0);
 }
 
-/**
- * Directories scanned for test-case JSON files. Single-prompt scenarios live
- * under `workflows/`; multi-turn conversation scenarios live under
- * `conversations/`. The loader walks both and merges by basename.
- *
- * Slugs (basenames) MUST be unique across directories — they're used as
- * LangSmith split keys and as the cache key in the build runner.
- */
-const SCENARIO_DIRS = [__dirname, join(__dirname, '..', 'conversations')];
-
 function getJsonFiles(filter?: string, exclude?: string): string[] {
-	const allFiles = SCENARIO_DIRS.flatMap((dir) =>
-		readdirSync(dir)
-			.filter((f) => f.endsWith('.json'))
-			.map((f) => join(dir, f)),
-	);
+	const allFiles = readdirSync(__dirname)
+		.filter((f) => f.endsWith('.json'))
+		.map((f) => join(__dirname, f));
 
 	let files = allFiles;
 	const includeTokens = parseSubstringList(filter);

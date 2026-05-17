@@ -32,9 +32,9 @@ jobs:
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 9 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
+      # 11 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
       # bump back to 8vcpu if contention shows up.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686'
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688'
     permissions:
       contents: read
       pull-requests: write

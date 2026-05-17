@@ -2,9 +2,26 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Create a workflow that handles contact form submissions via a webhook. It should send an auto-reply email to the person who submitted the form, notify my team on Telegram, and log each submission to Google Sheets. For the Google Sheets node use documentId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms' and sheet name: 'Contact Submissions'. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+			"text": "Our contact form posts to a webhook. I want to do a few things with each submission."
+		},
+		{
+			"role": "assistant",
+			"text": "What should happen on each submission?"
+		},
+		{
+			"role": "user",
+			"text": "Three things: auto-reply email to the person who filled the form, Telegram notification to my team, and log it to Google Sheets."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. For the Google Sheet, do you have a specific document and tab I should target?"
+		},
+		{
+			"role": "user",
+			"text": "Yes — documentId '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms', sheet name 'Contact Submissions'."
 		}
 	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "webhook", "gmail", "telegram", "google-sheets", "multi-action"],
 	"triggerType": "webhook",

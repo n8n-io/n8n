@@ -2,9 +2,26 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every day, get the posts made in the past day on 3 different Slack channels: #general (C04GENERAL01), #engineering (C04ENGINEER1), and #product (C04PRODUCT01). Summarize them using AI, and post the summary on #daily-digest (C04DAILYDG01). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+			"text": "I want a daily AI-generated digest of what's been said across a few Slack channels."
+		},
+		{
+			"role": "assistant",
+			"text": "Which channels should I read from, and where should the digest go?"
+		},
+		{
+			"role": "user",
+			"text": "Read from #general (C04GENERAL01), #engineering (C04ENGINEER1), and #product (C04PRODUCT01). Post the digest to #daily-digest (C04DAILYDG01)."
+		},
+		{
+			"role": "assistant",
+			"text": "What's the time window per run, and what time of day should the digest go out?"
+		},
+		{
+			"role": "user",
+			"text": "Past day. Run it daily — morning is fine."
 		}
 	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "slack", "ai", "schedule"],
 	"triggerType": "schedule",

@@ -28,19 +28,9 @@ const STUB_TEST_CASE = JSON.stringify({
 	scenarios: [],
 });
 
-const FAKE_CONVERSATIONS = ['journey-a-build-iterate.json', 'smoke-slack-clarification.json'];
-
 beforeEach(() => {
 	jest.clearAllMocks();
-	// Loader scans two directories: workflows/ and ../conversations/.
-	// Return scenario files for workflows/; conversation files for conversations/.
-	mockedReaddir.mockImplementation((dir) => {
-		const path = typeof dir === 'string' ? dir : '';
-		if (path.includes('conversations')) {
-			return FAKE_CONVERSATIONS as unknown as ReturnType<typeof readdirSync>;
-		}
-		return FAKE_FILES as unknown as ReturnType<typeof readdirSync>;
-	});
+	mockedReaddir.mockReturnValue(FAKE_FILES as unknown as ReturnType<typeof readdirSync>);
 	mockedReadFile.mockReturnValue(STUB_TEST_CASE);
 });
 
@@ -51,15 +41,13 @@ function slugs(filter?: string, exclude?: string): string[] {
 }
 
 describe('loadWorkflowTestCasesWithFiles', () => {
-	it('returns every .json slug from workflows/ and conversations/ when no filter or exclude is given', () => {
+	it('returns every .json slug from workflows/ when no filter or exclude is given', () => {
 		expect(slugs()).toEqual([
 			'contact-form-automation',
 			'cross-team-linear-report',
 			'daily-slack-summary',
 			'form-to-hubspot',
 			'github-notion-sync',
-			'journey-a-build-iterate',
-			'smoke-slack-clarification',
 			'weather-alert',
 			'weather-monitoring',
 		]);
@@ -67,13 +55,6 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 
 	it('drops non-json files even without filtering', () => {
 		expect(slugs()).not.toContain('README');
-	});
-
-	it('matches a substring across both directories', () => {
-		expect(slugs('journey,smoke')).toEqual([
-			'journey-a-build-iterate',
-			'smoke-slack-clarification',
-		]);
 	});
 
 	describe('--filter (substring include)', () => {
@@ -119,13 +100,11 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				'daily-slack-summary',
 				'form-to-hubspot',
 				'github-notion-sync',
-				'journey-a-build-iterate',
-				'smoke-slack-clarification',
 			]);
 		});
 
 		it('treats a comma-separated list as OR (any match excludes)', () => {
-			expect(slugs(undefined, 'weather,form-to-hubspot,journey,smoke')).toEqual([
+			expect(slugs(undefined, 'weather,form-to-hubspot')).toEqual([
 				'contact-form-automation',
 				'cross-team-linear-report',
 				'daily-slack-summary',

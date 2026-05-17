@@ -2,9 +2,26 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every hour, fetch all records from an Airtable table. Use the HTTP Request node to call GET https://api.airtable.com/v0/app123abc/Tasks with a Bearer token auth header — Airtable responds with a JSON object of the shape { \"records\": [...] } where each record has an id and a fields object. For each record, post a message to the Slack channel #daily-tasks containing the task name ({{ fields.Name }}) and status ({{ fields.Status }}). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+			"text": "Every hour, get our tasks from Airtable and ping each one to a Slack channel."
+		},
+		{
+			"role": "assistant",
+			"text": "Which Airtable table and which Slack channel?"
+		},
+		{
+			"role": "user",
+			"text": "Table at GET https://api.airtable.com/v0/app123abc/Tasks (Bearer auth via HTTP Request, not the Airtable node). Slack channel #daily-tasks."
+		},
+		{
+			"role": "assistant",
+			"text": "What should each Slack message contain?"
+		},
+		{
+			"role": "user",
+			"text": "The task name and status — both come from the record's `fields` object (fields.Name and fields.Status). Note Airtable returns a JSON envelope `{records: [...]}`, so you'll need to split that into individual items before posting."
 		}
 	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "schedule", "http-request", "airtable", "slack", "split-out"],
 	"triggerType": "schedule",

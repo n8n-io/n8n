@@ -2,9 +2,26 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Create a form that collects: name, email, company, and interest level (dropdown: starter, professional, enterprise). When submitted, create a new contact in HubSpot with firstname, lastname (split from name), email, company, and a custom property 'interest_level'. Then send a confirmation email via SendGrid to the submitted email address — the subject should be 'Thanks for reaching out, {name}!' and the body should mention their company. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+			"text": "We need a lead-capture form on our site that pipes new sign-ups into our CRM and sends them a thank-you email."
+		},
+		{
+			"role": "assistant",
+			"text": "What fields on the form, and what CRM are you using?"
+		},
+		{
+			"role": "user",
+			"text": "HubSpot. Form fields: name, email, company, and an interest-level dropdown with options starter / professional / enterprise."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: form trigger → HubSpot create contact (firstname + lastname split from `name`, email, company, custom property `interest_level`) → SendGrid confirmation email. What should the email say?"
+		},
+		{
+			"role": "user",
+			"text": "Subject 'Thanks for reaching out, {name}!' and the body should mention their company."
 		}
 	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "form-trigger", "hubspot", "sendgrid", "crm"],
 	"triggerType": "form",

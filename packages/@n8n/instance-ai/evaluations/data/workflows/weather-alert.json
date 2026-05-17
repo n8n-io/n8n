@@ -2,9 +2,26 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every day at 8am, check the weather in Berlin using the OpenMeteo API and send me an email to david@thedavid.co.uk using the gmail node if it's going to rain"
+			"text": "I want a daily rain warning every morning by email."
+		},
+		{
+			"role": "assistant",
+			"text": "What city, what time, and which email address?"
+		},
+		{
+			"role": "user",
+			"text": "Berlin, 8am, david@thedavid.co.uk. Use Gmail to send it."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll use the OpenMeteo API for the forecast. Any precipitation should trigger the email, or only above a threshold?"
+		},
+		{
+			"role": "user",
+			"text": "Any rain at all."
 		}
 	],
+	"messageBudget": 6,
 	"complexity": "simple",
 	"tags": ["build", "schedule", "http-request", "gmail", "conditional"],
 	"triggerType": "schedule",

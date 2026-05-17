@@ -2,9 +2,26 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every day, fetch one post from the JSONPlaceholder API (GET https://jsonplaceholder.typicode.com/posts/1). Then use an Edit Fields (Set) node, not a Code node, to add a field called caption from the post title and a field called source with the value jsonplaceholder, while preserving all original fields from the HTTP response. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+			"text": "Every day fetch a post from JSONPlaceholder and add two fields to it before passing it on."
+		},
+		{
+			"role": "assistant",
+			"text": "Which post, and which two fields?"
+		},
+		{
+			"role": "user",
+			"text": "GET https://jsonplaceholder.typicode.com/posts/1. Add `caption` from the post title, and `source` with the literal value 'jsonplaceholder'. Keep all the original fields too."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: schedule daily → HTTP GET the post → Code node to compose the new object with caption, source, and the original fields preserved. Sound good?"
+		},
+		{
+			"role": "user",
+			"text": "No Code node — use Edit Fields (Set). That's exactly what it's for. Preserve original fields via the includeOtherFields option, not by manually re-mapping them."
 		}
 	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "schedule", "http-request", "set", "data-transformation"],
 	"triggerType": "schedule",

@@ -2,9 +2,26 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Every hour, check the current weather for London, New York, and Tokyo using the OpenWeatherMap API. Use 3 separate HTTP Request nodes, one per city. If any city has a temperature above 30°C, send a Telegram alert to chat ID -1001234567890 listing the hot cities. Log all readings to an Airtable table (base ID: 'appK2xGfGNOIrl2gT', table ID: 'tbl8xK3nP5mQ7rS9W') with columns: city, temperature, humidity, timestamp. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+			"text": "Hourly weather monitoring for three cities — and an alert if it gets too hot anywhere."
+		},
+		{
+			"role": "assistant",
+			"text": "Which cities, what defines 'too hot', and where should the alert go?"
+		},
+		{
+			"role": "user",
+			"text": "London, New York, Tokyo. Alert if any city is above 30°C. Send the alert via Telegram to chat ID -1001234567890."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll use OpenWeatherMap, one HTTP Request per city. Should I log every reading anywhere, or only the hot ones?"
+		},
+		{
+			"role": "user",
+			"text": "Log all of them to Airtable — base ID 'appK2xGfGNOIrl2gT', table ID 'tbl8xK3nP5mQ7rS9W'. Columns: city, temperature, humidity, timestamp."
 		}
 	],
+	"messageBudget": 6,
 	"complexity": "complex",
 	"tags": [
 		"build",
