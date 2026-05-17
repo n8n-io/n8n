@@ -33,6 +33,7 @@ const DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION =
 const RRF_K = 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const RECENCY_RRF_WEIGHT = 1;
+const MIN_VECTOR_RELEVANCE_SCORE = 0.2;
 
 const RecallMemoryInputSchema = z.object({
 	query: z.string().min(1),
@@ -248,7 +249,7 @@ export function rankEpisodicMemoryEntries(
 					? cosineSimilarity(opts.queryEmbedding, entry.embedding)
 					: 0,
 		}))
-		.filter((item) => item.score > 0)
+		.filter((item) => item.score >= MIN_VECTOR_RELEVANCE_SCORE)
 		.sort((a, b) => b.score - a.score);
 	const relevantIds = new Set([
 		...lexical.map((item) => item.entry.id),

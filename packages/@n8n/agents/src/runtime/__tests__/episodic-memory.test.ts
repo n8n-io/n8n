@@ -124,6 +124,27 @@ describe('rankEpisodicMemoryEntries', () => {
 
 		expect(results).toEqual([]);
 	});
+
+	it('ignores low-positive vector scores without lexical relevance', () => {
+		const weakVector = entry({
+			id: 'weak-vector',
+			content: 'User chose Postgres for durable memory storage.',
+			embedding: [0.01, 1],
+		});
+		const strongVector = entry({
+			id: 'strong-vector',
+			content: 'Warehouse exception routing analysis used manager escalation history.',
+			embedding: [0.8, 0.6],
+		});
+
+		const results = rankEpisodicMemoryEntries(
+			[weakVector, strongVector],
+			'prior travel itinerary hotel booking',
+			{ queryEmbedding: [1, 0], topK: 5 },
+		);
+
+		expect(results.map((result) => result.id)).toEqual(['strong-vector']);
+	});
 });
 
 describe('createRecallMemoryTool', () => {
