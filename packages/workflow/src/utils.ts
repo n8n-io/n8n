@@ -420,6 +420,46 @@ export function sanitizeXmlName(name: string) {
 	return name;
 }
 
+type NormalizedAllowedDomains = {
+	exact: Set<string>;
+	wildcards: string[];
+};
+
+const ALLOWED_DOMAINS_CACHE_LIMIT = 128;
+const normalizedAllowedDomainsCache = new Map<string, NormalizedAllowedDomains>();
+
+function stripTrailingDot(value: string) {
+	return value.endsWith('.') ? value.slice(0, -1) : value;
+}
+
+function getNormalizedAllowedDomains(allowedDomains: string) {
+	const cached = normalizedAllowedDomainsCache.get(allowedDomains);
+	if (cached) return cached;
+
+	const normalized: NormalizedAllowedDomains = {
+		exact: new Set(),
+		wildcards: [],
+	};
+	for (const rawDomain of allowedDomains.split(',')) {
+		const domain = stripTrailingDot(rawDomain.trim().toLowerCase());
+		if (!domain) continue;
+
+		if (domain.startsWith('*.')) {
+			normalized.wildcards.push(domain.substring(2));
+		} else {
+			normalized.exact.add(domain);
+		}
+	}
+
+	if (normalizedAllowedDomainsCache.size >= ALLOWED_DOMAINS_CACHE_LIMIT) {
+		const oldestKey = normalizedAllowedDomainsCache.keys().next().value;
+		if (oldestKey !== undefined) normalizedAllowedDomainsCache.delete(oldestKey);
+	}
+
+	normalizedAllowedDomainsCache.set(allowedDomains, normalized);
+	return normalized;
+}
+
 export function isDomainAllowed(
 	urlString: string,
 	options: {
@@ -434,33 +474,26 @@ export function isDomainAllowed(
 		const url = new URL(urlString);
 
 		// Normalize hostname: lowercase and remove trailing dot
-		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+		const hostname = stripTrailingDot(url.hostname.toLowerCase());
 
 		// Reject empty hostnames
 		if (!hostname) {
 			return false;
 		}
 
-		const allowedDomainsList = options.allowedDomains
-			.split(',')
-			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
-			.filter(Boolean);
+		const allowedDomainsList = getNormalizedAllowedDomains(options.allowedDomains);
 
-		for (const allowedDomain of allowedDomainsList) {
-			// Handle wildcard domains (*.example.com)
-			if (allowedDomain.startsWith('*.')) {
-				const domainSuffix = allowedDomain.substring(2);
-				// Ensure the suffix itself is valid
-				if (!domainSuffix) continue;
+		if (allowedDomainsList.exact.has(hostname)) {
+			return true;
+		}
 
-				// Wildcard matches only subdomains, not the base domain itself
-				// *.example.com matches sub.example.com but NOT example.com
-				if (hostname.endsWith('.' + domainSuffix)) {
-					return true;
-				}
-			}
-			// Exact match
-			else if (hostname === allowedDomain) {
+		for (const domainSuffix of allowedDomainsList.wildcards) {
+			// Ensure the suffix itself is valid
+			if (!domainSuffix) continue;
+
+			// Wildcard matches only subdomains, not the base domain itself
+			// *.example.com matches sub.example.com but NOT example.com
+			if (hostname.endsWith('.' + domainSuffix)) {
 				return true;
 			}
 		}
