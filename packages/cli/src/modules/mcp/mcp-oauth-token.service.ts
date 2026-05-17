@@ -23,6 +23,13 @@ import { JwtService } from '@/services/jwt.service';
  */
 @Service()
 export class McpOAuthTokenService {
+	/**
+	 * Legacy fallback audience used before n8n adopted RFC 8707 resource indicators.
+	 *
+	 * Note: Avoid modifying this string. Active client sessions that were established
+	 * before the migration rely on this exact audience value. Changing it will immediately
+	 * invalidate those tokens and force users to re-authenticate.
+	 */
 	private readonly MCP_AUDIENCE = 'mcp-server-api';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
@@ -261,6 +268,16 @@ export class McpOAuthTokenService {
 		return [this.MCP_AUDIENCE];
 	}
 
+	/**
+	 * Verifies the JWT token against the list of allowed audiences.
+	 *
+	 * BACKWARD COMPATIBILITY: We accept both the canonical resource URL and the legacy
+	 * 'mcp-server-api' audience during this transition period.
+	 *
+	 * TODO: Remove the fallback loop once all legacy tokens in the wild expire
+	 * (based on refresh token lifespan). Legacy tokens minted prior to n8n v2.19
+	 * had a hardcoded 'mcp-server-api' audience.
+	 */
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
 		if (audiences.length === 0) {
 			throw new Error('At least one audience is required');

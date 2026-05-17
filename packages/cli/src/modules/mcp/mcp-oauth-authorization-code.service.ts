@@ -73,6 +73,11 @@ export class McpOAuthAuthorizationCodeService {
 		return authRecord;
 	}
 
+	/**
+	 * Finds a non-expired, unused authorization code for validation.
+	 *
+	 * @see markAuthorizationCodeAsUsed For consuming the code atomically once validated.
+	 */
 	async findAuthorizationCode(
 		code: string,
 		clientId: string,
@@ -126,6 +131,17 @@ export class McpOAuthAuthorizationCodeService {
 		return authRecord;
 	}
 
+	/**
+	 * Atomically marks an authorization code as consumed.
+	 *
+	 * SECURITY: This method uses a single `UPDATE ... WHERE used = false` database query
+	 * (rather than a read-then-write pattern) to prevent race conditions during concurrent
+	 * token exchanges. If two simultaneous token requests are made with the same code,
+	 * exactly one query will affect a row and succeed; the other will affect 0 rows
+	 * and fail with an 'invalid_grant' OAuth error.
+	 *
+	 * @see findAuthorizationCode For validating the authorization code before consumption.
+	 */
 	async markAuthorizationCodeAsUsed(authorizationCode: string): Promise<void> {
 		// Atomic: UPDATE sets used=true only if used=false; checks affected rows.
 		const result = await this.authorizationCodeRepository.update(

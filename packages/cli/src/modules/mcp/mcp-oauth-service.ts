@@ -210,6 +210,12 @@ export class McpOAuthService implements OAuthServerProvider {
 		);
 	}
 
+	/**
+	 * Exchanges authorization code for an access token and refresh token.
+	 * Includes support for dynamic resource indicators per RFC 8707.
+	 *
+	 * @see exchangeRefreshToken For token refresh flows.
+	 */
 	async exchangeAuthorizationCode(
 		client: OAuthClientInformationFull,
 		authorizationCode: string,
@@ -231,6 +237,16 @@ export class McpOAuthService implements OAuthServerProvider {
 		const resourceStr = resource?.toString();
 		const tokenResource = this.resolveAndValidateResourceIndicator(resourceStr);
 
+		// Resource reconciliation per RFC 8707:
+		//
+		// We reconcile the requested token resource with the resource bound to the authorization code:
+		// - If both are specified: they must match exactly, otherwise we reject the exchange.
+		// - If only the token request specifies a resource: we use it (client override).
+		// - If only the authorization code contains a resource: we fall back to it.
+		// - If neither is specified: we default to the legacy 'mcp-server-api' audience.
+		//
+		// This reconciliation is critical to prevent token substitution attacks, where an attacker
+		// attempts to exchange an authorization code issued for resource A to obtain a token for resource B.
 		let finalResource: string | undefined;
 		const codeResource = authRecord.resource ?? undefined;
 
@@ -275,6 +291,8 @@ export class McpOAuthService implements OAuthServerProvider {
 	 *
 	 * This follows OAuth 2.1 refresh-token behavior, where scopes are not used for token refresh.
 	 * The selected resource is normalized and validated via `resolveAndValidateResourceIndicator()`.
+	 *
+	 * @see exchangeAuthorizationCode For initial authorization code exchange.
 	 */
 	async exchangeRefreshToken(
 		client: OAuthClientInformationFull,
@@ -305,6 +323,20 @@ export class McpOAuthService implements OAuthServerProvider {
 		return `${this.urlService.getInstanceBaseUrl()}/mcp-server/http`;
 	}
 
+	/**
+	 * Safely retrieves the RFC 8707 resource indicator from the authorization parameters.
+	 *
+	 * Since the MCP SDK's AuthorizationParams type might not explicitly declare 'resource'
+	 * in its TypeScript interface (having been introduced in a later revision of the spec),
+	 * we use Reflect to safely check and probe for it. This allows us to access the field
+	 * dynamically without relying on type assertions or introducing prototype pollution risks.
+	 *
+	 * Returns undefined if the 'resource' parameter is missing, null, or undefined.
+	 * Throws InvalidResourceIndicatorError if a resource is present but is not a string or URL.
+	 *
+	 * @see https://datatracker.ietf.org/doc/html/rfc8707
+	 * @see https://spec.modelcontextprotocol.io/specification/2025-03-26/basic/authorization/
+	 */
 	private getResourceIndicatorFromAuthorizationParams(
 		params: AuthorizationParams,
 	): string | undefined {
@@ -330,6 +362,20 @@ export class McpOAuthService implements OAuthServerProvider {
 		throw new InvalidResourceIndicatorError(String(resource), this.getCanonicalMcpResourceUrl());
 	}
 
+	/**
+	 * Normalizes and validates the provided resource indicator against n8n's canonical MCP URL.
+	 *
+	 * Normalization: We strip any trailing slashes from the resource URL (although RFC 8707
+	 * doesn't mandate trailing slash normalization, n8n does to ensure consistent matching).
+	 *
+	 * SECURITY: An exact string match is strictly required per RFC 8707 §2.1. We explicitly do
+	 * NOT use prefix or wildcard matching, as that would expose the server to path extension
+	 * or traversal attacks:
+	 *   - e.g. "https://attacker.com/mcp-server/http" (malicious host attempt)
+	 *   - e.g. "https://host/mcp-server/http/../admin" (path traversal attempt)
+	 *
+	 * @throws InvalidResourceIndicatorError if the normalized resource does not match the canonical URL.
+	 */
 	private resolveAndValidateResourceIndicator(resource: string | undefined): string | undefined {
 		if (resource === undefined) {
 			return undefined;
@@ -416,6 +462,15 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 }
 
+/**
+ * OAuth 2.0 error thrown when a requested resource indicator is invalid per RFC 8707 §3.2.
+ *
+ * We explicitly return the standard 'invalid_target' registered OAuth error code here.
+ * Do not change this to 'invalid_resource'—that string is not recognized under the
+ * official OAuth/RFC spec and will cause compliant MCP clients to fail their negotiation.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8707#section-3.2
+ */
 class InvalidResourceIndicatorError extends OAuthError {
 	constructor(
 		readonly resource: string,

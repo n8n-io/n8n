@@ -49,6 +49,12 @@ export class McpServerMiddlewareService {
 		}
 
 		if (decoded?.meta?.isOAuth === true) {
+			// We verify against the canonical URL here, but our JWT verification service
+			// (verifyJwtWithAllowedAudiences) will accept both the canonical URL and the legacy
+			// 'mcp-server-api' audience. This dual-audience verification strategy allows:
+			//   - New tokens (aud = canonical URL) to be verified immediately
+			//   - Legacy tokens (aud = 'mcp-server-api') to be accepted through our fallback logic
+			// This facilitates a smooth gradual migration without forcing active sessions to re-authenticate.
 			const expectedAudience = `${this.urlService.getInstanceBaseUrl()}/mcp-server/http`;
 			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token, expectedAudience);
 		}
