@@ -6,8 +6,8 @@ export class CreateWebauthnCredentialTable1770500000000 implements ReversibleMig
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
-				column('userId').varchar(36).notNull,
+				column('id').uuid.primary.notNull,
+				column('userId').uuid.notNull,
 				column('credentialId').text.notNull,
 				column('publicKey').binary.notNull,
 				column('counter').int.default(0).notNull,
