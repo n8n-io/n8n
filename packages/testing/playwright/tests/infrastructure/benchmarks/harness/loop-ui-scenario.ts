@@ -11,7 +11,6 @@ export interface LoopUiScenarioOptions {
 	repeats: number;
 }
 
-/** Pure UI load driver: runs a scenario N times against a logged-in page. */
 export async function loopUiScenario(options: LoopUiScenarioOptions): Promise<UiScenarioResult> {
 	const { n8n, scenario, repeats } = options;
 	console.log(`[UI] Running ${repeats} iterations`);

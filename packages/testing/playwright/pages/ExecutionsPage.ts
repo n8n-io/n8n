@@ -53,7 +53,6 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('current-executions-list');
 	}
 
-	/** Row in the project- or home-scoped executions list (GlobalExecutionsList). */
 	getGlobalExecutionItems(): Locator {
 		return this.page.getByTestId('global-execution-list-item');
 	}

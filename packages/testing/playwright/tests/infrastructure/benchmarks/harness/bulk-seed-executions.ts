@@ -1,17 +1,9 @@
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 /**
- * Bulk-inserts execution_entity rows distributed across a project's workflows.
- * Bypasses TypeORM and the n8n execution lifecycle so 100k+ rows seed in seconds
- * — orders of magnitude faster than driving real workflow runs through autocannon.
- *
- * The rows reference real workflowIds (resolved by joining workflow_entity ↔
- * shared_workflow on the supplied projectId), so the EXISTS-based access
- * control filter in the executions list query has a valid plan.
- *
- * Status distribution: 95% success / 5% error — matches a healthy production
- * shape. createdAt/startedAt/stoppedAt are spread backwards in time, 1ms apart,
- * so ORDER BY startedAt DESC has work to do.
+ * Bypasses TypeORM and the n8n execution lifecycle so 100k+ rows seed in seconds.
+ * Status mix and 1ms-staggered timestamps mirror production shape so the
+ * executions list query's ORDER BY and access-control filter exercise realistic plans.
  */
 export async function bulkSeedExecutions(
 	services: ServiceHelpers,

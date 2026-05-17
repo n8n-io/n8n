@@ -27,7 +27,6 @@ export interface MeasureLoadImpactOptions {
 	dimensions?: BenchmarkDimensions;
 }
 
-/** Wraps concurrent load drivers in a PG / container / diagnostics measurement bracket. */
 export async function measureLoadImpact(options: MeasureLoadImpactOptions): Promise<void> {
 	const { services, testInfo, drivers, dimensions: extraDims = {} } = options;
 	if (drivers.length === 0) throw new Error('measureLoadImpact requires at least one driver');

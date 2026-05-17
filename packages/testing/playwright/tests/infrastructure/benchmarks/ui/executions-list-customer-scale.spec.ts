@@ -53,7 +53,6 @@ test.describe(
 			services,
 			n8n,
 		}, testInfo) => {
-			// ── INSTANCE ── prepare state ─────────────────────────────────
 			const ctx = await setupAdminViewsExecutionsList(n8n.api);
 			await inflateProjectWorkflows(
 				n8n.api,
@@ -66,10 +65,8 @@ test.describe(
 				count: PRESEEDED_EXECUTIONS,
 			});
 
-			// ── ACTION ── log in as admin ────────────────────────────────
 			const adminN8n = await n8n.start.withUser(ctx.admin);
 
-			// ── IMPACT ── measure around the UI driver ────────────────────
 			await measureLoadImpact({
 				services,
 				testInfo,

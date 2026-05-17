@@ -41,16 +41,6 @@ function buildJourneyWorkflow(name: string): Partial<IWorkflowBase> {
 	return json;
 }
 
-/**
- * Data setup primitive.
- *
- * Creates the admin user, project, workflows, and a baseline execution so
- * the executions list has content to render. Returns the context.
- *
- * Use this when you need to set up state once and run the action many times
- * (e.g. benchmarks). For the one-shot test case, call `adminViewsExecutionsList`
- * instead — it composes setup + login + action.
- */
 export async function setupAdminViewsExecutionsList(
 	api: ApiHelpers,
 ): Promise<AdminViewsExecutionsListContext> {
@@ -90,13 +80,6 @@ export async function setupAdminViewsExecutionsList(
 	};
 }
 
-/**
- * Action primitive — the UI verb only.
- *
- * Assumes the supplied `n8n` page is already authenticated as a user with
- * access to `ctx.project`. Navigates to the project-scoped executions list
- * and asserts it renders. Pure read; safe to loop.
- */
 export async function viewExecutionsListAsAdmin(
 	n8n: n8nPage,
 	ctx: AdminViewsExecutionsListContext,
@@ -116,21 +99,6 @@ export async function viewExecutionsListAsAdmin(
 	});
 }
 
-/**
- * The journey, end-to-end.
- *
- * Drops into any test as a one-liner:
- *
- *   test.describe('an admin can view the execution list', () => {
- *     test('renders the project executions list', async ({ n8n, api }) => {
- *       await adminViewsExecutionsList({ n8n, api });
- *     });
- *   });
- *
- * Internally: setup → log in as admin → navigate + assert. For benchmarks
- * that want to loop the action against pre-seeded state, compose
- * `setupAdminViewsExecutionsList` and `viewExecutionsListAsAdmin` directly.
- */
 export async function adminViewsExecutionsList(deps: {
 	n8n: n8nPage;
 	api: ApiHelpers;
