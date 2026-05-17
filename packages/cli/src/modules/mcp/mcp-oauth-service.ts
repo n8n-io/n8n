@@ -417,8 +417,6 @@ export class McpOAuthService implements OAuthServerProvider {
 }
 
 class InvalidResourceIndicatorError extends OAuthError {
-	static readonly errorCode = 'invalid_target';
-
 	constructor(
 		readonly resource: string,
 		readonly expectedResource: string,

@@ -271,6 +271,11 @@ export class McpOAuthTokenService {
 				audience: audiences as [string, ...string[]],
 			});
 		} catch (error) {
+			// Fallback: try each audience individually.
+			// This handles legacy tokens signed with a single-string audience
+			// (e.g. 'mcp-server-api') that were issued before resource indicators
+			// were introduced, where the array check above may reject them on some
+			// jsonwebtoken builds.
 			for (const audience of audiences) {
 				try {
 					return this.jwtService.verify(token, { audience });

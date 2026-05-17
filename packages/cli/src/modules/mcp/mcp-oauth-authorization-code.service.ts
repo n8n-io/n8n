@@ -87,7 +87,10 @@ export class McpOAuthAuthorizationCodeService {
 		});
 
 		if (!authCode) return null;
-		if (authCode.expiresAt < Date.now()) return null;
+		if (authCode.expiresAt < Date.now()) {
+			await this.authorizationCodeRepository.remove(authCode);
+			return null;
+		}
 		if (redirectUri && authCode.redirectUri !== redirectUri) return null;
 
 		return authCode;
@@ -96,6 +99,7 @@ export class McpOAuthAuthorizationCodeService {
 	/**
 	 * Validate and consume authorization code
 	 * Returns the auth record if valid, throws if invalid/expired/used
+	 * @deprecated Use findAuthorizationCode + markAuthorizationCodeAsUsed instead
 	 */
 	async validateAndConsumeAuthorizationCode(
 		authorizationCode: string,
