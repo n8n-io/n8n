@@ -341,7 +341,7 @@ export class McpOAuthService implements OAuthServerProvider {
 			throw new InvalidResourceIndicatorError(resource, canonicalResource);
 		}
 
-		return resource;
+		return normalizedResource;
 	}
 
 	async revokeToken(

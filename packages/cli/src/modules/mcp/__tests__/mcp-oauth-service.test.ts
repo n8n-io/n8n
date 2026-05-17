@@ -294,6 +294,41 @@ describe('McpOAuthService', () => {
 			});
 		});
 
+		it('should accept a trailing-slash resource and store the normalized URL', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				// trailing slash — semantically equivalent to the canonical URL
+				resource: 'https://n8n.example.com/mcp-server/http/',
+			};
+
+			const res = mock<Response>();
+
+			await service.authorize(client, params, res);
+
+			// Should succeed and store the slash-stripped canonical form
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				state: null,
+				resource: 'https://n8n.example.com/mcp-server/http',
+			});
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
 		it('should handle errors and clear session', async () => {
 			const client = {
 				client_id: 'client-123',
@@ -577,6 +612,41 @@ describe('McpOAuthService', () => {
 				message: 'Invalid resource indicator',
 				errorCode: 'invalid_target',
 			});
+		});
+
+		it('should normalize a trailing-slash resource before passing it to token rotation', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			tokenService.validateAndRotateRefreshToken.mockResolvedValue({
+				access_token: 'new-access-token',
+				token_type: 'Bearer',
+				expires_in: 3600,
+				refresh_token: 'new-refresh-token',
+			});
+
+			await service.exchangeRefreshToken(
+				client,
+				'old-refresh-token',
+				['read'],
+				// trailing slash — must be stripped before reaching token service
+				'https://n8n.example.com/mcp-server/http/',
+			);
+
+			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
+				'old-refresh-token',
+				'client-123',
+				'https://n8n.example.com/mcp-server/http', // slash stripped
+			);
 		});
 	});
 
