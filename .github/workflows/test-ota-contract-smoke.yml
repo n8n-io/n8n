@@ -99,7 +99,6 @@ jobs:
         shell: bash
         run: |
           ota validate .
-          ota run setup:env-local .
           ota tasks --workflow app .
           ota tasks --workflow backend .
           ota tasks --workflow instant .
@@ -110,7 +109,6 @@ jobs:
         shell: pwsh
         run: |
           ota validate .
-          ota run setup:env-local .
           ota tasks --workflow app .
           ota tasks --workflow backend .
           ota tasks --workflow instant .
