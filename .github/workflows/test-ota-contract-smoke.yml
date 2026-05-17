@@ -112,8 +112,26 @@ jobs:
         if: matrix.run_shell == 'bash'
         shell: bash
         run: |
+          up_pid=""
+          cleanup() {
+            ota clean . || true
+            if [ -n "${up_pid:-}" ] && kill -0 "$up_pid" 2>/dev/null; then
+              kill "$up_pid" 2>/dev/null || true
+              for _ in 1 2 3 4 5; do
+                if ! kill -0 "$up_pid" 2>/dev/null; then
+                  break
+                fi
+                sleep 1
+              done
+              kill -9 "$up_pid" 2>/dev/null || true
+            fi
+            if [ -n "${up_pid:-}" ]; then
+              wait "$up_pid" 2>/dev/null || true
+            fi
+          }
+
           ota clean . || true
-          trap 'ota clean . || true' EXIT
+          trap cleanup EXIT INT TERM
 
           ota up --workflow instant --stream . > ota-up-instant.log 2>&1 &
           up_pid=$!
@@ -138,9 +156,6 @@ jobs:
             cat ota-up-instant.log
             exit 1
           fi
-
-          ota clean .
-          wait "$up_pid" || true
 
       - name: Smoke ota up + doctor (instant) [pwsh]
         if: matrix.run_shell == 'pwsh'
