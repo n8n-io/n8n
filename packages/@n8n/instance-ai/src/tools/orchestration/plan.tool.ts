@@ -164,14 +164,30 @@ export function createPlanTool(context: OrchestrationContext) {
 
 			// First call — persist plan, show to user, suspend for approval
 			if (isFirstCall) {
-				await context.plannedTaskService.createPlan(
-					context.threadId,
-					input.tasks as PlannedTask[],
-					{
-						planRunId: context.runId,
-						messageGroupId: context.messageGroupId,
-					},
-				);
+				try {
+					await context.plannedTaskService.createPlan(
+						context.threadId,
+						input.tasks as PlannedTask[],
+						{
+							planRunId: context.runId,
+							messageGroupId: context.messageGroupId,
+						},
+					);
+				} catch (error) {
+					// Validator rejections (missing deps, cycles, etc.) come back as plain
+					// Errors. Return them as a tool result so the LLM can re-call with a
+					// corrected task graph rather than the run being aborted.
+					const message = error instanceof Error ? error.message : String(error);
+					context.logger.warn('plan tool: createPlan rejected', {
+						threadId: context.threadId,
+						taskCount: input.tasks.length,
+						error: message,
+					});
+					return {
+						result: `Error: ${message}. Revise the task graph and call this tool again.`,
+						taskCount: 0,
+					};
+				}
 
 				// Emit tasks-update so the checklist appears in the chat immediately
 				const taskItems = input.tasks.map((t: z.infer<typeof plannedTaskSchema>) => ({
