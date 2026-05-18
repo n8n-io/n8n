@@ -11,7 +11,16 @@ describe('buildAgentConfigFingerprint', () => {
 		model: 'gpt-4',
 		instructions: 'do things',
 		tools: [
-			{ type: 'node', name: 'zulu' },
+			{
+				type: 'node',
+				name: 'zulu',
+				node: {
+					nodeType: 'n8n-nodes-base.zulu',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: {},
+				},
+			},
 			{ type: 'custom', id: 'alpha' },
 		],
 		skills: [{ type: 'skill', id: 'summarize_notes' }],
@@ -47,7 +56,19 @@ describe('buildAgentConfigFingerprint', () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, []);
 		const withExtra: AgentJsonConfig = {
 			...baseConfig,
-			tools: [...(baseConfig.tools ?? []), { type: 'node', name: 'new-tool' }],
+			tools: [
+				...(baseConfig.tools ?? []),
+				{
+					type: 'node',
+					name: 'new-tool',
+					node: {
+						nodeType: 'n8n-nodes-base.new-tool',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {},
+					},
+				},
+			],
 		};
 		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
 			a.config_version,

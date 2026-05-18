@@ -1,26 +1,25 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
-	type AgentBuilderMessagesResponse,
-	type AgentCredentialIntegration,
-	type AgentIntegrationStatusResponse,
-	type AgentPersistedMessageDto,
-	type AgentSkill,
-	type AgentScheduleConfig,
-	type AgentSseEvent,
-	type AgentIntegrationSettings,
-	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
-	CreateAgentSkillDto,
-	AgentIntegrationDto,
+	AgentCredentialIntegrationSchema,
+	type AgentBuilderMessagesResponse,
+	type AgentIntegrationStatusResponse,
+	type AgentPersistedMessageDto,
+	type AgentScheduleConfig,
+	type AgentSkill,
+	type AgentSseEvent,
+	type ChatIntegrationDescriptor,
 	CreateAgentDto,
-	UpdateAgentSkillDto,
-	UpdateAgentConfigDto,
-	UpdateAgentScheduleDto,
-	UpdateAgentDto,
+	CreateAgentSkillDto,
 	isAgentCredentialIntegration,
+	UpdateAgentConfigDto,
+	UpdateAgentDto,
+	UpdateAgentScheduleDto,
+	UpdateAgentSkillDto,
+	AgentDisconnectIntegrationDto,
 } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -56,6 +55,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import type { Agent } from './entities/agent.entity';
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -106,17 +106,35 @@ export class AgentsController {
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
-	private settingsForConnect(
-		integrationType: string,
-		settings: AgentIntegrationSettings | undefined,
-	): AgentIntegrationSettings | undefined {
-		if (!settings) {
-			if (integrationType === 'telegram') {
-				throw new BadRequestError('Integration settings are required for telegram');
-			}
-			return undefined;
+	private async validateIntegration(dto: unknown) {
+		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(dto);
+		if (!integrationParseResult.success) {
+			throw new BadRequestError(integrationParseResult.error.message);
 		}
-		return settings;
+		const integration = integrationParseResult.data;
+		if (integration.type === 'telegram' && !integration.settings) {
+			throw new BadRequestError('Telegram integration settings are required');
+		}
+		return integration;
+	}
+
+	private async withRunnableState(
+		agent: Agent,
+		projectId: string,
+		user: User,
+	): Promise<Agent & { isRunnable: boolean }> {
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
+		const { missing } = await this.agentsService.validateAgentIsRunnable(
+			agent.id,
+			projectId,
+			credentialProvider,
+		);
+
+		return Object.assign(agent, { isRunnable: missing.length === 0 });
 	}
 
 	@Post('/')
@@ -128,7 +146,8 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 
-		return await this.agentsService.create(projectId, payload.name);
+		const agent = await this.agentsService.create(projectId, payload.name);
+		return await this.withRunnableState(agent, projectId, req.user);
 	}
 
 	@Get('/')
@@ -314,7 +333,7 @@ export class AgentsController {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		return agent;
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Patch('/:agentId')
@@ -349,7 +368,11 @@ export class AgentsController {
 			);
 		}
 
-		return agent;
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Delete('/:agentId')
@@ -375,7 +398,8 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+		const agent = await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Post('/:agentId/unpublish')
@@ -385,7 +409,8 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+		const agent = await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Post('/:agentId/revert-to-published')
@@ -395,7 +420,8 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
+		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -476,11 +502,18 @@ export class AgentsController {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const thread = await this.agentExecutionService.findThreadById(threadId);
-		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
+		// getConversationHistory delegates to getThreadDetail, which validates
+		// thread ownership against both projectId and agentId before returning
+		// execution transcript data.
+		const history = await this.agentsService.getConversationHistory({
+			threadId,
+			projectId,
+			agentId,
+		});
+		if (!history) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return await this.agentsService.getChatMessages(threadId);
+		return history;
 	}
 
 	@Get('/:agentId/build/messages')
@@ -662,10 +695,9 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentIntegrationDto,
 	) {
-		const { type, credentialId } = payload;
-		const settings = this.settingsForConnect(type, payload.settings);
+		const integration = await this.validateIntegration(req.body);
+		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (!agent.publishedVersion)
@@ -680,48 +712,9 @@ export class AgentsController {
 		const credential = usableCredentials.find((c) => c.id === credentialId);
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
 
-		await this.chatIntegrationService.connect(
-			agentId,
-			credentialId,
-			type,
-			req.user.id,
-			agent.projectId,
-			settings ? { settings } : {},
-		);
+		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
 
-		// Persist the integration reference on the agent
-		const existing = agent.integrations ?? [];
-		const alreadyExists = existing.some(
-			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
-		);
-		const integration: AgentCredentialIntegration = {
-			type,
-			credentialId,
-			credentialName: credential.name,
-			...(settings ? { settings } : {}),
-		};
-
-		// Replace existing integration or append a new one
-		agent.integrations = alreadyExists
-			? existing.map((existingIntegration) =>
-					isAgentCredentialIntegration(existingIntegration) &&
-					existingIntegration.type === type &&
-					existingIntegration.credentialId === credentialId
-						? integration
-						: existingIntegration,
-				)
-			: [...existing, integration];
-		await this.agentRepository.save(agent);
-
-		// Notify peer mains so they connect the integration too — without this
-		// step inbound webhooks load-balanced to a follower would 404.
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			agentId,
-			type,
-			credentialId,
-			'connect',
-			settings,
-		);
+		await this.agentsService.saveCredentialIntegration(agent, integration);
 
 		return { status: 'connected' };
 	}
@@ -732,26 +725,14 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentIntegrationDto,
+		@Body payload: AgentDisconnectIntegrationDto,
 	) {
 		const { type, credentialId } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
 
-		await this.chatIntegrationService.disconnect(agentId, type, credentialId);
-
-		// Remove the integration reference from the agent
-		agent.integrations = (agent.integrations ?? []).filter(
-			(i) => !isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
-		);
-		await this.agentRepository.save(agent);
-
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			agentId,
-			type,
-			credentialId,
-			'disconnect',
-		);
+		await this.agentsService.removeCredentialIntegration(agent, type, credentialId);
 
 		return { status: 'disconnected' };
 	}
@@ -828,7 +809,7 @@ export class AgentsController {
 			.map((i) => ({
 				type: i.type,
 				credentialId: i.credentialId,
-				...(i.settings ? { settings: i.settings } : {}),
+				...('settings' in i ? { settings: i.settings } : {}),
 			}));
 		const schedule = this.agentScheduleService.getConfig(agent);
 		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];

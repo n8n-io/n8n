@@ -25,6 +25,7 @@ import { noInvalidFromAi } from './no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
 import { responseMatchesWorkflowChanges } from './response-matches-workflow-changes';
+import { switchFallbackOutputEnabled } from './switch-fallback-output-enabled';
 import { toolsHaveParameters } from './tools-have-parameters';
 import { validDataFlow } from './valid-data-flow';
 import { validFieldReferences } from './valid-field-references';
@@ -52,6 +53,7 @@ export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	noUnreachableNodes,
 	inboundTriggerAuthDefaults,
 	httpGenericAuthTypeMatchesPrompt,
+	switchFallbackOutputEnabled,
 	validNodeConfig,
 ];
 

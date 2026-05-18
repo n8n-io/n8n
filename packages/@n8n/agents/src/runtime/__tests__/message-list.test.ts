@@ -111,6 +111,76 @@ describe('AgentMessageList — preserving DB timestamps', () => {
 });
 
 // ---------------------------------------------------------------------------
+// LLM context assembly
+// ---------------------------------------------------------------------------
+
+function systemContent(list: AgentMessageList): string {
+	const [system] = list.forLlm('Base instructions');
+	expect(system.role).toBe('system');
+	return system.content as string;
+}
+
+describe('AgentMessageList — forLlm observation memory', () => {
+	it('does not inject a memory section when no observation log has been rendered', () => {
+		const list = new AgentMessageList();
+		list.addInput([makeUserMsg('hello')]);
+
+		const messages = list.forLlm('Base instructions');
+		const prompt = messages[0].content as string;
+
+		expect(prompt).toContain('Base instructions');
+		expect(prompt).not.toContain('## Memory');
+		expect(messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'user',
+					content: [expect.objectContaining({ type: 'text', text: 'hello' })],
+				}),
+			]),
+		);
+	});
+
+	it('injects the rendered observation log into the system prompt', () => {
+		const list = new AgentMessageList();
+		list.observationLogMemory = [
+			'## Memory',
+			'',
+			'The following is your memory of this conversation.',
+			'',
+			'* 🔴 (14:30) User wants the SDK to stay unopinionated.',
+		].join('\n');
+
+		const prompt = systemContent(list);
+
+		expect(prompt).toContain('Base instructions');
+		expect(prompt).toContain('## Memory');
+		expect(prompt).toContain('* 🔴 (14:30) User wants the SDK to stay unopinionated.');
+		expect(prompt).not.toContain('Thread working memory');
+	});
+
+	it('keeps recent history messages in LLM context when observation memory is empty', () => {
+		const list = new AgentMessageList();
+		list.addHistory([makeDbMsg('recent history', new Date('2024-01-01T00:00:00.000Z'))]);
+		list.addInput([makeUserMsg('new request')]);
+
+		const messages = list.forLlm('Base instructions');
+
+		expect(messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'user',
+					content: [expect.objectContaining({ type: 'text', text: 'recent history' })],
+				}),
+				expect.objectContaining({
+					role: 'user',
+					content: [expect.objectContaining({ type: 'text', text: 'new request' })],
+				}),
+			]),
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Input / response messages use existing createdAt as a hint
 // ---------------------------------------------------------------------------
 
