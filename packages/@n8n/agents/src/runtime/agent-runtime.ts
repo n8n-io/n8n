@@ -363,6 +363,10 @@ export class AgentRuntime {
 		};
 	}
 
+	setTelemetry(telemetry: BuiltTelemetry | undefined): void {
+		this.config.telemetry = telemetry;
+	}
+
 	/**
 	 * Wait for in-flight background tasks (title generation, future
 	 * observer cycles) to settle. Safe to call multiple times.
