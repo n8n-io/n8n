@@ -3,9 +3,9 @@ import { NodeOperationError, UserError } from 'n8n-workflow';
 
 import {
 	cellFormat,
-	columnsResourceMapperBuilderHint,
 	handlingExtraData,
 	locationDefine,
+	upsertColumnsResourceMapperBuilderHint,
 } from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
@@ -162,7 +162,7 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
-		builderHint: columnsResourceMapperBuilderHint,
+		builderHint: upsertColumnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
@@ -198,7 +198,7 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
-		builderHint: columnsResourceMapperBuilderHint,
+		builderHint: upsertColumnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
