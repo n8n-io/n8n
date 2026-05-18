@@ -83,7 +83,9 @@ export class License implements LicenseProvider {
 		const collectPassthroughData = isMainInstance
 			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
-		const expirySoonOffsetMins = this.instanceSettings.isLeader ? 24 * 60 : 120;
+		const expirySoonOffsetMins = this.instanceSettings.isLeader
+			? Time.days.toMinutes
+			: 2 * Time.hours.toMinutes;
 
 		const { isLeader } = this.instanceSettings;
 		const { autoRenewalEnabled } = this.globalConfig.license;
@@ -518,9 +520,10 @@ export class License implements LicenseProvider {
 
 	private onExpirySoon() {
 		if (this.instanceSettings.isLeader) {
-			this.logger.error('License is expiring within 24h.', {
-				expiryDate: this.getExpiryDate()?.toISOString() ?? null,
-			});
+			this.logger.error(
+				'License is expiring within 24h and automatic renewal has not yet succeeded. Verify network connectivity to the license server and that license.autoRenewalEnabled is true.',
+				{ expiryDate: this.getExpiryDate()?.toISOString() ?? null },
+			);
 		} else {
 			this.logger.info('License is about to expire soon, reloading license...');
 

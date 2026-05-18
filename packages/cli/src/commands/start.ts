@@ -14,7 +14,7 @@ import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
-import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { ensureError, jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -351,7 +351,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			} catch (error) {
 				this.logger.error(
 					'Failed to renew multi-main license during boot; license check will likely fail',
-					{ error: error instanceof Error ? error.message : error },
+					{ error: ensureError(error) },
 				);
 			}
 			if (this.license.isMultiMainLicensed()) return;

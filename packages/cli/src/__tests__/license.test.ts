@@ -291,7 +291,7 @@ describe('License', () => {
 
 			if (expectedAction === 'log') {
 				expect(logger.scoped('license').error).toHaveBeenCalledWith(
-					'License is expiring within 24h.',
+					expect.stringContaining('License is expiring'),
 					{ expiryDate: '2026-05-15T00:00:00.000Z' },
 				);
 				expect(reloadSpy).not.toHaveBeenCalled();

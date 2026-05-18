@@ -15,9 +15,11 @@ export const Time = {
 	},
 	hours: {
 		toMilliseconds: 60 * 60 * 1000,
+		toMinutes: 60,
 		toSeconds: 60 * 60,
 	},
 	days: {
+		toMinutes: 24 * 60,
 		toSeconds: 24 * 60 * 60,
 		toMilliseconds: 24 * 60 * 60 * 1000,
 	},
