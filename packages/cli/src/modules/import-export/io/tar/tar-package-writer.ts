@@ -29,11 +29,6 @@ function directoryEntry(path: string): ReadEntry {
 	return entry;
 }
 
-/**
- * Emits the manifest as the first tar entry so consumers can fail fast on
- * version mismatch without unpacking the archive. Entries are buffered in
- * memory until finalize — acceptable at our ≤100MB target.
- */
 export class TarPackageWriter implements PackageWriter {
 	private readonly entries: Entry[] = [];
 
@@ -56,8 +51,6 @@ export class TarPackageWriter implements PackageWriter {
 	}
 
 	finalize(): Readable {
-		// Pack-level `portable` suppresses mtime on directory entries, so
-		// apply `portable` only to the gzip layer and stamp mtime per-header.
 		const pack = new Pack({ gzip: { portable: true }, mtime: FIXED_MTIME });
 
 		if (this.manifest) {

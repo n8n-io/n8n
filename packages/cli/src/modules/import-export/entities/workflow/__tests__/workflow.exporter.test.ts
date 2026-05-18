@@ -1,8 +1,8 @@
-import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Readable } from 'node:stream';
 
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { PackageWriter } from '../../../io/package-writer';
 import { WorkflowExporter } from '../workflow.exporter';
@@ -43,39 +43,40 @@ class CapturingWriter implements PackageWriter {
 	}
 }
 
-function makeExporter(workflows: WorkflowEntity[], authorizedIds?: string[]) {
-	const repo = mock<WorkflowRepository>();
-	repo.find.mockResolvedValue(workflows);
-
-	const sharing = mock<WorkflowSharingService>();
-	sharing.getSharedWorkflowIds.mockResolvedValue(authorizedIds ?? workflows.map((w) => w.id));
-
-	const exporter = new WorkflowExporter(repo, new WorkflowSerializer(), sharing);
-	return { exporter, repo, sharing };
+function makeExporter(returned: WorkflowEntity[]) {
+	const finder = mock<WorkflowFinderService>();
+	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
+	const exporter = new WorkflowExporter(finder, new WorkflowSerializer());
+	return { exporter, finder };
 }
 
 describe('WorkflowExporter', () => {
-	it('does not query the workflow repository when any id is unauthorized', async () => {
-		const authorized = makeWorkflow({ id: 'mine-1' });
-		const { exporter, repo } = makeExporter([authorized], ['mine-1']);
-		const writer = new CapturingWriter();
-
-		await expect(
-			exporter.export({ user, workflowIds: ['mine-1', 'someone-elses-1'], writer }),
-		).rejects.toThrow();
-
-		expect(repo.find).not.toHaveBeenCalled();
-	});
-
-	it('queries authorization with the workflow:export scope', async () => {
+	it('asks the finder for the workflows using the workflow:export scope', async () => {
 		const workflow = makeWorkflow();
-		const { exporter, sharing } = makeExporter([workflow]);
+		const { exporter, finder } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
 
 		await exporter.export({ user, workflowIds: [workflow.id], writer });
 
-		expect(sharing.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
-			scopes: ['workflow:export'],
-		});
+		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
+			[workflow.id],
+			user,
+			['workflow:export'],
+			{ includeParentFolder: true },
+		);
+	});
+
+	it('throws when the finder omits a requested id (unauthorized or missing)', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter } = makeExporter([present]);
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'missing-or-denied'],
+				writer,
+			}),
+		).rejects.toThrow(/missing-or-denied/);
 	});
 });

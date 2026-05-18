@@ -1,14 +1,13 @@
 import type { User } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
+
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { generateSlug } from '../../io/slug.utils';
 import type { ManifestEntry } from '../../spec/manifest.types';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 export interface WorkflowExportRequest {
 	user: User;
@@ -19,40 +18,19 @@ export interface WorkflowExportRequest {
 @Service()
 export class WorkflowExporter {
 	constructor(
-		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowFinder: WorkflowFinderService,
 		private readonly workflowSerializer: WorkflowSerializer,
-		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<ManifestEntry[]> {
-		const authorizedIds = new Set(
-			await this.workflowSharingService.getSharedWorkflowIds(request.user, {
-				scopes: ['workflow:export'],
-			}),
+		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
+			request.workflowIds,
+			request.user,
+			['workflow:export'],
+			{ includeParentFolder: true },
 		);
 
-		// Unauthorized IDs are reported as "not found" to avoid disclosing
-		// which workflows exist outside the user's permission scope.
-		const unauthorized = request.workflowIds.filter((id) => !authorizedIds.has(id));
-		if (unauthorized.length > 0) {
-			throw new UserError(`Workflow(s) not found: ${unauthorized.join(', ')}. Export aborted.`);
-		}
-
-		const workflows = await this.workflowRepository.find({
-			select: [
-				'id',
-				'name',
-				'nodes',
-				'connections',
-				'settings',
-				'versionId',
-				'active',
-				'isArchived',
-			],
-			where: { id: In(request.workflowIds) },
-			relations: ['parentFolder'],
-		});
-
+		// We need to check that all the ids that were found are also in the request
 		const foundIds = new Set(workflows.map((w) => w.id));
 		const missing = request.workflowIds.filter((id) => !foundIds.has(id));
 		if (missing.length > 0) {

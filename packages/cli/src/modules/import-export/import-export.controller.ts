@@ -10,11 +10,6 @@ import { ImportExportService } from './import-export.service';
 export class ImportExportController {
 	constructor(private readonly importExportService: ImportExportService) {}
 
-	/**
-	 * Authorization is enforced per-workflow in the service via
-	 * `workflow:export` scope. The endpoint accepts IDs that may span projects,
-	 * so we don't gate it with a single `@ProjectScope` here.
-	 */
 	@Post('/export/workflows')
 	@Licensed('feat:packageExport')
 	async exportWorkflows(
