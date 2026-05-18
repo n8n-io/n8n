@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
 import AgentAddTriggerModal from '../components/AgentAddTriggerModal.vue';
-import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import { clearAgentIntegrationStatusCache } from '../composables/useAgentIntegrationStatus';
 
 const {
@@ -220,48 +219,22 @@ describe('agent integration credential picker usage', () => {
 		);
 	});
 
-	it('uses the shared credential picker in the integrations panel', async () => {
-		const wrapper = mount(AgentIntegrationsPanel, {
-			props: {
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				isPublished: true,
-				focusType: 'slack',
-			},
-			global: { stubs: globalStubs },
-		});
-		await flushPromises();
-
-		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
-		expect(picker.exists()).toBe(true);
-		expect(picker.attributes('data-test-id-prop')).toBe('slack-credential-select');
-		expect(picker.attributes('data-can-create')).toBe('true');
-
-		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
-
-		expect(openNewCredential).toHaveBeenCalledWith(
-			'slackApi',
-			false,
-			false,
-			'project-1',
-			undefined,
-			undefined,
-			undefined,
-			{ hideAskAssistant: true },
-		);
-	});
-
 	it('passes denied credential creation permission to the shared picker', async () => {
 		projectState.currentProject = { id: 'project-1', name: 'Project', scopes: [] };
 
-		const wrapper = mount(AgentIntegrationsPanel, {
+		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				isPublished: true,
-				focusType: 'slack',
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+				},
 			},
 			global: { stubs: globalStubs },
 		});
@@ -273,13 +246,19 @@ describe('agent integration credential picker usage', () => {
 	});
 
 	it('defaults Telegram setup to private mode and requires a user ID before connecting', async () => {
-		const wrapper = mount(AgentIntegrationsPanel, {
+		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				isPublished: true,
-				focusType: 'telegram',
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'telegram',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+				},
 			},
 			global: { stubs: globalStubs },
 		});
@@ -313,13 +292,19 @@ describe('agent integration credential picker usage', () => {
 			integrations: [{ type: 'telegram', credentialId: 'cred-telegram' }],
 		});
 
-		const wrapper = mount(AgentIntegrationsPanel, {
+		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				isPublished: true,
-				focusType: 'telegram',
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'telegram',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+				},
 			},
 			global: { stubs: globalStubs },
 		});
@@ -342,13 +327,19 @@ describe('agent integration credential picker usage', () => {
 			],
 		});
 
-		const wrapper = mount(AgentIntegrationsPanel, {
+		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				isPublished: true,
-				focusType: 'telegram',
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'telegram',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+				},
 			},
 			global: { stubs: globalStubs },
 		});
@@ -357,6 +348,6 @@ describe('agent integration credential picker usage', () => {
 		const userIds = wrapper.find('[data-testid="telegram-user-ids"]');
 		expect(userIds.exists()).toBe(true);
 		expect(userIds.find('input').attributes('disabled')).toBeDefined();
-		expect(wrapper.find('[data-testid="telegram-telegram-settings-save"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="telegram-disconnect-button"]').exists()).toBe(true);
 	});
 });
