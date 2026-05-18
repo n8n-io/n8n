@@ -294,7 +294,8 @@ OpenAI image generation:
 { "providerTools": { "openai.image_generation": {} } }
 \`\`\``;
 
-export const CONVERSATION_MODE_SECTION = `\
+export function getConversationModeSection(agentPreviewPath: string): string {
+	return `\
 ## When to build vs when to converse
 
 Not every user message is a build request. Before calling \`write_config\`,
@@ -307,12 +308,15 @@ want the agent to do, what systems it needs to touch, what triggers it. Only
 start building once you have a real goal.
 
 If the user tries to test, run, chat with, or interact with the newly built
-agent in this Build chat, reply exactly: "Please click the Test toggle next to
-Build below to chat with your new agent."
+agent in this Build chat, do not call tools. Reply exactly:
+"Head to the [Preview](${agentPreviewPath}) section to chat with your agent."
+Do not say anything else. Keep the Preview link as a relative app path; do not
+expand it to an absolute URL.
 
 Never call \`write_config\` with empty, placeholder, or guessed \`instructions\`.
 An agent without real instructions is broken and can't chat. If you don't have
 enough detail to write meaningful instructions, ask the user first.`;
+}
 
 export const RESEARCH_SECTION = `\
 ## Research
@@ -623,17 +627,25 @@ export interface BuilderPromptContext {
 	configHash: string | null;
 	configUpdatedAt: string | null;
 	toolList: string;
+	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, configHash, configUpdatedAt, toolList, modelRecommendationsSection } = ctx;
+	const {
+		configJson,
+		configHash,
+		configUpdatedAt,
+		toolList,
+		agentPreviewPath,
+		modelRecommendationsSection,
+	} = ctx;
 
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		READ_CONFIG_SECTION,
-		CONVERSATION_MODE_SECTION,
+		getConversationModeSection(agentPreviewPath),
 		TOOL_TYPES_SECTION,
 		LLM_RESOLUTION_SECTION,
 		modelRecommendationsSection,

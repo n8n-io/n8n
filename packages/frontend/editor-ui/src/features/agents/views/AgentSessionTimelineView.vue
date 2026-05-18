@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	CONTINUE_SESSION_ID_PARAM,
 	AGENT_SESSION_DETAIL_VIEW,
 } from '@/features/agents/constants';
@@ -308,7 +309,7 @@ function formatDate(fullDate: string): string {
 
 function continueChat() {
 	void router.push({
-		name: AGENT_BUILDER_VIEW,
+		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
 		query: { [CONTINUE_SESSION_ID_PARAM]: threadId.value },
 	});

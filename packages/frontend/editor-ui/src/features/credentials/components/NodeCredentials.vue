@@ -316,6 +316,10 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
+	void credentialsStore.fetchAllCredentials({
+		projectId: projectsStore.currentProject?.id,
+	});
+
 	void aiGateway.fetchConfig();
 
 	// Clear stale AI Gateway managed credentials if the feature is disabled

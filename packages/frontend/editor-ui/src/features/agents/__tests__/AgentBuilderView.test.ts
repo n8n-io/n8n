@@ -8,6 +8,7 @@ import type { AgentJsonSkillRef, AgentJsonToolRef, CustomToolEntry } from '../ty
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const routeQuery: Record<string, string | undefined> = {};
+let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
@@ -24,7 +25,11 @@ const {
 }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, replace: routerReplace }),
-	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: routeQuery }),
+	useRoute: () => ({
+		name: routeName,
+		params: { projectId: 'p1', agentId: 'a1' },
+		query: routeQuery,
+	}),
 	onBeforeRouteLeave: vi.fn(),
 	onBeforeRouteUpdate: vi.fn(),
 	RouterLink: { template: '<a><slot/></a>' },
@@ -205,6 +210,8 @@ const baseTextFn = (key: string) => {
 		'agents.builder.chatMode.ariaLabel': 'Switch chat mode',
 		'agents.builder.chat.fullWidth.expand.ariaLabel': 'Expand',
 		'agents.builder.chat.fullWidth.collapse.ariaLabel': 'Collapse',
+		'agents.builder.preview.button': 'Preview',
+		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
 	};
 	return map[key] ?? key;
@@ -254,7 +261,23 @@ const commonStubs = {
 			'agentConfig',
 			'agentStatus',
 			'connectedTriggers',
+			'continueSessionId',
 		],
+	},
+	AgentPreviewChatPage: {
+		name: 'AgentPreviewChatPage',
+		template: '<div data-testid="stub-agent-preview-chat-page" />',
+		props: [
+			'initialized',
+			'projectId',
+			'agentId',
+			'agent',
+			'localConfig',
+			'connectedTriggers',
+			'effectiveSessionId',
+			'initialPrompt',
+		],
+		emits: ['config-updated', 'continue-loaded', 'open-build'],
 	},
 	AgentConfigTree: {
 		name: 'AgentConfigTree',
@@ -284,9 +307,22 @@ const commonStubs = {
 			'agentId',
 			'projectName',
 			'headerActions',
+			'mode',
+			'currentSessionTitle',
+			'sessionOptions',
 			'beforeRevertToPublished',
 		],
-		emits: ['header-action', 'published', 'unpublished', 'reverted', 'switch-agent'],
+		emits: [
+			'header-action',
+			'open-preview',
+			'new-chat',
+			'close-preview',
+			'session-select',
+			'published',
+			'unpublished',
+			'reverted',
+			'switch-agent',
+		],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, chatHub, credentials, sessions list)
@@ -328,12 +364,6 @@ const commonStubs = {
 		props: ['skill', 'disabled', 'errors'],
 		emits: ['update:skill'],
 	},
-	AgentIntegrationsPanel: {
-		name: 'AgentIntegrationsPanel',
-		template: '<div data-testid="stub-agent-integrations-panel" />',
-		props: ['projectId', 'agentId', 'agentName', 'focusType', 'onlyConnected'],
-		emits: ['update:connected-triggers', 'trigger-added'],
-	},
 	AgentSessionsListView: {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
@@ -348,7 +378,7 @@ const commonStubs = {
 	Transition: { template: '<div><slot/></div>' },
 };
 
-describe('AgentBuilderView — chat mode toggle', () => {
+describe('AgentBuilderView — preview routing', () => {
 	// First Vite transform of this SFC + design-system deps can exceed the default
 	// 5s test timeout; warm the module once so each case measures mount behavior.
 	beforeAll(async () => {
@@ -361,6 +391,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		routerReplace.mockReset();
 		openModalWithDataMock.mockReset();
 		closeModalMock.mockReset();
+		routeName = 'AgentBuilderView';
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		sessionThreads.length = 0;
 		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
@@ -376,15 +407,15 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
-	it('renders the chat mode toggle with Build selected by default', async () => {
-		// Built agents default to Build unless the URL pins a session id; see
-		// AgentBuilderView.initialize() for the canonical decision.
+	it('renders the build chat in the editing experience without the old mode toggle', async () => {
 		const wrapper = await renderView();
 
-		const toggle = wrapper.find('[data-testid="agent-chat-mode-toggle"]');
-		expect(toggle.exists()).toBe(true);
-		const vm = wrapper.vm as unknown as { chatMode: string };
-		expect(vm.chatMode).toBe('build');
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
@@ -395,154 +426,67 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 
-	it('lazy-mounts each chat panel on first activation and toggles visibility via v-show afterwards', async () => {
-		// Default mount is Build (see prior test). Switching to Test mounts the
-		// test panel for the first time; flipping back to Build keeps both
-		// mounted so neither panel re-runs loadHistory() on toggle.
+	it('renders only the full-page preview chat on the preview route', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { activeChatSessionId: string | null };
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
-		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
-		expect(buildPanel.exists()).toBe(true);
-		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]').exists()).toBe(
-			false,
-		);
-		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
-
-		// Test requires an active session (a real user reaches this by sending
-		// a message from the home input). Seed it so the chat panel binds.
-		vm.activeChatSessionId = 'test-session-1';
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
-		await nextTick();
-
-		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
-		expect(testPanel.exists()).toBe(true);
-		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
-		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
-
-		// Switching back to Build should not unmount Test — both panels stay
-		// mounted once opened.
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('build');
-		await nextTick();
-
-		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]').exists()).toBe(
-			true,
-		);
-		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
-			true,
-		);
-		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
-		expect((testPanel.element as HTMLElement).style.display).toBe('none');
+		expect(preview.exists()).toBe(true);
+		expect(preview.props('effectiveSessionId')).toBe('thread-1');
+		expect(header.props('mode')).toBe('preview');
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
 	});
 
 	it('drops unbuilt agents straight into the build chat on load', async () => {
 		// Unbuilt agents go to the build chat unconditionally so the build
 		// panel mounts, triggers loadHistory, and any prior conversation with
-		// the builder is visible instead of being stranded behind the home
-		// screen (where the Test tab is locked and clicking Build is a no-op).
+		// the builder is visible.
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { chatMode: string };
-
-		// The view no longer has a `mode: 'home' | 'chat'` field — the three-column
-		// shell is always visible. We verify only the chat tab selection.
-		expect(vm.chatMode).toBe('build');
+		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
+			true,
+		);
 	});
 
-	it('initialises built agents with the build tab selected', async () => {
+	it('opens the preview route from the header preview action', async () => {
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { chatMode: string };
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
-		// The view no longer has a `mode: 'home' | 'chat'` field — the three-column
-		// shell is always visible. Built agents default to Build unless the URL
-		// pins a session id (see initialize() in AgentBuilderView).
-		expect(vm.chatMode).toBe('build');
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentPreviewView',
+				params: { projectId: 'p1', agentId: 'a1' },
+				query: expect.objectContaining({ continueSessionId: expect.any(String) }),
+			}),
+		);
 	});
 
-	it('locks the Test tab when the agent has no instructions', async () => {
-		intendedConfig = { name: 'Agent One', instructions: '' };
-		mockConfig.value = withDefaultLlm(intendedConfig);
+	it('does not open preview when the agent is not runnable', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { chatMode: string };
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
-		// Get into Build mode first (it's clickable on any agent state).
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('build');
-		await nextTick();
-		expect(vm.chatMode).toBe('build');
+		expect(header.props('agent')).toEqual(expect.objectContaining({ isRunnable: false }));
 
-		// Clicking Test on an unbuilt agent must be a no-op — the RadioButton
-		// option is disabled and the click handler returns early.
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
-		await nextTick();
-		expect(vm.chatMode).toBe('build');
-	});
+		header.vm.$emit('open-preview');
+		await flushPromises();
 
-	it('locks the Test tab when the agent has instructions but no LLM credential', async () => {
-		intendedConfig = {
-			name: 'Agent One',
-			model: '',
-			credential: undefined,
-			instructions: 'You are a helpful assistant.',
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { chatMode: string; isBuilt: boolean };
-
-		expect(vm.isBuilt).toBe(false);
-
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
-		await nextTick();
-		expect(vm.chatMode).toBe('build');
-	});
-
-	it('locks the Test tab when the agent has an invalid LLM model string', async () => {
-		intendedConfig = {
-			name: 'Agent One',
-			model: 'openai/',
-			credential: 'cred-openai',
-			instructions: 'You are a helpful assistant.',
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { chatMode: string; isBuilt: boolean };
-
-		expect(vm.isBuilt).toBe(false);
-
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
-		await nextTick();
-		expect(vm.chatMode).toBe('build');
-	});
-
-	it('transitions to test chat when a toggle segment is clicked', async () => {
-		// The view defaults to Build for built agents; clicking Test must
-		// switch chatMode and mount the test panel.
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			chatMode: string;
-			activeChatSessionId: string | null;
-		};
-
-		expect(vm.chatMode).toBe('build');
-		// Test mode requires an active session for the panel to bind.
-		vm.activeChatSessionId = 'test-session-1';
-
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
-		await nextTick();
-
-		expect(vm.chatMode).toBe('test');
-
-		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
-		expect(testPanel.exists()).toBe(true);
-		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 
 	it('keeps a known continued session selected even when it has no persisted messages', async () => {
+		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'faulty-thread';
 		sessionThreads.push({ id: 'faulty-thread', updatedAt: '2026-01-01T00:00:00Z' });
 
@@ -554,7 +498,9 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		await flushPromises();
 
 		expect(routerReplace).not.toHaveBeenCalled();
-		expect((wrapper.vm as unknown as { chatMode: string }).chatMode).toBe('test');
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
+		).toBe('faulty-thread');
 	});
 
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
@@ -564,7 +510,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
-			chatMode: string;
 			startChat: (msg: string) => void;
 			isBuilt: boolean;
 		};
@@ -574,10 +519,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		vm.startChat('Build me a Slack triage agent');
 		await nextTick();
-
-		// The three-column shell is always visible (no separate `mode`
-		// state machine); startChat just selects the build chat tab.
-		expect(vm.chatMode).toBe('build');
 
 		// No progress screen rendered
 		expect(wrapper.find('[data-testid="progress-stub"]').exists()).toBe(false);
@@ -630,6 +571,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		routerReplace.mockReset();
 		openModalWithDataMock.mockReset();
 		closeModalMock.mockReset();
+		routeName = 'AgentBuilderView';
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		sessionThreads.length = 0;
 		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
@@ -675,14 +617,14 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
 	});
 
-	it('renders the Build/Test toggle inside the chat input footer', async () => {
+	it('does not render the old Build/Test toggle inside the chat input footer', async () => {
 		const wrapper = await renderView();
 		const chatPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(
 			chatPanel
 				.find('[data-testid="stub-footer-start"] [data-testid="agent-chat-mode-toggle"]')
 				.exists(),
-		).toBe(true);
+		).toBe(false);
 		expect(
 			chatPanel
 				.find('[data-testid="stub-above-input"] [data-testid="agent-chat-mode-toggle"]')
@@ -936,23 +878,3 @@ describe('AgentBuilderView — three-column shell', () => {
 		]);
 	});
 });
-
-/*
- * DROPPED SPECS (no UI entry point in PR1):
- *
- * 1. 'fires User edited agent config with part=name when the agent name is updated'
- *    — relied on AgentHomeContent emitting 'update:name'. AgentHomeContent is
- *    removed from the three-column shell; name editing has no new UI entry point
- *    in PR1. Re-add once a name-edit surface lands in the editor column.
- *
- * 2. 'fires User edited agent config with part=description when the description is updated'
- *    — relied on AgentHomeContent emitting 'update:description'. Same reason as above.
- *
- * 3. 'fires User edited agent config with part=triggers when the connected-triggers list changes'
- *    — relied on AgentSettingsSidebar emitting 'update:connected-triggers'. The
- *    integrations panel is deleted in PR1; triggers telemetry has no new entry point.
- *    Re-add when AgentIntegrationsPanel or equivalent lands.
- *
- * 4. 'does not fire User edited agent config when the connected-triggers list is unchanged'
- *    — same as above.
- */

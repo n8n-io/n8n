@@ -20,13 +20,13 @@ describe('n8n observation-log reflector policy', () => {
 			renderedObservationLog:
 				'* [obs-1] CRITICAL 2026-05-12T14:30:00.000Z User chose observation-log memory.',
 			tokenCount: 42,
-			tokenBudget: 24_000,
+			tokenBudget: 8_000,
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T15:00:00.000Z');
 		expect(prompt).toContain('Scope: thread:thread-1');
 		expect(prompt).toContain('Active observation log tokens: 42');
-		expect(prompt).toContain('Token budget: 24000');
+		expect(prompt).toContain('Token budget: 8000');
 		expect(prompt).toContain('[obs-1] CRITICAL');
 	});
 });
