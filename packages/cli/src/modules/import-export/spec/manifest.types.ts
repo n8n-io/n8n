@@ -1,7 +1,3 @@
-// ---------------------------------------------------------------------------
-// Manifest entry — a single entity reference in the package manifest
-// ---------------------------------------------------------------------------
-
 export interface ManifestEntry {
 	id: string;
 	name: string;
