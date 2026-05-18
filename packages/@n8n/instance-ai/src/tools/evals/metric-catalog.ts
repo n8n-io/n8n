@@ -70,13 +70,6 @@ export function getMetricsByIds(ids: string[]): MetricCatalogEntry[] {
 }
 
 function agentHasTools(workflow: WorkflowJSON, agentNodeName: string): boolean {
-	const node = (workflow.nodes ?? []).find((n) => n.name === agentNodeName);
-	if (node !== undefined && isRecord(node.parameters)) {
-		const tools = node.parameters.tools;
-		if (Array.isArray(tools) && tools.length > 0) return true;
-	}
-
-	// Also check incoming ai_tool connections (langchain pattern).
 	const connections = workflow.connections ?? {};
 	for (const sourceConnections of Object.values(connections)) {
 		if (!isRecord(sourceConnections)) continue;

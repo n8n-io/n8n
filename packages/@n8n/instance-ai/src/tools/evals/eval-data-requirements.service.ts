@@ -9,20 +9,21 @@ import {
 	unique,
 	type WorkflowNode,
 } from './column-ref-utils';
+import { detectAiNodes } from './detect-ai-nodes';
 
 export interface EvalDataTarget {
 	dataTableId: string;
 	evaluationTriggerName: string;
-	targetAgentNodeName?: string;
+	targetNodeName?: string;
 	inputColumns: string[];
 	expectedOutputColumns: string[];
 	actualOutputColumns: string[];
 	metricNodeNames: string[];
 	/**
 	 * Pairs from setMetrics nodes: for each metric, the expected_* column
-	 * (read from the eval trigger row via `expectedAnswer`) and the agent
+	 * (read from the eval trigger row via `expectedAnswer`) and the target
 	 * output field (read from $json via `actualAnswer`). Used by eval-data
-	 * to populate expected_* columns from a past execution's agent output.
+	 * to populate expected_* columns from a past execution's target output.
 	 */
 	expectedToActualPairs: Array<{ expectedColumn: string; actualField: string }>;
 }
@@ -83,14 +84,6 @@ function collectReachableNodeNames(workflow: WorkflowJSON, startName: string): s
 	}
 	seen.delete(startName);
 	return [...seen];
-}
-
-function nodeByName(workflow: WorkflowJSON): Map<string, WorkflowNode> {
-	return new Map(workflow.nodes.filter(nodeHasName).map((node) => [node.name, node]));
-}
-
-function isAiAgentNode(node: WorkflowNode | undefined): boolean {
-	return Boolean(node?.type.includes('n8n-nodes-langchain.agent'));
 }
 
 function expectedColumnsFromMetricNodes(nodes: WorkflowNode[]): string[] {
@@ -155,18 +148,23 @@ function pairsFromMetricNodes(
 	}));
 }
 
-function firstReachableAgentName(
+function firstReachableTargetNodeName(
 	workflow: WorkflowJSON,
 	evalTriggerName: string,
 ): string | undefined {
-	const byName = nodeByName(workflow);
-	return collectReachableNodeNames(workflow, evalTriggerName).find((name) =>
-		isAiAgentNode(byName.get(name)),
+	const reachableNodeNames = collectReachableNodeNames(workflow, evalTriggerName);
+	const reachableNameSet = new Set(reachableNodeNames);
+	const reachableNodes = (workflow.nodes ?? []).filter(
+		(node): node is WorkflowNode & { name: string } =>
+			nodeHasName(node) && reachableNameSet.has(node.name),
 	);
+	const aiNodeNames = new Set(detectAiNodes({ ...workflow, nodes: reachableNodes }).aiNodeNames);
+
+	return reachableNodeNames.find((name) => aiNodeNames.has(name));
 }
 
 export function analyzeEvalDataRequirements(workflow: WorkflowJSON): EvalDataRequirements {
-	const evaluationTriggers = workflow.nodes.filter(
+	const evaluationTriggers = (workflow.nodes ?? []).filter(
 		(node): node is WorkflowNode & { name: string } =>
 			nodeHasName(node) && nodeTypeEndsWith(node, 'evaluationTrigger'),
 	);
@@ -179,7 +177,7 @@ export function analyzeEvalDataRequirements(workflow: WorkflowJSON): EvalDataReq
 		if (!dataTableId) return [];
 
 		const reachableNames = new Set(collectReachableNodeNames(workflow, trigger.name));
-		const reachableNodes = workflow.nodes.filter(
+		const reachableNodes = (workflow.nodes ?? []).filter(
 			(node): node is WorkflowNode & { name: string } =>
 				nodeHasName(node) && reachableNames.has(node.name),
 		);
@@ -189,15 +187,15 @@ export function analyzeEvalDataRequirements(workflow: WorkflowJSON): EvalDataReq
 			)
 			.map((node) => node.name);
 
-		const targetAgentNodeName = firstReachableAgentName(workflow, trigger.name);
+		const targetNodeName = firstReachableTargetNodeName(workflow, trigger.name);
 
 		return [
 			{
 				dataTableId,
 				evaluationTriggerName: trigger.name,
-				targetAgentNodeName,
-				inputColumns: targetAgentNodeName
-					? analyzeAgentInputColumns(workflow, targetAgentNodeName).inputColumns
+				targetNodeName,
+				inputColumns: targetNodeName
+					? analyzeAgentInputColumns(workflow, targetNodeName).inputColumns
 					: [],
 				expectedOutputColumns: expectedColumnsFromMetricNodes(reachableNodes),
 				actualOutputColumns: actualColumnsFromSetOutputs(reachableNodes),

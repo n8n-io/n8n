@@ -4,8 +4,10 @@ import {
 	describeMetricForWorkflow,
 	recommendedMetricId,
 } from '../describe-metric-for-workflow.service';
+import type { MetricId } from '../metric-catalog';
 
 type TestNode = Partial<WorkflowJSON['nodes'][number]>;
+type RecommendedMetricId = Exclude<MetricId, 'helpfulness'>;
 
 const baseAgent: TestNode = {
 	name: 'Chef Agent',
@@ -161,5 +163,11 @@ describe('recommendedMetricId', () => {
 
 	it('returns correctness for a plain agent with no tools or retrievers', () => {
 		expect(recommendedMetricId(wf([baseAgent]), 'Chef Agent')).toBe('correctness');
+	});
+
+	it('returns a narrowed metric id type', () => {
+		const metricId: RecommendedMetricId = recommendedMetricId(wf([baseAgent]), 'Chef Agent');
+
+		expect(metricId).toBe('correctness');
 	});
 });

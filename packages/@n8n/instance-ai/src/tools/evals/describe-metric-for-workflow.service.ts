@@ -1,6 +1,9 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { isRecord } from './column-ref-utils';
+import type { MetricId } from './metric-catalog';
+
+type RecommendedMetricId = Exclude<MetricId, 'helpfulness'>;
 
 /**
  * Walks `workflow.connections` to find all source nodes that connect into
@@ -128,7 +131,10 @@ export function describeMetricForWorkflow(
  *
  * Used to mark a single option with " (recommended)" in the selection widget.
  */
-export function recommendedMetricId(workflow: WorkflowJSON, agentNodeName: string): string {
+export function recommendedMetricId(
+	workflow: WorkflowJSON,
+	agentNodeName: string,
+): RecommendedMetricId {
 	if (getAgentToolNames(workflow, agentNodeName).length > 0) return 'tool_use';
 	if (getAgentRetrieverNames(workflow, agentNodeName).length > 0) return 'relevance';
 	return 'correctness';

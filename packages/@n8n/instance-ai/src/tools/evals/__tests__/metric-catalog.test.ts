@@ -2,16 +2,16 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { proposeDefaultMetricIds } from '../metric-catalog';
 
-type WorkflowNode = WorkflowJSON['nodes'][number];
-
-const wf = (nodes: WorkflowNode[]): WorkflowJSON =>
-	({
-		name: 't',
-		nodes,
-		connections: {},
-		pinData: {},
-		settings: {},
-	}) as unknown as WorkflowJSON;
+const wf = (
+	nodes: WorkflowJSON['nodes'],
+	connections: WorkflowJSON['connections'] = {},
+): WorkflowJSON => ({
+	name: 't',
+	nodes,
+	connections,
+	pinData: {},
+	settings: {},
+});
 
 describe('metric-catalog', () => {
 	describe('proposeDefaultMetricIds', () => {
@@ -29,10 +29,24 @@ describe('metric-catalog', () => {
 			expect(proposeDefaultMetricIds(workflow, 'Agent')).toEqual(['correctness']);
 		});
 
+		it('does not infer tools from agent parameters', () => {
+			const workflow = wf([
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { tools: [{ name: 'Calculator' }] },
+					position: [0, 0],
+					id: 'a',
+				},
+			]);
+
+			expect(proposeDefaultMetricIds(workflow, 'Agent')).toEqual(['correctness']);
+		});
+
 		it('returns ["correctness", "tool_use"] when an ai_tool connection feeds the agent', () => {
-			const workflow: WorkflowJSON = {
-				name: 't',
-				nodes: [
+			const workflow = wf(
+				[
 					{
 						name: 'Agent',
 						type: '@n8n/n8n-nodes-langchain.agent',
@@ -50,12 +64,10 @@ describe('metric-catalog', () => {
 						id: 't',
 					},
 				],
-				connections: {
+				{
 					CalcTool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
 				},
-				pinData: {},
-				settings: {},
-			} as unknown as WorkflowJSON;
+			);
 
 			expect(proposeDefaultMetricIds(workflow, 'Agent')).toEqual(['correctness', 'tool_use']);
 		});
