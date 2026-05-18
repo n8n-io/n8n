@@ -160,11 +160,11 @@ describe('redactCallToolResult', () => {
 		expect(error.message).toBe(ANTHROPIC);
 	});
 
-	it('caps recursion depth', () => {
+	it('redacts deeply nested plain object values', () => {
 		type Chain = { a?: Chain; leak?: string };
 		const root: Chain = {};
 		let current = root;
-		for (let i = 0; i < 11; i++) {
+		for (let i = 0; i < 12; i++) {
 			current.a = {};
 			current = current.a;
 		}
@@ -178,7 +178,7 @@ describe('redactCallToolResult', () => {
 		redactCallToolResult(result);
 
 		let walk = result.structuredContent as Chain;
-		for (let i = 0; i < 11; i++) walk = walk.a!;
-		expect(walk.leak).toBe(ANTHROPIC);
+		for (let i = 0; i < 12; i++) walk = walk.a!;
+		expect(walk.leak).toBe('[REDACTED:anthropic_api_key]');
 	});
 });
