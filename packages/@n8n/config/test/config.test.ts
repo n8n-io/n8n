@@ -634,7 +634,9 @@ describe('GlobalConfig', () => {
 
 	it('should read values from files using _FILE env variables', () => {
 		const passwordFile = '/path/to/postgres/password';
-		vi.stubEnv('DB_POSTGRESDB_PASSWORD_FILE', passwordFile);
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
 		readFileSyncMock.mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
