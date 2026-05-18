@@ -64,7 +64,9 @@ const unarchiveAction = z.object({
 const setupAction = z.object({
 	action: z
 		.literal('setup')
-		.describe('Open the workflow setup UI for credential and parameter configuration'),
+		.describe(
+			'Open the inline AI Assistant workflow setup card for credential and parameter configuration',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
 });

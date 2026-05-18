@@ -183,6 +183,9 @@ catalogs:
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
+    isolated-vm:
+      specifier: ^6.1.2
+      version: 6.1.2
     js-base64:
       specifier: 3.7.8
       version: 3.7.8
@@ -1600,8 +1603,8 @@ importers:
         specifier: workspace:*
         version: link:../tournament
       isolated-vm:
-        specifier: ^6.0.2
-        version: 6.0.2
+        specifier: 'catalog:'
+        version: 6.1.2
       js-base64:
         specifier: 'catalog:'
         version: 3.7.8
@@ -1758,6 +1761,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../api-types
+      '@n8n/mcp-browser':
+        specifier: workspace:*
+        version: link:../mcp-browser
       '@n8n/sandbox-client':
         specifier: 0.0.4
         version: 0.0.4
@@ -2886,8 +2892,8 @@ importers:
         specifier: 3.6.13
         version: 3.6.13
       isolated-vm:
-        specifier: ^6.0.2
-        version: 6.0.2
+        specifier: 'catalog:'
+        version: 6.1.2
       jose:
         specifier: ^6.2.2
         version: 6.2.2
@@ -4373,8 +4379,8 @@ importers:
         specifier: 2.1.15
         version: 2.1.15
       isolated-vm:
-        specifier: ^6.0.2
-        version: 6.0.2
+        specifier: 'catalog:'
+        version: 6.1.2
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
@@ -16675,8 +16681,8 @@ packages:
     resolution: {integrity: sha512-7c7mBznZu2ktfvyT582E2msM+Udc1EjOyhVRE/0ZsjD9LBtWSm23h3PtiRh2a35XoUsTQQjJXaJzuLjXsOdFDg==}
     engines: {node: '>=6.0'}
 
-  isolated-vm@6.0.2:
-    resolution: {integrity: sha512-Qw6AJuagG/VJuh2AIcSWmQPsAArti/L+lKhjXU+lyhYkbt3J57XZr+ZjgfTnOr4NJcY1r3f8f0eePS7MRGp+pg==}
+  isolated-vm@6.1.2:
+    resolution: {integrity: sha512-GGfsHqtlZiiurZaxB/3kY7LLAXR3sgzDul0fom4cSyBjx6ZbjpTrFWiH3z/nUfLJGJ8PIq9LQmQFiAxu24+I7A==}
     engines: {node: '>=22.0.0'}
 
   isomorphic-timers-promises@1.0.1:
@@ -38280,9 +38286,9 @@ snapshots:
 
   iso-639-1@2.1.15: {}
 
-  isolated-vm@6.0.2:
+  isolated-vm@6.1.2:
     dependencies:
-      prebuild-install: 7.1.3
+      node-gyp-build: 4.8.4
 
   isomorphic-timers-promises@1.0.1: {}
 

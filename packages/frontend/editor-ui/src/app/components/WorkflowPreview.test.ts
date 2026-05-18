@@ -547,6 +547,20 @@ describe('WorkflowPreview', () => {
 			});
 		});
 
+		it('requestFitView posts a fitView command to the iframe', async () => {
+			const wrapper = mount(WorkflowPreview, {
+				global: { plugins: [pinia] },
+				props: {},
+			});
+
+			sendPostMessageCommand('n8nReady');
+			postMessageSpy.mockClear();
+
+			(wrapper.vm as unknown as { requestFitView: () => void }).requestFitView();
+
+			expectIframePostMessage({ command: 'fitView' });
+		});
+
 		it('reloadExecution bypasses the executionId dedup so the same id is re-sent', async () => {
 			const wrapper = mount(WorkflowPreview, {
 				global: { plugins: [pinia] },

@@ -174,7 +174,6 @@ export class EvaluationCollectionService {
 				user,
 				workflowId,
 				input.concurrency ?? 1,
-				(input.concurrency ?? 1) > 1,
 				{
 					collectionId: collection.id,
 					workflowVersionId: versionId,
