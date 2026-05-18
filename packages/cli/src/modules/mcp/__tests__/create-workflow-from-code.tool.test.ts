@@ -108,8 +108,20 @@ describe('create-workflow-from-code MCP tool', () => {
 	const credentialsService = mockInstance(CredentialsService, {
 		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
 	});
+	const personalProjectEntity = {
+		id: 'personal-project-1',
+		name: 'Ricardo Espinoza',
+		type: 'personal' as const,
+	};
 	const projectRepository = mockInstance(ProjectRepository, {
-		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
+		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(personalProjectEntity),
+		findOneBy: jest.fn().mockImplementation(async ({ id }: { id: string }) => {
+			if (id === 'personal-project-1') return personalProjectEntity;
+			if (id === 'custom-project-id') {
+				return { id: 'custom-project-id', name: 'Marketing', type: 'team' as const };
+			}
+			return null;
+		}),
 	});
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
 		findWorkflowForUser: jest.fn().mockResolvedValue(null),
@@ -261,6 +273,31 @@ describe('create-workflow-from-code MCP tool', () => {
 				expect.any(WorkflowEntity),
 				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
 			);
+		});
+
+		test('reports targetProject as the personal project when projectId is omitted', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'personal-project-1',
+				name: 'Ricardo Espinoza',
+				type: 'personal',
+			});
+		});
+
+		test('reports targetProject as the requested project when projectId is provided', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
 		});
 
 		test('returns error when service throws permission error', async () => {

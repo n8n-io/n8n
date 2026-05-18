@@ -37,7 +37,7 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe(
-			"Optional project ID to create the workflow in. Use search_projects to find a project by name. Defaults to the user's personal project.",
+			"Project ID to create the workflow in. If the user named a project (e.g. 'in my Marketing project'), you MUST call search_projects first to resolve the name to an ID and pass it here — do not guess. If search_projects returns multiple partial matches with no exact match, ask the user to clarify before creating the workflow. Only omit this field when the user did not mention a project at all; in that case it defaults to the user's personal project.",
 		),
 	folderId: z
 		.string()
@@ -61,6 +61,18 @@ const outputSchema = {
 			}),
 		)
 		.describe('List of credentials that were automatically assigned to nodes'),
+	targetProject: z
+		.object({
+			id: z.string().describe('The ID of the project the workflow was created in'),
+			name: z.string().describe('The display name of the project the workflow was created in'),
+			type: z
+				.enum(['personal', 'team'])
+				.describe('Whether the workflow landed in a personal or team project'),
+		})
+		.optional()
+		.describe(
+			'The project the workflow was actually created in. Always surface this to the user so they know where to find the workflow — especially when it differs from the project they named.',
+		),
 	note: z
 		.string()
 		.optional()
@@ -91,7 +103,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation.`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -165,11 +177,13 @@ export const createCreateWorkflowFromCodeTool = (
 
 			stripNullCredentialStubs(newWorkflow.nodes);
 
-			// Resolve the effective project ID — default to the user's personal project
 			let effectiveProjectId = projectId;
+			let landingProject = effectiveProjectId
+				? await projectRepository.findOneBy({ id: effectiveProjectId })
+				: null;
 			if (!effectiveProjectId) {
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-				effectiveProjectId = personalProject.id;
+				landingProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
+				effectiveProjectId = landingProject.id;
 			}
 
 			const { assignments: credentialAssignments, skippedHttpNodes } =
@@ -190,6 +204,10 @@ export const createCreateWorkflowFromCodeTool = (
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;
 
+			const targetProject = landingProject
+				? { id: landingProject.id, name: landingProject.name, type: landingProject.type }
+				: undefined;
+
 			telemetryPayload.results = {
 				success: true,
 				data: {
@@ -205,6 +223,7 @@ export const createCreateWorkflowFromCodeTool = (
 				nodeCount: savedWorkflow.nodes.length,
 				url: workflowUrl,
 				autoAssignedCredentials: credentialAssignments,
+				targetProject,
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
