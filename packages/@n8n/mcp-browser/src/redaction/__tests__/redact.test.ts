@@ -203,6 +203,6 @@ describe('redactCallToolResult', () => {
 
 		let walk = result.structuredContent as Chain;
 		for (let i = 0; i < 12; i++) walk = walk.a!;
-		expect(walk.leak).toBe('[REDACTED:anthropic_api_key]');
+		expect(walk.leak).toBe('[REDACTED:anthropic_api_key:1]');
 	});
 });

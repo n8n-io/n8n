@@ -57,7 +57,6 @@ describe('applyRedactions', () => {
 		const sensitivity: SensitivityOk = {
 			ok: true,
 			sensitive: true,
-			sources: ['entropy'],
 			hits: [
 				{ type: 'secret', value: 'first-secret' },
 				{ type: 'secret', value: 'second-secret' },
