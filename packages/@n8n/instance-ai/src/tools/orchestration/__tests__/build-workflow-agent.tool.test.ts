@@ -1114,7 +1114,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 		expect(out).toEqual({ result: '', taskId: '' });
 		expect(suspend).toHaveBeenCalledWith(
 			expect.objectContaining({
-				message: 'Edit "Existing Workflow" (ID: WF_EXISTING)',
+				message: 'Edit Existing Workflow (ID: WF_EXISTING)',
 				severity: 'warning',
 			}),
 		);

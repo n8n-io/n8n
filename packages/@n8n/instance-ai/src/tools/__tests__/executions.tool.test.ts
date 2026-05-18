@@ -164,7 +164,7 @@ describe('executions tool', () => {
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: 'Execute "My Workflow" (ID: wf-1)',
+					message: 'Execute My Workflow (ID: wf-1)',
 					severity: 'warning',
 					requestId: expect.any(String),
 				}),
@@ -186,7 +186,7 @@ describe('executions tool', () => {
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: 'Execute "wf-42" (ID: wf-42)',
+					message: 'Execute wf-42 (ID: wf-42)',
 				}),
 			);
 		});

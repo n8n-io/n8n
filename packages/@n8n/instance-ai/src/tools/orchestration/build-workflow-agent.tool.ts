@@ -1888,7 +1888,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						);
 						await suspend?.({
 							requestId: nanoid(),
-							message: `Edit "${workflowName}" (ID: ${input.workflowId})`,
+							message: `Edit ${workflowName} (ID: ${input.workflowId})`,
 							severity: 'warning',
 						});
 						return { result: '', taskId: '' };

@@ -254,7 +254,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Create "Contacts"',
+					message: 'Create Contacts',
 					severity: 'info',
 				}),
 			);
@@ -283,7 +283,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Create "Contacts" in project "My Project"',
+					message: 'Create Contacts in project My Project',
 				}),
 			);
 		});
@@ -388,7 +388,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete "dt-1"',
+					message: 'Delete dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -460,7 +460,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Add "age" (number) to "dt-1"',
+					message: 'Add age (number) to dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -535,7 +535,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete "col-1" from "dt-1"',
+					message: 'Delete col-1 from dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -607,7 +607,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Rename "col-1" to "full_name" in "dt-1"',
+					message: 'Rename col-1 to full_name in dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -684,7 +684,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Insert 2 row(s) into "dt-1"',
+					message: 'Insert 2 row(s) into dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -785,7 +785,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Update rows in "dt-1"',
+					message: 'Update rows in dt-1',
 					severity: 'warning',
 				}),
 			);

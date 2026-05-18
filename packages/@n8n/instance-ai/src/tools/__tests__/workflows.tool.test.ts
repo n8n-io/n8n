@@ -450,7 +450,7 @@ describe('workflows tool', () => {
 
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: expect.stringContaining('"wf1"'),
+				message: expect.stringContaining('wf1'),
 			});
 		});
 
@@ -725,7 +725,7 @@ describe('workflows tool', () => {
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish "My WF" (ID: wf1)',
+				message: 'Publish My WF (ID: wf1)',
 				severity: 'warning',
 			});
 		});
@@ -755,7 +755,7 @@ describe('workflows tool', () => {
 			} as never);
 
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish "My WF" (ID: wf1) and 1 referenced supporting workflow(s)',
+				message: 'Publish My WF (ID: wf1) and 1 referenced supporting workflow(s)',
 				severity: 'warning',
 			});
 		});
@@ -939,7 +939,7 @@ describe('workflows tool', () => {
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Unpublish "My WF" (ID: wf1)',
+				message: 'Unpublish My WF (ID: wf1)',
 				severity: 'warning',
 			});
 		});

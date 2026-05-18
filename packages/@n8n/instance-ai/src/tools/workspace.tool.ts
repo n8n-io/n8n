@@ -171,7 +171,7 @@ async function handleTagWorkflow(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Tag "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
+			message: `Tag ${input.workflowName ?? input.workflowId} (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
 			severity: 'info' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
@@ -206,7 +206,7 @@ async function handleCleanupTestExecutions(
 		const hours = input.olderThanHours ?? 1;
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete executions for "${input.workflowName ?? input.workflowId}" older than ${hours} hour(s)`,
+			message: `Delete executions for ${input.workflowName ?? input.workflowId} older than ${hours} hour(s)`,
 			severity: 'warning' as const,
 		});
 		return { deletedCount: 0 };
@@ -255,7 +255,7 @@ async function handleCreateFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Create "${input.name}" in project "${input.projectId}"`,
+			message: `Create ${input.name} in project ${input.projectId}`,
 			severity: 'info' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
@@ -299,7 +299,7 @@ async function handleDeleteFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete "${input.folderName ?? input.folderId}"`,
+			message: `Delete ${input.folderName ?? input.folderId}`,
 			severity: 'destructive' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
@@ -337,7 +337,7 @@ async function handleMoveWorkflowToFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Move "${input.workflowName ?? input.workflowId}" to folder "${input.folderName ?? input.folderId}"`,
+			message: `Move ${input.workflowName ?? input.workflowId} to folder ${input.folderName ?? input.folderId}`,
 			severity: 'info' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker

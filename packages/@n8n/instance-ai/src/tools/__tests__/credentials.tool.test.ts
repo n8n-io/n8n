@@ -401,7 +401,7 @@ describe('credentials tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					requestId: expect.any(String),
-					message: 'Delete "My Cred"',
+					message: 'Delete My Cred',
 					severity: 'destructive',
 				}),
 			);
@@ -423,7 +423,7 @@ describe('credentials tool', () => {
 			expect(suspendFn).toHaveBeenCalledTimes(1);
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete "cred-99"',
+					message: 'Delete cred-99',
 				}),
 			);
 		});
