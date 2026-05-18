@@ -61,17 +61,6 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to executions list page
-	 * URLs:
-	 * - Home executions: /home/executions
-	 * - Project executions: /projects/{projectId}/executions
-	 */
-	async toExecutions(projectId?: string): Promise<void> {
-		const url = projectId ? `/projects/${projectId}/executions` : '/home/executions';
-		await this.page.goto(url);
-	}
-
-	/**
 	 * Navigate to variables page (global only)
 	 * URL: /variables
 	 * Note: Variables are global and don't have project-specific scoping
