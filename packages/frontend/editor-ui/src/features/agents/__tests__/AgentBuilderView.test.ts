@@ -310,10 +310,6 @@ const commonStubs = {
 		props: ['config', 'disabled'],
 		emits: ['update:config'],
 	},
-	AgentEvalsPanel: {
-		name: 'AgentEvalsPanel',
-		template: '<div data-testid="stub-agent-evals-panel" />',
-	},
 	AgentToolsListPanel: {
 		name: 'AgentToolsListPanel',
 		template: '<div data-testid="stub-agent-tools-list-panel" />',
