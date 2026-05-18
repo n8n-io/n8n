@@ -13,15 +13,16 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "rimraf dist && tsc -p tsconfig.build.json",
-    "format": "biome format --write src examples",
-    "format:check": "biome ci src examples",
+    "format": "biome format --write src examples evals",
+    "format:check": "biome ci src examples evals",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:unit": "jest",
     "test:dev": "jest --watch",
-    "test:integration": "vitest run --config vitest.integration.config.mjs"
+    "test:integration": "vitest run --config vitest.integration.config.mjs",
+    "eval:memory": "tsx evals/memory/run-golden.ts"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
