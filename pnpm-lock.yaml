@@ -27,6 +27,18 @@ catalogs:
     '@ai-sdk/mistral':
       specifier: ^3.0.30
       version: 3.0.30
+    '@chat-adapter/linear':
+      specifier: ^4.28.1
+      version: 4.28.1
+    '@chat-adapter/slack':
+      specifier: ^4.28.1
+      version: 4.28.1
+    '@chat-adapter/state-memory':
+      specifier: ^4.28.1
+      version: 4.28.1
+    '@chat-adapter/telegram':
+      specifier: ^4.28.1
+      version: 4.28.1
     '@codemirror/autocomplete':
       specifier: 6.20.0
       version: 6.20.0
@@ -156,6 +168,9 @@ catalogs:
     callsites:
       specifier: 3.1.0
       version: 3.1.0
+    chat:
+      specifier: ^4.28.1
+      version: 4.28.1
     cron:
       specifier: 4.4.0
       version: 4.4.0
@@ -2643,17 +2658,17 @@ importers:
         specifier: 4.8.0
         version: 4.8.0
       '@chat-adapter/linear':
-        specifier: ^4.26.0
-        version: 4.26.0(graphql@16.11.0)
+        specifier: 'catalog:'
+        version: 4.28.1(graphql@16.11.0)
       '@chat-adapter/slack':
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@chat-adapter/state-memory':
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1
       '@chat-adapter/telegram':
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
@@ -2787,8 +2802,8 @@ importers:
         specifier: 4.1.2
         version: 4.1.2
       chat:
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1
       class-transformer:
         specifier: 0.5.1
         version: 0.5.1
@@ -6625,20 +6640,20 @@ packages:
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
 
-  '@chat-adapter/linear@4.26.0':
-    resolution: {integrity: sha512-sQfJXh9QbMnLV/odikaWHBQ3Mx1ZS+QtxIt7dTEQ4aCeIrQJflycAxxO8d6aepaGKhLQjvZx7iOkdfxMj35WlA==}
+  '@chat-adapter/linear@4.28.1':
+    resolution: {integrity: sha512-ZLcmb6lU26ZSJEwo6g8IyXUsTInBVPbqV72CQ0zGy9SyKs/xBUv8xftj6Q1UMIncaLLPbAa4vpjW6+zvCruZ4A==}
 
-  '@chat-adapter/shared@4.26.0':
-    resolution: {integrity: sha512-YD0MGktFXrArUqTBsyPfL5vkdD1WBS58PAWO0oVrMQAMmPxpAXfWGjBtZCkf3y8R8Svb0uVuVXiMZSForaEnMQ==}
+  '@chat-adapter/shared@4.28.1':
+    resolution: {integrity: sha512-v7AcZMrvS2gxFlRiUO1o9Nta2iipnnmV54Gie8e3nQTQvnghENfSf7j7nimA5DOUWCgj+e4DV7LE0x1pakNtkA==}
 
-  '@chat-adapter/slack@4.26.0':
-    resolution: {integrity: sha512-NNN47rURI6qpJf4rRK8xyeumjPTAXr7YSU4/FnViU8cFV/vKYFR4xZTzlFMVWNrYi9SmSwasUjcBmQznigK54Q==}
+  '@chat-adapter/slack@4.28.1':
+    resolution: {integrity: sha512-JxgV7+cRXXeKpj0MzS7nzG3JvpnfhIgnPo9r/sdEIzeWhIb8tUcT2PbLl/fpSu/cb+WkICS0bCENn1I0PS39Hg==}
 
-  '@chat-adapter/state-memory@4.26.0':
-    resolution: {integrity: sha512-FsfyM/A9Bf1yFc1FWmOsK+a4YVwm5FogX25hZxFG6cEvyFb6Cd924SsbtvF06yItY/7J2UFetCsMmBPkdPKshQ==}
+  '@chat-adapter/state-memory@4.28.1':
+    resolution: {integrity: sha512-KMKrPPU9inr+GVH5pIL81aSW0+LXulxZMktSzf5JOgE6C8WHmUAcGN9B0C80edyeC5qeXOyl0Vl3ZecPZsWDqQ==}
 
-  '@chat-adapter/telegram@4.26.0':
-    resolution: {integrity: sha512-PE2HoCQ4648VNKZTuHFanQNoYzM/niNoSbDyYlPq6VOoB5qsoo1ctR8TERyl1EfPBNexWZpSWYrrnQPr15LUfA==}
+  '@chat-adapter/telegram@4.28.1':
+    resolution: {integrity: sha512-ZBw6zx36enxXGlbOoigzCsWH6slbTCOWyTGatCz7jq4DFTDpvjRgBBH760n9peFkZpXJWOAXZKJm/IW8saT5aw==}
 
   '@chromatic-com/storybook@4.1.3':
     resolution: {integrity: sha512-hc0HO9GAV9pxqDE6fTVOV5KeLpTiCfV8Jrpk5ogKLiIgeq2C+NPjpt74YnrZTjiK8E19fYcMP+2WY9ZtX7zHmw==}
@@ -10615,6 +10630,10 @@ packages:
     resolution: {integrity: sha512-6cmdPrV/RYfd2U0mDGiMK8S7OJqpCTm7enMLRR3edccsPX8j7zXTLnaEF4fhxxJJTAIOil6+qZrnUPTuaLvwrQ==}
     engines: {node: '>= 18', npm: '>= 8.6.0'}
 
+  '@slack/socket-mode@2.0.7':
+    resolution: {integrity: sha512-qYy07je71WnEHgRwmw12DlAnZLi5HXmdlI2WUzUK2LH/rYXQpP6uEg462S5CwfE8FoCKUdIigHtYnOOfzZH1lQ==}
+    engines: {node: '>= 18', npm: '>= 8.6.0'}
+
   '@slack/types@2.20.1':
     resolution: {integrity: sha512-eWX2mdt1ktpn8+40iiMc404uGrih+2fxiky3zBcPjtXKj6HLRdYlmhrPkJi7JTJm8dpXR6BWVWEDBXtaWMKD6A==}
     engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
@@ -13586,8 +13605,8 @@ packages:
     resolution: {integrity: sha512-vQEj6d+z0dcsKLlQvbKIMYFHd3t8W/7L2vfJIbYcfyPcRx92CsHqECpueN8qVGNlKyDcr5wBrYAYKnfu/9Q1hQ==}
     engines: {pnpm: '>=7'}
 
-  chat@4.26.0:
-    resolution: {integrity: sha512-QToDnIEGpyb8yQA6YLMHOSRK30YVk4RtsyFyuWFYyB2c4jQlyIrSWtwVK7qyvmvqzQp9uDwCdJRAhS8GtCHAGQ==}
+  chat@4.28.1:
+    resolution: {integrity: sha512-oKBeLQ746rSmHWGoXmPgDOqMVdIe9cWFQBQ1G2pw0l2vV4sAsZgfEJmc1UYqSJR4kYy4PxKgRFy31pe4RJ644Q==}
 
   check-error@2.1.1:
     resolution: {integrity: sha512-OAlb+T7V4Op9OwdkjmguYRqncdlx5JiofwOAUkmTF+jNdHwzTaTs4sRAGpzLF3oOz5xAyDGrPgeIDFQmDOTiJw==}
@@ -26153,40 +26172,43 @@ snapshots:
 
   '@cfworker/json-schema@4.1.0': {}
 
-  '@chat-adapter/linear@4.26.0(graphql@16.11.0)':
+  '@chat-adapter/linear@4.28.1(graphql@16.11.0)':
     dependencies:
-      '@chat-adapter/shared': 4.26.0
+      '@chat-adapter/shared': 4.28.1
       '@linear/sdk': 76.0.0(graphql@16.11.0)
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
       - graphql
       - supports-color
 
-  '@chat-adapter/shared@4.26.0':
+  '@chat-adapter/shared@4.28.1':
     dependencies:
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
       - supports-color
 
-  '@chat-adapter/slack@4.26.0':
+  '@chat-adapter/slack@4.28.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
     dependencies:
-      '@chat-adapter/shared': 4.26.0
+      '@chat-adapter/shared': 4.28.1
+      '@slack/socket-mode': 2.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@slack/web-api': 7.15.1
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
+      - bufferutil
       - debug
       - supports-color
+      - utf-8-validate
 
-  '@chat-adapter/state-memory@4.26.0':
+  '@chat-adapter/state-memory@4.28.1':
     dependencies:
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
       - supports-color
 
-  '@chat-adapter/telegram@4.26.0':
+  '@chat-adapter/telegram@4.28.1':
     dependencies:
-      '@chat-adapter/shared': 4.26.0
-      chat: 4.26.0
+      '@chat-adapter/shared': 4.28.1
+      chat: 4.28.1
     transitivePeerDependencies:
       - supports-color
 
@@ -30753,6 +30775,19 @@ snapshots:
     dependencies:
       '@types/node': 20.19.21
 
+  '@slack/socket-mode@2.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@slack/logger': 4.0.1
+      '@slack/web-api': 7.15.1
+      '@types/node': 20.19.21
+      '@types/ws': 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
+      eventemitter3: 5.0.1
+      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - debug
+      - utf-8-validate
+
   '@slack/types@2.20.1': {}
 
   '@slack/web-api@7.15.1':
@@ -34565,7 +34600,7 @@ snapshots:
     dependencies:
       '@kurkle/color': 0.3.2
 
-  chat@4.26.0:
+  chat@4.28.1:
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0

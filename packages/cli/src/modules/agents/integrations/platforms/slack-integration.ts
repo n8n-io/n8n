@@ -6,6 +6,7 @@ import {
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
+import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
 
 /**
  * Slack platform integration.
@@ -33,6 +34,14 @@ export class SlackIntegration extends AgentChatIntegration {
 		'image',
 		'fields',
 	];
+
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_user',
+		'get_channel_info',
+	];
+
+	readonly actions: IntegrationAction[] = ['respond', 'send_dm', 'send_channel_message'];
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);

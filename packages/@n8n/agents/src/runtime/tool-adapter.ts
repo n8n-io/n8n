@@ -7,6 +7,7 @@ import {
 	type BuiltTool,
 	type BuiltTelemetry,
 	type InterruptibleToolContext,
+	type ToolExecutionContext,
 	type ToolContext,
 } from '../types';
 import type { SubAgentUsage } from '../types/sdk/agent';
@@ -143,6 +144,7 @@ export async function executeTool(
 	resumeData?: unknown,
 	parentTelemetry?: BuiltTelemetry,
 	toolCallId?: string,
+	executionContext: ToolExecutionContext = {},
 ): Promise<unknown> {
 	if (!builtTool.handler) {
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
@@ -156,11 +158,18 @@ export async function executeTool(
 			resumeData,
 			parentTelemetry,
 			toolCallId,
+			runId: executionContext.runId,
+			persistence: executionContext.persistence,
 		};
 		return await builtTool.handler(args, ctx);
 	}
 
-	const ctx: ToolContext = { parentTelemetry, toolCallId };
+	const ctx: ToolContext = {
+		parentTelemetry,
+		toolCallId,
+		runId: executionContext.runId,
+		persistence: executionContext.persistence,
+	};
 	return await builtTool.handler(args, ctx);
 }
 
