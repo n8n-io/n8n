@@ -5,6 +5,7 @@
 import type { Client, Run } from 'langsmith';
 
 import type { TraceNode } from '../types';
+import { isRecord } from '../utils/safe-extract';
 
 export const EVAL_THREAD_PREFIX = 'eval-';
 
@@ -63,8 +64,9 @@ function assembleForest(runs: Run[]): TraceNode[] {
 
 	const roots: TraceNode[] = [];
 	for (const node of byId.values()) {
-		if (node.parentRunId && byId.has(node.parentRunId)) {
-			byId.get(node.parentRunId)!.children.push(node);
+		const parent = node.parentRunId ? byId.get(node.parentRunId) : undefined;
+		if (parent) {
+			parent.children.push(node);
 		} else {
 			// Either no parent, or parent not in this trace (which would be a
 			// LangSmith oddity — treat as a root so we don't drop it).
@@ -143,8 +145,4 @@ function extractTokenUsage(run: Run): TraceNode['tokenUsage'] {
 
 function numericOrUndefined(value: unknown): number | undefined {
 	return typeof value === 'number' && !Number.isNaN(value) ? value : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

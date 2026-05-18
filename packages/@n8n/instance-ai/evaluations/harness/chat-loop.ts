@@ -17,11 +17,8 @@ import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import type { CapturedEvent } from '../types';
-import {
-	getEventPayload,
-	getNestedRecord,
-	tryInfrastructureResponse,
-} from '../utils/confirmation-payload';
+import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
+import { getNestedRecord } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -81,9 +78,15 @@ export interface WaitConfig {
 	timeoutMs: number;
 	logger: EvalLogger;
 	confirmationStrategy?: ConfirmationStrategy;
+	/** Per-conversation retry count by requestId. Auto-allocated when omitted. */
+	confirmationRetries?: Map<string, number>;
 }
 
 export async function waitForAllActivity(config: WaitConfig): Promise<void> {
+	// Allocate the retries map once per conversation if the caller didn't
+	// pass one; per-call allocation would reset attempt counts every poll.
+	config.confirmationRetries ??= new Map<string, number>();
+
 	let runFinishCount = 0;
 
 	while (true) {
@@ -226,11 +229,10 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 // Confirmation auto-approval
 // ---------------------------------------------------------------------------
 
-const confirmationRetries = new Map<string, number>();
-
 export async function processConfirmationRequests(config: WaitConfig): Promise<void> {
 	const confirmationEvents = config.events.filter((e) => e.type === 'confirmation-request');
 	const strategy = config.confirmationStrategy ?? buildAutoApprovePayload;
+	const retries = config.confirmationRetries ?? new Map<string, number>();
 
 	for (const event of confirmationEvents) {
 		const requestId = extractConfirmationRequestId(event);
@@ -238,7 +240,7 @@ export async function processConfirmationRequests(config: WaitConfig): Promise<v
 			continue;
 		}
 
-		const retryCount = confirmationRetries.get(requestId) ?? 0;
+		const retryCount = retries.get(requestId) ?? 0;
 		if (retryCount >= MAX_CONFIRMATION_RETRIES) {
 			continue;
 		}
@@ -251,9 +253,9 @@ export async function processConfirmationRequests(config: WaitConfig): Promise<v
 			const payload = await strategy(event);
 			await config.client.confirmAction(requestId, payload);
 			config.approvedRequests.add(requestId);
-			confirmationRetries.delete(requestId);
+			retries.delete(requestId);
 		} catch (error: unknown) {
-			confirmationRetries.set(requestId, retryCount + 1);
+			retries.set(requestId, retryCount + 1);
 			const msg = error instanceof Error ? error.message : String(error);
 			config.logger.verbose(
 				`[confirm] Failed to respond to ${requestId} (attempt ${String(retryCount + 1)}/${String(MAX_CONFIRMATION_RETRIES)}): ${msg}`,

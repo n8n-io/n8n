@@ -2,6 +2,16 @@
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
+/**
+ * What category of response the proxy sent for a confirmation event.
+ * Mostly mirrors the `kind` of the InstanceAiConfirmRequest, with two
+ * overlay categories — `dismissal` (e.g. zero-answer questions, empty
+ * setup-wizard apply) and `rejection` (approval with approved=false).
+ */
+export type ProxyDecisionCategory = InstanceAiConfirmRequest['kind'] | 'dismissal' | 'rejection';
+
+export type ProxyDecisionStats = Partial<Record<ProxyDecisionCategory, number>>;
+
 import { createUserProxyAgent, type UserProxyAgent } from './agent';
 import {
 	getNextUnsentReferenceUserTurn,
@@ -13,7 +23,7 @@ import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
 import type { CapturedEvent, ConversationTurn } from '../../types';
-import { getNestedRecord } from '../confirmation-payload';
+import { getNestedRecord, getString } from '../safe-extract';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -48,7 +58,7 @@ export class UserProxyLlm {
 	private ingestedEventCount = 0;
 	private rollingTranscript: ConversationTurn[];
 	private readonly seenRequestIds = new Set<string>();
-	private readonly decisionStats: Record<string, number> = {};
+	private readonly decisionStats: ProxyDecisionStats = {};
 
 	constructor(config: UserProxyConfig) {
 		this.conversation = config.conversation;
@@ -122,7 +132,7 @@ export class UserProxyLlm {
 	}
 
 	/** Counts of proxy decisions by category. Read after the build completes. */
-	getDecisionStats(): Readonly<Record<string, number>> {
+	getDecisionStats(): Readonly<ProxyDecisionStats> {
 		return { ...this.decisionStats };
 	}
 
@@ -179,11 +189,6 @@ export class UserProxyLlm {
 // Event helpers
 // ---------------------------------------------------------------------------
 
-function getString(obj: Record<string, unknown>, key: string): string | undefined {
-	const value = obj[key];
-	return typeof value === 'string' ? value : undefined;
-}
-
 function extractTextDelta(event: CapturedEvent): string | undefined {
 	const directText = event.data.text;
 	if (typeof directText === 'string') return directText;
@@ -209,7 +214,7 @@ function summarizeEvent(event: CapturedEvent): string {
 }
 
 /** Coarse category for accounting: how the proxy responded to a confirmation. */
-function classifyDecision(encoded: InstanceAiConfirmRequest): string {
+function classifyDecision(encoded: InstanceAiConfirmRequest): ProxyDecisionCategory {
 	if (
 		(encoded.kind === 'questions' &&
 			(encoded.answers.length === 0 || encoded.answers.every((a) => a.skipped))) ||

@@ -11,6 +11,7 @@ import type {
 	InstanceAiMetrics,
 	TurnCounter,
 } from '../types';
+import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Tool names whose results contain resource IDs we need to track
@@ -25,24 +26,6 @@ const WORKFLOW_TOOLS = new Set([
 
 const EXECUTION_TOOL = 'run-workflow';
 const DATA_TABLE_TOOL = 'create-data-table';
-
-// ---------------------------------------------------------------------------
-// Type guards for event payloads
-// ---------------------------------------------------------------------------
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function getString(obj: Record<string, unknown>, key: string): string | undefined {
-	const value = obj[key];
-	return typeof value === 'string' ? value : undefined;
-}
-
-function getRecord(obj: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
-	const value = obj[key];
-	return isRecord(value) ? value : undefined;
-}
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents

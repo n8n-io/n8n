@@ -33,7 +33,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { UserProxyLlm } from '../utils/user-proxy';
+import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -167,7 +167,7 @@ interface MultiTurnDriverConfig {
 
 async function driveMultiTurnConversation(
 	config: MultiTurnDriverConfig,
-): Promise<Record<string, number>> {
+): Promise<ProxyDecisionStats> {
 	const openingMessage = config.conversation[0]?.text ?? '';
 
 	const proxy = new UserProxyLlm({
@@ -217,7 +217,7 @@ export interface BuildResult {
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId?: string;
 	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
-	proxyDecisionStats?: Record<string, number>;
+	proxyDecisionStats?: ProxyDecisionStats;
 }
 
 export interface BuildWorkflowConfig {
@@ -275,7 +275,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		await delay(SSE_SETTLE_DELAY_MS);
 
-		let proxyDecisionStats: Record<string, number> | undefined;
+		let proxyDecisionStats: ProxyDecisionStats | undefined;
 		if (isMultiTurn) {
 			proxyDecisionStats = await driveMultiTurnConversation({
 				client,
@@ -408,7 +408,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	}
 }
 
-function formatProxyStatsSuffix(stats: Record<string, number> | undefined): string {
+function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
 	if (!stats) return '';
 	const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
 	if (entries.length === 0) return '';

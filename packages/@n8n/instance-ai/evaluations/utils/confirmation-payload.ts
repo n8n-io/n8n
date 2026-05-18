@@ -4,6 +4,7 @@
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
+import { getNestedRecord } from './safe-extract';
 import type { CapturedEvent } from '../types';
 
 /**
@@ -43,15 +44,4 @@ export function tryInfrastructureResponse(
 
 export function getEventPayload(event: CapturedEvent): Record<string, unknown> {
 	return getNestedRecord(event.data, 'payload') ?? {};
-}
-
-export function getNestedRecord(
-	obj: Record<string, unknown>,
-	key: string,
-): Record<string, unknown> | undefined {
-	const value = obj[key];
-	if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-		return value as Record<string, unknown>;
-	}
-	return undefined;
 }
