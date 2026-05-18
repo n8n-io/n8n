@@ -1,3 +1,11 @@
+## [1.123.44](https://github.com/n8n-io/n8n/compare/n8n@1.123.43...n8n@1.123.44) (2026-05-18)
+
+
+### Bug Fixes
+
+* Fix 11 critical issues in vm2, protobufjs, langsmith and 1 more ([#30563](https://github.com/n8n-io/n8n/issues/30563)) ([c4f3a10](https://github.com/n8n-io/n8n/commit/c4f3a1056eac1472c63efcb6cbe7f08590c32c53))
+
+
 ## [1.123.43](https://github.com/n8n-io/n8n/compare/n8n@1.123.42...n8n@1.123.43) (2026-05-13)
 
 
