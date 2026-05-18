@@ -21,6 +21,7 @@ export class ImportExportService {
 		const writer = new TarPackageWriter();
 
 		const workflowEntries = await this.workflowExporter.export({
+			user: request.user,
 			workflowIds: request.workflowIds,
 			writer,
 		});
