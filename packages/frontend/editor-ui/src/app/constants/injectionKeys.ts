@@ -9,6 +9,7 @@ import type { TelemetryContext } from '@/app/types/telemetry';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
@@ -33,5 +34,6 @@ export const WorkflowExecutionStateStoreKey: InjectionKey<
 > = Symbol('WorkflowExecutionStateStore');
 export const NDVStoreKey: InjectionKey<ShallowRef<ReturnType<typeof useNDVStore> | null>> =
 	Symbol('NDVStore');
+export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');

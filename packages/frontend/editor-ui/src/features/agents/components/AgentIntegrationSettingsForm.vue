@@ -4,6 +4,7 @@ import type { AgentIntegrationSettings, AgentTelegramIntegrationSettings } from 
 
 import { resolveSavedTelegramSettings } from '../utils/telegramAccessSettings';
 import AgentTelegramAccessSettingsForm from './AgentTelegramAccessSettingsForm.vue';
+import AgentSlackSettingsForm from './AgentSlackSettingsForm.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -11,8 +12,18 @@ const props = withDefaults(
 		disabled?: boolean;
 		connected?: boolean;
 		savedSettings?: AgentIntegrationSettings;
+		agentName?: string;
+		projectId?: string;
+		agentId?: string;
 	}>(),
-	{ disabled: false, connected: false, savedSettings: undefined },
+	{
+		disabled: false,
+		connected: false,
+		savedSettings: undefined,
+		agentName: '',
+		projectId: '',
+		agentId: '',
+	},
 );
 
 const telegramFormRef = ref<InstanceType<typeof AgentTelegramAccessSettingsForm>>();
@@ -20,8 +31,6 @@ const telegramFormRef = ref<InstanceType<typeof AgentTelegramAccessSettingsForm>
 const telegramSavedSettings = computed<AgentTelegramIntegrationSettings | undefined>(() =>
 	resolveSavedTelegramSettings(props.savedSettings, props.connected),
 );
-
-const hasTelegramForm = computed(() => props.type === 'telegram');
 
 const currentSettings = computed<AgentIntegrationSettings | undefined>(
 	() => telegramFormRef.value?.currentSettings,
@@ -45,9 +54,16 @@ defineExpose({ currentSettings, validationError, isDirty });
 
 <template>
 	<AgentTelegramAccessSettingsForm
-		v-if="hasTelegramForm"
+		v-if="props.type === 'telegram'"
 		ref="telegramFormRef"
 		:disabled="disabled"
 		:saved-settings="telegramSavedSettings"
+	/>
+	<AgentSlackSettingsForm
+		v-else-if="props.type === 'slack'"
+		:agent-name="agentName"
+		:project-id="projectId"
+		:agent-id="agentId"
+		:connected="connected"
 	/>
 </template>

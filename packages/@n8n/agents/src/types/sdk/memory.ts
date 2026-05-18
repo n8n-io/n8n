@@ -131,6 +131,11 @@ export interface TitleGenerationConfig {
 
 export type ObservationCapableMemory = BuiltMemory & BuiltObservationStore;
 
+export interface ObservationLogMemoryConfig {
+	/** Maximum estimated tokens to render into the system prompt. */
+	renderTokenBudget?: number;
+}
+
 interface MemoryConfigBase {
 	lastMessages: number;
 	workingMemory?: {
@@ -144,6 +149,7 @@ interface MemoryConfigBase {
 		 */
 		instruction?: string;
 	};
+	observationLog?: ObservationLogMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	titleGeneration?: TitleGenerationConfig;
 }
