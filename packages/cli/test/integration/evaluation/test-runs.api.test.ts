@@ -293,7 +293,6 @@ describe('POST /workflows/:workflowId/test-runs/new', () => {
 			expect.objectContaining({ id: ownerShell.id }),
 			workflowUnderTest.id,
 			1,
-			false,
 		);
 	});
 

@@ -13,10 +13,10 @@ import type { ModelConfig } from '../types/sdk/agent';
 
 // Keep this low while runtime history is a floating message window: short but durable facts
 // should become observations before older messages are likely to fall out of prompt context.
-export const DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS = 2_000;
+export const DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS = 500;
 export const DEFAULT_OBSERVATION_LOG_TAIL_LIMIT = 20;
-export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 8_000;
-export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 8_000;
+export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 4_000;
+export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 4_500;
 export const DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS = 30_000;
 
 export const DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT = `You are observing a conversation between a user and an agent. Extract durable observations about what happened, what was decided, what changed, and what needs follow-up. The agent will read your observations on later turns as its memory of this conversation.

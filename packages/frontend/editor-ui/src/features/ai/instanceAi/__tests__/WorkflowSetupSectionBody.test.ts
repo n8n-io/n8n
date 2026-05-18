@@ -23,6 +23,10 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
 	default: { template: '<div />' },
 }));
 
+vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
+	default: { template: '<div />' },
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({

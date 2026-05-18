@@ -12,6 +12,7 @@ import { Container, Service } from '@n8n/di';
 @Service()
 export class ExecutionContextHookRegistry {
 	private hookMap: Map<string, IContextEstablishmentHook> = new Map();
+	private globalHook: Set<IContextEstablishmentHook> = new Set();
 
 	constructor(
 		private readonly executionContextHookMetadata: ContextEstablishmentHookMetadata,
@@ -31,17 +32,19 @@ export class ExecutionContextHookRegistry {
 	 */
 	async init() {
 		this.hookMap.clear();
+		this.globalHook.clear();
 
 		const hookClasses = this.executionContextHookMetadata.getClasses();
+		const globalHookClasses = this.executionContextHookMetadata.getGlobalClasses();
 		this.logger.debug(`Registering ${hookClasses.length} execution context hooks.`);
 
-		for (const HookClass of hookClasses) {
+		for (const hookClass of hookClasses) {
 			let hook: IContextEstablishmentHook;
 			try {
-				hook = Container.get(HookClass);
+				hook = Container.get(hookClass);
 			} catch (error) {
 				this.logger.error(
-					`Failed to instantiate execution context hook class "${HookClass.name}": ${(error as Error).message}`,
+					`Failed to instantiate execution context hook class "${hookClass.name}": ${(error as Error).message}`,
 					{ error },
 				);
 				continue;
@@ -49,7 +52,7 @@ export class ExecutionContextHookRegistry {
 
 			if (this.hookMap.has(hook.hookDescription.name)) {
 				this.logger.warn(
-					`Execution context hook with name "${hook.hookDescription.name}" is already registered. Conflicting classes are "${this.hookMap.get(hook.hookDescription.name)?.constructor.name}" and "${HookClass.name}". Skipping the latter.`,
+					`Execution context hook with name "${hook.hookDescription.name}" is already registered. Conflicting classes are "${this.hookMap.get(hook.hookDescription.name)?.constructor.name}" and "${hookClass.name}". Skipping the latter.`,
 				);
 				continue;
 			}
@@ -65,6 +68,9 @@ export class ExecutionContextHookRegistry {
 				}
 			}
 			this.hookMap.set(hook.hookDescription.name, hook);
+			if (globalHookClasses.includes(hookClass)) {
+				this.globalHook.add(hook);
+			}
 		}
 	}
 
@@ -100,5 +106,9 @@ export class ExecutionContextHookRegistry {
 		return Array.from(this.hookMap.values()).filter((hook) => {
 			return hook.isApplicableToTriggerNode(triggerType);
 		});
+	}
+
+	getGlobalHooks(): IContextEstablishmentHook[] {
+		return Array.from(this.globalHook);
 	}
 }

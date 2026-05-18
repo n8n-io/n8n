@@ -98,7 +98,7 @@ export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
  * const memory = new Memory()
  *   .storage('memory')
  *   .lastMessages(20)
- *   .observationalMemory({ renderTokenBudget: 8000 });
+ *   .observationalMemory({ renderTokenBudget: 4500 });
  *
  * agent.memory(memory);
  * ```

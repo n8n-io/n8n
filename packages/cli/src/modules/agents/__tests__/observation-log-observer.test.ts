@@ -7,7 +7,7 @@ import {
 
 describe('n8n observation-log observer policy', () => {
 	it('uses the n8n observer defaults', () => {
-		expect(DEFAULT_OBSERVER_THRESHOLD_TOKENS).toBe(2000);
+		expect(DEFAULT_OBSERVER_THRESHOLD_TOKENS).toBe(500);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVER_PROMPT).toContain('Output the new observations only');
 		expect(DEFAULT_OBSERVER_PROMPT).toContain('CRITICAL. Things the agent must not forget');

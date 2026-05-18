@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const MEMORY_ENTRY_STATUSES = ['active', 'superseded', 'dropped'];
 const OBSERVATION_SCOPE_KINDS = ['thread', 'resource'];
 
-export class CreateAgentMemoryEntryTables1784000000004 implements ReversibleMigration {
+export class CreateAgentMemoryEntryTables1784000000007 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, dropTable, column } }: MigrationContext) {
 		await dropTable('agents_memory_entry_cursors');
 		await dropTable('agents_memory_entry_sources');
