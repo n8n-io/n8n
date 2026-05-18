@@ -99,6 +99,7 @@ declare global {
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 			capture?(event: string, properties: IDataObject): void;
+			startSessionRecording?(): void;
 			register?(metadata: IDataObject): void;
 			people?: {
 				set?(metadata: IDataObject): void;

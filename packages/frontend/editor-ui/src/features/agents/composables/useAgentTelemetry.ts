@@ -4,6 +4,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentChatMode = 'build' | 'test';
+export type AgentCreateSource = 'button' | 'dropdown' | 'card';
+export type AgentCreateTelemetryOptions = {
+	startSessionRecording?: boolean;
+};
 export type AgentConfigPart =
 	| 'instructions'
 	| 'model'
@@ -31,7 +35,21 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: 'button' | 'dropdown') {
+	function startSessionRecording() {
+		try {
+			window.posthog?.startSessionRecording?.();
+		} catch {
+			// Swallow — telemetry must not break user-facing flows.
+		}
+	}
+
+	function trackClickedNewAgent(
+		source: AgentCreateSource,
+		options: AgentCreateTelemetryOptions = {},
+	) {
+		if (options.startSessionRecording) {
+			startSessionRecording();
+		}
 		safeTrack('User clicked new agent', { source, ...common() });
 	}
 

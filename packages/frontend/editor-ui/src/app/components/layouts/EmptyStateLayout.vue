@@ -88,7 +88,7 @@ const handleReadyToRunClick = async () => {
 };
 
 const handleBuildAgentClick = () => {
-	agentTelemetry.trackClickedNewAgent('card');
+	agentTelemetry.trackClickedNewAgent('card', { startSessionRecording: true });
 	void router.push({
 		name: NEW_AGENT_VIEW,
 		query: {

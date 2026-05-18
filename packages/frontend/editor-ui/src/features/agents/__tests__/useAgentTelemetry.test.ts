@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const trackMock = vi.fn();
+const startSessionRecordingMock = vi.fn();
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
@@ -14,12 +15,26 @@ describe('useAgentTelemetry', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		trackMock.mockReset();
+		startSessionRecordingMock.mockReset();
+		window.posthog = {
+			startSessionRecording: startSessionRecordingMock,
+		};
 	});
 
 	it('trackClickedNewAgent fires event with source and session_id', () => {
 		useAgentTelemetry().trackClickedNewAgent('button');
+		expect(startSessionRecordingMock).not.toHaveBeenCalled();
 		expect(trackMock).toHaveBeenCalledWith('User clicked new agent', {
 			source: 'button',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackClickedNewAgent starts session recording when requested', () => {
+		useAgentTelemetry().trackClickedNewAgent('card', { startSessionRecording: true });
+		expect(startSessionRecordingMock).toHaveBeenCalledTimes(1);
+		expect(trackMock).toHaveBeenCalledWith('User clicked new agent', {
+			source: 'card',
 			session_id: 'session-xyz',
 		});
 	});
