@@ -126,68 +126,36 @@ describe('EvaluationsView', () => {
 		});
 
 		describe('parallel-execution UI', () => {
-			it('does not render the parallel controls when the rollout flag is off', async () => {
+			it('hides the parallel-eval toggle when concurrency is unavailable on the instance', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = false;
+				parallelEvalStore.isConcurrencyAvailable = false;
 
 				const { queryByTestId, getByTestId } = renderComponent();
 				await waitFor(() => expect(getByTestId('run-test-button')).toBeInTheDocument());
 
-				expect(queryByTestId('parallel-eval-controls')).toBeNull();
-				expect(queryByTestId('run-in-parallel-concurrency')).toBeNull();
-				expect(queryByTestId('run-in-parallel-mode-label')).toBeNull();
+				expect(queryByTestId('parallel-eval-toggle')).toBeNull();
 			});
 
-			it('renders the slider + tooltip + label when the flag is on', async () => {
+			it('renders the parallel-eval toggle next to Run Test when concurrency is available', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = true;
+				parallelEvalStore.isConcurrencyAvailable = true;
+				parallelEvalStore.maxConcurrency = 5;
 				parallelEvalStore.concurrencyValue.mockReturnValue(3);
 
 				const { getByTestId } = renderComponent();
-
-				await waitFor(() => expect(getByTestId('parallel-eval-controls')).toBeInTheDocument());
-				expect(getByTestId('run-in-parallel-mode-label')).toBeInTheDocument();
-				expect(getByTestId('run-in-parallel-tooltip-icon')).toBeInTheDocument();
-				expect(getByTestId('run-in-parallel-concurrency')).toBeInTheDocument();
+				await waitFor(() => expect(getByTestId('parallel-eval-toggle')).toBeInTheDocument());
+				expect(getByTestId('run-test-button')).toBeInTheDocument();
 			});
 
-			it('shows "Sequential" label when slider is at 1', async () => {
+			it('omits concurrency from the request when concurrency is unavailable on the instance', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = true;
-				parallelEvalStore.concurrencyValue.mockReturnValue(1);
-
-				const { getByTestId } = renderComponent();
-				await waitFor(() => expect(getByTestId('run-in-parallel-mode-label')).toBeInTheDocument());
-
-				expect(getByTestId('run-in-parallel-mode-label').textContent?.trim()).toBe('Sequential');
-			});
-
-			it('shows "Concurrent · N" label when slider is above 1', async () => {
-				const evaluationStore = mockedStore(useEvaluationStore);
-				evaluationStore.testRunsById = {};
-				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = true;
-				parallelEvalStore.concurrencyValue.mockReturnValue(7);
-
-				const { getByTestId } = renderComponent();
-				await waitFor(() => expect(getByTestId('run-in-parallel-mode-label')).toBeInTheDocument());
-
-				expect(getByTestId('run-in-parallel-mode-label').textContent?.trim()).toBe(
-					'Concurrent · 7',
-				);
-			});
-
-			it('omits concurrency from the request when the flag is off', async () => {
-				const evaluationStore = mockedStore(useEvaluationStore);
-				evaluationStore.testRunsById = {};
-				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = false;
+				parallelEvalStore.isConcurrencyAvailable = false;
 
 				const { getByTestId } = renderComponent();
 				await waitFor(() => expect(getByTestId('run-test-button')).toBeInTheDocument());
@@ -197,11 +165,12 @@ describe('EvaluationsView', () => {
 				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', undefined);
 			});
 
-			it('sends the slider value as concurrency when the flag is on', async () => {
+			it('sends the slider value as concurrency when concurrency is available', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = true;
+				parallelEvalStore.isConcurrencyAvailable = true;
+				parallelEvalStore.maxConcurrency = 5;
 				parallelEvalStore.concurrencyValue.mockReturnValue(3);
 
 				const { getByTestId } = renderComponent();
@@ -214,28 +183,12 @@ describe('EvaluationsView', () => {
 				});
 			});
 
-			it('sends concurrency=1 when the user has dragged the slider to the minimum', async () => {
-				const evaluationStore = mockedStore(useEvaluationStore);
-				evaluationStore.testRunsById = {};
-				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = true;
-				parallelEvalStore.concurrencyValue.mockReturnValue(1);
-
-				const { getByTestId } = renderComponent();
-				await waitFor(() => expect(getByTestId('run-test-button')).toBeInTheDocument());
-
-				await userEvent.click(getByTestId('run-test-button'));
-
-				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', {
-					concurrency: 1,
-				});
-			});
-
 			it('forwards the slider value when the user picked a non-default concurrency', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);
-				parallelEvalStore.isFeatureEnabled = true;
+				parallelEvalStore.isConcurrencyAvailable = true;
+				parallelEvalStore.maxConcurrency = 10;
 				parallelEvalStore.concurrencyValue.mockReturnValue(7);
 
 				const { getByTestId } = renderComponent();
