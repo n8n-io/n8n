@@ -42,9 +42,6 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 					<section style="width: 360px; padding: var(--spacing--sm); display: flex; flex-direction: column; gap: var(--spacing--sm);">
 						<header style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing--sm);">
 							<div style="display: flex; gap: var(--spacing--xs); align-items: flex-start;">
-								<div style="height: 32px; width: 32px; border-radius: var(--radius--sm); display: grid; place-items: center; background: var(--color--foreground--base); color: var(--color--text--xlight);">
-									<N8nIcon icon="workflow" size="medium" />
-								</div>
 								<div style="display: flex; flex-direction: column; gap: var(--spacing--5xs);">
 									<N8nText bold>Customer onboarding</N8nText>
 									<N8nText size="small" color="text-light">Assigns setup tasks, enriches CRM data, and notifies account owners.</N8nText>
@@ -54,15 +51,15 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 						</header>
 
 						<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing--2xs);">
-							<div style="padding: var(--spacing--2xs); border: var(--border); border-radius: var(--radius--xs);">
+							<div style="padding: var(--spacing--2xs); border: var(--border); border-radius: var(--radius--xs); display:flex; flex-direction:column;">
 								<N8nText size="xsmall" color="text-light">Success rate</N8nText>
 								<N8nText bold>99.2%</N8nText>
 							</div>
-							<div style="padding: var(--spacing--2xs); border: var(--border); border-radius: var(--radius--xs);">
+							<div style="padding: var(--spacing--2xs); border: var(--border); border-radius: var(--radius--xs); display:flex; flex-direction:column;">
 								<N8nText size="xsmall" color="text-light">Avg. runtime</N8nText>
 								<N8nText bold>42s</N8nText>
 							</div>
-							<div style="padding: var(--spacing--2xs); border: var(--border); border-radius: var(--radius--xs);">
+							<div style="padding: var(--spacing--2xs); border: var(--border); border-radius: var(--radius--xs); display:flex; flex-direction:column;">
 								<N8nText size="xsmall" color="text-light">Runs today</N8nText>
 								<N8nText bold>184</N8nText>
 							</div>
