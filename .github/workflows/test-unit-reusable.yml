@@ -53,7 +53,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: backend-unit
+          name: backend-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -96,7 +96,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: backend-integration
+          name: backend-integration-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -139,7 +139,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: nodes-unit
+          name: nodes-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -188,7 +188,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: frontend-shard-${{ matrix.shard }}
+          name: frontend-shard-${{ matrix.shard }}-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
