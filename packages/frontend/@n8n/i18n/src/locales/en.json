@@ -1323,7 +1323,6 @@
 	"agentSessions.detail.cost": "Cost",
 	"agentSessions.detail.toolCallSuspended": "Tool call suspended — waiting for user action",
 	"agentSessions.detail.suspendedNote": "This message was part of a tool call suspension. Token usage and cost are reported on the resumed message.",
-	"agentSessions.detail.workingMemory": "Memory Update",
 	"agentSessions.detail.builtInTools": "Built-in",
 	"agentSessions.detail.userTools": "Tools",
 	"agentSessions.detail.richInteraction.userResponse": "User responded",
