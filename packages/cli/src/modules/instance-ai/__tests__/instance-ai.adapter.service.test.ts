@@ -1299,6 +1299,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
+	sharingEnabled?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -1357,14 +1358,21 @@ function createWorkflowAdapterForTests(overrides?: {
 		activateWorkflow: jest.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
 		update: jest.fn().mockResolvedValue(savedWorkflow),
 	};
+	const mockEnterpriseWorkflowService = {
+		preventTampering: jest.fn(async (data: unknown) => data),
+	};
 	const mockTelemetry = { track: jest.fn() };
+	const mockLogger = {
+		error: jest.fn(),
+		warn: jest.fn(),
+		scoped: jest.fn(),
+	};
+	mockLogger.scoped.mockReturnValue(mockLogger);
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
 	const service = new InstanceAiAdapterService(
-		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[0],
+		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[1],
@@ -1398,14 +1406,16 @@ function createWorkflowAdapterForTests(overrides?: {
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		mockEnterpriseWorkflowService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[24],
 		{
 			isLicensed: jest.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
 				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
 				return false;
 			}),
-			isSharingEnabled: jest.fn().mockReturnValue(false),
+			isSharingEnabled: jest.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as License,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
@@ -1427,7 +1437,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockSharedWorkflowRepository,
 		mockAiBuilderTemporaryWorkflowRepository,
 		mockWorkflowService,
+		mockEnterpriseWorkflowService,
 		mockTelemetry,
+		mockLogger,
 		mockUser,
 	};
 }
@@ -1566,6 +1578,73 @@ describe('createWorkflowAdapter', () => {
 			'wf-new',
 			'thread-1',
 			expect.any(Object),
+		);
+	});
+
+	it('archives and unmarks the temporary shell when create update fails', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService, mockUser } =
+			createWorkflowAdapterForTests();
+		const saveError = new Error('save failed');
+		mockWorkflowService.update.mockRejectedValueOnce(saveError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockWorkflowService.archive).toHaveBeenCalledWith(mockUser, 'wf-new', {
+			skipArchived: true,
+		});
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+	});
+
+	it('archives and unmarks the temporary shell when credential tamper protection fails', async () => {
+		const {
+			adapter,
+			mockAiBuilderTemporaryWorkflowRepository,
+			mockEnterpriseWorkflowService,
+			mockWorkflowService,
+			mockUser,
+		} = createWorkflowAdapterForTests({ sharingEnabled: true });
+		const saveError = new Error('credential access denied');
+		mockEnterpriseWorkflowService.preventTampering.mockRejectedValueOnce(saveError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		expect(mockWorkflowService.archive).toHaveBeenCalledWith(mockUser, 'wf-new', {
+			skipArchived: true,
+		});
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+	});
+
+	it('preserves the original create error when shell cleanup fails', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockLogger, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		const saveError = new Error('save failed');
+		const cleanupError = new Error('cleanup failed');
+		mockWorkflowService.update.mockRejectedValueOnce(saveError);
+		mockWorkflowService.archive.mockRejectedValueOnce(cleanupError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
+		expect(mockLogger.warn).toHaveBeenCalledWith(
+			'Failed to clean up AI-builder workflow shell after create failure',
+			{
+				threadId: 'thread-1',
+				workflowId: 'wf-new',
+				error: 'cleanup failed',
+			},
 		);
 	});
 
