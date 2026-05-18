@@ -165,6 +165,14 @@ export {
 	runObservationLogReflector,
 } from './runtime/observation-log-reflector';
 export { ScopedMemoryTaskRunner } from './runtime/scoped-memory-task-runner';
+export {
+	buildObservationLogObserverPrompt,
+	createObservationLogObserveFn,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from './runtime/observation-log-defaults';
+export type { CreateObservationLogObserveFnOptions } from './runtime/observation-log-defaults';
 export type {
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,

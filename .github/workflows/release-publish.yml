@@ -128,12 +128,15 @@ jobs:
       version-tag: 'n8n@${{ needs.determine-version-info.outputs.version }}'
       body: ${{ github.event.pull_request.body }}
       commit: ${{ github.event.pull_request.base.ref }}
+      is_experimental: ${{ needs.determine-version-info.outputs.release_type == 'rc' }}
     secrets: inherit
 
   move-track-tag:
     name: Move track tag
     needs: [determine-version-info, create-github-release]
-    if: github.event.pull_request.merged == true
+    if: |
+      github.event.pull_request.merged == true &&
+      needs.determine-version-info.outputs.release_type != 'rc'
     uses: ./.github/workflows/release-update-pointer-tag.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}

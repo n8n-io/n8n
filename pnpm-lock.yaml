@@ -271,8 +271,8 @@ catalogs:
       specifier: ^3.1.0
       version: 3.1.0
     vm2:
-      specifier: 3.11.2
-      version: 3.11.2
+      specifier: 3.11.3
+      version: 3.11.3
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -390,7 +390,6 @@ catalogs:
       version: 10.1.11
 
 overrides:
-  '@isaacs/brace-expansion': 5.0.1
   libphonenumber-js: npm:empty-npm-package@1.0.0
   '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
   sharp: npm:empty-npm-package@1.0.0
@@ -402,7 +401,6 @@ overrides:
   '@types/node': ^20.17.50
   chokidar: 4.0.3
   esbuild: ^0.25.0
-  expr-eval@2.0.2: npm:expr-eval-fork@3.0.0
   multer: ^2.1.1
   prebuild-install: 7.1.3
   pug: ^3.0.3
@@ -444,7 +442,6 @@ overrides:
   bn.js@5: 5.2.3
   lodash: 4.18.1
   lodash-es: 4.18.1
-  word-wrap@<=1.2.4: 1.2.4
   minimatch@<=5.1.8: 5.1.8
   minimatch@10: 10.2.3
   '@hono/node-server': 1.19.13
@@ -510,6 +507,9 @@ patchedDependencies:
   vue-tsc@2.2.8:
     hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
     path: patches/vue-tsc@2.2.8.patch
+  vuedraggable@4.1.0:
+    hash: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
+    path: patches/vuedraggable@4.1.0.patch
   z-vue-scan:
     hash: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
     path: patches/z-vue-scan.patch
@@ -944,12 +944,24 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
       '@types/stream-json':
         specifier: 1.7.8
         version: 1.7.8
       '@types/yargs-parser':
         specifier: 21.0.0
         version: 21.0.0
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1245,6 +1257,18 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
 
   packages/@n8n/constants:
     devDependencies:
@@ -2281,7 +2305,7 @@ importers:
         version: 3.0.3
       vm2:
         specifier: 'catalog:'
-        version: 3.11.2
+        version: 3.11.3
       weaviate-client:
         specifier: 3.9.0
         version: 3.9.0(encoding@0.1.13)
@@ -4093,7 +4117,7 @@ importers:
         version: 4.1.3
       vuedraggable:
         specifier: 4.1.0
-        version: 4.1.0(vue@3.5.26(typescript@6.0.2))
+        version: 4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2))
       wa-sqlite:
         specifier: github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7
         version: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7
@@ -4473,7 +4497,7 @@ importers:
         version: 10.0.0
       vm2:
         specifier: 'catalog:'
-        version: 3.11.2
+        version: 3.11.3
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -22188,8 +22212,8 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
-  vm2@3.11.2:
-    resolution: {integrity: sha512-hnsYAgBSAgwwPM/Gq66gMmUY0VlY9mKC8nvVRAZiJp+tYxF4sfNRlZymP8uqzIUK2U/7+SVZ/H8p7USxNHLlZA==}
+  vm2@3.11.3:
+    resolution: {integrity: sha512-DO1TTKuOc+veL11VNOvJwRab80mghFKE40Av3bl6pdXs11bdiDMuR73owy+dS2EsTZEvRUeBkkBuDVRjV/RgEw==}
     engines: {node: '>=6.0'}
     hasBin: true
 
@@ -22231,8 +22255,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.2.8:
-    resolution: {integrity: sha512-9689efAXhN/EV86plgkL/XFiJSXhGtWPG6JDboZ+QnjlUWUUQrQ0ILKQtw4iQsuwIwu5k6Aw+JnehDe7161e7A==}
+  vue-component-type-helpers@3.2.9:
+    resolution: {integrity: sha512-S3BiWYaLSzHxTpln665ELSrMR9UYmrIDUmhik7nVZxmJjTKL2/a+ew1hvGxksKelivm0ujjWfG1fYOiU/2e8rA==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -31747,7 +31771,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@6.0.2)
-      vue-component-type-helpers: 3.2.8
+      vue-component-type-helpers: 3.2.9
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -45383,7 +45407,7 @@ snapshots:
 
   vm-browserify@1.1.2: {}
 
-  vm2@3.11.2:
+  vm2@3.11.3:
     dependencies:
       acorn: 8.16.0
       acorn-walk: 8.3.4
@@ -45421,7 +45445,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.2.8: {}
+  vue-component-type-helpers@3.2.9: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@6.0.2)):
     dependencies:
@@ -45518,7 +45542,7 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.2
 
-  vuedraggable@4.1.0(vue@3.5.26(typescript@6.0.2)):
+  vuedraggable@4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       sortablejs: 1.14.0
       vue: 3.5.26(typescript@6.0.2)
