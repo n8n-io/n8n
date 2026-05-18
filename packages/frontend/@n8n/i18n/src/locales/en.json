@@ -6140,6 +6140,7 @@
 	"agents.builder.addTrigger.slack.hideJson": "Hide JSON",
 	"agents.builder.addTrigger.slack.copyManifest": "Copy manifest",
 	"agents.builder.addTrigger.slack.manifestTitle": "Slack App Manifest",
+	"agents.builder.addTrigger.slack.docsCalloutLink": "See docs",
 	"agents.builder.addTrigger.telegram.accessMode.label": "Access mode",
 	"agents.builder.addTrigger.telegram.accessMode.private": "Private",
 	"agents.builder.addTrigger.telegram.accessMode.public": "Public",
