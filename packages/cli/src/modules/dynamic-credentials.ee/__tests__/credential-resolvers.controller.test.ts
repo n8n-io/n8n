@@ -11,6 +11,7 @@ import { IdentifierValidationError } from '../credential-resolvers/identifiers/i
 import { CredentialResolversController } from '../credential-resolvers.controller';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
 import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
+import { SystemResolverModificationError } from '../errors/system-resolver-modification.error';
 import type { DynamicCredentialResolverService } from '../services/credential-resolver.service';
 
 describe('CredentialResolversController', () => {
@@ -107,12 +108,44 @@ describe('CredentialResolversController', () => {
 			);
 		});
 
+		it('should throw BadRequestError when service throws SystemResolverModificationError', async () => {
+			service.update.mockRejectedValue(new SystemResolverModificationError('update'));
+
+			await expect(
+				controller.updateResolver(req, res, 'system-n8n-resolver', { name: 'tampered' }),
+			).rejects.toThrow(BadRequestError);
+		});
+
 		it('should throw InternalServerError for unknown errors', async () => {
 			service.update.mockRejectedValue(new Error('unexpected'));
 
 			await expect(controller.updateResolver(req, res, 'id', { config: {} })).rejects.toThrow(
 				InternalServerError,
 			);
+		});
+	});
+
+	describe('deleteResolver', () => {
+		it('should throw NotFoundError when resolver not found', async () => {
+			service.delete.mockRejectedValue(new DynamicCredentialResolverNotFoundError('not-found-id'));
+
+			await expect(controller.deleteResolver(req, res, 'not-found-id')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('should throw BadRequestError when service throws SystemResolverModificationError', async () => {
+			service.delete.mockRejectedValue(new SystemResolverModificationError('delete'));
+
+			await expect(controller.deleteResolver(req, res, 'system-n8n-resolver')).rejects.toThrow(
+				BadRequestError,
+			);
+		});
+
+		it('should throw InternalServerError for unknown errors', async () => {
+			service.delete.mockRejectedValue(new Error('unexpected'));
+
+			await expect(controller.deleteResolver(req, res, 'id')).rejects.toThrow(InternalServerError);
 		});
 	});
 });
