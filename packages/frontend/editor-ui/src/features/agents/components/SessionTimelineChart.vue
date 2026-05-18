@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { truncate } from '@n8n/utils';
 import { useI18n } from '@n8n/i18n';
-import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
+import { N8nHoverCard } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
@@ -231,40 +231,41 @@ onBeforeUnmount(clearShowPopoverTimer);
 
 <template>
 	<div ref="chartRef" :class="$style.chart">
-		<HoverCardRoot :open="popoverOpen" :close-delay="0">
+		<N8nHoverCard
+			:open="popoverOpen"
+			hide-trigger
+			:reference="activePopover?.reference"
+			side="top"
+			align="center"
+			:side-offset="8"
+			:close-delay="0"
+			max-width="none"
+			:content-class="$style.hoverCardContent"
+		>
 			<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
-			<HoverCardTrigger as="span" :class="$style.popoverTrigger" />
-			<HoverCardPortal>
-				<HoverCardContent
-					:reference="activePopover?.reference"
-					side="top"
-					align="center"
-					:side-offset="8"
-					:class="$style.tooltipContent"
-				>
-					<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
-						<SessionTimelinePill
-							kind="idle"
-							:label="i18n.baseText('agentSessions.timeline.idle')"
-							show-label
-						/>
-						<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
-					</div>
-					<div v-else-if="activePopover" :class="$style.popoverInner">
-						<SessionTimelinePill
-							:kind="activePopover.segment.item.kind"
-							:label="popoverLabel(activePopover.segment.item)"
-							show-label
-						/>
-						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
-						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
-							{{ popoverDuration(activePopover.segment.item) }}
-						</span>
-						<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
-					</div>
-				</HoverCardContent>
-			</HoverCardPortal>
-		</HoverCardRoot>
+			<template #content>
+				<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
+					<SessionTimelinePill
+						kind="idle"
+						:label="i18n.baseText('agentSessions.timeline.idle')"
+						show-label
+					/>
+					<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
+				</div>
+				<div v-else-if="activePopover" :class="$style.popoverInner">
+					<SessionTimelinePill
+						:kind="activePopover.segment.item.kind"
+						:label="popoverLabel(activePopover.segment.item)"
+						show-label
+					/>
+					<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
+					<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
+						{{ popoverDuration(activePopover.segment.item) }}
+					</span>
+					<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
+				</div>
+			</template>
+		</N8nHoverCard>
 		<div
 			v-for="(seg, segIdx) in segments"
 			:key="segIdx"
@@ -384,30 +385,19 @@ onBeforeUnmount(clearShowPopoverTimer);
 }
 
 /*
- * Override the design-system tooltip's fixed dark background with the page
- * background + a border so the tooltip adapts correctly to light and dark
- * mode. Also remove the 180px max-width so our single-line row layout
+ * Keep the shared hover card compact so the single-line row layout
  * (pill · name · duration · time) doesn't wrap.
  */
-.popoverTrigger {
-	display: none;
-}
-
-.tooltipContent {
+.hoverCardContent {
 	max-width: none;
 	min-height: var(--height--sm);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--md);
-	border-radius: var(--radius--xs);
-	box-shadow: var(--shadow--sm);
 	word-wrap: break-word;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 999;
-	background: var(--background--surface);
-	border: var(--border);
 	color: var(--color--text);
 }
 
