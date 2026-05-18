@@ -1341,7 +1341,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			);
 		};
 
-		it('writes evaluated tag expressions into metadata.tracing', async () => {
+		it('evaluates tag expressions and writes them into metadata.tracing', async () => {
 			const node: INode = {
 				...mockNode,
 				customTelemetryTags: {

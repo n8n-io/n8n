@@ -202,9 +202,7 @@ describe('Custom Telemetry Tags', () => {
 
 		const nodeSpan = otel
 			.getFinishedSpans()
-			.find(
-				(s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper',
-			)!;
+			.find((s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper')!;
 
 		expect(nodeSpan).toBeDefined();
 		expect(nodeSpan.attributes['n8n.node.custom.environment']).toBe('production');
@@ -221,9 +219,7 @@ describe('Custom Telemetry Tags', () => {
 
 		const nodeSpan = otel
 			.getFinishedSpans()
-			.find(
-				(s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper',
-			)!;
+			.find((s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper')!;
 
 		expect(nodeSpan).toBeDefined();
 		expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('staging');
