@@ -40,6 +40,7 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
+	N8nIconButton,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
@@ -59,8 +60,6 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	ARCHIVE: 'archive',
 	UNARCHIVE: 'unarchive',
 	MOVE_TO_FOLDER: 'moveToFolder',
-	ENABLE_MCP_ACCESS: 'enableMCPAccess',
-	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 	UNPUBLISH: 'unpublish',
 	TOGGLE_FAVORITE: 'toggleFavorite',
 };
@@ -258,25 +257,6 @@ const actions = computed(() => {
 		});
 	}
 
-	if (
-		props.isMcpEnabled &&
-		workflowPermissions.value.update &&
-		!props.readOnly &&
-		!props.data.isArchived
-	) {
-		if (isAvailableInMCP.value) {
-			items.push({
-				label: locale.baseText('workflows.item.disableMCPAccess'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
-			});
-		} else {
-			items.push({
-				label: locale.baseText('workflows.item.enableMCPAccess'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
-			});
-		}
-	}
-
 	return items;
 });
 const formattedCreatedAtDate = computed(() => {
@@ -293,6 +273,23 @@ const isAvailableInMCP = computed(() => {
 		return props.data.settings?.availableInMCP ?? false;
 	}
 	return mcpToggleStatus.value;
+});
+
+const canToggleMcp = computed(
+	() => workflowPermissions.value.update && !props.readOnly && !props.data.isArchived,
+);
+
+const showMcpToggle = computed(
+	() => props.isMcpEnabled && (canToggleMcp.value || isAvailableInMCP.value),
+);
+
+const mcpTooltipContent = computed(() => {
+	if (!canToggleMcp.value) {
+		return locale.baseText('workflows.item.availableInMCP');
+	}
+	return isAvailableInMCP.value
+		? locale.baseText('workflows.item.disableMCPAccess')
+		: locale.baseText('workflows.item.enableMCPAccess');
 });
 
 const isSomeoneElsesWorkflow = computed(
@@ -394,12 +391,6 @@ async function onAction(action: string) {
 				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
-		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
-			await toggleMCPAccess(true);
-			break;
-		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
-			await toggleMCPAccess(false);
-			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
 			await unpublishWorkflow();
 			break;
@@ -451,6 +442,10 @@ async function toggleMCPAccess(enabled: boolean) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
 		return;
 	}
+}
+
+async function onMcpToggleClick() {
+	await toggleMCPAccess(!isAvailableInMCP.value);
 }
 
 async function deleteWorkflow() {
@@ -650,20 +645,6 @@ const tags = computed(
 			</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
-			</span>
-			<span
-				v-show="props.isMcpEnabled && isAvailableInMCP"
-				:class="[$style['description-cell'], $style['description-cell--mcp']]"
-				data-test-id="workflow-card-mcp"
-			>
-				<N8nTooltip
-					placement="right"
-					:content="locale.baseText('workflows.item.availableInMCP')"
-					data-test-id="workflow-card-mcp-tooltip"
-				>
-					<N8nIcon icon="mcp" size="medium"></N8nIcon>
-				</N8nTooltip>
 			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -736,6 +717,22 @@ const tags = computed(
 						locale.baseText('workflows.published')
 					}}</N8nText>
 				</div>
+				<N8nTooltip v-if="showMcpToggle" placement="top" :content="mcpTooltipContent">
+					<N8nIconButton
+						icon="mcp"
+						variant="ghost"
+						size="small"
+						:class="{
+							[$style.mcpToggle]: true,
+							[$style.mcpToggleActive]: isAvailableInMCP,
+						}"
+						:disabled="!canToggleMcp"
+						:aria-pressed="isAvailableInMCP"
+						:aria-label="mcpTooltipContent"
+						data-test-id="workflow-card-mcp-toggle"
+						@click.stop="onMcpToggleClick"
+					/>
+				</N8nTooltip>
 				<N8nActionToggle
 					:actions="actions"
 					placement="bottom-end"
@@ -821,13 +818,12 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-.description-cell--mcp {
-	display: inline-flex;
-	align-items: center;
+.mcpToggle {
+	color: var(--color--text--tint-1);
+}
 
-	&:hover {
-		color: var(--color--text);
-	}
+.mcpToggleActive {
+	color: var(--color--primary);
 }
 
 .dynamicBadgeText {

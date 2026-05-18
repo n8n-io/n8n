@@ -18,6 +18,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -103,6 +104,7 @@ describe('WorkflowCard', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 	let usersStore: MockedStore<typeof useUsersStore>;
+	let mcpStore: MockedStore<typeof useMCPStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
 
@@ -113,6 +115,7 @@ describe('WorkflowCard', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		usersStore = mockedStore(useUsersStore);
+		mcpStore = mockedStore(useMCPStore);
 		message = useMessage();
 		toast = useToast();
 
@@ -540,7 +543,7 @@ describe('WorkflowCard', () => {
 		expect(heading).toHaveTextContent('Read only');
 	});
 
-	it('should show Enable MCP action when module is enabled', async () => {
+	it('should show MCP toggle on the card when module is enabled and user can update', () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
@@ -556,22 +559,57 @@ describe('WorkflowCard', () => {
 			},
 		});
 
-		const actionsToggle = getByTestId('workflow-card-actions');
-		const toggleButton = within(actionsToggle).getByRole('button');
-		const controllingId = toggleButton.getAttribute('aria-controls');
-
-		await userEvent.click(toggleButton);
-
-		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
-		if (!actions) {
-			throw new Error('Actions menu not found');
-		}
-
-		expect(within(actions).getByTestId('action-enableMCPAccess')).toBeInTheDocument();
-		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toHaveAttribute('aria-pressed', 'false');
 	});
 
-	it('should show Disable MCP action when workflow is available in MCP and module is enabled', async () => {
+	it('should mark MCP toggle as pressed when workflow is available in MCP', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toHaveAttribute('aria-pressed', 'true');
+	});
+
+	it('should toggle MCP access when the MCP button is clicked', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
+			updatedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+
+		expect(mcpStore.toggleWorkflowMcpAccess).toHaveBeenCalledWith(data.id, true);
+	});
+
+	it('should not include MCP actions in the dropdown menu', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
@@ -598,56 +636,13 @@ describe('WorkflowCard', () => {
 			throw new Error('Actions menu not found');
 		}
 
-		expect(within(actions).getByTestId('action-removeMCPAccess')).toBeInTheDocument();
-		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
-	});
-
-	it('should hide MCP actions when module is disabled', async () => {
-		const data = createWorkflow({
-			scopes: ['workflow:update'],
-			settings: {
-				availableInMCP: true,
-			},
-			isArchived: false,
-		});
-
-		const { getByTestId } = renderComponent({ props: { data } });
-
-		const actionsToggle = getByTestId('workflow-card-actions');
-		const toggleButton = within(actionsToggle).getByRole('button');
-		const controllingId = toggleButton.getAttribute('aria-controls');
-
-		await userEvent.click(toggleButton);
-
-		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
-		if (!actions) {
-			throw new Error('Actions menu not found');
-		}
-
 		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
 		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
 	});
 
-	it('should show MCP indicator when module is enabled and workflow is available', () => {
+	it('should hide MCP toggle when module is disabled', () => {
 		const data = createWorkflow({
-			settings: {
-				availableInMCP: true,
-			},
-		});
-
-		const { getByTestId } = renderComponent({
-			props: {
-				data,
-				isMcpEnabled: true,
-			},
-		});
-
-		const indicator = getByTestId('workflow-card-mcp');
-		expect(indicator).toBeVisible();
-	});
-
-	it('should hide MCP indicator when module is disabled', () => {
-		const data = createWorkflow({
+			scopes: ['workflow:update'],
 			settings: {
 				availableInMCP: true,
 			},
@@ -655,11 +650,29 @@ describe('WorkflowCard', () => {
 
 		const { queryByTestId } = renderComponent({ props: { data } });
 
-		const indicator = queryByTestId('workflow-card-mcp');
-		expect(indicator).not.toBeVisible();
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
-	it('should hide MCP indicator when workflow is not available in MCP', () => {
+	it('should show MCP toggle as disabled when user cannot update but workflow is available', () => {
+		const data = createWorkflow({
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toBeDisabled();
+	});
+
+	it('should hide MCP toggle when user cannot update and workflow is not available', () => {
 		const data = createWorkflow({
 			settings: {
 				availableInMCP: false,
@@ -673,8 +686,26 @@ describe('WorkflowCard', () => {
 			},
 		});
 
-		const indicator = queryByTestId('workflow-card-mcp');
-		expect(indicator).not.toBeVisible();
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+	});
+
+	it('should hide MCP toggle when workflow is archived', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			isArchived: true,
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
 	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
