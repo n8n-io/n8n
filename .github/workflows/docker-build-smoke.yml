@@ -44,9 +44,17 @@ jobs:
 
       - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
 
+      - id: cloud-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: n8n-io
+          repositories: n8n-cloud
+
       - name: Smoke test against downstream invocations
         env:
-          GH_TOKEN: ${{ secrets.N8N_CLOUD_READ_TOKEN }}
+          GH_TOKEN: ${{ steps.cloud-token.outputs.token }}
         run: pnpm build:docker:smoke
 
   notify-on-failure:
