@@ -145,6 +145,32 @@ describe('workflow package export', () => {
 				expect(entries.find((e) => e.name === `${entry.target}/workflow.json`)).toBeDefined();
 			}
 		});
+
+		it('disambiguates targets when two workflows share a name', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const wfA = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
+			const wfB = await createWorkflow({ name: 'Duplicate', nodes: [], connections: {} }, project);
+
+			const stream = await service.exportWorkflows({
+				user: owner,
+				workflowIds: [wfA.id, wfB.id],
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			const targetsById = new Map(manifest.workflows!.map((w) => [w.id, w.target]));
+			expect(targetsById.get(wfA.id)).toBeDefined();
+			expect(targetsById.get(wfB.id)).toBeDefined();
+			expect(targetsById.get(wfA.id)).not.toBe(targetsById.get(wfB.id));
+
+			// Cross-paste guard: each target's workflow.json must serialize the
+			// matching workflow id, proving slug collision didn't swap contents.
+			for (const [id, target] of targetsById) {
+				const file = entries.find((e) => e.name === `${target}/workflow.json`);
+				expect(file).toBeDefined();
+				expect(JSON.parse(file!.content.toString()).id).toBe(id);
+			}
+		});
 	});
 
 	describe('authorization', () => {
