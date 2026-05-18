@@ -31,9 +31,16 @@ export async function resolveDataTableId(
 ): Promise<string> {
 	if (resourceLocator.mode === 'name') {
 		// Look up table by name
+		const maybeName = resourceLocator.value;
+		if (!maybeName) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Data table name is empty or undefined',
+			);
+		}
 		const aggregateProxy = await getDataTableAggregateProxy(ctx);
 		const response = await aggregateProxy.getManyAndCount({
-			filter: { name: resourceLocator.value.toLowerCase() },
+			filter: { name: maybeName.toLowerCase() },
 			take: 1,
 		});
 
