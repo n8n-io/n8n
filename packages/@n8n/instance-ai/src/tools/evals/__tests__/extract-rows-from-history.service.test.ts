@@ -86,8 +86,7 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')])
-				.mockResolvedValueOnce([]),
+				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -113,8 +112,7 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')])
-				.mockResolvedValueOnce([]),
+				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -139,8 +137,7 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')])
-				.mockResolvedValueOnce([]),
+				.mockResolvedValueOnce([executionSummary('e1')]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -166,8 +163,7 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce(summaries)
-				.mockResolvedValueOnce([]),
+				.mockResolvedValueOnce(summaries),
 			getNodeOutput: jest.fn<
 				ReturnType<ExecutionService['getNodeOutput']>,
 				Parameters<ExecutionService['getNodeOutput']>
@@ -185,11 +181,10 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.rows).toHaveLength(25);
 	});
 
-	it('lists success and error statuses (two list calls, one per status)', async () => {
+	it('lists only successful executions', async () => {
 		const list = jest
 			.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-			.mockResolvedValueOnce([executionSummary('e1')])
-			.mockResolvedValueOnce([executionSummary('e2', 'error')]);
+			.mockResolvedValue([executionSummary('e1')]);
 		const ctx = buildContext({
 			list,
 			getNodeOutput: jest
@@ -197,8 +192,7 @@ describe('extractRowsFromExecutionHistory', () => {
 					ReturnType<ExecutionService['getNodeOutput']>,
 					Parameters<ExecutionService['getNodeOutput']>
 				>()
-				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' }))
-				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'e' })),
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' })),
 		});
 
 		await extractRowsFromExecutionHistory(ctx, {
@@ -209,16 +203,15 @@ describe('extractRowsFromExecutionHistory', () => {
 			expectedToActualPairs: [],
 		});
 
-		expect(list).toHaveBeenNthCalledWith(1, { workflowId: 'w1', status: 'success', limit: 100 });
-		expect(list).toHaveBeenNthCalledWith(2, { workflowId: 'w1', status: 'error', limit: 100 });
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(list).toHaveBeenCalledWith({ workflowId: 'w1', status: 'success', limit: 100 });
 	});
 
 	it('returns 0 rows and skips silently when getNodeOutput throws for an execution', async () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')])
-				.mockResolvedValueOnce([]),
+				.mockResolvedValueOnce([executionSummary('e1')]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -243,8 +236,7 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')])
-				.mockResolvedValueOnce([]),
+				.mockResolvedValueOnce([executionSummary('e1')]),
 			getNodeOutput: jest.fn<
 				ReturnType<ExecutionService['getNodeOutput']>,
 				Parameters<ExecutionService['getNodeOutput']>
@@ -271,8 +263,7 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')])
-				.mockResolvedValueOnce([]),
+				.mockResolvedValueOnce([executionSummary('e1')]),
 			getNodeOutput: jest.fn<
 				ReturnType<ExecutionService['getNodeOutput']>,
 				Parameters<ExecutionService['getNodeOutput']>

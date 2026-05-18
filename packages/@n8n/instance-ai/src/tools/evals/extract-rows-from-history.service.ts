@@ -78,18 +78,11 @@ export async function extractRowsFromExecutionHistory(
 		return { rows: [], scannedExecutions: 0 };
 	}
 
-	const summaries = [
-		...(await ctx.executionService.list({
-			workflowId: input.workflowId,
-			status: 'success',
-			limit: SCAN_LIMIT,
-		})),
-		...(await ctx.executionService.list({
-			workflowId: input.workflowId,
-			status: 'error',
-			limit: SCAN_LIMIT,
-		})),
-	];
+	const summaries = await ctx.executionService.list({
+		workflowId: input.workflowId,
+		status: 'success',
+		limit: SCAN_LIMIT,
+	});
 
 	const rows: Array<Record<string, string>> = [];
 	let scannedExecutions = 0;
