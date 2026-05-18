@@ -477,7 +477,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool('verify-built-workflow')
 		.description(
 			'Run a built workflow using sidecar verification context from the build outcome. ' +
-				'Use this for automatic builder/checkpoint verification; it works with or without mocked credentials. ' +
+				'Use this when verification needs build-outcome pin data, mocked credential context, or trigger-shaped inputData. ' +
+				'Use `executions(action="run")` for ordinary manual/schedule runs with real credentials. ' +
 				'CRITICAL: `inputData` shape depends on the trigger type — see the per-trigger guidance on the inputData field. ' +
 				'Passing the wrong shape (e.g. wrapping form fields under `formFields`) produces null downstream values that ' +
 				'look like an expression bug but are not — do not patch the workflow, re-run verify with the correct shape.',

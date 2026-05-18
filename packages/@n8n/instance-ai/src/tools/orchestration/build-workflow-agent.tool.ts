@@ -185,8 +185,8 @@ export function recordSuccessfulWorkflowBuilds(
 }
 
 function detectTriggerType(_attempt: SubmitWorkflowAttempt | undefined): TriggerType {
-	// Every trigger type the builder can produce is testable through
-	// `verify-built-workflow`; event-based triggers additionally need inputData.
+	// Every trigger type the builder can produce is testable: manual/schedule via
+	// `executions(action="run")`, event-based via `verify-built-workflow` with inputData.
 	// `trigger_only` is reserved for workflows the builder could not fully wire
 	// (e.g. unresolved placeholders), which is detected separately via
 	// `hasUnresolvedPlaceholders` in buildOutcome().
@@ -480,20 +480,21 @@ Your job is done when ONE of these is true:
 - the workflow is verified (ran successfully)
 - you are blocked after one repair attempt per unique failure
 
-Do NOT stop after a successful submit without verifying. Use \`verify-built-workflow\`
-with the workItemId and workflowId for verification. For event-based triggers (form,
-webhook, chat, mcp, linear, github, slack, etc.), pass an \`inputData\` payload; the
-pin-data adapter injects it as the trigger node's output.
+Do NOT stop after a successful submit without verifying. Every trigger type is testable:
+manual / schedule via \`executions(action="run")\`; event-based triggers (form, webhook,
+chat, mcp, linear, github, slack, etc.) via \`verify-built-workflow\` with an \`inputData\`
+payload. The pin-data adapter injects it as the trigger node's output.
 
 ### Submit discipline
 
 **Every file edit MUST be followed by submit-workflow before you do anything else.**
-The system tracks file hashes. If you edit the code and then verify/run or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
+The system tracks file hashes. If you edit the code and then call \`executions(action="run")\`, \`verify-built-workflow\`, or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
 
 ### Verification
 
-- Call \`verify-built-workflow\` with the workItemId and workflowId from this task.
-  - **Manual / Schedule** — omit \`inputData\`.
+- If submit-workflow returned mocked credentials, call \`verify-built-workflow\` with the workItemId and workflowId from this task.
+- Otherwise pick based on trigger type:
+  - **Manual / Schedule** — \`executions(action="run")\`.
   - **Form Trigger** — pass \`inputData\` as a flat field map, e.g. \`{name: "Alice", email: "a@b.c"}\`. Do NOT wrap in \`formFields\` — production Form Trigger emits fields directly on \`$json\`, and the adapter rejects wrapped payloads.
   - **Webhook** — \`verify-built-workflow\` with \`inputData\` as the body payload, e.g. \`{event: "signup", userId: "..."}\`. Adapter wraps it under \`body\`; downstream expressions use \`$json.body.<field>\`.
   - **Chat Trigger** — \`verify-built-workflow\` with \`{chatInput: "user message"}\`.
