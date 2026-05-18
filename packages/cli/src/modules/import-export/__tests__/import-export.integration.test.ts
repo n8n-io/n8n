@@ -1,4 +1,11 @@
-import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	shareWorkflowWithUsers,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Readable } from 'node:stream';
@@ -182,6 +189,61 @@ describe('workflow package export', () => {
 		);
 
 		const stream = await service.exportWorkflows({ user: member, workflowIds: [wf.id] });
+		const entries = await unpackTar(await streamToBuffer(stream));
+
+		const manifest = JSON.parse(entries[0].content.toString()) as PackageManifest;
+		expect(manifest.workflows).toHaveLength(1);
+		expect(manifest.workflows![0].id).toBe(wf.id);
+	});
+
+	it('lets a project editor export workflows from the team project', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Editor Project', owner);
+		const editor = await createMember();
+		await linkUserToProject(editor, project, 'project:editor');
+		const wf = await createWorkflow(
+			{ name: 'Project Workflow', nodes: [], connections: {} },
+			project,
+		);
+
+		const stream = await service.exportWorkflows({ user: editor, workflowIds: [wf.id] });
+		const entries = await unpackTar(await streamToBuffer(stream));
+
+		const manifest = JSON.parse(entries[0].content.toString()) as PackageManifest;
+		expect(manifest.workflows).toHaveLength(1);
+		expect(manifest.workflows![0].id).toBe(wf.id);
+	});
+
+	it('lets a project viewer export workflows from the team project', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Viewer Project', owner);
+		const viewer = await createMember();
+		await linkUserToProject(viewer, project, 'project:viewer');
+		const wf = await createWorkflow(
+			{ name: 'Viewable Workflow', nodes: [], connections: {} },
+			project,
+		);
+
+		const stream = await service.exportWorkflows({ user: viewer, workflowIds: [wf.id] });
+		const entries = await unpackTar(await streamToBuffer(stream));
+
+		const manifest = JSON.parse(entries[0].content.toString()) as PackageManifest;
+		expect(manifest.workflows).toHaveLength(1);
+		expect(manifest.workflows![0].id).toBe(wf.id);
+	});
+
+	it('lets a user export a workflow that has been shared with them directly', async () => {
+		const owner = await createOwner();
+		const ownerProject = await createTeamProject('Source Project', owner);
+		const wf = await createWorkflow(
+			{ name: 'Shared Workflow', nodes: [], connections: {} },
+			ownerProject,
+		);
+
+		const sharee = await createMember();
+		await shareWorkflowWithUsers(wf, [sharee]);
+
+		const stream = await service.exportWorkflows({ user: sharee, workflowIds: [wf.id] });
 		const entries = await unpackTar(await streamToBuffer(stream));
 
 		const manifest = JSON.parse(entries[0].content.toString()) as PackageManifest;
