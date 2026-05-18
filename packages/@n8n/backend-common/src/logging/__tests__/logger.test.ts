@@ -1,18 +1,32 @@
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	LoggerProxy: { init: jest.fn() },
-}));
+vi.mock('n8n-workflow', async () => {
+	const original = await vi.importActual('n8n-workflow');
+	return {
+		...original,
+		LoggerProxy: { init: vi.fn() },
+	};
+});
 
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mock, captor } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock, captor } from 'vitest-mock-extended';
 import winston from 'winston';
 
 import { Logger } from '../logger';
 
+let stdoutSpy: MockInstance;
+
 describe('Logger', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.clearAllMocks();
+		// Winston's Console transport writes to `console._stdout`, which Vitest
+		// replaces with its own intercepted stream — not the same object as `process.stdout`.
+		const consoleStdout = (console as unknown as { _stdout: NodeJS.WriteStream })._stdout;
+		stdoutSpy = vi.spyOn(consoleStdout, 'write').mockImplementation(() => true);
+	});
+
+	afterEach(() => {
+		stdoutSpy.mockRestore();
 	});
 
 	describe('constructor', () => {
@@ -39,12 +53,11 @@ describe('Logger', () => {
 
 	describe('formats', () => {
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		test('log text, if `config.logging.format` is set to `text`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'text',
@@ -73,7 +86,6 @@ describe('Logger', () => {
 
 		test('log json, if `config.logging.format` is set to `json`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -111,7 +123,6 @@ describe('Logger', () => {
 
 		test('apply scope filters, if `config.logging.format` is set to `json`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -136,7 +147,6 @@ describe('Logger', () => {
 
 		test('log errors in metadata with stack trace, if `config.logging.format` is set to `json`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -184,7 +194,6 @@ describe('Logger', () => {
 
 		test('do not recurse indefinitely when `cause` contains circular references', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -233,11 +242,10 @@ describe('Logger', () => {
 
 	describe('optional metadata fields', () => {
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		test('should include optional metadata fields in JSON output when defined', () => {
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -269,7 +277,6 @@ describe('Logger', () => {
 		});
 
 		test('should omit undefined metadata fields from JSON output', () => {
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -297,7 +304,7 @@ describe('Logger', () => {
 
 	describe('transports', () => {
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		test('if `console` selected, should set console transport', () => {
@@ -361,9 +368,11 @@ describe('Logger', () => {
 					},
 				});
 				const OriginalFile = winston.transports.File;
-				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+				const FileSpy = vi.spyOn(winston.transports, 'File').mockImplementation(function (
+					...args: ConstructorParameters<typeof OriginalFile>
+				) {
 					return new OriginalFile(...args);
-				});
+				} as unknown as typeof OriginalFile);
 
 				// ACT
 				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }));
@@ -393,9 +402,11 @@ describe('Logger', () => {
 					},
 				});
 				const OriginalFile = winston.transports.File;
-				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+				const FileSpy = vi.spyOn(winston.transports, 'File').mockImplementation(function (
+					...args: ConstructorParameters<typeof OriginalFile>
+				) {
 					return new OriginalFile(...args);
-				});
+				} as unknown as typeof OriginalFile);
 
 				// ACT
 				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder }));
@@ -513,13 +524,12 @@ describe('Logger', () => {
 		const ANSI_COLOR_PATTERN = /\x1b\[\d+m/g; // Pattern to match ANSI color escape codes
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			delete process.env.NO_COLOR;
 		});
 
 		test('production debug logs default to no colors (NO_COLOR not set)', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json', // Use json format so we can check the format property directly
@@ -552,7 +562,6 @@ describe('Logger', () => {
 		test('NO_COLOR environment variable is respected and prevents colors', () => {
 			// ARRANGE
 			process.env.NO_COLOR = '1';
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -586,7 +595,6 @@ describe('Logger', () => {
 			// Note: This test inspects the actual formatter method signature
 			// We verify that when level is debug in production mode,
 			// the output doesn't include color codes
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json', // Using json to ensure we test the basic behavior
@@ -623,7 +631,6 @@ describe('Logger', () => {
 		test('logger format selection respects environment and level', () => {
 			// ARRANGE
 			// Create two loggers with different configurations
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 
 			const infoProdConfig = mock<GlobalConfig>({
 				logging: {
