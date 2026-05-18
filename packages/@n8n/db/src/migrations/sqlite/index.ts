@@ -51,6 +51,7 @@ import { AddResolvableFieldsToCredentials1764689448000 } from './1764689448000-A
 import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdForeignKeys';
 import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
+import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -170,6 +171,8 @@ import { AddNodeGroupsColumnToWorkflowAndHistory1778496335798 } from '../common/
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
+import { ReplaceAgentObservationTables1784000000001 } from '../common/1784000000001-ReplaceAgentObservationTables';
+import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/1784000000002-DropAgentExecutionWorkingMemory';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -344,6 +347,9 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,
+	ReplaceAgentObservationTables1784000000001,
+	DropAgentExecutionWorkingMemory1784000000002,
+	LimitWorkflowVersionTriggerToContent1784000000003,
 	AddNodeGroupsColumnToWorkflowAndHistory1778496335798,
 ];
 

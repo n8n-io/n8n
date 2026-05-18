@@ -9,9 +9,7 @@ export type EvalCollectionRunStatus = 'new' | 'running' | 'completed' | 'error' 
 // PostHog rollout flag id gating the eval-collections feature surface. All
 // new endpoints + frontend entry points consult this; flag-off cohort sees
 // the legacy single-run flow unchanged. Single source of truth shared
-// between FE and BE so the two cannot drift. Matches the spec verbatim —
-// the existing `080_eval_parallel_execution` flag follows a numeric-prefix
-// convention but the spec called for the literal id here.
+// between FE and BE so the two cannot drift.
 export const EVAL_COLLECTIONS_FLAG = 'eval_collections';
 
 // Per-version entry on a create-collection request. Either reference an

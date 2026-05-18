@@ -58,11 +58,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user });
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
 
 			const result = await service.getUserForToken(oauthToken);
 
-			expect(result).toEqual({ user });
+			expect(result).toEqual({ user, authType: 'oauth' });
 			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(oauthToken);
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
@@ -74,11 +74,11 @@ describe('McpServerMiddlewareService', () => {
 				aud: 'mcp-server-api',
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual({ user });
+			expect(result).toEqual({ user, authType: 'api_key' });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -91,11 +91,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: false },
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual({ user });
+			expect(result).toEqual({ user, authType: 'api_key' });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -234,13 +234,15 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = jest.fn() as NextFunction;
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user });
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
+			const authenticatedReq = req as Request & { user?: User; mcpAuthType?: 'oauth' };
 
-			expect((req as any).user).toEqual(user);
+			expect(authenticatedReq.user).toEqual(user);
+			expect(authenticatedReq.mcpAuthType).toBe('oauth');
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
 		});
@@ -256,13 +258,15 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = jest.fn() as NextFunction;
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
+			const authenticatedReq = req as Request & { user?: User; mcpAuthType?: 'api_key' };
 
-			expect((req as any).user).toEqual(user);
+			expect(authenticatedReq.user).toEqual(user);
+			expect(authenticatedReq.mcpAuthType).toBe('api_key');
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
 		});
