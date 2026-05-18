@@ -70,6 +70,13 @@ class ContainerClass {
 	 */
 	get<T>(type: ServiceIdentifier<T>): T {
 		const { resolutionStack } = this;
+
+		if (resolutionStack.includes(type)) {
+			throw new DIError(
+				`Circular dependency detected: ${[...resolutionStack, type].map((t) => t.name).join(' -> ')}`,
+			);
+		}
+
 		const metadata = instances.get(type) as Metadata<T>;
 		if (!metadata) {
 			// Special case: Allow undefined returns for non-decorated constructor params
@@ -88,14 +95,13 @@ class ContainerClass {
 
 			const paramTypes = (Reflect.getMetadata('design:paramtypes', type) ?? []) as Constructable[];
 
-			const dependencies = paramTypes.map(<P>(paramType: Constructable<P>, index: number) => {
-				// SWC's `decoratorMetadata` emits `Object` as a fallback when a paramtype is
-				// unresolved at decoration time (e.g. forward-referenced via a circular import).
-				// tsc emits `undefined` in the same case.
+			const dependencies = paramTypes.map(<P>(paramType: Constructable<P>) => {
+				// `undefined` (tsc) or `Object` (SWC/OXC) means the compiler could not resolve
+				// the paramtype to a concrete class — either a forward-referenced circular
+				// import or a non-class type (object literal, union, generic, primitive).
+				// Pass undefined; the constructor's default value (if any) will handle it.
 				if (paramType === undefined || paramType === (Object as unknown as Constructable<P>)) {
-					throw new DIError(
-						`Circular dependency detected in ${type.name} at index ${index}.\n${resolutionStack.map((t) => t.name).join(' -> ')}\n`,
-					);
+					return undefined;
 				}
 				return this.get(paramType);
 			});

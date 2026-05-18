@@ -7,7 +7,7 @@ export const createVitestConfigWithDecorators = (options: InlineConfig = {}) => 
 	return mergeConfig(baseConfig, {
 		server: {
 			deps: {
-				// force vitest to inline node_modules deps instead of externalizing them
+				// Inline all dependencies so SWC can transform them (including TypeScript in node_modules)
 				inline: [/.*/],
 			},
 		},
