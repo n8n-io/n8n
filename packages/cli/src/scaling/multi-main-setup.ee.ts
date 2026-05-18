@@ -122,6 +122,11 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		const renewTtlResult = await this.client.tryRenewLeaderTtl();
 		if (!renewTtlResult.ok) {
 			this.logRedisCommandFailure('Failed to renew leader TTL', renewTtlResult.error);
+			// There's a decision to be made here: Do we step down or not? Redis might
+			// be unavailable for all clients or only for us. We could also track the TTL
+			// locally, but this would make the implementation more complex and error-prone.
+			// For now we accept that this might cause some inconsistencies in a network
+			// partition scenario, but eventually the system will recover once Redis is available again.
 			return;
 		}
 
@@ -141,6 +146,9 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 			return;
 		}
 
+		// The only remaining case is 'key-missing', which means we lost leadership
+		// (e.g. due to Redis unavailability or a network partition). In this case
+		// we try to become leader and step down if that fails.
 		assert(renewalResult.id === 'key-missing');
 
 		const result = await this.client.setLeaderIfNotExists();
