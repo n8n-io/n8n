@@ -10,6 +10,7 @@ import {
 	cellFormat,
 	handlingExtraData,
 	locationDefine,
+	upsertColumnsResourceMapperBuilderHint,
 	useAppendOption,
 } from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
@@ -171,6 +172,7 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
+		builderHint: upsertColumnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
@@ -206,6 +208,7 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
+		builderHint: upsertColumnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {

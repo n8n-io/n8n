@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.20.0",
+  "version": "2.21.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -93,7 +93,6 @@
       "sqlite3"
     ],
     "overrides": {
-      "@isaacs/brace-expansion": "5.0.1",
       "libphonenumber-js": "npm:empty-npm-package@1.0.0",
       "@browserbasehq/stagehand": "npm:empty-npm-package@1.0.0",
       "sharp": "npm:empty-npm-package@1.0.0",
@@ -105,7 +104,6 @@
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
-      "expr-eval@2.0.2": "npm:expr-eval-fork@3.0.0",
       "multer": "^2.1.1",
       "prebuild-install": "7.1.3",
       "pug": "^3.0.3",
@@ -147,7 +145,6 @@
       "bn.js@5": "5.2.3",
       "lodash": "4.18.1",
       "lodash-es": "4.18.1",
-      "word-wrap@<=1.2.4": "1.2.4",
       "minimatch@<=5.1.8": "5.1.8",
       "minimatch@10": "10.2.3",
       "@hono/node-server": "1.19.13",
@@ -166,9 +163,12 @@
       "@xmldom/xmldom": "0.8.13",
       "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
-      "hono": "4.12.16",
       "axios": "1.16.0",
-      "fast-xml-parser": "5.7.2"
+      "fast-xml-parser": "5.7.2",
+      "hono": "4.12.18",
+      "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
+      "uuid@<=13.0.1": "13.0.1",
+      "fast-uri": "3.1.2"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -184,6 +184,7 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
+      "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch"
     }
   }

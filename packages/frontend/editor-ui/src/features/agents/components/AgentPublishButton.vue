@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n } from '@n8n/i18n';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
 
@@ -13,6 +14,8 @@ const props = defineProps<{
 	isSaving?: boolean;
 	beforeRevertToPublished?: () => Promise<void> | void;
 }>();
+
+const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(() => props.projectId);
 
 const emit = defineEmits<{
 	published: [agent: AgentResource];
@@ -64,7 +67,8 @@ const dropdownActions = computed(() => {
 		{
 			id: 'publish',
 			label: locale.baseText('agents.publish.dropdown.publish'),
-			disabled: !buttonConfig.value.enabled || publishing.value || props.isSaving,
+			disabled:
+				!buttonConfig.value.enabled || publishing.value || props.isSaving || !canPublish.value,
 		},
 	];
 
@@ -72,14 +76,15 @@ const dropdownActions = computed(() => {
 		actions.push({
 			id: 'revert-to-published',
 			label: locale.baseText('agents.publish.dropdown.revertToPublished'),
-			disabled: publishing.value || props.isSaving,
+			disabled: publishing.value || props.isSaving || !canUpdate.value,
 		});
 	}
 
 	actions.push({
 		id: 'unpublish',
 		label: locale.baseText('agents.publish.dropdown.unpublish'),
-		disabled: !props.agent?.publishedVersion || publishing.value || props.isSaving,
+		disabled:
+			!props.agent?.publishedVersion || publishing.value || props.isSaving || !canUnpublish.value,
 		divided: true,
 	});
 
@@ -87,7 +92,7 @@ const dropdownActions = computed(() => {
 });
 
 async function onPublishClick() {
-	if (!buttonConfig.value.enabled || props.isSaving) return;
+	if (!buttonConfig.value.enabled || props.isSaving || !canPublish.value) return;
 	const updated = await publish(props.projectId, props.agentId);
 	if (updated) emit('published', updated);
 }
@@ -98,13 +103,13 @@ async function onDropdownSelect(action: string) {
 		return;
 	}
 	if (action === 'revert-to-published') {
-		if (!props.agent?.publishedVersion || props.isSaving) return;
+		if (!props.agent?.publishedVersion || props.isSaving || !canUpdate.value) return;
 		await props.beforeRevertToPublished?.();
 		const updated = await revertToPublished(props.projectId, props.agentId);
 		if (updated) emit('reverted', updated);
 		return;
 	}
-	if (action !== 'unpublish') return;
+	if (action !== 'unpublish' || !canUnpublish.value) return;
 	const updated = await unpublish(props.projectId, props.agentId, props.agent?.name);
 	if (updated) emit('unpublished', updated);
 }
@@ -115,7 +120,7 @@ async function onDropdownSelect(action: string) {
 		<N8nButton
 			:class="$style.groupButtonLeft"
 			:loading="publishing"
-			:disabled="!buttonConfig.enabled || isSaving"
+			:disabled="!buttonConfig.enabled || isSaving || !canPublish"
 			variant="ghost"
 			data-testid="publish-agent-button"
 			@click="onPublishClick"

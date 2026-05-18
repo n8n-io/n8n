@@ -32,6 +32,7 @@ import {
 } from '../provider-mapping';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import AgentMiniEditor from './AgentMiniEditor.vue';
+import { useToast } from '@/app/composables/useToast';
 
 const props = withDefaults(
 	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
@@ -45,6 +46,7 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
+const { showError } = useToast();
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
 	usersStore.currentUserId ?? 'anonymous',
@@ -96,7 +98,11 @@ const selectedAgent = computed<ChatModelDto | null>(() => {
 function onModelChange(selection: ChatHubConversationModel) {
 	if (!isLlmProviderModel(selection)) return;
 	const catalogProvider = CHATHUB_TO_CATALOG[selection.provider] ?? selection.provider;
-	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
+	const credentialId = credentialsByProvider.value?.[selection.provider];
+	if (!credentialId) {
+		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
+		return;
+	}
 	emit('update:config', {
 		model: `${catalogProvider}/${sanitizeModelId(catalogProvider, selection.model)}`,
 		credential: credentialId,
@@ -107,8 +113,8 @@ function onSelectCredential(provider: ChatHubProvider, credentialId: string | nu
 	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
 	const currentChatHubProvider = parsed ? CATALOG_TO_CHATHUB[parsed.provider] : undefined;
-	if (currentChatHubProvider === provider) {
-		emit('update:config', { credential: credentialId ?? '' });
+	if (currentChatHubProvider === provider && credentialId) {
+		emit('update:config', { credential: credentialId });
 	}
 }
 

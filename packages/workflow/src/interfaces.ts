@@ -1908,6 +1908,16 @@ export interface INodePropertyCollection {
 	builderHint?: IParameterBuilderHint;
 }
 
+/**
+ * One variation of `extraTypeDefContent`, optionally gated by `displayOptions`
+ * so per-mode / per-resource / per-operation examples land only in their
+ * corresponding narrowed type without cross-bleed.
+ */
+export interface IBuilderHintVariation {
+	content: string;
+	displayOptions?: IDisplayOptions;
+}
+
 export interface IParameterBuilderHint {
 	propertyHint: string;
 	placeholderSupported?: boolean;
@@ -2555,6 +2565,14 @@ export interface IBuilderHint {
 	searchHint?: string;
 	/** Related nodes that work together with this node */
 	relatedNodes?: IRelatedNode[];
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * emitted into the generated workflow-sdk `.d.ts` but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type.
+	 */
+	extraTypeDefContent?: IBuilderHintVariation[];
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {

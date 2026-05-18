@@ -111,11 +111,42 @@ export const workflowVerificationEvidenceSchema = z.object({
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
 
+export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
+	z.object({ status: z.literal('ready') }),
+	z.object({ status: z.literal('already_verified') }),
+	z.object({
+		status: z.literal('needs_setup'),
+		reason: z.enum([
+			'unresolved-placeholders',
+			'missing-mocked-credential-pin-data',
+			'workflow-needs-setup',
+		]),
+		guidance: z.string(),
+	}),
+	z.object({
+		status: z.literal('not_verifiable'),
+		reason: z.enum(['not-submitted', 'missing-workflow-id', 'non-mockable-trigger']),
+		guidance: z.string(),
+	}),
+]);
+
+export type WorkflowVerificationReadiness = z.infer<typeof workflowVerificationReadinessSchema>;
+
+export const workflowSetupRequirementSchema = z.discriminatedUnion('status', [
+	z.object({ status: z.literal('not_required') }),
+	z.object({
+		status: z.literal('required'),
+		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
+		guidance: z.string(),
+	}),
+]);
+
+export type WorkflowSetupRequirement = z.infer<typeof workflowSetupRequirementSchema>;
+
 /**
  * Structured trigger descriptor for each trigger node in the submitted workflow.
- * The orchestrator uses `nodeType` to decide whether the bypassPlan post-build
- * flow can invoke `verify-built-workflow` (mockable types) or must defer to a
- * manual user test (polling / OAuth-bound triggers).
+ * The orchestrator uses `nodeType` only to shape verification input data.
+ * Whether verification is allowed is exposed through `verificationReadiness`.
  */
 export const triggerNodeDescriptorSchema = z.object({
 	nodeName: z.string(),
@@ -148,8 +179,19 @@ export const workflowBuildOutcomeSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
+	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	/**
+	 * Deterministic post-build routing verdict. The orchestrator should use this
+	 * instead of reasoning over pin-data internals or trigger allow-lists.
+	 */
+	verificationReadiness: workflowVerificationReadinessSchema.optional(),
+	/** Deterministic setup handoff verdict for post-verification workflow setup. */
+	setupRequirement: workflowSetupRequirementSchema.optional(),
 	remediation: remediationMetadataSchema.optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow`

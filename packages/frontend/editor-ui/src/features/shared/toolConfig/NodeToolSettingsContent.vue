@@ -24,21 +24,19 @@ import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import {
-	Workflow,
-	NodeHelpers,
-	deepCopy,
-	type INode,
-	type INodeParameters,
-	type INodeTypes,
-	type INodeType,
-	type IVersionedNodeType,
-	type IDataObject,
-} from 'n8n-workflow';
+import { Workflow, NodeHelpers, deepCopy, type INode, type INodeParameters } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
-import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import {
+	ChatHubToolContextKey,
+	ExpressionLocalResolveContextSymbol,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const props = defineProps<{
 	initialNode: INode;
@@ -139,54 +137,24 @@ const hasCredentialIssues = computed(() => {
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
+const workflowDocumentStore = computed(() => {
+	const store = useWorkflowDocumentStore(createWorkflowDocumentId('node-tool-workflow'));
+
+	if (node.value) {
+		store.setNodes([node.value]);
+	}
+
+	return store;
+});
+
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) return undefined;
-
-	const nodeTypes: INodeTypes = {
-		getByName(nodeType: string): INodeType | IVersionedNodeType {
-			const description = nodeTypesStore.getNodeType(nodeType);
-			if (description === null) {
-				throw new Error(`Node type "${nodeType}" not found`);
-			}
-
-			return {
-				description,
-			} as INodeType;
-		},
-		getByNameAndVersion(nodeType: string, version?: number): INodeType {
-			const description = nodeTypesStore.getNodeType(nodeType, version);
-			if (description === null) {
-				throw new Error(`Node type "${nodeType}" (v${version}) not found`);
-			}
-
-			return {
-				description,
-			} as INodeType;
-		},
-		getKnownTypes(): IDataObject {
-			return {};
-		},
-	};
-
-	// Minimal workflow containing only this node for parameter resolution
-	const workflow = new Workflow({
-		id: 'node-tool-workflow',
-		name: 'Tool Configuration',
-		nodes: [node.value],
-		connections: {},
-		active: false,
-		nodeTypes,
-		settings: {},
-	});
 
 	return {
 		localResolve: true,
 		envVars: environmentsStore.variablesAsObject,
-		workflow,
-		execution: null,
 		nodeName: node.value.name,
 		additionalKeys: {},
-		connections: {},
 		inputNode: undefined,
 	};
 });
@@ -197,6 +165,7 @@ const isValid = computed(() => {
 
 // Provide expression resolve context for dynamic parameter loading
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
+provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 provide(ChatHubToolContextKey, true);
 
 function makeUniqueName(baseName: string, existingNames: string[]): string {
