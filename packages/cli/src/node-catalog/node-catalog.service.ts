@@ -32,9 +32,9 @@ const UNFILTERED: unique symbol = Symbol('unfiltered');
  * Shared node catalog for features that need to search, describe or suggest n8n nodes
  * (MCP workflow-builder tools, the agents runtime, future callers).
  *
- * Lazily initializes a {@link NodeTypeParser} on first use and resolves the built-in
- * node-definition directories used to load schemas. All caches invalidate automatically
- * when LoadNodesAndCredentials signals that node types were reloaded.
+ * Call {@link initialize} before first use to resolve node-definition directories
+ * and build the {@link NodeTypeParser}. All caches invalidate automatically when
+ * LoadNodesAndCredentials signals that node types were reloaded.
  */
 @Service()
 export class NodeCatalogService {

@@ -142,6 +142,7 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
+				await this.nodeCatalogService.initialize();
 				const { results } = await this.nodeCatalogService.searchNodes(queries, {
 					nodeFilter: isAgentToolNodeType,
 				});
@@ -160,6 +161,7 @@ export class AgentsToolsService {
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),
 				);
