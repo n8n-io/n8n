@@ -892,7 +892,7 @@
     "@types/ssh2-sftp-client": "^9.0.5",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
-    "eslint-plugin-n8n-nodes-base": "^1.16.5",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "vitest": "catalog:"

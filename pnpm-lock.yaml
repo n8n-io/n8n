@@ -165,6 +165,9 @@ catalogs:
     eslint:
       specifier: 9.29.0
       version: 9.29.0
+    eslint-plugin-n8n-nodes-base:
+      specifier: 1.16.5
+      version: 1.16.5
     eslint-plugin-oxlint:
       specifier: ^1.61.0
       version: 1.61.0
@@ -2039,7 +2042,7 @@ importers:
         specifier: ^4.15.2
         version: 4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@2.6.1))
       eslint-plugin-n8n-nodes-base:
-        specifier: 1.16.5
+        specifier: 'catalog:'
         version: 1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       fast-glob:
         specifier: 'catalog:'
@@ -4614,7 +4617,7 @@ importers:
         specifier: 'catalog:'
         version: 0.4.14
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.5
+        specifier: 'catalog:'
         version: 1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       n8n-containers:
         specifier: workspace:*

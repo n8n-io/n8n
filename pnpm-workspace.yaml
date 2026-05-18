@@ -73,6 +73,7 @@ catalog:
   cron: 4.4.0
   esprima-next: 5.8.4
   eslint: 9.29.0
+  eslint-plugin-n8n-nodes-base: 1.16.5
   eslint-plugin-oxlint: ^1.61.0
   fast-glob: 3.2.12
   fast-json-patch: ^3.1.1
