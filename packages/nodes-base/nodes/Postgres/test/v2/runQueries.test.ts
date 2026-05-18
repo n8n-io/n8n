@@ -199,6 +199,19 @@ describe('isSelectQuery', () => {
 			'SELECT "weird\\"name" FROM users WHERE 1 = 0',
 		],
 		['SELECT with an unterminated double-quoted identifier', 'SELECT "unterminated'],
+		// Unterminated comment / dollar quote (defensive — exercises the `end === -1` fallthrough)
+		['SELECT followed by an unterminated block comment', 'SELECT 1 FROM t /* never closed'],
+		['unterminated dollar-quoted string after SELECT', 'SELECT $$still going'],
+		['unterminated tagged dollar-quoted string after SELECT', 'SELECT $tag$still going'],
+		// `$` that is NOT a dollar-quote tag (parameter placeholder) — exercises the falsy regex path
+		['SELECT with a $1 parameter placeholder', 'SELECT * FROM users WHERE id = $1'],
+		// Empty / whitespace / semicolons-only — exercises `statements.length === 0` early-return
+		// AND the `.filter(s => s.length > 0)` discarding empty statements
+		['empty query', ''],
+		['whitespace-only query', '   \n\t '],
+		['semicolons-only query', ';;;'],
+		// Multiple semicolons between SELECTs — empty statements between get filtered out
+		['SELECTs separated by doubled semicolons', 'SELECT 1;; SELECT 2;'],
 	])('returns true for %s', (_label, query) => {
 		expect(isSelectQuery(query)).toBe(true);
 	});
