@@ -206,7 +206,7 @@
     "reflect-metadata": "catalog:",
     "replacestream": "4.0.3",
     "samlify": "2.10.0",
-    "semver": "7.5.4",
+    "semver": "catalog:",
     "shelljs": "0.8.5",
     "simple-git": "catalog:",
     "source-map-support": "0.5.21",
