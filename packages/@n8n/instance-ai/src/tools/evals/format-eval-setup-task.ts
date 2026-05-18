@@ -1,5 +1,9 @@
 import type { NamedRef } from './detect-agent-named-refs.service';
-import { formatEvalDataTableName } from './ensure-eval-data-table.service';
+import {
+	formatEvalDataTableColumnName,
+	formatEvalDataTableColumnNameMap,
+	formatEvalDataTableName,
+} from './ensure-eval-data-table.service';
 import type { MetricCatalogEntry } from './metric-catalog';
 
 interface EvalSetupMetric {
@@ -29,22 +33,39 @@ function nodeRef(nodeName: string): string {
 	return `$(${JSON.stringify(nodeName)})`;
 }
 
-function evalTriggerJsonRef(column: string): string {
-	return `={{ ${nodeRef('Eval Trigger')}.item.json.${column} }}`;
+function jsonFieldAccess(field: string): string {
+	return /^[A-Za-z_][A-Za-z0-9_]*$/.test(field) ? `.${field}` : `[${JSON.stringify(field)}]`;
 }
 
-function formatProductionAdapter(namedRefs: NamedRef[], agentNodeName: string): string {
+function nodeJsonRef(nodeName: string, field: string): string {
+	return `${nodeRef(nodeName)}.item.json${jsonFieldAccess(field)}`;
+}
+
+function rowJsonRef(field: string): string {
+	return `$json${jsonFieldAccess(field)}`;
+}
+
+function evalTriggerJsonRef(column: string): string {
+	return `={{ ${nodeJsonRef('Eval Trigger', column)} }}`;
+}
+
+function formatProductionAdapter(
+	namedRefs: NamedRef[],
+	agentNodeName: string,
+	columnNameFor: (column: string) => string,
+): string {
 	if (namedRefs.length === 0) return '';
 
-	// Set adapter assignments: one per unique column, using canonical single-quote syntax.
+	// Set adapter assignments: one per unique normalized dataset column.
 	const assignmentsByColumn = new Map<
 		string,
 		{ column: string; nodeName: string; field: string }
 	>();
 	for (const r of namedRefs) {
-		if (!assignmentsByColumn.has(r.column)) {
-			assignmentsByColumn.set(r.column, {
-				column: r.column,
+		const column = columnNameFor(r.column);
+		if (!assignmentsByColumn.has(column)) {
+			assignmentsByColumn.set(column, {
+				column,
 				nodeName: r.nodeName,
 				field: r.field,
 			});
@@ -53,7 +74,7 @@ function formatProductionAdapter(namedRefs: NamedRef[], agentNodeName: string): 
 	const assignments = [...assignmentsByColumn.values()]
 		.map(
 			(a) =>
-				`  - { name: "${a.column}", value: "={{ ${nodeRef(a.nodeName)}.item.json.${a.field} }}", type: "string" }`,
+				`  - { name: "${a.column}", value: "={{ ${nodeJsonRef(a.nodeName, a.field)} }}", type: "string" }`,
 		)
 		.join('\n');
 
@@ -80,9 +101,10 @@ function formatProductionAdapter(namedRefs: NamedRef[], agentNodeName: string): 
 		const isAgent = target === agentNodeName;
 		const lines = refs
 			.map((r) => {
+				const column = columnNameFor(r.column);
 				const replacement = isAgent
-					? `{{ $json.${r.column} }}`
-					: `{{ ${nodeRef(agentNodeName)}.item.json.${r.column} }}`;
+					? `{{ ${rowJsonRef(column)} }}`
+					: `{{ ${nodeJsonRef(agentNodeName, column)} }}`;
 				return `    - Replace \`${r.originalExpression}\` with \`${replacement}\``;
 			})
 			.join('\n');
@@ -108,11 +130,19 @@ ${rewrites}
 After your edits the agent has TWO incoming \`main\` connections: one from the Eval Production Adapter (production runs) and one from the EvaluationTrigger (eval runs). Both produce \`$json.<column>\` for the agent. Sub-components reference the agent by name, so they resolve to the agent's last input row in both modes.`;
 }
 
-function formatMetric(m: EvalSetupMetric, input: FormatEvalSetupTaskInput): string {
+function formatMetric(
+	m: EvalSetupMetric,
+	input: FormatEvalSetupTaskInput,
+	columnNameFor: (column: string) => string,
+): string {
 	const cannedSuffix = m.cannedMetricKey ? `, canned=${m.cannedMetricKey}` : '';
 	const promptSuffix = m.prompt ? `\n  Prompt: ${m.prompt}` : '';
-	const expectedOutputColumn = input.suggestedOutputColumns[0] ?? 'expected_output';
-	const inputColumn = input.suggestedInputColumns[0] ?? 'input';
+	const expectedOutputColumn = input.suggestedOutputColumns[0]
+		? columnNameFor(input.suggestedOutputColumns[0])
+		: 'expected_output';
+	const inputColumn = input.suggestedInputColumns[0]
+		? columnNameFor(input.suggestedInputColumns[0])
+		: 'input';
 
 	switch (m.cannedMetricKey) {
 		case 'correctness':
@@ -132,7 +162,7 @@ function formatMetric(m: EvalSetupMetric, input: FormatEvalSetupTaskInput): stri
 	}
 }
 
-function formatDatasetSection(input: FormatEvalSetupTaskInput): string {
+function formatDatasetSection(input: FormatEvalSetupTaskInput, dataTableColumns: string[]): string {
 	if (input.datasetChoice === 'link-existing') {
 		return `Wire the EvaluationTrigger to DataTable id \`${input.existingDataTableId}\`. This table already exists — do not modify its rows or schema.`;
 	}
@@ -141,9 +171,7 @@ function formatDatasetSection(input: FormatEvalSetupTaskInput): string {
 	}
 
 	const tableName = formatEvalDataTableName(input.workflowName);
-	const columns = [...input.suggestedInputColumns, ...input.suggestedOutputColumns]
-		.map((c) => `- ${c}`)
-		.join('\n');
+	const columns = dataTableColumns.map((c) => `- ${c}`).join('\n');
 	return `Create an empty DataTable named "${tableName}"${input.projectId ? ` in project id \`${input.projectId}\`` : ''} using only the \`create-empty-eval-data-table\` tool. Columns to create as strings:\n${columns}\n\nDo not insert rows, generate rows, or mutate row data. After creating the empty table, wire the EvaluationTrigger and setOutputs dataTableId to the created table id.`;
 }
 
@@ -159,13 +187,33 @@ function formatSetOutputsDataTableInstruction(input: FormatEvalSetupTaskInput): 
 }
 
 export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
-	const outputColumns = input.suggestedOutputColumns.map((c) => `- ${c}`).join('\n');
-	const inputColumns = input.suggestedInputColumns.map((c) => `- ${c}`).join('\n');
-	const metrics = input.enabledMetrics.map((m) => formatMetric(m, input)).join('\n\n');
-	const datasetSection = formatDatasetSection(input);
+	const rawInputColumns = [
+		...input.suggestedInputColumns,
+		...(input.namedRefs ?? []).map((r) => r.column),
+	];
+	const rawOutputColumns = input.suggestedOutputColumns;
+	const columnNameByRaw = formatEvalDataTableColumnNameMap([
+		...rawInputColumns,
+		...rawOutputColumns,
+	]);
+	const columnNameFor = (column: string) =>
+		columnNameByRaw.get(column) ?? formatEvalDataTableColumnName(column);
+	const inputColumnNames = [...new Set(rawInputColumns.map(columnNameFor))];
+	const outputColumnNames = [...new Set(rawOutputColumns.map(columnNameFor))];
+	const dataTableColumns = [...new Set([...inputColumnNames, ...outputColumnNames])];
+	const outputColumns = outputColumnNames.map((c) => `- ${c}`).join('\n');
+	const inputColumns = inputColumnNames.map((c) => `- ${c}`).join('\n');
+	const metrics = input.enabledMetrics
+		.map((m) => formatMetric(m, input, columnNameFor))
+		.join('\n\n');
+	const datasetSection = formatDatasetSection(input, dataTableColumns);
 	const setOutputsDataTableInstruction = formatSetOutputsDataTableInstruction(input);
 	const agentNodeName = input.detectedAiNodes[0] ?? '';
-	const adapterSection = formatProductionAdapter(input.namedRefs ?? [], agentNodeName);
+	const adapterSection = formatProductionAdapter(
+		input.namedRefs ?? [],
+		agentNodeName,
+		columnNameFor,
+	);
 
 	return `Set up evaluations for workflow "${input.workflowName}" (id: ${input.workflowId}).
 

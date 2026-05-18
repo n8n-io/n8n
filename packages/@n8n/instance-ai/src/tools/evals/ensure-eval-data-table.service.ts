@@ -9,9 +9,50 @@ export interface CreateEmptyEvalDataTableInput {
 }
 
 const NAME_COLLISION_RE = /already exists/i;
+const DATA_TABLE_COLUMN_MAX_LENGTH = 63;
 
 export function formatEvalDataTableName(workflowName: string): string {
 	return `${workflowName} — eval samples`;
+}
+
+export function formatEvalDataTableColumnName(columnName: string): string {
+	const normalized = columnName
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9_]+/g, '_')
+		.replace(/_+/g, '_')
+		.replace(/^_+|_+$/g, '');
+	const withValidStart = /^[a-z]/.test(normalized) ? normalized : `column_${normalized || 'value'}`;
+	const truncated = withValidStart.slice(0, DATA_TABLE_COLUMN_MAX_LENGTH).replace(/_+$/g, '');
+	return truncated || 'column';
+}
+
+function withUniqueSuffix(baseName: string, index: number): string {
+	const suffix = `_${index}`;
+	return `${baseName.slice(0, DATA_TABLE_COLUMN_MAX_LENGTH - suffix.length).replace(/_+$/g, '')}${suffix}`;
+}
+
+export function formatEvalDataTableColumnNameMap(columns: string[]): Map<string, string> {
+	const byRawColumn = new Map<string, string>();
+	const usedNames = new Set<string>();
+	for (const column of columns) {
+		if (byRawColumn.has(column)) continue;
+
+		const baseName = formatEvalDataTableColumnName(column);
+		let candidate = baseName;
+		let index = 2;
+		while (usedNames.has(candidate)) {
+			candidate = withUniqueSuffix(baseName, index);
+			index++;
+		}
+		byRawColumn.set(column, candidate);
+		usedNames.add(candidate);
+	}
+	return byRawColumn;
+}
+
+export function formatEvalDataTableColumnNames(columns: string[]): string[] {
+	return [...formatEvalDataTableColumnNameMap(columns).values()];
 }
 
 async function createWithUniqueName(
@@ -55,7 +96,10 @@ export async function createEmptyEvalDataTable(
 	const dt = await createWithUniqueName(
 		ctx,
 		formatEvalDataTableName(input.workflowName),
-		input.columns.map((n) => ({ name: n, type: 'string' as const })),
+		formatEvalDataTableColumnNames(input.columns).map((n) => ({
+			name: n,
+			type: 'string' as const,
+		})),
 		input.projectId ? { projectId: input.projectId } : undefined,
 	);
 	return {

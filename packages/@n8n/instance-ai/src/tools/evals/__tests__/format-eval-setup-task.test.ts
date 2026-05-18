@@ -174,6 +174,43 @@ describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
 		expect(task).toContain('Leave setOutputs dataTableId empty until the user selects a DataTable');
 		expect(task).not.toContain("value: '<same as EvaluationTrigger>'");
 	});
+
+	it('normalizes DataTable columns and uses bracket access for source fields that need it', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['User Query'],
+			suggestedOutputColumns: ['expected-response'],
+			enabledMetrics: [
+				{
+					id: 'helpfulness',
+					name: 'Helpfulness',
+					kind: 'llm-judge',
+					description: 'Helpful response',
+					prompt: 'Check helpfulness.',
+					cannedMetricKey: 'helpfulness',
+					defaultEnabled: false,
+				},
+			],
+			namedRefs: [
+				{
+					nodeName: 'Webhook',
+					field: 'User Query',
+					originalExpression: '$("Webhook").item.json["User Query"]',
+					column: 'User Query',
+					targetNodeName: 'General Agent',
+				},
+			],
+		});
+
+		expect(task).toContain('Columns to create as strings:\n- user_query\n- expected_response');
+		expect(task).toContain('value: "={{ $("Webhook").item.json["User Query"] }}"');
+		expect(task).toContain(
+			'Replace `$("Webhook").item.json["User Query"]` with `{{ $json.user_query }}`',
+		);
+		expect(task).toContain('userQuery: ={{ $("Eval Trigger").item.json.user_query }}');
+		expect(task).not.toContain('- User Query');
+		expect(task).not.toContain('- expected-response');
+	});
 });
 
 describe('formatEvalSetupTask — metric instructions', () => {
