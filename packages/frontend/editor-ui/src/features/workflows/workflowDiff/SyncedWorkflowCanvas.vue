@@ -6,6 +6,7 @@ import type {
 	CanvasEventBusEvents,
 	CanvasNode,
 } from '@/features/workflows/canvas/canvas.types';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
@@ -16,6 +17,7 @@ const props = defineProps<{
 	id: string;
 	nodes: CanvasNode[];
 	connections: CanvasConnection[];
+	renderData: CanvasRenderData;
 	applyLayout?: boolean;
 }>();
 
@@ -134,6 +136,7 @@ watch(selectedDetailId, (id) => {
 			:id
 			:nodes
 			:connections
+			:render-data="renderData"
 			:read-only="true"
 			:event-bus="eventBus"
 			style="width: 100%; height: 100%"

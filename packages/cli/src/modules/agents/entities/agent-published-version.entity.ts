@@ -1,5 +1,5 @@
 import type { ToolDescriptor } from '@n8n/agents';
-import type { AgentSkill } from '@n8n/api-types';
+import { type AgentJsonConfig, type AgentSkill } from '@n8n/api-types';
 import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import {
 	Column,
@@ -12,7 +12,6 @@ import {
 } from '@n8n/typeorm';
 
 import type { Agent } from './agent.entity';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 @Entity({ name: 'agent_published_version' })
 export class AgentPublishedVersion extends WithTimestamps {

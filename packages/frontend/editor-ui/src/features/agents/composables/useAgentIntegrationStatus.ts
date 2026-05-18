@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import type { AgentIntegrationStatusEntry } from '@n8n/api-types';
+import type { AgentIntegrationStatusEntry, AgentIntegrationSettings } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -10,6 +10,7 @@ type Status = 'connected' | 'disconnected' | 'unknown';
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
 	connectedCredentials: Ref<Record<string, string>>;
+	integrationSettings: Ref<Record<string, AgentIntegrationSettings | undefined>>;
 	loadingMap: Ref<Record<string, boolean>>;
 	errorMessages: Ref<Record<string, string>>;
 	errorIsConflict: Ref<Record<string, boolean>>;
@@ -31,6 +32,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 		state = {
 			statuses: ref({}),
 			connectedCredentials: ref({}),
+			integrationSettings: ref({}),
 			loadingMap: ref({}),
 			errorMessages: ref({}),
 			errorIsConflict: ref({}),
@@ -54,11 +56,13 @@ function applyStatus(
 	for (const type of integrationTypes) {
 		state.statuses.value[type] = 'disconnected';
 		state.connectedCredentials.value[type] = '';
+		state.integrationSettings.value[type] = undefined;
 	}
 	for (const integration of integrations) {
 		state.statuses.value[integration.type] = 'connected';
 		state.connectedCredentials.value[integration.type] =
 			typeof integration.credentialId === 'string' ? integration.credentialId : '';
+		state.integrationSettings.value[integration.type] = integration.settings;
 	}
 }
 
@@ -102,16 +106,28 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		await state.fetchInFlight;
 	}
 
-	async function connect(type: string, credId: string): Promise<void> {
+	async function connect(
+		type: string,
+		credId: string,
+		settings?: AgentIntegrationSettings,
+	): Promise<void> {
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';
 		state.errorIsConflict.value[type] = false;
 		try {
-			await connectIntegration(rootStore.restApiContext, projectId, agentId, type, credId);
+			await connectIntegration(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				type,
+				credId,
+				settings,
+			);
 			// Reflect the change in the shared reactive state immediately so the
 			// other consumer re-renders without waiting for a round-trip refetch.
 			state.statuses.value[type] = 'connected';
 			state.connectedCredentials.value[type] = credId;
+			state.integrationSettings.value[type] = settings;
 		} catch (e: unknown) {
 			const msg =
 				e instanceof Error
@@ -133,6 +149,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			await disconnectIntegration(rootStore.restApiContext, projectId, agentId, type, credId);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
+			state.integrationSettings.value[type] = undefined;
 		} finally {
 			state.loadingMap.value[type] = false;
 		}
@@ -145,6 +162,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 	return {
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
+		integrationSettings: state.integrationSettings,
 		loadingMap: state.loadingMap,
 		errorMessages: state.errorMessages,
 		errorIsConflict: state.errorIsConflict,

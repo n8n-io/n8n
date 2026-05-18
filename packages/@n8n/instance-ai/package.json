@@ -17,6 +17,7 @@
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
+    "eval:discovery": "tsx evaluations/discovery/cli.ts",
     "prompts:print": "tsx scripts/print-prompts.ts"
   },
   "main": "dist/index.js",
@@ -55,7 +56,8 @@
     "langsmith": "catalog:",
     "@mozilla/readability": "^0.6.0",
     "@n8n/api-types": "workspace:*",
-    "@n8n/sandbox-client": "0.0.1",
+    "@n8n/mcp-browser": "workspace:*",
+    "@n8n/sandbox-client": "0.0.4",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "linkedom": "^0.18.9",

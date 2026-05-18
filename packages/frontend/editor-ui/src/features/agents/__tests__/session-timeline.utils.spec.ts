@@ -158,7 +158,6 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		timeline: null,
 		error: null,
 		hitlStatus: null,
-		workingMemory: null,
 		source: null,
 		...overrides,
 	};

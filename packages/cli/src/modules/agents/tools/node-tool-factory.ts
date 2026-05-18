@@ -10,7 +10,7 @@ import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { Container } from '@n8n/di';
 
-import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
+import type { AgentJsonToolConfig } from '@n8n/api-types';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 

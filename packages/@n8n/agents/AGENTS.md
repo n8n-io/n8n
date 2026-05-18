@@ -134,3 +134,7 @@ pnpm build       # rimraf dist && tsc -p tsconfig.build.json → dist/
 pnpm typecheck   # tsc --noEmit
 pnpm test        # jest (unit)
 ```
+
+## PR naming convention
+
+The Agents feature is not generally available yet, so any PRs related to the Agents package should have (no-changelog) in the title to avoid generating a changelog entry.

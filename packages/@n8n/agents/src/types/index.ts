@@ -36,6 +36,7 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
@@ -87,6 +88,26 @@ export {
 	OBSERVATION_CATEGORIES,
 	OBSERVATION_SCHEMA_VERSION,
 } from './sdk/observation';
+
+export type {
+	BuiltObservationLogStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	ObservationLogReadOptions,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogScopeKind,
+	ObservationLogStatus,
+	TokenCounter,
+} from './sdk/observation-log';
+export {
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
+} from './sdk/observation-log';
 
 export type {
 	EvalInput,
