@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Fails if the built n8n image breaks an invocation pattern a real consumer
-// uses. The cloud invocation is pulled live from n8n-cloud's helm chart so
-// the test doesn't drift from what cloud actually deploys.
+// Verifies the built n8n image still works for the ways n8n-cloud and other
+// consumers actually launch it. The cloud spec is pulled live from
+// n8n-cloud's helm chart so this test stays in sync with what cloud deploys.
 
 import { $, echo, chalk, fs, tmpdir } from 'zx';
 import path from 'node:path';
@@ -38,7 +38,7 @@ async function fetchCloudInvocations() {
 				return (pod.containers ?? [])
 					.filter((c) => c.image?.includes('n8n') && c.command?.length)
 					.map((c) => ({
-						name: `cloud ${doc.kind} ${doc.metadata.name}/${c.name}`,
+						name: `n8n-cloud: ${doc.kind} ${doc.metadata.name} / container ${c.name}`,
 						user: String(c.securityContext?.runAsUser ?? pod.securityContext?.runAsUser ?? 1000),
 						entrypoint: c.command[0],
 						// --help makes the process terminate without bind/connect.
@@ -68,10 +68,10 @@ async function run({ name, user, entrypoint, args }) {
 }
 
 const invocations = [
-	{ name: 'default entrypoint', user: '1000', entrypoint: null, args: ['--help'] },
+	{ name: 'n8n image default entrypoint', user: '1000', entrypoint: null, args: ['--help'] },
 	...(process.env.SMOKE_SKIP_CLOUD === 'true' ? [] : await fetchCloudInvocations()),
 ];
 
-echo(chalk.bold(`Smoke-testing ${IMAGE} (${invocations.length} invocations)`));
+echo(chalk.bold(`Verifying ${IMAGE} against ${invocations.length} deployment pattern(s)`));
 const ok = (await Promise.all(invocations.map(run))).every(Boolean);
 if (!ok) process.exit(1);

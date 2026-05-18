@@ -52,7 +52,7 @@ jobs:
           owner: n8n-io
           repositories: n8n-cloud
 
-      - name: Smoke test against downstream invocations
+      - name: Verify image against live n8n-cloud helm chart
         env:
           GH_TOKEN: ${{ steps.cloud-token.outputs.token }}
         run: pnpm build:docker:smoke
