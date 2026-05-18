@@ -103,6 +103,7 @@ catalog:
   pg: 8.17.0
   picocolors: 1.0.1
   playwright-core: 1.58.0
+  recast: 0.22.0
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sass-embedded: ^1.98.0

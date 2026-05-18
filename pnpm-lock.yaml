@@ -240,6 +240,9 @@ catalogs:
     playwright-core:
       specifier: 1.58.0
       version: 1.58.0
+    recast:
+      specifier: 0.22.0
+      version: 0.22.0
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
@@ -2541,7 +2544,7 @@ importers:
         specifier: 'catalog:'
         version: 5.8.4
       recast:
-        specifier: ^0.22.0
+        specifier: 'catalog:'
         version: 0.22.0
     devDependencies:
       '@n8n/vitest-config':
@@ -4885,7 +4888,7 @@ importers:
         specifier: 2.3.0
         version: 2.3.0
       recast:
-        specifier: 0.22.0
+        specifier: 'catalog:'
         version: 0.22.0
       title-case:
         specifier: 3.0.3

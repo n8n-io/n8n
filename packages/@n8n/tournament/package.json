@@ -54,6 +54,6 @@
   "dependencies": {
     "ast-types": "catalog:",
     "esprima-next": "catalog:",
-    "recast": "^0.22.0"
+    "recast": "catalog:"
   }
 }
