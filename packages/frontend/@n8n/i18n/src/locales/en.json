@@ -4020,8 +4020,6 @@
 	"resourceActions.mcpAccess.disable.tooltip": "Disable MCP access for all workflows in '{scopeName}'",
 	"resourceActions.mcpAccess.success.enabled.title": "MCP access enabled",
 	"resourceActions.mcpAccess.success.disabled.title": "MCP access disabled",
-	"resourceActions.mcpAccess.success.enabled.message": "Enabled MCP access for 1 workflow in '{scopeName}'.<br><a href=\"{link}\">Manage MCP settings</a> | Enabled MCP access for {count} workflows in '{scopeName}'.<br><br><a href=\"{link}\">Manage MCP settings</a>",
-	"resourceActions.mcpAccess.success.disabled.message": "Disabled MCP access for 1 workflow in '{scopeName}'.<br><a href=\"{link}\">Manage MCP settings</a> | Disabled MCP access for {count} workflows in '{scopeName}'.<br><br><a href=\"{link}\">Manage MCP settings</a>",
 	"resourceActions.mcpAccess.noChanges.title": "No changes needed",
 	"resourceActions.mcpAccess.partial.title": "Some workflows weren't updated",
 	"resourceActions.mcpAccess.noWorkflows.title": "No workflows to update",
