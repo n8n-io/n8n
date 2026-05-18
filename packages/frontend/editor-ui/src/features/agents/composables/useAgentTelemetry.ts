@@ -133,6 +133,29 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
+		safeTrack('User opened agent tool', {
+			agent_id: params.agentId,
+			tool_type: params.toolType,
+			...common(),
+		});
+	}
+
+	function trackOpenedSkillFromList(params: { agentId: string; skillId: string }) {
+		safeTrack('User opened agent skill', {
+			agent_id: params.agentId,
+			skill_id: params.skillId,
+			...common(),
+		});
+	}
+
+	function trackOpenedAddSkillModal(params: { agentId: string }) {
+		safeTrack('User opened add skill modal', {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -142,5 +165,8 @@ export function useAgentTelemetry() {
 		trackAddedSkills,
 		trackPublishedAgent,
 		trackUnpublishedAgent,
+		trackOpenedToolFromList,
+		trackOpenedSkillFromList,
+		trackOpenedAddSkillModal,
 	};
 }
