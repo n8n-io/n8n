@@ -102,6 +102,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
@@ -368,6 +369,10 @@ const currentBreadcrumbsProjectName = computed(() => {
 		? i18n.baseText('projects.menu.personal')
 		: project.name;
 });
+
+const currentParentName = computed(
+	() => currentFolder.value?.name ?? currentBreadcrumbsProjectName.value,
+);
 
 const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	const project = currentBreadcrumbsProject.value;
@@ -2102,6 +2107,30 @@ const onNameSubmit = async (name: string) => {
 					time-range="week"
 				/>
 			</ProjectHeader>
+		</template>
+		<template v-if="showRegisteredCommunityCTA" #add-button>
+			<N8nTooltip placement="top">
+				<template #content>
+					<span>
+						{{
+							currentParentName
+								? i18n.baseText('folders.add.to.parent.message', {
+										interpolate: { parent: currentParentName },
+									})
+								: i18n.baseText('folders.add.here.message')
+						}}
+					</span>
+				</template>
+				<N8nButton
+					variant="outline"
+					size="medium"
+					iconOnly
+					icon="folder-plus"
+					:aria-label="i18n.baseText('workflows.addFolder')"
+					data-test-id="add-folder-button"
+					@click="createFolderInCurrent"
+				/>
+			</N8nTooltip>
 		</template>
 		<template #callout>
 			<N8nCallout
