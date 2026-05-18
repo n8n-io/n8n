@@ -381,7 +381,7 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		telemetry.track('User clicked header add variable button');
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
-		agentTelemetry.trackClickedNewAgent(source);
+		agentTelemetry.trackClickedNewAgent(source, { startSessionRecording: true });
 		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
 	},
 } as const;

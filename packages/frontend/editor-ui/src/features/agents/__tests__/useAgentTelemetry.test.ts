@@ -17,6 +17,7 @@ describe('useAgentTelemetry', () => {
 		trackMock.mockReset();
 		startSessionRecordingMock.mockReset();
 		window.posthog = {
+			init: vi.fn(),
 			startSessionRecording: startSessionRecordingMock,
 		};
 	});

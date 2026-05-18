@@ -319,7 +319,9 @@ describe('ProjectHeader', () => {
 			await userEvent.click(getByTestId('add-resource-agent'));
 
 			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('button');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('button', {
+				startSessionRecording: true,
+			});
 		});
 
 		it('tracks source=dropdown when the agent action is selected from the dropdown', async () => {
@@ -330,7 +332,9 @@ describe('ProjectHeader', () => {
 			await userEvent.click(getByTestId('action-agent'));
 
 			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown', {
+				startSessionRecording: true,
+			});
 		});
 	});
 
