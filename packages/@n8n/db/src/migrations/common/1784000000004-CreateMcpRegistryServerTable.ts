@@ -6,7 +6,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 // ones. This leads to different order of migrations depending on whether the
 // database is empty or not. So to avoid unexpected behavior, this migration
 // has a timestamp that's 1 ms after the previous migration's timestamp
-export class CreateMcpRegistryServerTable1784000000003 implements ReversibleMigration {
+export class CreateMcpRegistryServerTable1784000000004 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('mcp_registry_server')
 			.withColumns(
