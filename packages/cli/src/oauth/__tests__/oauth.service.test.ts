@@ -1160,7 +1160,11 @@ describe('OauthService', () => {
 		it.each(['facebookGraphApiOAuth2Api', 'facebookGraphAppOAuth2Api'])(
 			'should not delete scope for %s credentials',
 			async (credentialType) => {
-				const credential = mock<CredentialsEntity>({ id: '1', type: credentialType });
+				const credential = mock<CredentialsEntity>({
+					id: '1',
+					type: credentialType,
+					isManaged: false,
+				});
 				const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
 				const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
 				const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
