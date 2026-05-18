@@ -3,6 +3,7 @@ import { computed, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
+import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -136,6 +137,12 @@ function onParameterValueChanged(update: IUpdateInformation) {
 
 <template>
 	<div :class="$style.body">
+		<FreeAiCreditsCallout
+			v-if="credentialType"
+			:credential-type-name="credentialType"
+			telemetry-source="instanceAiWorkflowSetup"
+		/>
+
 		<NodeCredentials
 			v-if="credentialType"
 			:node="displayNode"
