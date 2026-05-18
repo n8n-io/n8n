@@ -1,6 +1,6 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
-import type { ActionEvent, Chat, Message, Thread } from 'chat';
+import type { ActionEvent, Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
@@ -9,7 +9,8 @@ import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
-import { type TextEndFn, type TextYieldFn, type InternalThread, toInternalThreadId } from './types';
+import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 interface AgentExecutor {
 	executeForChatPublished(config: {
@@ -61,7 +62,7 @@ export class AgentChatBridge {
 	private readonly disableStreaming: boolean;
 
 	/** Resolved integration for this platform (may be undefined for unknown types). */
-	private readonly integration: AgentChatIntegration | undefined;
+	private readonly integrationImpl: AgentChatIntegration | undefined;
 
 	/**
 	 * In-flight `rich_interaction` tool inputs keyed by toolCallId. Populated on
@@ -84,13 +85,13 @@ export class AgentChatBridge {
 		private readonly componentMapper: ComponentMapper,
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
-		private readonly integrationType: string,
+		private readonly integration: AgentCredentialIntegrationConfig,
 	) {
-		this.integration = Container.get(ChatIntegrationRegistry).get(integrationType);
-		if (this.integration?.needsShortCallbackData) {
+		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
+		if (this.integrationImpl?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
-		this.disableStreaming = this.integration?.disableStreaming ?? false;
+		this.disableStreaming = this.integrationImpl?.disableStreaming ?? false;
 		this.registerHandlers();
 	}
 
@@ -105,7 +106,7 @@ export class AgentChatBridge {
 		componentMapper: ComponentMapper,
 		logger: Logger,
 		n8nProjectId: string,
-		integrationType: string,
+		integration: AgentCredentialIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
 			async *executeForChatPublished({ memory, agentId: aid, message, integrationType }) {
@@ -128,7 +129,7 @@ export class AgentChatBridge {
 			componentMapper,
 			logger,
 			n8nProjectId,
-			integrationType,
+			integration,
 		);
 	}
 
@@ -139,6 +140,7 @@ export class AgentChatBridge {
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
+				if (!this.canUserAccess(message.author)) return;
 				await thread.subscribe();
 				await this.executeAndStream(thread, message);
 			} catch (error) {
@@ -148,6 +150,7 @@ export class AgentChatBridge {
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
+				if (!this.canUserAccess(message.author)) return;
 				await this.executeAndStream(thread, message);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
@@ -156,6 +159,7 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
+				if (!this.canUserAccess(event.user)) return;
 				await this.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
@@ -166,6 +170,10 @@ export class AgentChatBridge {
 	/** Release long-lived resources (callback store timer). */
 	dispose(): void {
 		this.callbackStore?.dispose();
+	}
+
+	private canUserAccess(author: Author): boolean {
+		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
 	}
 
 	// ---------------------------------------------------------------------------
@@ -183,7 +191,7 @@ export class AgentChatBridge {
 	 * helper so platform-specific formatting is never accidentally skipped.
 	 */
 	private resolveThreadId(thread: Thread<unknown, unknown>) {
-		return toInternalThreadId(this.integration?.formatThreadId?.fromSdk(thread) ?? thread.id);
+		return toInternalThreadId(this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id);
 	}
 
 	/**
@@ -219,7 +227,7 @@ export class AgentChatBridge {
 			projectId: this.n8nProjectId,
 			message: text,
 			memory: { threadId, resourceId: message.author.userId },
-			integrationType: this.integrationType,
+			integrationType: this.integration.type,
 		});
 
 		await this.consumeStream(stream, thread);
@@ -505,7 +513,7 @@ export class AgentChatBridge {
 				toolCallId,
 				chunk.resumeSchema,
 				this.getShortenCallback(),
-				this.integrationType,
+				this.integration.type,
 			);
 			await thread.post({ card });
 		} catch (error) {
@@ -560,7 +568,7 @@ export class AgentChatBridge {
 				toolCallId,
 				riResumeSchema,
 				this.getShortenCallback(),
-				this.integrationType,
+				this.integration.type,
 			);
 			await thread.post(card);
 		} catch (error) {
@@ -641,7 +649,7 @@ export class AgentChatBridge {
 				toolCallId,
 				displayResumeSchema,
 				this.getShortenCallback(),
-				this.integrationType,
+				this.integration.type,
 			);
 			await thread.post({ card });
 		} catch (error) {
@@ -816,7 +824,7 @@ export class AgentChatBridge {
 				runId,
 				toolCallId,
 				resumeData,
-				integrationType: this.integrationType,
+				integrationType: this.integration.type,
 			});
 			await this.consumeStream(stream, thread as Thread);
 		} finally {

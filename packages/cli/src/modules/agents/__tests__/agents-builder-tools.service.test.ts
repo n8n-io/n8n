@@ -1,5 +1,5 @@
 import type { CredentialProvider } from '@n8n/agents';
-import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
+import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH, type AgentJsonConfig } from '@n8n/api-types';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -12,7 +12,6 @@ import {
 import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const ctx = {
@@ -176,6 +175,30 @@ describe('AgentsBuilderToolsService', () => {
 				configHash: getAgentConfigHash(updatedConfig),
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
+			});
+		});
+
+		it('write_config rejects draft LLM config without updating', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const draftConfig = { ...currentConfig, model: '', credential: undefined };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(draftConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				errors: expect.arrayContaining([
+					expect.objectContaining({ path: 'model' }),
+					expect.objectContaining({ path: 'credential' }),
+				]),
 			});
 		});
 
