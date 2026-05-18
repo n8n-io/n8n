@@ -7,7 +7,15 @@ description: Authors n8n database migrations that pass migrations-review on the 
 
 **Rule of thumb:** the `@n8n-io/migrations-review` team gates every migration PR. The fixes they ask for are predictable — work through the checklist below before requesting review.
 
-## File location & naming
+## Scaffolding
+
+Use the generator — it picks a safe timestamp (strictly greater than every existing migration), writes the scaffold, and registers the migration in the right `index.ts`:
+
+```sh
+pnpm --filter=@n8n/db migration:new <PascalCaseName> [--folder=common|postgresdb|sqlite]
+```
+
+`--folder` defaults to `common`; use `postgresdb` or `sqlite` only for dialect-specific migrations. See `packages/@n8n/db/AGENTS.md` for the full rationale (timestamp invariants, the `migration-timestamp` lint rule that enforces them, and the do-not-use-`autoGenerate2`-on-UUIDs rule).
 
 ```
 packages/@n8n/db/src/migrations/
@@ -17,10 +25,7 @@ packages/@n8n/db/src/migrations/
 └── mysqldb/       # do NOT add new files here (MySQL/MariaDB unsupported)
 ```
 
-- Filename: `{TIMESTAMP}-{ClassName}.ts`
-- Timestamp: **`Date.now()` at author time**, not a value copied from another file. After a rebase or conflict resolution, regenerate so the migration is the newest — reviewers reject stale timestamps because TypeORM uses the trailing number to order migrations and downstream migrations may be skipped on already-deployed instances.
-- Class name **ends with the same timestamp**: `class AddFooBar1700000000000`.
-- Register in **both** `sqlite/index.ts` and `postgresdb/index.ts` at the chronologically correct position.
+After a rebase, re-run the generator's logic by bumping the timestamp so the migration stays the newest; the lint rule will flag any drift.
 
 ## Which directory?
 
@@ -59,8 +64,7 @@ export class AddFooBar1700000000000 implements ReversibleMigration {
 
 Run through this before requesting review. Each item is a real, recurring reviewer flag.
 
-- [ ] **Timestamp** is fresh `Date.now()` (or `date +%s%3N`); class name ends in the same number; filename matches.
-- [ ] Migration is **registered** in both `sqlite/index.ts` and `postgresdb/index.ts` chronologically.
+- [ ] Migration was scaffolded with `pnpm --filter=@n8n/db migration:new` (timestamp + registration are then automatic; the `migration-timestamp` lint rule catches drift).
 - [ ] Identifiers go through **`escape.tableName(...)` / `escape.columnName(...)`**. Never hand-write `n8n_table` prefixes.
 - [ ] **Column types are narrow:** `uuid` not `varchar(36)`; `int`/`smallint` not `bigint`; `text` for unbounded strings; `numeric` for byte counts; never `double` for version numbers.
 - [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL — don't repeat. Migration's `notNull` matches the entity's nullability.

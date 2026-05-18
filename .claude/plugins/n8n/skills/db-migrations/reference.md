@@ -108,21 +108,16 @@ guidance the migrations-review team enforces on PRs.
 
 ## E. Migration ordering and naming
 
-**E1. Timestamp must be the newest at merge time.**
-- Reviewers reject stale timestamps from copy-pasted or rebased files. After rebase, regenerate. Otherwise downstream migrations ordered between yours and master will skip on already-deployed instances.
+**E1. Scaffold with the generator.**
+- `pnpm --filter=@n8n/db migration:new <PascalCaseName> [--folder=…]` picks the timestamp and registers the migration. After rebase, re-run or bump the timestamp so it's strictly greater than every existing migration; the `migration-timestamp` lint rule in `@n8n/code-health` catches drift. Full rationale: `packages/@n8n/db/AGENTS.md`.
 
-**E2. Register in the chronologically correct position** in `sqlite/index.ts` and `postgresdb/index.ts`.
-
-**E3. Filename matches class name; class name ends with the timestamp.**
-- TypeORM uses the trailing number to order migrations.
-
-**E4. Don't edit a previously merged migration.**
+**E2. Don't edit a previously merged migration.**
 - Once shipped, migrations are immutable. Write a new migration. To remove a column added by an earlier migration, do it in a separate follow-up migration (typically in a later release).
 
-**E5. Don't combine independent schema changes.**
+**E3. Don't combine independent schema changes.**
 - One logical change per file. Multiple unrelated tables → split. The reviewer line: "the name of the migration is misleading because it does two things."
 
-**E6. Prefer `ALTER` over drop-and-recreate.**
+**E4. Prefer `ALTER` over drop-and-recreate.**
 - For renames, use `ALTER TABLE ... RENAME TO`. Faster, atomic, no data-loss risk.
 
 ---
