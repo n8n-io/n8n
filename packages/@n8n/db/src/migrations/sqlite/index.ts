@@ -167,12 +167,12 @@ import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-Cre
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558-CreateEvaluationCollection';
-import { AddNodeGroupsColumnToWorkflowAndHistory1778496335798 } from '../common/1778496335798-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
 import { ReplaceAgentObservationTables1784000000001 } from '../common/1784000000001-ReplaceAgentObservationTables';
 import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/1784000000002-DropAgentExecutionWorkingMemory';
+import { AddNodeGroupsColumnToWorkflowAndHistory1784000000003 } from '../common/1784000000003-AddNodeGroupsColumnToWorkflowAndHistory';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -350,7 +350,7 @@ const sqliteMigrations: Migration[] = [
 	ReplaceAgentObservationTables1784000000001,
 	DropAgentExecutionWorkingMemory1784000000002,
 	LimitWorkflowVersionTriggerToContent1784000000003,
-	AddNodeGroupsColumnToWorkflowAndHistory1778496335798,
+	AddNodeGroupsColumnToWorkflowAndHistory1784000000003,
 ];
 
 export { sqliteMigrations };
