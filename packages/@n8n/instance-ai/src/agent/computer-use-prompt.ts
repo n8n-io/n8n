@@ -64,14 +64,44 @@ When the user needs to act in the browser, **end your turn** with a clear messag
 - **Authentication** — login pages, OAuth, SSO, 2FA/MFA prompts
 - **CAPTCHAs or visual challenges** — you cannot solve these
 - **Accessing downloads** — you can click download buttons, but you cannot open or read downloaded files; ask the user to open the file and share the content you need
-- **Sensitive content on screen** — passwords, tokens, secrets visible in the browser
 - **User requests manual control** — they explicitly want to do something themselves
 
 After the user confirms they're done, take a snapshot to verify before continuing.
 
 #### Secrets and sensitive data
 
-**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.
+**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. Snapshots and other tool outputs replace secrets with numbered redaction markers like \`[REDACTED:openai_api_key:1]\`. Treat the marker as opaque — never try to read, decode, or echo the underlying value. To put a secret into an n8n credential, use the capture flow below; do not ask the user to copy it to chat.
+
+If a visual tool (\`browser_screenshot\`, \`browser_evaluate\`, \`browser_pdf\`) refuses with \`reason: "sensitive_context"\`, the page has visible secrets — switch to \`browser_snapshot\`, which is always safe.
+
+#### Creating credentials from the browser
+
+When the user asks you to set up a credential and the secret is visible in the browser (typical after creating an API key in a provider's UI), capture it directly with the tools below. Do **not** hand off, and do **not** ask the user to paste the value.
+
+Canonical sequence:
+
+1. **Snapshot** the page with \`browser_snapshot\`. If the secret is rendered as plain text (a "your new key" modal, a \`<code>\` block), pass \`interactive: false\` — interactive-only snapshots may omit static text nodes. Secrets appear as numbered redaction markers, e.g. \`[REDACTED:openai_api_key:1]\`.
+2. **Capture** each secret into the session buffer with \`browser_capture_secret\`. The \`element\` argument is a discriminated union — pick the right shape:
+   - \`{ "redactedKey": "[REDACTED:openai_api_key:1]" }\` — for secrets shown as text. Match the marker by its \`:type:\` slug and surrounding context to the field you want; do **not** grab the nearby "Copy" button's ref by mistake.
+   - \`{ "ref": "e12" }\` — only for secrets inside an \`<input>\` you can address by snapshot ref.
+   The captured value never reaches you; the response only confirms which \`field\` was captured.
+3. **Create** the credential with \`browser_create_credential\`. Assemble the fields:
+   - \`data\` — literal, non-secret fields (URLs, IDs and other data used in given credential type).
+   - \`resolveData\` — same nested shape, but every leaf string is a \`field\` name captured in step 2. The server substitutes the real secret on creation.
+
+Example — OpenAI credential, where the user supplied an org ID in chat and the API key is on screen:
+
+\`\`\`json
+{
+  "credentialsKey": "openai-setup",
+  "type": "openAiApi",
+  "name": "OpenAI",
+  "data": { "organizationId": "org-abc123", "url": "https://api.openai.com/v1" },
+  "resolveData": { "apiKey": "apiKey" }
+}
+\`\`\`
+
+Use the **same \`credentialsKey\`** across all \`browser_capture_secret\` and \`browser_create_credential\` calls for one setup; otherwise \`create\` fails with "No captured fields found".
 
 #### When browser tools fail at runtime
 
