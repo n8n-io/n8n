@@ -37,6 +37,7 @@ export const RESOURCES = {
 		'unshare',
 		'execute',
 		'execute-chat',
+		'export',
 		'move',
 		'activate',
 		'deactivate',
