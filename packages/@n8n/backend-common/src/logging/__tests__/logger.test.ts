@@ -78,7 +78,7 @@ describe('Logger', () => {
 
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			expect(output).toEqual(`${testMessage}\n`);
@@ -105,7 +105,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalledTimes(1);
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			expect(() => JSON.parse(output)).not.toThrow();
@@ -168,7 +168,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalledTimes(1);
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			expect(() => JSON.parse(output)).not.toThrow();
@@ -216,7 +216,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalledTimes(1);
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			expect(() => JSON.parse(output)).not.toThrow();
@@ -265,7 +265,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalledTimes(1);
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
@@ -292,7 +292,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalledTimes(1);
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
@@ -550,7 +550,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalled();
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			// JSON logs should be parseable and not contain ANSI codes
@@ -579,7 +579,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalled();
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			// Should not contain ANSI color codes even with colorize in dev format
@@ -615,7 +615,7 @@ describe('Logger', () => {
 			expect(stdoutSpy).toHaveBeenCalled();
 			const output = stdoutSpy.mock.lastCall?.[0];
 			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+				assert.fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
 			// Verify output is valid JSON (our format configuration)
@@ -665,7 +665,7 @@ describe('Logger', () => {
 			const debugOutput = stdoutSpy.mock.calls[1]?.[0];
 
 			if (typeof infoOutput !== 'string' || typeof debugOutput !== 'string') {
-				fail('expected both outputs to be strings');
+				assert.fail('expected both outputs to be strings');
 			}
 
 			expect(ANSI_COLOR_PATTERN.test(infoOutput)).toBe(false);
