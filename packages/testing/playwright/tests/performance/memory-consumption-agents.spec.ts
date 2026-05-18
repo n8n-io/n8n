@@ -3,7 +3,6 @@ import { attachMetric, getStableHeap } from '../../utils/performance-helper';
 
 test.use({
 	capability: {
-		resourceQuota: { memory: 0.75, cpu: 0.5 },
 		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 		env: {
 			N8N_ENABLED_MODULES: 'agents',
@@ -15,7 +14,7 @@ test.use({
 test.describe(
 	'Agents Memory Consumption @capability:observability',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Agent' }],
 	},
 	() => {
 		test('Idle baseline with Agents module loaded', async ({
