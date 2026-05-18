@@ -3,7 +3,6 @@ import { attachMetric, getStableHeap } from '../../utils/performance-helper';
 
 test.use({
 	capability: {
-		resourceQuota: { memory: 0.75, cpu: 0.5 },
 		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 		env: {
 			N8N_ENABLED_MODULES: 'instance-ai',

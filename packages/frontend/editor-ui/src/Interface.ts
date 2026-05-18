@@ -96,6 +96,7 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset?(resetDeviceId?: boolean): void;
+			group?(groupType: string, groupKey: string, groupPropertiesToSet?: IDataObject): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 			capture?(event: string, properties: IDataObject): void;
@@ -554,6 +555,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to show a separator at the bottom of the expanded section
 	 */
 	showSeparator?: boolean;
+	/**
+	 * Whether to render the section without its category header
+	 */
+	hideHeader?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {
