@@ -280,6 +280,46 @@ describe('semantic-checks', () => {
 			expect(checkSemanticIssues(wf)).toEqual([]);
 		});
 
+		test('still flags non-body trigger-shaped roots after an HTTP Request ancestor', () => {
+			const wf = workflow(
+				[
+					node({
+						name: 'Telegram Trigger',
+						type: 'n8n-nodes-base.telegramTrigger',
+						typeVersion: 1.2,
+						parameters: {},
+					}),
+					node({
+						name: 'Fetch Context',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						parameters: { url: 'https://api.example.com/context' },
+					}),
+					node({
+						name: 'Send Response',
+						type: 'n8n-nodes-base.telegram',
+						typeVersion: 1.2,
+						parameters: {
+							operation: 'sendMessage',
+							chatId: '={{ $json.message.chat.id }}',
+							text: 'Done',
+						},
+					}),
+				],
+				{
+					'Telegram Trigger': { main: [[{ node: 'Fetch Context', type: 'main', index: 0 }]] },
+					'Fetch Context': { main: [[{ node: 'Send Response', type: 'main', index: 0 }]] },
+				},
+			);
+
+			expect(checkSemanticIssues(wf)).toEqual([
+				expect.objectContaining({
+					code: 'TRIGGER_JSON_REF_AFTER_NON_TRIGGER',
+					nodeName: 'Send Response',
+				}),
+			]);
+		});
+
 		test('does NOT flag node immediately after a Webhook reading $json.body.X', () => {
 			const wf = workflow(
 				[
@@ -579,7 +619,6 @@ describe('semantic-checks', () => {
 				'={{ new Date().toISOString() }}',
 				'={{ $itemIndex }}',
 				'={{ $runIndex }}',
-				'={{ $today.toFormat("yyyy-LL-dd") }}',
 			]) {
 				const wf = workflow(
 					[
@@ -632,6 +671,37 @@ describe('semantic-checks', () => {
 				],
 				{},
 			);
+			expect(
+				checkSemanticIssues(wf).filter(
+					(i) => i.code === 'RESOURCE_MAPPER_MATCHING_COLUMN_DYNAMIC_VALUE',
+				),
+			).toEqual([]);
+		});
+
+		test('does NOT flag $today in a matching column because daily upsert keys are valid', () => {
+			const wf = workflow(
+				[
+					node({
+						name: 'Daily Rollup',
+						type: 'n8n-nodes-base.googleSheets',
+						typeVersion: 4.7,
+						parameters: {
+							operation: 'appendOrUpdate',
+							columns: {
+								mappingMode: 'defineBelow',
+								value: {
+									Day: '={{ $today.toFormat("yyyy-LL-dd") }}',
+									Count: '={{ $json.count }}',
+								},
+								schema: [],
+								matchingColumns: ['Day'],
+							},
+						},
+					}),
+				],
+				{},
+			);
+
 			expect(
 				checkSemanticIssues(wf).filter(
 					(i) => i.code === 'RESOURCE_MAPPER_MATCHING_COLUMN_DYNAMIC_VALUE',

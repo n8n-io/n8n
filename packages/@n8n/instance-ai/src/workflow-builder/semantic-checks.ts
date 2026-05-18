@@ -90,7 +90,7 @@ function readResourceMapper(parameters: IDataObject | undefined): ResourceMapper
  *
  * Patterns are deliberately conservative: each one names a runtime
  * primitive that *cannot* be a stable identifier:
- *   - `$now` / `$today`               : DateTime evaluated per execution
+ *   - `$now`                          : DateTime evaluated per execution
  *   - `Date.now()` / `new Date(`      : JS clock primitives
  *   - `Math.random(`                  : random
  *   - `crypto.randomUUID(` / `uuid(` / `randomUUID(` : random
@@ -100,7 +100,6 @@ function readResourceMapper(parameters: IDataObject | undefined): ResourceMapper
  */
 const VOLATILE_EXPRESSION_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
 	{ pattern: /\$now\b/, label: '$now' },
-	{ pattern: /\$today\b/, label: '$today' },
 	{ pattern: /\bDate\.now\s*\(/, label: 'Date.now()' },
 	// Only zero-arg `new Date()` is volatile. `new Date($json.createdAt)` /
 	// `new Date('2025-01-01')` are deterministic when their argument is stable,
@@ -493,14 +492,13 @@ function checkPostNonTriggerTriggerJsonRefs(workflow: WorkflowJSON): ValidationW
 		const ancestor = findFirstNonPassthroughAncestor(node.name, predecessors, nodeTypesByName);
 		if (!ancestor) continue; // No predecessor at all — this is the trigger fanout root.
 		if (isTriggerType(ancestor.type)) continue; // Directly after the trigger (modulo passthroughs).
-		// HTTP Request responses legitimately expose `$json.body` (and sometimes
-		// event-shaped payloads), so reading `$json.body.*` after an HTTP Request
-		// ancestor is correct, not a misplaced trigger reference. Skip to avoid
-		// blocking save on a valid pattern.
-		if (ancestor.type === 'n8n-nodes-base.httpRequest') continue;
+		const actionableRefs = refs.filter(
+			(ref) => !(ancestor.type === 'n8n-nodes-base.httpRequest' && ref.root === 'body'),
+		);
+		if (actionableRefs.length === 0) continue;
 
 		const triggerName = findClosestTriggerAncestor(node.name, predecessors, nodeTypesByName);
-		const sample = refs[0];
+		const sample = actionableRefs[0];
 		const suggestion = triggerName
 			? `Replace each $json.${sample.root}.\u2026 reference with $('${triggerName}').item.json.${sample.root}.\u2026 .`
 			: `Reference the trigger directly by name instead of $json (e.g. $('<Trigger Node Name>').item.json.${sample.root}.\u2026).`;

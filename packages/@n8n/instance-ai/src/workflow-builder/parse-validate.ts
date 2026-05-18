@@ -120,6 +120,7 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 		'MISSING_TRIGGER',
 		'DISCONNECTED_NODE',
 		'MERGE_PARALLEL_BRANCHES_NO_ERROR_TOLERANCE',
+		'TRIGGER_JSON_REF_AFTER_NON_TRIGGER',
 	]);
 
 	const errors: ValidationWarning[] = [];

@@ -233,13 +233,14 @@ describe('partitionWarnings', () => {
 		expect(result.errors).toHaveLength(2);
 	});
 
-	it('classifies MERGE_PARALLEL_BRANCHES_NO_ERROR_TOLERANCE as informational (design choice, not bug)', () => {
+	it('classifies non-blocking semantic checks as informational', () => {
 		const warnings = [
 			{ code: 'MERGE_PARALLEL_BRANCHES_NO_ERROR_TOLERANCE', message: 'no onError' },
+			{ code: 'TRIGGER_JSON_REF_AFTER_NON_TRIGGER', message: 'stale $json' },
 		];
 		const result = partitionWarnings(warnings);
 
-		expect(result.informational).toHaveLength(1);
+		expect(result.informational).toHaveLength(2);
 		expect(result.errors).toHaveLength(0);
 	});
 
@@ -247,7 +248,6 @@ describe('partitionWarnings', () => {
 		// Sanity check that the other semantic codes still block submit so
 		// runtime failures the agent can self-correct don't slip through.
 		const warnings = [
-			{ code: 'TRIGGER_JSON_REF_AFTER_NON_TRIGGER', message: 'stale $json' },
 			{ code: 'TRIGGER_JSON_REF_AFTER_AGENT', message: 'stale $json' },
 			{ code: 'RESOURCE_MAPPER_AUTOMAP_AFTER_WEBHOOK', message: 'envelope only' },
 			{ code: 'GOOGLE_SHEETS_AUTOMAP_AFTER_WEBHOOK', message: 'envelope only' },
@@ -255,7 +255,7 @@ describe('partitionWarnings', () => {
 		];
 		const result = partitionWarnings(warnings);
 
-		expect(result.errors).toHaveLength(5);
+		expect(result.errors).toHaveLength(4);
 		expect(result.informational).toHaveLength(0);
 	});
 });
