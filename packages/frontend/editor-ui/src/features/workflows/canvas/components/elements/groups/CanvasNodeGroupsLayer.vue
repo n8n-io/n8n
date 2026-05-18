@@ -45,9 +45,7 @@ function onTitleFocused(id: string) {
 }
 
 const visibleGroups = computed(() =>
-	groupsStore.allGroups
-		.map((group) => ({ group, members: getMembers(group) }))
-		.filter(({ members }) => members.length >= 2),
+	groupsStore.allGroups.map((group) => ({ group, members: getMembers(group) })),
 );
 
 type DragState = {
