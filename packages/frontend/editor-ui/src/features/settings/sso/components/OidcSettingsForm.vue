@@ -35,9 +35,9 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
-	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
+	trackProvisioningChange,
 	roleAssignmentTransition,
 	storedHasProjectRoles,
 	isDroppingProjectRules,
@@ -159,7 +159,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 		});
-		await saveProvisioningConfig(isDisablingOidcLogin);
+		const provisioningResult = await saveProvisioningConfig(isDisablingOidcLogin);
 
 		// If the user's effective role assignment doesn't include project roles,
 		// discard any project-rule state in the editor (both locally-added and
@@ -171,9 +171,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			roleMappingRuleEditorRef.value?.discardProjectRules();
 		}
 
-		if (userRoleProvisioning.value === 'expression_based') {
-			await roleMappingRuleEditorRef.value?.save();
-		}
+		const ruleSaveResult =
+			mappingMethod.value === 'rules_in_n8n'
+				? await roleMappingRuleEditorRef.value?.save()
+				: undefined;
+
+		trackProvisioningChange(provisioningResult, ruleSaveResult);
 
 		showUserRoleProvisioningDialog.value = false;
 
@@ -311,7 +314,6 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
-				v-model:legacy-value="userRoleProvisioning"
 				auth-protocol="oidc"
 				:disabled="isSsoManagedByEnv"
 			/>

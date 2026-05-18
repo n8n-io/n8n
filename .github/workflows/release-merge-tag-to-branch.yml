@@ -55,12 +55,21 @@ jobs:
       - name: Push to ${{ inputs.target-branch }}
         run: git push origin "HEAD:${TARGET_BRANCH}"
 
-      - name: Notify Slack on failure
-        if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs: [merge-tag-to-branch]
+    if: ${{ always() && needs.merge-tag-to-branch.result == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          status: ${{ job.status }}
-          channel: '#updates-and-product-releases'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: |
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to ${{ inputs.target-branch }} failed for n8n@${{ inputs.version }} >
+          ref: master
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#updates-and-product-releases' \
+            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Release tag merge to ${{ inputs.target-branch }} failed for n8n@${{ inputs.version }}>'

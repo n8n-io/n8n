@@ -45,6 +45,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
+	const setupCommandExpiresAt = ref<string | null>(null);
+	const setupCommandTtlSeconds = ref<number | null>(null);
+	const setupCommandFetchedAt = ref<number | null>(null);
+	let setupCommandRequestId = 0;
 
 	const hasEverConnectedGateway = ref(
 		typeof localStorage !== 'undefined' &&
@@ -104,7 +108,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			enabled: adminRes.enabled,
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			proxyEnabled: prev?.proxyEnabled ?? false,
-			optinModalDismissed: adminRes.optinModalDismissed,
 			cloudManaged: prev?.cloudManaged ?? false,
 		};
 		settingsStore.moduleSettings = {
@@ -191,16 +194,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} finally {
 			isSaving.value = false;
 		}
-	}
-
-	async function persistOptinModalDismissed(): Promise<void> {
-		try {
-			const result = await updateSettings(rootStore.restApiContext, {
-				optinModalDismissed: true,
-			});
-			settings.value = result;
-			syncInstanceAiFlagIntoGlobalModuleSettings(result);
-		} catch (error) {}
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
@@ -297,6 +290,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			);
 			return;
 		}
+		clearSetupCommand();
 		clearGatewayEverConnected();
 		gatewayConnected.value = false;
 		gatewayToolCategories.value = [];
@@ -451,11 +445,29 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	function clearSetupCommand(): void {
+		setupCommandRequestId++;
+		setupCommand.value = null;
+		setupCommandExpiresAt.value = null;
+		setupCommandTtlSeconds.value = null;
+		setupCommandFetchedAt.value = null;
+	}
+
 	async function fetchSetupCommand(): Promise<void> {
+		const requestId = ++setupCommandRequestId;
+		setupCommand.value = null;
+		setupCommandExpiresAt.value = null;
+		setupCommandTtlSeconds.value = null;
+		setupCommandFetchedAt.value = null;
 		if (isLocalGatewayDisabled.value) return;
+		const requestStartedAt = Date.now();
 		try {
 			const result = await createGatewayLink(rootStore.restApiContext);
+			if (requestId !== setupCommandRequestId) return;
 			setupCommand.value = result.command;
+			setupCommandExpiresAt.value = result.expiresAt;
+			setupCommandTtlSeconds.value = result.ttlSeconds;
+			setupCommandFetchedAt.value = requestStartedAt;
 		} catch {
 			// Fallback handled in the component
 		}
@@ -502,7 +514,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		save,
 		persistEnabled,
 		persistLocalGatewayPreference,
-		persistOptinModalDismissed,
 		ensurePreferencesLoaded,
 		setField,
 		setPreferenceField,
@@ -512,6 +523,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,
+		setupCommandExpiresAt,
+		setupCommandTtlSeconds,
+		setupCommandFetchedAt,
 		hasEverConnectedGateway,
 		isGatewayConnected,
 		gatewayStatusLoaded,
@@ -529,6 +543,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		startGatewayPushListener,
 		stopGatewayPushListener,
 		fetchSetupCommand,
+		clearSetupCommand,
 		refreshCredentials,
 		refreshModuleSettings,
 		// Sidebar connections

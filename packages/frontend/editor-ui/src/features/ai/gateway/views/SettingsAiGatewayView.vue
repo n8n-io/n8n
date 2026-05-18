@@ -127,7 +127,7 @@ function onRowClick(row: AiGatewayUsageEntry): void {
 	if (executionId && workflowId) {
 		void router.push({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowId, executionId },
+			params: { workflowId, executionId },
 		});
 	}
 }

@@ -7,6 +7,7 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
 
 @Service()
@@ -122,6 +123,19 @@ export class WorkflowFinderService {
 		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
 	}
 
+	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {
+		return await userHasScopes(user, scopes, false, { projectId });
+	}
+
+	async findProjectIdForFolder(folderId: string): Promise<string | null> {
+		const folder = await this.folderRepository.findOne({
+			where: { id: folderId },
+			relations: { homeProject: true },
+		});
+
+		return folder?.homeProject.id ?? null;
+	}
+
 	async findAllWorkflowIdsForUser(
 		user: User,
 		scopes: Scope[],
@@ -134,7 +148,7 @@ export class WorkflowFinderService {
 			where,
 		});
 
-		return sharedWorkflows.map(({ workflowId }) => workflowId);
+		return Array.from(new Set(sharedWorkflows.map(({ workflowId }) => workflowId)));
 	}
 
 	async findAllWorkflowsForUser(

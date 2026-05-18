@@ -1,6 +1,6 @@
 import { validateWorkflow, ValidationError } from '.';
 import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
-import type { NodeInstance } from '../types/base';
+import type { NodeInstance, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../workflow-builder/node-builders/node-builder';
 import { languageModel, tool } from '../workflow-builder/node-builders/subnode-builders';
@@ -2218,6 +2218,87 @@ describe('Validation', () => {
 			const warnings = result.warnings.filter((w) => w.code === 'UNSUPPORTED_SUBNODE_INPUT');
 			expect(warnings).toHaveLength(0);
 		});
+
+		it('does not also fire SUBNODE_PARAMETER_MISMATCH for parent-relative displayOptions (INS-136)', () => {
+			// Scenario: chat trigger that has loadPreviousSession: memory but no
+			// `mode` set, so the parent fails its own displayOptions. The memory
+			// subnode is connected - but `mode` and `options.loadPreviousSession`
+			// are parent params, not subnode params. Only UNSUPPORTED_SUBNODE_INPUT
+			// should fire (parent-relative); SUBNODE_PARAMETER_MISMATCH is a false
+			// positive when the subnode doesn't even own those params.
+			const provider = {
+				getByNameAndVersion: (type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+						return {
+							description: {
+								inputs: ['main'],
+								builderHint: {
+									inputs: {
+										ai_memory: {
+											required: true,
+											displayOptions: {
+												show: {
+													mode: ['hostedChat', 'webhook'],
+													'options.loadPreviousSession': ['memory'],
+												},
+											},
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { inputs: ['main'] } };
+				},
+				getByName: (type: string) => provider.getByNameAndVersion(type),
+				getKnownTypes: () => ({}),
+			};
+
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						// Parent's own `mode` and `options.loadPreviousSession` not set
+						// -> parent fails displayOptions
+						parameters: {},
+					},
+					{
+						id: 'mem-1',
+						name: 'Session Memory',
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						typeVersion: 1,
+						position: [0, 200] as [number, number],
+						parameters: {}, // memory subnode has no `mode` or `options.loadPreviousSession`
+					},
+				],
+				connections: {
+					'Session Memory': {
+						ai_memory: [[{ node: 'Chat Trigger', type: 'ai_memory', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: provider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const mismatch = result.warnings.filter((w) => w.code === 'SUBNODE_PARAMETER_MISMATCH');
+			const unsupported = result.warnings.filter((w) => w.code === 'UNSUPPORTED_SUBNODE_INPUT');
+
+			expect(mismatch).toHaveLength(0);
+			expect(unsupported).toHaveLength(1);
+			expect(unsupported[0].nodeName).toBe('Chat Trigger');
+			// Message should direct the LLM to set params on the parent
+			expect(unsupported[0].message).toContain("must be set on 'Chat Trigger' itself");
+			expect(unsupported[0].message).toContain('NOT on the memory subnode');
+		});
 	});
 
 	describe('MISSING_REQUIRED_INPUT validation', () => {
@@ -2291,7 +2372,12 @@ describe('Validation', () => {
 			expect(errors).toHaveLength(1);
 			expect(errors[0].nodeName).toBe('Chat Trigger');
 			expect(errors[0].message).toContain('ai_memory');
-			expect(errors[0].message).toContain('loadPreviousSession');
+			// The triggering condition reports the actual nested value via lodash get,
+			// not the literal dotted-key lookup that would resolve to 'undefined'.
+			expect(errors[0].message).toContain("options.loadPreviousSession='memory'");
+			expect(errors[0].message).not.toContain("options.loadPreviousSession='undefined'");
+			// Message offers the alternative path (change the params, don't connect).
+			expect(errors[0].message).toContain('change those parameters to remove the requirement');
 			expect(result.valid).toBe(false);
 		});
 
@@ -2608,6 +2694,560 @@ describe('Validation', () => {
 			expect(invalidParamWarnings.some((w) => w.message.includes('This node only accepts'))).toBe(
 				false,
 			);
+		});
+	});
+
+	describe('INVALID_OUTPUT_FOR_MODE validation', () => {
+		// Mock parent provider — agent declares ai_vectorStore as a valid input.
+		// Vector store declares mode-conditional outputs via builderHint.outputs.
+		const vectorStoreInMemoryDescription = {
+			inputs: ['main'],
+			outputs: ['main'],
+			builderHint: {
+				inputs: {
+					ai_embedding: { required: true },
+				},
+				outputs: {
+					main: { displayOptions: { show: { mode: ['insert', 'load', 'update'] } } },
+					ai_vectorStore: { displayOptions: { show: { mode: ['retrieve'] } } },
+					ai_tool: { displayOptions: { show: { mode: ['retrieve-as-tool'] } } },
+				},
+			},
+		};
+
+		const mockNodeTypesProviderWithOutputs = {
+			getByNameAndVersion: (type: string, _version?: number) => {
+				if (type === '@n8n/n8n-nodes-langchain.vectorStoreInMemory') {
+					return { description: vectorStoreInMemoryDescription };
+				}
+				if (type === '@n8n/n8n-nodes-langchain.agent') {
+					return { description: { inputs: ['main'], outputs: ['main'] } };
+				}
+				return { description: { inputs: ['main'], outputs: ['main'] } };
+			},
+			getByName: (type: string) => mockNodeTypesProviderWithOutputs.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		const baseNodes = [
+			{
+				id: 'trigger-1',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			},
+		];
+
+		it('warns when a vector store in retrieve mode emits a main connection', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Retrieve Relevant Regulations',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve', topK: 8 },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format Retrieved Regulations',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Retrieve Relevant Regulations', type: 'main', index: 0 }]],
+					},
+					'Retrieve Relevant Regulations': {
+						main: [[{ node: 'Format Retrieved Regulations', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Retrieve Relevant Regulations');
+			// Message uses SDK vocabulary, not raw connection types
+			expect(warnings[0].message).toContain('.to()');
+			expect(warnings[0].message).toContain("currently 'retrieve'");
+			// Suggests the alternative wiring that IS enabled in the current mode
+			expect(warnings[0].message).toContain('subnodes.vectorStore');
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when a vector store in retrieve mode emits ai_vectorStore', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.7,
+						position: [400, 0] as [number, number],
+						parameters: { text: 'hi' },
+					},
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						ai_vectorStore: [[{ node: 'AI Agent', type: 'ai_vectorStore', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('warns when a vector store in retrieve-as-tool mode emits a main connection', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve-as-tool' },
+					},
+					{
+						id: 'next-1',
+						name: 'Next Step',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Vector Store', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						main: [[{ node: 'Next Step', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Vector Store');
+			expect(warnings[0].message).toContain("currently 'retrieve-as-tool'");
+			expect(warnings[0].message).toContain('.to()');
+			expect(warnings[0].message).toContain('subnodes.tools');
+		});
+
+		it('does not warn for load mode with main connections', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'load' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Vector Store', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('skips validation when no nodeTypesProvider is given', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson);
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('does not warn when mode parameter is an expression that cannot be evaluated', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: '={{ $json.mode }}' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+	});
+
+	describe('SWITCH_FALLBACK_OUTPUT_DISABLED validation', () => {
+		const switchRules = {
+			values: [
+				{
+					outputKey: 'Urgent',
+					conditions: {
+						options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
+						conditions: [
+							{
+								leftValue: '={{ $json.priority }}',
+								rightValue: 'urgent',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+						combinator: 'and',
+					},
+				},
+				{
+					outputKey: 'Normal',
+					conditions: {
+						options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
+						conditions: [
+							{
+								leftValue: '={{ $json.priority }}',
+								rightValue: 'normal',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+						combinator: 'and',
+					},
+				},
+			],
+		};
+
+		function createSwitchWorkflow(args: {
+			switchOptions?: Record<string, unknown>;
+			switchOnError?: 'continueErrorOutput';
+			fallbackOutputIndex?: number;
+		}): WorkflowJSON {
+			const fallbackOutputIndex = args.fallbackOutputIndex ?? 2;
+
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'switch-1',
+						name: 'Route Priority',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3.4,
+						position: [200, 0],
+						parameters: {
+							mode: 'rules',
+							rules: switchRules,
+							...(args.switchOptions ? { options: args.switchOptions } : {}),
+						},
+						...(args.switchOnError ? { onError: args.switchOnError } : {}),
+					},
+					{
+						id: 'case-1',
+						name: 'Handle Urgent',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, -100],
+						parameters: {},
+					},
+					{
+						id: 'case-2',
+						name: 'Handle Normal',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {},
+					},
+					{
+						id: 'fallback-1',
+						name: 'Handle Fallback',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Route Priority', type: 'main', index: 0 }]],
+					},
+					'Route Priority': {
+						main: [
+							[{ node: 'Handle Urgent', type: 'main', index: 0 }],
+							[{ node: 'Handle Normal', type: 'main', index: 0 }],
+							...Array.from({ length: Math.max(0, fallbackOutputIndex - 2) }, () => []),
+							[{ node: 'Handle Fallback', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+		}
+
+		function getSwitchFallbackWarnings(workflowJson: WorkflowJSON) {
+			return validateWorkflow(workflowJson).warnings.filter(
+				(w) => w.code === 'SWITCH_FALLBACK_OUTPUT_DISABLED',
+			);
+		}
+
+		it('warns when the fallback output is connected without fallbackOutput extra', () => {
+			const warnings = getSwitchFallbackWarnings(createSwitchWorkflow({}));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Route Priority');
+			expect(warnings[0].parameterPath).toBe('options.fallbackOutput');
+			expect(warnings[0].message).toContain("options.fallbackOutput is set to 'extra'");
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when fallbackOutput extra creates the fallback output', () => {
+			const warnings = getSwitchFallbackWarnings(
+				createSwitchWorkflow({ switchOptions: { fallbackOutput: 'extra' } }),
+			);
+
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('warns when numeric fallbackOutput is used with an extra fallback connection', () => {
+			const warnings = getSwitchFallbackWarnings(
+				createSwitchWorkflow({ switchOptions: { fallbackOutput: 1 } }),
+			);
+
+			expect(warnings).toHaveLength(1);
+		});
+
+		it('does not mistake the error output for a fallback branch', () => {
+			const warnings = getSwitchFallbackWarnings(
+				createSwitchWorkflow({ switchOnError: 'continueErrorOutput' }),
+			);
+
+			expect(warnings).toHaveLength(0);
+		});
+	});
+
+	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
+		const mockNodeTypesProviderWithPlaceholderOptOut = {
+			getByNameAndVersion: (_type: string, _version?: number) => ({
+				description: {
+					inputs: ['main'],
+					properties: [
+						{
+							name: 'path',
+							displayName: 'Path',
+							type: 'string',
+							default: '',
+							builderHint: { placeholderSupported: false },
+						},
+						{
+							name: 'method',
+							displayName: 'Method',
+							type: 'string',
+							default: 'GET',
+						},
+					],
+				},
+			}),
+			getByName: (type: string) =>
+				mockNodeTypesProviderWithPlaceholderOptOut.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		const makeWorkflow = (paramValue: string) => ({
+			id: 'test',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'webhook-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: { path: paramValue },
+				},
+			],
+			connections: {},
+		});
+
+		it('rejects bare placeholder() marker', () => {
+			const result = validateWorkflow(makeWorkflow('<__PLACEHOLDER_VALUE__my path__>'), {
+				nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('Webhook');
+			expect(errors[0].parameterName).toBe('path');
+		});
+
+		it('rejects placeholder() wrapped in expr() — leading "=" prefix', () => {
+			const result = validateWorkflow(makeWorkflow('=<__PLACEHOLDER_VALUE__my path__>'), {
+				nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('Webhook');
+			expect(errors[0].parameterName).toBe('path');
+		});
+
+		it('rejects placeholder() embedded inside a larger expression', () => {
+			const result = validateWorkflow(
+				makeWorkflow('={{ "prefix-" + "<__PLACEHOLDER_VALUE__my path__>" }}'),
+				{ nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never },
+			);
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(1);
+		});
+
+		it('does not flag literal values', () => {
+			const result = validateWorkflow(makeWorkflow('webhook-path'), {
+				nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(0);
+		});
+
+		it('does not flag placeholder() in slots without the opt-out hint', () => {
+			const provider = {
+				getByNameAndVersion: () => ({
+					description: {
+						inputs: ['main'],
+						properties: [{ name: 'path', displayName: 'Path', type: 'string', default: '' }],
+					},
+				}),
+				getByName: () => provider.getByNameAndVersion(),
+				getKnownTypes: () => ({}),
+			};
+
+			const result = validateWorkflow(makeWorkflow('=<__PLACEHOLDER_VALUE__my path__>'), {
+				nodeTypesProvider: provider as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(0);
 		});
 	});
 });

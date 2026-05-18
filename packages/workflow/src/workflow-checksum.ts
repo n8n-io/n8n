@@ -19,7 +19,7 @@ export interface WorkflowSnapshot {
 	activeVersionId?: string | null;
 }
 
-const CHECKSUM_FIELDS = [
+export const WORKFLOW_CHECKSUM_FIELDS = [
 	'name',
 	'description',
 	'nodes',
@@ -66,7 +66,7 @@ function sortObjectKeys(value: unknown): unknown {
 export async function calculateWorkflowChecksum(workflow: WorkflowSnapshot): Promise<string> {
 	const checksumPayload: Record<string, unknown> = {};
 
-	for (const field of CHECKSUM_FIELDS) {
+	for (const field of WORKFLOW_CHECKSUM_FIELDS) {
 		const value = workflow[field];
 		if (value !== undefined) {
 			checksumPayload[field] = value;

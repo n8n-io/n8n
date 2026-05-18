@@ -33,29 +33,30 @@ vi.mock('@/features/ai/assistant/builder.store', () => ({
 	useBuilderStore: () => mockBuilderStoreState,
 }));
 
-const mockUnpinNodeData = vi.fn();
-const mockTouchPinnedDataLastRemovedAt = vi.fn();
-const mockAllNodes = ref<INodeUi[]>([]);
+const { mockDocumentStore } = vi.hoisted(() => ({
+	mockDocumentStore: {
+		pinData: {},
+		unpinNodeData: vi.fn(),
+		touchPinnedDataLastRemovedAt: vi.fn(),
+		allNodes: [] as INodeUi[],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+	},
+}));
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		workflowId: 'test-workflow-id',
 		get allNodes() {
-			return mockAllNodes.value;
+			return mockDocumentStore.allNodes;
 		},
 	}),
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: () => ({
-		pinData: {},
-		unpinNodeData: mockUnpinNodeData,
-		touchPinnedDataLastRemovedAt: mockTouchPinnedDataLastRemovedAt,
-		allNodes: [],
-		name: '',
-		settings: {},
-		getPinDataSnapshot: () => ({}),
-	}),
+	useWorkflowDocumentStore: () => mockDocumentStore,
 	createWorkflowDocumentId: (id: string) => id,
+	injectWorkflowDocumentStore: () => ({ value: mockDocumentStore }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -119,7 +120,7 @@ describe('useBuilderSetupCards', () => {
 		currentScope = undefined;
 		vi.clearAllMocks();
 		mockSetupCards.value = [];
-		mockAllNodes.value = [];
+		mockDocumentStore.allNodes = [];
 		mockFirstTriggerName.value = null;
 		mockBuilderStoreState.wizardCurrentStep = 0;
 		mockBuilderStoreState.wizardHasExecutedWorkflow = false;

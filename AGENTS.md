@@ -146,14 +146,11 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - Import from appropriate error classes in each package
 
 ### Frontend Development
+- Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- For style changes and design-system updates, follow
-  `.agents/design-system-style-rules.md`
-
-When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
-CSS variables and styling conventions.
+- Always use `design-system-rules` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
@@ -169,6 +166,9 @@ What we use for testing and writing tests:
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
+- **To iterate on a feature without docker rebuilds**, boot service containers
+  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
+  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
 - **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks

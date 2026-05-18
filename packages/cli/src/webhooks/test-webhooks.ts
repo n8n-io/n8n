@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -26,6 +27,7 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { WebhookResponse } from './webhook-response';
 
 import { authAllowlistedNodes } from './constants';
 import { matchesExpectedNodeType } from './node-type-matcher';
@@ -52,6 +54,7 @@ const SINGLE_WEBHOOK_TRIGGERS = [
 @Service()
 export class TestWebhooks implements IWebhookManager {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
@@ -70,7 +73,7 @@ export class TestWebhooks implements IWebhookManager {
 		request: WebhookRequest,
 		response: express.Response,
 		expectedNodeType?: ExpectedWebhookNodeType,
-	): Promise<IWebhookResponseCallbackData> {
+	): Promise<IWebhookResponseCallbackData | WebhookResponse> {
 		const httpMethod = request.method;
 
 		let path = removeTrailingSlash(request.params.path);
@@ -158,7 +161,7 @@ export class TestWebhooks implements IWebhookManager {
 						undefined, // executionId
 						request,
 						response,
-						(error: Error | null, data: IWebhookResponseCallbackData) => {
+						(error: Error | null, data: IWebhookResponseCallbackData | WebhookResponse) => {
 							if (error !== null) reject(error);
 							else resolve(data);
 						},
@@ -224,7 +227,12 @@ export class TestWebhooks implements IWebhookManager {
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		await this.deactivateWebhooks(workflow);
+		await workflow.expression.acquireIsolate();
+		try {
+			await this.deactivateWebhooks(workflow);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	clearTimeout(key: string) {
@@ -475,7 +483,19 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				void this.deactivateWebhooks(workflow);
+				void (async () => {
+					await workflow.expression.acquireIsolate();
+					try {
+						await this.deactivateWebhooks(workflow);
+					} finally {
+						await workflow.expression.releaseIsolate();
+					}
+				})().catch((error) => {
+					this.logger.error('Failed to deactivate test webhooks on cancel', {
+						error,
+						workflowId,
+					});
+				});
 			}
 
 			foundWebhook = true;

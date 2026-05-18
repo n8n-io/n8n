@@ -2,6 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
+	Folder,
 	Project,
 	TagEntity,
 	User,
@@ -46,6 +47,8 @@ import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
@@ -135,6 +138,7 @@ export class SourceControlImportService {
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
+		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -362,31 +366,33 @@ export class SourceControlImportService {
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 
-		return localCredentials.map((local) => {
-			const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+		return (await Promise.all(
+			localCredentials.map(async (local) => {
+				const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
 
-			let data: Record<string, unknown> = {};
-			try {
-				const credentials = new Credentials(
-					{ id: local.id, name: local.name },
-					local.type,
-					local.data,
-				);
-				data = sanitizeCredentialData(credentials.getData());
-			} catch {
-				// Credential data may not be decryptable (e.g. empty or corrupted data)
-			}
+				let data: Record<string, unknown> = {};
+				try {
+					const credentials = new Credentials(
+						{ id: local.id, name: local.name },
+						local.type,
+						local.data,
+					);
+					data = sanitizeCredentialData(await credentials.getData());
+				} catch {
+					// Credential data may not be decryptable (e.g. empty or corrupted data)
+				}
 
-			return {
-				id: local.id,
-				name: local.name,
-				type: local.type,
-				data,
-				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
-				ownedBy: toStatusOwner(ownerProject),
-				isGlobal: local.isGlobal,
-			};
-		}) as StatusExportableCredential[];
+				return {
+					id: local.id,
+					name: local.name,
+					type: local.type,
+					data,
+					filename: getCredentialExportPath(local.id, this.credentialExportFolder),
+					ownedBy: toStatusOwner(ownerProject),
+					isGlobal: local.isGlobal,
+				};
+			}),
+		)) as StatusExportableCredential[];
 	}
 
 	async getRemoteVariablesFromFile(): Promise<ExportableVariable[]> {
@@ -678,7 +684,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -734,6 +740,11 @@ export class SourceControlImportService {
 			return;
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		this.redactionEnforcementService.assertPolicyChangeAllowed(
+			existingWorkflow?.settings?.redactionPolicy,
+			importedWorkflow.settings?.redactionPolicy,
+		);
 
 		const { shouldPublishAfterImport, publishingError } = await this.preparePublishStateForImport(
 			existingWorkflow,
@@ -921,17 +932,17 @@ export class SourceControlImportService {
 						existingCredential.type,
 						existingCredential.data,
 					);
-					const localData = existingDecrypted.getData();
+					const localData = await existingDecrypted.getData();
 					const mergedData = mergeRemoteCrendetialDataIntoLocalCredentialData({
 						local: localData,
 						remote: data,
 					});
-					newCredentialObject.setData(mergedData);
+					await newCredentialObject.setData(mergedData);
 				} else {
 					// This is a safe guard, in principle remote data should already be sanitized
 					// This prevents importing invalid data that should have not been synched in the first place
 					const sanitizedData = sanitizeCredentialData(data);
-					newCredentialObject.setData(sanitizedData);
+					await newCredentialObject.setData(sanitizedData);
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
@@ -1085,7 +1096,7 @@ export class SourceControlImportService {
 					},
 				});
 
-				await this.folderRepository.upsert(folderCopy, {
+				await this.folderRepository.upsert(folderCopy as QueryDeepPartialEntity<Folder>, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1230,6 +1241,13 @@ export class SourceControlImportService {
 				continue;
 			}
 
+			if (!isValidDataTableId(dataTable.id)) {
+				this.logger.warn(
+					`Invalid data table ID "${dataTable.id}" in file ${candidate.file}. Skipping.`,
+				);
+				continue;
+			}
+
 			let targetProject: Project | null = null;
 
 			if (dataTable.ownedBy) {
@@ -1345,6 +1363,13 @@ export class SourceControlImportService {
 					// Upsert columns
 					const columnEntities = [];
 					for (const column of dataTable.columns) {
+						if (!isValidColumnName(column.name)) {
+							this.logger.warn(
+								`Invalid column name "${column.name}" in data table ${dataTable.name}. Skipping column.`,
+							);
+							continue;
+						}
+
 						if (!isValidDataTableColumnType(column.type)) {
 							this.logger.warn(
 								`Invalid column type "${column.type}" in data table ${dataTable.name}, column ${column.name}. Skipping column.`,
@@ -1737,7 +1762,7 @@ export class SourceControlImportService {
 
 		this.resolvePublishedStatus(
 			importedWorkflow,
-			existingWorkflow?.activeVersionId,
+			existingWorkflow,
 			mustUnpublishLocal,
 			unpublishedLocal,
 		);
@@ -1749,7 +1774,7 @@ export class SourceControlImportService {
 	 * Resolves the publish status for the upsert of the imported workflow.
 	 * We set active to false here and handle publishing after upsert.
 	 * @param importedWorkflow The imported workflow.
-	 * @param existingWorkflowActiveVersionId The existing workflow active version id, if it exists.
+	 * @param existingWorkflow The existing workflow entity, if it exists.
 	 * @param mustUnpublishLocal Whether the local workflow must be unpublished.
 	 * @param unpublishedLocal Whether the local workflow was unpublished.
 	 */
@@ -1757,12 +1782,17 @@ export class SourceControlImportService {
 		// Note: Workflow's active status is not saved in the remote workflow files,
 		// and the field is missing despite IWorkflowToImport having it typed as boolean.
 		importedWorkflow: IWorkflowToImport,
-		existingWorkflowActiveVersionId: string | null | undefined,
+		existingWorkflow: WorkflowEntity | undefined,
 		mustUnpublishLocal: boolean,
 		unpublishedLocal: boolean,
 	) {
+		const existingWorkflowActiveVersionId = existingWorkflow?.activeVersionId;
+		const isExistingArchived = !!existingWorkflow?.isArchived;
+
 		const shouldPreserve =
-			!!existingWorkflowActiveVersionId && (!mustUnpublishLocal || !unpublishedLocal);
+			!isExistingArchived &&
+			!!existingWorkflowActiveVersionId &&
+			(!mustUnpublishLocal || !unpublishedLocal);
 
 		if (shouldPreserve) {
 			importedWorkflow.active = !!existingWorkflowActiveVersionId;

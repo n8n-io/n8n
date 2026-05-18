@@ -41,12 +41,25 @@ export async function copyTemplateFilesToDestination<Config extends object>(
 	});
 }
 
+// npm strips certain dotfiles (e.g. `.gitignore`) from published packages, so the
+// template ships them under alternative names and we restore the originals after
+// copying to the destination. Add more entries here as needed.
+const RENAMED_DEFAULT_TEMPLATE_FILES: Record<string, string> = {
+	gitignore: '.gitignore',
+};
+
 export async function copyDefaultTemplateFilesToDestination(data: TemplateData) {
 	await copyFolder({
 		source: path.resolve(__dirname, 'templates/shared/default'),
 		destination: data.destinationPath,
 		ignore: ['dist', 'node_modules'],
 	});
+	await Promise.all(
+		Object.entries(RENAMED_DEFAULT_TEMPLATE_FILES).map(
+			async ([from, to]) =>
+				await fs.rename(path.join(data.destinationPath, from), path.join(data.destinationPath, to)),
+		),
+	);
 }
 
 export async function templateStaticFiles(data: TemplateData) {

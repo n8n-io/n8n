@@ -5,12 +5,11 @@
  * and truncated text label.
  */
 import { N8nButton } from '@n8n/design-system';
-import { useElementHover } from '@vueuse/core';
-import { useTemplateRef } from 'vue';
 
 withDefaults(
 	defineProps<{
 		size?: 'small' | 'medium';
+		loading?: boolean;
 	}>(),
 	{
 		size: 'small',
@@ -18,28 +17,23 @@ withDefaults(
 );
 
 defineSlots<{
-	icon?: (props: { isHovered: boolean }) => unknown;
+	icon?: () => unknown;
 	default?: () => unknown;
 }>();
-
-const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
-const isHovered = useElementHover(triggerRef);
-
-defineExpose({ isHovered });
 </script>
 
 <template>
-	<N8nButton ref="triggerRef" variant="ghost" :size="size" :class="$style.block">
-		<template #icon>
-			<slot name="icon" :is-hovered="isHovered" />
-		</template>
-		<span :class="$style.ellipsis">
+	<N8nButton variant="ghost" :size="size" :class="$style.block">
+		<span :class="{ [$style.ellipsis]: true, [$style.shimmer]: loading }">
 			<slot />
 		</span>
+		<slot name="icon" />
 	</N8nButton>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .block {
 	max-width: 90%;
 	justify-content: flex-start;
@@ -61,5 +55,19 @@ defineExpose({ isHovered });
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: normal;
+}
+
+.shimmer {
+	--animation--shimmer--duration: 1.5s;
+	--animation--shimmer--background: var(--color--text--tint-1);
+	--animation--shimmer--foreground: var(--color--text--tint-2);
+
+	background: linear-gradient(
+		90deg,
+		var(--color--text--tint-1) 25%,
+		var(--color--text--tint-2) 50%,
+		var(--color--text--tint-1) 75%
+	);
+	@include motion.shimmer;
 }
 </style>

@@ -1,6 +1,6 @@
-import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
+import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { inject } from 'vue';
+import { computed, inject, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -28,26 +28,24 @@ import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
+import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
-import type { INode, IPinData } from 'n8n-workflow';
+import type { INode, IPinData, ProjectSharingData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
+import type { Scope } from '@n8n/permissions';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import { useWorkflowsStore } from './workflows.store';
 
 export {
 	getPinDataSize,
 	pinDataToExecutionData,
 } from './workflowDocument/useWorkflowDocumentPinData';
-
-// Pinia internal type - _s is the store registry Map
-type PiniaInternal = ReturnType<typeof getActivePinia> & {
-	_s: Map<string, StoreGeneric>;
-};
 
 // ---------------------------------------------------------------------------
 // Compile-time guard: detect key collisions between composable return types.
@@ -79,6 +77,7 @@ type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
+type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -101,6 +100,9 @@ void (0 as unknown as [
 	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
 	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
 	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
+	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
+	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
+	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -133,16 +135,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
-		const workflowsStore = useWorkflowsStore();
 		const nodeTypesStore = useNodeTypesStore();
 		const nodeHelpers = useNodeHelpers();
 
-		const { workflowObject, ...workflowDocumentWorkflowObject } = useWorkflowDocumentWorkflowObject(
-			{
-				workflowId,
-				getNodeTypes: () => workflowsStore.getNodeTypes(),
-			},
-		);
+		const { cloneWorkflowObject, createWorkflowObject, ...workflowDocumentWorkflowObject } =
+			useWorkflowDocumentWorkflowObject({ workflowId });
 
 		const workflowDocumentName = useWorkflowDocumentName({
 			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
@@ -180,8 +177,17 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				syncWorkflowObject: (connections) =>
 					workflowDocumentWorkflowObject.syncWorkflowObjectConnections(connections),
 			});
-		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
-		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
+		const workflowDocumentGraph = useWorkflowDocumentGraph(
+			workflowDocumentWorkflowObject.workflowObject,
+		);
+		const workflowDocumentExpression = useWorkflowDocumentExpression(
+			workflowDocumentWorkflowObject.workflowObject,
+		);
+		const workflowDocumentNodesIssues = useWorkflowDocumentNodesIssues({
+			allNodes: workflowDocumentNodes.allNodes,
+			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
+			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+		});
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -315,7 +321,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		}
 
-		function getSnapshot(): WorkflowObjectAccessors {
+		/**
+		 * @deprecated use individual method or `getSnapshot()`
+		 */
+		function getWorkflowObjectAccessorSnapshot(): WorkflowObjectAccessors {
 			return {
 				id: workflowId,
 				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
@@ -330,7 +339,37 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			};
 		}
 
+		function getSnapshot(): IWorkflowDb {
+			return {
+				id: workflowId,
+				name: workflowDocumentName.name.value,
+				description: workflowDocumentDescription.description.value,
+				active: workflowDocumentActive.active.value,
+				activeVersionId: workflowDocumentActive.activeVersionId.value,
+				isArchived: workflowDocumentIsArchived.isArchived.value,
+				createdAt: workflowDocumentTimestamps.createdAt.value,
+				updatedAt: workflowDocumentTimestamps.updatedAt.value,
+				nodes: workflowDocumentNodes.allNodes.value,
+				connections: workflowDocumentConnections.connectionsBySourceNode.value,
+				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.settings.value },
+				tags: [...workflowDocumentTags.tags.value],
+				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				sharedWithProjects: (workflowDocumentSharedWithProjects.sharedWithProjects.value ??
+					[]) as ProjectSharingData[],
+				homeProject: workflowDocumentHomeProject.homeProject.value ?? undefined,
+				scopes: workflowDocumentScopes.scopes.value as Scope[],
+				versionId: workflowDocumentVersionData.versionId.value,
+				usedCredentials: Object.values(
+					workflowDocumentUsedCredentials.usedCredentials.value,
+				) as IUsedCredential[],
+				meta: workflowDocumentMeta.meta.value,
+				parentFolder: workflowDocumentParentFolder.parentFolder.value ?? undefined,
+				checksum: workflowDocumentChecksum.checksum.value,
+			};
+		}
+
 		return {
+			documentId: id,
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
@@ -355,47 +394,54 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
+			...workflowDocumentNodesIssues,
 			removeAllNodes,
 			hydrate,
 			reset,
 			getSnapshot,
+			getWorkflowObjectAccessorSnapshot,
 			serialize,
+			cloneWorkflowObject,
+			createWorkflowObject,
 		};
 	})();
 }
 
+export type WorkflowDocumentStore = ReturnType<typeof useWorkflowDocumentStore>;
+
 /**
- * Disposes a workflow document store by ID.
+ * Disposes a workflow document store instance.
  * Call this when a workflow document is unloaded (e.g., when navigating away from NodeView).
  *
- * This removes the store from Pinia's internal registry, freeing memory and preventing
- * stale stores from accumulating over time.
+ * Pinia's $dispose removes the store from its registry, but not from pinia.state.
+ * Remove the state entry as well so recreating this scoped store starts clean.
  */
-export function disposeWorkflowDocumentStore(id: string) {
-	const pinia = getActivePinia() as PiniaInternal;
-	if (!pinia) return;
+export function disposeWorkflowDocumentStore(store: WorkflowDocumentStore) {
+	const pinia = getActivePinia();
+	store.$dispose();
 
-	const storeId = getWorkflowDocumentStoreId(id);
-
-	// Check if the store exists in the Pinia state
-	if (pinia.state.value[storeId]) {
-		// Get the store instance
-		const store = pinia._s.get(storeId);
-		if (store) {
-			store.$dispose();
-		}
-		// Remove from Pinia's state
-		delete pinia.state.value[storeId];
+	if (pinia) {
+		delete pinia.state.value[store.$id];
 	}
 }
 
 /**
  * Injects the workflow document store from the current component tree.
- * Returns null if not within a component context that has provided the store.
+ * Returns fallback document store if not within a component context
  *
  * Use this in composables/stores that need to interact with the current workflow's
- * document store but may be called outside of the NodeView tree.
+ * document store and avoid calling this outside a component tree.
  */
-export function injectWorkflowDocumentStore() {
-	return inject(WorkflowDocumentStoreKey, null);
+export function injectWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore> {
+	const workflowsStore = useWorkflowsStore();
+	const fallback = computed(() => {
+		// TODO: once usages outside of a component tree is eliminated,
+		// this can be replaced with useWorkflowId()
+		const fallbackWorkflowId = workflowsStore.workflowId;
+
+		return useWorkflowDocumentStore(createWorkflowDocumentId(fallbackWorkflowId));
+	});
+	const injected = inject(WorkflowDocumentStoreKey, null);
+
+	return computed(() => injected?.value ?? fallback.value);
 }

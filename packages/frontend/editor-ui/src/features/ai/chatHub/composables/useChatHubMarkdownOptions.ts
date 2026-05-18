@@ -2,18 +2,18 @@
 import { type HLJSApi } from 'highlight.js';
 import { computed, ref } from 'vue';
 import type MarkdownIt from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
 import markdownItKatex from '@vscode/markdown-it-katex';
 import markdownItFootnote from 'markdown-it-footnote';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import 'katex/dist/katex.min.css';
 import type StateCore from 'markdown-it/lib/rules_core/state_core';
+import type * as LanguageModules from './languageModules';
 
 let hljsInstance: HLJSApi | undefined;
 let asyncImport:
 	| {
 			status: 'inProgress';
-			promise: Promise<[typeof import('highlight.js'), typeof import('./languageModules')]>;
+			promise: Promise<[HLJSApi, typeof LanguageModules]>;
 	  }
 	| { status: 'uninitialized' }
 	| { status: 'done' } = { status: 'uninitialized' };
@@ -21,6 +21,17 @@ let asyncImport:
 type FootnoteEnv = {
 	footnotes?: { list?: Array<{ label?: string; count?: number; content?: string }> };
 };
+
+export function shouldOpenChatMarkdownLinkInNewTab(href: string): boolean {
+	const normalizedHref = href.trim().toLowerCase();
+
+	if (!normalizedHref) return false;
+	if (normalizedHref.startsWith('#')) return false;
+	if (normalizedHref.startsWith('/')) return normalizedHref.startsWith('//');
+	if (normalizedHref.startsWith('./') || normalizedHref.startsWith('../')) return false;
+
+	return /^[a-z][a-z0-9+.-]*:/.test(normalizedHref);
+}
 
 /**
  * To render streamed content cleanly, strip orphaned [^label] references that have no matching definition.
@@ -102,14 +113,17 @@ export function useChatHubMarkdownOptions(
 		}
 
 		try {
-			const promise = Promise.all([import('highlight.js'), import('./languageModules')]);
+			const promise = Promise.all([
+				import('highlight.js').then(({ default: highlight }) => highlight),
+				import('./languageModules'),
+			]);
 
 			asyncImport = { status: 'inProgress', promise };
 
-			const [hljs, languages] = await asyncImport.promise;
+			const [hljs, languages] = await promise;
 
 			asyncImport = { status: 'done' };
-			hljsInstance = hljs.default.newInstance();
+			hljsInstance = hljs.newInstance();
 
 			for (const [lang, module] of Object.entries(languages)) {
 				hljsInstance.registerLanguage(lang, module);
@@ -123,12 +137,20 @@ export function useChatHubMarkdownOptions(
 
 	const plugins = computed(() => {
 		const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
-			vueMarkdownItInstance.use(markdownLink, {
-				attrs: {
-					target: '_blank',
-					rel: 'noopener',
-				},
-			});
+			const defaultLinkOpenRenderer =
+				vueMarkdownItInstance.renderer.rules.link_open ??
+				((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
+
+			vueMarkdownItInstance.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+				const href = tokens[idx].attrGet('href');
+
+				if (href && shouldOpenChatMarkdownLinkInNewTab(href)) {
+					tokens[idx].attrSet('target', '_blank');
+					tokens[idx].attrSet('rel', 'noopener');
+				}
+
+				return defaultLinkOpenRenderer(tokens, idx, options, env, self);
+			};
 		};
 
 		const codeBlockPlugin = (vueMarkdownItInstance: MarkdownIt) => {
