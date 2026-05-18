@@ -43,6 +43,7 @@ const filterSchemaWithMinOne = z.object({
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	actionPhrase: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
@@ -286,14 +287,15 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create data table "${input.name}"?`;
+		let message = `Create "${input.name}"`;
 		if (input.projectId) {
 			const project = await context.workspaceService?.getProject?.(input.projectId);
 			const projectLabel = project?.name ?? input.projectId;
-			message = `Create data table "${input.name}" in project "${projectLabel}"?`;
+			message = `Create "${input.name}" in project "${projectLabel}"`;
 		}
 		await suspend?.({
 			requestId: nanoid(),
+			actionPhrase: 'create data table',
 			message,
 			severity: 'info' as const,
 		});
@@ -342,7 +344,8 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete data table "${input.dataTableId}"? This will permanently remove the table and all its data.`,
+			actionPhrase: 'delete data table',
+			message: `Delete "${input.dataTableId}"`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };
@@ -376,7 +379,8 @@ async function handleAddColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Add column "${input.columnName}" (${input.type}) to data table "${input.dataTableId}"?`,
+			actionPhrase: 'add column',
+			message: `Add "${input.columnName}" (${input.type}) to "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -414,7 +418,8 @@ async function handleDeleteColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete column "${input.columnId}" from data table "${input.dataTableId}"? All data in this column will be permanently lost.`,
+			actionPhrase: 'delete column',
+			message: `Delete "${input.columnId}" from "${input.dataTableId}"`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };
@@ -450,7 +455,8 @@ async function handleRenameColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Rename column "${input.columnId}" to "${input.newName}" in data table "${input.dataTableId}"?`,
+			actionPhrase: 'rename column',
+			message: `Rename "${input.columnId}" to "${input.newName}" in "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return { success: false };
@@ -486,7 +492,8 @@ async function handleInsertRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Insert ${input.rows.length} row(s) into data table "${input.dataTableId}"?`,
+			actionPhrase: 'insert rows',
+			message: `Insert ${input.rows.length} row(s) into "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -521,7 +528,8 @@ async function handleUpdateRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Update rows in data table "${input.dataTableId}"?`,
+			actionPhrase: 'update rows',
+			message: `Update rows in "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -565,7 +573,8 @@ async function handleDeleteRows(
 			.join(` ${input.filter.type} `);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete rows where ${filterDesc}? This cannot be undone.`,
+			actionPhrase: 'delete rows',
+			message: `Delete rows where ${filterDesc}`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };

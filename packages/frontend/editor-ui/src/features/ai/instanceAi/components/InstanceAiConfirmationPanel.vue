@@ -121,6 +121,34 @@ function isDestructive(item: PendingConfirmationItem): boolean {
 }
 
 /**
+ * Title for the floating approval. When the backend supplies an
+ * `actionPhrase` (e.g. `"archive workflow"`), we render the unified
+ * "Allow AI Assistant to {action}?" prompt. Otherwise we fall back to the
+ * tool label so older tools that haven't been updated still render.
+ */
+function buildApprovalTitle(item: PendingConfirmationItem): string {
+	const phrase = item.toolCall.confirmation.actionPhrase;
+	if (phrase) {
+		return i18n.baseText('instanceAi.confirmation.allowPrompt', {
+			interpolate: { action: phrase },
+		});
+	}
+	return getToolLabel(item.toolCall.toolName, item.toolCall.args);
+}
+
+/**
+ * Subtitle for the floating approval. Backend messages may include a
+ * trailing explanation after the first `?` (e.g. "Archive '{name}'? This
+ * will deactivate it…"). Tools that have been migrated send a short
+ * single-sentence message and this is a no-op; legacy tools get trimmed.
+ */
+function buildApprovalSubtitle(item: PendingConfirmationItem): string {
+	const message = item.toolCall.confirmation.message ?? '';
+	const idx = message.indexOf('?');
+	return idx === -1 ? message : message.slice(0, idx + 1);
+}
+
+/**
  * Build the floating-approval option list. Destructive confirmations hide
  * "Always allow" — by design, irreversible actions must be opted into one
  * at a time.
@@ -498,11 +526,9 @@ function handlePlanRequestChanges(
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="medium" bold>
-										{{ getToolLabel(chunk.item.toolCall.toolName, chunk.item.toolCall.args) }}
+										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
-									<ConfirmationPreview>{{
-										chunk.item.toolCall.confirmation.message
-									}}</ConfirmationPreview>
+									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
 								</div>
 
 								<ApprovalOptionList

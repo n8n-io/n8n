@@ -225,6 +225,7 @@ function getToolDescription(options: CredentialsToolOptions): string {
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	actionPhrase: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 	credentialRequests: z
 		.array(
@@ -299,7 +300,8 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete credential "${input.credentialName ?? input.credentialId}"? This cannot be undone.`,
+			actionPhrase: 'delete credential',
+			message: `Delete "${input.credentialName ?? input.credentialId}"`,
 			severity: 'destructive' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker

@@ -350,6 +350,14 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	actionPhrase: z
+		.string()
+		.optional()
+		.describe(
+			'Short imperative phrase (e.g. "archive workflow") used by the UI to render ' +
+				'a consistent "Allow AI Assistant to {actionPhrase}?" title. ' +
+				'When absent, the UI falls back to the tool label.',
+		),
 	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z
 		.string()
@@ -704,6 +712,12 @@ export interface InstanceAiConfirmation {
 	inputThreadId?: string;
 	severity: InstanceAiConfirmationSeverity;
 	message: string;
+	/**
+	 * Short imperative phrase (e.g. "archive workflow") used by the UI to
+	 * render a consistent "Allow AI Assistant to {actionPhrase}?" title.
+	 * When absent, the UI falls back to the tool label.
+	 */
+	actionPhrase?: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
 	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';

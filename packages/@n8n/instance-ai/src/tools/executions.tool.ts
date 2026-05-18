@@ -102,6 +102,7 @@ type Input = z.infer<typeof inputSchema>;
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	actionPhrase: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
@@ -157,7 +158,8 @@ async function handleRun(
 			.catch(() => input.workflowId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Execute workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			actionPhrase: 'execute workflow',
+			message: `Execute "${workflowName}" (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 		return {

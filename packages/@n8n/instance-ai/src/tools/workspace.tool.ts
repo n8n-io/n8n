@@ -96,6 +96,7 @@ const moveWorkflowToFolderAction = z.object({
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	actionPhrase: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
@@ -171,7 +172,8 @@ async function handleTagWorkflow(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Tag workflow "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId}) with [${input.tags.join(', ')}]?`,
+			actionPhrase: 'tag workflow',
+			message: `Tag "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
 			severity: 'info' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
@@ -206,7 +208,8 @@ async function handleCleanupTestExecutions(
 		const hours = input.olderThanHours ?? 1;
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete test executions for workflow "${input.workflowName ?? input.workflowId}" older than ${hours} hour(s)?`,
+			actionPhrase: 'delete test executions',
+			message: `Delete executions for "${input.workflowName ?? input.workflowId}" older than ${hours} hour(s)`,
 			severity: 'warning' as const,
 		});
 		return { deletedCount: 0 };
@@ -255,7 +258,8 @@ async function handleCreateFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Create folder "${input.name}" in project "${input.projectId}"?`,
+			actionPhrase: 'create folder',
+			message: `Create "${input.name}" in project "${input.projectId}"`,
 			severity: 'info' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
@@ -297,12 +301,10 @@ async function handleDeleteFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const transferNote = input.transferToFolderId
-			? ` Contents will be moved to folder "${input.transferToFolderName ?? input.transferToFolderId}".`
-			: ' Contents will be flattened to project root and archived.';
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete folder "${input.folderName ?? input.folderId}"?${transferNote}`,
+			actionPhrase: 'delete folder',
+			message: `Delete "${input.folderName ?? input.folderId}"`,
 			severity: 'destructive' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
@@ -340,7 +342,8 @@ async function handleMoveWorkflowToFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Move workflow "${input.workflowName ?? input.workflowId}" to folder "${input.folderName ?? input.folderId}"?`,
+			actionPhrase: 'move workflow',
+			message: `Move "${input.workflowName ?? input.workflowId}" to folder "${input.folderName ?? input.folderId}"`,
 			severity: 'info' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
