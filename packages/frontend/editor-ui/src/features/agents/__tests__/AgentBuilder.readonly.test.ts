@@ -27,6 +27,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 				agentId: 'a1',
 				appliedSkills: [],
 				connectedTriggers: [],
+				tasks: [],
 				isBuildChatStreaming: false,
 				canEditAgent: false, // <<< Agent is read only
 				executionsDescription: '',
@@ -66,6 +67,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 							'customTools',
 							'skills',
 							'connectedTriggers',
+							'tasks',
 							'disabled',
 							'projectId',
 							'agentId',
@@ -107,6 +109,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 				agentId: 'a1',
 				appliedSkills: [],
 				connectedTriggers: [],
+				tasks: [],
 				isBuildChatStreaming: false,
 				canEditAgent: false,
 				executionsDescription: '',

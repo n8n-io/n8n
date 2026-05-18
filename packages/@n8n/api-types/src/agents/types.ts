@@ -43,6 +43,24 @@ export interface AgentScheduleConfig {
 	wakeUpPrompt: string;
 }
 
+export interface AgentTaskDto {
+	id: string;
+	agentId: string;
+	projectId: string;
+	name: string;
+	goal: string;
+	cronExpression: string;
+	active: boolean;
+	lastRunAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface RunAgentTaskResponse {
+	threadId: string;
+	status: 'started';
+}
+
 export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;

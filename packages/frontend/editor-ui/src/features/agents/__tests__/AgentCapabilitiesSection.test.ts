@@ -33,6 +33,7 @@ function mountSection(
 			customTools,
 			skills: [],
 			connectedTriggers: [],
+			tasks: [],
 			projectId: 'project-id',
 			agentId: 'agent-id',
 			isPublished: false,

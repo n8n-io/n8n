@@ -41,6 +41,7 @@ async function mountColumn() {
 			agentId: 'agent-1',
 			appliedSkills: [],
 			connectedTriggers: [],
+			tasks: [],
 			isBuildChatStreaming: false,
 			canEditAgent: true,
 			executionsDescription: '',

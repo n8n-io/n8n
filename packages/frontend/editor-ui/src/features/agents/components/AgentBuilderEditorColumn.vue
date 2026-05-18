@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { AgentTaskDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
@@ -23,6 +24,7 @@ const props = defineProps<{
 	agentId: string;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
+	tasks: AgentTaskDto[];
 	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
@@ -36,9 +38,11 @@ const emit = defineEmits<{
 	'open-tool': [index: number];
 	'open-skill': [id: string];
 	'open-trigger': [triggerType: string];
+	'open-task': [taskId: string];
 	'add-tool': [];
 	'add-skill': [];
 	'add-trigger': [];
+	'add-task': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
 	'update:connected-triggers': [triggers: string[]];
@@ -91,6 +95,7 @@ const i18n = useI18n();
 							:custom-tools="agent?.tools ?? {}"
 							:skills="appliedSkills"
 							:connected-triggers="connectedTriggers"
+							:tasks="tasks"
 							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
@@ -98,9 +103,11 @@ const i18n = useI18n();
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
+							@open-task="emit('open-task', $event)"
 							@add-tool="emit('add-tool')"
 							@add-skill="emit('add-skill')"
 							@add-trigger="emit('add-trigger')"
+							@add-task="emit('add-task')"
 							@remove-tool="emit('remove-tool', $event)"
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"

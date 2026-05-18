@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
+import type { AgentTaskService } from '../agent-task.service';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -26,6 +27,7 @@ function makeService() {
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLookupService = mock<BuilderModelLookupService>();
+	const agentTaskService = mock<AgentTaskService>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 
 	const service = new AgentsBuilderToolsService(
@@ -34,9 +36,10 @@ function makeService() {
 		workflowRepository,
 		agentsToolsService,
 		builderModelLookupService,
+		agentTaskService,
 	);
 
-	return { service, agentsService, secureRuntime };
+	return { service, agentsService, secureRuntime, agentTaskService };
 }
 
 const baseConfig: AgentJsonConfig = {
@@ -351,6 +354,114 @@ describe('AgentsBuilderToolsService', () => {
 				]),
 			});
 			expect(agentsService.createSkill).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('task tools', () => {
+		function getSharedTool(service: AgentsBuilderToolsService, name: string) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === name)!;
+		}
+
+		const task = {
+			id: 'task-1',
+			agentId,
+			projectId,
+			name: 'Daily digest',
+			goal: 'Summarize yesterday updates.',
+			cronExpression: '0 9 * * *',
+			active: false,
+			lastRunAt: null,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		};
+
+		it('is available to the builder with create and update guidance', () => {
+			const { service } = makeService();
+
+			const listTasks = getSharedTool(service, BUILDER_TOOLS.LIST_TASKS);
+			const createTask = getSharedTool(service, BUILDER_TOOLS.CREATE_TASK);
+			const updateTask = getSharedTool(service, BUILDER_TOOLS.UPDATE_TASK);
+
+			expect(listTasks).toBeDefined();
+			expect(createTask.description).toContain('inactive by default');
+			expect(updateTask.description).toContain('Call list_tasks first');
+		});
+
+		it('creates inactive tasks by default and returns the saved task', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.create.mockResolvedValue(task);
+
+			const result = await getSharedTool(service, BUILDER_TOOLS.CREATE_TASK).handler!(
+				{
+					name: 'Daily digest',
+					goal: 'Summarize yesterday updates.',
+					cronExpression: '0 9 * * *',
+				},
+				ctx,
+			);
+
+			expect(agentTaskService.create).toHaveBeenCalledWith(projectId, agentId, {
+				name: 'Daily digest',
+				goal: 'Summarize yesterday updates.',
+				cronExpression: '0 9 * * *',
+				active: false,
+			});
+			expect(result).toEqual({ ok: true, task });
+		});
+
+		it('surfaces task service errors without throwing from create_task', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.create.mockRejectedValue(new Error('Invalid cron expression'));
+
+			const result = await getSharedTool(service, BUILDER_TOOLS.CREATE_TASK).handler!(
+				{
+					name: 'Daily digest',
+					goal: 'Summarize yesterday updates.',
+					cronExpression: 'not cron',
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Invalid cron expression' }],
+			});
+		});
+
+		it('requires update_task to change at least one task field', async () => {
+			const { service, agentTaskService } = makeService();
+
+			const result = await getSharedTool(service, BUILDER_TOOLS.UPDATE_TASK).handler!(
+				{ taskId: 'task-1' },
+				ctx,
+			);
+
+			expect(agentTaskService.update).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Pass at least one task field to update.' }],
+			});
+		});
+
+		it('updates an existing task and returns the saved task', async () => {
+			const { service, agentTaskService } = makeService();
+			const updated = { ...task, goal: 'Summarize new support tickets.' };
+			agentTaskService.update.mockResolvedValue(updated);
+
+			const result = await getSharedTool(service, BUILDER_TOOLS.UPDATE_TASK).handler!(
+				{
+					taskId: 'task-1',
+					goal: 'Summarize new support tickets.',
+				},
+				ctx,
+			);
+
+			expect(agentTaskService.update).toHaveBeenCalledWith(projectId, agentId, 'task-1', {
+				goal: 'Summarize new support tickets.',
+			});
+			expect(result).toEqual({ ok: true, task: updated });
 		});
 	});
 });

@@ -178,6 +178,7 @@ import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
 import { ReplaceAgentObservationTables1784000000001 } from '../common/1784000000001-ReplaceAgentObservationTables';
 import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/1784000000002-DropAgentExecutionWorkingMemory';
+import { CreateAgentTaskTables1784000000003 } from '../common/1784000000003-CreateAgentTaskTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -361,4 +362,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentObservationTables1784000000000,
 	ReplaceAgentObservationTables1784000000001,
 	DropAgentExecutionWorkingMemory1784000000002,
+	CreateAgentTaskTables1784000000003,
 ];

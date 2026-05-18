@@ -17,9 +17,9 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentsService, chatThreadId } from '../agents.service';
+import { AgentTaskService } from '../agent-task.service';
 import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 import type { Agent } from '../entities/agent.entity';
-import { AgentScheduleService } from '../integrations/agent-schedule.service';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import {
 	AgentChatIntegration,
@@ -78,7 +78,7 @@ describe('AgentsService', () => {
 	let n8nMemory: jest.Mocked<N8nMemory>;
 	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let scheduleService: jest.Mocked<AgentScheduleService>;
+	let taskService: jest.Mocked<AgentTaskService>;
 	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
 	let publisher: jest.Mocked<Publisher>;
 	let agentsConfig: AgentsConfig;
@@ -93,7 +93,7 @@ describe('AgentsService', () => {
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
-		scheduleService = mock<AgentScheduleService>();
+		taskService = mock<AgentTaskService>();
 		chatIntegrationService = mock<ChatIntegrationService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
@@ -459,7 +459,7 @@ describe('AgentsService', () => {
 			expect(savedEntity.description).toBe(agent.description);
 		});
 
-		it('rejects an active schedule integration when the agent is unpublished', async () => {
+		it('treats legacy schedule integrations as inert config data', async () => {
 			const configWithActiveSchedule = {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -481,10 +481,8 @@ describe('AgentsService', () => {
 
 			await expect(
 				service.updateConfig(agentId, projectId, configWithActiveSchedule),
-			).rejects.toThrow(
-				'Invalid agent config: schedule integration cannot be active until the agent is published',
-			);
-			expect(agentRepository.save).not.toHaveBeenCalled();
+			).resolves.toEqual(expect.objectContaining({ config: expect.any(Object) }));
+			expect(agentRepository.save).toHaveBeenCalled();
 		});
 
 		it('allows an inactive schedule integration on an unpublished agent', async () => {
@@ -802,7 +800,7 @@ describe('AgentsService', () => {
 			// DI container — register a mock so Container.get doesn't try to construct the real
 			// service (which would fail resolving DataSource in unit tests).
 			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
-			Container.set(AgentScheduleService, scheduleService);
+			Container.set(AgentTaskService, taskService);
 		});
 
 		it('throws NotFoundError when the agent does not exist', async () => {
@@ -824,34 +822,13 @@ describe('AgentsService', () => {
 			expect(agent.publishedVersion).toBeNull();
 		});
 
-		it('deactivates the persisted schedule and stops the local cron job when unpublishing', async () => {
-			const integrations: AgentIntegrationConfig[] = [
-				{
-					type: 'schedule',
-					active: true,
-					cronExpression: '* * * * *',
-					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
-				},
-			];
-			const agent = makeAgent({
-				publishedVersion: makePublishedVersion(),
-				integrations,
-			});
+		it('deactivates tasks when unpublishing', async () => {
+			const agent = makeAgent({ publishedVersion: makePublishedVersion() });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.unpublishAgent(agentId, projectId);
 
-			expect(mockTrx.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					integrations: [
-						expect.objectContaining({
-							type: 'schedule',
-							active: false,
-						}),
-					],
-				}),
-			);
-			expect(scheduleService.deregister).toHaveBeenCalledWith(agentId);
+			expect(taskService.deactivateForAgent).toHaveBeenCalledWith(agentId);
 		});
 
 		it('returns the agent with publishedVersion cleared', async () => {
@@ -1285,7 +1262,7 @@ describe('AgentsService', () => {
 
 	describe('delete — chat cleanup', () => {
 		beforeEach(() => {
-			Container.set(AgentScheduleService, scheduleService);
+			Container.set(AgentTaskService, taskService);
 		});
 
 		it('removes the test-chat thread + messages after removing the agent', async () => {
@@ -1300,13 +1277,13 @@ describe('AgentsService', () => {
 			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
 		});
 
-		it('stops the local schedule when deleting the agent', async () => {
+		it('stops local tasks when deleting the agent', async () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.delete(agentId, projectId);
 
-			expect(scheduleService.deregister).toHaveBeenCalledWith(agentId);
+			expect(taskService.deregisterForAgent).toHaveBeenCalledWith(agentId);
 		});
 
 		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {
@@ -1330,7 +1307,7 @@ describe('AgentsService', () => {
 				configurable: true,
 			});
 			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
-			Container.set(AgentScheduleService, scheduleService);
+			Container.set(AgentTaskService, taskService);
 		});
 
 		const enableMultiMain = () => {

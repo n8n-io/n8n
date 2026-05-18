@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
+import type { AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
@@ -20,6 +20,7 @@ const props = withDefaults(
 		customTools?: Record<string, CustomToolEntry>;
 		skills: Array<{ id: string; skill: AgentSkill }>;
 		connectedTriggers: string[];
+		tasks: AgentTaskDto[];
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
@@ -32,9 +33,11 @@ const emit = defineEmits<{
 	'open-tool': [index: number];
 	'open-skill': [id: string];
 	'open-trigger': [triggerType: string];
+	'open-task': [taskId: string];
 	'add-tool': [];
 	'add-skill': [];
 	'add-trigger': [];
+	'add-task': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
 	'update:connected-triggers': [triggers: string[]];
@@ -50,9 +53,8 @@ function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;
 }
 
-function triggerIcon(trigger: string, integrationIcon?: string): IconName {
+function triggerIcon(integrationIcon?: string): IconName {
 	if (isIconName(integrationIcon)) return integrationIcon;
-	if (trigger === AGENT_SCHEDULE_TRIGGER_TYPE) return 'clock';
 	return 'zap';
 }
 
@@ -61,18 +63,15 @@ const triggerRows = computed<Array<{ type: string; label: string; icon: IconName
 		const integration = catalog.value?.find(({ type }) => type === trigger);
 		return {
 			type: trigger,
-			label:
-				integration?.label ??
-				(trigger === AGENT_SCHEDULE_TRIGGER_TYPE
-					? i18n.baseText('agents.schedule.title')
-					: trigger),
-			icon: triggerIcon(trigger, integration?.icon),
+			label: integration?.label ?? trigger,
+			icon: triggerIcon(integration?.icon),
 		};
 	}),
 );
 
 const hasTriggers = computed(() => triggerRows.value.length > 0);
 const hasTools = computed(() => props.tools.length > 0);
+const hasTasks = computed(() => props.tasks.length > 0);
 const hasSkills = computed(() => props.skills.length > 0);
 
 function toolLabel(tool: AgentJsonToolRef, index: number) {
@@ -200,6 +199,44 @@ const toolRows = computed(() =>
 						<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
 						<template v-if="!hasTools">
 							{{ i18n.baseText('agents.builder.tools.add') }}
+						</template>
+					</N8nButton>
+				</N8nTooltip>
+			</div>
+		</div>
+
+		<div :class="$style.capabilityRow">
+			<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				{{ i18n.baseText('agents.builder.tasks.title') }}
+			</N8nText>
+
+			<div :class="$style.chips">
+				<AgentChipButton
+					v-for="task in tasks"
+					:key="task.id"
+					icon="clock"
+					data-testid="agent-capabilities-task-row"
+					@click="emit('open-task', task.id)"
+				>
+					{{ task.name }}
+				</AgentChipButton>
+
+				<N8nTooltip
+					:disabled="!hasTasks"
+					:content="i18n.baseText('agents.builder.tasks.add')"
+					placement="top"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						:icon-only="hasTasks"
+						:disabled="props.disabled"
+						data-testid="agent-capabilities-add-task"
+						@click="emit('add-task')"
+					>
+						<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
+						<template v-if="!hasTasks">
+							{{ i18n.baseText('agents.builder.tasks.add') }}
 						</template>
 					</N8nButton>
 				</N8nTooltip>

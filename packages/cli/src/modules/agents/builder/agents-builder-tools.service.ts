@@ -17,6 +17,7 @@ import { z } from 'zod';
 
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
+import { AgentTaskService } from '../agent-task.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
@@ -108,6 +109,7 @@ export class AgentsBuilderToolsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly agentTaskService: AgentTaskService,
 	) {}
 
 	getTools(
@@ -319,20 +321,14 @@ export class AgentsBuilderToolsService {
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
 			.description(
 				"List trigger / integration types that can be added to the agent's `integrations` array. " +
-					'Returns the schedule trigger plus every connected chat platform with the list of ' +
+					'Returns every connected chat platform with the list of ' +
 					'credential types it supports (`credentialTypes: string[]`). ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
 					'returned `credentialTypes` (prefer the OAuth variant if present, e.g. `slackOAuth2Api` ' +
 					'over `slackApi`) and pass it to `ask_credential` as the singular `credentialType` arg.',
 			)
 			.input(z.object({}))
-			.handler(async () => {
-				const chat = this.agentsService.listChatIntegrations();
-				return [
-					{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
-					...chat,
-				];
-			})
+			.handler(async () => this.agentsService.listChatIntegrations())
 			.build();
 
 		const modelLookup: ModelLookup = {
@@ -438,6 +434,121 @@ export class AgentsBuilderToolsService {
 			)
 			.build();
 
+		const listTasksTool = new Tool(BUILDER_TOOLS.LIST_TASKS)
+			.description(
+				'List scheduled tasks attached to this agent. Call this before update_task so you can use the exact task id.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				try {
+					const tasks = await this.agentTaskService.list(projectId, agentId);
+					return { ok: true, tasks };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const createTaskTool = new Tool(BUILDER_TOOLS.CREATE_TASK)
+			.description(
+				'Create a scheduled task for this agent. Tasks are inactive by default and do not run immediately. ' +
+					'Use this for recurring objectives with a name, goal, and cronExpression. Only set active: true when the user explicitly asks to activate the schedule.',
+			)
+			.input(
+				z.object({
+					name: z.string().min(1).max(128).describe('Human-readable task name'),
+					goal: z.string().min(1).max(10_000).describe('What the agent should accomplish'),
+					cronExpression: z.string().min(1).describe('Cron expression for the recurring schedule'),
+					active: z
+						.boolean()
+						.optional()
+						.describe('Whether to activate the schedule. Defaults to false.'),
+				}),
+			)
+			.handler(
+				async ({
+					name,
+					goal,
+					cronExpression,
+					active,
+				}: {
+					name: string;
+					goal: string;
+					cronExpression: string;
+					active?: boolean;
+				}) => {
+					try {
+						const task = await this.agentTaskService.create(projectId, agentId, {
+							name,
+							goal,
+							cronExpression,
+							active: active ?? false,
+						});
+						return { ok: true, task };
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
+			.build();
+
+		const updateTaskTool = new Tool(BUILDER_TOOLS.UPDATE_TASK)
+			.description(
+				'Update an existing scheduled task. Call list_tasks first and pass the exact taskId. ' +
+					'Pass only the fields the user asked to change. Do not delete or run tasks with this tool.',
+			)
+			.input(
+				z.object({
+					taskId: z.string().min(1).describe('Task id returned by list_tasks'),
+					name: z.string().min(1).max(128).optional(),
+					goal: z.string().min(1).max(10_000).optional(),
+					cronExpression: z.string().min(1).optional(),
+					active: z.boolean().optional(),
+				}),
+			)
+			.handler(
+				async ({
+					taskId,
+					name,
+					goal,
+					cronExpression,
+					active,
+				}: {
+					taskId: string;
+					name?: string;
+					goal?: string;
+					cronExpression?: string;
+					active?: boolean;
+				}) => {
+					const payload = {
+						...(name !== undefined ? { name } : {}),
+						...(goal !== undefined ? { goal } : {}),
+						...(cronExpression !== undefined ? { cronExpression } : {}),
+						...(active !== undefined ? { active } : {}),
+					};
+					if (Object.keys(payload).length === 0) {
+						return { ok: false, errors: [{ message: 'Pass at least one task field to update.' }] };
+					}
+
+					try {
+						const task = await this.agentTaskService.update(projectId, agentId, taskId, payload);
+						return { ok: true, task };
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
+			.build();
+
 		const listWorkflowsTool = new Tool('list_workflows')
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
@@ -488,6 +599,9 @@ export class AgentsBuilderToolsService {
 		return [
 			buildCustomToolTool,
 			createSkillTool,
+			listTasksTool,
+			createTaskTool,
+			updateTaskTool,
 			listWorkflowsTool,
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,

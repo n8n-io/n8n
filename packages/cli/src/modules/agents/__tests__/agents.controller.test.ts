@@ -7,9 +7,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentsService } from '../agents.service';
+import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { AgentScheduleService } from '../integrations/agent-schedule.service';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -34,13 +34,13 @@ function makeController({
 	agentsService = mock<AgentsService>(),
 	credentialsService = mock<CredentialsService>(),
 	chatIntegrationService = mock<ChatIntegrationService>(),
-	agentScheduleService = mock<AgentScheduleService>(),
+	agentTaskService = mock<AgentTaskService>(),
 	agentRepository = mock<AgentRepository>(),
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
 	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
-	agentScheduleService?: jest.Mocked<AgentScheduleService>;
+	agentTaskService?: jest.Mocked<AgentTaskService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
 } = {}) {
 	const controller = new AgentsController(
@@ -48,7 +48,7 @@ function makeController({
 		mock<AgentsBuilderService>(),
 		credentialsService,
 		chatIntegrationService,
-		agentScheduleService,
+		agentTaskService,
 		agentRepository,
 		mock<AgentExecutionService>(),
 		mock<ChatIntegrationRegistry>(),
@@ -59,7 +59,7 @@ function makeController({
 		agentsService,
 		credentialsService,
 		chatIntegrationService,
-		agentScheduleService,
+		agentTaskService,
 		agentRepository,
 	};
 }
@@ -86,6 +86,11 @@ describe('AgentsController route access scopes', () => {
 		['createSkill', 'agent:update'],
 		['updateSkill', 'agent:update'],
 		['deleteSkill', 'agent:update'],
+		['listTasks', 'agent:read'],
+		['createTask', 'agent:update'],
+		['updateTask', 'agent:update'],
+		['deleteTask', 'agent:update'],
+		['runTask', 'agent:execute'],
 		['revertToPublished', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
@@ -121,7 +126,7 @@ describe('AgentsController integration credentials', () => {
 			mock<AgentsBuilderService>(),
 			credentialsService,
 			chatIntegrationService,
-			mock<AgentScheduleService>(),
+			mock<AgentTaskService>(),
 			agentRepository,
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
@@ -261,17 +266,9 @@ describe('AgentsController integration credentials', () => {
 			integrations: [],
 		});
 
-		const agentScheduleService = mock<AgentScheduleService>();
-		agentScheduleService.getConfig.mockReturnValue({
-			active: false,
-			cronExpression: '0 0 * * *',
-			wakeUpPrompt: 'tick',
-		});
-
 		const { controller } = makeController({
 			agentRepository,
 			chatIntegrationService,
-			agentScheduleService,
 		});
 
 		await expect(
@@ -307,7 +304,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
+			mock<AgentTaskService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
@@ -350,7 +347,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
+			mock<AgentTaskService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
@@ -382,7 +379,7 @@ describe('AgentsController chat message history', () => {
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
+			mock<AgentTaskService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),

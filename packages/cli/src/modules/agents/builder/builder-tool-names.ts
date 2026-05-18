@@ -8,6 +8,9 @@ export const BUILDER_TOOLS = {
 	PATCH_CONFIG: 'patch_config',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILL: 'create_skill',
+	LIST_TASKS: 'list_tasks',
+	CREATE_TASK: 'create_task',
+	UPDATE_TASK: 'update_task',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	RESOLVE_LLM: 'resolve_llm',
 } as const;

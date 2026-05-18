@@ -3,7 +3,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
+import type { AgentTaskDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -19,6 +19,7 @@ import {
 	deleteAgent,
 	updateAgentSkill,
 	createAgentSkill,
+	listAgentTasks,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolConfig, AgentSkill } from '../types';
@@ -38,6 +39,7 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_TASKS_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
@@ -125,6 +127,7 @@ const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilder
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+const tasks = ref<AgentTaskDto[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
 
@@ -205,6 +208,15 @@ async function fetchAgent(
 	agentName.value = data.name;
 }
 
+async function fetchTasks(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
+	const data = await listAgentTasks(rootStore.restApiContext, targetProjectId, targetAgentId);
+	if (agentId.value !== targetAgentId || projectId.value !== targetProjectId) return;
+	tasks.value = data;
+}
+
 function startChat(msg: string) {
 	// Starting a fresh chat must never inherit a stale continue-session from a
 	// previous URL — otherwise the new conversation would keep appending to the
@@ -241,16 +253,19 @@ function startChat(msg: string) {
 
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
+	void fetchTasks();
 }
 
 function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
+	void fetchTasks();
 }
 
 async function onReverted(updated: AgentResource) {
 	agent.value = updated;
 	agentName.value = updated.name;
 	await fetchConfig(projectId.value, agentId.value);
+	await fetchTasks();
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
 }
@@ -450,11 +465,11 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 }
 
 async function onConfigUpdated() {
-	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value), fetchTasks()]);
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-	const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
 	builderTelemetry.trackToolsAdded();
@@ -543,6 +558,7 @@ async function initialize() {
 	activeChatSessionId.value = null;
 	localConfig.value = null;
 	connectedTriggers.value = [];
+	tasks.value = [];
 
 	// Refresh builder readiness so the empty-state CTA reflects the latest
 	// admin configuration. Never blocks the rest of the load.
@@ -551,7 +567,7 @@ async function initialize() {
 	});
 
 	await fetchAgent();
-	await fetchConfig(projectId.value, agentId.value);
+	await Promise.all([fetchConfig(projectId.value, agentId.value), fetchTasks()]);
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
 	// Keep agent credential pickers aligned with the workflow editor: load only
@@ -571,7 +587,7 @@ async function initialize() {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
 		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+		const triggerTypes = integrations.map((i) => i.type);
 		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 		if (connected) connectedTriggers.value = connected;
 	})();
@@ -655,6 +671,23 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				onTriggerAdded(payload),
 			onAgentPublished: (updated: AgentResource) => onPublished(updated),
+		},
+	});
+}
+
+function onOpenTasksModal(taskId?: string) {
+	uiStore.openModalWithData({
+		name: AGENT_TASKS_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			isPublished: Boolean(agent.value?.publishedVersion),
+			tasks: tasks.value,
+			focusTaskId: taskId,
+			onTasksChanged: (updatedTasks: AgentTaskDto[]) => {
+				tasks.value = updatedTasks;
+				void sessionsStore.fetchThreads(projectId.value, agentId.value);
+			},
 		},
 	});
 }
@@ -929,6 +962,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:agent-id="agentId"
 				:applied-skills="appliedSkills"
 				:connected-triggers="connectedTriggers"
+				:tasks="tasks"
 				:is-build-chat-streaming="isBuildChatStreaming"
 				:can-edit-agent="canEditAgent"
 				:main-tab-options="mainTabOptions"
@@ -937,9 +971,11 @@ function onSwitchAgent(nextAgentId: string) {
 				@open-tool="onOpenToolFromList"
 				@open-skill="onOpenSkillFromList"
 				@open-trigger="onOpenAddTriggerModal"
+				@open-task="onOpenTasksModal"
 				@add-tool="onOpenAddToolModal"
 				@add-skill="onOpenAddSkillModal"
 				@add-trigger="onOpenAddTriggerModal"
+				@add-task="onOpenTasksModal"
 				@remove-tool="onRemoveTool"
 				@remove-skill="onRemoveSkill"
 				@update:connected-triggers="onConnectedTriggersUpdate"

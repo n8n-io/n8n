@@ -8,32 +8,17 @@ import {
 	isAgentScheduleIntegration,
 } from '@n8n/api-types';
 
-function scheduleConfigsEqual(
-	a: AgentIntegrationConfig | undefined,
-	b: AgentIntegrationConfig | undefined,
-): boolean {
-	if (!a && !b) return true;
-	if (!a || !b) return false;
-	if (!isAgentScheduleIntegration(a) || !isAgentScheduleIntegration(b)) return false;
-	return (
-		a.active === b.active &&
-		a.cronExpression === b.cronExpression &&
-		a.wakeUpPrompt === b.wakeUpPrompt
-	);
-}
-
 /**
  * Reconcile runtime state (cron job, chat platform connections) after the
- * builder writes a new integrations array. Schedule changes call into
- * AgentScheduleService.applyConfig; chat changes are diffed and routed to
- * connect/disconnect on ChatIntegrationService.
+ * builder writes a new integrations array. Chat changes are diffed and routed
+ * to connect/disconnect on ChatIntegrationService. Legacy schedule entries are
+ * tolerated in persisted JSON but no longer create runtime work.
  *
  * Failures are logged but never thrown — config writes during a builder turn
  * must not be rolled back if e.g. the Slack API is briefly unavailable.
  *
  * Lazy `Container.get(...)` avoids a circular DI dependency:
- * AgentScheduleService and ChatIntegrationService both depend on AgentsService,
- * which calls into this helper.
+ * ChatIntegrationService depends on AgentsService, which calls into this helper.
  */
 export async function syncAgentIntegrations(
 	agent: Agent,
@@ -41,20 +26,6 @@ export async function syncAgentIntegrations(
 	next: AgentIntegrationConfig[],
 	logger: Logger,
 ): Promise<void> {
-	const prevSchedule = previous.find(isAgentScheduleIntegration);
-	const nextSchedule = next.find(isAgentScheduleIntegration);
-	if (!scheduleConfigsEqual(prevSchedule, nextSchedule)) {
-		try {
-			const { AgentScheduleService } = await import('./agent-schedule.service');
-			await Container.get(AgentScheduleService).applyConfig(agent);
-		} catch (error) {
-			logger.warn('Failed to apply schedule integration during sync', {
-				agentId: agent.id,
-				error,
-			});
-		}
-	}
-
 	const prevChat = previous.filter(
 		(i): i is AgentCredentialIntegrationConfig => !isAgentScheduleIntegration(i),
 	);

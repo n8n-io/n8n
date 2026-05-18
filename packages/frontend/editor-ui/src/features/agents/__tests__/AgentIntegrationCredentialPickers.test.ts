@@ -131,7 +131,6 @@ const AgentCredentialSelectStub = {
 
 const globalStubs = {
 	AgentCredentialSelect: AgentCredentialSelectStub,
-	AgentScheduleTriggerCard: { template: '<div data-testid="schedule-trigger-card" />' },
 	Modal: {
 		template:
 			'<section><slot name="header" /><slot name="content" /><slot name="footer" /></section>',

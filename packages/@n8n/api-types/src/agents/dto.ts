@@ -22,6 +22,20 @@ export class UpdateAgentScheduleDto extends Z.class({
 	wakeUpPrompt: z.string().optional(),
 }) {}
 
+export class CreateAgentTaskDto extends Z.class({
+	name: z.string().min(1).max(128),
+	goal: z.string().min(1).max(10_000),
+	cronExpression: z.string().min(1),
+	active: z.boolean().optional(),
+}) {}
+
+export class UpdateAgentTaskDto extends Z.class({
+	name: z.string().min(1).max(128).optional(),
+	goal: z.string().min(1).max(10_000).optional(),
+	cronExpression: z.string().min(1).optional(),
+	active: z.boolean().optional(),
+}) {}
+
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 10_000;
 
 export const agentSkillSchema = z.object({

@@ -1,21 +1,22 @@
 import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
 	AgentCredentialIntegrationSchema,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
-	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
+	type AgentTaskDto,
+	type RunAgentTaskResponse,
 	type ChatIntegrationDescriptor,
 	CreateAgentDto,
+	CreateAgentTaskDto,
 	CreateAgentSkillDto,
 	isAgentCredentialIntegration,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
-	UpdateAgentScheduleDto,
+	UpdateAgentTaskDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 } from '@n8n/api-types';
@@ -52,8 +53,8 @@ import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentTaskService } from './agent-task.service';
 import { AgentRepository } from './repositories/agent.repository';
 import type { Agent } from './entities/agent.entity';
 
@@ -81,7 +82,11 @@ function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallb
 				send({ type: 'config-updated' });
 				streamingToolName = undefined;
 			}
-			if (name === BUILDER_TOOLS.CREATE_SKILL) {
+			if (
+				name === BUILDER_TOOLS.CREATE_SKILL ||
+				name === BUILDER_TOOLS.CREATE_TASK ||
+				name === BUILDER_TOOLS.UPDATE_TASK
+			) {
 				send({ type: 'config-updated' });
 				streamingToolName = undefined;
 			}
@@ -100,7 +105,7 @@ export class AgentsController {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
-		private readonly agentScheduleService: AgentScheduleService,
+		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
@@ -737,61 +742,60 @@ export class AgentsController {
 		return { status: 'disconnected' };
 	}
 
-	@Get('/:agentId/integrations/schedule')
+	@Get('/:agentId/tasks')
 	@ProjectScope('agent:read')
-	async getScheduleIntegration(
+	async listTasks(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return this.agentScheduleService.getConfig(agent);
+	): Promise<AgentTaskDto[]> {
+		return await this.agentTaskService.list(req.params.projectId, agentId);
 	}
 
-	@Put('/:agentId/integrations/schedule')
+	@Post('/:agentId/tasks')
 	@ProjectScope('agent:update')
-	async updateScheduleIntegration(
+	async createTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: UpdateAgentScheduleDto,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.saveConfig(
-			agent,
-			payload.cronExpression,
-			payload.wakeUpPrompt,
-		);
+		@Body payload: CreateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		return await this.agentTaskService.create(req.params.projectId, agentId, payload);
 	}
 
-	@Post('/:agentId/integrations/schedule/activate')
+	@Patch('/:agentId/tasks/:taskId')
 	@ProjectScope('agent:update')
-	async activateScheduleIntegration(
+	async updateTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.activate(agent);
+		@Param('taskId') taskId: string,
+		@Body payload: UpdateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		return await this.agentTaskService.update(req.params.projectId, agentId, taskId, payload);
 	}
 
-	@Post('/:agentId/integrations/schedule/deactivate')
+	@Delete('/:agentId/tasks/:taskId')
 	@ProjectScope('agent:update')
-	async deactivateScheduleIntegration(
+	async deleteTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		@Param('taskId') taskId: string,
+	): Promise<{ status: 'deleted' }> {
+		await this.agentTaskService.delete(req.params.projectId, agentId, taskId);
+		return { status: 'deleted' };
+	}
 
-		return await this.agentScheduleService.deactivate(agent);
+	@Post('/:agentId/tasks/:taskId/run')
+	@ProjectScope('agent:execute')
+	async runTask(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('taskId') taskId: string,
+	): Promise<RunAgentTaskResponse> {
+		return await this.agentTaskService.runNow(req.params.projectId, agentId, taskId);
 	}
 
 	@Get('/:agentId/integrations/status')
@@ -811,13 +815,10 @@ export class AgentsController {
 				credentialId: i.credentialId,
 				...('settings' in i ? { settings: i.settings } : {}),
 			}));
-		const schedule = this.agentScheduleService.getConfig(agent);
-		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
-		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
 
 		return {
-			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',
-			integrations: connectedIntegrations,
+			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			integrations: chatIntegrations,
 		};
 	}
 

@@ -6,16 +6,13 @@ import type {
 	ToolDescriptor,
 } from '@n8n/agents';
 import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentCredentialIntegrationSchema,
 	AgentJsonConfigSchema,
 	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
 	isNodeToolsEnabled,
 	AgentModelSchema,
 	type AgentCredentialIntegrationConfig,
-	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
@@ -145,11 +142,11 @@ export interface ResumeForChatConfig {
 	integrationType?: string;
 }
 
-export interface ExecuteForSchedulePublishedConfig {
+export interface ExecuteForTaskPublishedConfig {
 	agentId: string;
 	projectId: string;
 	message: string;
-	/** Memory scope — resourceId isolates per-run memory. */
+	/** Memory scope — resourceId isolates the task objective. */
 	memory: AgentMemoryScope;
 }
 
@@ -484,17 +481,6 @@ export class AgentsService {
 		await this.agentRepository.manager.transaction(async (trx) => {
 			await this.agentPublishedVersionRepository.deleteByAgentId(agentId, trx);
 			agent.publishedVersion = null;
-
-			const hasActiveSchedule = (agent.integrations ?? []).some(
-				(integration) => isAgentScheduleIntegration(integration) && integration.active,
-			);
-
-			if (hasActiveSchedule) {
-				agent.integrations = (agent.integrations ?? []).map((integration) =>
-					isAgentScheduleIntegration(integration) ? { ...integration, active: false } : integration,
-				);
-				await trx.save(agent);
-			}
 		});
 
 		this.clearRuntimes(agentId);
@@ -506,8 +492,8 @@ export class AgentsService {
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
 
-		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-		Container.get(AgentScheduleService).deregister(agentId);
+		const { AgentTaskService } = await import('./agent-task.service');
+		await Container.get(AgentTaskService).deactivateForAgent(agentId);
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
@@ -559,10 +545,10 @@ export class AgentsService {
 		this.clearRuntimes(agentId);
 
 		try {
-			const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-			Container.get(AgentScheduleService).deregister(agentId);
+			const { AgentTaskService } = await import('./agent-task.service');
+			Container.get(AgentTaskService).deregisterForAgent(agentId);
 		} catch (error) {
-			this.logger.warn('Failed to stop schedule on agent delete', {
+			this.logger.warn('Failed to stop tasks on agent delete', {
 				agentId,
 				error: error instanceof Error ? error.message : error,
 			});
@@ -995,23 +981,22 @@ export class AgentsService {
 	}
 
 	/**
-	 * Execute a published agent for the local schedule trigger.
+	 * Execute a published agent for a scheduled task.
 	 *
 	 * The n8n user identity for RBAC is resolved from
-	 * `publishedVersion.publishedById`.  Each scheduled run uses its own
-	 * memory scope so no conversation history is shared across runs.
-	 * `projectId` is resolved from the agent entity.
+	 * `publishedVersion.publishedById`. Task callers pass a fresh thread ID per
+	 * execution and a stable task resource scope.
 	 */
-	async *executeForSchedulePublished(
-		config: ExecuteForSchedulePublishedConfig,
+	async *executeForTaskPublished(
+		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory } = config;
 
-		// One shared compiled runtime per agent for all schedule runs.
+		// One shared compiled runtime per agent for all task runs.
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			integrationType: AGENT_SCHEDULE_TRIGGER_TYPE,
+			integrationType: 'task',
 			usePublishedVersion: true,
 		});
 
@@ -1022,7 +1007,7 @@ export class AgentsService {
 			message,
 			memory,
 			projectId: runtime.projectId,
-			source: AGENT_SCHEDULE_TRIGGER_TYPE,
+			source: 'task',
 		});
 	}
 
@@ -1119,7 +1104,7 @@ export class AgentsService {
 	 * Execute an SDK agent within a workflow execution context.
 	 *
 	 * Streams the run rather than calling `.generate()` so the same
-	 * `ExecutionRecorder` used by chat/Slack/schedule paths can collect a full
+	 * `ExecutionRecorder` used by chat/Slack/task paths can collect a full
 	 * `MessageRecord` (timeline, tool calls, usage). Without this, sessions
 	 * triggered from a workflow node never appear in the agent's session list
 	 * because nothing creates the agent execution thread row.
@@ -1199,7 +1184,7 @@ export class AgentsService {
 		const messageRecord = recorder.getMessageRecord();
 
 		// Persist the thread + execution row + metadata so the session is
-		// listed under the agent (mirrors chat/slack/schedule recording).
+		// listed under the agent (mirrors chat/slack/task recording).
 		// Fire-and-forget with .catch so a recording failure doesn't fail the
 		// workflow node — the response is already in hand.
 		void this.agentExecutionService
@@ -1497,21 +1482,6 @@ export class AgentsService {
 	}
 
 	/**
-	 * Validate and persist the full integrations array on an agent.
-	 * Used internally by updateConfig and exposed for direct schedule/credential writes.
-	 */
-	private validateIntegrationRefs(integrations: AgentIntegrationConfig[], agent: Agent): void {
-		const activeUnpublishedSchedule = integrations.some(
-			(integration) => isAgentScheduleIntegration(integration) && integration.active,
-		);
-		if (activeUnpublishedSchedule && !agent.publishedVersion) {
-			throw new UserError(
-				'Invalid agent config: schedule integration cannot be active until the agent is published',
-			);
-		}
-	}
-
-	/**
 	 * Validate and persist a custom tool for an agent.
 	 * The tool code is described in an isolate, and the descriptor + code
 	 * are stored in the agent's `tools` column.
@@ -1675,8 +1645,6 @@ export class AgentsService {
 				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
 			);
 		}
-
-		this.validateIntegrationRefs(config.integrations ?? [], entity);
 	}
 
 	private getMissingCustomToolIds(

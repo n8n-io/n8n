@@ -4,9 +4,12 @@ import type {
 	AgentPersistedMessageDto,
 	AgentSkill,
 	AgentSkillMutationResponse,
-	AgentScheduleConfig,
+	AgentTaskDto,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
+	CreateAgentTaskDto,
+	RunAgentTaskResponse,
+	UpdateAgentTaskDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -113,53 +116,70 @@ export const getIntegrationStatus = async (
 	);
 };
 
-export const getScheduleIntegration = async (
+export const listAgentTasks = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+): Promise<AgentTaskDto[]> => {
+	return await makeRestApiRequest<AgentTaskDto[]>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
 	);
 };
 
-export const updateScheduleIntegration = async (
+export const createAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	data: { cronExpression: string; wakeUpPrompt?: string },
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+	data: CreateAgentTaskDto,
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
 		context,
-		'PUT',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
 		data,
 	);
 };
 
-export const activateScheduleIntegration = async (
+export const updateAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+	taskId: string,
+	data: UpdateAgentTaskDto,
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
 		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/activate`,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
+		data,
 	);
 };
 
-export const deactivateScheduleIntegration = async (
+export const deleteAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+	taskId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
+	);
+};
+
+export const runAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+): Promise<RunAgentTaskResponse> => {
+	return await makeRestApiRequest<RunAgentTaskResponse>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/deactivate`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
 	);
 };
 

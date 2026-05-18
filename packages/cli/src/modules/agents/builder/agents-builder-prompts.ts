@@ -159,6 +159,26 @@ attach the skill to the agent config. After create_skill, call read_config and
 use patch_config (or write_config) to add
 \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.`;
 
+export const TASKS_SECTION = `\
+## Tasks
+
+Use tasks for scheduled, recurring objectives. Tasks are not part of the JSON
+agent config and must not be added to \`integrations\`.
+
+### Creating tasks
+
+Call \`create_task\` with \`name\`, \`goal\`, and \`cronExpression\`. Tasks are
+inactive unless the user explicitly asks to activate them. If the user asks to
+activate a task and the tool returns an unpublished-agent error, retry without
+\`active: true\` so the task is saved inactive, then tell the user to publish the
+agent before activating it.
+
+### Updating tasks
+
+Call \`list_tasks\` before \`update_task\` so you can pass the exact \`taskId\`.
+Only pass fields the user asked to change. Do not delete tasks and do not run
+tasks from the builder.`;
+
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools (user-facing)
 
@@ -353,28 +373,18 @@ export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)
 
 The \`integrations\` array on the agent config defines how the agent gets triggered.
-Two kinds:
+Use it for chat integrations only. Scheduled objectives are configured with task tools, not by editing \`integrations\`.
 
-1. **Schedule trigger** — runs the agent on a cron schedule. One per agent.
-   Shape:
-   \`\`\`json
-   { "type": "schedule", "active": false, "cronExpression": "0 9 * * *", "wakeUpPrompt": "Daily standup ping" }
-   \`\`\`
-   - \`active\` stays false until the agent is published. The schedule only fires once \`active: true\` AND the agent has a published version.
-   - \`cronExpression\` is standard 5-field cron.
-   - \`wakeUpPrompt\` is the message the agent receives when it fires.
-
-2. **Chat integrations** — connect the agent to a messaging platform. Multiple allowed.
-   Shape:
-   \`\`\`json
-   { "type": "slack", "credentialId": "<id>" }
-   \`\`\`
+Shape:
+\`\`\`json
+{ "type": "slack", "credentialId": "<id>" }
+\`\`\`
 
 ### Workflow for adding integrations
 
 1. Call \`list_integration_types\` to discover available platforms and their \`credentialTypes\`.
-2. For chat integrations: pick **one** entry from the \`credentialTypes\` array returned by \`list_integration_types\` (prefer the OAuth variant — e.g. \`slackOAuth2Api\` over \`slackApi\`) and pass it to \`ask_credential\` as the singular \`credentialType\` arg. It returns \`{ credentialId, credentialName }\`.
-3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, only persist \`type\` and \`credentialId\`. For schedule, write the cron expression directly.
+2. Pick **one** entry from the \`credentialTypes\` array returned by \`list_integration_types\` (prefer the OAuth variant — e.g. \`slackOAuth2Api\` over \`slackApi\`) and pass it to \`ask_credential\` as the singular \`credentialType\` arg. It returns \`{ credentialId, credentialName }\`.
+3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. Only persist \`type\` and \`credentialId\`.
 
 Never invent credential IDs or names. Always go through \`ask_credential\`.`;
 
@@ -567,7 +577,8 @@ export const IMPORTANT_SECTION = `\
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - n8n session-scoped memory is the default -- always enable it unless told otherwise
 - \`build_custom_tool\` generates an opaque custom tool id, then compiles and stores the tool code. Register the returned id in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
-- \`create_skill\` stores the skill body only. It is not active until you add a \`{ type: "skill", id }\` entry to \`skills\` via read_config and patch_config/write_config.`;
+- \`create_skill\` stores the skill body only. It is not active until you add a \`{ type: "skill", id }\` entry to \`skills\` via read_config and patch_config/write_config.
+- Use \`create_task\`, \`list_tasks\`, and \`update_task\` for scheduled objectives; never add scheduled objectives to \`integrations\`.`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style
@@ -635,6 +646,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		READ_CONFIG_SECTION,
 		CONVERSATION_MODE_SECTION,
 		TOOL_TYPES_SECTION,
+		TASKS_SECTION,
 		LLM_RESOLUTION_SECTION,
 		modelRecommendationsSection,
 		INTERACTIVE_TOOLS_SECTION,

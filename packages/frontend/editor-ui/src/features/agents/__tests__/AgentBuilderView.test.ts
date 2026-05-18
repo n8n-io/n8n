@@ -77,6 +77,7 @@ const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
+const listAgentTasksMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -87,6 +88,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgent: vi.fn(),
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
+	listAgentTasks: listAgentTasksMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -373,6 +375,8 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		updateConfigMock.mockReset();
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
+		listAgentTasksMock.mockReset();
+		listAgentTasksMock.mockResolvedValue([]);
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
@@ -641,6 +645,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		updateConfigMock.mockReset();
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
+		listAgentTasksMock.mockReset();
+		listAgentTasksMock.mockResolvedValue([]);
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
