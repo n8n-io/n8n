@@ -27,7 +27,9 @@ COPY docker/images/n8n/docker-entrypoint.sh /
 RUN ln -s /usr/lib/node_modules/n8n/bin/n8n /usr/bin/n8n && \
     # /usr/local/bin/n8n is the long-standing public contract that downstream
     # stacks (n8n-cloud helm charts, AppArmor profiles, user overrides) exec
-    # by absolute path. Keep it as a symlink to the real binary.
+    # by absolute path. The DHI base does not ship /usr/local/bin, so create
+    # it before symlinking.
+    mkdir -p /usr/local/bin && \
     ln -s /usr/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
