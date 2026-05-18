@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
@@ -118,6 +118,43 @@ const chunks = computed((): ConfirmationChunk[] => {
 
 function isDestructive(item: PendingConfirmationItem): boolean {
 	return item.toolCall.confirmation.severity === 'destructive';
+}
+
+/**
+ * Title for the floating approval. We resolve a short imperative phrase
+ * (e.g. "archive workflow") via i18n keyed by the tool name and optional
+ * action — `instanceAi.tools.{tool}.{action}.imperative`. When that key
+ * exists we render the unified "Allow AI Assistant to {action}?" prompt;
+ * otherwise we fall back to the tool's display label. Doing the lookup on
+ * the frontend keeps the action phrase translatable without sending
+ * English strings over the wire.
+ */
+function buildApprovalTitle(item: PendingConfirmationItem): string {
+	const { toolName, args } = item.toolCall;
+	const action = typeof args?.action === 'string' ? args.action : undefined;
+	const imperativeKey = (
+		action
+			? `instanceAi.tools.${toolName}.${action}.imperative`
+			: `instanceAi.tools.${toolName}.imperative`
+	) as BaseTextKey;
+	const phrase = i18n.baseText(imperativeKey);
+	if (phrase !== imperativeKey) {
+		return i18n.baseText('instanceAi.confirmation.allowPrompt', {
+			interpolate: { action: phrase },
+		});
+	}
+	return getToolLabel(toolName, args);
+}
+
+/**
+ * Subtitle for the floating approval. Tools send a short resource line;
+ * we still defensively trim at the first `?` so any legacy tool whose
+ * message includes a trailing explanation doesn't bloat the card.
+ */
+function buildApprovalSubtitle(item: PendingConfirmationItem): string {
+	const message = item.toolCall.confirmation.message ?? '';
+	const idx = message.indexOf('?');
+	return idx === -1 ? message : message.slice(0, idx + 1);
 }
 
 /**
@@ -498,11 +535,9 @@ function handlePlanRequestChanges(
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="medium" bold>
-										{{ getToolLabel(chunk.item.toolCall.toolName, chunk.item.toolCall.args) }}
+										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
-									<ConfirmationPreview>{{
-										chunk.item.toolCall.confirmation.message
-									}}</ConfirmationPreview>
+									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
 								</div>
 
 								<ApprovalOptionList

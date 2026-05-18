@@ -332,7 +332,7 @@ async function handleDelete(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			message: `Archive workflow "${workflowName}" (ID: ${input.workflowId})? This will deactivate it if needed and can be undone later.`,
+			message: `Archive "${workflowName}" (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -365,7 +365,7 @@ async function handleUnarchive(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			message: `Restore archived workflow "${workflowName}" (ID: ${input.workflowId})? This will make it visible again but will not publish it.`,
+			message: `Restore "${workflowName}" (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -618,8 +618,8 @@ async function handlePublish(
 		const suspension = await suspend?.({
 			requestId: nanoid(),
 			message: input.versionId
-				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`
-				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`,
+				? `Publish version "${input.versionId}" of "${workflowName}" (ID: ${input.workflowId})${dependencyNote}`
+				: `Publish "${workflowName}" (ID: ${input.workflowId})${dependencyNote}`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -766,7 +766,7 @@ async function handleUnpublish(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			message: `Unpublish workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			message: `Unpublish "${workflowName}" (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -831,7 +831,7 @@ async function handleRestoreVersion(
 
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			message: `Restore workflow to version ${versionLabel}? This will overwrite the current draft.`,
+			message: `Restore to version ${versionLabel}`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -878,7 +878,7 @@ async function handleUpdateVersion(
 
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Update workflow version "${input.versionId}" — set ${summary}?`,
+			message: `Update version "${input.versionId}" — set ${summary}`,
 			severity: 'info' as const,
 		});
 		return { success: false };

@@ -286,11 +286,11 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create data table "${input.name}"?`;
+		let message = `Create "${input.name}"`;
 		if (input.projectId) {
 			const project = await context.workspaceService?.getProject?.(input.projectId);
 			const projectLabel = project?.name ?? input.projectId;
-			message = `Create data table "${input.name}" in project "${projectLabel}"?`;
+			message = `Create "${input.name}" in project "${projectLabel}"`;
 		}
 		await suspend?.({
 			requestId: nanoid(),
@@ -342,7 +342,7 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete data table "${input.dataTableId}"? This will permanently remove the table and all its data.`,
+			message: `Delete "${input.dataTableId}"`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };
@@ -376,7 +376,7 @@ async function handleAddColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Add column "${input.columnName}" (${input.type}) to data table "${input.dataTableId}"?`,
+			message: `Add "${input.columnName}" (${input.type}) to "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -414,7 +414,7 @@ async function handleDeleteColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete column "${input.columnId}" from data table "${input.dataTableId}"? All data in this column will be permanently lost.`,
+			message: `Delete "${input.columnId}" from "${input.dataTableId}"`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };
@@ -450,7 +450,7 @@ async function handleRenameColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Rename column "${input.columnId}" to "${input.newName}" in data table "${input.dataTableId}"?`,
+			message: `Rename "${input.columnId}" to "${input.newName}" in "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return { success: false };
@@ -486,7 +486,7 @@ async function handleInsertRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Insert ${input.rows.length} row(s) into data table "${input.dataTableId}"?`,
+			message: `Insert ${input.rows.length} row(s) into "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -521,7 +521,7 @@ async function handleUpdateRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Update rows in data table "${input.dataTableId}"?`,
+			message: `Update rows in "${input.dataTableId}"`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -565,7 +565,7 @@ async function handleDeleteRows(
 			.join(` ${input.filter.type} `);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete rows where ${filterDesc}? This cannot be undone.`,
+			message: `Delete rows where ${filterDesc}`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };

@@ -254,7 +254,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Create data table "Contacts"?',
+					message: 'Create "Contacts"',
 					severity: 'info',
 				}),
 			);
@@ -283,7 +283,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Create data table "Contacts" in project "My Project"?',
+					message: 'Create "Contacts" in project "My Project"',
 				}),
 			);
 		});
@@ -388,8 +388,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message:
-						'Delete data table "dt-1"? This will permanently remove the table and all its data.',
+					message: 'Delete "dt-1"',
 					severity: 'destructive',
 				}),
 			);
@@ -461,7 +460,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Add column "age" (number) to data table "dt-1"?',
+					message: 'Add "age" (number) to "dt-1"',
 					severity: 'warning',
 				}),
 			);
@@ -536,8 +535,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message:
-						'Delete column "col-1" from data table "dt-1"? All data in this column will be permanently lost.',
+					message: 'Delete "col-1" from "dt-1"',
 					severity: 'destructive',
 				}),
 			);
@@ -609,7 +607,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Rename column "col-1" to "full_name" in data table "dt-1"?',
+					message: 'Rename "col-1" to "full_name" in "dt-1"',
 					severity: 'warning',
 				}),
 			);
@@ -686,7 +684,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Insert 2 row(s) into data table "dt-1"?',
+					message: 'Insert 2 row(s) into "dt-1"',
 					severity: 'warning',
 				}),
 			);
@@ -787,7 +785,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Update rows in data table "dt-1"?',
+					message: 'Update rows in "dt-1"',
 					severity: 'warning',
 				}),
 			);
@@ -869,7 +867,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows where status eq inactive? This cannot be undone.',
+					message: 'Delete rows where status eq inactive',
 					severity: 'destructive',
 				}),
 			);
@@ -898,7 +896,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows where status eq inactive or age lt 18? This cannot be undone.',
+					message: 'Delete rows where status eq inactive or age lt 18',
 				}),
 			);
 		});
