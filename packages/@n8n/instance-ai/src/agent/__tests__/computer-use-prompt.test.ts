@@ -333,6 +333,12 @@ describe('getComputerUsePrompt', () => {
 			expect(browserPrompt()).toContain('same `credentialsKey`');
 		});
 
+		it('tells the agent to capture by ref instead of clicking a "show" reveal button', () => {
+			expect(browserPrompt()).toContain(
+				'directly capture the secret with the ref and don\'t click the "show" button',
+			);
+		});
+
 		it('is absent when browser is not available', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: false,

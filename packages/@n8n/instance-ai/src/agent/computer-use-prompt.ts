@@ -85,6 +85,7 @@ Canonical sequence:
    - \`{ "redactedKey": "[REDACTED:openai_api_key:1]" }\` — for secrets shown as text. Match the marker by its \`:type:\` slug and surrounding context to the field you want; do **not** grab the nearby "Copy" button's ref by mistake.
    - \`{ "ref": "e12" }\` — only for secrets inside an \`<input>\` you can address by snapshot ref.
    The captured value never reaches you; the response only confirms which \`field\` was captured.
+	 If the snapshot contains a ref and a "show" button for a secret field - directly capture the secret with the ref and don't click the "show" button
 3. **Create** the credential with \`browser_create_credential\`. Assemble the fields:
    - \`data\` — literal, non-secret fields (URLs, IDs and other data used in given credential type).
    - \`resolveData\` — same nested shape, but every leaf string is a \`field\` name captured in step 2. The server substitutes the real secret on creation.
