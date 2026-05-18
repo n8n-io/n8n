@@ -47,11 +47,11 @@ const browserCaptureSecretSchema = z
 			}),
 		]),
 	})
-
 	.describe(
 		'Capture a secret value from a DOM element into the session buffer. Call `browser_snapshot` with `{ "interactive": false }` before capturing to see secrets that are not inside interactive elements. ' +
 			'Pass element as `{ "ref": "e12" }` for interactive elements, or `{ "redactedKey": "[REDACTED:password:1]" }` for non-interactive elements',
 	);
+
 function browserCaptureSecret(
 	connection: BrowserConnection,
 ): ToolDefinition<typeof browserCaptureSecretSchema> {
