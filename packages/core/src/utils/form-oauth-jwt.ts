@@ -19,8 +19,12 @@ export const FORM_OAUTH_TEST_CALLBACK_PATH = '/oauth2-credential/test-form-callb
 
 export interface FormOauthStateJwtPayload {
 	nonce: string;
-	wf: string;
-	node: string;
+	/**
+	 * The form's own URL path (e.g. `/form/abc123` or `/form-test/abc123`),
+	 * captured when the OAuth flow started. The callback rewriter uses this to
+	 * route the IDP redirect back to the form's handler.
+	 */
+	path: string;
 }
 
 export interface FormOauthSessionJwtPayload {

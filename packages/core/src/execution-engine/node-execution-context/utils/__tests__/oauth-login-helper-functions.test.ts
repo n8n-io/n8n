@@ -101,8 +101,7 @@ describe('getOauthLoginHelperFunctions', () => {
 		);
 
 		expect(verified).not.toBeNull();
-		expect(verified?.wf).toBe('wf-123');
-		expect(verified?.node).toBe('node-abc');
+		expect(verified?.path).toBe('/form/my-path');
 		expect(verified?.iss).toBe(FORM_OAUTH_ISSUER);
 		expect(verified?.nonce).toMatch(/^[0-9a-f]{32}$/);
 	});
@@ -142,7 +141,7 @@ describe('getOauthLoginHelperFunctions', () => {
 	describe('exchangeWebhookOauthCode', () => {
 		const buildValidState = () =>
 			signFormOauthJwt<FormOauthStateJwtPayload>(
-				{ nonce: 'a'.repeat(32), wf: 'wf-123', node: 'node-abc' },
+				{ nonce: 'a'.repeat(32), path: '/form/my-path' },
 				HMAC_SECRET,
 				60,
 			);
@@ -192,18 +191,6 @@ describe('getOauthLoginHelperFunctions', () => {
 			await expect(
 				helpers.exchangeWebhookOauthCode({ code: 'code-1', state: 'tampered.jwt.value' }),
 			).rejects.toThrow(/state is invalid/);
-		});
-
-		it('throws when state JWT references a different workflow', async () => {
-			const wrongState = signFormOauthJwt<FormOauthStateJwtPayload>(
-				{ nonce: 'a'.repeat(32), wf: 'someone-elses-wf', node: 'node-abc' },
-				HMAC_SECRET,
-				60,
-			);
-			const helpers = getOauthLoginHelperFunctions(workflow, formNode, additionalData);
-			await expect(
-				helpers.exchangeWebhookOauthCode({ code: 'code-1', state: wrongState }),
-			).rejects.toThrow(/does not match this form/);
 		});
 
 		it('throws when token exchange fails', async () => {

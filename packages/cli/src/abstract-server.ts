@@ -239,14 +239,12 @@ export abstract class AbstractServer {
 		if (this.webhooksEnabled) {
 			const liveWebhooks = Container.get(LiveWebhooks);
 
-			const oauthFormCallbackRewriter = Container.get(OauthFormCallbackRewriter);
-
 			// Register a handler for live forms. The same handler is also mounted at the
 			// stable OAuth callback URL — the rewriter middleware translates that to a
 			// form URL before the handler runs. See `OauthFormCallbackRewriter`.
 			this.app.all(
 				[`/${this.endpointForm}/*path`, `/${this.restEndpoint}/oauth2-credential/form-callback`],
-				oauthFormCallbackRewriter.middleware,
+				Container.get(OauthFormCallbackRewriter).middleware,
 				createWebhookHandlerFor(liveWebhooks, 'form'),
 			);
 

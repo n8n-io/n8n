@@ -76,10 +76,10 @@ function buildStaticCallbackUrl(additionalData: IWorkflowExecuteAdditionalData):
 
 	// Mode detection from the current request URL: form-test prefix => test mode;
 	// callback URL itself => check the path for the test-specific callback.
-	const originalUrl = req.originalUrl ?? '';
+	const pathname = new URL(req.originalUrl ?? '/', 'http://localhost').pathname;
 	const isTest =
-		originalUrl.startsWith(`/${endpoints.formTest}/`) ||
-		originalUrl.startsWith(`/${endpoints.rest}${FORM_OAUTH_TEST_CALLBACK_PATH}`);
+		pathname.startsWith(`/${endpoints.formTest}/`) ||
+		pathname === `/${endpoints.rest}${FORM_OAUTH_TEST_CALLBACK_PATH}`;
 
 	const callbackPath = isTest ? FORM_OAUTH_TEST_CALLBACK_PATH : FORM_OAUTH_PRODUCTION_CALLBACK_PATH;
 	return `${protocol}://${String(host ?? '')}/${endpoints.rest}${callbackPath}`;
@@ -124,8 +124,10 @@ export function getOauthLoginHelperFunctions(
 				throw new Error('OAuth login credential is missing required fields (clientId or authUrl)');
 			}
 
+			const req = additionalData.httpRequest;
+			const formPath = new URL(req?.originalUrl ?? '/', 'http://localhost').pathname;
 			const stateJwt = signFormOauthJwt<FormOauthStateJwtPayload>(
-				{ nonce: generateFormOauthNonce(), wf: workflow.id, node: node.id },
+				{ nonce: generateFormOauthNonce(), path: formPath },
 				signingSecret(),
 				FORM_OAUTH_STATE_JWT_EXPIRY_SEC,
 			);
@@ -144,9 +146,13 @@ export function getOauthLoginHelperFunctions(
 		},
 
 		async exchangeWebhookOauthCode({ code, state }) {
+			// The rewriter routed this request to the form URL stored in `state.path`,
+			// so by reaching this code we're necessarily on the form that state targets.
+			// Verifying the signature is enough; we don't need to cross-check wf / node
+			// because the path-routed context IS the binding.
 			const verified = verifyFormOauthJwt<FormOauthStateJwtPayload>(state, signingSecret());
-			if (!verified || verified.wf !== workflow.id || verified.node !== node.id) {
-				throw new Error('OAuth login state is invalid or does not match this form');
+			if (!verified) {
+				throw new Error('OAuth login state is invalid or has expired');
 			}
 
 			const decrypted = await decryptOauthCredential(node, additionalData);

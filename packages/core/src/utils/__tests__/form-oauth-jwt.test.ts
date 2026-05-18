@@ -15,8 +15,7 @@ const SECRET = 'test-secret-do-not-use-in-prod';
 
 const stateJwtPayload: FormOauthStateJwtPayload = {
 	nonce: 'a'.repeat(32),
-	wf: 'wf-123',
-	node: 'node-abc',
+	path: '/form/abc123',
 };
 
 const sessionJwtPayload: FormOauthSessionJwtPayload = {
@@ -32,8 +31,7 @@ describe('signFormOauthJwt / verifyFormOauthJwt', () => {
 
 		expect(decoded).not.toBeNull();
 		expect(decoded?.nonce).toBe(stateJwtPayload.nonce);
-		expect(decoded?.wf).toBe(stateJwtPayload.wf);
-		expect(decoded?.node).toBe(stateJwtPayload.node);
+		expect(decoded?.path).toBe(stateJwtPayload.path);
 	});
 
 	it('round-trips a session JWT', () => {
