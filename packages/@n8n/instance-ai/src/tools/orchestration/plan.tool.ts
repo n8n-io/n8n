@@ -3,6 +3,7 @@ import { taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { PlanValidationError } from '../../planned-tasks/planned-task-service';
 import type { OrchestrationContext, PlannedTask } from '../../types';
 
 const plannedTaskSchema = z.object({
@@ -174,17 +175,19 @@ export function createPlanTool(context: OrchestrationContext) {
 						},
 					);
 				} catch (error) {
-					// Validator rejections (missing deps, cycles, etc.) come back as plain
-					// Errors. Return them as a tool result so the LLM can re-call with a
-					// corrected task graph rather than the run being aborted.
-					const message = error instanceof Error ? error.message : String(error);
-					context.logger.warn('plan tool: createPlan rejected', {
+					// Surface only validator rejections back to the LLM as a tool result
+					// so it can re-call with a corrected graph. Storage failures, abort
+					// signals, and bugs propagate.
+					if (!(error instanceof PlanValidationError)) {
+						throw error;
+					}
+					context.logger.warn('plan tool: createPlan rejected by validator', {
 						threadId: context.threadId,
 						taskCount: input.tasks.length,
-						error: message,
+						error: error.message,
 					});
 					return {
-						result: `Error: ${message}. Revise the task graph and call this tool again.`,
+						result: `Error: ${error.message}. Revise the task graph and call this tool again.`,
 						taskCount: 0,
 					};
 				}
