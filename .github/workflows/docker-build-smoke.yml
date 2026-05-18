@@ -42,12 +42,13 @@ jobs:
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
 
-      - name: Verify n8n image starts
-        run: |
-          docker run --rm -d --name n8n-smoke-test n8nio/n8n:local
-          sleep 5
-          docker logs n8n-smoke-test 2>&1 | tail -20
-          docker stop n8n-smoke-test
+      - name: Smoke test against downstream invocations
+        # Reproduces the invocation patterns real consumers use against the
+        # n8n image (default entrypoint, n8n-cloud helm's `node /usr/local/bin/n8n`,
+        # FHS-direct `/usr/local/bin/n8n`). Catches base-image / Dockerfile
+        # changes that break those patterns at PR-time rather than in production.
+        # See scripts/smoke-n8n-image.mjs for the invocation matrix.
+        run: pnpm build:docker:smoke
 
   notify-on-failure:
     name: Notify on nightly smoke test failure
