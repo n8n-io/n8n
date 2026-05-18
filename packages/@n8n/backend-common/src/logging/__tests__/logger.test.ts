@@ -10,6 +10,26 @@ import winston from 'winston';
 
 import { Logger } from '../logger';
 
+const WINSTON_MESSAGE = Symbol.for('message');
+
+const spyOnConsoleTransport = () =>
+	jest.spyOn(winston.transports.Console.prototype, 'log').mockImplementation(() => {});
+
+const getLoggedMessage = (
+	consoleTransportSpy: ReturnType<typeof spyOnConsoleTransport>,
+	callIndex = consoleTransportSpy.mock.calls.length - 1,
+) => {
+	const info = consoleTransportSpy.mock.calls[callIndex]?.[0] as
+		| Record<symbol, unknown>
+		| undefined;
+	const output = info?.[WINSTON_MESSAGE];
+	if (typeof output !== 'string') {
+		fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+	}
+
+	return output;
+};
+
 describe('Logger', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -39,12 +59,12 @@ describe('Logger', () => {
 
 	describe('formats', () => {
 		afterEach(() => {
-			jest.resetAllMocks();
+			jest.restoreAllMocks();
 		});
 
 		test('log text, if `config.logging.format` is set to `text`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'text',
@@ -61,19 +81,14 @@ describe('Logger', () => {
 			logger.info(testMessage, testMetadata);
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			expect(consoleLogSpy).toHaveBeenCalledTimes(1);
 
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
-
-			expect(output).toEqual(`${testMessage}\n`);
+			expect(getLoggedMessage(consoleLogSpy)).toEqual(testMessage);
 		});
 
 		test('log json, if `config.logging.format` is set to `json`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -90,11 +105,8 @@ describe('Logger', () => {
 			logger.info(testMessage, testMetadata);
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalledTimes(1);
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+			const output = getLoggedMessage(consoleLogSpy);
 
 			expect(() => JSON.parse(output)).not.toThrow();
 			const parsedOutput = JSON.parse(output);
@@ -111,7 +123,7 @@ describe('Logger', () => {
 
 		test('apply scope filters, if `config.logging.format` is set to `json`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -131,12 +143,12 @@ describe('Logger', () => {
 			pushLogger.info(testMessage, testMetadata);
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			expect(consoleLogSpy).toHaveBeenCalledTimes(1);
 		});
 
 		test('log errors in metadata with stack trace, if `config.logging.format` is set to `json`', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -155,11 +167,8 @@ describe('Logger', () => {
 			logger.info(testMessage, testMetadata);
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalledTimes(1);
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+			const output = getLoggedMessage(consoleLogSpy);
 
 			expect(() => JSON.parse(output)).not.toThrow();
 			const parsedOutput = JSON.parse(output);
@@ -184,7 +193,7 @@ describe('Logger', () => {
 
 		test('do not recurse indefinitely when `cause` contains circular references', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -204,11 +213,8 @@ describe('Logger', () => {
 			logger.info(testMessage, testMetadata);
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalledTimes(1);
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+			const output = getLoggedMessage(consoleLogSpy);
 
 			expect(() => JSON.parse(output)).not.toThrow();
 			const parsedOutput = JSON.parse(output);
@@ -233,11 +239,11 @@ describe('Logger', () => {
 
 	describe('optional metadata fields', () => {
 		afterEach(() => {
-			jest.resetAllMocks();
+			jest.restoreAllMocks();
 		});
 
 		test('should include optional metadata fields in JSON output when defined', () => {
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -254,11 +260,8 @@ describe('Logger', () => {
 				projectName: 'Test Project',
 			});
 
-			expect(stdoutSpy).toHaveBeenCalledTimes(1);
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+			const output = getLoggedMessage(consoleLogSpy);
 
 			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
 			expect(parsedOutput.metadata).toMatchObject({
@@ -269,7 +272,7 @@ describe('Logger', () => {
 		});
 
 		test('should omit undefined metadata fields from JSON output', () => {
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -282,11 +285,8 @@ describe('Logger', () => {
 
 			logger.info('Workflow execution started', { workflowId: 'wf-1' });
 
-			expect(stdoutSpy).toHaveBeenCalledTimes(1);
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+			const output = getLoggedMessage(consoleLogSpy);
 
 			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
 			expect(parsedOutput.metadata.workflowId).toBe('wf-1');
@@ -513,13 +513,13 @@ describe('Logger', () => {
 		const ANSI_COLOR_PATTERN = /\x1b\[\d+m/g; // Pattern to match ANSI color escape codes
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			jest.restoreAllMocks();
 			delete process.env.NO_COLOR;
 		});
 
 		test('production debug logs default to no colors (NO_COLOR not set)', () => {
 			// ARRANGE
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json', // Use json format so we can check the format property directly
@@ -537,11 +537,8 @@ describe('Logger', () => {
 
 			// ASSERT
 			// If json format is used, uncolorize should be in the pipeline (as it's used in debugProdConsoleFormat)
-			expect(stdoutSpy).toHaveBeenCalled();
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalled();
+			const output = getLoggedMessage(consoleLogSpy);
 
 			// JSON logs should be parseable and not contain ANSI codes
 			expect(() => JSON.parse(output)).not.toThrow();
@@ -552,7 +549,7 @@ describe('Logger', () => {
 		test('NO_COLOR environment variable is respected and prevents colors', () => {
 			// ARRANGE
 			process.env.NO_COLOR = '1';
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json',
@@ -567,11 +564,8 @@ describe('Logger', () => {
 			logger.info('Test message with NO_COLOR', { key: 'value' });
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalled();
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalled();
+			const output = getLoggedMessage(consoleLogSpy);
 
 			// Should not contain ANSI color codes even with colorize in dev format
 			const hasAnsiCodes = ANSI_COLOR_PATTERN.test(output);
@@ -586,7 +580,7 @@ describe('Logger', () => {
 			// Note: This test inspects the actual formatter method signature
 			// We verify that when level is debug in production mode,
 			// the output doesn't include color codes
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					format: 'json', // Using json to ensure we test the basic behavior
@@ -604,11 +598,8 @@ describe('Logger', () => {
 			logger.debug(testMessage, testMetadata);
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalled();
-			const output = stdoutSpy.mock.lastCall?.[0];
-			if (typeof output !== 'string') {
-				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
-			}
+			expect(consoleLogSpy).toHaveBeenCalled();
+			const output = getLoggedMessage(consoleLogSpy);
 
 			// Verify output is valid JSON (our format configuration)
 			const parsed = JSON.parse(output) as { message: string; metadata: { operation: string } };
@@ -623,7 +614,7 @@ describe('Logger', () => {
 		test('logger format selection respects environment and level', () => {
 			// ARRANGE
 			// Create two loggers with different configurations
-			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const consoleLogSpy = spyOnConsoleTransport();
 
 			const infoProdConfig = mock<GlobalConfig>({
 				logging: {
@@ -651,15 +642,11 @@ describe('Logger', () => {
 			debugLogger.debug('Debug level message', { context: 'important' });
 
 			// ASSERT
-			expect(stdoutSpy).toHaveBeenCalledTimes(2);
+			expect(consoleLogSpy).toHaveBeenCalledTimes(2);
 
 			// Both outputs should be ANSI-free
-			const infoOutput = stdoutSpy.mock.calls[0]?.[0];
-			const debugOutput = stdoutSpy.mock.calls[1]?.[0];
-
-			if (typeof infoOutput !== 'string' || typeof debugOutput !== 'string') {
-				fail('expected both outputs to be strings');
-			}
+			const infoOutput = getLoggedMessage(consoleLogSpy, 0);
+			const debugOutput = getLoggedMessage(consoleLogSpy, 1);
 
 			expect(ANSI_COLOR_PATTERN.test(infoOutput)).toBe(false);
 			expect(ANSI_COLOR_PATTERN.test(debugOutput)).toBe(false);
