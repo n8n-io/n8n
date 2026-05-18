@@ -1328,4 +1328,198 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData).toEqual(existingContext);
 		});
 	});
+
+	describe('instance enforcement override', () => {
+		const makeRunData = (startNode: INode) =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [{ node: startNode, data: { main: [[{ json: {} }]] }, source: null }],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+		const workflow = mock<Workflow>({
+			id: 'test-workflow-id',
+			settings: { redactionPolicy: 'none' },
+		});
+		const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
+
+		it('should derive "non-manual" when enforced with production:true manual:false', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				redactionContext: { enforcement: { enforced: true, manual: false, production: true } },
+			});
+			const runExecutionData = makeRunData(startNode);
+
+			await establishExecutionContext(workflow, runExecutionData, additionalData, 'trigger');
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 1,
+				policy: 'non-manual',
+			});
+		});
+
+		it('should derive "all" when enforced with manual:true production:true', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				redactionContext: { enforcement: { enforced: true, manual: true, production: true } },
+			});
+			const runExecutionData = makeRunData(startNode);
+
+			await establishExecutionContext(workflow, runExecutionData, additionalData, 'trigger');
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 1,
+				policy: 'all',
+			});
+		});
+
+		it('should derive "manual-only" when enforced with manual:true production:false', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				redactionContext: { enforcement: { enforced: true, manual: true, production: false } },
+			});
+			const runExecutionData = makeRunData(startNode);
+
+			await establishExecutionContext(workflow, runExecutionData, additionalData, 'manual');
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 1,
+				policy: 'manual-only',
+			});
+		});
+
+		it('should derive "none" when enforced with manual:false production:false', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				redactionContext: { enforcement: { enforced: true, manual: false, production: false } },
+			});
+			const runExecutionData = makeRunData(startNode);
+
+			await establishExecutionContext(workflow, runExecutionData, additionalData, 'trigger');
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 1,
+				policy: 'none',
+			});
+		});
+
+		it('should fall through to workflow setting when enforced:false', async () => {
+			const workflowWithPolicy = mock<Workflow>({
+				id: 'test-workflow-id',
+				settings: { redactionPolicy: 'all' },
+			});
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				redactionContext: { enforcement: { enforced: false, manual: true, production: true } },
+			});
+			const runExecutionData = makeRunData(startNode);
+
+			await establishExecutionContext(
+				workflowWithPolicy,
+				runExecutionData,
+				additionalData,
+				'trigger',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 1,
+				policy: 'all',
+			});
+		});
+
+		it('should fall through to workflow setting when redactionContext is absent', async () => {
+			const workflowWithPolicy = mock<Workflow>({
+				id: 'test-workflow-id',
+				settings: { redactionPolicy: 'non-manual' },
+			});
+			// mockAdditionalData has no redactionContext set
+			const runExecutionData = makeRunData(startNode);
+
+			await establishExecutionContext(
+				workflowWithPolicy,
+				runExecutionData,
+				mockAdditionalData,
+				'trigger',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 1,
+				policy: 'non-manual',
+			});
+		});
+
+		it('should not re-evaluate when runtimeData already exists (resumed execution)', async () => {
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1234567890,
+				source: 'webhook',
+				redaction: { version: 1, policy: 'none' },
+			};
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				redactionContext: { enforcement: { enforced: true, manual: true, production: true } },
+			});
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					runtimeData: existingContext,
+				},
+			});
+
+			await establishExecutionContext(workflow, runExecutionData, additionalData, 'manual');
+
+			// Early return — pinned policy from the original execution is preserved
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 1,
+				policy: 'none',
+			});
+		});
+
+		it('should apply enforcement policy on child, independently of parent context policy', async () => {
+			const parentContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1000,
+				source: 'trigger',
+				redaction: { version: 1, policy: 'none' },
+				credentials: 'parent-credentials' as unknown as IExecutionContext['credentials'],
+			};
+			const childWorkflow = mock<Workflow>({
+				id: 'child-workflow-id',
+				settings: { redactionPolicy: 'none' },
+			});
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				redactionContext: { enforcement: { enforced: true, manual: false, production: true } },
+			});
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [{ node: startNode, data: { main: [[{ json: {} }]] }, source: null }],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+				parentExecution: {
+					executionId: 'parent-exec-id',
+					workflowId: 'parent-wf-id',
+					executionContext: parentContext,
+				},
+			});
+
+			await establishExecutionContext(childWorkflow, runExecutionData, additionalData, 'trigger');
+
+			const context = runExecutionData.executionData!.runtimeData!;
+			// Child enforcement wins over inherited parent policy
+			expect(context.redaction).toEqual({ version: 1, policy: 'non-manual' });
+			// Parent credentials still inherited
+			expect(context.credentials).toBe('parent-credentials');
+		});
+	});
 });
