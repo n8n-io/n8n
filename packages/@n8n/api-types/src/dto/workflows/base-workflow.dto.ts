@@ -1,7 +1,7 @@
 import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { containsNoHtml, NO_HTML_MESSAGE } from '../../utils/no-html';
+import { xssCheck } from '../../utils/xss-check';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
 
@@ -20,7 +20,7 @@ export const workflowNameSchema = z
 	.max(WORKFLOW_NAME_MAX_LENGTH, {
 		message: `Workflow name must be ${WORKFLOW_NAME_MAX_LENGTH} characters or less`,
 	})
-	.refine(containsNoHtml, { message: NO_HTML_MESSAGE });
+	.refine(xssCheck, { message: 'Potentially malicious string' });
 
 export const workflowDescriptionSchema = z.string().nullable();
 

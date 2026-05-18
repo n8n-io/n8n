@@ -1,6 +1,6 @@
-import { containsNoHtml } from '../no-html';
+import { xssCheck } from '../xss-check';
 
-describe('containsNoHtml', () => {
+describe('xssCheck', () => {
 	test.each([
 		'My Workflow',
 		'My Workflow 2024',
@@ -12,7 +12,7 @@ describe('containsNoHtml', () => {
 		'name/with/slashes',
 		'name (with) (parens)',
 	])('returns true for plain string %p', (value) => {
-		expect(containsNoHtml(value)).toBe(true);
+		expect(xssCheck(value)).toBe(true);
 	});
 
 	test.each([
@@ -28,10 +28,10 @@ describe('containsNoHtml', () => {
 		'7 > 3 is true',
 		'< not really a tag',
 	])('returns false for value containing HTML-significant characters %p', (value) => {
-		expect(containsNoHtml(value)).toBe(false);
+		expect(xssCheck(value)).toBe(false);
 	});
 
 	test('returns true for empty string', () => {
-		expect(containsNoHtml('')).toBe(true);
+		expect(xssCheck('')).toBe(true);
 	});
 });

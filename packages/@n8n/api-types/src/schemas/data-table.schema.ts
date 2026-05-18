@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { ListDataTableQueryDto } from '../dto';
-import { containsNoHtml, NO_HTML_MESSAGE } from '../utils/no-html';
+import { xssCheck } from '../utils/xss-check';
 
 export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
 
@@ -10,7 +10,7 @@ export const dataTableNameSchema = z
 	.trim()
 	.min(1)
 	.max(128)
-	.refine(containsNoHtml, { message: NO_HTML_MESSAGE });
+	.refine(xssCheck, { message: 'Potentially malicious string' });
 export const dataTableIdSchema = z
 	.string()
 	.max(36)
