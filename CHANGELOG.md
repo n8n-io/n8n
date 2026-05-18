@@ -1,3 +1,11 @@
+## [2.20.10](https://github.com/n8n-io/n8n/compare/n8n@2.20.9...n8n@2.20.10) (2026-05-18)
+
+
+### Bug Fixes
+
+* **core:** Resolve empty expressions to empty string in VM evaluator ([#30325](https://github.com/n8n-io/n8n/issues/30325)) ([505111e](https://github.com/n8n-io/n8n/commit/505111edf927c38f603d8a65ba1f7410cb469816))
+
+
 ## [2.20.9](https://github.com/n8n-io/n8n/compare/n8n@2.20.8...n8n@2.20.9) (2026-05-15)
 
 
