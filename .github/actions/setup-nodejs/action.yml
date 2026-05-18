@@ -69,11 +69,11 @@ runs:
         INSTALL_COMMAND: ${{ inputs.install-command }}
         SAFE_CHAIN_LOGGING: verbose
       run: |
-        $INSTALL_COMMAND
+        $INSTALL_COMMAND --reporter=append-only
       shell: bash
 
     - name: Configure Turborepo Cache
-      uses: rharkor/caching-for-turbo@0abc2381e688c4d2832f0665a68a01c6e82f0d6c # v2.3.11
+      uses: rharkor/caching-for-turbo@564b6d155a4aec5ada97411ba7f7956e4bac890a # v2.4.0
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}

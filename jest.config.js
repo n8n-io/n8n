@@ -31,7 +31,7 @@ const esmDependenciesRegex = `node_modules/(${esmDependenciesPattern})/.+\\.m?js
 
 /** @type {import('jest').Config} */
 const config = {
-	verbose: true,
+	verbose: false,
 	testEnvironment: 'node',
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
