@@ -1,6 +1,13 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
-import { agentSkillSchema } from '@n8n/api-types';
+import {
+	agentSkillSchema,
+	formatZodErrors,
+	RunnableAgentJsonConfigSchema,
+	tryParseConfigJson,
+	type AgentJsonConfig,
+	type ConfigValidationError,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -11,12 +18,6 @@ import { z } from 'zod';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import type { AgentJsonConfig, ConfigValidationError } from '../json-config/agent-json-config';
-import {
-	formatZodErrors,
-	RunnableAgentJsonConfigSchema,
-	tryParseConfigJson,
-} from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
 import {
