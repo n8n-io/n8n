@@ -47,6 +47,10 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	},
 }));
 
+vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
+	default: { template: '<div />' },
+}));
+
 vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 
