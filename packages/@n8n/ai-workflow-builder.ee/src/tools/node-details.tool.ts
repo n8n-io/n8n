@@ -1,17 +1,13 @@
 import { tool } from '@langchain/core/tools';
-import type { Logger } from '@n8n/backend-common';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { z } from 'zod';
-
-import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
-import type { NodeConfigurationEntry } from '@/types';
 import {
 	extractResourceOperations,
 	formatResourceOperationsForPrompt,
 	createResourceCacheKey,
 	type ResourceOperationInfo,
-} from '@/utils/resource-operation-extractor';
-import type { BuilderToolBase } from '@/utils/stream-processor';
+} from '@n8n/ai-utilities/node-catalog';
+import type { Logger } from '@n8n/backend-common';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
@@ -22,6 +18,10 @@ import type { NodeDetails } from '../types/nodes';
 import type { NodeDetailsOutput, WorkflowMetadata } from '../types/tools';
 import { getNodeConfigurationsFromTemplates } from './utils/node-configuration.utils';
 import { fetchWorkflowsFromTemplates } from './web/templates';
+
+import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
+import type { NodeConfigurationEntry } from '@/types';
+import type { BuilderToolBase } from '@/utils/stream-processor';
 
 /** Maximum number of example configurations to include */
 const MAX_NODE_EXAMPLES = 5;

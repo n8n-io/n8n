@@ -5,20 +5,12 @@
  */
 
 import { tool } from '@langchain/core/tools';
-import { z } from 'zod';
-
 import {
 	getNodeTypes,
 	type CodeBuilderGetToolOptions,
 	type NodeRequest,
 } from '@n8n/ai-utilities/node-catalog';
-
-export {
-	getNodeTypes,
-	isValidPathComponent,
-	validatePathWithinBase,
-} from '@n8n/ai-utilities/node-catalog';
-export type { NodeRequest, CodeBuilderGetToolOptions } from '@n8n/ai-utilities/node-catalog';
+import { z } from 'zod';
 
 /**
  * Create the simplified node get tool for code builder.

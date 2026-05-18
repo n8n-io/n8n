@@ -6,22 +6,12 @@
  */
 
 import { tool } from '@langchain/core/tools';
-import { z } from 'zod';
-
 import {
 	searchCodeBuilderNodes,
 	type CodeBuilderSearchToolOptions,
 	type NodeTypeParser,
 } from '@n8n/ai-utilities/node-catalog';
-
-export {
-	searchCodeBuilderNodes,
-	formatNodeResult,
-} from '@n8n/ai-utilities/node-catalog';
-export type {
-	CodeBuilderSearchResult,
-	CodeBuilderSearchToolOptions,
-} from '@n8n/ai-utilities/node-catalog';
+import { z } from 'zod';
 
 /**
  * Create the simplified node search tool for code builder.
