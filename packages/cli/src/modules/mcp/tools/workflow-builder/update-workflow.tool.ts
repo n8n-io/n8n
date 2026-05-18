@@ -7,6 +7,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
@@ -16,6 +17,7 @@ import {
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
@@ -26,6 +28,38 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
+
+/**
+ * Build a map of touched node names to the opIndex of the first op that
+ * touched them, following renames so the final name in the post-apply workflow
+ * is the key. Used to scope data table validation to nodes the batch actually
+ * introduced or mutated.
+ */
+function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, number> {
+	const touched = new Map<string, number>();
+	const recordTouch = (name: string, opIndex: number) => {
+		if (!touched.has(name)) touched.set(name, opIndex);
+	};
+
+	for (let i = 0; i < operations.length; i++) {
+		const op = operations[i];
+		if (op.type === 'addNode') {
+			recordTouch(op.node.name, i);
+		} else if (op.type === 'updateNodeParameters' || op.type === 'setNodeParameter') {
+			recordTouch(op.nodeName, i);
+		} else if (op.type === 'renameNode') {
+			const idx = touched.get(op.oldName);
+			if (idx !== undefined) {
+				touched.delete(op.oldName);
+				touched.set(op.newName, idx);
+			}
+		} else if (op.type === 'removeNode') {
+			touched.delete(op.nodeName);
+		}
+	}
+
+	return touched;
+}
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
@@ -87,6 +121,7 @@ export const createUpdateWorkflowTool = (
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,
+	dataTableOps: DataTableUserOperations,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -146,6 +181,28 @@ export const createUpdateWorkflowTool = (
 				throw new Error(credentialCheck.error);
 			}
 
+			let workflowProjectId: string | undefined;
+			const getWorkflowProjectId = async () => {
+				if (workflowProjectId === undefined) {
+					const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({
+						where: { workflowId, role: 'workflow:owner' },
+						select: ['projectId'],
+					});
+					workflowProjectId = sharedWorkflow.projectId;
+				}
+				return workflowProjectId;
+			};
+
+			const dataTableCheck = await validateDataTableReferencesForUpdate(
+				result.workflow.nodes,
+				collectTouchedNodes(operations),
+				getWorkflowProjectId,
+				dataTableOps,
+			);
+			if (!dataTableCheck.ok) {
+				throw new Error(dataTableCheck.error);
+			}
+
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
@@ -173,17 +230,13 @@ export const createUpdateWorkflowTool = (
 			if (result.addedNodeNames.length > 0) {
 				const addedNodeSet = new Set(result.addedNodeNames);
 				const addedNodes = workflowUpdateData.nodes.filter((n) => addedNodeSet.has(n.name));
-				const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({
-					where: { workflowId, role: 'workflow:owner' },
-					select: ['projectId'],
-				});
 
 				const autoAssign = await autoPopulateNodeCredentials(
 					{ ...workflowUpdateData, nodes: addedNodes },
 					user,
 					nodeTypes,
 					credentialsService,
-					sharedWorkflow.projectId,
+					await getWorkflowProjectId(),
 				);
 				credentialAssignments = autoAssign.assignments;
 				skippedHttpNodes = autoAssign.skippedHttpNodes;
