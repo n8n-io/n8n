@@ -42,19 +42,10 @@ jobs:
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
 
-      - name: Install helm (for cloud chart smoke)
-        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
 
       - name: Smoke test against downstream invocations
-        # Pulls n8n-cloud's helm chart at runtime, renders it, and execs the
-        # built image with the actual container spec from cloud's manifest —
-        # catches the class of regression where alpine/DHI changes break
-        # cloud's `node /usr/local/bin/n8n` invocation. Also runs hardcoded
-        # contract checks (default entrypoint, FHS-direct binary path).
-        # See scripts/smoke-n8n-image.mjs.
         env:
-          # gh CLI uses GH_TOKEN for clone auth against the private n8n-cloud repo.
-          # Token must have Contents:Read on n8n-io/n8n-cloud.
           GH_TOKEN: ${{ secrets.N8N_CLOUD_READ_TOKEN }}
         run: pnpm build:docker:smoke
 
