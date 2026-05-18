@@ -5,7 +5,7 @@ import { SsrfProtectionConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../ssrf-pr
 describe('SsrfProtectionConfig', () => {
 	beforeEach(() => {
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
@@ -133,7 +133,7 @@ describe('SsrfProtectionConfig', () => {
 		});
 
 		test('falls back to default for invalid dnsCacheMaxSize', () => {
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation();
 
 			process.env = { N8N_SSRF_DNS_CACHE_MAX_SIZE: 'invalid' };
 			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxSize).toBe(1048576);

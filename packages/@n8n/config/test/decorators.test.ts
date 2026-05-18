@@ -3,8 +3,8 @@ import fs from 'fs';
 
 import { Config, Env } from '../src/decorators';
 
-jest.mock('fs');
-const mockFs = jest.mocked(fs);
+vi.mock('fs');
+const mockFs = vi.mocked(fs);
 
 describe('decorators', () => {
 	const originalEnv = process.env;
@@ -12,7 +12,7 @@ describe('decorators', () => {
 	beforeEach(() => {
 		Container.reset();
 		process.env = {};
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
@@ -52,7 +52,7 @@ describe('decorators', () => {
 		const filePath = '/path/to/secret';
 		process.env.TEST_VALUE_FILE = filePath;
 		mockFs.readFileSync.mockReturnValueOnce('secret-value\n');
-		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation();
 
 		@Config
 		class TestConfig {
