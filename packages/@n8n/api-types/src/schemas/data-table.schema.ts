@@ -1,10 +1,16 @@
 import { z } from 'zod';
 
 import type { ListDataTableQueryDto } from '../dto';
+import { containsNoHtml, NO_HTML_MESSAGE } from '../utils/no-html';
 
 export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
 
-export const dataTableNameSchema = z.string().trim().min(1).max(128);
+export const dataTableNameSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.max(128)
+	.refine(containsNoHtml, { message: NO_HTML_MESSAGE });
 export const dataTableIdSchema = z
 	.string()
 	.max(36)

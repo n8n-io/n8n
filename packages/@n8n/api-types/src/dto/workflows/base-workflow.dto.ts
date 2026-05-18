@@ -1,6 +1,8 @@
 import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { containsNoHtml, NO_HTML_MESSAGE } from '../../utils/no-html';
+
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
 
 /** Maximum allowed size for pinned data in bytes (12 MB) */
@@ -17,7 +19,8 @@ export const workflowNameSchema = z
 	.min(1, { message: 'Workflow name is required' })
 	.max(WORKFLOW_NAME_MAX_LENGTH, {
 		message: `Workflow name must be ${WORKFLOW_NAME_MAX_LENGTH} characters or less`,
-	});
+	})
+	.refine(containsNoHtml, { message: NO_HTML_MESSAGE });
 
 export const workflowDescriptionSchema = z.string().nullable();
 

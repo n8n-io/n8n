@@ -438,6 +438,7 @@ export {
 } from './schemas/eval-collections.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+export { containsNoHtml, NO_HTML_MESSAGE } from './utils/no-html';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
