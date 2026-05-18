@@ -27,26 +27,29 @@ interface InsertSuggestionPayload {
 	position: number;
 }
 
+interface CycleSuggestionsPayload {
+	visibleSuggestionIds: string[];
+	cycleCount: number;
+}
+
 const emit = defineEmits<{
 	'preview-change': [promptKey: BaseTextKey | null];
 	'insert-suggestion': [payload: InsertSuggestionPayload];
+	'cycle-suggestions': [payload: CycleSuggestionsPayload];
 }>();
 
 const i18n = useI18n();
 const startIndex = ref(0);
+const cycleCount = ref(0);
 let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
 const canCycleSuggestions = computed(() => props.suggestions.length > VISIBLE_SUGGESTION_COUNT);
-const visibleSuggestions = computed(() => {
-	if (!canCycleSuggestions.value) {
-		return props.suggestions;
-	}
-
+function getVisibleSuggestionsFromIndex(index: number) {
 	const nextSuggestions: InstanceAiPromptSuggestionV2[] = [];
 
 	for (let offset = 0; offset < VISIBLE_SUGGESTION_COUNT; offset++) {
-		const index = (startIndex.value + offset) % props.suggestions.length;
-		const suggestion = props.suggestions[index];
+		const suggestionIndex = (index + offset) % props.suggestions.length;
+		const suggestion = props.suggestions[suggestionIndex];
 
 		if (suggestion) {
 			nextSuggestions.push(suggestion);
@@ -54,6 +57,14 @@ const visibleSuggestions = computed(() => {
 	}
 
 	return nextSuggestions;
+}
+
+const visibleSuggestions = computed(() => {
+	if (!canCycleSuggestions.value) {
+		return props.suggestions;
+	}
+
+	return getVisibleSuggestionsFromIndex(startIndex.value);
 });
 const visibleSuggestionButtonCount = computed(
 	() => visibleSuggestions.value.length + (canCycleSuggestions.value ? 1 : 0),
@@ -134,7 +145,15 @@ function cycleSuggestions() {
 	}
 
 	clearPreview();
-	startIndex.value = (startIndex.value + VISIBLE_SUGGESTION_COUNT) % props.suggestions.length;
+	const nextStartIndex = (startIndex.value + VISIBLE_SUGGESTION_COUNT) % props.suggestions.length;
+	const nextVisibleSuggestions = getVisibleSuggestionsFromIndex(nextStartIndex);
+	cycleCount.value += 1;
+	startIndex.value = nextStartIndex;
+
+	emit('cycle-suggestions', {
+		visibleSuggestionIds: nextVisibleSuggestions.map((suggestion) => suggestion.id),
+		cycleCount: cycleCount.value,
+	});
 }
 
 onUnmounted(clearHoverTimer);

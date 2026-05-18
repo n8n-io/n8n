@@ -142,6 +142,53 @@ describe('InstanceAiPromptSuggestionsV2', () => {
 		).toEqual(['Build a workflow', 'Build an agent', 'Find inspiration', 'Track competitor news']);
 	});
 
+	it('emits cycle telemetry with the newly visible suggestion ids and cycle count', async () => {
+		const { emitted, getByLabelText } = renderComponent();
+
+		await fireEvent.click(getByLabelText('Show more prompt suggestions'));
+
+		expect(emitted()['cycle-suggestions']).toEqual([
+			[
+				{
+					visibleSuggestionIds: [
+						'automate-inbox',
+						'answer-support-requests',
+						'answer-questions',
+						'monitor-inventory',
+					],
+					cycleCount: 1,
+				},
+			],
+		]);
+
+		await fireEvent.click(getByLabelText('Show more prompt suggestions'));
+
+		expect(emitted()['cycle-suggestions']).toEqual([
+			[
+				{
+					visibleSuggestionIds: [
+						'automate-inbox',
+						'answer-support-requests',
+						'answer-questions',
+						'monitor-inventory',
+					],
+					cycleCount: 1,
+				},
+			],
+			[
+				{
+					visibleSuggestionIds: [
+						'build-workflow',
+						'build-agent',
+						'find-automation-ideas',
+						'monitor-competitors',
+					],
+					cycleCount: 2,
+				},
+			],
+		]);
+	});
+
 	it('emits preview changes on focus and delayed hover, then clears on blur, leave, cycle, and insert', async () => {
 		const { emitted, getByLabelText, getByTestId } = renderComponent();
 

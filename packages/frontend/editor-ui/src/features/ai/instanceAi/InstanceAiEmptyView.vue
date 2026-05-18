@@ -28,6 +28,7 @@ import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
 const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.emptyState.title';
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY: BaseTextKey =
@@ -45,6 +46,7 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
 		return {};

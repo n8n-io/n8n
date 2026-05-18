@@ -20,6 +20,15 @@ type SuggestionSelectionPayload = {
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
 };
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+type SelectedSuggestionDraft = SuggestionSelectionPayload & {
+	originalPrompt: string;
+};
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+type SuggestionsCyclePayload = {
+	visibleSuggestionIds: string[];
+	cycleCount: number;
+};
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 
 const props = withDefaults(
@@ -32,6 +41,7 @@ const props = withDefaults(
 		contextualSuggestion?: string | null;
 		researchMode: boolean;
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
 		placeholderKey?: BaseTextKey;
@@ -58,6 +68,8 @@ const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 const previewPromptKey = ref<BaseTextKey | null>(null);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
 defineExpose({
 	focus: () => chatInputRef.value?.focus(),
@@ -83,9 +95,8 @@ const resolvedSuggestionsComponent = computed(
 const resolvedSuggestionCatalogVersion = computed(
 	() => props.suggestionCatalogVersion ?? INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
 );
-const visibleSuggestionThreadId = computed(() =>
-	canShowSuggestions.value ? props.currentThreadId : null,
-);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
@@ -106,11 +117,11 @@ const placeholder = computed(() => {
 });
 
 watch(
-	[visibleSuggestionThreadId, resolvedSuggestionCatalogVersion],
-	([threadId, suggestionCatalogVersion]) => {
-		if (threadId) {
+	[shouldTrackVisibleSuggestions, resolvedSuggestionCatalogVersion, () => props.currentThreadId],
+	([shouldTrackSuggestions, suggestionCatalogVersion, threadId]) => {
+		if (shouldTrackSuggestions) {
 			promptSuggestionsTelemetry.trackSuggestionsShown({
-				threadId,
+				threadId: threadId || undefined,
 				researchMode: props.researchMode,
 				suggestionCatalogVersion,
 			});
@@ -121,6 +132,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+watch(inputText, (text) => {
+	if (text.length === 0) {
+		selectedSuggestionDraft.value = null;
+	}
+});
 
 function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
 	previewPromptKey.value = null;
@@ -141,6 +159,7 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 		return;
 	}
 
+	trackSelectedSuggestionSubmitted(message);
 	emitSubmittedMessage(message, attachments);
 	resetDraftComposer();
 }
@@ -187,10 +206,26 @@ function handleFileRemove(file: File) {
 
 function getTelemetryContext() {
 	return {
-		threadId: props.currentThreadId,
+		threadId: props.currentThreadId || undefined,
 		researchMode: props.researchMode,
 		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
 	};
+}
+
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+function trackSelectedSuggestionSubmitted(message: string) {
+	const selectedSuggestion = selectedSuggestionDraft.value;
+	if (!selectedSuggestion) {
+		return;
+	}
+
+	promptSuggestionsTelemetry.trackSuggestionSubmitted({
+		...getTelemetryContext(),
+		suggestionId: selectedSuggestion.suggestionId,
+		suggestionKind: selectedSuggestion.suggestionKind,
+		position: selectedSuggestion.position,
+		promptModified: message !== selectedSuggestion.originalPrompt,
+	});
 }
 
 function handleQuickExamplesOpened(payload: { suggestionId: string; position: number }) {
@@ -214,15 +249,31 @@ function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 	});
 }
 
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
+	promptSuggestionsTelemetry.trackSuggestionsCycled({
+		researchMode: props.researchMode,
+		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
+		visibleSuggestionIds: payload.visibleSuggestionIds,
+		cycleCount: payload.cycleCount,
+	});
+}
+
 function handleSuggestionSubmit(payload: SuggestionSelectionPayload) {
 	trackSuggestionSelected(payload);
 	submitComposerMessage(i18n.baseText(payload.promptKey));
 }
 
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 	trackSuggestionSelected(payload);
 	previewPromptKey.value = null;
-	inputText.value = i18n.baseText(payload.promptKey);
+	const prompt = i18n.baseText(payload.promptKey);
+	selectedSuggestionDraft.value = {
+		...payload,
+		originalPrompt: prompt,
+	};
+	inputText.value = prompt;
 
 	await nextTick();
 	chatInputRef.value?.focus();
@@ -298,6 +349,7 @@ const resizable = computed(() => {
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
+				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
 				@submit-suggestion="handleSuggestionSubmit"
 			/>

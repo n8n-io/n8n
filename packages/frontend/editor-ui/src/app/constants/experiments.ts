@@ -97,6 +97,7 @@ export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_build
 export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 	'082_instance_ai_proactive_agent',
 );
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
 );
