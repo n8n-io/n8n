@@ -1,7 +1,6 @@
 import path from 'path';
-import { writeFileSync, existsSync, mkdirSync, rmSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
 import shell from 'shelljs';
 import { rawTimeZones } from '@vvo/tzdb';
 import glob from 'fast-glob';
@@ -18,7 +17,6 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
-generateBuildInfo();
 await buildAgentLibraryBundle();
 
 if (publicApiEnabled) {
@@ -85,34 +83,4 @@ function generateTimezoneData() {
 		return acc;
 	}, {});
 	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
-}
-
-function generateBuildInfo() {
-	const buildInfoPath = path.resolve(ROOT_DIR, 'dist/build-info.json');
-
-	if (process.env.N8N_INCLUDE_BUILD_INFO !== 'true') {
-		if (existsSync(buildInfoPath)) rmSync(buildInfoPath);
-		return;
-	}
-
-	const git = (args) =>
-		execSync(`git ${args}`, { cwd: ROOT_DIR, stdio: ['ignore', 'pipe', 'ignore'] })
-			.toString()
-			.trim();
-
-	try {
-		const commitHash = process.env.N8N_BUILD_COMMIT_HASH || git('rev-parse --short HEAD');
-		const branch = process.env.N8N_BUILD_BRANCH || git('rev-parse --abbrev-ref HEAD');
-		const buildDate = process.env.N8N_BUILD_DATE || new Date().toISOString();
-
-		const distDir = path.resolve(ROOT_DIR, 'dist');
-		if (!existsSync(distDir)) mkdirSync(distDir, { recursive: true });
-		writeFileSync(buildInfoPath, JSON.stringify({ commitHash, branch, buildDate }));
-	} catch (error) {
-		console.warn(
-			'[build-info] N8N_INCLUDE_BUILD_INFO=true but git metadata could not be read; skipping.',
-			error.message,
-		);
-		if (existsSync(buildInfoPath)) rmSync(buildInfoPath);
-	}
 }

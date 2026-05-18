@@ -100,9 +100,6 @@ jobs:
         env:
           RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          N8N_INCLUDE_BUILD_INFO: ${{ (needs.determine-build-context.outputs.release_type == 'dev' || needs.determine-build-context.outputs.release_type == 'branch') && 'true' || '' }}
-          N8N_BUILD_COMMIT_HASH: ${{ github.sha }}
-          N8N_BUILD_BRANCH: ${{ github.ref_name }}
 
       - name: Determine Docker tags for all images
         id: determine-tags
@@ -128,6 +125,10 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Compute build date
+        id: build-date
+        run: echo "value=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push n8n Docker image
         id: build-n8n
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
@@ -138,6 +139,10 @@ jobs:
             NODE_VERSION=${{ env.NODE_VERSION }}
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+            N8N_INCLUDE_BUILD_INFO=${{ (needs.determine-build-context.outputs.release_type == 'dev' || needs.determine-build-context.outputs.release_type == 'branch') && 'true' || '' }}
+            N8N_BUILD_COMMIT_HASH=${{ github.sha }}
+            N8N_BUILD_BRANCH=${{ github.ref_name }}
+            N8N_BUILD_DATE=${{ steps.build-date.outputs.value }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true

@@ -40,11 +40,12 @@ export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 type BuildInfo = { commitHash: string; branch: string; buildDate: string };
 
 function readBuildInfo(): BuildInfo | undefined {
-	try {
-		return jsonParse<BuildInfo>(readFileSync(join(CLI_DIR, 'dist', 'build-info.json'), 'utf8'));
-	} catch {
-		return undefined;
-	}
+	if (process.env.N8N_INCLUDE_BUILD_INFO !== 'true') return undefined;
+	return {
+		commitHash: process.env.N8N_BUILD_COMMIT_HASH ?? '',
+		branch: process.env.N8N_BUILD_BRANCH ?? '',
+		buildDate: process.env.N8N_BUILD_DATE ?? '',
+	};
 }
 
 export const BUILD_INFO = readBuildInfo();
