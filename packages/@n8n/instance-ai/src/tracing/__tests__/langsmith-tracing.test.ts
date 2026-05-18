@@ -591,6 +591,47 @@ describe('createInstanceAiTraceContext', () => {
 		);
 	});
 
+	it('keeps useful nested tool output fields while redacting secrets', () => {
+		const span = {
+			attributes: {
+				'langsmith.span.kind': 'tool',
+				'ai.toolCall.result': JSON.stringify({
+					results: [
+						{
+							suggestedNodes: [
+								{
+									name: 'n8n-nodes-base.slack',
+									displayName: 'Slack',
+									credentials: { apiKey: 'secret-key' },
+									defaults: {
+										options: {
+											nested: {
+												value: 'kept',
+											},
+										},
+									},
+								},
+							],
+						},
+					],
+				}),
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+		const result = jsonParse<Record<string, unknown>>(
+			redacted.attributes['ai.toolCall.result'] as string,
+		);
+		const serializedResult = JSON.stringify(result);
+
+		expect(serializedResult).toContain('n8n-nodes-base.slack');
+		expect(serializedResult).toContain('kept');
+		expect(serializedResult).not.toContain('secret-key');
+		expect(serializedResult).not.toContain('[redacted-depth-limit]');
+	});
+
 	it('moves counted usage attributes off non-LLM spans', () => {
 		const span = {
 			attributes: {

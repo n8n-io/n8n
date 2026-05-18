@@ -7,6 +7,7 @@ import { isRecord } from '../utils/stream-helpers';
 
 const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
+const MAX_TOOL_IO_TRACE_DEPTH = 8;
 const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
@@ -151,15 +152,24 @@ function redactTelemetryJsonValue(
 	return sanitizeTraceValue(value);
 }
 
+function maxRedactionDepthForAttribute(key: string): number {
+	if (key === 'ai.prompt.messages' || key === GEN_AI_PROMPT) {
+		return MAX_PROMPT_SCHEMA_TRACE_DEPTH;
+	}
+
+	if (key === 'ai.toolCall.args' || key === 'ai.toolCall.result' || key === GEN_AI_COMPLETION) {
+		return MAX_TOOL_IO_TRACE_DEPTH;
+	}
+
+	return MAX_TRACE_DEPTH;
+}
+
 function redactTelemetryAttribute(key: string, value: unknown): unknown {
 	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
 		return '[redacted]';
 	}
 
-	const maxDepth =
-		key === 'ai.prompt.messages' || key === GEN_AI_PROMPT
-			? MAX_PROMPT_SCHEMA_TRACE_DEPTH
-			: MAX_TRACE_DEPTH;
+	const maxDepth = maxRedactionDepthForAttribute(key);
 
 	if (typeof value !== 'string') {
 		return redactTelemetryJsonValue(value, key, 0, maxDepth);
