@@ -10,11 +10,13 @@ import type { FolderPathItem, FolderShortInfo } from '../folders.types';
 import type { IUser } from 'n8n-workflow';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
 import {
+	N8nBreadcrumbs,
 	N8nDropdownMenu,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
 	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
-
-import { N8nBreadcrumbs, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+} from '@n8n/design-system';
 
 type FolderBreadcrumbAction = UserAction<IUser> & {
 	children?: FolderBreadcrumbAction[];
