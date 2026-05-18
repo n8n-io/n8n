@@ -160,7 +160,6 @@
       "avsc": "5.7.9",
       "brace-expansion@<=2.1.0": "2.1.0",
       "@xmldom/xmldom": "0.8.13",
-      "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
       "axios": "1.16.0",
       "fast-xml-parser": "5.7.2",
@@ -170,7 +169,8 @@
       "fast-uri": "3.1.2",
       "protobufjs": "7.5.6",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
-      "@opentelemetry/sdk-node@<=0.217.0": "0.217.0"
+      "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
+      "langsmith": "0.6.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
