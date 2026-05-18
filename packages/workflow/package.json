@@ -55,7 +55,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/tournament": "workspace:*",
-    "ast-types": "0.16.1",
+    "ast-types": "catalog:",
     "callsites": "catalog:",
     "esprima-next": "catalog:",
     "form-data": "catalog:",

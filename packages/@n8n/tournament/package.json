@@ -52,7 +52,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "ast-types": "^0.16.1",
+    "ast-types": "catalog:",
     "esprima-next": "catalog:",
     "recast": "^0.22.0"
   }
