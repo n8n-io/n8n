@@ -88,8 +88,7 @@ describe('parseHtmlProbeResult', () => {
 		const result = parseHtmlProbeResult({
 			kind: 'document',
 			html: '<html></html>',
-			path: ['document', 1],
-			children: ['bad child', { kind: 'iframe', html: '<p>ok</p>', path: ['iframe:0'] }],
+			children: ['bad child', { kind: 'iframe', html: '<p>ok</p>' }],
 			errors: ['boom', 42],
 		});
 
@@ -99,13 +98,11 @@ describe('parseHtmlProbeResult', () => {
 				kind: 'document',
 				html: '<html></html>',
 				url: undefined,
-				path: ['document'],
 				children: [
 					{
 						kind: 'iframe',
 						html: '<p>ok</p>',
 						url: undefined,
-						path: ['iframe:0'],
 						children: [],
 						errors: [],
 					},

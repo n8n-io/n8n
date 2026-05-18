@@ -1,8 +1,5 @@
 import { JSDOM, VirtualConsole } from 'jsdom';
 
-import type { SecretHit } from '../redaction/redact';
-import { findRegexSecretHits } from '../redaction/redact';
-import type { HtmlProbeNode, HtmlProbeResult } from '../types';
 import {
 	COPY_BUTTON_PATTERN,
 	elementLabel,
@@ -16,18 +13,14 @@ import {
 	SENSITIVE_TESTID_PATTERN,
 	getTestId,
 } from './dom-matchers';
-
-export type SensitivitySource = 'regex' | 'dom-structure' | 'entropy';
-
-interface SensitivityHit extends SecretHit {
-	source: SensitivitySource;
-}
+import type { SecretHit } from '../redaction/redact';
+import { findRegexSecretHits } from '../redaction/redact';
+import type { HtmlProbeNode, HtmlProbeResult } from '../types';
 
 export interface SensitivityOk {
 	ok: true;
 	sensitive: boolean;
 	hits: SecretHit[];
-	sources: SensitivitySource[];
 }
 
 export interface SensitivityErr {
@@ -37,27 +30,27 @@ export interface SensitivityErr {
 
 export type SensitivityResult = SensitivityOk | SensitivityErr;
 
-function addHit(hits: Map<string, SensitivityHit>, hit: SensitivityHit): void {
+function addHit(hits: Map<string, SecretHit>, hit: SecretHit): void {
 	if (!hit.value) return;
 	// Deduplicate by replacement target. The same secret can appear in text,
 	// snapshot, and iframe/shadow copies during one probe.
 	hits.set(`${hit.type}:${hit.value}:${hit.ref ?? ''}`, hit);
 }
 
-function analyzeDocument(html: string, hits: Map<string, SensitivityHit>): void {
+function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { virtualConsole });
 	const { document } = dom.window;
 
 	const bodyText = document.documentElement.textContent ?? '';
-	for (const hit of findRegexSecretHits(bodyText)) addHit(hits, { ...hit, source: 'regex' });
+	for (const hit of findRegexSecretHits(bodyText)) addHit(hits, hit);
 
 	// Password-shaped inputs expose their values as attributes in the collected
 	// HTML. These do not need entropy to be considered sensitive.
 	for (const input of Array.from(document.querySelectorAll('input'))) {
 		if (!isSensitiveInput(input)) continue;
 		const value = input.getAttribute('value') ?? '';
-		if (value) addHit(hits, { type: 'password', value, source: 'dom-structure' });
+		if (value) addHit(hits, { type: 'password', value });
 	}
 
 	// Reveal dialogs are the high-risk flow: newly created credentials are often
@@ -69,11 +62,7 @@ function analyzeDocument(html: string, hits: Map<string, SensitivityHit>): void 
 		const hasCopyButton = hasButtonMatching(dialog, COPY_BUTTON_PATTERN);
 		if (!hasRevealPhrase && !hasCopyButton) continue;
 		for (const value of highEntropyCandidates(text)) {
-			addHit(hits, {
-				type: 'secret',
-				value,
-				source: hasRevealPhrase ? 'entropy' : 'dom-structure',
-			});
+			addHit(hits, { type: 'secret', value });
 		}
 	}
 
@@ -86,7 +75,7 @@ function analyzeDocument(html: string, hits: Map<string, SensitivityHit>): void 
 		if (!testId || !SENSITIVE_TESTID_PATTERN.test(testId)) continue;
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
 		for (const value of highEntropyCandidates(elementText(el))) {
-			addHit(hits, { type: 'secret', value, source: 'entropy' });
+			addHit(hits, { type: 'secret', value });
 		}
 	}
 
@@ -96,7 +85,7 @@ function analyzeDocument(html: string, hits: Map<string, SensitivityHit>): void 
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
 		if (!SENSITIVE_ARIA_LABEL_PATTERN.test(elementLabel(el, document))) continue;
 		for (const value of highEntropyCandidates(elementText(el))) {
-			addHit(hits, { type: 'secret', value, source: 'entropy' });
+			addHit(hits, { type: 'secret', value });
 		}
 	}
 
@@ -113,7 +102,7 @@ function analyzeDocument(html: string, hits: Map<string, SensitivityHit>): void 
 		if (!container || container.matches('[role="dialog"], dialog[open]')) continue;
 		if (!hasButtonMatching(container, REVEAL_BUTTON_PATTERN)) continue;
 		for (const value of highEntropyCandidates(elementText(container))) {
-			addHit(hits, { type: 'secret', value, source: 'entropy' });
+			addHit(hits, { type: 'secret', value });
 		}
 	}
 
@@ -134,27 +123,24 @@ function analyzeDocument(html: string, hits: Map<string, SensitivityHit>): void 
 		}
 		if (!confident) continue;
 		for (const value of highEntropyCandidates(elementText(code))) {
-			addHit(hits, { type: 'secret', value, source: 'entropy' });
+			addHit(hits, { type: 'secret', value });
 		}
 	}
 }
 
-function walkNode(node: HtmlProbeNode, hits: Map<string, SensitivityHit>): void {
+function walkNode(node: HtmlProbeNode, hits: Map<string, SecretHit>): void {
 	if (node.html) analyzeDocument(node.html, hits);
 	for (const child of node.children) walkNode(child, hits);
 }
 
 export function analyzeHtmlSensitivity(probe: HtmlProbeResult): SensitivityResult {
 	if (!probe.ok || !probe.root) return { ok: false, error: probe.error ?? 'HTML probe failed' };
-	const hits = new Map<string, SensitivityHit>();
+	const hits = new Map<string, SecretHit>();
 	walkNode(probe.root, hits);
 	const values = [...hits.values()];
 	return {
 		ok: true,
 		sensitive: values.length > 0,
-		// Replacement callers only need type/value/ref. Keep source as analyzer
-		// telemetry so the shared redaction contract stays small.
-		hits: values.map(({ source: _source, ...hit }) => hit),
-		sources: [...new Set(values.map((hit) => hit.source))],
+		hits: values,
 	};
 }

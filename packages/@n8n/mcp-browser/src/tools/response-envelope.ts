@@ -1,10 +1,10 @@
 import type { BrowserConnection } from '../connection';
+import type { ConnectedToolOptions } from './helpers';
 import { McpBrowserError } from '../errors';
 import { createLogger } from '../logger';
 import { applyRedactions } from '../redaction/redaction-applier';
 import { analyzeHtmlSensitivity, type SensitivityResult } from '../sensitivity/analyze-html';
 import type { CallToolResult, ConnectionState, ModalState } from '../types';
-import type { ConnectedToolOptions } from './helpers';
 
 const log = createLogger('response-envelope');
 

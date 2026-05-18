@@ -14,7 +14,6 @@ function probe(
 			kind: 'document',
 			html,
 			url: 'http://test.com',
-			path: ['document'],
 			children,
 			errors: [],
 		},
@@ -29,7 +28,6 @@ describe('analyzeHtmlSensitivity', () => {
 			type: 'anthropic_api_key',
 			value: ANTHROPIC,
 		});
-		expect(result.ok && result.sources).toContain('regex');
 	});
 
 	it('finds password input values structurally', () => {
@@ -38,7 +36,6 @@ describe('analyzeHtmlSensitivity', () => {
 			type: 'password',
 			value: 'hunter2',
 		});
-		expect(result.ok && result.sources).toContain('dom-structure');
 	});
 
 	it('finds sensitive test-id input values structurally', () => {
@@ -77,7 +74,6 @@ describe('analyzeHtmlSensitivity', () => {
 			type: 'secret',
 			value: OPAQUE,
 		});
-		expect(result.ok && result.sources).toContain('entropy');
 	});
 
 	it('walks same-origin iframe and shadow-root bundle children', () => {
@@ -87,7 +83,6 @@ describe('analyzeHtmlSensitivity', () => {
 					kind: 'iframe',
 					html: `<p>${ANTHROPIC}</p>`,
 					url: 'http://test.com/frame',
-					path: ['document', 'iframe:0'],
 					children: [],
 					errors: [],
 				},
@@ -95,7 +90,6 @@ describe('analyzeHtmlSensitivity', () => {
 					kind: 'shadow-root',
 					html: `<div role="dialog"><p>Copy this secret</p><code>${OPAQUE}</code></div>`,
 					url: 'http://test.com',
-					path: ['document', 'shadow:0'],
 					children: [],
 					errors: [],
 				},

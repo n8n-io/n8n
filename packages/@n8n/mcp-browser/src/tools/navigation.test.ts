@@ -219,7 +219,6 @@ describe('createNavigationTools', () => {
 				root: {
 					kind: 'document',
 					html: `<p>${secret}</p>`,
-					path: ['document'],
 					children: [],
 					errors: [],
 				},

@@ -171,7 +171,6 @@ export interface HtmlProbeNode {
 	kind: 'document' | 'iframe' | 'shadow-root';
 	html: string;
 	url?: string;
-	path: string[];
 	children: HtmlProbeNode[];
 	errors: string[];
 }

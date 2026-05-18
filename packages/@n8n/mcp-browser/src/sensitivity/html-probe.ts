@@ -6,7 +6,6 @@ interface RawHtmlProbeNode {
 	kind: HtmlProbeNode['kind'];
 	html?: unknown;
 	url?: unknown;
-	path?: unknown;
 	children?: unknown;
 	errors?: unknown;
 }
@@ -17,7 +16,6 @@ export function serializeHtmlProbe(): HtmlProbeNode {
 	function node(
 		kind: HtmlProbeNode['kind'],
 		root: Document | ShadowRoot,
-		path: string[],
 		url?: string,
 	): HtmlProbeNode {
 		const children: HtmlProbeNode[] = [];
@@ -26,11 +24,11 @@ export function serializeHtmlProbe(): HtmlProbeNode {
 
 		// outerHTML does not include open shadow roots, so collect them as
 		// explicit child documents for host-side analysis.
-		for (const [index, element] of Array.from(scope.querySelectorAll('*')).entries()) {
+		for (const element of Array.from(scope.querySelectorAll('*'))) {
 			const shadowRoot = (element as HTMLElement).shadowRoot;
 			if (shadowRoot) {
 				try {
-					children.push(node('shadow-root', shadowRoot, [...path, `shadow:${index}`], url));
+					children.push(node('shadow-root', shadowRoot, url));
 				} catch (error) {
 					errors.push(error instanceof Error ? error.message : String(error));
 				}
@@ -39,12 +37,10 @@ export function serializeHtmlProbe(): HtmlProbeNode {
 
 		// Same-origin iframes are readable from page JS. Cross-origin frames throw
 		// and are intentionally recorded as collection errors, not matched here.
-		for (const [index, frame] of Array.from(scope.querySelectorAll('iframe')).entries()) {
+		for (const frame of Array.from(scope.querySelectorAll('iframe'))) {
 			try {
 				if (frame.contentDocument?.documentElement) {
-					children.push(
-						node('iframe', frame.contentDocument, [...path, `iframe:${index}`], frame.src),
-					);
+					children.push(node('iframe', frame.contentDocument, frame.src));
 				}
 			} catch (error) {
 				errors.push(error instanceof Error ? error.message : String(error));
@@ -55,7 +51,6 @@ export function serializeHtmlProbe(): HtmlProbeNode {
 			kind,
 			html: serializeHtml(root),
 			url,
-			path,
 			children,
 			errors,
 		};
@@ -97,7 +92,7 @@ export function serializeHtmlProbe(): HtmlProbeNode {
 		}
 	}
 
-	return node('document', document, ['document'], document.location.href);
+	return node('document', document, document.location.href);
 }
 
 // Adapter implementations pass this fixed collector script to page.evaluate /
@@ -116,9 +111,6 @@ function parseNode(raw: unknown): HtmlProbeNode | undefined {
 		kind,
 		html: typeof input.html === 'string' ? input.html : '',
 		url: typeof input.url === 'string' ? input.url : undefined,
-		path: Array.isArray(input.path)
-			? input.path.filter((p): p is string => typeof p === 'string')
-			: [],
 		children: Array.isArray(input.children)
 			? input.children.flatMap((child) => {
 					const parsed = parseNode(child);

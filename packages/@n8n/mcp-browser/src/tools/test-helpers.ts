@@ -78,7 +78,6 @@ export function createMockAdapter() {
 				kind: 'document',
 				html: '<html><body><p>Hello world</p></body></html>',
 				url: 'http://test.com',
-				path: ['document'],
 				children: [],
 				errors: [],
 			},
