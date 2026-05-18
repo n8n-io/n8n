@@ -1,5 +1,4 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { generateText, streamText, Output } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -191,6 +190,20 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 20;
+
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+type AiSdk = Pick<typeof import('ai'), 'generateText' | 'streamText' | 'Output'>;
+
+let aiSdkPromise: Promise<AiSdk> | undefined;
+
+async function getAiSdk(): Promise<AiSdk> {
+	aiSdkPromise ??= import('ai').then(({ generateText, streamText, Output }) => ({
+		generateText,
+		streamText,
+		Output,
+	}));
+	return await aiSdkPromise;
+}
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -934,7 +947,7 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const staticLoopContext = this.buildStaticLoopContext({
+		const staticLoopContext = await this.buildStaticLoopContext({
 			...options,
 			persistence: options?.persistence,
 		});
@@ -984,6 +997,7 @@ export class AgentRuntime {
 		}
 
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const { generateText } = await getAiSdk();
 		for (let i = 0; i < maxIterations; i++) {
 			if (this.eventBus.isAborted) {
 				this.updateState({ status: 'cancelled' });
@@ -1171,6 +1185,7 @@ export class AgentRuntime {
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const { streamText } = await getAiSdk();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -1188,7 +1203,7 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const staticLoopContext = this.buildStaticLoopContext({
+		const staticLoopContext = await this.buildStaticLoopContext({
 			...options,
 			persistence: options?.persistence,
 		});
@@ -2012,9 +2027,10 @@ export class AgentRuntime {
 	}
 
 	/** Build run-stable LLM call dependencies shared by all iterations. */
-	private buildStaticLoopContext(
+	private async buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
+		const { Output } = await getAiSdk();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
 		return {
