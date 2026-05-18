@@ -126,7 +126,8 @@ describe('writeFileViaSandbox', () => {
 		const executeCommand = jest
 			.fn()
 			.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }) // mkdir
-			.mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'permission denied' }); // write
+			.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }) // temp file
+			.mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'permission denied' }); // append chunk
 		const workspace = createMockWorkspace({ executeCommand });
 
 		await expect(writeFileViaSandbox(workspace, '/home/user/test.ts', 'content')).rejects.toThrow(
@@ -144,13 +145,33 @@ describe('writeFileViaSandbox', () => {
 
 		await writeFileViaSandbox(workspace, 'test.ts', 'hello');
 
-		// Only one call (the base64 write), no mkdir
-		expect(executeCommand).toHaveBeenCalledTimes(1);
+		// Temp file, append chunk, decode. No mkdir.
+		expect(executeCommand).toHaveBeenCalledTimes(3);
 		expect(executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining('base64'),
 			[],
 			expect.objectContaining({}),
 		);
+	});
+
+	it('should split large content into multiple append commands', async () => {
+		const executeCommand = jest.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: '',
+			stderr: '',
+		});
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await writeFileViaSandbox(workspace, '/home/user/large.txt', 'x'.repeat(100_000));
+
+		const commands = (executeCommand.mock.calls as Array<[string, ...unknown[]]>).map(
+			([command]) => command,
+		);
+		const appendCommands = commands.filter((command) => command.startsWith("printf '%s'"));
+
+		expect(appendCommands.length).toBeGreaterThan(1);
+		expect(commands.every((command) => command.length < 40_000)).toBe(true);
+		expect(commands.some((command) => command.includes('| base64 -d >'))).toBe(false);
 	});
 });
 

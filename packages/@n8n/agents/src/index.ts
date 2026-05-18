@@ -28,6 +28,7 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
 	MemoryDescriptor,
 	ObservationCapableMemory,
 	TitleGenerationConfig,
@@ -54,6 +55,18 @@ export type {
 	ObservationalMemoryTrigger,
 	ObserveFn,
 	ScopeKind,
+	BuiltObservationLogStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	ObservationLogReadOptions,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogScopeKind,
+	ObservationLogStatus,
+	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
@@ -62,6 +75,11 @@ export {
 	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
 	OBSERVATION_CATEGORIES,
 	OBSERVATION_SCHEMA_VERSION,
+} from './types';
+export {
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
 } from './types';
 
 export { Tool, wrapToolForApproval } from './sdk/tool';
@@ -133,6 +151,29 @@ export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
+export {
+	parseObservationLogMarkdown,
+	renderObserverTranscript,
+	runObservationLogObserver,
+} from './runtime/observation-log-observer';
+export {
+	buildObservationLogObserverPrompt,
+	createObservationLogObserveFn,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from './runtime/observation-log-defaults';
+export type { CreateObservationLogObserveFnOptions } from './runtime/observation-log-defaults';
+export type {
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
+	ObservationLogObserverMemory,
+	ParsedObservationLogEntry,
+	ParseObservationLogMarkdownResult,
+	RenderObserverTranscriptOptions,
+	RunObservationLogObserverOpts,
+	RunObservationLogObserverResult,
+} from './runtime/observation-log-observer';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
