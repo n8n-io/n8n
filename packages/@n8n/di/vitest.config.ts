@@ -1,4 +1,4 @@
 import { mergeConfig } from 'vitest/config';
-import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
+import { createVitestConfig } from '@n8n/vitest-config/node';
 
-export default mergeConfig(createVitestConfigWithDecorators(), {});
+export default mergeConfig(createVitestConfig(), {});
