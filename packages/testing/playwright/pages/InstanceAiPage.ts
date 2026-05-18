@@ -25,6 +25,20 @@ export class InstanceAiPage extends BasePage {
 
 	async goto(): Promise<void> {
 		await this.page.goto('/instance-ai');
+		await this.enableInstanceAiIfPrompted();
+	}
+
+	async enableInstanceAiIfPrompted(): Promise<void> {
+		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try AI Assistant' });
+		try {
+			await dialog.waitFor({ state: 'visible', timeout: 3_000 });
+		} catch {
+			return;
+		}
+
+		await dialog.getByRole('button', { name: /Enable AI Assistant on this instance/ }).click();
+		await dialog.getByRole('button', { name: /^(Continue|Enable)$/ }).click();
+		await dialog.waitFor({ state: 'hidden' });
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
