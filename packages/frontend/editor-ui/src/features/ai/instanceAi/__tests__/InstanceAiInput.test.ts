@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { defineComponent, h, type Component, type PropType } from 'vue';
+import type { BaseTextKey } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 import {
@@ -23,6 +24,7 @@ type InputTestProps = {
 	suggestions?: typeof suggestions;
 	suggestionsComponent?: Component;
 	suggestionCatalogVersion?: string;
+	placeholderKey?: BaseTextKey;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -164,6 +166,19 @@ describe('InstanceAiInput', () => {
 		);
 		expect(getByTestId('instance-ai-suggestion-quick-examples')).toHaveTextContent(
 			'Quick examples',
+		);
+	});
+
+	it('uses a caller-provided base placeholder', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				placeholderKey: 'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute(
+			'placeholder',
+			'Tell me what to build or ask me a question',
 		);
 	});
 

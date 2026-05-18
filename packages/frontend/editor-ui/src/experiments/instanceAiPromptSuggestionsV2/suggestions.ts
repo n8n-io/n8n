@@ -14,10 +14,10 @@ export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION = 'v2';
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2 = [
 	{
 		type: 'prompt',
-		id: 'accounts-payable-agent',
+		id: 'process-invoices',
 		icon: 'circle-dollar-sign',
-		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.accountsPayableAgent.label',
-		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.accountsPayableAgent.prompt',
+		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.processInvoices.label',
+		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.processInvoices.prompt',
 	},
 	{
 		type: 'prompt',
@@ -56,10 +56,10 @@ export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2 = [
 	},
 	{
 		type: 'prompt',
-		id: 'customer-health-agent',
+		id: 'detect-at-risk-accounts',
 		icon: 'shield-user',
-		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.customerHealthAgent.label',
-		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.customerHealthAgent.prompt',
+		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.detectAtRiskAccounts.label',
+		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.detectAtRiskAccounts.prompt',
 	},
 	{
 		type: 'prompt',
@@ -77,10 +77,10 @@ export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2 = [
 	},
 	{
 		type: 'prompt',
-		id: 'market-watch-agent',
+		id: 'monitor-market-news',
 		icon: 'rss',
-		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.marketWatchAgent.label',
-		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.marketWatchAgent.prompt',
+		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.monitorMarketNews.label',
+		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.monitorMarketNews.prompt',
 	},
 	{
 		type: 'prompt',
@@ -91,9 +91,9 @@ export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2 = [
 	},
 	{
 		type: 'prompt',
-		id: 'process-attachments',
+		id: 'extract-data-from-emails',
 		icon: 'paperclip',
-		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.processAttachments.label',
-		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.processAttachments.prompt',
+		labelKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.extractDataFromEmails.label',
+		promptKey: 'experiments.instanceAiPromptSuggestionsV2.suggestions.extractDataFromEmails.prompt',
 	},
 ] satisfies readonly InstanceAiPromptSuggestionV2[];

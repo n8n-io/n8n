@@ -80,6 +80,7 @@ const InstanceAiInputStub = defineComponent({
 		suggestions: { type: Array, required: false },
 		suggestionsComponent: { type: [Object, Function], required: false },
 		suggestionCatalogVersion: { type: String, required: false },
+		placeholderKey: { type: String, required: false },
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 	},
@@ -102,6 +103,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-suggestion-catalog-version' },
 					props.suggestionCatalogVersion ?? 'unset',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-placeholder-key' },
+					props.placeholderKey ?? 'unset',
 				),
 				h(
 					'button',
@@ -162,22 +168,28 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
-		const { getByTestId } = renderView();
+		const { getByTestId, getByText } = renderView();
 		// 4 suggestions in INSTANCE_AI_EMPTY_STATE_SUGGESTIONS — suggestions array
 		// renders as its `.length`.
+		expect(getByText('AI Assistant')).toBeVisible();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
 	});
 
-	it('passes v2 suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
+	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
 		experimentMocks.promptSuggestionsV2Enabled.value = true;
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByText } = renderView();
 
+		expect(getByText('What do you want to automate?')).toBeVisible();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('12');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('v2');
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+		);
 	});
 
 	it('renders the proactive starter and moves suggestions out of the composer when enabled', () => {
@@ -191,6 +203,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
 	});
 
 	it('does not create a runtime before the first send', () => {

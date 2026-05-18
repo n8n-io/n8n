@@ -34,6 +34,7 @@ const props = withDefaults(
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
+		placeholderKey?: BaseTextKey;
 	}>(),
 	{
 		isStreaming: false,
@@ -101,7 +102,7 @@ const placeholder = computed(() => {
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
 	}
-	return i18n.baseText('instanceAi.input.placeholder');
+	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
 
 watch(

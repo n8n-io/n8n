@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -25,6 +26,12 @@ import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+
+const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
+const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
+	'experiments.instanceAiPromptSuggestionsV2.emptyState.title';
+const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY: BaseTextKey =
+	'experiments.instanceAiPromptSuggestionsV2.input.placeholder';
 
 const store = useInstanceAiStore();
 const { isLowCredits } = storeToRefs(store);
@@ -48,6 +55,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 			suggestions: INSTANCE_AI_PROMPT_SUGGESTIONS_V2,
 			suggestionsComponent: InstanceAiPromptSuggestionsV2,
 			suggestionCatalogVersion: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
+			placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
 		};
 	}
 
@@ -55,6 +63,11 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
 	};
 });
+const emptyStateTitleKey = computed<BaseTextKey>(() =>
+	isPromptSuggestionsV2ExperimentEnabled.value
+		? INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY
+		: INSTANCE_AI_DEFAULT_TITLE_KEY,
+);
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
@@ -114,7 +127,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 				</div>
 			</div>
 			<div v-else :class="$style.emptyLayout">
-				<InstanceAiEmptyState />
+				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
 				<div :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
