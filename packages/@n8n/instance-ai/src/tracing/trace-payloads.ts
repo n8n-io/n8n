@@ -9,6 +9,7 @@ const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
 const MAX_TOOL_IO_TRACE_DEPTH = 8;
 const MAX_TRACE_STRING_LENGTH = 2_000;
+const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
 const SENSITIVE_TELEMETRY_KEY_PATTERN =
@@ -714,6 +715,30 @@ function displayNameForNativeLlmSpan(attributes: Record<string, unknown>): strin
 	return 'llm';
 }
 
+function parseTelemetryObject(value: unknown): Record<string, unknown> | undefined {
+	const parsed = typeof value === 'string' ? parseTelemetryJson(value) : value;
+	return isRecord(parsed) ? parsed : undefined;
+}
+
+function sanitizeToolActionForDisplay(action: string): string | undefined {
+	const sanitized = action
+		.trim()
+		.slice(0, MAX_TOOL_ACTION_DISPLAY_LENGTH)
+		.replace(/[^\w.-]+/g, '_')
+		.replace(/^_+|_+$/g, '');
+
+	return sanitized.length > 0 ? sanitized : undefined;
+}
+
+function toolActionForNativeToolSpan(attributes: Record<string, unknown>): string | undefined {
+	const args = parseTelemetryObject(attributes['ai.toolCall.args']);
+	if (!args || typeof args.action !== 'string') {
+		return undefined;
+	}
+
+	return sanitizeToolActionForDisplay(args.action);
+}
+
 function setLangSmithMetadataAttribute(
 	attributes: Record<string, unknown>,
 	key: string,
@@ -760,6 +785,39 @@ function renameNativeLlmSpanForLangSmith(
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.canonical_name', operationId);
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.run_name', operationId);
 	delete attributes[AI_OPERATION_ID];
+}
+
+function renameNativeToolSpanForLangSmith(
+	span: Record<string, unknown>,
+	attributes: Record<string, unknown>,
+): void {
+	const toolName = readStringAttribute(attributes, ['ai.toolCall.name']);
+	if (!toolName) {
+		return;
+	}
+
+	const operationId = readStringAttribute(attributes, [AI_OPERATION_ID]);
+	if (operationId && operationId !== 'ai.toolCall') {
+		return;
+	}
+
+	const action = toolActionForNativeToolSpan(attributes);
+	const displayName = action ? `${toolName}[${action}]` : toolName;
+	span.name = displayName;
+	attributes[LANGSMITH_TRACE_NAME] = displayName;
+	attributes[LANGSMITH_SPAN_KIND] = 'tool';
+	attributes['ai.toolCall.display_name'] = displayName;
+	if (action) {
+		attributes['ai.toolCall.action'] = action;
+		setLangSmithMetadataAttribute(attributes, 'display_action', action);
+	}
+	setLangSmithMetadataAttribute(attributes, 'display_name', displayName);
+	setLangSmithMetadataAttribute(attributes, 'display_kind', 'tool');
+	setLangSmithMetadataAttribute(attributes, 'display_group', toolName);
+	setLangSmithMetadataAttribute(attributes, 'ai_sdk.operation', operationId ?? 'ai.toolCall');
+	setLangSmithMetadataAttribute(attributes, 'instance_ai.display_name', displayName);
+	setLangSmithMetadataAttribute(attributes, 'instance_ai.canonical_name', toolName);
+	setLangSmithMetadataAttribute(attributes, 'instance_ai.run_name', displayName);
 }
 
 function isLangSmithLlmSpan(attributes: Record<string, unknown>): boolean {
@@ -817,6 +875,7 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeAnthropicUsageForLangSmith(attributes);
 	renameNativeLlmSpanForLangSmith(span, attributes);
+	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
 	span.attributes = attributes;
 	return span;

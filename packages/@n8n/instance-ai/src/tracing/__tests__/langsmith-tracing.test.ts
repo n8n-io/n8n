@@ -632,6 +632,33 @@ describe('createInstanceAiTraceContext', () => {
 		expect(serializedResult).not.toContain('[redacted-depth-limit]');
 	});
 
+	it('adds action to native tool span display names', () => {
+		const span = {
+			name: 'ai.toolCall',
+			attributes: {
+				'ai.operationId': 'ai.toolCall',
+				'langsmith.span.kind': 'tool',
+				'ai.toolCall.name': 'nodes',
+				'ai.toolCall.id': 'toolu-nodes',
+				'ai.toolCall.args': JSON.stringify({ action: 'search', query: 'Slack' }),
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			name: string;
+			attributes: Record<string, unknown>;
+		};
+
+		expect(redacted.name).toBe('nodes[search]');
+		expect(redacted.attributes['langsmith.trace.name']).toBe('nodes[search]');
+		expect(redacted.attributes['langsmith.span.kind']).toBe('tool');
+		expect(redacted.attributes['ai.toolCall.name']).toBe('nodes');
+		expect(redacted.attributes['ai.toolCall.action']).toBe('search');
+		expect(redacted.attributes['ai.toolCall.display_name']).toBe('nodes[search]');
+		expect(redacted.attributes['langsmith.metadata.display_action']).toBe('search');
+		expect(redacted.attributes['instance_ai.canonical_name']).toBe('nodes');
+	});
+
 	it('moves counted usage attributes off non-LLM spans', () => {
 		const span = {
 			attributes: {
