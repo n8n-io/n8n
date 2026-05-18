@@ -1,33 +1,19 @@
+import type { BuiltTool } from '@n8n/agents';
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
+import { createToolRegistry } from '../../../tool-registry';
 import type { InstanceAiContext, OrchestrationContext } from '../../../types';
+import { buildEvalSetupTools } from '../eval-setup-agent.tool';
 
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({
-	Agent: jest.fn(),
-}));
-jest.mock('@mastra/core/mastra', () => ({
-	Mastra: jest.fn(),
-}));
-
-// Lazy-require so the mocks above are in place before the module's transitive
-// Mastra imports execute.
-const { buildEvalSetupTools } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../eval-setup-agent.tool') as typeof import('../eval-setup-agent.tool');
-
-const sentinelNodesTool = { id: 'nodes-sentinel' } as never;
-const sentinelOriginalWorkflows = { id: 'workflows-original-sentinel' } as never;
+const sentinelNodesTool: BuiltTool = { name: 'nodes', description: 'nodes-sentinel' };
+const sentinelOriginalWorkflows: BuiltTool = {
+	name: 'workflows',
+	description: 'workflows-original-sentinel',
+};
 
 function makeContext(
-	updateWorkflow: InstanceAiContext['permissions'] extends infer P
-		? P extends undefined
-			? never
-			: P extends { updateWorkflow: infer M }
-				? M
-				: never
-		: never,
+	updateWorkflow: NonNullable<InstanceAiContext['permissions']>['updateWorkflow'],
 ): OrchestrationContext {
 	const domainContext = mock<InstanceAiContext>();
 	domainContext.permissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, updateWorkflow };
@@ -35,39 +21,46 @@ function makeContext(
 		.fn()
 		.mockResolvedValue({ id: 'w1', name: 'Test', nodes: [], connections: {}, active: false });
 	domainContext.workflowService.updateFromWorkflowJSON = jest.fn().mockResolvedValue(undefined);
+	domainContext.workflowService.updateVersion = jest.fn().mockResolvedValue(undefined);
 
 	const ctx = mock<OrchestrationContext>();
-	ctx.domainTools = { workflows: sentinelOriginalWorkflows, nodes: sentinelNodesTool };
+	ctx.domainTools = createToolRegistry([
+		['workflows', sentinelOriginalWorkflows],
+		['nodes', sentinelNodesTool],
+	]);
 	ctx.domainContext = domainContext;
 	return ctx;
 }
 
 describe('buildEvalSetupTools', () => {
-	it('overrides workflows.update so it does not prompt when parent permission is require_approval', async () => {
+	it('overrides update-gated workflow actions so they do not prompt when parent permission is require_approval', async () => {
 		const ctx = makeContext('require_approval');
 		const tools = buildEvalSetupTools(ctx);
 		const suspend = jest.fn();
+		const workflows = tools.get('workflows');
 
-		const result = (await tools.workflows.execute!(
+		const result = (await workflows?.handler!(
 			{
-				action: 'update',
+				action: 'update-version',
 				workflowId: 'w1',
-				workflow: { name: 'Test', nodes: [], connections: {} },
+				versionId: 'v1',
+				name: 'Eval setup',
 			},
-			{ agent: { suspend, resumeData: undefined } } as never,
+			{ suspend, resumeData: undefined } as never,
 		)) as Record<string, unknown>;
 
 		expect(suspend).not.toHaveBeenCalled();
-		expect(ctx.domainContext!.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+		expect(ctx.domainContext!.workflowService.updateVersion).toHaveBeenCalledWith(
 			'w1',
-			expect.objectContaining({ name: 'Test' }),
+			'v1',
+			expect.objectContaining({ name: 'Eval setup' }),
 		);
-		expect(result).toMatchObject({ success: true, workflowId: 'w1' });
+		expect(result).toMatchObject({ success: true });
 	});
 
 	it('leaves the original workflows tool in place when admin has blocked updates', () => {
 		const ctx = makeContext('blocked');
 		const tools = buildEvalSetupTools(ctx);
-		expect(tools.workflows).toBe(sentinelOriginalWorkflows);
+		expect(tools.get('workflows')).toBe(sentinelOriginalWorkflows);
 	});
 });

@@ -73,6 +73,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'delegate',
 	'browser-setup',
 	'planner',
+	'eval-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -762,7 +763,8 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, researcher, delegate, browser-setup). */
+	/** Agent kind for card dispatch (builder, data-table, researcher, delegate,
+	 * browser-setup, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;

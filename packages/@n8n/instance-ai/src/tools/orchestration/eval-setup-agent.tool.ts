@@ -10,31 +10,24 @@
  * captured the user's approval; this sub-agent operates post-approval.
  */
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Agent, Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { createSubAgentPersistence } from './agent-persistence';
 import { truncateLabel } from './display-utils';
 import { EVAL_SETUP_AGENT_PROMPT } from './eval-setup-agent.prompt';
 import {
-	createDetachedSubAgentTracing,
+	createDetachedSubAgentTraceFactory,
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
-import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import {
-	buildAgentTraceInputs,
-	getTraceParentRun,
-	mergeTraceRunInputs,
-	withTraceParentContext,
-} from '../../tracing/langsmith-tracing';
-import type { OrchestrationContext } from '../../types';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
+import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 import { createWorkflowsTool } from '../workflows.tool';
 
 const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
@@ -42,17 +35,18 @@ const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
 /**
  * Build the eval-setup sub-agent's tool set.
  *
- * The `workflows` tool is overridden so its `update` action never prompts —
- * the eval offer card already captured the user's approval for adding eval
- * nodes, so a second confirmation here is redundant. If admin has blocked
- * workflow updates outright (`updateWorkflow: 'blocked'`), the original tool
- * is left in place so the sub-agent receives the standard `denied` result.
+ * The `workflows` tool is overridden so update-gated workflow mutations do
+ * not prompt again — the eval offer card already captured the user's approval
+ * for adding eval nodes. If admin has blocked workflow updates outright
+ * (`updateWorkflow: 'blocked'`), the original tool is left in place so the
+ * sub-agent receives the standard `denied` result.
  */
-export function buildEvalSetupTools(context: OrchestrationContext): ToolsInput {
-	const tools: ToolsInput = {};
+export function buildEvalSetupTools(context: OrchestrationContext): InstanceAiToolRegistry {
+	const tools = createToolRegistry();
 	for (const name of EVAL_SETUP_TOOL_NAMES) {
-		if (name in context.domainTools) {
-			tools[name] = context.domainTools[name];
+		const tool = context.domainTools.get(name);
+		if (tool) {
+			tools.set(name, tool);
 		}
 	}
 
@@ -62,12 +56,15 @@ export function buildEvalSetupTools(context: OrchestrationContext): ToolsInput {
 		domainContext &&
 		parentPermissions &&
 		parentPermissions.updateWorkflow !== 'blocked' &&
-		'workflows' in tools
+		tools.has('workflows')
 	) {
-		tools.workflows = createWorkflowsTool({
-			...domainContext,
-			permissions: { ...parentPermissions, updateWorkflow: 'always_allow' },
-		});
+		tools.set(
+			'workflows',
+			createWorkflowsTool({
+				...domainContext,
+				permissions: { ...parentPermissions, updateWorkflow: 'always_allow' },
+			}),
+		);
 	}
 	return tools;
 }
@@ -87,12 +84,12 @@ export interface StartedEvalSetupAgentTask {
 	agentId: string;
 }
 
-export async function startEvalSetupAgentTask(
+export function startEvalSetupAgentTask(
 	context: OrchestrationContext,
 	input: StartEvalSetupAgentInput,
-): Promise<StartedEvalSetupAgentTask> {
+): StartedEvalSetupAgentTask {
 	const evalSetupTools = buildEvalSetupTools(context);
-	if (!('workflows' in evalSetupTools)) {
+	if (!evalSetupTools.has('workflows')) {
 		return { result: 'Error: workflows tool not available.', taskId: '', agentId: '' };
 	}
 	if (!context.spawnBackgroundTask) {
@@ -102,23 +99,7 @@ export async function startEvalSetupAgentTask(
 	const subAgentId = input.agentId ?? `agent-evalsetup-${nanoid(6)}`;
 	const taskId = input.taskId ?? `evalsetup-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'eval-setup',
-			tools: Object.keys(evalSetupTools),
-			taskId,
-			kind: 'eval-setup',
-			title: 'Setting up evaluations',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: { type: 'workflow' as const, id: input.workflowId },
-		},
-	});
-	const traceContext = await createDetachedSubAgentTracing(context, {
+	const createTraceContext = createDetachedSubAgentTraceFactory(context, {
 		agentId: subAgentId,
 		role: 'eval-setup',
 		kind: 'eval-setup',
@@ -132,28 +113,36 @@ export async function startEvalSetupAgentTask(
 	});
 	const tracedEvalSetupTools = traceSubAgentTools(context, evalSetupTools, 'eval-setup');
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'eval-setup',
-		traceContext,
+		createTraceContext,
 		plannedTaskId: input.plannedTaskId,
-		run: async (signal, _drainCorrections, _waitForCorrection) => {
+		dedupeKey: { role: 'eval-setup', plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
+		run: async (signal, drainCorrections, waitForCorrection, { traceContext }) => {
 			return await withTraceContextActor(traceContext, async () => {
-				const subAgent = new Agent({
-					id: subAgentId,
-					name: 'Eval Setup Agent',
-					instructions: {
-						role: 'system' as const,
-						content: EVAL_SETUP_AGENT_PROMPT,
+				const subAgent = new Agent('Eval Setup Agent')
+					.model(context.modelId)
+					.instructions(EVAL_SETUP_AGENT_PROMPT, {
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-					},
-					model: context.modelId,
-					tools: tracedEvalSetupTools,
+					})
+					.tool(toolRegistryValues(tracedEvalSetupTools))
+					.checkpoint(context.checkpointStore ?? 'memory');
+				const telemetry = traceContext?.getTelemetry?.({
+					agentRole: 'eval-setup',
+					functionId: 'instance-ai.subagent.eval-setup',
+					executionMode: 'background_subagent',
+					metadata: { agent_id: subAgentId, task_id: taskId },
 				});
+				if (telemetry) {
+					subAgent.telemetry(telemetry);
+				}
 				mergeTraceRunInputs(
 					traceContext?.actorRun,
 					buildAgentTraceInputs({
@@ -163,46 +152,73 @@ export async function startEvalSetupAgentTask(
 					}),
 				);
 
-				registerWithMastra(subAgentId, subAgent, context.storage);
-
 				const briefing = await buildSubAgentBriefing({
 					task: input.task,
 					conversationContext: input.conversationContext,
 					runningTasks: context.getRunningTaskSummaries?.(),
 				});
 
-				const traceParent = getTraceParentRun();
-				return await withTraceParentContext(traceParent, async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-					const stream = await subAgent.stream(briefing, {
-						maxSteps: MAX_STEPS.EVAL_SETUP,
-						abortSignal: signal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-						...(llmStepTraceHooks?.executionOptions ?? {}),
-					});
-
-					const hitlResult = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream: stream as {
-							runId?: string;
-							fullStream: AsyncIterable<unknown>;
-							text: Promise<string>;
-						},
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						logger: context.logger,
-						threadId: context.threadId,
-						abortSignal: signal,
-						waitForConfirmation: context.waitForConfirmation,
-						llmStepTraceHooks,
-					});
-
-					return await hitlResult.text;
+				const persistence = await createSubAgentPersistence(context, { agentKind: 'eval-setup' });
+				const stream = await subAgent.stream(briefing, {
+					maxIterations: MAX_STEPS.EVAL_SETUP,
+					abortSignal: signal,
+					persistence,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
 				});
+
+				const hitlResult = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream,
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					logger: context.logger,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					drainCorrections,
+					waitForCorrection,
+					maxIterations: MAX_STEPS.EVAL_SETUP,
+					persistence,
+				});
+
+				return await requireCompletedHitlText(hitlResult, 'Eval setup sub-agent');
 			});
+		},
+	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Eval setup already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start eval setup: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'eval-setup',
+			tools: toolRegistryKeys(evalSetupTools),
+			taskId,
+			kind: 'eval-setup',
+			title: 'Setting up evaluations',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: { type: 'workflow' as const, id: input.workflowId },
 		},
 	});
 
@@ -229,22 +245,24 @@ export const evalSetupAgentInputSchema = z.object({
 });
 
 export function createEvalSetupAgentTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'eval-setup-with-agent',
-		description:
+	return new Tool('eval-setup-with-agent')
+		.description(
 			'Set up evaluations for a workflow containing AI agents. ' +
-			'Adds EvaluationTrigger + Evaluation nodes with a checkIfEvaluating gate that isolates ' +
-			'side-effect nodes during eval runs. The DataTable is always created upstream by `propose` ' +
-			'and passed in via the task spec. ' +
-			'Use only after `evals(action="propose")` returned shouldDelegateToEvalSetupAgent=true.',
-		inputSchema: evalSetupAgentInputSchema,
-		outputSchema: z.object({
-			result: z.string(),
-			taskId: z.string(),
-		}),
-		execute: async (input: z.infer<typeof evalSetupAgentInputSchema>) => {
-			const result = await startEvalSetupAgentTask(context, input);
+				'Adds EvaluationTrigger + Evaluation nodes with a checkIfEvaluating gate that isolates ' +
+				'side-effect nodes during eval runs. The DataTable is always created upstream by `propose` ' +
+				'and passed in via the task spec. ' +
+				'Use only after `evals(action="propose")` returned shouldDelegateToEvalSetupAgent=true.',
+		)
+		.input(evalSetupAgentInputSchema)
+		.output(
+			z.object({
+				result: z.string(),
+				taskId: z.string(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof evalSetupAgentInputSchema>) => {
+			const result = startEvalSetupAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
-		},
-	});
+		})
+		.build();
 }
