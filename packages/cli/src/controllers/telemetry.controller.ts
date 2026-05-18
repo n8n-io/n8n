@@ -30,7 +30,7 @@ export class TelemetryController {
 		await this.proxy(req, res, next);
 	}
 
-	@Post('/proxy/:version/identify', { skipAuth: true, ipRateLimit: true })
+	@Post('/proxy/:version/identify', { skipAuth: true, ipRateLimit: { limit: 50, windowMs: 60_000 } })
 	async identify(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}

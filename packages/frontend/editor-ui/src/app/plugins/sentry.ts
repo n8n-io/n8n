@@ -14,6 +14,7 @@ const ignoredErrors = [
 	{ instanceof: RangeError, message: /Invalid change range \d+ to \d+/ },
 	{ instanceof: RangeError, message: /Selection points outside of document$/ },
 	{ instanceof: Error, message: /ResizeObserver/ },
+	{ instanceof: Error, message: /\[handleError\]::.*status: 4\d\d for url:.*\/telemetry\/proxy\// },
 ] as const;
 
 type SentryConfig = {
