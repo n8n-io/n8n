@@ -434,6 +434,61 @@ export class LmChatAnthropic implements INodeType {
 							},
 						},
 					},
+					{
+						displayName: 'Enable MCP Servers (Beta)',
+						name: 'enableMcpServers',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to enable MCP (Model Context Protocol) servers that Claude can use as tool providers during execution',
+					},
+					{
+						displayName: 'MCP Servers',
+						name: 'mcpServers',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						displayOptions: {
+							show: {
+								enableMcpServers: [true],
+							},
+						},
+						options: [
+							{
+								displayName: 'Server',
+								name: 'servers',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										required: true,
+										description: 'A unique name to identify this MCP server',
+									},
+									{
+										displayName: 'URL',
+										name: 'url',
+										type: 'string',
+										default: '',
+										required: true,
+										placeholder: 'https://mcp.example.com/sse',
+										description: 'The URL of the MCP server endpoint',
+									},
+									{
+										displayName: 'Authorization Token',
+										name: 'authorizationToken',
+										type: 'string',
+										typeOptions: { password: true },
+										default: '',
+										description: 'Optional bearer token for authenticating with the MCP server',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],
@@ -469,6 +524,14 @@ export class LmChatAnthropic implements INodeType {
 			thinkingBudget?: number;
 			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+			enableMcpServers?: boolean;
+			mcpServers?: {
+				servers?: Array<{
+					name: string;
+					url: string;
+					authorizationToken?: string;
+				}>;
+			};
 		};
 
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
@@ -568,6 +631,22 @@ export class LmChatAnthropic implements INodeType {
 				}
 			: undefined;
 
+		const mcpServerConfigs =
+			options.enableMcpServers && options.mcpServers?.servers?.length
+				? options.mcpServers.servers.map((server) => ({
+						type: 'url' as const,
+						name: server.name,
+						url: server.url,
+						...(server.authorizationToken
+							? { authorization_token: server.authorizationToken }
+							: {}),
+					}))
+				: undefined;
+
+		if (mcpServerConfigs) {
+			invocationKwargs.mcp_servers = mcpServerConfigs;
+		}
+
 		const chatAnthropicParams: ChatAnthropicInput = {
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
@@ -577,6 +656,7 @@ export class LmChatAnthropic implements INodeType {
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, gatewayErrorHandler),
 			invocationKwargs,
 			clientOptions,
+			...(mcpServerConfigs ? { betas: ['mcp-client-2025-11-20'] } : {}),
 		};
 
 		// Opus 4.7 rejects temperature/topK/topP at the SDK layer regardless of thinking mode

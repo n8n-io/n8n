@@ -828,6 +828,186 @@ describe('LmChatAnthropic', () => {
 		});
 	});
 
+	describe('MCP servers', () => {
+		it('should not set mcp_servers or betas when enableMcpServers is false', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return { enableMcpServers: false };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0]!;
+			expect(callArgs.invocationKwargs).toEqual({});
+			expect(callArgs).not.toHaveProperty('betas');
+		});
+
+		it('should not set mcp_servers when enabled but no servers configured', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return { enableMcpServers: true, mcpServers: { servers: [] } };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0]!;
+			expect(callArgs.invocationKwargs).toEqual({});
+			expect(callArgs).not.toHaveProperty('betas');
+		});
+
+		it('should set mcp_servers in invocationKwargs and betas when servers are configured', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return {
+						enableMcpServers: true,
+						mcpServers: {
+							servers: [
+								{
+									name: 'my-server',
+									url: 'https://mcp.example.com/sse',
+									authorizationToken: 'secret-token',
+								},
+							],
+						},
+					};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: {
+						mcp_servers: [
+							{
+								type: 'url',
+								name: 'my-server',
+								url: 'https://mcp.example.com/sse',
+								authorization_token: 'secret-token',
+							},
+						],
+					},
+					betas: ['mcp-client-2025-11-20'],
+				}),
+			);
+		});
+
+		it('should omit authorization_token when not provided', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return {
+						enableMcpServers: true,
+						mcpServers: {
+							servers: [{ name: 'public-server', url: 'https://mcp.example.com/sse' }],
+						},
+					};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0]!;
+			const mcpServers = (callArgs.invocationKwargs as Record<string, unknown>)
+				.mcp_servers as Array<Record<string, unknown>>;
+			expect(mcpServers[0]).not.toHaveProperty('authorization_token');
+		});
+
+		it('should handle multiple MCP servers', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return {
+						enableMcpServers: true,
+						mcpServers: {
+							servers: [
+								{ name: 'server-a', url: 'https://a.example.com/sse', authorizationToken: 'tok-a' },
+								{ name: 'server-b', url: 'https://b.example.com/sse' },
+							],
+						},
+					};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: {
+						mcp_servers: [
+							{
+								type: 'url',
+								name: 'server-a',
+								url: 'https://a.example.com/sse',
+								authorization_token: 'tok-a',
+							},
+							{
+								type: 'url',
+								name: 'server-b',
+								url: 'https://b.example.com/sse',
+							},
+						],
+					},
+					betas: ['mcp-client-2025-11-20'],
+				}),
+			);
+		});
+
+		it('should combine mcp_servers with thinking invocationKwargs', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return {
+						thinkingMode: 'adaptive',
+						effort: 'high',
+						enableMcpServers: true,
+						mcpServers: {
+							servers: [{ name: 'my-server', url: 'https://mcp.example.com/sse' }],
+						},
+					};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: {
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'high' },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+						mcp_servers: [
+							{
+								type: 'url',
+								name: 'my-server',
+								url: 'https://mcp.example.com/sse',
+							},
+						],
+					},
+					betas: ['mcp-client-2025-11-20'],
+				}),
+			);
+		});
+	});
+
 	describe('methods', () => {
 		it('should have searchModels method', () => {
 			expect(lmChatAnthropic.methods).toEqual({

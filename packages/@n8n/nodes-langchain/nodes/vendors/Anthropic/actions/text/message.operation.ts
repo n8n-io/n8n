@@ -13,6 +13,7 @@ import { getConnectedTools } from '@utils/helpers';
 import type {
 	Content,
 	File,
+	McpServer,
 	Message,
 	MessagesResponse,
 	Tool as AnthropicTool,
@@ -268,6 +269,78 @@ const properties: INodeProperties[] = [
 					numberPrecision: 0,
 				},
 			},
+			{
+				displayName: 'Enable MCP Toolset (Beta)',
+				name: 'enableMcpToolset',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to connect remote MCP servers. Anthropic opens the connection directly — the MCP server must be publicly reachable. ' +
+					'<a href="https://docs.anthropic.com/en/docs/agents-and-tools/mcp-connector" target="_blank">Learn more</a>.',
+			},
+			{
+				displayName: 'MCP Servers',
+				name: 'mcpServers',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {
+					values: [
+						{
+							name: 'Example MCP',
+							type: 'url',
+							url: 'http://...',
+							token: 'Leave empty if not needed',
+						},
+					],
+				},
+				displayOptions: { show: { enableMcpToolset: [true] } },
+				options: [
+					{
+						name: 'values',
+						displayName: 'Server',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								required: true,
+								description: 'Unique identifier for this MCP server within the request',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								default: 'url',
+								description: 'Currently only "URL" is supported',
+								options: [
+									{
+										name: 'URL(s)',
+										value: 'url',
+									},
+								],
+							},
+							{
+								displayName: 'URL',
+								name: 'url',
+								type: 'string',
+								default: '',
+								required: true,
+								description: 'The URL of the MCP server. Must start with https://.',
+							},
+							{
+								displayName: 'Authorization Token',
+								name: 'authorizationToken',
+								type: 'string',
+								typeOptions: { password: true },
+								default: '',
+								description:
+									'OAuth authorization token if required by the MCP server. See MCP specification.',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 ];
@@ -293,6 +366,15 @@ interface MessageOptions {
 	temperature?: number;
 	topP?: number;
 	topK?: number;
+	enableMcpToolset?: boolean;
+	mcpServers?: {
+		values?: Array<{
+			name: string;
+			type: string;
+			url: string;
+			authorizationToken?: string;
+		}>;
+	};
 }
 
 function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image' | 'document' {
@@ -317,7 +399,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
 
-	const { tools, connectedTools } = await getTools.call(this, options);
+	const { tools, connectedTools, mcpServers } = await getTools.call(this, options);
 
 	if (addAttachments) {
 		if (options.codeExecution) {
@@ -336,11 +418,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		temperature: options.temperature,
 		top_p: options.topP,
 		top_k: options.topK,
+		mcp_servers: mcpServers ?? undefined,
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 		body,
-		enableAnthropicBetas: { codeExecution: options.codeExecution },
+		enableAnthropicBetas: {
+			codeExecution: options.codeExecution,
+			mcpClient: options.enableMcpToolset,
+		},
 	})) as MessagesResponse;
 
 	const captureUsage = () => {
@@ -391,7 +477,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 			body,
-			enableAnthropicBetas: { codeExecution: options.codeExecution },
+			enableAnthropicBetas: {
+				codeExecution: options.codeExecution,
+				mcpClient: options.enableMcpToolset,
+			},
 		})) as MessagesResponse;
 
 		captureUsage();
@@ -426,6 +515,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 async function getTools(this: IExecuteFunctions, options: MessageOptions) {
 	let connectedTools: Tool[] = [];
+	let mcpServers: McpServer[] | undefined;
 	const nodeInputs = this.getNodeInputs();
 	// the node can be used as a tool, in this case there won't be any connected tools
 	if (nodeInputs.some((i) => i.type === 'ai_tool')) {
@@ -462,7 +552,31 @@ async function getTools(this: IExecuteFunctions, options: MessageOptions) {
 		});
 	}
 
-	return { tools, connectedTools };
+	if (options.enableMcpToolset) {
+		const mcpServerValues = options.mcpServers?.values ?? [];
+		mcpServers = mcpServerValues.map((server) => {
+			const entry: {
+				type: string;
+				name: string;
+				url: string;
+				authorization_token?: string;
+			} = {
+				type: 'url',
+				name: server.name,
+				url: server.url,
+			};
+			if (server.authorizationToken) {
+				entry.authorization_token = server.authorizationToken;
+			}
+			return entry;
+		});
+
+		for (const server of mcpServerValues) {
+			tools.push({ type: 'mcp_client_20251120', name: 'mcp_client', mcp_server_name: server.name });
+		}
+	}
+
+	return { tools, connectedTools, mcpServers };
 }
 
 async function addCodeAttachmentsToMessages(

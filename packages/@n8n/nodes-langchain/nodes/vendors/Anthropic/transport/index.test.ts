@@ -165,6 +165,50 @@ describe('Anthropic transport', () => {
 		);
 	});
 
+	it('should add mcp-client-2025-11-20 beta header when mcpClient is true', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+			body: {},
+			enableAnthropicBetas: { mcpClient: true },
+		});
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://api.anthropic.com/v1/messages',
+				json: true,
+				body: {},
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta': 'files-api-2025-04-14,mcp-client-2025-11-20',
+				},
+			},
+		);
+	});
+
+	it('should include mcp-client and code-execution betas together', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+			enableAnthropicBetas: { codeExecution: true, mcpClient: true },
+		});
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://api.anthropic.com/v1/messages',
+				json: true,
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta': 'files-api-2025-04-14,code-execution-2025-05-22,mcp-client-2025-11-20',
+				},
+			},
+		);
+	});
+
 	it('should add custom header when header toggle is enabled', async () => {
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			header: true,
