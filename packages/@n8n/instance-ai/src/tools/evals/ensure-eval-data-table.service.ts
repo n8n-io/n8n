@@ -10,6 +10,10 @@ export interface CreateEmptyEvalDataTableInput {
 
 const NAME_COLLISION_RE = /already exists/i;
 
+export function formatEvalDataTableName(workflowName: string): string {
+	return `${workflowName} — eval samples`;
+}
+
 async function createWithUniqueName(
 	ctx: InstanceAiContext,
 	baseName: string,
@@ -50,7 +54,7 @@ export async function createEmptyEvalDataTable(
 ): Promise<{ id: string; name: string; projectId?: string }> {
 	const dt = await createWithUniqueName(
 		ctx,
-		`${input.workflowName} — eval samples`,
+		formatEvalDataTableName(input.workflowName),
 		input.columns.map((n) => ({ name: n, type: 'string' as const })),
 		input.projectId ? { projectId: input.projectId } : undefined,
 	);
