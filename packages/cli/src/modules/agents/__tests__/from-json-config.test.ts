@@ -1,8 +1,11 @@
 import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import {
+	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
@@ -505,6 +508,24 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
 	});
 
+	it('accepts a blank model for draft configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: '',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('requires model and credential for runnable configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: 'Be helpful.',
+		};
+		expect(() => RunnableAgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
 	it('rejects invalid model format (no slash)', () => {
 		const config = {
 			name: 'test',
@@ -689,7 +710,7 @@ describe('AgentJsonConfigSchema', () => {
 					cronExpression: '0 0 * * *',
 					wakeUpPrompt: 'tick',
 				},
-				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
@@ -698,19 +719,7 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
 		});
-	});
-
-	it('rejects a chat integration missing credentialName at the schema level', () => {
-		const config = {
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'my-key',
-			instructions: '',
-			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-		};
-		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('validates Telegram private integration settings', () => {
@@ -723,7 +732,6 @@ describe('AgentJsonConfigSchema', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-1',
-					credentialName: 'Telegram Bot',
 					settings: {
 						accessMode: 'private',
 						allowedUsers: ['123', '123', '456', 'john_doe123'],
@@ -753,7 +761,6 @@ describe('AgentJsonConfigSchema', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-1',
-					credentialName: 'Telegram Bot',
 					settings: { accessMode: 'private', allowedUsers: [] },
 				},
 			],
@@ -772,7 +779,6 @@ describe('AgentJsonConfigSchema', () => {
 				{
 					type: 'telegram',
 					credentialId: 'cred-1',
-					credentialName: 'Telegram Bot',
 					settings: { accessMode: 'private', allowedUsers: ['user name'] },
 				},
 			],
@@ -794,7 +800,7 @@ describe('AgentJsonConfigSchema', () => {
 					cronExpression: '0 0 * * *',
 					wakeUpPrompt: 'tick',
 				},
-				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
@@ -803,18 +809,6 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
 		});
-	});
-
-	it('rejects a chat integration missing credentialName at the schema level', () => {
-		const config = {
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'my-key',
-			instructions: '',
-			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-		};
-		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 });

@@ -954,6 +954,7 @@ describe('ResourceLocator', () => {
 				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
 					expect.anything(),
 					expect.anything(),
+					expect.anything(),
 					testContext,
 				);
 			});
@@ -972,6 +973,7 @@ describe('ResourceLocator', () => {
 
 			await waitFor(() => {
 				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
 					expect.anything(),
 					expect.anything(),
 					{},
@@ -1009,6 +1011,7 @@ describe('ResourceLocator', () => {
 
 			await waitFor(() => {
 				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
 					expect.anything(),
 					expect.anything(),
 					testContext,

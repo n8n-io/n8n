@@ -32,7 +32,18 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@n8n/design-system', () => ({
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
-	N8nButton: { template: '<button><slot /></button>', props: ['variant', 'size'] },
+	N8nButton: {
+		template:
+			'<button v-bind="$attrs" :data-variant="variant" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled'],
+		emits: ['click'],
+	},
+	N8nTooltip: {
+		name: 'N8nTooltip',
+		template:
+			'<span data-testid="stub-tooltip" :data-disabled="disabled" :data-content="content"><slot /></span>',
+		props: ['disabled', 'content'],
+	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
 		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
@@ -41,19 +52,19 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
-		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
+		template: '<div v-bind="$attrs"><slot name="trigger" /></div>',
 		props: ['items'],
 		emits: ['select'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
-		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
+		template: '<div v-bind="$attrs"><slot name="trigger" /></div>',
 		props: ['items'],
 		emits: ['select'],
 	},
 	N8nActionDropdown: {
 		name: 'ActionDropdown',
-		template: '<div data-testid="stub-action-dropdown" />',
+		template: '<div v-bind="$attrs" />',
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
 	},
@@ -78,6 +89,7 @@ const baseAgent = {
 	id: 'a1',
 	name: 'Darwin',
 	icon: { type: 'icon', value: 'robot' },
+	isRunnable: true,
 } as unknown as AgentResource;
 
 const globalStubs = {
@@ -94,6 +106,9 @@ function mountHeader(
 		agent: AgentResource | null;
 		projectName: string | null;
 		headerActions: unknown[];
+		mode: 'edit' | 'preview';
+		currentSessionTitle: string;
+		sessionOptions: Array<{ id: string; label: string }>;
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
@@ -103,6 +118,9 @@ function mountHeader(
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
+			mode: overrides.mode,
+			currentSessionTitle: overrides.currentSessionTitle,
+			sessionOptions: overrides.sessionOptions,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -119,6 +137,7 @@ describe('AgentBuilderHeader', () => {
 	it('renders breadcrumbs, publish and action dropdown', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
@@ -214,6 +233,65 @@ describe('AgentBuilderHeader', () => {
 		const action = wrapper.findComponent({ name: 'ActionDropdown' });
 		action.vm.$emit('select', 'delete');
 		expect(wrapper.emitted('header-action')).toEqual([['delete']]);
+	});
+
+	it('emits open-preview from the preview button', async () => {
+		const wrapper = mountHeader();
+		await wrapper.find('[data-testid="agent-header-preview-btn"]').trigger('click');
+		expect(wrapper.emitted('open-preview')).toEqual([[]]);
+	});
+
+	it('disables preview with a tooltip when the agent is not runnable', async () => {
+		const wrapper = mountHeader({
+			agent: { ...baseAgent, isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('false');
+		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
+			'agents.builder.preview.disabledTooltip',
+		);
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
+	it('renders preview actions and hides publish actions in preview mode', () => {
+		const wrapper = mountHeader({
+			mode: 'preview',
+			currentSessionTitle: 'Support session',
+			sessionOptions: [{ id: 'thread-1', label: 'Support session' }],
+			headerActions: [{ id: 'delete', label: 'Delete' }],
+		});
+
+		expect(wrapper.find('[data-testid="agent-preview-session-picker"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-testid="agent-preview-new-chat-btn"]').attributes('data-variant'),
+		).toBe('outline');
+		expect(wrapper.find('[data-testid="agent-preview-close-btn"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
+	});
+
+	it('forwards preview session and header action events', async () => {
+		const wrapper = mountHeader({
+			mode: 'preview',
+			currentSessionTitle: 'Support session',
+			sessionOptions: [{ id: 'thread-1', label: 'Support session' }],
+		});
+
+		const sessionPicker = wrapper.findComponent(
+			'[data-testid="agent-preview-session-picker"]',
+		) as DropdownStubWrapper;
+		sessionPicker.vm.$emit('select', 'thread-1');
+		await wrapper.find('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
+		await wrapper.find('[data-testid="agent-preview-close-btn"]').trigger('click');
+
+		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
+		expect(wrapper.emitted('new-chat')).toEqual([[]]);
+		expect(wrapper.emitted('close-preview')).toEqual([[]]);
 	});
 
 	it('emits switch-agent when a switcher item is selected', async () => {

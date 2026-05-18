@@ -78,7 +78,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getAllActiveIds() {
 		const result = await this.find({
 			select: { id: true },
-			where: { activeVersionId: Not(IsNull()) },
+			where: { activeVersionId: Not(IsNull()), isArchived: false },
 		});
 
 		return result.map(({ id }) => id);
@@ -1294,19 +1294,22 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	 * @param versionId - The ID of the version to publish (optional; if not provided, uses the current version)
 	 * */
 	async publishVersion(workflowId: string, versionId?: string) {
-		let versionIdToPublish = versionId;
-		if (!versionIdToPublish) {
-			const workflow = await this.findOne({
-				where: { id: workflowId },
-				select: ['id', 'versionId'],
-			});
+		const workflow = await this.findOne({
+			where: { id: workflowId },
+			select: ['id', 'versionId', 'isArchived'],
+		});
 
-			if (!workflow) {
-				throw new UserError(`Workflow "${workflowId}" not found.`);
-			}
-
-			versionIdToPublish = workflow.versionId;
+		if (!workflow) {
+			throw new UserError(`Workflow "${workflowId}" not found.`);
 		}
+
+		if (workflow.isArchived) {
+			throw new UserError('Cannot publish archived Workflow', {
+				extra: { workflowId },
+			});
+		}
+
+		const versionIdToPublish = versionId ?? workflow.versionId;
 
 		const version = await this.workflowHistoryRepository.findOneBy({
 			workflowId,

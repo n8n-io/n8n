@@ -70,7 +70,9 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		type: z.literal('removeNode'),
 		nodeName: z
 			.string()
-			.describe('Name of the node to remove. All inbound and outbound connections are removed.'),
+			.describe(
+				'Name of the node to remove. All inbound and outbound connections are removed, including any sub-node attachments (LLM models, memory, tools) — the sub-nodes themselves remain in the workflow but become disconnected and will not be re-attached automatically. To modify a node, use updateNodeParameters or setNodeParameter instead.',
+			),
 	}),
 	z.object({
 		type: z.literal('renameNode'),

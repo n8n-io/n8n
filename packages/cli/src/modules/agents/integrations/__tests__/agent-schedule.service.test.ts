@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegration } from '@n8n/api-types';
+import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegrationConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
@@ -12,7 +12,7 @@ import type { Agent } from '../../entities/agent.entity';
 import { AgentScheduleService } from '../agent-schedule.service';
 
 function makePublishedAgent(
-	integrations: AgentIntegration[] = [],
+	integrations: AgentIntegrationConfig[] = [],
 	overrides: Partial<Agent> = {},
 ): Agent {
 	return {
@@ -72,16 +72,14 @@ describe('AgentScheduleService', () => {
 	});
 
 	it('saveConfig upserts the schedule integration alongside credential-backed integrations', async () => {
-		const agent = makePublishedAgent([
-			{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack cred 1' },
-		]);
+		const agent = makePublishedAgent([{ type: 'slack', credentialId: 'cred-1' }]);
 
 		const result = await service.saveConfig(agent, '* * * * *');
 
 		expect(agentRepository.save).toHaveBeenCalledWith(
 			expect.objectContaining({
 				integrations: [
-					{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack cred 1' },
+					{ type: 'slack', credentialId: 'cred-1' },
 					{
 						type: 'schedule',
 						active: false,
@@ -114,6 +112,44 @@ describe('AgentScheduleService', () => {
 				]),
 			),
 		).rejects.toBeInstanceOf(BadRequestError);
+	});
+
+	it('rejects various malformed cron patterns before saving', async () => {
+		const malformed = ['* * *', '99 99 * * *', 'every-day', '0 0 0 0'];
+		for (const cron of malformed) {
+			await expect(service.saveConfig(makePublishedAgent(), cron)).rejects.toBeInstanceOf(
+				BadRequestError,
+			);
+		}
+	});
+
+	it('saveConfig rejects an empty cron when the schedule is active', async () => {
+		const agent = makePublishedAgent([
+			{
+				type: 'schedule',
+				active: true,
+				cronExpression: '* * * * *',
+				wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+			},
+		]);
+
+		await expect(service.saveConfig(agent, '')).rejects.toBeInstanceOf(BadRequestError);
+	});
+
+	it('saveConfig accepts empty cron when the schedule is inactive', async () => {
+		const agent = makePublishedAgent([
+			{
+				type: 'schedule',
+				active: false,
+				cronExpression: '* * * * *',
+				wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+			},
+		]);
+		agentRepository.save.mockImplementation(async (a: Agent) => a);
+
+		const result = await service.saveConfig(agent, '');
+
+		expect(result.cronExpression).toBe('');
 	});
 
 	it('activate rejects unpublished agents', async () => {
