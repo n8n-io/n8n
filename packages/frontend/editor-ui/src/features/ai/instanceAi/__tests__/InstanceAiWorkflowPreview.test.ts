@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -11,6 +12,8 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 		fetchWorkflow: mockFetchWorkflow,
 	})),
 }));
+
+const workflowPreviewRequestFitView = vi.fn();
 
 const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 	global: {
@@ -28,6 +31,9 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 					'allowErrorNotifications',
 					'loaderType',
 				],
+				setup(_props, { expose }) {
+					expose({ requestFitView: workflowPreviewRequestFitView });
+				},
 			},
 		},
 	},
@@ -141,6 +147,27 @@ describe('InstanceAiWorkflowPreview', () => {
 			expect(getByText('Could not load workflow')).toBeInTheDocument();
 		});
 		expect(emitted('workflow-loaded')).toBeUndefined();
+	});
+
+	it('forwards requestFitView to the inner WorkflowPreview', () => {
+		const wrapper = mount(InstanceAiWorkflowPreview, {
+			global: {
+				plugins: [createTestingPinia()],
+				stubs: {
+					WorkflowPreview: {
+						template: '<div data-test-id="workflow-preview" />',
+						setup(_props, { expose }) {
+							expose({ requestFitView: workflowPreviewRequestFitView });
+						},
+					},
+				},
+			},
+			props: { workflowId: null },
+		});
+
+		(wrapper.vm as unknown as { requestFitView: () => void }).requestFitView();
+
+		expect(workflowPreviewRequestFitView).toHaveBeenCalledTimes(1);
 	});
 
 	it('should emit iframe-ready even when n8nReady has no pushRef', async () => {
