@@ -283,6 +283,12 @@ describe('isSelectQuery', () => {
 			'identifier ending in E followed by a string does not enable backslash escapes',
 			"SELECT column_E'a\\' FROM t; UPDATE t SET x = 1 WHERE FALSE",
 		],
+		// Query starting with `'` (quote at index 0) — exercises `quoteIndex === 0 → false`
+		// in isEStringPrefix. The stripped statement has no top-level command keyword.
+		['query starting with a standard string literal', "'just a literal'"],
+		// Query starting with `E'` (quote at index 1) — exercises `quoteIndex === 1 → true`
+		// in isEStringPrefix. The stripped statement has no top-level command keyword.
+		['query that is only an E-string', "E'a\\'b'"],
 	])('returns false for %s', (_label, query) => {
 		expect(isSelectQuery(query)).toBe(false);
 	});
