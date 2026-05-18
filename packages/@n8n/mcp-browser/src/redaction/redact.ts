@@ -1,8 +1,6 @@
 import type { CallToolResult } from '../types';
 import { BUILTIN_PATTERNS, type SecretPattern } from './patterns';
 
-const MAX_DEPTH = 10;
-
 export interface SecretHit {
 	type: string;
 	value: string;
@@ -55,14 +53,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return Object.getPrototypeOf(value) === Object.prototype;
 }
 
-export function redactValue(value: unknown, depth = 0): unknown {
-	if (depth > MAX_DEPTH || value === null || value === undefined) return value;
+export function redactValue(value: unknown): unknown {
+	if (value === null || value === undefined) return value;
 	if (typeof value === 'string') return redactString(value);
-	if (Array.isArray(value)) return value.map((entry) => redactValue(entry, depth + 1));
+	if (Array.isArray(value)) return value.map((entry) => redactValue(entry));
 	if (isPlainObject(value)) {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value)) {
-			out[k] = redactValue(v, depth + 1);
+			out[k] = redactValue(v);
 		}
 		return out;
 	}
