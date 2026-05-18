@@ -2,6 +2,7 @@
 // user; per-event prompts assemble transcript + event payload.
 
 import type { CapturedEvent, ConversationTurn } from '../../types';
+import { getEventPayload } from '../confirmation-payload';
 
 export interface PromptContext {
 	conversation: ConversationTurn[];
@@ -87,10 +88,7 @@ function formatTranscriptSection(ctx: PromptContext): string {
 }
 
 function formatEventSection(event: CapturedEvent): string {
-	const payload =
-		typeof event.data.payload === 'object' && event.data.payload !== null
-			? (event.data.payload as Record<string, unknown>)
-			: event.data;
+	const payload = getEventPayload(event);
 	return [
 		'## New event requiring a response',
 		'```json',

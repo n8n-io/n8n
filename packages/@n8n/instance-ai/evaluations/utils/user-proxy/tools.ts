@@ -78,7 +78,10 @@ export const TOOL_DESCRIPTIONS = `Available actions:
  * Returns null for between-run actions (send_follow_up_message, declare_done),
  * which the caller routes separately.
  */
-export function encodeConfirmationDecision(decision: Decision): InstanceAiConfirmRequest | null {
+export function encodeConfirmationDecision(
+	decision: Decision,
+	onParseFailure?: (raw: string, error: unknown) => void,
+): InstanceAiConfirmRequest | null {
 	switch (decision.action) {
 		case 'answer_questions':
 			return { kind: 'questions', answers: decision.answers };
@@ -86,7 +89,7 @@ export function encodeConfirmationDecision(decision: Decision): InstanceAiConfir
 		case 'apply_setup_wizard':
 			return {
 				kind: 'setupWorkflowApply',
-				nodeParameters: parseNodeParametersJson(decision.nodeParametersJson),
+				nodeParameters: parseNodeParametersJson(decision.nodeParametersJson, onParseFailure),
 			};
 
 		case 'approve_or_reject':
@@ -110,14 +113,18 @@ export function encodeConfirmationDecision(decision: Decision): InstanceAiConfir
 	}
 }
 
-function parseNodeParametersJson(json: string): Record<string, Record<string, unknown>> {
+function parseNodeParametersJson(
+	json: string,
+	onFailure?: (raw: string, error: unknown) => void,
+): Record<string, Record<string, unknown>> {
 	try {
 		const parsed: unknown = JSON.parse(json);
 		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
 			return parsed as Record<string, Record<string, unknown>>;
 		}
-	} catch {
-		// fall through
+		onFailure?.(json, new Error('parsed value is not a plain object'));
+	} catch (error) {
+		onFailure?.(json, error);
 	}
 	return {};
 }

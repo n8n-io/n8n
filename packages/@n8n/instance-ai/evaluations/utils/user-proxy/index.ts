@@ -13,6 +13,7 @@ import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
 import type { CapturedEvent, ConversationTurn } from '../../types';
+import { getNestedRecord } from '../confirmation-payload';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -47,6 +48,7 @@ export class UserProxyLlm {
 	private ingestedEventCount = 0;
 	private rollingTranscript: ConversationTurn[];
 	private readonly seenRequestIds = new Set<string>();
+	private readonly decisionStats: Record<string, number> = {};
 
 	constructor(config: UserProxyConfig) {
 		this.conversation = config.conversation;
@@ -103,7 +105,11 @@ export class UserProxyLlm {
 			return buildAutoApprovePayload(event);
 		}
 
-		const encoded = encodeConfirmationDecision(decision);
+		const encoded = encodeConfirmationDecision(decision, (raw, parseError) =>
+			this.logger?.warn(
+				`[user-proxy] nodeParametersJson failed to parse (${String(parseError)}); raw=${raw.slice(0, 200)}`,
+			),
+		);
 		if (!encoded) {
 			this.logger?.warn(
 				`[user-proxy] action=${decision.action} did not encode to a confirmation payload`,
@@ -119,8 +125,6 @@ export class UserProxyLlm {
 	getDecisionStats(): Readonly<Record<string, number>> {
 		return { ...this.decisionStats };
 	}
-
-	private decisionStats: Record<string, number> = {};
 
 	private recordDecision(
 		decision: Decision,
@@ -174,18 +178,6 @@ export class UserProxyLlm {
 // ---------------------------------------------------------------------------
 // Event helpers
 // ---------------------------------------------------------------------------
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function getNestedRecord(
-	obj: Record<string, unknown>,
-	key: string,
-): Record<string, unknown> | undefined {
-	const value = obj[key];
-	return isRecord(value) ? value : undefined;
-}
 
 function getString(obj: Record<string, unknown>, key: string): string | undefined {
 	const value = obj[key];

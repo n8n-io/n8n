@@ -27,17 +27,26 @@ export function createUserProxyAgent(config: UserProxyAgentConfig = {}): UserPro
 				const result = await agent.generate(userPrompt);
 				const decision = (result.structuredOutput as Decision | undefined) ?? undefined;
 				if (!decision) {
-					const failure = (result as { error?: unknown }).error;
-					const message =
-						failure instanceof Error ? `${failure.name}: ${failure.message}` : 'undefined';
-					config.logger?.warn(`[user-proxy] no structuredOutput; error=${message}`);
+					config.logger?.warn(
+						`[user-proxy] no structuredOutput; error=${describeFailure((result as { error?: unknown }).error)}`,
+					);
 				}
 				return decision;
 			} catch (caught) {
-				const msg = caught instanceof Error ? caught.message : String(caught);
-				config.logger?.warn(`[user-proxy] agent.generate threw: ${msg}`);
+				config.logger?.warn(`[user-proxy] agent.generate threw: ${describeFailure(caught)}`);
 				return undefined;
 			}
 		},
 	};
+}
+
+function describeFailure(value: unknown): string {
+	if (value === undefined) return 'undefined';
+	if (value instanceof Error) return `${value.name}: ${value.message}`;
+	if (typeof value === 'string') return value;
+	try {
+		return JSON.stringify(value).slice(0, 600);
+	} catch {
+		return '[unable to stringify]';
+	}
 }

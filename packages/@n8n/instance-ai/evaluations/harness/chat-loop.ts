@@ -17,6 +17,11 @@ import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import type { CapturedEvent } from '../types';
+import {
+	getEventPayload,
+	getNestedRecord,
+	tryInfrastructureResponse,
+} from '../utils/confirmation-payload';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -63,7 +68,9 @@ export async function startSseConnection(
 // Wait for all activity: run-finish -> background tasks -> possible new run
 // ---------------------------------------------------------------------------
 
-export type ConfirmationStrategy = (event: CapturedEvent) => Promise<InstanceAiConfirmRequest>;
+export type ConfirmationStrategy = (
+	event: CapturedEvent,
+) => InstanceAiConfirmRequest | Promise<InstanceAiConfirmRequest>;
 
 export interface WaitConfig {
 	client: N8nClient;
@@ -223,7 +230,7 @@ const confirmationRetries = new Map<string, number>();
 
 export async function processConfirmationRequests(config: WaitConfig): Promise<void> {
 	const confirmationEvents = config.events.filter((e) => e.type === 'confirmation-request');
-	const strategy = config.confirmationStrategy ?? defaultAutoApproveStrategy;
+	const strategy = config.confirmationStrategy ?? buildAutoApprovePayload;
 
 	for (const event of confirmationEvents) {
 		const requestId = extractConfirmationRequestId(event);
@@ -255,36 +262,17 @@ export async function processConfirmationRequests(config: WaitConfig): Promise<v
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await
-async function defaultAutoApproveStrategy(event: CapturedEvent): Promise<InstanceAiConfirmRequest> {
-	return buildAutoApprovePayload(event);
-}
-
 /** Map a confirmation-request event to the most-permissive approval payload of the
  *  matching kind. The eval runner has no real credentials and no human in the loop —
  *  we just need a structurally-valid payload that lets the agent proceed. */
 export function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirmRequest {
-	const payload = getNestedRecord(event.data, 'payload') ?? {};
+	const infra = tryInfrastructureResponse(event);
+	if (infra) return infra;
 
-	if (getNestedRecord(payload, 'domainAccess')) {
-		return { kind: 'domainAccessApprove', domainAccessAction: 'allow_all' };
-	}
-
-	const resourceDecision = getNestedRecord(payload, 'resourceDecision');
-	if (resourceDecision) {
-		const options = Array.isArray(resourceDecision.options)
-			? (resourceDecision.options as unknown[]).filter((o): o is string => typeof o === 'string')
-			: [];
-		const allowOption = options.find((o) => o.toLowerCase().includes('allow')) ?? options[0];
-		return { kind: 'resourceDecision', resourceDecision: allowOption ?? 'allowOnce' };
-	}
+	const payload = getEventPayload(event);
 
 	if (Array.isArray(payload.setupRequests)) {
 		return { kind: 'setupWorkflowApply' };
-	}
-
-	if (Array.isArray(payload.credentialRequests)) {
-		return { kind: 'credentialSelection', credentials: {} };
 	}
 
 	if (payload.inputType === 'questions') {
@@ -334,16 +322,5 @@ export function extractAgentId(event: CapturedEvent): string | undefined {
 	const payload = getNestedRecord(event.data, 'payload');
 	if (payload && typeof payload.agentId === 'string') return payload.agentId;
 
-	return undefined;
-}
-
-function getNestedRecord(
-	obj: Record<string, unknown>,
-	key: string,
-): Record<string, unknown> | undefined {
-	const value = obj[key];
-	if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-		return value as Record<string, unknown>;
-	}
 	return undefined;
 }

@@ -165,7 +165,9 @@ interface MultiTurnDriverConfig {
 	logger: EvalLogger;
 }
 
-async function driveMultiTurnConversation(config: MultiTurnDriverConfig): Promise<void> {
+async function driveMultiTurnConversation(
+	config: MultiTurnDriverConfig,
+): Promise<Record<string, number>> {
 	const openingMessage = config.conversation[0]?.text ?? '';
 
 	const proxy = new UserProxyLlm({
@@ -174,8 +176,7 @@ async function driveMultiTurnConversation(config: MultiTurnDriverConfig): Promis
 		logger: config.logger,
 	});
 
-	const confirmationStrategy: ConfirmationStrategy = async (event) =>
-		await proxy.respondToConfirmation(event);
+	const confirmationStrategy: ConfirmationStrategy = proxy.respondToConfirmation.bind(proxy);
 
 	const nextMessageDecider = async () => {
 		proxy.ingestEvents(config.events);
@@ -196,12 +197,7 @@ async function driveMultiTurnConversation(config: MultiTurnDriverConfig): Promis
 		nextMessageDecider,
 	});
 
-	const stats = proxy.getDecisionStats();
-	const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
-	if (entries.length > 0) {
-		const summary = entries.map(([k, v]) => `${k}=${String(v)}`).join(', ');
-		config.logger.info(`  Proxy decisions: ${summary}`);
-	}
+	return { ...proxy.getDecisionStats() };
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +216,8 @@ export interface BuildResult {
 	conversationMetrics?: ConversationMetrics;
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId?: string;
+	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
+	proxyDecisionStats?: Record<string, number>;
 }
 
 export interface BuildWorkflowConfig {
@@ -241,8 +239,12 @@ export interface BuildWorkflowConfig {
 	laneTag?: string;
 }
 
-function shouldEngageProxy(conversation: ConversationTurn[]): boolean {
-	return !(conversation.length === 1 && conversation[0].role === 'user');
+/** A conversation is multi-turn if it has more than one turn, or if the only
+ *  turn is from the assistant. Empty conversations are treated as single-turn. */
+function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
+	if (conversation.length === 0) return false;
+	if (conversation.length > 1) return true;
+	return conversation[0].role !== 'user';
 }
 
 /**
@@ -262,9 +264,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 	try {
 		const buildStart = Date.now();
-		const useProxy = shouldEngageProxy(conversation);
+		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
-			`  Building workflow${useProxy ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
@@ -273,8 +275,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		await delay(SSE_SETTLE_DELAY_MS);
 
-		if (useProxy) {
-			await driveMultiTurnConversation({
+		let proxyDecisionStats: Record<string, number> | undefined;
+		if (isMultiTurn) {
+			proxyDecisionStats = await driveMultiTurnConversation({
 				client,
 				threadId,
 				conversation,
@@ -369,12 +372,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdDataTableIds: outcome.dataTablesCreated,
 				conversationMetrics,
 				threadId,
+				proxyDecisionStats,
 			};
 		}
 
 		const buildMs = Date.now() - buildStart;
+		const proxySuffix = formatProxyStatsSuffix(proxyDecisionStats);
 		logger.info(
-			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${useProxy ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}`,
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
 		);
 
 		return {
@@ -385,6 +390,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: outcome.dataTablesCreated,
 			conversationMetrics,
 			threadId,
+			proxyDecisionStats,
 		};
 	} catch (error: unknown) {
 		abortController.abort();
@@ -400,6 +406,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 		};
 	}
+}
+
+function formatProxyStatsSuffix(stats: Record<string, number> | undefined): string {
+	if (!stats) return '';
+	const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
+	if (entries.length === 0) return '';
+	return ` [proxy: ${entries.map(([k, v]) => `${k}=${String(v)}`).join(', ')}]`;
 }
 
 /**
