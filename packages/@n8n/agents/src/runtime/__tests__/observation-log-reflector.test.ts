@@ -29,7 +29,7 @@ function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationL
 
 describe('observation-log reflector defaults', () => {
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(8_000);
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(4_000);
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain(
 			'CRITICAL. Facts, decisions, identities, commitments',

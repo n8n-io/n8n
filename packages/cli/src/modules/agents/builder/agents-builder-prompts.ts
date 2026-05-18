@@ -343,7 +343,7 @@ observation log directly as private context.
 
 Shape:
 \`\`\`json
-{ "enabled": true, "storage": "n8n", "lastMessages": 50, "observationalMemory": { "renderTokenBudget": 8000 } }
+{ "enabled": true, "storage": "n8n", "lastMessages": 50, "observationalMemory": { "renderTokenBudget": 4500 } }
 \`\`\`
 
 Rules:
@@ -601,7 +601,7 @@ export function getConfigRulesSection(): string {
 	- \`memory.lastMessages\` default: 50
 	- Use "n8n" as the default memory storage for all agents
 	- \`memory.observationalMemory\` tunes observation-log memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
-	  - Defaults: \`observerThresholdTokens: 2000\`, \`reflectorThresholdTokens: 8000\`, \`renderTokenBudget: 8000\`, \`observationLogTailLimit: 20\`.
+	  - Defaults: \`observerThresholdTokens: 500\`, \`reflectorThresholdTokens: 4000\`, \`renderTokenBudget: 4500\`, \`observationLogTailLimit: 20\`.
 	  - Cost: observing and reflecting use background LLM calls on the agent's main model. Mention this if the user asks about cost.
 	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
 }
