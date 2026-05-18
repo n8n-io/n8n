@@ -1,5 +1,5 @@
 import type { BaseResource } from '@/Interface';
-import type { AgentJsonToolRef as ApiAgentJsonToolRef, AgentSkill } from '@n8n/api-types';
+import type { AgentJsonToolConfig, AgentSkill } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill };
@@ -119,12 +119,13 @@ export interface ThinkingSchema {
 	reasoningEffort?: string;
 }
 
-export type WorkflowToolRef = ApiAgentJsonToolRef & { type: 'workflow' };
+export type WorkflowToolRef = AgentJsonToolConfig & { type: 'workflow' };
 
 export type {
 	NodeToolConfig,
-	AgentJsonToolRef,
-	AgentJsonSkillRef,
-	AgentJsonConfigRef,
+	AgentJsonToolConfig,
+	AgentJsonToolConfig as AgentJsonToolRef,
+	AgentJsonSkillConfig as AgentJsonSkillRef,
+	AgentJsonConfig as AgentJsonConfigRef,
 	AgentJsonConfig,
 } from '@n8n/api-types';
