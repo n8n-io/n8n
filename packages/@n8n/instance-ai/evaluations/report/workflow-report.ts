@@ -17,6 +17,7 @@ import type {
 	TurnCounter,
 	WorkflowTestCaseResult,
 } from '../types';
+import { isRecord } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -320,7 +321,7 @@ function renderTranscriptTurn(turn: TraceNode, turnNum: number): string {
 }
 
 function pickString(value: unknown, key: string): string {
-	if (!isPlainObject(value)) return '';
+	if (!isRecord(value)) return '';
 	const v = value[key];
 	return typeof v === 'string' ? v : '';
 }
@@ -328,13 +329,13 @@ function pickString(value: unknown, key: string): string {
 function collectReasoning(turn: TraceNode): string {
 	const parts: string[] = [];
 	walkDescendants(turn, (node) => {
-		if (node.runType !== 'llm' || !isPlainObject(node.outputs)) return;
+		if (node.runType !== 'llm' || !isRecord(node.outputs)) return;
 		const messages = node.outputs.messages;
 		if (!Array.isArray(messages)) return;
 		for (const msg of messages) {
-			if (!isPlainObject(msg) || !Array.isArray(msg.content)) continue;
+			if (!isRecord(msg) || !Array.isArray(msg.content)) continue;
 			for (const item of msg.content) {
-				if (isPlainObject(item) && item.type === 'thinking' && typeof item.text === 'string') {
+				if (isRecord(item) && item.type === 'thinking' && typeof item.text === 'string') {
 					parts.push(item.text.trim());
 				}
 			}
@@ -356,10 +357,6 @@ function walkDescendants(node: TraceNode, visit: (n: TraceNode) => void): void {
 		visit(child);
 		walkDescendants(child, visit);
 	}
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // ---------------------------------------------------------------------------

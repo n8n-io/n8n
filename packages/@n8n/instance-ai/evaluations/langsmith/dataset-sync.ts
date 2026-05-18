@@ -13,7 +13,7 @@ import type { Client } from 'langsmith';
 import type { Example, KVMap } from 'langsmith/schemas';
 import { z } from 'zod';
 
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 
 /**
@@ -191,22 +191,7 @@ interface FlatScenario {
  * Input:  [tc1(s1,s2,s3), tc2(s1,s2), tc3(s1)]
  * Output: [tc1/s1, tc2/s1, tc3/s1, tc1/s2, tc2/s2, tc1/s3]
  */
-function buildRoundRobinScenarios(
-	testCasesWithFiles: Array<{
-		testCase: {
-			complexity?: 'simple' | 'medium' | 'complex';
-			tags?: string[];
-			triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-			executionScenarios: Array<{
-				name: string;
-				description: string;
-				dataSetup: string;
-				successCriteria: string;
-			}>;
-		};
-		fileSlug: string;
-	}>,
-): FlatScenario[] {
+function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]): FlatScenario[] {
 	const result: FlatScenario[] = [];
 	const maxScenarios = Math.max(
 		...testCasesWithFiles.map((tc) => tc.testCase.executionScenarios.length),
