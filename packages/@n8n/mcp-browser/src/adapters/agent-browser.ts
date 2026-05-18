@@ -12,6 +12,7 @@ import {
 	type ConnectionLostReason,
 } from '../errors';
 import { createLogger } from '../logger';
+import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	Adapter,
 	ClickOptions,
@@ -23,6 +24,7 @@ import type {
 	NavigateResult,
 	NetworkEntry,
 	PageInfo,
+	HtmlProbeResult,
 	ResolvedConfig,
 	ScreenshotOptions,
 	ScrollOptions,
@@ -440,6 +442,20 @@ export class AgentBrowserAdapter implements Adapter {
 			typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? '');
 		const refCount = (tree.match(/@e\d+/g) ?? []).length;
 		return { tree: tree || '(empty page)', refCount };
+	}
+
+	async probePageHtml(pageId: string): Promise<HtmlProbeResult> {
+		try {
+			await this.switchToTab(pageId);
+			const resp = await this.run(['eval', HTML_PROBE_SCRIPT]);
+			const raw =
+				resp.data && typeof resp.data === 'object' && 'result' in resp.data
+					? (resp.data as { result: unknown }).result
+					: resp.data;
+			return parseHtmlProbeResult(raw);
+		} catch (error) {
+			return { ok: false, error: error instanceof Error ? error.message : String(error) };
+		}
 	}
 
 	async screenshot(
