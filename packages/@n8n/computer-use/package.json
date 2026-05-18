@@ -1,6 +1,6 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {

@@ -5,6 +5,7 @@ import type {
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentScheduleConfig,
+	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -75,12 +76,13 @@ export const connectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
+	settings?: AgentIntegrationSettings,
 ): Promise<{ status: string }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ type, credentialId },
+		{ type, credentialId, ...(settings ? { settings } : {}) },
 	);
 };
 
@@ -192,6 +194,7 @@ export const listAllAgents = async (
 export interface ModelInfo {
 	id: string;
 	name: string;
+	releaseDate?: string;
 	reasoning: boolean;
 	toolCall: boolean;
 }
@@ -248,18 +251,6 @@ export const revertAgentToPublished = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/revert-to-published`,
-	);
-};
-
-export const listAgentCredentials = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<Array<{ id: string; name: string; type: string }>> => {
-	return await makeRestApiRequest<Array<{ id: string; name: string; type: string }>>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/credentials`,
 	);
 };
 

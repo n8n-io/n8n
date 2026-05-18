@@ -337,13 +337,18 @@ export class Git implements INodeType {
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: resolvedRepositoryPath,
 					config: gitConfig,
+					// simple-git blocks callers from setting `core.hooksPath` via `config`
+					// unless this flag is set. We set it deliberately as a mitigation, so
+					// opt in to keep that mitigation working.
+					...(!enableHooks && { unsafe: { allowUnsafeHooksPath: true } }),
 				};
 
-				const git: SimpleGit = simpleGit(gitOptions)
-					// Tell git not to ask for any information via the terminal like for
-					// example the username. As nobody will be able to answer it would
-					// n8n keep on waiting forever.
-					.env('GIT_TERMINAL_PROMPT', '0');
+				const cleanEnv = Object.create(null) as Record<string, unknown>;
+				// Tell git not to ask for any information via the terminal like for
+				// example the username. As nobody will be able to answer it would
+				// n8n keep on waiting forever.
+				cleanEnv['GIT_TERMINAL_PROMPT'] = '0';
+				const git: SimpleGit = simpleGit(gitOptions).env(cleanEnv);
 
 				if (operation === 'add') {
 					// ----------------------------------
