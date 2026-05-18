@@ -1,17 +1,17 @@
 import { unknownConfigKeysValidator } from './unknown-config-keys-validator';
-import type { GraphNode, NodeConfig, NodeInstance } from '../../../types/base';
+import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { PluginContext } from '../types';
 
 function createMockNode(
-	config: Record<string, unknown>,
+	config: Record<string, unknown> | undefined,
 	name = 'Test Node',
 ): NodeInstance<string, string, unknown> {
 	return {
 		type: 'n8n-nodes-base.code',
 		name,
 		version: '2',
-		config: config as NodeConfig,
-	} as NodeInstance<string, string, unknown>;
+		config,
+	} as unknown as NodeInstance<string, string, unknown>;
 }
 
 function createGraphNode(node: NodeInstance<string, string, unknown>): GraphNode {
@@ -67,6 +67,8 @@ describe('unknownConfigKeysValidator', () => {
 					nodeName: 'Code',
 				}),
 			);
+			expect(issues[0].message).toContain("'Code'");
+			expect(issues[0].message).toContain('[n8n-nodes-base.code]');
 			expect(issues[0].message).toContain('"mode"');
 			expect(issues[0].message).toContain('"language"');
 			expect(issues[0].message).toContain('"jsCode"');
@@ -153,11 +155,7 @@ describe('unknownConfigKeysValidator', () => {
 		});
 
 		it('returns no issues when config itself is missing', () => {
-			const node = {
-				type: 'n8n-nodes-base.code',
-				name: 'Code',
-				version: '2',
-			} as NodeInstance<string, string, unknown>;
+			const node = createMockNode(undefined, 'Code');
 
 			const issues = unknownConfigKeysValidator.validateNode(
 				node,
