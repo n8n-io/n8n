@@ -1,4 +1,13 @@
 import { InMemoryMemory } from '../runtime/memory-store';
+import {
+	createObservationLogObserveFn,
+	createObservationLogReflectFn,
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from '../runtime/observation-log-defaults';
 import { hasObservationLogStore } from '../runtime/observation-log-store';
 import type {
 	BuiltMemory,
@@ -7,8 +16,51 @@ import type {
 	SemanticRecallConfig,
 	TitleGenerationConfig,
 } from '../types';
+import type { ModelConfig } from '../types/sdk/agent';
 
 const DEFAULT_LAST_MESSAGES = 10;
+
+export { DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS, DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET };
+
+export interface ResolveObservationalMemoryConfigOptions {
+	defaultModel: ModelConfig;
+}
+
+export function resolveObservationalMemoryConfig(
+	config: ObservationalMemoryConfig,
+	options: ResolveObservationalMemoryConfigOptions,
+): ObservationalMemoryConfig {
+	const observerModel = options.defaultModel;
+	const reflectorModel = options.defaultModel;
+
+	return {
+		observerThresholdTokens:
+			config.observerThresholdTokens ?? DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+		reflectorThresholdTokens:
+			config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+		renderTokenBudget: config.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+		observationLogTailLimit: config.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		observe: config.observe ?? createObservationLogObserveFn(observerModel),
+		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
+	};
+}
+
+export function resolveMemoryConfigDefaults(
+	config: MemoryConfig,
+	options: ResolveObservationalMemoryConfigOptions,
+): MemoryConfig {
+	if (!config.observationalMemory) {
+		return config;
+	}
+
+	const observationalMemory = resolveObservationalMemoryConfig(config.observationalMemory, options);
+
+	return normalizeMemoryConfig({
+		...config,
+		observationalMemory,
+	});
+}
 
 export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
 	if (!config.observationalMemory) {
@@ -30,19 +82,6 @@ export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
 			}),
 		},
 	};
-}
-
-function validateObservationalMemoryConfig(config: ObservationalMemoryConfig): void {
-	if (config.observe && config.observerThresholdTokens === undefined) {
-		throw new Error(
-			'Observational memory observe callback requires observerThresholdTokens. Add observerThresholdTokens or remove observe.',
-		);
-	}
-	if (config.reflect && config.reflectorThresholdTokens === undefined) {
-		throw new Error(
-			'Observational memory reflect callback requires reflectorThresholdTokens. Add reflectorThresholdTokens or remove reflect.',
-		);
-	}
 }
 
 /**
@@ -164,7 +203,6 @@ export class Memory {
 				"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
 			);
 		}
-		validateObservationalMemoryConfig(this.observationalMemoryConfig);
 
 		return normalizeMemoryConfig({
 			...baseConfig,
