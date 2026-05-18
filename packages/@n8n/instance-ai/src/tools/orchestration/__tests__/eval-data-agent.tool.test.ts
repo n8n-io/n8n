@@ -566,14 +566,13 @@ describe('eval-data tool', () => {
 			const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
 
 			expect(result.source).toBe('synthetic');
-			expect(generateSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					realExamples: expect.arrayContaining([
-						expect.objectContaining({ user_query: 'real-e0' }),
-						expect.objectContaining({ user_query: 'real-e1' }),
-						expect.objectContaining({ user_query: 'real-e2' }),
-					]),
-				}),
+			const callArg = generateSpy.mock.calls[0]?.[0];
+			expect(callArg?.realExamples).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ user_query: 'real-e0' }),
+					expect.objectContaining({ user_query: 'real-e1' }),
+					expect.objectContaining({ user_query: 'real-e2' }),
+				]),
 			);
 		});
 
