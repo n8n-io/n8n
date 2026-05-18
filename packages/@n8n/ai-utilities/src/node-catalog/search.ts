@@ -9,9 +9,9 @@
 
 import { isTriggerNodeType, type IParameterBuilderHint, type IRelatedNode } from 'n8n-workflow';
 
-import type { ResourceInfo, OperationInfo } from './resource-operation-extractor';
 import type { ModeInfo } from './discriminator-utils';
 import type { NodeTypeParser, ParsedNodeType } from './node-type-parser';
+import type { ResourceInfo, OperationInfo } from './resource-operation-extractor';
 
 /**
  * Simplified operation info for discriminator display
