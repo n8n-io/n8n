@@ -258,6 +258,8 @@ export function usePostMessageHandler({
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,
 				)) as ExecutionSummary;
+			} else if (json?.command === 'fitView') {
+				canvasEventBus.emit('fitView');
 			} else if (json?.command === 'executionEvent') {
 				// Relay execution push events from parent into the iframe's push pipeline.
 				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch
