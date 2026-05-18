@@ -1,6 +1,6 @@
 import type { Agent } from '../entities/agent.entity';
 import { composeJsonConfig, decomposeJsonConfig } from '../json-config/agent-config-composition';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 
 describe('composeJsonConfig', () => {
 	it('returns the schema with empty integrations when none are stored', () => {
@@ -19,11 +19,9 @@ describe('composeJsonConfig', () => {
 	it('merges integrations from the storage column into the JSON config', () => {
 		const agent = {
 			schema: { name: 'A', model: 'anthropic/claude', instructions: 'x' },
-			integrations: [{ type: 'slack', credentialId: 'c1', credentialName: 'Acme' }],
+			integrations: [{ type: 'slack', credentialId: 'c1' }],
 		} as unknown as Agent;
-		expect(composeJsonConfig(agent)?.integrations).toEqual([
-			{ type: 'slack', credentialId: 'c1', credentialName: 'Acme' },
-		]);
+		expect(composeJsonConfig(agent)?.integrations).toEqual([{ type: 'slack', credentialId: 'c1' }]);
 	});
 
 	it('returns null when schema is null', () => {

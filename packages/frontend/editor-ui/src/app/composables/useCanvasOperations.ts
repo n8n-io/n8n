@@ -2672,14 +2672,17 @@ export function useCanvasOperations() {
 
 					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						if (node.webhookId) {
-							nodeHelpers.assignWebhookId(node);
+						const previousWebhookId = node.webhookId;
+						const pathMatchedWebhookId = node.parameters.path === previousWebhookId;
+						const optionsPathMatchedWebhookId =
+							(node.parameters.options as IDataObject)?.path === previousWebhookId;
 
-							if (node.parameters.path) {
-								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject)?.path) {
-								(node.parameters.options as IDataObject).path = node.webhookId;
-							}
+						nodeHelpers.assignWebhookId(node);
+
+						if (pathMatchedWebhookId) {
+							node.parameters.path = node.webhookId;
+						} else if (optionsPathMatchedWebhookId) {
+							(node.parameters.options as IDataObject).path = node.webhookId;
 						}
 					}
 

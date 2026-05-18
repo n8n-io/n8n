@@ -8,15 +8,15 @@ import type {
 	JSONObject,
 } from '@n8n/agents';
 import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
-import type { AgentSkill } from '@n8n/api-types';
 import { z } from 'zod';
-
 import type {
+	AgentSkill,
 	AgentJsonConfig,
-	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
-} from './agent-json-config';
+	AgentJsonSkillConfig,
+} from '@n8n/api-types';
+
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveProviderToolName } from './provider-tool-aliases';
 
@@ -138,7 +138,7 @@ export async function buildFromJson(
 type ConfiguredSkill = { id: string; skill: AgentSkill };
 
 function getConfiguredSkills(
-	refs: Array<Extract<AgentJsonConfigRef, { type: 'skill' }>>,
+	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
 ): ConfiguredSkill[] {
 	const seen = new Set<string>();
