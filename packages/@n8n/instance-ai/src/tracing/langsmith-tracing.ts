@@ -472,9 +472,16 @@ function getCurrentProductTrace():
 	return productTraceStorage.getStore();
 }
 
-function getActiveOtelContextWithSpan(): OtelContext | undefined {
+function getActiveOtelContextWithSpan(expectedTraceId?: string): OtelContext | undefined {
 	const activeContext = otelContext.active();
-	return otelTrace.getSpan(activeContext) ? activeContext : undefined;
+	const activeSpanContext = otelTrace.getSpan(activeContext)?.spanContext();
+	if (!activeSpanContext) {
+		return undefined;
+	}
+	if (expectedTraceId && activeSpanContext.traceId !== expectedTraceId) {
+		return undefined;
+	}
+	return activeContext;
 }
 
 function spanMetadataAttributes(
@@ -813,7 +820,9 @@ export async function withCurrentTraceSpan<T>(
 		return await fn();
 	}
 
-	const activeParentContext = getActiveOtelContextWithSpan();
+	const activeParentContext = getActiveOtelContextWithSpan(
+		currentProductTrace.currentRun.otelTraceId,
+	);
 	let spanRun: InstanceAiTraceRun;
 	try {
 		spanRun = startProductSpan(currentProductTrace.runtime, {
@@ -892,7 +901,7 @@ async function startAndFinishProductChildSpan(
 		error?: string;
 	},
 ): Promise<void> {
-	const activeParentContext = getActiveOtelContextWithSpan();
+	const activeParentContext = getActiveOtelContextWithSpan(currentTrace.currentRun.otelTraceId);
 	let childRun: InstanceAiTraceRun;
 	try {
 		childRun = startProductSpan(currentTrace.runtime, {
@@ -999,7 +1008,7 @@ function createTraceContext(
 		init: InstanceAiTraceRunInit,
 	): Promise<InstanceAiTraceRun> =>
 		await withProxyHeadersBestEffort(proxyConfig, () => {
-			const activeParentContext = getActiveOtelContextWithSpan();
+			const activeParentContext = getActiveOtelContextWithSpan(parentRun.otelTraceId);
 			try {
 				return startProductSpan(otelRuntime, {
 					projectName,

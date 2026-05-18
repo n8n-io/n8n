@@ -1389,6 +1389,44 @@ describe('createInstanceAiTraceContext', () => {
 		expect(spanNames).toContain('prepare_context');
 	});
 
+	it('keeps explicit child runs under their requested parent when another trace is active', async () => {
+		const activeTracing = await createInstanceAiTraceContext({
+			threadId: 'thread-active',
+			messageId: 'message-active',
+			runId: 'run-active',
+			userId: 'user-active',
+			input: { message: 'active trace' },
+		});
+		const resumedTracing = await createInstanceAiTraceContext({
+			threadId: 'thread-resumed',
+			messageId: 'message-resumed',
+			runId: 'run-resumed',
+			userId: 'user-resumed',
+			input: { message: 'resumed trace' },
+		});
+
+		expect(activeTracing).toBeDefined();
+		expect(resumedTracing).toBeDefined();
+
+		let childRun:
+			| NonNullable<Awaited<ReturnType<typeof createInstanceAiTraceContext>>>['rootRun']
+			| undefined;
+		await activeTracing!.withActiveSpan(activeTracing!.rootRun, async () => {
+			childRun = await resumedTracing!.startChildRun(resumedTracing!.rootRun, {
+				name: 'prepare: context',
+				canonicalName: 'instance-ai.context_compaction',
+				metadata: { agent_role: 'context_compaction' },
+			});
+		});
+
+		expect(childRun).toBeDefined();
+		expect(childRun!.traceId).toBe(resumedTracing!.rootRun.traceId);
+		expect(childRun!.otelTraceId).toBe(resumedTracing!.rootRun.otelTraceId);
+
+		const childSpan = agentsMock.getSpans().find((span) => span.id === childRun!.otelSpanId);
+		expect(childSpan?.parentSpanId).toBe(resumedTracing!.rootRun.otelSpanId);
+	});
+
 	it('treats product tracing setup failures as disabled tracing', async () => {
 		agentsMock.setBuildError(new Error('telemetry setup failed'));
 
