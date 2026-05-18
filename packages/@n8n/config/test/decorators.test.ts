@@ -52,7 +52,7 @@ describe('decorators', () => {
 		const filePath = '/path/to/secret';
 		process.env.TEST_VALUE_FILE = filePath;
 		mockFs.readFileSync.mockReturnValueOnce('secret-value\n');
-		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation();
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		@Config
 		class TestConfig {
