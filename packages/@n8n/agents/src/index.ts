@@ -156,6 +156,14 @@ export {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from './runtime/observation-log-observer';
+export {
+	buildObservationLogObserverPrompt,
+	createObservationLogObserveFn,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from './runtime/observation-log-defaults';
+export type { CreateObservationLogObserveFnOptions } from './runtime/observation-log-defaults';
 export type {
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,

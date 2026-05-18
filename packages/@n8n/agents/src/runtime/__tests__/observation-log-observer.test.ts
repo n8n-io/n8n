@@ -1,6 +1,12 @@
 import type { AgentDbMessage } from '../../types/sdk/message';
 import { InMemoryMemory } from '../memory-store';
 import {
+	buildObservationLogObserverPrompt,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from '../observation-log-defaults';
+import {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
@@ -19,6 +25,37 @@ function message(
 		content: [{ type: 'text', text }],
 	};
 }
+
+describe('observation-log observer defaults', () => {
+	it('keeps default policy and threshold configuration in the SDK', () => {
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(2000);
+		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('Output the new observations only');
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('🔴 CRITICAL');
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain(
+			'GOOD:\n* 🟡 (14:30) User is purchasing Claude Code subscriptions for their team.',
+		);
+	});
+
+	it('builds the default observer prompt from log tail and transcript delta', () => {
+		const prompt = buildObservationLogObserverPrompt({
+			scopeKind: 'thread',
+			scopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '[2026-05-12T14:29:00.000Z] user:\nRemember daily-report-prod.',
+			transcriptTokenCount: 42,
+			observationLogTail: [],
+			renderedObservationLogTail:
+				'## Memory\n\n* 🔴 (14:28) User is rebuilding observational memory.',
+		});
+
+		expect(prompt).toContain('Current timestamp: 2026-05-12T14:30:00.000Z');
+		expect(prompt).toContain('* 🔴 (14:28) User is rebuilding observational memory.');
+		expect(prompt).toContain('Remember daily-report-prod.');
+		expect(prompt).toContain('Unobserved transcript tokens: 42');
+	});
+});
 
 describe('parseObservationLogMarkdown', () => {
 	it('parses marker bullets and attaches marked sub-bullets to the previous parent', () => {
