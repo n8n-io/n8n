@@ -29,8 +29,11 @@ export function extractJsonColumnRefs(text: string): string[] {
 	const refs: string[] = [];
 	const patterns = [
 		/\$json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+		/\$json\[['"]([^'"]+)['"]\]/g,
 		/\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+		/\.item\.json\[['"]([^'"]+)['"]\]/g,
 		/item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+		/item\.json\[['"]([^'"]+)['"]\]/g,
 	];
 	for (const pattern of patterns) {
 		for (const match of text.matchAll(pattern)) {
@@ -44,13 +47,39 @@ export function extractJsonColumnRefs(text: string): string[] {
  * Match named cross-node references in expressions.
  * Captures (sourceNodeName, field) pairs for:
  *   - $('Name').item.json.field
+ *   - $('Name').item.json["field"]
  *   - $("Name").item.json.field
+ *   - $("Name").item.json["field"]
  *   - $node["Name"].json.field   (legacy)
+ *   - $node["Name"].json["field"] (legacy)
  */
-const NAMED_REF_PATTERNS = [
-	/\$\('([^']+)'\)\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-	/\$\("([^"]+)"\)\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-	/\$node\["([^"]+)"\]\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+const NAMED_REF_PATTERNS: Array<{
+	pattern: RegExp;
+	nodeNameIndex: number;
+	fieldIndex: number;
+}> = [
+	{
+		pattern:
+			/\$\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*\)(?:\.first\(\)|\.\w+)*\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+		nodeNameIndex: 2,
+		fieldIndex: 3,
+	},
+	{
+		pattern:
+			/\$\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*\)(?:\.first\(\)|\.\w+)*\.json\[['"]([^'"]+)['"]\]/g,
+		nodeNameIndex: 2,
+		fieldIndex: 3,
+	},
+	{
+		pattern: /\$node\[['"]([^'"]+)['"]\]\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+		nodeNameIndex: 1,
+		fieldIndex: 2,
+	},
+	{
+		pattern: /\$node\[['"]([^'"]+)['"]\]\.json\[['"]([^'"]+)['"]\]/g,
+		nodeNameIndex: 1,
+		fieldIndex: 2,
+	},
 ];
 
 export interface NamedRefMatch {
@@ -59,16 +88,24 @@ export interface NamedRefMatch {
 	originalExpression: string;
 }
 
+function unescapeExpressionString(raw: string): string {
+	return raw.replace(/\\(.)/g, '$1');
+}
+
 export function extractNamedRefMatches(text: string): NamedRefMatch[] {
 	const matches: NamedRefMatch[] = [];
-	for (const pattern of NAMED_REF_PATTERNS) {
+	for (const { pattern, nodeNameIndex, fieldIndex } of NAMED_REF_PATTERNS) {
 		// Reset lastIndex since patterns have /g flag
 		pattern.lastIndex = 0;
 		for (const match of text.matchAll(pattern)) {
-			const nodeName = match[1];
-			const field = match[2];
+			const nodeName = match[nodeNameIndex];
+			const field = match[fieldIndex];
 			if (nodeName !== undefined && field !== undefined) {
-				matches.push({ nodeName, field, originalExpression: match[0] });
+				matches.push({
+					nodeName: unescapeExpressionString(nodeName),
+					field,
+					originalExpression: match[0],
+				});
 			}
 		}
 	}

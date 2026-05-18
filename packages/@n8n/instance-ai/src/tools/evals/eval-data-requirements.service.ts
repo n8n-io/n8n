@@ -2,7 +2,6 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
 import {
-	collectStrings,
 	extractJsonColumnRefs,
 	isRecord,
 	nodeHasName,
@@ -98,9 +97,10 @@ function expectedColumnsFromMetricNodes(nodes: WorkflowNode[]): string[] {
 	return unique(
 		nodes.flatMap((node) => {
 			if (!nodeTypeEndsWith(node, 'evaluation') || readOperation(node) !== 'setMetrics') return [];
-			return collectStrings(node.parameters)
-				.filter((text) => text.includes('.item.json.') || text.includes('item.json.'))
-				.flatMap((text) => extractJsonColumnRefs(text));
+			const parameters = node.parameters;
+			if (!isRecord(parameters)) return [];
+			const expectedRaw = parameters.expectedAnswer;
+			return typeof expectedRaw === 'string' ? extractJsonColumnRefs(expectedRaw) : [];
 		}),
 	);
 }
