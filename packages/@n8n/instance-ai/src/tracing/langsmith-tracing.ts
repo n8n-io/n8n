@@ -404,6 +404,32 @@ async function finishProductSpanBestEffort(
 	}
 }
 
+async function withProxyHeaders<T>(
+	proxyConfig: ServiceProxyConfig | undefined,
+	fn: () => T | Promise<T>,
+): Promise<T> {
+	if (!proxyConfig) return await fn();
+
+	const headers = await proxyConfig.getAuthHeaders();
+	return await proxyHeaderStore.run(headers, fn);
+}
+
+async function withProxyHeadersBestEffort<T>(
+	proxyConfig: ServiceProxyConfig | undefined,
+	fn: () => T | Promise<T>,
+): Promise<T> {
+	if (!proxyConfig) return await fn();
+
+	let headers: Record<string, string>;
+	try {
+		headers = await proxyConfig.getAuthHeaders();
+	} catch {
+		return await fn();
+	}
+
+	return await proxyHeaderStore.run(headers, fn);
+}
+
 async function withProductSpanContext<T>(
 	runtime: ProductOtelTraceRuntime,
 	run: InstanceAiTraceRun,
@@ -1816,12 +1842,7 @@ export async function submitLangsmithUserFeedback(
 		});
 	};
 
-	if (options.proxyConfig) {
-		const headers = await options.proxyConfig.getAuthHeaders();
-		await proxyHeaderStore.run(headers, call);
-	} else {
-		await call();
-	}
+	await withProxyHeaders(options.proxyConfig, call);
 	return true;
 }
 
@@ -2109,23 +2130,11 @@ function createTraceContext(
 ): InstanceAiTraceContext {
 	otelTraceRuntimes.set(rootRun.traceId, otelRuntime);
 
-	const getProxyHeaders = proxyConfig?.getAuthHeaders;
-	const withProxy = async <T>(fn: () => T | Promise<T>): Promise<T> => {
-		if (!getProxyHeaders) return await fn();
-		let headers: Record<string, string>;
-		try {
-			headers = await getProxyHeaders();
-		} catch {
-			return await fn();
-		}
-		return await proxyHeaderStore.run(headers, fn);
-	};
-
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
 		init: InstanceAiTraceRunInit,
 	): Promise<InstanceAiTraceRun> =>
-		await withProxy(() => {
+		await withProxyHeadersBestEffort(proxyConfig, () => {
 			const activeParentContext = getActiveOtelContextWithSpan();
 			try {
 				return startProductSpan(otelRuntime, {
@@ -2145,14 +2154,20 @@ function createTraceContext(
 		});
 
 	const withActiveSpan = async <T>(run: InstanceAiTraceRun, fn: () => Promise<T>): Promise<T> =>
-		await withProxy(async () => await withProductSpanContextBestEffort(otelRuntime, run, fn));
+		await withProxyHeadersBestEffort(
+			proxyConfig,
+			async () => await withProductSpanContextBestEffort(otelRuntime, run, fn),
+		);
 	const withRunTree = withActiveSpan;
 
 	const finishRun = async (
 		run: InstanceAiTraceRun,
 		finishOptions?: InstanceAiTraceRunFinishOptions,
 	): Promise<void> => {
-		await withProxy(async () => await finishProductSpanBestEffort(otelRuntime, run, finishOptions));
+		await withProxyHeadersBestEffort(
+			proxyConfig,
+			async () => await finishProductSpanBestEffort(otelRuntime, run, finishOptions),
+		);
 		if (!run.parentRunId) {
 			otelTraceRuntimes.delete(run.traceId);
 		}
@@ -2163,7 +2178,8 @@ function createTraceContext(
 		error: unknown,
 		metadata?: Record<string, unknown>,
 	): Promise<void> => {
-		await withProxy(
+		await withProxyHeadersBestEffort(
+			proxyConfig,
 			async () =>
 				await finishProductSpanBestEffort(otelRuntime, run, {
 					error: normalizeErrorMessage(error),
@@ -2607,6 +2623,36 @@ async function createProductOtelRuntime(
 	};
 }
 
+function createProductTraceContext(options: {
+	projectName: string;
+	traceKind: InstanceAiTraceContext['traceKind'];
+	rootRun: InstanceAiTraceRun;
+	actorRun: InstanceAiTraceRun;
+	otelRuntime: ProductOtelTraceRuntime;
+	baseMetadata: Record<string, unknown>;
+	proxyConfig?: ServiceProxyConfig;
+	getActorRun?: () => InstanceAiTraceRun;
+}): InstanceAiTraceContext {
+	return createTraceContext(
+		options.projectName,
+		options.traceKind,
+		options.rootRun,
+		options.actorRun,
+		options.otelRuntime,
+		options.proxyConfig,
+		createTelemetryFactory({
+			projectName: options.projectName,
+			traceKind: options.traceKind,
+			rootRun: options.rootRun,
+			actorRun: options.actorRun,
+			...(options.getActorRun ? { getActorRun: options.getActorRun } : {}),
+			baseMetadata: options.baseMetadata,
+			baseTelemetry: options.otelRuntime.telemetry,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		}),
+	);
+}
+
 export async function createInstanceAiTraceContext(
 	options: CreateInstanceAiTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
@@ -2636,34 +2682,22 @@ export async function createInstanceAiTraceContext(
 			inputs: options.input,
 			root: true,
 		});
-		const tracing = createTraceContext(
+		const tracing = createProductTraceContext({
 			projectName,
-			'message_turn',
-			messageRun,
-			messageRun,
+			traceKind: 'message_turn',
+			rootRun: messageRun,
+			actorRun: messageRun,
 			otelRuntime,
-			options.proxyConfig,
-			createTelemetryFactory({
-				projectName,
-				traceKind: 'message_turn',
-				rootRun: messageRun,
-				actorRun: messageRun,
-				getActorRun: () => traceContextRef.current?.actorRun ?? messageRun,
-				baseMetadata,
-				baseTelemetry: otelRuntime.telemetry,
-				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
-			}),
-		);
+			baseMetadata,
+			getActorRun: () => traceContextRef.current?.actorRun ?? messageRun,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		});
 		traceContextRef.current = tracing;
 		return tracing;
 	};
 
 	try {
-		if (options.proxyConfig) {
-			const headers = await options.proxyConfig.getAuthHeaders();
-			return await proxyHeaderStore.run(headers, createTraceRuns);
-		}
-		return await createTraceRuns();
+		return await withProxyHeaders(options.proxyConfig, createTraceRuns);
 	} catch {
 		return undefined;
 	}
@@ -2741,31 +2775,19 @@ export async function continueInstanceAiTraceContext(
 			parentRun: rootRun,
 		});
 
-		return createTraceContext(
+		return createProductTraceContext({
 			projectName,
-			'orchestrator_resume',
+			traceKind: 'orchestrator_resume',
 			rootRun,
-			orchestratorRun,
+			actorRun: orchestratorRun,
 			otelRuntime,
-			proxyConfig,
-			createTelemetryFactory({
-				projectName,
-				traceKind: 'orchestrator_resume',
-				rootRun,
-				actorRun: orchestratorRun,
-				baseMetadata,
-				baseTelemetry: otelRuntime.telemetry,
-				...(proxyConfig ? { proxyConfig } : {}),
-			}),
-		);
+			baseMetadata,
+			...(proxyConfig ? { proxyConfig } : {}),
+		});
 	};
 
 	try {
-		if (proxyConfig) {
-			const headers = await proxyConfig.getAuthHeaders();
-			return await proxyHeaderStore.run(headers, createContinuation);
-		}
-		return await createContinuation();
+		return await withProxyHeaders(proxyConfig, createContinuation);
 	} catch {
 		return undefined;
 	}
@@ -2814,31 +2836,19 @@ export async function createDetachedSubAgentTraceContext(
 			parentRun: rootRun,
 		});
 
-		return createTraceContext(
+		return createProductTraceContext({
 			projectName,
-			'background_subagent',
+			traceKind: 'background_subagent',
 			rootRun,
 			actorRun,
 			otelRuntime,
-			options.proxyConfig,
-			createTelemetryFactory({
-				projectName,
-				traceKind: 'background_subagent',
-				rootRun,
-				actorRun,
-				baseMetadata: mergeMetadata(baseMetadata, rootMetadata) ?? baseMetadata,
-				baseTelemetry: otelRuntime.telemetry,
-				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
-			}),
-		);
+			baseMetadata: mergeMetadata(baseMetadata, rootMetadata) ?? baseMetadata,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		});
 	};
 
 	try {
-		if (options.proxyConfig) {
-			const headers = await options.proxyConfig.getAuthHeaders();
-			return await proxyHeaderStore.run(headers, createDetachedRuns);
-		}
-		return await createDetachedRuns();
+		return await withProxyHeaders(options.proxyConfig, createDetachedRuns);
 	} catch {
 		return undefined;
 	}
@@ -2876,31 +2886,19 @@ export async function createInternalOperationTraceContext(
 			root: true,
 		});
 
-		return createTraceContext(
+		return createProductTraceContext({
 			projectName,
-			'internal_operation',
+			traceKind: 'internal_operation',
 			rootRun,
-			rootRun,
+			actorRun: rootRun,
 			otelRuntime,
-			options.proxyConfig,
-			createTelemetryFactory({
-				projectName,
-				traceKind: 'internal_operation',
-				rootRun,
-				actorRun: rootRun,
-				baseMetadata: mergeMetadata(baseMetadata, internalMetadata) ?? baseMetadata,
-				baseTelemetry: otelRuntime.telemetry,
-				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
-			}),
-		);
+			baseMetadata: mergeMetadata(baseMetadata, internalMetadata) ?? baseMetadata,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		});
 	};
 
 	try {
-		if (options.proxyConfig) {
-			const headers = await options.proxyConfig.getAuthHeaders();
-			return await proxyHeaderStore.run(headers, createInternalRuns);
-		}
-		return await createInternalRuns();
+		return await withProxyHeaders(options.proxyConfig, createInternalRuns);
 	} catch {
 		return undefined;
 	}
