@@ -5,9 +5,16 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import nock from 'nock';
+import { InstanceSettings } from 'n8n-core';
 
+import {
+	SYSTEM_RESOLVER_ID,
+	SYSTEM_RESOLVER_NAME,
+	SYSTEM_RESOLVER_TYPE,
+} from '@/modules/dynamic-credentials.ee/constants';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
+import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
 import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';
@@ -45,12 +52,18 @@ describe('Credential Resolvers API', () => {
 
 		service = Container.get(DynamicCredentialResolverService);
 		repository = Container.get(DynamicCredentialResolverRepository);
+
+		// Force leader role so N8nResolverSeeder.seed() runs (not no-op for followers)
+		Object.defineProperty(Container.get(InstanceSettings), 'isLeader', {
+			value: true,
+			configurable: true,
+		});
 	});
 
 	beforeEach(async () => {
 		await repository.delete({});
+		await Container.get(N8nResolverSeeder).seed();
 		nock.cleanAll();
-		// Mock OAuth metadata endpoint for resolver validation
 		nock('https://auth.example.com')
 			.persist()
 			.get('/.well-known/openid-configuration')
@@ -69,7 +82,7 @@ describe('Credential Resolvers API', () => {
 	});
 
 	describe('GET /credential-resolvers', () => {
-		it('should return empty list when no resolvers exist', async () => {
+		it('should return empty list when only the system resolver exists', async () => {
 			const response = await ownerAgent.get('/credential-resolvers').expect(200);
 			expect(response.body.data).toEqual([]);
 		});
@@ -102,6 +115,7 @@ describe('Credential Resolvers API', () => {
 			const response = await ownerAgent.get('/credential-resolvers').expect(200);
 
 			expect(response.body.data).toHaveLength(2);
+			expect(response.body.data.map((r: { id: string }) => r.id)).not.toContain(SYSTEM_RESOLVER_ID);
 			expect(response.body.data[0]).toMatchObject({
 				id: expect.any(String),
 				name: 'Resolver 1',
@@ -165,9 +179,9 @@ describe('Credential Resolvers API', () => {
 				validation: 'oauth2-introspection',
 			});
 
-			// Verify it was actually created
+			// Verify it was actually created (system row + 1 custom)
 			const resolvers = await repository.find();
-			expect(resolvers).toHaveLength(1);
+			expect(resolvers).toHaveLength(2);
 		});
 
 		it('should reject unknown resolver type', async () => {
@@ -272,13 +286,57 @@ describe('Credential Resolvers API', () => {
 			const response = await ownerAgent.delete(`/credential-resolvers/${resolver.id}`).expect(200);
 			expect(response.body.data).toEqual({ success: true });
 
-			// Verify it was actually deleted
-			const remaining = await repository.find();
-			expect(remaining).toHaveLength(0);
+			// Verify it was actually deleted (system row still present, custom row gone)
+			const deleted = await repository.findOneBy({ id: resolver.id });
+			expect(deleted).toBeNull();
 		});
 
 		it('should return 404 for non-existent resolver', async () => {
 			await ownerAgent.delete('/credential-resolvers/non-existent-id').expect(404);
+		});
+	});
+
+	describe('system resolver', () => {
+		it('is seeded with the well-known id and stays out of GET /credential-resolvers', async () => {
+			const row = await repository.findOneBy({ id: SYSTEM_RESOLVER_ID });
+			expect(row).not.toBeNull();
+			expect(row?.name).toBe(SYSTEM_RESOLVER_NAME);
+			expect(row?.type).toBe(SYSTEM_RESOLVER_TYPE);
+
+			const response = await ownerAgent.get('/credential-resolvers').expect(200);
+			expect(response.body.data.map((r: { id: string }) => r.id)).not.toContain(SYSTEM_RESOLVER_ID);
+		});
+
+		it('stays out of GET /credential-resolvers/types', async () => {
+			const response = await ownerAgent.get('/credential-resolvers/types').expect(200);
+			const typeNames = response.body.data.map((t: { name: string }) => t.name);
+			expect(typeNames).not.toContain(SYSTEM_RESOLVER_TYPE);
+		});
+
+		it('refuses PATCH against the system id with 400', async () => {
+			const response = await ownerAgent
+				.patch(`/credential-resolvers/${SYSTEM_RESOLVER_ID}`)
+				.send({ name: 'tampered' })
+				.expect(400);
+			expect(response.body.message).toMatch(/system credential resolver/i);
+
+			const row = await repository.findOneBy({ id: SYSTEM_RESOLVER_ID });
+			expect(row?.name).toBe(SYSTEM_RESOLVER_NAME);
+		});
+
+		it('refuses DELETE against the system id with 400', async () => {
+			await ownerAgent.delete(`/credential-resolvers/${SYSTEM_RESOLVER_ID}`).expect(400);
+
+			const row = await repository.findOneBy({ id: SYSTEM_RESOLVER_ID });
+			expect(row).not.toBeNull();
+		});
+
+		it('does not duplicate on repeat seed invocations', async () => {
+			await Container.get(N8nResolverSeeder).seed();
+			await Container.get(N8nResolverSeeder).seed();
+
+			const rows = await repository.find({ where: { id: SYSTEM_RESOLVER_ID } });
+			expect(rows).toHaveLength(1);
 		});
 	});
 });
