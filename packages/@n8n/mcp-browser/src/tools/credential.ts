@@ -66,8 +66,8 @@ function browserCaptureSecret(
 			if ('redactedKey' in args.element) {
 				const { redactedKey } = args.element;
 				const sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
-				const formatMarker = createRedactionMarkerFormatter(sensitivity.hits);
 				if (sensitivity.ok) {
+					const formatMarker = createRedactionMarkerFormatter(sensitivity.hits);
 					const markerMap = sensitivity.hits.reduce((result, hit) => {
 						result.set(formatMarker(hit), hit.value);
 						return result;
