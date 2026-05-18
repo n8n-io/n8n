@@ -143,6 +143,10 @@ export class E2EController {
 		[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS]: 30,
 		[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS]: 180,
 		[LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT]: 1,
+		// 0 → "license has no opinion, fall through to tier default"
+		// (the resolver treats 0 as absent). Tests that need an explicit
+		// license-issued cap should set this in their own setup.
+		[LICENSE_QUOTAS.EVALUATION_CONCURRENCY_LIMIT]: 0,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {
@@ -167,6 +171,8 @@ export class E2EController {
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS],
 		[LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT]:
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT],
+		[LICENSE_QUOTAS.EVALUATION_CONCURRENCY_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.EVALUATION_CONCURRENCY_LIMIT],
 	};
 
 	constructor(
