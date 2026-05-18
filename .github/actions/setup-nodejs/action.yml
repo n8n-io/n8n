@@ -69,7 +69,7 @@ runs:
         INSTALL_COMMAND: ${{ inputs.install-command }}
         SAFE_CHAIN_LOGGING: verbose
       run: |
-        $INSTALL_COMMAND
+        $INSTALL_COMMAND --reporter=append-only
       shell: bash
 
     - name: Configure Turborepo Cache
