@@ -17,11 +17,24 @@ import { getNestedRecord, getString } from '../safe-extract';
 
 /**
  * What category of response the proxy sent for a confirmation event.
- * Mostly mirrors the `kind` of the InstanceAiConfirmRequest, with two
- * overlay categories — `dismissal` (e.g. zero-answer questions, empty
- * setup-wizard apply) and `rejection` (approval with approved=false).
+ * Mostly mirrors the `kind` of the InstanceAiConfirmRequest, with overlay
+ * categories that describe WHERE the response came from:
+ *
+ *  - `dismissal` / `rejection` — shape of a successful LLM-driven decision
+ *  - `deterministic` — handled by the deterministic shortcut (no LLM call)
+ *  - `repeat` — a confirmation requestId we already responded to
+ *  - `fallback-no-decision` — LLM returned no decision; sent autoApprove
+ *  - `fallback-unencoded` — LLM picked a between-run action that doesn't
+ *    encode to a confirmation payload; sent autoApprove
  */
-export type ProxyDecisionCategory = InstanceAiConfirmRequest['kind'] | 'dismissal' | 'rejection';
+export type ProxyDecisionCategory =
+	| InstanceAiConfirmRequest['kind']
+	| 'dismissal'
+	| 'rejection'
+	| 'deterministic'
+	| 'repeat'
+	| 'fallback-no-decision'
+	| 'fallback-unencoded';
 
 export type ProxyDecisionStats = Partial<Record<ProxyDecisionCategory, number>>;
 
@@ -103,15 +116,22 @@ export class UserProxyLlm {
 		const isRepeat = requestId !== undefined && this.seenRequestIds.has(requestId);
 		if (requestId) this.seenRequestIds.add(requestId);
 
-		if (isRepeat) return buildAutoApprovePayload(event);
+		if (isRepeat) {
+			this.bumpStat('repeat');
+			return buildAutoApprovePayload(event);
+		}
 
 		const det = tryDeterministicConfirmationResponse(event);
-		if (det) return det;
+		if (det) {
+			this.bumpStat('deterministic');
+			return det;
+		}
 
 		const prompt = buildConfirmationPrompt(this.promptContext(), event);
 		const decision = await this.agent.decide(prompt);
 		if (!decision) {
 			this.logger?.warn(`[user-proxy] no decision; event=${summarizeEvent(event)}`);
+			this.bumpStat('fallback-no-decision');
 			return buildAutoApprovePayload(event);
 		}
 
@@ -124,11 +144,16 @@ export class UserProxyLlm {
 			this.logger?.warn(
 				`[user-proxy] action=${decision.action} did not encode to a confirmation payload`,
 			);
+			this.bumpStat('fallback-unencoded');
 			return buildAutoApprovePayload(event);
 		}
 
 		this.recordDecision(decision, encoded, event);
 		return encoded;
+	}
+
+	private bumpStat(category: ProxyDecisionCategory): void {
+		this.decisionStats[category] = (this.decisionStats[category] ?? 0) + 1;
 	}
 
 	/** Counts of proxy decisions by category. Read after the build completes. */
@@ -142,7 +167,7 @@ export class UserProxyLlm {
 		event: CapturedEvent,
 	): void {
 		const category = classifyDecision(encoded);
-		this.decisionStats[category] = (this.decisionStats[category] ?? 0) + 1;
+		this.bumpStat(category);
 		this.logger?.verbose(`[user-proxy] decision action=${decision.action} category=${category}`);
 		if (category === 'dismissal') {
 			this.logger?.warn(

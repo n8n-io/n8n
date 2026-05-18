@@ -759,32 +759,32 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-reasoning { color: var(--text-muted); font-size: 12px; line-height: 1.5; padding: 6px 8px; background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; margin-top: 4px; }
 	.transcript-tools { color: var(--text-muted); font-size: 11px; font-family: monospace; padding: 4px 0 0 26px; }
 
-	/* Conversation trace */
+	/* Conversation trace — scoped to .trace-tree to avoid colliding with the
+	 * execution-trace .trace-node styling above. */
 	.trace-summary { color: var(--text-muted); font-size: 12px; padding: 4px 0 8px; }
-	.trace-tree > .trace-node { margin: 2px 0; }
-	.trace-node { border-left: 2px solid var(--border-light); padding-left: 8px; margin: 2px 0; }
-	.trace-node > summary { cursor: pointer; padding: 3px 4px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
-	.trace-node > summary:hover { background: var(--bg-tertiary); }
-	.trace-node[open] > summary { background: var(--bg-tertiary); }
-	.trace-icon { width: 18px; text-align: center; }
-	.trace-type { font-family: monospace; font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg-tertiary); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-	.trace-name { color: var(--text-primary); font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.trace-meta { color: var(--text-muted); font-size: 11px; font-family: monospace; white-space: nowrap; }
-	.trace-error-badge { color: var(--color-fail); background: var(--color-fail-bg); padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
-	.trace-body { margin-left: 16px; padding: 4px 0; }
-	.trace-io { margin: 4px 0; }
-	.trace-io > summary { cursor: pointer; color: var(--color-info); font-size: 11px; padding: 2px 0; }
-	.trace-error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin: 4px 0; border-left: 3px solid var(--color-fail); white-space: pre-wrap; }
-	.trace-children { margin-top: 4px; }
-	.trace-type-chain { border-left-color: var(--color-info); }
-	.trace-type-llm { border-left-color: var(--color-purple); }
-	.trace-type-tool { border-left-color: var(--color-pass); }
-	.trace-type-agent { border-left-color: var(--color-warn); }
-	.trace-type-retriever { border-left-color: var(--text-muted); }
-	.trace-type-prompt { border-left-color: var(--text-muted); }
-	.trace-type-parser { border-left-color: var(--text-muted); }
-	.trace-type-embedding { border-left-color: var(--text-muted); }
-	.trace-type-other { border-left-color: var(--border); }
+	.trace-tree .trace-node { border: none; border-left: 2px solid var(--border-light); padding: 0 0 0 8px; margin: 2px 0; }
+	.trace-tree .trace-node > summary { cursor: pointer; padding: 3px 4px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+	.trace-tree .trace-node > summary:hover { background: var(--bg-tertiary); }
+	.trace-tree .trace-node[open] > summary { background: var(--bg-tertiary); }
+	.trace-tree .trace-icon { width: 18px; text-align: center; }
+	.trace-tree .trace-type { font-family: monospace; font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg-tertiary); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+	.trace-tree .trace-name { color: var(--text-primary); font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.trace-tree .trace-meta { color: var(--text-muted); font-size: 11px; font-family: monospace; white-space: nowrap; }
+	.trace-tree .trace-error-badge { color: var(--color-fail); background: var(--color-fail-bg); padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+	.trace-tree .trace-body { margin-left: 16px; padding: 4px 0; }
+	.trace-tree .trace-io { margin: 4px 0; }
+	.trace-tree .trace-io > summary { cursor: pointer; color: var(--color-info); font-size: 11px; padding: 2px 0; }
+	.trace-tree .trace-error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin: 4px 0; border-left: 3px solid var(--color-fail); white-space: pre-wrap; }
+	.trace-tree .trace-children { margin-top: 4px; }
+	.trace-tree .trace-type-chain { border-left-color: var(--color-info); }
+	.trace-tree .trace-type-llm { border-left-color: var(--color-purple); }
+	.trace-tree .trace-type-tool { border-left-color: var(--color-pass); }
+	.trace-tree .trace-type-agent { border-left-color: var(--color-warn); }
+	.trace-tree .trace-type-retriever { border-left-color: var(--text-muted); }
+	.trace-tree .trace-type-prompt { border-left-color: var(--text-muted); }
+	.trace-tree .trace-type-parser { border-left-color: var(--text-muted); }
+	.trace-tree .trace-type-embedding { border-left-color: var(--text-muted); }
+	.trace-tree .trace-type-other { border-left-color: var(--border); }
 </style>
 </head>
 <body>

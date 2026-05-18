@@ -28,7 +28,10 @@ export function tryDeterministicConfirmationResponse(
 	// credentials and applying an empty payload loops the agent ("partial 0/N").
 	// Mixed (credential + parameter issues, or parameter-only) → LLM fills params.
 	if (Array.isArray(payload.setupRequests)) {
-		if (payload.setupRequests.every(isCredentialOnlySetupRequest)) {
+		if (
+			payload.setupRequests.length > 0 &&
+			payload.setupRequests.every(isCredentialOnlySetupRequest)
+		) {
 			return { kind: 'approval', approved: false };
 		}
 		return undefined;

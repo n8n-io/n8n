@@ -85,7 +85,7 @@ function assembleForest(runs: Run[]): TraceNode[] {
 }
 
 function normalizeRun(run: Run): TraceNode {
-	const startMs = parseTimestamp(run.start_time);
+	const startMs = parseTimestamp(run.start_time) ?? 0;
 	const endMs = parseTimestamp(run.end_time);
 	const extra = isRecord(run.extra) ? run.extra : {};
 	const metadata = isRecord(extra.metadata) ? extra.metadata : {};
@@ -98,7 +98,7 @@ function normalizeRun(run: Run): TraceNode {
 		runType: typeof run.run_type === 'string' ? run.run_type : 'unknown',
 		startTime: startMs,
 		endTime: endMs,
-		durationMs: endMs !== null && startMs !== 0 ? endMs - startMs : null,
+		durationMs: endMs !== null && startMs > 0 ? endMs - startMs : null,
 		error: typeof run.error === 'string' ? run.error : null,
 		inputs: run.inputs ?? null,
 		outputs: run.outputs ?? null,
@@ -108,15 +108,15 @@ function normalizeRun(run: Run): TraceNode {
 	};
 }
 
-function parseTimestamp(value: unknown): number {
-	if (value === null || value === undefined) return 0;
+function parseTimestamp(value: unknown): number | null {
+	if (value === null || value === undefined) return null;
 	if (typeof value === 'number') return value;
 	if (typeof value === 'string') {
 		const parsed = Date.parse(value);
-		return Number.isNaN(parsed) ? 0 : parsed;
+		return Number.isNaN(parsed) ? null : parsed;
 	}
 	if (value instanceof Date) return value.getTime();
-	return 0;
+	return null;
 }
 
 function extractTokenUsage(run: Run): TraceNode['tokenUsage'] {
