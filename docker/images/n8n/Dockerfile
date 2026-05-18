@@ -19,10 +19,10 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY --from=builder /usr/local/lib/node_modules/n8n /usr/lib/node_modules/n8n
+COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN ln -s /usr/lib/node_modules/n8n/bin/n8n /usr/bin/n8n && \
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*
