@@ -6,7 +6,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
-import { useToolLabel } from '../toolLabels';
+import { isPendingItemFloating } from '../confirmationKinds';
+import { getToolActionPhrase, stripActionPrefix, useToolLabel } from '../toolLabels';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
@@ -16,6 +17,22 @@ import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+
+interface Props {
+	/**
+	 * Where this panel is mounted. The component renders different subsets of
+	 * `pendingConfirmations` depending on this:
+	 * - `inline`: full-form confirmations rendered in the chat flow (questions,
+	 *   plan review, text, setup, credential, gateway resource-decision,
+	 *   continue).
+	 * - `floating`: single-click approvals and domain/web-search access, which
+	 *   replace the chat input slot. Only the oldest pending item is rendered
+	 *   at a time — no stacking.
+	 */
+	kind: 'inline' | 'floating';
+}
+
+const props = defineProps<Props>();
 
 const thread = useThread();
 const i18n = useI18n();
@@ -84,50 +101,68 @@ interface StandaloneChunk {
 
 type ConfirmationChunk = ApprovalWrappedGroup | StandaloneChunk;
 
-/** Items that need the "Agent needs approval" wrapper (generic approvals, domain access, web search). */
-function isApprovalWrapped(item: PendingConfirmationItem): boolean {
-	const conf = item.toolCall.confirmation;
-
-	if (conf.domainAccess) return true;
-	if (conf.webSearch) return true;
-
-	// Generic approval: no special fields and no structured input UI
-	if (
-		!conf.credentialRequests?.length &&
-		!conf.setupRequests?.length &&
-		(!conf.inputType || conf.inputType === 'approval') &&
-		!conf.questions
-	) {
-		return true;
-	}
-	return false;
-}
-
-/** Split confirmations into standalone items and approval-wrapped groups. */
+/**
+ * Filter pending confirmations to those that belong in this panel mount.
+ *
+ * - `inline`: every non-floating item (questions/plan/text/setup/etc.) in
+ *   chronological order — these forms coexist comfortably in the chat
+ *   flow.
+ * - `floating`: only the **oldest** floating item. We intentionally do not
+ *   stack: the floating panel replaces the chat input, and stacking would
+ *   shove the input far up the screen. The user must resolve the visible
+ *   card before the next one appears.
+ */
 const chunks = computed((): ConfirmationChunk[] => {
-	const result: ConfirmationChunk[] = [];
-	const wrappedByAgent = new Map<string, ApprovalWrappedGroup>();
-
-	for (const item of thread.pendingConfirmations) {
-		if (isApprovalWrapped(item)) {
-			const key = item.agentNode.agentId;
-			let group = wrappedByAgent.get(key);
-			if (!group) {
-				group = { type: 'approvalWrapped', agentId: key, role: item.agentNode.role, items: [] };
-				wrappedByAgent.set(key, group);
-			}
-			group.items.push(item);
-		} else {
+	if (props.kind === 'inline') {
+		const result: ConfirmationChunk[] = [];
+		for (const item of thread.pendingConfirmations) {
+			if (isPendingItemFloating(item)) continue;
 			result.push({ type: 'standalone', item });
 		}
+		return result;
 	}
 
-	for (const group of wrappedByAgent.values()) {
-		result.push(group);
+	for (const item of thread.pendingConfirmations) {
+		if (!isPendingItemFloating(item)) continue;
+		return [
+			{
+				type: 'approvalWrapped',
+				agentId: item.agentNode.agentId,
+				role: item.agentNode.role,
+				items: [item],
+			},
+		];
 	}
-
-	return result;
+	return [];
 });
+
+interface Headline {
+	/** Unified "Allow AI Assistant to {action}?" line, or a fallback tool label. */
+	title: string;
+	/** Lead chunk of the backend message (up to and including the first `?`),
+	 * with the action verb stripped so it doesn't duplicate the title. */
+	preview: string;
+	/** Anything after the first `?` — rendered subtly under the preview. */
+	trailing: string;
+}
+
+function buildHeadline(item: PendingConfirmationItem): Headline {
+	const conf = item.toolCall.confirmation;
+	const args = item.toolCall.args ?? {};
+	const phrase = getToolActionPhrase(item.toolCall.toolName, args);
+	const title = phrase
+		? i18n.baseText('instanceAi.confirmation.allowPrompt', { interpolate: { action: phrase } })
+		: getToolLabel(item.toolCall.toolName, args);
+	const stripped = stripActionPrefix(conf.message ?? '', phrase);
+	const idx = stripped.indexOf('?');
+	const preview = idx === -1 ? stripped : stripped.slice(0, idx + 1);
+	const trailing = idx === -1 ? '' : stripped.slice(idx + 1).trim();
+	return { title, preview, trailing };
+}
+
+function isDestructive(item: PendingConfirmationItem): boolean {
+	return item.toolCall.confirmation.severity === 'destructive';
+}
 
 // Text input state per requestId
 const textInputValues = ref<Record<string, string>>({});
@@ -135,12 +170,16 @@ const textInputValues = ref<Record<string, string>>({});
 function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 	const conf = item.toolCall.confirmation;
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
+	// "Always allow" is offered alongside Approve/Deny for non-destructive
+	// generic approvals; include it in the option set so telemetry reflects
+	// what the user actually chose between.
+	const alwaysAllowAvailable = !isDestructive(item);
 	trackInputCompleted(
 		conf,
 		[
 			{
 				label: conf.message,
-				options: ['approve', 'deny'],
+				options: alwaysAllowAvailable ? ['approve', 'deny', 'approve_always'] : ['approve', 'deny'],
 				option_chosen: approved ? 'approve' : 'deny',
 			},
 		],
@@ -148,6 +187,25 @@ function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 	);
 	thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved });
+}
+
+function handleAlwaysAllow(item: PendingConfirmationItem) {
+	const conf = item.toolCall.confirmation;
+	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
+	thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+	trackInputCompleted(
+		conf,
+		[
+			{
+				label: conf.message,
+				options: ['approve', 'deny', 'approve_always'],
+				option_chosen: 'approve_always',
+			},
+		],
+		[],
+	);
+	thread.resolveConfirmation(conf.requestId, 'approved');
+	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handleApproveAll(items: PendingConfirmationItem[]) {
@@ -438,7 +496,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 			<div
 				v-else
 				:key="'group-' + chunk.agentId"
-				:class="[$style.root, $style.confirmation]"
+				:class="[$style.root, props.kind === 'inline' ? $style.confirmation : $style.floatingRoot]"
 				data-test-id="instance-ai-confirmation-panel"
 			>
 				<!-- Group header -->
@@ -491,11 +549,17 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="medium" bold>
-										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
+										{{ buildHeadline(item).title }}
 									</N8nText>
-									<ConfirmationPreview>{{
-										item.toolCall.confirmation!.message
-									}}</ConfirmationPreview>
+									<ConfirmationPreview>{{ buildHeadline(item).preview }}</ConfirmationPreview>
+									<N8nText
+										v-if="buildHeadline(item).trailing"
+										tag="div"
+										size="small"
+										color="text-light"
+									>
+										{{ buildHeadline(item).trailing }}
+									</N8nText>
 								</div>
 
 								<ConfirmationFooter>
@@ -508,16 +572,21 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 										{{ i18n.baseText('instanceAi.confirmation.deny') }}
 									</N8nButton>
 									<N8nButton
-										:variant="
-											item.toolCall.confirmation.severity === 'destructive'
-												? 'destructive'
-												: 'solid'
-										"
 										data-test-id="instance-ai-panel-confirm-approve"
 										size="medium"
+										:variant="isDestructive(item) ? 'destructive' : 'subtle'"
 										@click="handleConfirm(item, true)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.approve') }}
+									</N8nButton>
+									<N8nButton
+										v-if="!isDestructive(item)"
+										data-test-id="instance-ai-panel-confirm-always-allow"
+										size="medium"
+										variant="solid"
+										@click="handleAlwaysAllow(item)"
+									>
+										{{ i18n.baseText('instanceAi.confirmation.alwaysAllow') }}
 									</N8nButton>
 								</ConfirmationFooter>
 							</div>
@@ -539,6 +608,13 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
+}
+
+.floatingRoot {
+	// Fills the input-slot constraint width; no 90% reduction the inline
+	// `.confirmation` class applies inside the message list.
+	width: 100%;
+	max-width: none;
 }
 
 .items {
