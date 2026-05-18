@@ -409,9 +409,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await service.reconnectAll();
 
 			expect(connectSpy).toHaveBeenCalledTimes(1);
-			// Followers must not run external hooks during startup reconnect — the
-			// leader owns Telegram setWebhook etc., so a follower racing it would
-			// just trip Telegram's 1/sec rate limit.
+			// Followers must not run external hooks during startup reconnect. The
+			// leader owns external setup; followers only build local runtime state.
 			expect(connectSpy).toHaveBeenCalledWith(
 				'agent-1',
 				{ type: 'linear', credentialId: 'c2' },
@@ -517,9 +516,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await service.disconnectLeaderOnlyIntegrations();
 
 			expect(disconnectOneSpy).toHaveBeenCalledTimes(1);
-			// Leader stepdown is a role transition, not a user-initiated disconnect —
-			// another main is about to take over, so remote-side state (e.g.
-			// Telegram webhooks) must not be released here.
+			// Leader stepdown is a role transition, not a user-initiated disconnect.
+			// Only local runtime state should be cleared here.
 			expect(disconnectOneSpy).toHaveBeenCalledWith('agent-1:telegram:c1', {
 				skipExternalHooks: true,
 			});
@@ -537,9 +535,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				action: 'disconnect',
 			});
 
-			// External teardown (Telegram deleteWebhook etc.) already ran on the
-			// originator — the peer must skip it so cluster-wide remote state is
-			// released exactly once.
+			// External teardown already ran on the originator. The peer must skip it
+			// so cluster-wide remote state is released exactly once.
 			expect(disconnectSpy).toHaveBeenCalledWith(
 				'a1',
 				{ type: 'linear', credentialId: 'c1' },
@@ -589,9 +586,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				action: 'connect',
 			});
 
-			// External hooks (Telegram setWebhook, DB validation) already ran on
-			// the originator — the peer must skip them to avoid duplicate API
-			// calls and the resulting 429 rate-limit failure.
+			// External hooks already ran on the originator. The peer must skip them
+			// to avoid duplicate external side effects.
 			expect(connectSpy).toHaveBeenCalledWith(
 				'a1',
 				{ type: 'linear', credentialId: 'c1' },

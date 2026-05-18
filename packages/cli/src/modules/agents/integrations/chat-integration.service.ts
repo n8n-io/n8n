@@ -54,9 +54,9 @@ interface ChatAgentConnection {
 	bridge: AgentChatBridge;
 	/**
 	 * Context captured at connect time. Used by `disconnectOne` to invoke
-	 * `onBeforeDisconnect` hooks (e.g. Telegram `deleteWebhook`) with the same
-	 * decrypted credential the connect ran with — re-decrypting at disconnect
-	 * time would fail if the credential was rotated or deleted in between.
+	 * `onBeforeDisconnect` hooks with the same decrypted credential the connect
+	 * ran with — re-decrypting at disconnect time would fail if the credential
+	 * was rotated or deleted in between.
 	 */
 	context: AgentChatIntegrationContext;
 }
@@ -68,7 +68,7 @@ interface ConnectOptions {
 
 interface DisconnectOptions {
 	/**
-	 * Skip integration-defined external teardown (e.g. Telegram `deleteWebhook`).
+	 * Skip integration-defined external teardown.
 	 * Mirror of `ConnectOptions.skipExternalHooks` — set true on peer mains
 	 * reacting to a PubSub broadcast, in graceful-shutdown paths, and during
 	 * leader-stepdown so the cluster-wide remote release happens exactly once.
@@ -143,12 +143,10 @@ export class ChatIntegrationService {
 	 * and wires up the AgentChatBridge for event handling.
 	 *
 	 * `options.skipExternalHooks` skips `onBeforeConnect` and `onAfterConnect`.
-	 * These hooks touch external services (DB validation, Telegram `setWebhook`)
-	 * and must run exactly once per cluster — by the originator on a
-	 * user-initiated connect, or by the leader on startup. Peer mains reacting
-	 * to a PubSub broadcast pass `true` so we don't, for example, race two
-	 * `setWebhook` calls into Telegram's 1/sec rate limit and 429 ourselves out
-	 * of a healthy connection.
+	 * These hooks can touch external services and must run exactly once per
+	 * cluster — by the originator on a user-initiated connect, or by the leader
+	 * on startup. Peer mains reacting to a PubSub broadcast pass `true` so they
+	 * only build local runtime state.
 	 */
 	async connect(
 		agentId: string,
@@ -258,7 +256,7 @@ export class ChatIntegrationService {
 	 *
 	 * `options.skipExternalHooks` skips `onBeforeDisconnect` — set this on peer
 	 * mains reacting to a PubSub broadcast so the cluster-wide remote release
-	 * (e.g. Telegram `deleteWebhook`) happens exactly once.
+	 * happens exactly once.
 	 */
 	async disconnect(
 		agentId: string,
@@ -287,9 +285,8 @@ export class ChatIntegrationService {
 	async disconnectAll(): Promise<void> {
 		const keys = [...this.connections.keys()];
 		for (const key of keys) {
-			// Graceful shutdown: don't release cluster-wide remote state (e.g.
-			// Telegram webhooks) — we want the bot to keep receiving when this
-			// main restarts.
+			// Graceful shutdown should only clear local runtime state. Cluster-wide
+			// remote state must survive so another main can keep receiving events.
 			await this.disconnectOne(key, { skipExternalHooks: true });
 		}
 	}
@@ -307,9 +304,6 @@ export class ChatIntegrationService {
 			if (!type) continue;
 			const integration = this.integrationRegistry.get(type);
 			if (integration?.requiresLeader()) {
-				// Leader stepdown is a role transition, not a user-initiated
-				// disconnect — another main is about to take over polling, so we
-				// must not release any remote-side state.
 				await this.disconnectOne(key, { skipExternalHooks: true });
 			}
 		}
@@ -496,10 +490,8 @@ export class ChatIntegrationService {
 					continue;
 				}
 
-				// External setup (Telegram setWebhook, etc.) runs once per cluster —
-				// the leader claims that role on startup; followers only build local
-				// state so a stampede of reconnecting mains doesn't trip remote rate
-				// limits.
+				// External setup runs once per cluster — the leader claims that role
+				// on startup; followers only build local runtime state.
 				const skipExternalHooks = !this.instanceSettings.isLeader;
 				const options = this.connectOptionsFor(integration, skipExternalHooks);
 
@@ -545,10 +537,8 @@ export class ChatIntegrationService {
 		const { type, credentialId } = integration;
 
 		if (action === 'disconnect') {
-			// The originating main already ran external teardown (Telegram
-			// deleteWebhook etc.). Peers only need to clear local state —
-			// skipping the hook also avoids racing the originator into Telegram's
-			// 1/sec rate limit and 429 ourselves out of a clean release.
+			// The originating main already ran integration-defined external teardown.
+			// Peers only clear local runtime state to avoid duplicate external side effects.
 			await this.disconnect(agentId, integration, { skipExternalHooks: true });
 			return;
 		}
@@ -577,10 +567,9 @@ export class ChatIntegrationService {
 		);
 		for (const userId of userIds) {
 			try {
-				// The originating main already ran external setup (DB validation,
-				// Telegram setWebhook). We only need local state here — skipping
-				// the hooks also avoids racing the originator into Telegram's 1/sec
-				// rate limit.
+				// The originating main already ran integration-defined external setup.
+				// Peers only build local runtime state to avoid duplicate external
+				// side effects.
 				const options: ConnectOptions = { skipExternalHooks: true };
 				await this.connect(agentId, integration, userId, agent.projectId, options);
 				return;
