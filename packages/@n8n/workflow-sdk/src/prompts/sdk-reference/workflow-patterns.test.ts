@@ -13,4 +13,11 @@ describe('WORKFLOW_SDK_PATTERNS', () => {
 			expect.stringContaining('parameters: {}'),
 		);
 	});
+
+	it('uses current Switch fallback syntax', () => {
+		expect(WORKFLOW_SDK_PATTERNS).not.toContain('.onDefault(');
+		expect(WORKFLOW_SDK_PATTERNS).not.toMatch(/\.onCase\(['"]/);
+		expect(WORKFLOW_SDK_PATTERNS).toContain("fallbackOutput: 'extra'");
+		expect(WORKFLOW_SDK_PATTERNS).toContain('.onCase(2, archive)');
+	});
 });

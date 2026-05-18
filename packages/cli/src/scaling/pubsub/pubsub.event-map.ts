@@ -1,5 +1,5 @@
 import type {
-	AgentIntegrationSettings,
+	AgentCredentialIntegrationConfig,
 	ChatHubMessageStatus,
 	PushMessage,
 	WorkerStatus,
@@ -32,6 +32,8 @@ export type PubSubCommandMap = {
 	// #endregion
 
 	'reload-source-control-config': never;
+
+	'reload-mcp-registry': never;
 
 	// #region Community packages
 
@@ -200,10 +202,8 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		type: string;
-		credentialId: string;
+		integration: AgentCredentialIntegrationConfig;
 		action: 'connect' | 'disconnect';
-		settings?: AgentIntegrationSettings;
 	};
 
 	/**

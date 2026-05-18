@@ -7,6 +7,7 @@ import {
 	type GatewayConfirmationRequiredPayload,
 	type McpToolCallResult,
 } from '@n8n/api-types';
+import { browserCreateCredentialSchema } from '@n8n/mcp-browser/dist/tools/credential';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
@@ -186,11 +187,20 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 
 		let inputSchema: z.ZodTypeAny;
 		try {
-			// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
-			// McpTool.inputSchema properties are typed as Record<string, unknown> to
-			// accommodate arbitrary JSON Schema values; the cast is safe here because
-			// the daemon always sends valid JSON Schema objects.
-			inputSchema = convertJsonSchemaToZod(mcpTool.inputSchema as JSONSchema);
+			if (toolName === 'browser_create_credential') {
+				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
+				// but during execution all unspecified key from `data` and `resolveData` are stripped.
+				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
+				// gets transformed to jsonSchema with `additionalProperties=false`
+				// this does not happen when passing the schema directly
+				inputSchema = browserCreateCredentialSchema;
+			} else {
+				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
+				// McpTool.inputSchema properties are typed as Record<string, unknown> to
+				// accommodate arbitrary JSON Schema values; the cast is safe here because
+				// the daemon always sends valid JSON Schema objects.
+				inputSchema = convertJsonSchemaToZod(mcpTool.inputSchema as JSONSchema);
+			}
 		} catch {
 			// Fallback: accept any object if conversion fails
 			inputSchema = z.record(z.unknown());

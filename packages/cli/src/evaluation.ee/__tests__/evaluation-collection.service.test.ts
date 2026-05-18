@@ -240,7 +240,6 @@ describe('EvaluationCollectionService', () => {
 				user,
 				'wf-1',
 				expect.any(Number),
-				expect.any(Boolean),
 				expect.objectContaining({
 					workflowVersionId: 'wfv-2',
 					evaluationConfigId: 'cfg-1',
@@ -265,7 +264,6 @@ describe('EvaluationCollectionService', () => {
 				user,
 				'wf-1',
 				expect.any(Number),
-				expect.any(Boolean),
 				expect.objectContaining({ workflowVersionId: 'wfv-snap' }),
 			);
 		});
