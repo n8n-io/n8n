@@ -32,11 +32,6 @@ on:
         required: false
         default: 30
         type: number
-      upload-failure-artifacts:
-        description: 'Upload test failure artifacts (screenshots, traces, videos). Enable for community PRs without Currents access.'
-        required: false
-        default: false
-        type: boolean
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
@@ -51,6 +46,11 @@ on:
         description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
         required: false
         default: ''
+        type: string
+      artifact-prefix:
+        description: 'Prefix for uploaded shard artifacts'
+        required: false
+        default: 'e2e'
         type: string
 
 env:
@@ -121,15 +121,17 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
 
-      - name: Upload Failure Artifacts
-        if: ${{ failure() && inputs.upload-failure-artifacts }}
+      - name: Upload Shard Artifacts
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: playwright-report-shard-${{ matrix.shard }}
+          name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
-          retention-days: 7
+            packages/testing/playwright/.nyc_output/
+          retention-days: 1
+          if-no-files-found: ignore
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}

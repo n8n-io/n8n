@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
 import {
 	N8nButton,
+	N8nCallout,
 	N8nIconButton,
 	N8nText,
 	N8nCard,
@@ -148,6 +149,18 @@ const headerIcon = computed((): IconName => {
 	if (item.kind === 'user') return 'user';
 	if (item.kind === 'agent') return 'bot';
 	return 'clock';
+});
+
+const nodeErrorMessage = computed((): string => {
+	const item = props.item;
+	if (!item || item.kind !== 'node' || item.toolSuccess !== false) return '';
+	const prefix = i18n.baseText('agentSessions.timeline.nodeError');
+	const output = item.toolOutput;
+	if (output && typeof output === 'object' && 'error' in output) {
+		const err = (output as { error: unknown }).error;
+		if (typeof err === 'string' && err.length > 0) return `${prefix}: ${err}`;
+	}
+	return prefix;
 });
 
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
@@ -321,13 +334,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
+						<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
+							{{ nodeErrorMessage }}
+						</N8nCallout>
 						<ToolIoView
 							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
 							:input="item.toolInput"
 							:output="item.toolOutput"
-							:node-type="item.nodeType"
-							:node-type-version="item.nodeTypeVersion"
 							:node-parameters="item.nodeParameters"
+							:success="item.toolSuccess"
 						/>
 					</template>
 
@@ -415,6 +430,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .output {
@@ -485,6 +502,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	padding-right: calc(var(--spacing--2xl) + var(--spacing--lg));
 	border-radius: var(--radius--3xs);
 	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	color: var(--color--text--tint-1);
 	margin-top: var(--spacing--2xs);
 }

@@ -1,6 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep, async stubs, and any-based mock reads */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { ref } from 'vue';
 import type { AgentResource } from '../types';
 import type { AgentPublishedVersion } from '../agent.types';
 
@@ -15,6 +16,18 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 		trackPublishedAgent: vi.fn(),
 		trackUnpublishedAgent: vi.fn(),
 	}),
+}));
+
+const agentPermissionsMock = {
+	canCreate: ref(true),
+	canUpdate: ref(true),
+	canDelete: ref(true),
+	canPublish: ref(true),
+	canUnpublish: ref(true),
+};
+
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => agentPermissionsMock,
 }));
 
 vi.mock('../composables/agentTelemetry.utils', () => ({
@@ -365,6 +378,66 @@ describe('AgentPublishButton', () => {
 			expect(dot.exists()).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorChanges'))).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorPublished'))).toBe(false);
+		});
+	});
+
+	// Permission gating
+	describe('permission gating', () => {
+		beforeEach(() => {
+			agentPermissionsMock.canUpdate.value = true;
+			agentPermissionsMock.canPublish.value = true;
+			agentPermissionsMock.canUnpublish.value = true;
+		});
+
+		it('disables Publish main button and dropdown item when canPublish is false', async () => {
+			agentPermissionsMock.canPublish.value = false;
+			const wrapper = await renderComponent({ agent: createAgent({ publishedVersion: null }) });
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(wrapper.find('[data-action="publish"]').attributes('disabled')).toBeDefined();
+		});
+
+		it('disables Unpublish dropdown item when canUnpublish is false', async () => {
+			agentPermissionsMock.canUnpublish.value = false;
+			const wrapper = await renderComponent({
+				agent: createAgent({ versionId: 'v1', publishedVersion }),
+			});
+
+			expect(wrapper.find('[data-action="unpublish"]').attributes('disabled')).toBeDefined();
+		});
+
+		it('disables Revert dropdown item when canUpdate is false', async () => {
+			agentPermissionsMock.canUpdate.value = false;
+			const wrapper = await renderComponent({
+				agent: createAgent({ versionId: 'v2', publishedVersion }),
+			});
+
+			expect(
+				wrapper.find('[data-action="revert-to-published"]').attributes('disabled'),
+			).toBeDefined();
+		});
+
+		it('does not call publishAgent when Publish is clicked without canPublish', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			agentPermissionsMock.canPublish.value = false;
+			const wrapper = await renderComponent({ agent: createAgent({ publishedVersion: null }) });
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('keeps publish independent from unpublish — granting only canPublish enables Publish but disables Unpublish', async () => {
+			agentPermissionsMock.canUnpublish.value = false;
+			const wrapper = await renderComponent({
+				agent: createAgent({ versionId: 'v2', publishedVersion }),
+			});
+
+			expect(wrapper.find('[data-action="publish"]').attributes('disabled')).toBeUndefined();
+			expect(wrapper.find('[data-action="unpublish"]').attributes('disabled')).toBeDefined();
 		});
 	});
 });

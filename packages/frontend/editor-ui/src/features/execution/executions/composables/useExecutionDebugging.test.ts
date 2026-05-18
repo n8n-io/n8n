@@ -48,6 +48,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
 let workflowState: WorkflowState;
@@ -63,7 +64,7 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.getParentNodes.mockReturnValue([]);
 
 		const workflowStore = mockedStore(useWorkflowsStore);
-		workflowStore.workflow.id = 'test-workflow';
+		workflowStore.setWorkflowId('test-workflow');
 
 		toast = useToast();
 

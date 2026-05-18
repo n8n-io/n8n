@@ -29,6 +29,7 @@ export type {
 	AgentRunState,
 	MemoryConfig,
 	MemoryDescriptor,
+	ObservationCapableMemory,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -37,13 +38,48 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
+	BuiltObservationStore,
+	CompactFn,
+	NewObservation,
+	Observation,
+	ObservationCategory,
+	ObservationCursor,
+	ObservationGapContext,
+	ObservationLockHandle,
+	ObservationalMemoryConfig,
+	ObservationalMemoryTrigger,
+	ObserveFn,
+	ScopeKind,
+	BuiltObservationLogStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	ObservationLogReadOptions,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogScopeKind,
+	ObservationLogStatus,
+	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
+export {
+	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
+	OBSERVATION_CATEGORIES,
+	OBSERVATION_SCHEMA_VERSION,
+} from './types';
+export {
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
+} from './types';
 
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
@@ -98,10 +134,11 @@ export type {
 	ModelLimits,
 } from './sdk/catalog';
 export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
+export { WORKING_MEMORY_DEFAULT_INSTRUCTION } from './runtime/working-memory';
 export {
-	UPDATE_WORKING_MEMORY_TOOL_NAME,
-	WORKING_MEMORY_DEFAULT_INSTRUCTION,
-} from './runtime/working-memory';
+	DEFAULT_COMPACTOR_PROMPT,
+	DEFAULT_OBSERVER_PROMPT,
+} from './runtime/observational-cycle';
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
 export type {

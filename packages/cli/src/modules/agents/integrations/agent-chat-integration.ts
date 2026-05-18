@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
 
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { SuspendComponent } from './component-mapper';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -67,6 +68,19 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly disableStreaming: boolean = false;
 
+	/**
+	 * True if this integration must run on the leader main only.
+	 *
+	 * Polling-based platforms (e.g. Telegram in polling mode) require this so a
+	 * single instance owns the long-poll loop — otherwise updates race between
+	 * mains and either duplicate or get lost. Webhook-based platforms return
+	 * false so any main can answer inbound webhooks (which the load balancer
+	 * routes round-robin across all mains).
+	 */
+	requiresLeader(): boolean {
+		return false;
+	}
+
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
@@ -112,6 +126,14 @@ export abstract class AgentChatIntegration {
 		fromSdk: (thread: Thread<unknown, unknown>) => string;
 		toSdk: (threadId: string) => string;
 	};
+
+	/**
+	 * Optional per-user authorisation check called on every inbound mention,
+	 * subscribed message, and action before the bridge subscribes / executes.
+	 * Default (no implementation): allow. Telegram uses this to enforce the
+	 * Private-mode allowlist.
+	 */
+	isUserAllowed?(author: Author, settings: AgentCredentialIntegrationConfig | undefined): boolean;
 }
 
 /**
