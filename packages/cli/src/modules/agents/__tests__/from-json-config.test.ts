@@ -530,34 +530,9 @@ describe('buildFromJson()', () => {
 			reflectorThresholdTokens: 12_000,
 			observationLogTailLimit: 10,
 			lockTtlMs: 5_000,
-			observe: expect.any(Function),
-			reflect: expect.any(Function),
 		});
-	});
-
-	it('applies observational memory defaults when memory is enabled', async () => {
-		const config = makeConfig({
-			memory: { enabled: true, storage: 'n8n' },
-		});
-
-		const agent = await buildFromJson(
-			config,
-			{},
-			{
-				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
-			},
-		);
-
-		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
-			observerThresholdTokens: 2_000,
-			reflectorThresholdTokens: 8_000,
-			observationLogTailLimit: 20,
-			observe: expect.any(Function),
-			reflect: expect.any(Function),
-		});
-		expect(getMemoryConfig(agent)?.observationLog).toEqual({ renderTokenBudget: 8_000 });
+		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
+		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
 	});
 
 	it('enables observational memory by default when memory is enabled', async () => {
@@ -576,13 +551,8 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(agent.snapshot.hasObservationalMemory).toBe(true);
-		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
-			observerThresholdTokens: 2_000,
-			reflectorThresholdTokens: 8_000,
-			lockTtlMs: 30_000,
-			observe: expect.any(Function),
-			reflect: expect.any(Function),
-		});
+		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
+		expect(getMemoryConfig(agent)?.observationLog).toEqual({});
 	});
 
 	it('configures episodic memory with the OpenAI embedding credential', async () => {

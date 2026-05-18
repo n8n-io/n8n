@@ -1,6 +1,11 @@
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
 import { InMemoryMemory } from '../memory-store';
 import {
+	buildObservationLogReflectorPrompt,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+} from '../observation-log-defaults';
+import {
 	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
@@ -21,6 +26,35 @@ function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationL
 		createdAt: overrides.createdAt ?? new Date('2026-05-12T14:30:00.000Z'),
 	};
 }
+
+describe('observation-log reflector defaults', () => {
+	it('keeps default policy and threshold configuration in the SDK', () => {
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(8_000);
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain(
+			'CRITICAL. Facts, decisions, identities, commitments',
+		);
+	});
+
+	it('builds the default reflector prompt from active log and token budget', () => {
+		const prompt = buildObservationLogReflectorPrompt({
+			scopeKind: 'thread',
+			scopeId: 'thread-1',
+			now: new Date('2026-05-12T15:00:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog:
+				'* [obs-1] CRITICAL 2026-05-12T14:30:00.000Z User chose observation-log memory.',
+			tokenCount: 42,
+			tokenBudget: 8_000,
+		});
+
+		expect(prompt).toContain('Current timestamp: 2026-05-12T15:00:00.000Z');
+		expect(prompt).toContain('Scope: thread:thread-1');
+		expect(prompt).toContain('Active observation log tokens: 42');
+		expect(prompt).toContain('Token budget: 8000');
+		expect(prompt).toContain('[obs-1] CRITICAL');
+	});
+});
 
 describe('parseObservationLogReflectionJson', () => {
 	it('parses reflector JSON with marker labels into storage markers', () => {

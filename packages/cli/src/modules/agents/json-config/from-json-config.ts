@@ -20,15 +20,6 @@ import type {
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveProviderToolName } from './provider-tool-aliases';
 import {
-	createN8nObservationLogObserveFn,
-	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
-	DEFAULT_OBSERVER_THRESHOLD_TOKENS,
-} from '../observation-log-observer';
-import {
-	createN8nObservationLogReflectFn,
-	DEFAULT_REFLECTOR_THRESHOLD_TOKENS,
-} from '../observation-log-reflector';
-import {
 	createN8nEpisodicMemoryExtractFn,
 	createN8nEpisodicMemoryReflectFn,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
@@ -45,9 +36,6 @@ export interface ToolExecutor {
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
-
-const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 8_000;
-const DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS = 30_000;
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -307,22 +295,21 @@ async function applyMemoryFromConfig(
 		const observationalMemory = memoryConfig.observationalMemory;
 
 		memory.observationalMemory({
-			observerThresholdTokens:
-				observationalMemory?.observerThresholdTokens ?? DEFAULT_OBSERVER_THRESHOLD_TOKENS,
-			reflectorThresholdTokens:
-				observationalMemory?.reflectorThresholdTokens ?? DEFAULT_REFLECTOR_THRESHOLD_TOKENS,
-			renderTokenBudget:
-				observationalMemory?.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
-			observationLogTailLimit:
-				observationalMemory?.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+			...(observationalMemory?.observerThresholdTokens !== undefined && {
+				observerThresholdTokens: observationalMemory.observerThresholdTokens,
+			}),
+			...(observationalMemory?.reflectorThresholdTokens !== undefined && {
+				reflectorThresholdTokens: observationalMemory.reflectorThresholdTokens,
+			}),
+			...(observationalMemory?.renderTokenBudget !== undefined && {
+				renderTokenBudget: observationalMemory.renderTokenBudget,
+			}),
+			...(observationalMemory?.observationLogTailLimit !== undefined && {
+				observationLogTailLimit: observationalMemory.observationLogTailLimit,
+			}),
 			...(observationalMemory?.lockTtlMs !== undefined && {
 				lockTtlMs: observationalMemory.lockTtlMs,
 			}),
-			...(observationalMemory?.lockTtlMs === undefined && {
-				lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
-			}),
-			observe: createN8nObservationLogObserveFn(modelConfig),
-			reflect: createN8nObservationLogReflectFn(modelConfig),
 		});
 	}
 

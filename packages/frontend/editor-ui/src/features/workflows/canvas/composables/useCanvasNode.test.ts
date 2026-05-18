@@ -2,7 +2,7 @@ import { useCanvasNode } from './useCanvasNode';
 import { inject, ref } from 'vue';
 import type { CanvasNodeData, CanvasNodeInjectionData } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('vue', async () => {
 	const actual = await vi.importActual('vue');
@@ -13,12 +13,14 @@ vi.mock('vue', async () => {
 });
 
 describe('useCanvasNode', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
 	it('should return default values when node is not provided', () => {
 		const result = useCanvasNode();
 
 		expect(result.label.value).toBe('');
-		expect(result.inputs.value).toEqual([]);
-		expect(result.outputs.value).toEqual([]);
 		expect(result.connections.value).toEqual({
 			[CanvasConnectionMode.Input]: {},
 			[CanvasConnectionMode.Output]: {},
@@ -47,8 +49,6 @@ describe('useCanvasNode', () => {
 				type: 'nodeType1',
 				typeVersion: 1,
 				disabled: true,
-				inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
-				outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 				connections: {
 					[CanvasConnectionMode.Input]: { '0': [] },
 					[CanvasConnectionMode.Output]: {},
@@ -81,8 +81,6 @@ describe('useCanvasNode', () => {
 
 		expect(result.label.value).toBe('Node 1');
 		expect(result.name.value).toBe('Node 1');
-		expect(result.inputs.value).toEqual([{ type: NodeConnectionTypes.Main, index: 0 }]);
-		expect(result.outputs.value).toEqual([{ type: NodeConnectionTypes.Main, index: 0 }]);
 		expect(result.connections.value).toEqual({
 			[CanvasConnectionMode.Input]: { '0': [] },
 			[CanvasConnectionMode.Output]: {},

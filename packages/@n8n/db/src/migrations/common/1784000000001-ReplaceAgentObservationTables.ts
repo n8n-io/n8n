@@ -33,7 +33,9 @@ export class ReplaceAgentObservationTables1784000000001 implements ReversibleMig
 	) {
 		await createTable('agents_observations')
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
+				column('id')
+					.varchar(36)
+					.primary.notNull.comment('Application-generated n8n string ID, not a database UUID'),
 				column('scopeKind').varchar(20).notNull.withEnumCheck(OBSERVATION_SCOPE_KINDS),
 				column('scopeId').varchar(255).notNull,
 				column('marker').varchar(16).notNull.withEnumCheck(OBSERVATION_MARKERS),
@@ -67,7 +69,9 @@ export class ReplaceAgentObservationTables1784000000001 implements ReversibleMig
 			column('scopeKind').varchar(20).notNull.primary.withEnumCheck(OBSERVATION_SCOPE_KINDS),
 			column('scopeId').varchar(255).notNull.primary,
 			column('taskKind').varchar(64).notNull.primary,
-			column('holderId').varchar(64).notNull,
+			column('holderId')
+				.varchar(64)
+				.notNull.comment('Ephemeral background-task lock owner token, not a user ID'),
 			column('heldUntil').timestampTimezone(3).notNull,
 		).withTimestamps;
 	}

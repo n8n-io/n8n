@@ -1,6 +1,13 @@
-import type { BuiltMemory } from '../../types';
+import type { AgentRuntime } from '../../runtime/agent-runtime';
+import { InMemoryMemory } from '../../runtime/memory-store';
+import type { BuiltMemory, ObservationalMemoryConfig } from '../../types';
 import { Agent } from '../agent';
-import { Memory } from '../memory';
+import {
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+	Memory,
+	resolveObservationalMemoryConfig,
+} from '../memory';
 
 describe('Memory builder — observation log memory', () => {
 	it('omits observationalMemory when not configured', () => {
@@ -29,24 +36,97 @@ describe('Memory builder — observation log memory', () => {
 		});
 	});
 
-	it('rejects observer callbacks without an observer threshold', () => {
-		expect(() =>
-			new Memory()
-				.observationalMemory({
-					observe: async () => await Promise.resolve(''),
-				})
-				.build(),
-		).toThrow(/observerThresholdTokens/);
+	it('allows observer callbacks to use SDK default thresholds', () => {
+		const observe = async () => await Promise.resolve('');
+		const config = new Memory()
+			.observationalMemory({
+				observe,
+			})
+			.build();
+
+		expect(config.observationalMemory?.observe).toBe(observe);
+		expect(config.observationalMemory?.observerThresholdTokens).toBeUndefined();
 	});
 
-	it('rejects reflector callbacks without a reflector threshold', () => {
-		expect(() =>
-			new Memory()
-				.observationalMemory({
-					reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
-				})
-				.build(),
-		).toThrow(/reflectorThresholdTokens/);
+	it('allows reflector callbacks to use SDK default thresholds', () => {
+		const reflect = async () => await Promise.resolve('{"drop":[],"merge":[]}');
+		const config = new Memory()
+			.observationalMemory({
+				reflect,
+			})
+			.build();
+
+		expect(config.observationalMemory?.reflect).toBe(reflect);
+		expect(config.observationalMemory?.reflectorThresholdTokens).toBeUndefined();
+	});
+
+	it('resolves observational memory defaults from the agent model', () => {
+		const resolved = resolveObservationalMemoryConfig({}, { defaultModel: 'openai/gpt-4o-mini' });
+
+		expect(resolved).toMatchObject({
+			observerThresholdTokens: 2_000,
+			reflectorThresholdTokens: 8_000,
+			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+			observationLogTailLimit: 20,
+			lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		});
+		expect(typeof resolved.observe).toBe('function');
+		expect(typeof resolved.reflect).toBe('function');
+	});
+
+	it('preserves observational memory overrides when resolving defaults', () => {
+		const observe = async () => await Promise.resolve('');
+		const reflect = async () => await Promise.resolve('{"drop":[],"merge":[]}');
+		const resolved = resolveObservationalMemoryConfig(
+			{
+				observerThresholdTokens: 123,
+				reflectorThresholdTokens: 456,
+				renderTokenBudget: 789,
+				observationLogTailLimit: 3,
+				lockTtlMs: 1_000,
+				observe,
+				reflect,
+			},
+			{ defaultModel: 'openai/gpt-4o-mini' },
+		);
+
+		expect(resolved).toMatchObject({
+			observerThresholdTokens: 123,
+			reflectorThresholdTokens: 456,
+			renderTokenBudget: 789,
+			observationLogTailLimit: 3,
+			lockTtlMs: 1_000,
+		});
+		expect(resolved.observe).toBe(observe);
+		expect(resolved.reflect).toBe(reflect);
+	});
+
+	it('passes resolved observational memory config into the runtime', async () => {
+		const memory = new Memory().storage(new InMemoryMemory()).observationalMemory();
+		const agent = new Agent('a')
+			.model('openai/gpt-4o-mini')
+			.instructions('You are a test assistant.')
+			.memory(memory);
+
+		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
+		const runtimeConfig = (
+			runtime as unknown as {
+				config: {
+					observationLog?: { renderTokenBudget?: number };
+					observationalMemory?: ObservationalMemoryConfig;
+				};
+			}
+		).config;
+
+		expect(runtimeConfig.observationLog).toEqual({
+			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+		});
+		expect(runtimeConfig.observationalMemory).toMatchObject({
+			observerThresholdTokens: 2_000,
+			reflectorThresholdTokens: 8_000,
+		});
+		expect(typeof runtimeConfig.observationalMemory?.observe).toBe('function');
+		expect(typeof runtimeConfig.observationalMemory?.reflect).toBe('function');
 	});
 
 	it('rejects backends that do not implement the observation-log store', () => {

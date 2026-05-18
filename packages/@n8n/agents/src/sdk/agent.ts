@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
-import { Memory, normalizeMemoryConfig } from './memory';
+import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
@@ -753,6 +753,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		const modelConfig: ModelConfig = this.modelConfig;
+		const memoryConfig = this.memoryConfig
+			? resolveMemoryConfigDefaults(this.memoryConfig, { defaultModel: modelConfig })
+			: undefined;
 
 		let instructions = this.instructionsText;
 		if (this.workspaceInstance) {
@@ -774,18 +777,18 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					: undefined,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
-			memory: this.memoryConfig?.memory,
-			lastMessages: this.memoryConfig?.lastMessages,
-			observationLog: this.memoryConfig?.observationLog,
-			observationalMemory: this.memoryConfig?.observationalMemory,
-			episodicMemory: this.memoryConfig?.episodicMemory,
-			semanticRecall: this.memoryConfig?.semanticRecall,
+			memory: memoryConfig?.memory,
+			lastMessages: memoryConfig?.lastMessages,
+			observationLog: memoryConfig?.observationLog,
+			observationalMemory: memoryConfig?.observationalMemory,
+			episodicMemory: memoryConfig?.episodicMemory,
+			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
-			titleGeneration: this.memoryConfig?.titleGeneration,
+			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 		});
 
