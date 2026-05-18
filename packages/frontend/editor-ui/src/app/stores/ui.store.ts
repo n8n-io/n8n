@@ -51,6 +51,7 @@ import {
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { WIDGET_QUERY_MODAL_KEY } from '@/features/collaboration/projects/dashboards/dashboards.constants';
 import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
@@ -167,6 +168,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 				VARIABLE_MODAL_KEY,
+				WIDGET_QUERY_MODAL_KEY,
 				BINARY_DATA_VIEW_MODAL_KEY,
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,

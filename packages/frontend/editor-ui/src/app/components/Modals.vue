@@ -47,6 +47,7 @@ import {
 } from '@/features/shared/tags/tags.constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { WIDGET_QUERY_MODAL_KEY } from '@/features/collaboration/projects/dashboards/dashboards.constants';
 import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
@@ -128,6 +129,7 @@ import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
+import WidgetQueryModal from '@/features/collaboration/projects/dashboards/components/WidgetQueryModal.vue';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
@@ -469,6 +471,12 @@ import InstanceAiCredentialSetupModal, {
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
 			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
 				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WIDGET_QUERY_MODAL_KEY">
+			<template #default="{ data }">
+				<WidgetQueryModal :dashboard-id="data?.dashboardId" :widget-id="data?.widgetId" />
 			</template>
 		</ModalRoot>
 

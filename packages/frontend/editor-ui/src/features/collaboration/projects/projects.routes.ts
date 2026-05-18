@@ -14,6 +14,8 @@ const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
 const ExecutionsView = async () =>
 	await import('@/features/execution/executions/views/ExecutionsView.vue');
 const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
+const ProjectDashboards = async () => await import('./views/ProjectDashboards.vue');
+const DashboardDetail = async () => await import('./views/DashboardDetail.vue');
 
 const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 	if (!to?.params.projectId) {
@@ -75,6 +77,16 @@ const commonChildRoutes: RouteRecordRaw[] = [
 			},
 		},
 	},
+	{
+		path: 'dashboards',
+		component: ProjectDashboards,
+		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
+		},
+	},
 ];
 
 const commonChildRouteExtensions = {
@@ -94,6 +106,9 @@ const commonChildRouteExtensions = {
 		{
 			name: VIEWS.HOME_VARIABLES,
 		},
+		{
+			name: VIEWS.HOME_DASHBOARDS,
+		},
 	],
 	projects: [
 		{
@@ -110,6 +125,9 @@ const commonChildRouteExtensions = {
 		},
 		{
 			name: VIEWS.PROJECTS_VARIABLES,
+		},
+		{
+			name: VIEWS.PROJECTS_DASHBOARDS,
 		},
 	],
 };
@@ -155,6 +173,18 @@ export const projectsRoutes: RouteRecordRaw[] = [
 								},
 							},
 						},
+						{
+							path: 'dashboards/:dashboardId',
+							name: VIEWS.PROJECTS_DASHBOARD_DETAIL,
+							component: DashboardDetail,
+							props: true,
+							meta: {
+								middleware: ['authenticated', 'custom'],
+								middlewareOptions: {
+									custom: (options) => checkProjectAvailability(options?.to),
+								},
+							},
+						},
 					]),
 			},
 		],
@@ -181,11 +211,22 @@ export const projectsRoutes: RouteRecordRaw[] = [
 
 			next();
 		},
-		children: commonChildRoutes.map((route, idx) => ({
-			...route,
-			name: commonChildRouteExtensions.home[idx].name,
-			middleware: ['authenticated'],
-		})),
+		children: [
+			...commonChildRoutes.map((route, idx) => ({
+				...route,
+				name: commonChildRouteExtensions.home[idx].name,
+				middleware: ['authenticated'],
+			})),
+			{
+				path: 'dashboards/:dashboardId',
+				name: VIEWS.HOME_DASHBOARD_DETAIL,
+				component: DashboardDetail,
+				props: true,
+				meta: {
+					middleware: ['authenticated'],
+				},
+			},
+		],
 	},
 	{
 		path: '/shared',

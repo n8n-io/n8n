@@ -1716,6 +1716,7 @@
 	"mainSidebar.workflows": "Workflows",
 	"mainSidebar.workflows.readOnlyEnv.tooltip": "Protected instances prevent editing workflows (recommended for production environments). {link}",
 	"mainSidebar.workflows.readOnlyEnv.tooltip.link": "More info",
+	"mainSidebar.dashboards": "Dashboards",
 	"mainSidebar.executions": "Executions",
 	"mainSidebar.workersView": "Workers",
 	"mainSidebar.whatsNew": "What’s New",
