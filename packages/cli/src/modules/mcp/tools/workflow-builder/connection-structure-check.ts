@@ -109,7 +109,7 @@ export function formatInvalidAiToolSourceMessage(violations: InvalidAiToolSource
 	return [
 		'Invalid connection: a node was wired as a tool to an agent, but its type does not produce an ai_tool output.',
 		...lines,
-		"To call one agent from another, use '@n8n/n8n-nodes-langchain.agentTool' (AI Agent Tool) for the sub-agent.",
+		"Use a node whose type produces an 'ai_tool' output — typically any node with a 'Tool' suffix (e.g. '@n8n/n8n-nodes-langchain.toolCalculator', '@n8n/n8n-nodes-langchain.toolHttpRequest', or '@n8n/n8n-nodes-langchain.agentTool' for sub-agent calls).",
 	].join(' ');
 }
 
