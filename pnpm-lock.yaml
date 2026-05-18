@@ -1758,6 +1758,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../api-types
+      '@n8n/mcp-browser':
+        specifier: workspace:*
+        version: link:../mcp-browser
       '@n8n/sandbox-client':
         specifier: 0.0.4
         version: 0.0.4

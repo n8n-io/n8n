@@ -52,6 +52,11 @@ on:
         required: false
         default: 'e2e'
         type: string
+      build-variant:
+        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard or coverage).'
+        required: false
+        default: 'standard'
+        type: string
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
@@ -96,6 +101,8 @@ jobs:
       - name: Load n8n image from cache
         if: ${{ inputs.test-mode == 'docker-artifact' }}
         uses: ./.github/actions/load-n8n-docker
+        with:
+          build-variant: ${{ inputs.build-variant }}
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
