@@ -235,6 +235,7 @@ export interface NewWorkflowResponse {
 
 export interface INewWorkflowData {
 	name: string;
+	settings?: IWorkflowSettingsWorkflow;
 }
 
 // Almost identical to cli.Interfaces.ts

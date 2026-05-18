@@ -163,7 +163,11 @@ export class WorkflowsController {
 		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
-		return { name };
+		const defaultSettings = {
+			executionOrder: 'v1' as const,
+			timezone: this.globalConfig.generic.timezone,
+		};
+		return { name, defaultSettings };
 	}
 
 	@Get('/from-url')

@@ -324,6 +324,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			parentFolderId,
 		);
 		currentWorkflowDocumentStore.value.setName(workflowData.name);
+		if (workflowData.settings) {
+			currentWorkflowDocumentStore.value.mergeSettings(workflowData.settings);
+		}
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
