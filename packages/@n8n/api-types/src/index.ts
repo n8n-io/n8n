@@ -397,6 +397,7 @@ export {
 } from './schemas/evaluations.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+export { xssCheck } from './utils/xss-check';
 
 export {
 	X_N8N_FEATURE_HEADER,
