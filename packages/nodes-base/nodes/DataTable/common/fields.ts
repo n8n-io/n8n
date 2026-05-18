@@ -20,7 +20,7 @@ export const DATA_TABLE_RESOURCE_LOCATOR_BASE = {
 	required: true,
 	builderHint: {
 		propertyHint:
-			"Default to mode: 'list' which is easier for users to set up. The referenced table must already exist in the n8n instance — row operations do NOT auto-create it. If the workflow is meant to be self-contained, add a Data Table node with `resource: 'table', operation: 'create', name: '<same name>'` earlier in the workflow; otherwise the runtime throws `Could not find the data table: '<name>'`.",
+			"Default to mode: 'list' which is easier for users to set up. The referenced table must already exist in the n8n instance — row operations do NOT auto-create it. If the workflow is meant to be self-contained, add a Data Table node earlier in the workflow with `resource: 'table', operation: 'create', tableName: '<same name>', columns: { column: [{ name: '<col>', type: 'string'|'number'|'boolean'|'date' }, …] }, options: { createIfNotExists: true }` so re-runs are idempotent; otherwise the runtime throws `Could not find the data table: '<name>'`.",
 	},
 	modes: [
 		{

@@ -148,6 +148,44 @@ describe('parseAndValidate', () => {
 			strictMode: true,
 		});
 	});
+
+	it('runs semantic checks on the parsed workflow and surfaces them as warnings', () => {
+		// Webhook -> Gmail -> Telegram with $json.body.X downstream of Gmail
+		// triggers TRIGGER_JSON_REF_AFTER_NON_TRIGGER. This guards against the
+		// wiring being silently un-applied (a regression observed in the
+		// autoresearch loop when discard auto-revert ate the checkSemanticIssues
+		// call sites).
+		const builder = makeBuilder({
+			toJSON: jest.fn().mockReturnValue({
+				name: 'Test',
+				nodes: [
+					{ name: 'Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, parameters: {} },
+					{
+						name: 'Send Auto-Reply',
+						type: 'n8n-nodes-base.gmail',
+						typeVersion: 2.1,
+						parameters: { sendTo: '={{ $json.body.email }}' },
+					},
+					{
+						name: 'Notify',
+						type: 'n8n-nodes-base.telegram',
+						typeVersion: 1.2,
+						parameters: { text: '={{ $json.body.message }}' },
+					},
+				],
+				connections: {
+					Webhook: { main: [[{ node: 'Send Auto-Reply', type: 'main', index: 0 }]] },
+					'Send Auto-Reply': { main: [[{ node: 'Notify', type: 'main', index: 0 }]] },
+				},
+			}),
+		});
+		mockedParseWorkflowCodeToBuilder.mockReturnValue(builder as never);
+
+		const result = parseAndValidate('code');
+
+		const semanticCodes = result.warnings.map((w) => w.code);
+		expect(semanticCodes).toContain('TRIGGER_JSON_REF_AFTER_NON_TRIGGER');
+	});
 });
 
 describe('partitionWarnings', () => {
@@ -193,5 +231,31 @@ describe('partitionWarnings', () => {
 
 		expect(result.informational).toHaveLength(2);
 		expect(result.errors).toHaveLength(2);
+	});
+
+	it('classifies MERGE_PARALLEL_BRANCHES_NO_ERROR_TOLERANCE as informational (design choice, not bug)', () => {
+		const warnings = [
+			{ code: 'MERGE_PARALLEL_BRANCHES_NO_ERROR_TOLERANCE', message: 'no onError' },
+		];
+		const result = partitionWarnings(warnings);
+
+		expect(result.informational).toHaveLength(1);
+		expect(result.errors).toHaveLength(0);
+	});
+
+	it('classifies other semantic-check codes as blocking errors', () => {
+		// Sanity check that the other semantic codes still block submit so
+		// runtime failures the agent can self-correct don't slip through.
+		const warnings = [
+			{ code: 'TRIGGER_JSON_REF_AFTER_NON_TRIGGER', message: 'stale $json' },
+			{ code: 'TRIGGER_JSON_REF_AFTER_AGENT', message: 'stale $json' },
+			{ code: 'RESOURCE_MAPPER_AUTOMAP_AFTER_WEBHOOK', message: 'envelope only' },
+			{ code: 'GOOGLE_SHEETS_AUTOMAP_AFTER_WEBHOOK', message: 'envelope only' },
+			{ code: 'RESOURCE_MAPPER_MATCHING_COLUMN_DYNAMIC_VALUE', message: 'volatile' },
+		];
+		const result = partitionWarnings(warnings);
+
+		expect(result.errors).toHaveLength(5);
+		expect(result.informational).toHaveLength(0);
 	});
 });

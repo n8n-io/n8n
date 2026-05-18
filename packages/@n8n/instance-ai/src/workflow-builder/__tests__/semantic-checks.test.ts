@@ -245,6 +245,41 @@ describe('semantic-checks', () => {
 			expect(issues[0].message).toContain('Send Auto-Reply');
 		});
 
+		test('does NOT flag `$json.body.X` after an HTTP Request ancestor (its response legitimately has `body`)', () => {
+			// Webhook -> HTTP Request -> Set reading $json.body.x : the HTTP
+			// Request response shape is { statusCode, headers, body, ... }, so
+			// `$json.body` is a valid reference, not a misplaced trigger payload.
+			const wf = workflow(
+				[
+					node({
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						parameters: {},
+					}),
+					node({
+						name: 'Fetch Profile',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						parameters: { url: 'https://api.example.com/profile' },
+					}),
+					node({
+						name: 'Use Result',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						parameters: {
+							fieldsToSet: { values: [{ name: 'email', stringValue: '={{ $json.body.email }}' }] },
+						},
+					}),
+				],
+				{
+					Webhook: { main: [[{ node: 'Fetch Profile', type: 'main', index: 0 }]] },
+					'Fetch Profile': { main: [[{ node: 'Use Result', type: 'main', index: 0 }]] },
+				},
+			);
+			expect(checkSemanticIssues(wf)).toEqual([]);
+		});
+
 		test('does NOT flag node immediately after a Webhook reading $json.body.X', () => {
 			const wf = workflow(
 				[
@@ -570,6 +605,38 @@ describe('semantic-checks', () => {
 				);
 				expect(issues).toHaveLength(1);
 			}
+		});
+
+		test('does NOT flag `new Date($json.createdAt).toISOString()` — deterministic normalization', () => {
+			// `new Date(input)` with a stable input is a common, valid match-key
+			// transformation. Only the zero-arg form `new Date()` is volatile.
+			const wf = workflow(
+				[
+					node({
+						name: 'Upsert Customer',
+						type: 'n8n-nodes-base.postgres',
+						typeVersion: 2.5,
+						parameters: {
+							operation: 'upsert',
+							columns: {
+								mappingMode: 'defineBelow',
+								value: {
+									createdAt: "={{ new Date($('Webhook').item.json.body.createdAt).toISOString() }}",
+									name: "={{ $('Webhook').item.json.body.name }}",
+								},
+								schema: [],
+								matchingColumns: ['createdAt'],
+							},
+						},
+					}),
+				],
+				{},
+			);
+			expect(
+				checkSemanticIssues(wf).filter(
+					(i) => i.code === 'RESOURCE_MAPPER_MATCHING_COLUMN_DYNAMIC_VALUE',
+				),
+			).toEqual([]);
 		});
 
 		test('does NOT flag stable matching values from trigger / upstream payloads', () => {

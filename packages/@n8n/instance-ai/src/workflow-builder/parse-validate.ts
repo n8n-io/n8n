@@ -112,8 +112,15 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	errors: ValidationWarning[];
 	informational: ValidationWarning[];
 } {
-	// Known informational-only codes (not blockers)
-	const informationalCodes = new Set(['MISSING_TRIGGER', 'DISCONNECTED_NODE']);
+	// Known informational-only codes (not blockers). Semantic checks whose
+	// "fix" is a business-policy decision the agent (or human) owns are
+	// surfaced as informational so the agent sees the guidance without
+	// having submit forcibly blocked on a design choice.
+	const informationalCodes = new Set([
+		'MISSING_TRIGGER',
+		'DISCONNECTED_NODE',
+		'MERGE_PARALLEL_BRANCHES_NO_ERROR_TOLERANCE',
+	]);
 
 	const errors: ValidationWarning[] = [];
 	const informational: ValidationWarning[] = [];

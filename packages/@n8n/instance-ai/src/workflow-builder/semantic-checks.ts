@@ -11,9 +11,11 @@
  *   - Only flag configurations that fail at runtime with high confidence.
  *   - Surface the fix in the message, not just the diagnosis — the builder
  *     consumes the text directly to plan the next patch.
- *   - Never invent business logic. We do not, for example, force
- *     `continueOnFail` on parallel branches — that is a design choice the
- *     agent owns.
+ *   - Never *blockingly* invent business logic. When a check encodes a
+ *     design choice the agent or human owns (e.g. fan-in / fail-fast
+ *     resilience policy on parallel Merge branches), register its code in
+ *     `informationalCodes` inside `parse-validate.ts` so submit succeeds
+ *     and the guidance is surfaced as a warning rather than an error.
  */
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -100,7 +102,10 @@ const VOLATILE_EXPRESSION_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: stri
 	{ pattern: /\$now\b/, label: '$now' },
 	{ pattern: /\$today\b/, label: '$today' },
 	{ pattern: /\bDate\.now\s*\(/, label: 'Date.now()' },
-	{ pattern: /\bnew\s+Date\s*\(/, label: 'new Date(...)' },
+	// Only zero-arg `new Date()` is volatile. `new Date($json.createdAt)` /
+	// `new Date('2025-01-01')` are deterministic when their argument is stable,
+	// and `new Date(input).toISOString()` is a common, valid normalization.
+	{ pattern: /\bnew\s+Date\s*\(\s*\)/, label: 'new Date()' },
 	{ pattern: /\bMath\.random\s*\(/, label: 'Math.random()' },
 	{ pattern: /\b(?:crypto\.)?randomUUID\s*\(/, label: 'randomUUID()' },
 	{ pattern: /\bcrypto\.randomBytes\s*\(/, label: 'crypto.randomBytes(...)' },
@@ -488,6 +493,11 @@ function checkPostNonTriggerTriggerJsonRefs(workflow: WorkflowJSON): ValidationW
 		const ancestor = findFirstNonPassthroughAncestor(node.name, predecessors, nodeTypesByName);
 		if (!ancestor) continue; // No predecessor at all — this is the trigger fanout root.
 		if (isTriggerType(ancestor.type)) continue; // Directly after the trigger (modulo passthroughs).
+		// HTTP Request responses legitimately expose `$json.body` (and sometimes
+		// event-shaped payloads), so reading `$json.body.*` after an HTTP Request
+		// ancestor is correct, not a misplaced trigger reference. Skip to avoid
+		// blocking save on a valid pattern.
+		if (ancestor.type === 'n8n-nodes-base.httpRequest') continue;
 
 		const triggerName = findClosestTriggerAncestor(node.name, predecessors, nodeTypesByName);
 		const sample = refs[0];
