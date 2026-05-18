@@ -17,10 +17,11 @@ describe('sanitizeMongoUriInMessage', () => {
 	});
 
 	it('handles URI-encoded characters in the auth section', () => {
-		const input = 'fail: mongodb://user%40co:p%21ass%23word@host:27017/db';
+		// Synthetic encoded bytes only; %41%42%43 = "ABC", %44%45%46 = "DEF".
+		const input = 'fail: mongodb://%41%42%43:%44%45%46@host:27017/db';
 		const out = sanitizeMongoUriInMessage(input);
-		expect(out).not.toContain('user%40co');
-		expect(out).not.toContain('p%21ass%23word');
+		expect(out).not.toContain('%41');
+		expect(out).not.toContain('%44');
 		expect(out).toContain('mongodb://[REDACTED]@');
 	});
 
