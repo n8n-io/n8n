@@ -565,15 +565,19 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 			})
 			.filter(isPresent);
 
+		const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
+
+		const finalNodes = positionedNodes.concat(positionedStickies).map(({ id, boundingBox }) => {
+			return {
+				id,
+				x: snapToGrid(boundingBox.x - anchor.x),
+				y: snapToGrid(boundingBox.y - anchor.y),
+			};
+		});
+
 		return {
 			boundingBox: boundingBoxAfter,
-			nodes: positionedNodes.concat(positionedStickies).map(({ id, boundingBox }) => {
-				return {
-					id,
-					x: boundingBox.x - anchor.x,
-					y: boundingBox.y - anchor.y,
-				};
-			}),
+			nodes: finalNodes,
 		};
 	}
 
