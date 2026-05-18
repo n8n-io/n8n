@@ -258,6 +258,9 @@ catalogs:
     testcontainers:
       specifier: ^11.13.0
       version: 11.13.0
+    tmp-promise:
+      specifier: 3.0.3
+      version: 3.0.3
     ts-morph:
       specifier: ^27.0.2
       version: 27.0.2
@@ -755,7 +758,7 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0
       tmp-promise:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       undici:
         specifier: ^6.24.0
@@ -2316,7 +2319,7 @@ importers:
         specifier: 0.9.4
         version: 0.9.4
       tmp-promise:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       vm2:
         specifier: 'catalog:'
@@ -4285,7 +4288,7 @@ importers:
         specifier: ^6.0.0
         version: 6.3.5
       tmp-promise:
-        specifier: ^3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
     devDependencies:
       '@n8n/typescript-config':
@@ -4502,7 +4505,7 @@ importers:
         specifier: 12.1.0
         version: 12.1.0
       tmp-promise:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       ts-ics:
         specifier: 1.2.2

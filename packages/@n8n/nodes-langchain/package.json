@@ -299,7 +299,7 @@
     "sanitize-html": "2.12.1",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
-    "tmp-promise": "3.0.3",
+    "tmp-promise": "catalog:",
     "vm2": "catalog:",
     "weaviate-client": "3.9.0",
     "zod": "catalog:",

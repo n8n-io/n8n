@@ -108,6 +108,7 @@ catalog:
   simple-git: 3.36.0
   stream-json: 1.9.1
   testcontainers: ^11.13.0
+  tmp-promise: 3.0.3
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
   tsx: ^4.19.3
