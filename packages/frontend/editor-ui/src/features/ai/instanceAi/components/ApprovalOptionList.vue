@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, type IconName } from '@n8n/design-system';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface ApprovalOption {
 	/** Stable identifier emitted on click. */
 	key: string;
 	/** Leading icon — typically `check` for allow rows, `ban` for deny. */
-	icon: string;
+	icon: IconName;
 	/** Primary (bold-eligible) label text. */
 	label: string;
 	/** Optional muted text rendered after the label. */
