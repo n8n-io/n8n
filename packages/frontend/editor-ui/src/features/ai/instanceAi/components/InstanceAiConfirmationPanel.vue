@@ -7,7 +7,7 @@ import { computed, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
-import { getToolActionPhrase, stripActionPrefix, useToolLabel } from '../toolLabels';
+import { useToolLabel } from '../toolLabels';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
@@ -76,30 +76,17 @@ function trackInputCompleted(
 	telemetry.track('User finished providing input', eventProps);
 }
 
-const ROLE_LABELS: Record<string, string> = {
-	orchestrator: 'Agent',
-	'workflow-builder': 'Workflow Builder',
-	'data-table-manager': 'Data Table Manager',
-	researcher: 'Researcher',
-};
-
-function getRoleLabel(role: string): string {
-	return ROLE_LABELS[role] ?? role;
-}
-
-interface ApprovalWrappedGroup {
-	type: 'approvalWrapped';
-	agentId: string;
-	role: string;
-	items: PendingConfirmationItem[];
-}
-
 interface StandaloneChunk {
 	type: 'standalone';
 	item: PendingConfirmationItem;
 }
 
-type ConfirmationChunk = ApprovalWrappedGroup | StandaloneChunk;
+interface FloatingChunk {
+	type: 'floating';
+	item: PendingConfirmationItem;
+}
+
+type ConfirmationChunk = FloatingChunk | StandaloneChunk;
 
 /**
  * Filter pending confirmations to those that belong in this panel mount.
@@ -124,41 +111,10 @@ const chunks = computed((): ConfirmationChunk[] => {
 
 	for (const item of thread.pendingConfirmations) {
 		if (!isPendingItemFloating(item)) continue;
-		return [
-			{
-				type: 'approvalWrapped',
-				agentId: item.agentNode.agentId,
-				role: item.agentNode.role,
-				items: [item],
-			},
-		];
+		return [{ type: 'floating', item }];
 	}
 	return [];
 });
-
-interface Headline {
-	/** Unified "Allow AI Assistant to {action}?" line, or a fallback tool label. */
-	title: string;
-	/** Lead chunk of the backend message (up to and including the first `?`),
-	 * with the action verb stripped so it doesn't duplicate the title. */
-	preview: string;
-	/** Anything after the first `?` — rendered subtly under the preview. */
-	trailing: string;
-}
-
-function buildHeadline(item: PendingConfirmationItem): Headline {
-	const conf = item.toolCall.confirmation;
-	const args = item.toolCall.args ?? {};
-	const phrase = getToolActionPhrase(item.toolCall.toolName, args);
-	const title = phrase
-		? i18n.baseText('instanceAi.confirmation.allowPrompt', { interpolate: { action: phrase } })
-		: getToolLabel(item.toolCall.toolName, args);
-	const stripped = stripActionPrefix(conf.message ?? '', phrase);
-	const idx = stripped.indexOf('?');
-	const preview = idx === -1 ? stripped : stripped.slice(0, idx + 1);
-	const trailing = idx === -1 ? '' : stripped.slice(idx + 1).trim();
-	return { title, preview, trailing };
-}
 
 function isDestructive(item: PendingConfirmationItem): boolean {
 	return item.toolCall.confirmation.severity === 'destructive';
@@ -206,20 +162,6 @@ function handleAlwaysAllow(item: PendingConfirmationItem) {
 	);
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
-}
-
-function handleApproveAll(items: PendingConfirmationItem[]) {
-	for (const item of items) {
-		const conf = item.toolCall.confirmation;
-		if (thread.resolvedConfirmationIds.has(conf.requestId)) continue;
-		trackInputCompleted(
-			conf,
-			[{ label: conf.message, options: ['approve', 'deny'], option_chosen: 'approve' }],
-			[],
-		);
-		thread.resolveConfirmation(conf.requestId, 'approved');
-		void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
-	}
 }
 
 function handleTextSubmit(conf: InstanceAiConfirmation) {
@@ -334,25 +276,11 @@ function handlePlanRequestChanges(
 		userInput: feedback,
 	});
 }
-
-/** True when every item in the group is a generic approval (not domain/web-search/cred/text). */
-function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
-	return items.every(
-		(item) => !item.toolCall.confirmation.domainAccess && !item.toolCall.confirmation.webSearch,
-	);
-}
 </script>
 
 <template>
 	<TransitionGroup name="confirmation-slide">
-		<template
-			v-for="chunk in chunks"
-			:key="
-				chunk.type === 'approvalWrapped'
-					? 'group-' + chunk.agentId
-					: chunk.item.toolCall.confirmation.requestId
-			"
-		>
+		<template v-for="chunk in chunks" :key="chunk.item.toolCall.confirmation.requestId">
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
 			<template v-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
@@ -492,56 +420,30 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 				/>
 			</template>
 
-			<!-- ============ Approval-wrapped group ============ -->
+			<!-- ============ Floating approval ============ -->
 			<div
 				v-else
-				:key="'group-' + chunk.agentId"
-				:class="[$style.root, props.kind === 'inline' ? $style.confirmation : $style.floatingRoot]"
+				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
+				:class="[$style.root, $style.floatingRoot]"
 				data-test-id="instance-ai-confirmation-panel"
 			>
-				<!-- Group header -->
-				<template v-if="isAllGenericApproval(chunk.items) && chunk.items.length > 1">
-					<div :class="$style.generic">
-						<N8nText>
-							{{
-								i18n.baseText('instanceAi.confirmation.agentContext', {
-									interpolate: { agent: getRoleLabel(chunk.role) },
-								})
-							}}
-						</N8nText>
-						<N8nButton
-							data-test-id="instance-ai-panel-confirm-approve-all"
-							size="medium"
-							variant="subtle"
-							@click="handleApproveAll(chunk.items)"
-						>
-							{{ i18n.baseText('instanceAi.confirmation.approveAll') }}
-						</N8nButton>
-					</div>
-				</template>
-
-				<!-- Items -->
 				<div :class="$style.items">
-					<div
-						v-for="item in chunk.items"
-						:key="item.toolCall.confirmation.requestId"
-						:class="[$style.item, chunk.items.length > 1 ? $style.itemBordered : '']"
-					>
+					<div :class="$style.item">
 						<!-- Domain access -->
 						<DomainAccessApproval
-							v-if="item.toolCall.confirmation.domainAccess"
-							:request-id="item.toolCall.confirmation.requestId"
-							:url="item.toolCall.confirmation.domainAccess!.url"
-							:host="item.toolCall.confirmation.domainAccess!.host"
-							:severity="item.toolCall.confirmation.severity"
+							v-if="chunk.item.toolCall.confirmation.domainAccess"
+							:request-id="chunk.item.toolCall.confirmation.requestId"
+							:url="chunk.item.toolCall.confirmation.domainAccess!.url"
+							:host="chunk.item.toolCall.confirmation.domainAccess!.host"
+							:severity="chunk.item.toolCall.confirmation.severity"
 						/>
 
 						<!-- Web search -->
 						<DomainAccessApproval
-							v-else-if="item.toolCall.confirmation.webSearch"
-							:request-id="item.toolCall.confirmation.requestId"
-							:query="item.toolCall.confirmation.webSearch!.query"
-							:severity="item.toolCall.confirmation.severity"
+							v-else-if="chunk.item.toolCall.confirmation.webSearch"
+							:request-id="chunk.item.toolCall.confirmation.requestId"
+							:query="chunk.item.toolCall.confirmation.webSearch!.query"
+							:severity="chunk.item.toolCall.confirmation.severity"
 						/>
 
 						<!-- Generic approval -->
@@ -549,17 +451,11 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="medium" bold>
-										{{ buildHeadline(item).title }}
+										{{ getToolLabel(chunk.item.toolCall.toolName, chunk.item.toolCall.args) }}
 									</N8nText>
-									<ConfirmationPreview>{{ buildHeadline(item).preview }}</ConfirmationPreview>
-									<N8nText
-										v-if="buildHeadline(item).trailing"
-										tag="div"
-										size="small"
-										color="text-light"
-									>
-										{{ buildHeadline(item).trailing }}
-									</N8nText>
+									<ConfirmationPreview>{{
+										chunk.item.toolCall.confirmation.message
+									}}</ConfirmationPreview>
 								</div>
 
 								<ConfirmationFooter>
@@ -567,24 +463,24 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 										data-test-id="instance-ai-panel-confirm-deny"
 										size="medium"
 										variant="outline"
-										@click="handleConfirm(item, false)"
+										@click="handleConfirm(chunk.item, false)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.deny') }}
 									</N8nButton>
 									<N8nButton
 										data-test-id="instance-ai-panel-confirm-approve"
 										size="medium"
-										:variant="isDestructive(item) ? 'destructive' : 'subtle'"
-										@click="handleConfirm(item, true)"
+										:variant="isDestructive(chunk.item) ? 'destructive' : 'subtle'"
+										@click="handleConfirm(chunk.item, true)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.approve') }}
 									</N8nButton>
 									<N8nButton
-										v-if="!isDestructive(item)"
+										v-if="!isDestructive(chunk.item)"
 										data-test-id="instance-ai-panel-confirm-always-allow"
 										size="medium"
 										variant="solid"
-										@click="handleAlwaysAllow(item)"
+										@click="handleAlwaysAllow(chunk.item)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.alwaysAllow') }}
 									</N8nButton>
@@ -628,10 +524,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	}
 }
 
-.itemBordered {
-	// Only applies when there are multiple items — visual grouping
-}
-
 .approvalRow {
 	display: flex;
 	flex-direction: column;
@@ -657,14 +549,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	display: flex;
 	justify-content: flex-end;
 	margin-top: var(--spacing--2xs);
-}
-
-.generic {
-	padding: var(--spacing--sm);
-	border-bottom: var(--border);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
 }
 
 .textCard {

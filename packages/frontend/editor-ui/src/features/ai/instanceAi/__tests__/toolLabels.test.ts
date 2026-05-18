@@ -1,11 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
-import {
-	getToolIcon,
-	getToolId,
-	getToolActionPhrase,
-	stripActionPrefix,
-	useToolLabel,
-} from '../toolLabels';
+import { getToolIcon, useToolLabel } from '../toolLabels';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
 vi.mock('@n8n/i18n', () => ({
@@ -129,55 +123,5 @@ describe('useToolLabel', () => {
 	test('getHideLabel returns undefined for no-toggle tools', () => {
 		const { getHideLabel } = useToolLabel();
 		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
-	});
-});
-
-describe('getToolId', () => {
-	test('returns the tool name when no action is present', () => {
-		expect(getToolId('workflows')).toBe('workflows');
-	});
-
-	test('joins tool name and action when present', () => {
-		expect(getToolId('workflows', { action: 'delete' })).toBe('workflows.delete');
-	});
-
-	test('ignores non-string actions', () => {
-		expect(getToolId('workflows', { action: 42 })).toBe('workflows');
-	});
-});
-
-describe('getToolActionPhrase', () => {
-	test('returns the imperative phrase for a known tool+action pair', () => {
-		expect(getToolActionPhrase('workflows', { action: 'delete' })).toBe('archive workflow');
-		expect(getToolActionPhrase('data-tables', { action: 'add-column' })).toBe('add column');
-	});
-
-	test('returns the imperative phrase for a known top-level tool', () => {
-		expect(getToolActionPhrase('submit-workflow')).toBe('submit workflow');
-	});
-
-	test('returns undefined for unmapped tools', () => {
-		expect(getToolActionPhrase('mystery-tool')).toBeUndefined();
-		expect(getToolActionPhrase('workflows', { action: 'pet' })).toBeUndefined();
-	});
-});
-
-describe('stripActionPrefix', () => {
-	test('strips the leading phrase case-insensitively', () => {
-		expect(stripActionPrefix("Archive workflow 'Foo'?", 'archive workflow')).toBe("'Foo'?");
-	});
-
-	test('leaves the headline alone when phrase is undefined', () => {
-		expect(stripActionPrefix("Archive workflow 'Foo'?", undefined)).toBe("Archive workflow 'Foo'?");
-	});
-
-	test("is a no-op when the headline doesn't start with the phrase", () => {
-		expect(stripActionPrefix('Run executions immediately', 'archive workflow')).toBe(
-			'Run executions immediately',
-		);
-	});
-
-	test('escapes regex metacharacters in the phrase', () => {
-		expect(stripActionPrefix('fetch URL https://x', 'fetch URL')).toBe('https://x');
 	});
 });
