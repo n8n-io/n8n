@@ -45,8 +45,13 @@ export class Code implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
 			searchHint:
-				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures.',
+				"Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures. The Code-node runtime exposes only n8n-provided globals ($input, $json, $node, $workflow, $execution, $now, $today, $vars, $env, $items, $itemIndex, $runIndex, $position, $jmespath, $if). There is NO $dataTables / $tables / $db / $database global — for n8n Data Table access use the dedicated 'n8n-nodes-base.dataTable' node instead.",
 			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.dataTable',
+					relationHint:
+						'Use this instead to read or write n8n Data Tables — there is no $dataTables/$db global in the Code-node runtime',
+				},
 				{
 					nodeType: 'n8n-nodes-base.set',
 					relationHint:
