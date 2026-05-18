@@ -88,7 +88,6 @@ catalog:
   langsmith: 0.5.19
   lodash: 4.18.1
   luxon: 3.7.2
-  memfs: ^4.57.2
   mime-types: 3.0.2
   mysql2: 3.17.0
   nanoid: 3.3.8
