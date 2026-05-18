@@ -9,6 +9,7 @@
 
 import { Agent, Tool, type BuiltTool } from '@n8n/agents';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -1640,8 +1641,8 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					rejectionCount: planGuardRejectionCount,
 				},
 			);
-			throw new Error(
-				`build-workflow-with-agent looped on ${planGuardRejectionCount} plan-guard rejections`,
+			throw new UserError(
+				'Stopped: the agent looped on `build-workflow-with-agent` rejections without correcting them. Try again or rephrase the request.',
 			);
 		}
 

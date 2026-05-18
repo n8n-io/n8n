@@ -4,6 +4,7 @@ import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
+import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { BuilderSandboxSession } from '../../../runtime/builder-sandbox-session-registry';
@@ -997,7 +998,9 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const second = await executeTool(tool, { task: 'two' });
 		expect(second.result).toMatch(/^STOP\./);
 
-		await expect(executeTool(tool, { task: 'three' })).rejects.toThrow(/looped on .* rejections/);
+		const third = executeTool(tool, { task: 'three' });
+		await expect(third).rejects.toThrow(UserError);
+		await expect(third).rejects.toThrow(/looped on .* rejections/);
 		expect(context.logger.warn).toHaveBeenCalledWith(
 			'build-workflow-with-agent plan-guard rejection limit reached — aborting run',
 			expect.objectContaining({
@@ -1020,13 +1023,13 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 			reason: 'patch a thing',
 		});
 		// 3: bypassPlan=true + workflowId but missing reason — throws
-		await expect(
-			executeTool(tool, {
-				task: 'three',
-				bypassPlan: true,
-				workflowId: 'WF_EXISTING',
-			}),
-		).rejects.toThrow(/looped on .* rejections/);
+		const third = executeTool(tool, {
+			task: 'three',
+			bypassPlan: true,
+			workflowId: 'WF_EXISTING',
+		});
+		await expect(third).rejects.toThrow(UserError);
+		await expect(third).rejects.toThrow(/looped on .* rejections/);
 	});
 
 	it('resets the rejection counter when a call gets past the guard', async () => {
