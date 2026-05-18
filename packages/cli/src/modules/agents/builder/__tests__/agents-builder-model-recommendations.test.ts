@@ -88,6 +88,7 @@ function buildPrompt(modelRecommendationsSection: string | null) {
 		configHash: null,
 		configUpdatedAt: null,
 		toolList: '(none)',
+		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
 		modelRecommendationsSection,
 	});
 }
