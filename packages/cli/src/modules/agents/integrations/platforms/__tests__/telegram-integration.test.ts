@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Logger } from '@n8n/backend-common';
+import type { Author } from 'chat';
 import { createHmac } from 'crypto';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -149,6 +150,80 @@ describe('TelegramIntegration.requiresLeader', () => {
 		expect(integration.requiresLeader()).toBe(false);
 	});
 });
+describe('TelegramIntegration.isUserAllowed', () => {
+	const { integration } = makeIntegration();
+
+	it('allows everyone in public mode', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, {
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'public',
+					allowedUsers: [],
+				},
+			}),
+		).toBe(true);
+	});
+
+	it('allows everyone for legacy connections without saved settings', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, undefined),
+		).toBe(true);
+	});
+
+	it('accepts a whitelisted user by numeric ID in private mode', () => {
+		expect(
+			integration.isUserAllowed({ userId: '123', userName: 'someuser' } as Author, {
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'private',
+					allowedUsers: ['123', '456'],
+				},
+			}),
+		).toBe(true);
+	});
+
+	it('accepts a whitelisted user by username in private mode', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'john_doe123' } as Author, {
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'private',
+					allowedUsers: ['john_doe123', '456'],
+				},
+			}),
+		).toBe(true);
+	});
+
+	it('rejects a user whose ID and username are both absent from the allowlist', () => {
+		expect(
+			integration.isUserAllowed({ userId: '999', userName: 'stranger' } as Author, {
+				type: 'telegram',
+				credentialId: 'cred-1',
+				settings: {
+					accessMode: 'private',
+					allowedUsers: ['123', 'john_doe123'],
+				},
+			}),
+		).toBe(false);
+	});
+
+	it('throws UnexpectedError when settings type does not match telegram', () => {
+		expect(() =>
+			integration.isUserAllowed(
+				{ userId: '123', userName: 'user' } as Author,
+				{
+					type: 'slack',
+					accessMode: 'private',
+					allowedUsers: ['123'],
+				} as never,
+			),
+		).toThrow();
+	});
+});
 
 describe('TelegramIntegration secret token', () => {
 	const createTelegramAdapter = jest.fn();
@@ -219,5 +294,98 @@ describe('TelegramIntegration secret token', () => {
 		} finally {
 			fetchSpy.mockRestore();
 		}
+	});
+
+	it('onAfterConnect honors a custom baseUrl from the credential (self-hosted Bot API)', async () => {
+		const fetchSpy = jest
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
+
+		try {
+			const { integration } = makeIntegration();
+
+			await integration.onAfterConnect(
+				makeContext({
+					credential: {
+						accessToken: 'bot-token',
+						baseUrl: 'https://bot-api.self-hosted.example.com/',
+					},
+				}),
+			);
+
+			const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://bot-api.self-hosted.example.com/botbot-token/setWebhook');
+		} finally {
+			fetchSpy.mockRestore();
+		}
+	});
+});
+
+describe('TelegramIntegration.onBeforeDisconnect', () => {
+	let fetchSpy: jest.SpyInstance;
+
+	beforeEach(() => {
+		fetchSpy = jest.spyOn(globalThis, 'fetch');
+	});
+
+	afterEach(() => {
+		fetchSpy.mockRestore();
+	});
+
+	it('calls deleteWebhook on Telegram with the bot token in webhook mode', async () => {
+		fetchSpy.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
+
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.onBeforeDisconnect(makeContext());
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		expect(url).toBe('https://api.telegram.org/botbot-token/deleteWebhook');
+		expect(init.method).toBe('POST');
+	});
+
+	it('skips the API call entirely in polling mode (localhost / non-public URL)', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.onBeforeDisconnect(makeContext());
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it('throws when Telegram rejects deleteWebhook so the caller can log it', async () => {
+		fetchSpy.mockResolvedValue({ ok: false, text: async () => 'invalid token' } as Response);
+
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		const { integration } = makeIntegration({ urlService });
+
+		await expect(integration.onBeforeDisconnect(makeContext())).rejects.toThrow(
+			'Failed to deregister Telegram webhook: invalid token',
+		);
+	});
+
+	it('honors a custom baseUrl from the credential (self-hosted Bot API)', async () => {
+		fetchSpy.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
+
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.onBeforeDisconnect(
+			makeContext({
+				credential: {
+					accessToken: 'bot-token',
+					baseUrl: 'https://bot-api.self-hosted.example.com',
+				},
+			}),
+		);
+
+		const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		expect(url).toBe('https://bot-api.self-hosted.example.com/botbot-token/deleteWebhook');
 	});
 });

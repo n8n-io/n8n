@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { createInspectionTools } from './inspection';
-import { createMockConnection, findTool, structuredOf, TOOL_CONTEXT } from './test-helpers';
+import { createMockConnection, findTool, structuredOf, textOf, TOOL_CONTEXT } from './test-helpers';
 
 describe('createInspectionTools', () => {
 	let mockConnection: ReturnType<typeof createMockConnection>;
@@ -237,6 +237,30 @@ describe('createInspectionTools', () => {
 					'document.querySelectorAll("a").length',
 				);
 				expect(data.result).toEqual({ count: 5 });
+			});
+
+			it('redacts DOM-discovered secrets returned by evaluate', async () => {
+				const secret = 'live-input-secret';
+				mockConnection.adapter.evaluate.mockResolvedValue(secret);
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<input type="password" value="${secret}">`,
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute(
+					{ script: 'document.querySelector("input")?.value' },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.probePageHtml).toHaveBeenCalledWith('page1');
+				expect(data.result).toBe('[REDACTED:password]');
+				expect(textOf(result)).not.toContain(secret);
 			});
 		});
 	});
