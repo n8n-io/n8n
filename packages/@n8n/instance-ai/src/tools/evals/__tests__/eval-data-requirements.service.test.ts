@@ -2,14 +2,16 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { analyzeEvalDataRequirements } from '../eval-data-requirements.service';
 
-const wf = (nodes: unknown[], connections: unknown = {}): WorkflowJSON =>
-	({
-		name: 't',
-		nodes,
-		connections,
-		pinData: {},
-		settings: {},
-	}) as unknown as WorkflowJSON;
+const wf = (
+	nodes: WorkflowJSON['nodes'],
+	connections: WorkflowJSON['connections'] = {},
+): WorkflowJSON => ({
+	name: 't',
+	nodes,
+	connections,
+	pinData: {},
+	settings: {},
+});
 
 function workflowWithEvalTopology(): WorkflowJSON {
 	return {
@@ -113,7 +115,7 @@ function workflowWithEvalTopology(): WorkflowJSON {
 				main: [[{ node: 'Eval Set Metrics', type: 'main', index: 0 }]],
 			},
 		},
-	} as unknown as WorkflowJSON;
+	};
 }
 
 describe('analyzeEvalDataRequirements', () => {
@@ -124,7 +126,7 @@ describe('analyzeEvalDataRequirements', () => {
 		expect(result.targets[0]).toMatchObject({
 			dataTableId: 'dt-1',
 			evaluationTriggerName: 'Eval Trigger',
-			targetAgentNodeName: 'Classifier Agent',
+			targetNodeName: 'Classifier Agent',
 			inputColumns: ['user_message'],
 			expectedOutputColumns: ['expected_answer'],
 			actualOutputColumns: ['actual_answer'],
@@ -137,7 +139,7 @@ describe('analyzeEvalDataRequirements', () => {
 			name: 'No evals',
 			nodes: [],
 			connections: {},
-		} as unknown as WorkflowJSON;
+		};
 
 		const result = analyzeEvalDataRequirements(workflow);
 
@@ -172,7 +174,37 @@ describe('analyzeEvalDataRequirements', () => {
 
 		const result = analyzeEvalDataRequirements(workflow);
 		expect(result.targets[0].inputColumns).toEqual(['user_query']);
-		expect(result.targets[0].targetAgentNodeName).toBe('Agent');
+		expect(result.targets[0].targetNodeName).toBe('Agent');
+	});
+
+	it('uses reachable root AI nodes as targets even when they are not agents', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'LLM Chain',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					parameters: { prompt: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'c',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'LLM Chain', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets[0].targetNodeName).toBe('LLM Chain');
+		expect(result.targets[0].inputColumns).toEqual(['user_query']);
 	});
 
 	it('extracts expectedToActualPairs from setMetrics nodes', () => {
@@ -306,7 +338,7 @@ describe('analyzeEvalDataRequirements', () => {
 		expect(result.targets[0].expectedOutputColumns).toEqual(['expected_response']);
 	});
 
-	it('returns empty inputColumns when no agent is reachable from the trigger', () => {
+	it('returns empty inputColumns when no root AI node is reachable from the trigger', () => {
 		const workflow = wf(
 			[
 				{
@@ -334,6 +366,18 @@ describe('analyzeEvalDataRequirements', () => {
 		const result = analyzeEvalDataRequirements(workflow);
 		expect(result.targets).toHaveLength(1);
 		expect(result.targets[0].inputColumns).toEqual([]);
-		expect(result.targets[0].targetAgentNodeName).toBeUndefined();
+		expect(result.targets[0].targetNodeName).toBeUndefined();
+	});
+
+	it('returns no targets when workflow nodes are absent', () => {
+		const workflow = {
+			name: 'Malformed workflow',
+			connections: {},
+		} as WorkflowJSON;
+
+		const result = analyzeEvalDataRequirements(workflow);
+
+		expect(result.targets).toEqual([]);
+		expect(result.reason).toContain('EvaluationTrigger');
 	});
 });
