@@ -51,6 +51,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 vi.mock('@/features/settings/environments.ee/environments.store', () => ({
 	default: () => ({ variablesAsObject: {} }),
+	useEnvironmentsStore: () => ({ variablesAsObject: {} }),
 }));
 
 function makeContext(): WorkflowSetupContext {
