@@ -92,6 +92,7 @@ describe('SyncedWorkflowCanvas', () => {
 				id: 'test-canvas',
 				nodes: [],
 				connections: [],
+				renderData: { nodeInputsByNodeId: new Map(), nodeOutputsByNodeId: new Map() },
 			},
 		});
 		expect(container).toBeTruthy();
@@ -105,6 +106,7 @@ describe('SyncedWorkflowCanvas', () => {
 					nodes: [],
 					connections: [],
 					applyLayout: true,
+					renderData: { nodeInputsByNodeId: new Map(), nodeOutputsByNodeId: new Map() },
 				},
 			});
 
@@ -127,6 +129,7 @@ describe('SyncedWorkflowCanvas', () => {
 					nodes: [],
 					connections: [],
 					applyLayout: false,
+					renderData: { nodeInputsByNodeId: new Map(), nodeOutputsByNodeId: new Map() },
 				},
 			});
 
@@ -145,6 +148,7 @@ describe('SyncedWorkflowCanvas', () => {
 					id: 'test-canvas',
 					nodes: [],
 					connections: [],
+					renderData: { nodeInputsByNodeId: new Map(), nodeOutputsByNodeId: new Map() },
 				},
 			});
 
@@ -164,6 +168,7 @@ describe('SyncedWorkflowCanvas', () => {
 					nodes: [],
 					connections: [],
 					applyLayout: true,
+					renderData: { nodeInputsByNodeId: new Map(), nodeOutputsByNodeId: new Map() },
 				},
 			});
 
