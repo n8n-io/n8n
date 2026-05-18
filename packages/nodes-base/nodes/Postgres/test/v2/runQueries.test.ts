@@ -179,6 +179,15 @@ describe('isSelectQuery', () => {
 		["SELECT with ';' inside a string literal", "SELECT 'a;b' AS s WHERE 1 = 0"],
 		['SELECT with a dollar-quoted string', 'SELECT $$DROP TABLE users$$ AS s WHERE 1 = 0'],
 		['SELECT with an E-string and escaped quote', "SELECT E'it\\'s fine' AS s WHERE 1 = 0"],
+		[
+			'SELECT with a lowercase e-string and escaped quote',
+			"SELECT e'it\\'s fine' AS s WHERE 1 = 0",
+		],
+		// `E` adjacent to a non-identifier char (parenthesis) still counts as an E-string prefix
+		[
+			'SELECT with an E-string immediately after a parenthesis',
+			"SELECT (E'it\\'s fine') AS s WHERE 1 = 0",
+		],
 		// Doubled single-quote escape (`''`) inside a string literal must not terminate the string
 		[
 			"SELECT with '' (doubled single quote) inside a string literal",
@@ -257,6 +266,22 @@ describe('isSelectQuery', () => {
 		[
 			'dollar-quoted string containing UPDATE keyword followed by a real UPDATE',
 			"SELECT $$UPDATE users SET name='x'$$ WHERE false; UPDATE users SET name = 'x'",
+		],
+		// Backslash is NOT an escape in standard (non-E) single-quoted strings, so it
+		// must not hide a trailing write statement.
+		[
+			'trailing backslash in a standard string does not swallow a trailing UPDATE',
+			"SELECT 'a\\' AS x; UPDATE t SET x = 1 WHERE FALSE",
+		],
+		[
+			'backslash-quote sequence in a standard string does not swallow a trailing DELETE',
+			"SELECT 'foo\\' AS x; DELETE FROM t WHERE FALSE",
+		],
+		// An `E` that is part of an identifier (e.g. `column_E`) must NOT be treated as
+		// an E-string prefix — the following string is a standard literal.
+		[
+			'identifier ending in E followed by a string does not enable backslash escapes',
+			"SELECT column_E'a\\' FROM t; UPDATE t SET x = 1 WHERE FALSE",
 		],
 	])('returns false for %s', (_label, query) => {
 		expect(isSelectQuery(query)).toBe(false);

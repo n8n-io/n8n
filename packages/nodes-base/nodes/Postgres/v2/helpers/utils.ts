@@ -219,6 +219,18 @@ export function addReturning(
 // Strip SQL comments and string literals so they can't interfere with statement
 // classification. Strings collapse to empty quotes / empty dollar tags so paren and
 // semicolon structure outside strings is preserved.
+
+// `\` is an escape only inside E-strings (`E'...'`). For standard strings, with
+// `standard_conforming_strings = on` (PG default since 9.1), `\` is a literal.
+// The `E` prefix must be a standalone token, not the trailing char of an identifier.
+const isEStringPrefix = (query: string, quoteIndex: number): boolean => {
+	if (quoteIndex === 0) return false;
+	const prev = query[quoteIndex - 1];
+	if (prev !== 'E' && prev !== 'e') return false;
+	if (quoteIndex === 1) return true;
+	return !/[A-Za-z0-9_]/.test(query[quoteIndex - 2]);
+};
+
 const stripStringsAndComments = (query: string): string => {
 	const len = query.length;
 	let out = '';
@@ -242,9 +254,10 @@ const stripStringsAndComments = (query: string): string => {
 		}
 
 		if (c === "'") {
+			const allowBackslashEscape = isEStringPrefix(query, i);
 			i++;
 			while (i < len) {
-				if (query[i] === '\\' && i + 1 < len) {
+				if (allowBackslashEscape && query[i] === '\\' && i + 1 < len) {
 					i += 2;
 					continue;
 				}
