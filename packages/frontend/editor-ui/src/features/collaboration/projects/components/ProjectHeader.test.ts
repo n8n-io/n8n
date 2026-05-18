@@ -306,7 +306,9 @@ describe('ProjectHeader', () => {
 	describe('new agent telemetry', () => {
 		beforeEach(() => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
-			projectsStore.currentProject = createTestProject({ scopes: ['workflow:create'] });
+			projectsStore.currentProject = createTestProject({
+				scopes: ['workflow:create', 'agent:create'],
+			});
 		});
 
 		it('tracks source=button when the agent main button is clicked', async () => {
@@ -631,6 +633,27 @@ describe('ProjectHeader', () => {
 			const { queryByTestId } = renderComponent({ props: { mainButton: 'variable' } });
 
 			expect(queryByTestId('add-resource-variable')).toBeDisabled();
+		});
+
+		it('should enable agent create button when project scope allows it', () => {
+			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			const project = createTestProject({ scopes: ['agent:create'] });
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+			expect(getByTestId('add-resource-agent')).toBeInTheDocument();
+			expect(getByTestId('add-resource-agent')).toBeEnabled();
+		});
+
+		it('should disable agent create button when no scope allows it', () => {
+			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			const project = createTestProject({ scopes: [] });
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+			expect(getByTestId('add-resource-agent')).toBeDisabled();
 		});
 	});
 });
