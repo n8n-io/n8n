@@ -1,5 +1,6 @@
-import type { InterruptibleToolContext } from '@n8n/agents';
+import { zodToJsonSchema, type InterruptibleToolContext } from '@n8n/agents';
 import { mock } from 'jest-mock-extended';
+import type { z } from 'zod';
 
 import {
 	createIntegrationActionTool,
@@ -95,6 +96,89 @@ describe('integration tools', () => {
 		expect(queryExecutor.execute).not.toHaveBeenCalled();
 	});
 
+	it('context tool schema requires platform IDs for user and channel lookups', () => {
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			queryExecutor: mock<IntegrationContextQueryExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ query: 'get_user', input: { name: 'Michael Drury' } }).success).toBe(
+			false,
+		);
+		expect(schema.safeParse({ query: 'get_user', input: { userId: 'U123' } }).success).toBe(true);
+		expect(
+			schema.safeParse({ query: 'get_channel_info', input: { name: '#support' } }).success,
+		).toBe(false);
+		expect(
+			schema.safeParse({ query: 'get_channel_info', input: { channelId: 'C123' } }).success,
+		).toBe(true);
+		expect(tool.description).toContain('get_user: input.userId');
+		expect(tool.description).toContain('get_channel_info: input.channelId');
+	});
+
+	it('context tool schema accepts search queries for users and channels', () => {
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				contextQueries: [
+					'get_current_message_context',
+					'get_current_user',
+					'get_current_channel_info',
+					'get_user',
+					'get_channel_info',
+					'search_users',
+					'search_channels',
+				],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			queryExecutor: mock<IntegrationContextQueryExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({ query: 'search_users', input: { query: 'Michael Drury' } }).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({ query: 'search_users', input: { email: 'michael@example.com' } }).success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'search_users', input: {} }).success).toBe(false);
+		expect(
+			schema.safeParse({ query: 'search_channels', input: { query: '#product' } }).success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'search_channels', input: {} }).success).toBe(false);
+		expect(tool.description).toContain('search_users: input.query or input.email');
+		expect(tool.description).toContain('search_channels: input.query');
+	});
+
+	it('integration tool schemas convert to JSON Schema objects for model providers', () => {
+		const descriptor = getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+			contextQueries: [
+				'get_current_message_context',
+				'get_current_user',
+				'get_current_channel_info',
+				'get_user',
+				'get_channel_info',
+				'search_users',
+				'search_channels',
+			],
+		}))[0];
+
+		const contextTool = createIntegrationContextTool({
+			descriptor,
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			queryExecutor: mock<IntegrationContextQueryExecutor>(),
+		}).build();
+		const actionTool = createIntegrationActionTool({
+			descriptor,
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+
+		expect(zodToJsonSchema(contextTool.inputSchema)).toMatchObject({ type: 'object' });
+		expect(zodToJsonSchema(actionTool.inputSchema)).toMatchObject({ type: 'object' });
+	});
+
 	it('respond returns a structured error when no latest message context exists', async () => {
 		const messageContextStore = mock<IntegrationMessageContextStore>();
 		messageContextStore.getLatest.mockResolvedValue(null);
@@ -119,6 +203,42 @@ describe('integration tools', () => {
 			},
 		});
 		expect(actionExecutor.execute).not.toHaveBeenCalled();
+	});
+
+	it('action tool schema requires platform IDs for explicit user and channel targets', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'send_dm',
+				input: { name: 'Michael Drury', message: { text: 'Hello' } },
+			}).success,
+		).toBe(false);
+		expect(
+			schema.safeParse({
+				action: 'send_dm',
+				input: { userId: 'U123', message: { text: 'Hello' } },
+			}).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({
+				action: 'send_channel_message',
+				input: { name: '#support', message: { text: 'Hello' } },
+			}).success,
+		).toBe(false);
+		expect(
+			schema.safeParse({
+				action: 'send_channel_message',
+				input: { channelId: 'C123', message: { text: 'Hello' } },
+			}).success,
+		).toBe(true);
+		expect(tool.description).toContain('send_dm: input.userId');
+		expect(tool.description).toContain('send_channel_message: input.channelId');
 	});
 
 	it('interactive action sends first, updates message context, then suspends', async () => {
