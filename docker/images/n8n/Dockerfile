@@ -1,6 +1,14 @@
 ARG NODE_VERSION=24.15.0
 ARG N8N_VERSION=snapshot
 
+# Pinned revision of n8nio/base. The base image is rebuilt from master's
+# n8n-base/Dockerfile and republished under the floating `n8nio/base:<NODE_VERSION>`
+# tag, so any upstream-layout shift (alpine/DHI/Node bumps) on master is
+# otherwise forced through to this release lane on the next build.
+# Bump deliberately; do not let a floating tag move us silently.
+# Advance via: chore: Advance n8nio/base pin on release-candidate/2.20.x
+ARG BASE_IMAGE_REVISION=82575001e322fb0286069812b735a7a640d5bc48
+
 # Rebuild native addons for the container platform. The base image has no
 # package manager or build tools, so we compile in a throwaway builder stage.
 FROM node:${NODE_VERSION}-alpine3.23 AS builder
@@ -9,7 +17,7 @@ RUN apk add --no-cache python3 make g++ && \
     cd /usr/local/lib/node_modules/n8n && \
     npm rebuild sqlite3 isolated-vm
 
-FROM n8nio/base:${NODE_VERSION}
+FROM n8nio/base:${NODE_VERSION}-${BASE_IMAGE_REVISION}
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
