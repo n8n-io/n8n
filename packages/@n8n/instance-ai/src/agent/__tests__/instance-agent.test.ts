@@ -34,6 +34,7 @@ jest.mock('../../tools', () => ({
 			new Map([
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestratorDomainTools: jest.fn(
@@ -41,13 +42,18 @@ jest.mock('../../tools', () => ({
 			new Map([
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
+				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestrationTools: jest.fn(
 		(context: { runId: string }) =>
 			new Map([
 				['plan', mockBuiltTool(`plan-${context.runId}`)],
+				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
 				['build-workflow-with-agent', mockBuiltTool(`build-${context.runId}`)],
+				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
+				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
 			]),
 	),
 }));
@@ -153,14 +159,50 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
+		expect(attachedTools['build-run-1']).toMatchObject({ name: 'build-run-1' });
+		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
+		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
+			name: 'verify-built-workflow-run-1',
+		});
 		expect(mockAgentInstances[0]?.deferredTool).toHaveBeenCalledWith(
-			expect.arrayContaining([expect.objectContaining({ name: 'build-run-1' })]),
+			expect.arrayContaining([expect.objectContaining({ name: 'nodes-run-1' })]),
 			{ search: { topK: 5 } },
 		);
 		expect(mockAgentInstances[1]?.deferredTool).toHaveBeenCalledWith(
-			expect.arrayContaining([expect.objectContaining({ name: 'build-run-2' })]),
+			expect.arrayContaining([expect.objectContaining({ name: 'nodes-run-2' })]),
 			{ search: { topK: 5 } },
 		);
+	});
+
+	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'checkpoint-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'checkpoint-run',
+				browserMcpConfig: undefined,
+				isCheckpointFollowUp: true,
+			},
+			memoryConfig: { lastMessages: 20 },
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		expect(attachedTools['complete-checkpoint-checkpoint-run']).toMatchObject({
+			name: 'complete-checkpoint-checkpoint-run',
+		});
+		expect(attachedTools['executions-checkpoint-run']).toMatchObject({
+			name: 'executions-checkpoint-run',
+		});
+		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
+		expect(deferredTools['executions-checkpoint-run']).toBeUndefined();
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {

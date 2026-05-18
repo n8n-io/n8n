@@ -21,19 +21,32 @@ import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../type
 
 const ALWAYS_LOADED_TOOLS = new Set([
 	'plan',
+	'create-tasks',
 	'delegate',
 	'ask-user',
+	'credentials',
+	'workflows',
+	'build-workflow-with-agent',
+	'verify-built-workflow',
 	'research',
 	'web-search',
 	'fetch-url',
 ]);
 
-function splitDeferredTools(tools: InstanceAiToolRegistry) {
+const CHECKPOINT_FOLLOW_UP_TOOLS = new Set(['complete-checkpoint', 'executions']);
+
+function splitDeferredTools(
+	tools: InstanceAiToolRegistry,
+	options: { isCheckpointFollowUp?: boolean } = {},
+) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
 
 	for (const [name, tool] of tools) {
-		if (ALWAYS_LOADED_TOOLS.has(name)) {
+		if (
+			ALWAYS_LOADED_TOOLS.has(name) ||
+			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOLS.has(name))
+		) {
 			coreTools.set(name, tool);
 		} else {
 			deferredTools.set(name, tool);
@@ -144,7 +157,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
-	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
+	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools, {
+		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
+	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
 	const systemPrompt = getSystemPrompt({
