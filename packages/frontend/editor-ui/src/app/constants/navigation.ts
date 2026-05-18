@@ -34,6 +34,7 @@ export const enum VIEWS {
 	EVALUATION = 'Evaluation',
 	EVALUATION_EDIT = 'EvaluationEdit',
 	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
+	EVAL_COLLECTIONS = 'EvalCollections',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',

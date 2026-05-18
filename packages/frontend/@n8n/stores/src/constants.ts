@@ -34,6 +34,7 @@ export const STORES = {
 	PROJECTS: 'projects',
 	API_KEYS: 'apiKeys',
 	EVALUATION: 'evaluation',
+	EVAL_COLLECTIONS: 'evalCollections',
 	FOLDERS: 'folders',
 	MODULES: 'modules',
 	FOCUS_PANEL: 'focusPanel',

@@ -15,6 +15,9 @@ export interface TestRunRecord {
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
+	// Surfaced once TRUST-72's `collectionId` column landed in master.
+	// `null` = ungrouped one-off run; non-null = belongs to a collection.
+	collectionId?: string | null;
 }
 
 interface GetTestRunParams {

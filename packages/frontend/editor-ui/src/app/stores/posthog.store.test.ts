@@ -92,6 +92,22 @@ describe('Posthog store', () => {
 			expect(window.posthog?.init).not.toHaveBeenCalled();
 		});
 
+		it('still surfaces server-bootstrapped flags when posthog is disabled (env-override dev path)', () => {
+			// Reproduces the dev workflow: PostHog telemetry off
+			// (`posthog.enabled = false`) but the backend has applied
+			// an env-var override (e.g. `N8N_EVAL_COLLECTIONS_ENABLED=true`)
+			// and shipped the resulting flag in the login response.
+			setSettings({ posthog: { ...DEFAULT_POSTHOG_SETTINGS, enabled: false } });
+			setCurrentUser();
+			const posthog = usePostHog();
+			posthog.init({ '084_eval_collections': true });
+
+			// SDK init should still be skipped — no telemetry, no autocapture.
+			expect(window.posthog?.init).not.toHaveBeenCalled();
+			// But the env-override flag must be reflected in the FE flag map.
+			expect(posthog.isFeatureEnabled('084_eval_collections')).toBe(true);
+		});
+
 		it('should not init if user is not logged in', () => {
 			setSettings();
 			const posthog = usePostHog();
