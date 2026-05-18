@@ -36,6 +36,11 @@ runs:
       env:
         INCLUDE_TEST_CONTROLLER: 'true'
 
+    - name: Smoke test against downstream invocations
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm build:docker:smoke
+
     - name: Save image tarball
       if: steps.cache-check.outputs.cache-hit != 'true'
       shell: bash
