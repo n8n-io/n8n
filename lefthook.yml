@@ -32,6 +32,14 @@ pre-commit:
       skip:
         - merge
         - rebase
+    migration_timestamp_check:
+      glob: 'packages/@n8n/db/src/migrations/{common,postgresdb,sqlite}/*.ts'
+      run: |
+        files=$(echo "{staged_files}" | tr ' ' ',')
+        CODE_HEALTH_CHANGED_FILES="$files" pnpm --filter=@n8n/code-health check --rule=migration-timestamp
+      skip:
+        - merge
+        - rebase
     playwright_janitor:
       glob: 'packages/testing/playwright/**/*.ts'
       run: |
