@@ -107,7 +107,11 @@ export function useResolvedExpression({
 			if (currentInvocation !== updateExpressionInvocation) return;
 
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
-			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+			resolvedExpressionString.value = stringifyExpressionResult(
+				resolved,
+				workflowDocumentStore.value.getPinDataSnapshot(),
+				hasRunData.value,
+			);
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';

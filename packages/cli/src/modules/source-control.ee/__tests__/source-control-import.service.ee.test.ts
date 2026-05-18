@@ -544,6 +544,56 @@ describe('SourceControlImportService', () => {
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
+		it('should clear active state when local workflow is archived with a lingering active version', async () => {
+			const mockUserId = 'user-id-123';
+			const mockUser = Object.assign(new User(), { id: mockUserId });
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Workflow',
+				nodes: [],
+				connections: {},
+				versionId: 'v2',
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			userRepository.findOne.mockResolvedValue(mockUser);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Workflow',
+					active: true,
+					activeVersionId: 'v1',
+					isArchived: true,
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'none');
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow1',
+					active: false,
+					activeVersionId: null,
+				}),
+				['id'],
+			);
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('should unpublish archived workflows even if they were previously published', async () => {
 			const mockUserId = 'user-id-123';
 			const mockUser = Object.assign(new User(), { id: mockUserId });

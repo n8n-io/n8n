@@ -152,7 +152,6 @@ export class ExecutionLevelTracer {
 
 			const { span: activeNodeSpan } = nodeStart;
 			activeNodeSpan.setAttributes(buildNodeEndAttributes(params));
-			activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
@@ -160,6 +159,8 @@ export class ExecutionLevelTracer {
 				if (recordableException) {
 					activeNodeSpan.recordException(recordableException);
 				}
+			} else {
+				activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 			}
 
 			activeNodeSpan.end();

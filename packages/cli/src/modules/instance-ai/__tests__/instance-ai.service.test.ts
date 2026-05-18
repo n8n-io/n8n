@@ -541,6 +541,7 @@ type TerminalGuardOrderServiceInternals = {
 	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
 	reapAiTemporaryFromRun: jest.Mock;
+	countCreditsIfFirst: jest.Mock;
 	maybeFinalizeRunTraceRoot: jest.Mock;
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
@@ -613,6 +614,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.reapAiTemporaryFromRun = jest.fn(async () => []);
+	service.countCreditsIfFirst = jest.fn(async () => {});
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
@@ -1220,6 +1222,10 @@ describe('InstanceAiService — agent tree snapshots', () => {
 });
 
 describe('InstanceAiService — terminal response guard wiring', () => {
+	beforeEach(() => {
+		jest.mocked(resumeAgentRun).mockReset();
+	});
+
 	it('publishes fallback output before run-finish on a silent completed run', () => {
 		const service = createTerminalGuardOrderService();
 
@@ -1295,6 +1301,37 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
 		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+	});
+
+	it('counts credits when a resumed run completes', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			mastraRunId: 'mastra-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				mastraRunId: 'mastra-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		expect(service.countCreditsIfFirst).toHaveBeenCalledWith(fakeUser, 'thread-a', 'run-1');
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
+			thread_id: 'thread-a',
+		});
 	});
 });
 

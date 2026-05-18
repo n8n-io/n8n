@@ -1,12 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
@@ -121,6 +123,33 @@ export class TelegramIntegration extends AgentChatIntegration {
 			throw new Error(`Failed to register Telegram webhook: ${await resp.text()}`);
 		}
 		this.logger.info(`[TelegramIntegration] Webhook registered: ${webhookUrl}`);
+	}
+
+	/**
+	 * Enforce the Private-mode allowlist. Public mode (or legacy connections
+	 * without saved settings) accepts every Telegram user; Private mode only
+	 * accepts senders whose numeric user ID or username appears in `allowedUsers`.
+	 * Stored values may carry a leading "@" (saved verbatim from user input), so
+	 * they are normalized by stripping "@" before comparison. The SDK delivers
+	 * both userId and userName without "@".
+	 */
+	isUserAllowed(
+		author: Author,
+		integration: AgentCredentialIntegrationConfig | undefined,
+	): boolean {
+		if (!integration) return true;
+		if (integration?.type !== 'telegram') {
+			throw new UnexpectedError(
+				`TelegramIntegration received settings with type "${integration?.type}"`,
+			);
+		}
+		if (!integration.settings) return true;
+
+		if (integration.settings.accessMode === 'public') return true;
+		return integration.settings.allowedUsers.some((allowed) => {
+			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
+			return normalized === author.userId || normalized === author.userName;
+		});
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
