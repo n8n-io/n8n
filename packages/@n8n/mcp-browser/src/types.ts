@@ -92,6 +92,7 @@ export interface Adapter {
 	dialog(pageId: string, action: 'accept' | 'dismiss', text?: string): Promise<string>;
 	// Inspection
 	snapshot(pageId: string, target?: ElementTarget, interactive?: boolean): Promise<SnapshotResult>;
+	probePageHtml(pageId: string): Promise<HtmlProbeResult>;
 	screenshot(pageId: string, target?: ElementTarget, options?: ScreenshotOptions): Promise<string>;
 	getText(pageId: string, target?: ElementTarget): Promise<string>;
 	getContent(pageId: string, selector?: string): Promise<{ html: string; url: string }>;
@@ -164,6 +165,20 @@ export interface NavigateResult {
 export interface SnapshotResult {
 	tree: string;
 	refCount: number;
+}
+
+export interface HtmlProbeNode {
+	kind: 'document' | 'iframe' | 'shadow-root';
+	html: string;
+	url?: string;
+	children: HtmlProbeNode[];
+	errors: string[];
+}
+
+export interface HtmlProbeResult {
+	ok: boolean;
+	root?: HtmlProbeNode;
+	error?: string;
 }
 
 export interface ConsoleEntry {
