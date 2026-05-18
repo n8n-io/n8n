@@ -4,13 +4,13 @@ import { setActivePinia } from 'pinia';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import type { WorkflowSettingsUpdated } from '@n8n/api-types/push/workflow';
 
-import { workflowSettingsUpdated } from './workflowSettingsUpdated';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowSettingsUpdated } from './workflowSettingsUpdated';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { mockedStore } from '@/__tests__/utils';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
+		workflowId: '',
 		allNodes: [],
 		name: '',
 		settings: {},
@@ -38,14 +38,16 @@ const makeEvent = (
 });
 
 describe('workflowSettingsUpdated', () => {
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
+	let workflowSettingsUpdated: ReturnType<
+		typeof useWorkflowSettingsUpdated
+	>['workflowSettingsUpdated'];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
-		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+		({ workflowSettingsUpdated } = useWorkflowSettingsUpdated());
 	});
 
 	it('merges partial settings into an existing list entry', async () => {
@@ -78,7 +80,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('does nothing for the document store when the workflow is not the active one', async () => {
-		workflowsStore.setWorkflowId('other-workflow');
+		mockWorkflowDocumentStore.workflowId = 'other-workflow';
 
 		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
 
@@ -87,7 +89,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('merges settings and uses payload checksum for the active document', async () => {
-		workflowsStore.setWorkflowId('wf-current');
+		mockWorkflowDocumentStore.workflowId = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -107,7 +109,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('applies settings but skips checksum refresh when none is provided', async () => {
-		workflowsStore.setWorkflowId('wf-current');
+		mockWorkflowDocumentStore.workflowId = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -125,7 +127,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('merges multiple settings keys in one event', async () => {
-		workflowsStore.setWorkflowId('wf-current');
+		mockWorkflowDocumentStore.workflowId = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',

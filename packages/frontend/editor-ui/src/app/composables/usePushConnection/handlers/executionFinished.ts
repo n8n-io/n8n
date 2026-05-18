@@ -264,7 +264,7 @@ export function useExecutionFinished() {
 			globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 				key: 'open-settings',
 				action: async () => {
-					if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+					if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 						await workflowSaving.saveAsNewWorkflow();
 					}
 					uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
@@ -300,7 +300,7 @@ export function useExecutionFinished() {
 						workflowHelpers.getNodeTypes(),
 					).nodeGraph,
 				),
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			};
 
 			if (
@@ -409,7 +409,7 @@ export function useExecutionFinished() {
 		runExecutionData: IRunExecutionData,
 	) {
 		const stateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(workflowsStore.workflowId),
+			createWorkflowExecutionStateId(workflowDocumentStore.value.workflowId),
 		);
 		const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 

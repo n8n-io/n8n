@@ -5,7 +5,12 @@ import { useOrchestrationStore } from '@/features/settings/orchestration.ee/orch
  * Handles the 'sendWorkerStatusMessage' event from the push connection, which indicates
  * that a worker status message should be sent.
  */
-export async function sendWorkerStatusMessage({ data }: SendWorkerStatusMessage) {
+export function useSendWorkerStatusMessage() {
 	const orchestrationStore = useOrchestrationStore();
-	orchestrationStore.updateWorkerStatus(data.status);
+
+	async function sendWorkerStatusMessage({ data }: SendWorkerStatusMessage) {
+		orchestrationStore.updateWorkerStatus(data.status);
+	}
+
+	return { sendWorkerStatusMessage };
 }

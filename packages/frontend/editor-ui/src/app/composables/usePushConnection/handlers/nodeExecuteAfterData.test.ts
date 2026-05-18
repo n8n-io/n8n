@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { nodeExecuteAfterData } from './nodeExecuteAfterData';
+import { useNodeExecuteAfterData } from './nodeExecuteAfterData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 import { createRunExecutionData } from 'n8n-workflow';
@@ -14,6 +14,7 @@ describe('nodeExecuteAfterData', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
+	let nodeExecuteAfterData: ReturnType<typeof useNodeExecuteAfterData>['nodeExecuteAfterData'];
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -50,6 +51,8 @@ describe('nodeExecuteAfterData', () => {
 		);
 
 		stateStore.setActiveExecutionId('exec-1');
+
+		({ nodeExecuteAfterData } = useNodeExecuteAfterData());
 	});
 
 	it('should update node execution data with incoming payload', async () => {

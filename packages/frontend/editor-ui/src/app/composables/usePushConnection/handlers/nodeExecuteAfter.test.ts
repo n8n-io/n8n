@@ -1,6 +1,6 @@
+import { ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useNodeExecuteAfter } from './nodeExecuteAfter';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
@@ -31,6 +31,10 @@ vi.mock('./trackNodeExecution', () => ({
 	})),
 }));
 
+vi.mock('../../useWorkflowId', () => ({
+	useWorkflowId: vi.fn(() => ref('test-wf')),
+}));
+
 const mockWorkflowState = mock<WorkflowState>({
 	executingNode: {
 		removeExecutingNode: vi.fn(),
@@ -44,7 +48,6 @@ vi.mock('@/app/composables/useWorkflowState', () => ({
 import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 
 describe('nodeExecuteAfter', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 	let nodeExecuteAfter: ReturnType<typeof useNodeExecuteAfter>['nodeExecuteAfter'];
@@ -54,9 +57,6 @@ describe('nodeExecuteAfter', () => {
 		setActivePinia(createPinia());
 
 		({ nodeExecuteAfter } = useNodeExecuteAfter());
-
-		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('test-wf');
 
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 

@@ -6,10 +6,14 @@ import { isCommunityPackageName } from 'n8n-workflow';
  * Handles the 'reloadNodeType' event from the push connection, which indicates
  * that a node type needs to be reloaded.
  */
-export async function reloadNodeType({ data }: ReloadNodeType) {
+export function useReloadNodeType() {
 	const nodeTypesStore = useNodeTypesStore();
 
-	await nodeTypesStore.getNodeTypes();
-	const isCommunityNode = isCommunityPackageName(data.name);
-	await nodeTypesStore.getFullNodesProperties([data], !isCommunityNode);
+	async function reloadNodeType({ data }: ReloadNodeType) {
+		await nodeTypesStore.getNodeTypes();
+		const isCommunityNode = isCommunityPackageName(data.name);
+		await nodeTypesStore.getFullNodesProperties([data], !isCommunityNode);
+	}
+
+	return { reloadNodeType };
 }

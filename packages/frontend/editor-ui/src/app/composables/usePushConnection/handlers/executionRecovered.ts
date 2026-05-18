@@ -1,15 +1,19 @@
 import type { ExecutionRecovered } from '@n8n/api-types/push/execution';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExecutionFinished } from './executionFinished';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
+import { computed } from 'vue';
+import { useWorkflowId } from '../../useWorkflowId';
 
 export function useExecutionRecovered() {
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 	const uiStore = useUIStore();
+	const stateStore = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowId.value)),
+	);
 	const {
 		fetchExecutionData,
 		handleExecutionFinishedWithWaitTill,
@@ -20,12 +24,8 @@ export function useExecutionRecovered() {
 	} = useExecutionFinished();
 
 	async function executionRecovered({ data }: ExecutionRecovered) {
-		const stateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(workflowsStore.workflowId),
-		);
-
 		// No workflow is actively running, therefore we ignore this event
-		if (typeof stateStore.activeExecutionId === 'undefined') {
+		if (typeof stateStore.value.activeExecutionId === 'undefined') {
 			return;
 		}
 

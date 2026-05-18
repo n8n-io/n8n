@@ -3,25 +3,25 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
-	builderCreditsUpdated,
+	useBuilderCreditsUpdated,
 	useTestWebhookDeleted,
 	useTestWebhookReceived,
-	reloadNodeType,
-	removeNodeType,
-	nodeDescriptionUpdated,
+	useReloadNodeType,
+	useRemoveNodeType,
+	useNodeDescriptionUpdated,
 	useNodeExecuteBefore,
 	useNodeExecuteAfter,
-	nodeExecuteAfterData,
-	executionStarted,
-	sendWorkerStatusMessage,
-	sendConsoleMessage,
+	useNodeExecuteAfterData,
+	useExecutionStarted,
+	useSendWorkerStatusMessage,
+	useSendConsoleMessage,
 	useWorkflowFailedToActivate,
 	useExecutionFinished,
 	useExecutionRecovered,
 	useWorkflowActivated,
 	useWorkflowDeactivated,
 	useWorkflowAutoDeactivated,
-	workflowSettingsUpdated,
+	useWorkflowSettingsUpdated,
 } from '@/app/composables/usePushConnection/handlers';
 import { createEventQueue } from '@n8n/utils/event-queue';
 
@@ -32,12 +32,21 @@ export function usePushConnection() {
 	const { testWebhookReceived } = useTestWebhookReceived();
 	const { nodeExecuteBefore } = useNodeExecuteBefore();
 	const { nodeExecuteAfter } = useNodeExecuteAfter();
+	const { nodeExecuteAfterData } = useNodeExecuteAfterData();
+	const { executionStarted } = useExecutionStarted();
+	const { reloadNodeType } = useReloadNodeType();
+	const { removeNodeType } = useRemoveNodeType();
+	const { nodeDescriptionUpdated } = useNodeDescriptionUpdated();
+	const { sendWorkerStatusMessage } = useSendWorkerStatusMessage();
+	const { sendConsoleMessage } = useSendConsoleMessage();
 	const { workflowActivated } = useWorkflowActivated();
 	const { workflowDeactivated } = useWorkflowDeactivated();
 	const { workflowAutoDeactivated } = useWorkflowAutoDeactivated();
 	const { workflowFailedToActivate } = useWorkflowFailedToActivate();
 	const { executionFinished } = useExecutionFinished();
 	const { executionRecovered } = useExecutionRecovered();
+	const { workflowSettingsUpdated } = useWorkflowSettingsUpdated();
+	const { builderCreditsUpdated } = useBuilderCreditsUpdated();
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
 

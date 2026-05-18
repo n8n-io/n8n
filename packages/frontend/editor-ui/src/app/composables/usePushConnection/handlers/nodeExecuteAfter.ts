@@ -1,6 +1,5 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
@@ -13,18 +12,19 @@ import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 import { useTrackNodeExecution } from './trackNodeExecution';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowId } from '../../useWorkflowId';
+import { computed } from 'vue';
 
 export function useNodeExecuteAfter() {
 	const { trackNodeExecution } = useTrackNodeExecution();
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 	const assistantStore = useAssistantStore();
 	const workflowState = injectWorkflowState();
+	const stateStore = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowId.value)),
+	);
 
 	async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
-		const stateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(workflowsStore.workflowId),
-		);
-
 		const placeholderOutputData: ITaskData['data'] = {
 			main: [],
 		};
@@ -53,7 +53,7 @@ export function useNodeExecuteAfter() {
 			},
 		};
 
-		const activeExecutionId = stateStore.activeExecutionId;
+		const activeExecutionId = stateStore.value.activeExecutionId;
 		if (typeof activeExecutionId === 'string') {
 			useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionStatus(
 				pushDataWithPlaceholderOutputData,

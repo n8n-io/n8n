@@ -1,5 +1,4 @@
 import { usePushConnection } from '@/app/composables/usePushConnection';
-import { builderCreditsUpdated } from '@/app/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
 import type { OnPushMessageHandler } from '@/app/stores/pushConnection.store';
@@ -16,27 +15,28 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 }));
 
 const mockTestWebhookReceived = vi.fn();
+const mockBuilderCreditsUpdated = vi.fn();
 
 vi.mock('@/app/composables/usePushConnection/handlers', () => ({
 	useTestWebhookDeleted: vi.fn(() => ({ testWebhookDeleted: vi.fn() })),
 	useTestWebhookReceived: vi.fn(() => ({ testWebhookReceived: mockTestWebhookReceived })),
-	reloadNodeType: vi.fn(),
-	removeNodeType: vi.fn(),
-	nodeDescriptionUpdated: vi.fn(),
+	useReloadNodeType: vi.fn(() => ({ reloadNodeType: vi.fn() })),
+	useRemoveNodeType: vi.fn(() => ({ removeNodeType: vi.fn() })),
+	useNodeDescriptionUpdated: vi.fn(() => ({ nodeDescriptionUpdated: vi.fn() })),
 	useNodeExecuteBefore: vi.fn(() => ({ nodeExecuteBefore: vi.fn() })),
 	useNodeExecuteAfter: vi.fn(() => ({ nodeExecuteAfter: vi.fn() })),
-	nodeExecuteAfterData: vi.fn(),
-	executionStarted: vi.fn(),
-	sendWorkerStatusMessage: vi.fn(),
-	sendConsoleMessage: vi.fn(),
+	useNodeExecuteAfterData: vi.fn(() => ({ nodeExecuteAfterData: vi.fn() })),
+	useExecutionStarted: vi.fn(() => ({ executionStarted: vi.fn() })),
+	useSendWorkerStatusMessage: vi.fn(() => ({ sendWorkerStatusMessage: vi.fn() })),
+	useSendConsoleMessage: vi.fn(() => ({ sendConsoleMessage: vi.fn() })),
 	useWorkflowFailedToActivate: vi.fn(() => ({ workflowFailedToActivate: vi.fn() })),
 	useExecutionFinished: vi.fn(() => ({ executionFinished: vi.fn() })),
 	useExecutionRecovered: vi.fn(() => ({ executionRecovered: vi.fn() })),
 	useWorkflowActivated: vi.fn(() => ({ workflowActivated: vi.fn() })),
 	useWorkflowDeactivated: vi.fn(() => ({ workflowDeactivated: vi.fn() })),
 	useWorkflowAutoDeactivated: vi.fn(() => ({ workflowAutoDeactivated: vi.fn() })),
-	workflowSettingsUpdated: vi.fn(),
-	builderCreditsUpdated: vi.fn(),
+	useWorkflowSettingsUpdated: vi.fn(() => ({ workflowSettingsUpdated: vi.fn() })),
+	useBuilderCreditsUpdated: vi.fn(() => ({ builderCreditsUpdated: mockBuilderCreditsUpdated })),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -120,7 +120,7 @@ describe('usePushConnection composable', () => {
 		await Promise.resolve();
 
 		// Verify that the correct handler was called.
-		expect(builderCreditsUpdated).toHaveBeenCalledTimes(1);
-		expect(builderCreditsUpdated).toHaveBeenCalledWith(testEvent);
+		expect(mockBuilderCreditsUpdated).toHaveBeenCalledTimes(1);
+		expect(mockBuilderCreditsUpdated).toHaveBeenCalledWith(testEvent);
 	});
 });

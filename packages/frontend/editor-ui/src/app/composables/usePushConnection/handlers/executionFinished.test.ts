@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { useExecutionFinished, type SimplifiedExecution } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
@@ -84,16 +84,31 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	})),
 }));
 
+let executionFinished: ReturnType<typeof useExecutionFinished>['executionFinished'];
+let continueEvaluationLoop: ReturnType<typeof useExecutionFinished>['continueEvaluationLoop'];
+let getRunExecutionData: ReturnType<typeof useExecutionFinished>['getRunExecutionData'];
+let handleExecutionFinishedWithSuccessOrOther: ReturnType<
+	typeof useExecutionFinished
+>['handleExecutionFinishedWithSuccessOrOther'];
+let handleExecutionFinishedWithErrorOrCanceled: ReturnType<
+	typeof useExecutionFinished
+>['handleExecutionFinishedWithErrorOrCanceled'];
+
+beforeEach(() => {
+	vi.resetAllMocks();
+	setActivePinia(createTestingPinia());
+
+	({
+		executionFinished,
+		continueEvaluationLoop,
+		getRunExecutionData,
+		handleExecutionFinishedWithSuccessOrOther,
+		handleExecutionFinishedWithErrorOrCanceled,
+	} = useExecutionFinished());
+});
+
 describe('continueEvaluationLoop()', () => {
-	beforeEach(() => {
-		vi.resetAllMocks();
-	});
-
 	it('should call runWorkflow() if workflow has eval trigger that executed successfully with rows left', () => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-
-		const { continueEvaluationLoop } = useExecutionFinished();
 		const evalTriggerNodeName = 'eval-trigger';
 		const evalTriggerNodeData = mock<ITaskData>({
 			data: {
@@ -139,10 +154,6 @@ describe('continueEvaluationLoop()', () => {
 	});
 
 	it('should not call runWorkflow() if workflow execution status is not success', () => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-
-		const { continueEvaluationLoop } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			status: 'error',
 			workflowData: {
@@ -166,10 +177,6 @@ describe('continueEvaluationLoop()', () => {
 	});
 
 	it('should not call runWorkflow() if eval trigger node does not exist in workflow', () => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-
-		const { continueEvaluationLoop } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			status: 'success',
 			workflowData: {
@@ -188,10 +195,6 @@ describe('continueEvaluationLoop()', () => {
 	});
 
 	it('should not call runWorkflow() if eval trigger node exists but has no run data', () => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-
-		const { continueEvaluationLoop } = useExecutionFinished();
 		const evalTriggerNodeName = 'eval-trigger';
 		const execution = mock<SimplifiedExecution>({
 			status: 'success',
@@ -216,10 +219,6 @@ describe('continueEvaluationLoop()', () => {
 	});
 
 	it('should not call runWorkflow() if eval trigger node run data has no rows left', () => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-
-		const { continueEvaluationLoop } = useExecutionFinished();
 		const evalTriggerNodeName = 'eval-trigger';
 		const evalTriggerNodeData = mock<ITaskData>({
 			data: {
@@ -263,7 +262,6 @@ describe('continueEvaluationLoop()', () => {
 
 describe('getRunExecutionData()', () => {
 	it('should preserve pushRef from execution data', () => {
-		const { getRunExecutionData } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			data: {
 				pushRef: 'test-push-ref-12345',
@@ -279,7 +277,6 @@ describe('getRunExecutionData()', () => {
 	});
 
 	it('should handle missing pushRef gracefully', () => {
-		const { getRunExecutionData } = useExecutionFinished();
 		const execution = mock<SimplifiedExecution>({
 			data: {
 				resultData: {
@@ -295,13 +292,7 @@ describe('getRunExecutionData()', () => {
 });
 
 describe('executionFinished', () => {
-	beforeEach(() => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-	});
-
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
-		const { executionFinished } = useExecutionFinished();
 		mockWorkflowState.executingNode.lastAddedExecutingNode = 'test-node';
 
 		await executionFinished({
@@ -318,10 +309,6 @@ describe('executionFinished', () => {
 
 	describe('ready-to-run AI workflow tracking', () => {
 		it('should track successful execution of ready-to-run-ai-workflow', async () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { executionFinished } = useExecutionFinished();
-
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
@@ -351,10 +338,6 @@ describe('executionFinished', () => {
 		});
 
 		it('should track failed execution of ready-to-run-ai-workflow', async () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { executionFinished } = useExecutionFinished();
-
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
@@ -381,10 +364,6 @@ describe('executionFinished', () => {
 		});
 
 		it('should track execution of ready-to-run-ai-workflow-v5', async () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { executionFinished } = useExecutionFinished();
-
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
@@ -414,10 +393,6 @@ describe('executionFinished', () => {
 		});
 
 		it('should track execution of ready-to-run-ai-workflow-v6', async () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { executionFinished } = useExecutionFinished();
-
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
@@ -444,10 +419,6 @@ describe('executionFinished', () => {
 		});
 
 		it('should not track execution for non-ready-to-run workflows', async () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { executionFinished } = useExecutionFinished();
-
 			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
@@ -480,17 +451,6 @@ describe('executionFinished', () => {
 	});
 
 	it('should return early and clear active execution when fetchExecutionData returns undefined', async () => {
-		const pinia = createTestingPinia({
-			initialState: {
-				workflows: {
-					activeExecutionId: '123',
-				},
-			},
-		});
-
-		setActivePinia(pinia);
-		const { executionFinished } = useExecutionFinished();
-
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const uiStore = mockedStore(useUIStore);
@@ -525,17 +485,6 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear executing node queue even when fetchExecutionData returns undefined', async () => {
-		const pinia = createTestingPinia({
-			initialState: {
-				workflows: {
-					activeExecutionId: '123',
-				},
-			},
-		});
-
-		setActivePinia(pinia);
-		const { executionFinished } = useExecutionFinished();
-
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 
@@ -565,10 +514,6 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear executing node queue when activeExecutionId is undefined (iframe preview)', async () => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		const { executionFinished } = useExecutionFinished();
-
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.activeExecutionId = undefined;
 
@@ -586,16 +531,8 @@ describe('executionFinished', () => {
 });
 
 describe('manual execution stats tracking', () => {
-	beforeEach(() => {
-		vi.resetAllMocks();
-	});
-
 	describe('handleExecutionFinishedWithSuccessOrOther', () => {
 		it('increments success stats on successful execution', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
-
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
@@ -605,10 +542,6 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not increment success stats when successToastAlreadyShown is true', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
-
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
@@ -618,10 +551,6 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not increment stats for non-success status', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
-
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
@@ -632,15 +561,7 @@ describe('manual execution stats tracking', () => {
 	});
 
 	describe('toast messages', () => {
-		beforeEach(() => {
-			mockShowMessage.mockClear();
-		});
-
 		it('shows success toast when executed node has run data', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
-
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
@@ -670,10 +591,6 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('shows warning toast when executed node was not reached', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
-
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
@@ -701,10 +618,6 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithSuccessOrOther } = useExecutionFinished();
-
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
@@ -718,8 +631,8 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			const docStore2 = useWorkflowDocumentStore(createWorkflowDocumentId(''));
-			docStore2.setNodes([
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.setNodes([
 				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
 			]);
 
@@ -734,10 +647,6 @@ describe('manual execution stats tracking', () => {
 
 	describe('handleExecutionFinishedWithErrorOrCanceled', () => {
 		it('increments error stats on execution error', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithErrorOrCanceled } = useExecutionFinished();
-
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
@@ -759,10 +668,6 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not increment stats for canceled executions', () => {
-			const pinia = createTestingPinia();
-			setActivePinia(pinia);
-			const { handleExecutionFinishedWithErrorOrCanceled } = useExecutionFinished();
-
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 

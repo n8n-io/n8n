@@ -1,4 +1,4 @@
-import { builderCreditsUpdated } from './builderCreditsUpdated';
+import { useBuilderCreditsUpdated } from './builderCreditsUpdated';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
@@ -14,6 +14,8 @@ describe('builderCreditsUpdated', () => {
 		} as unknown as ReturnType<typeof useBuilderStore>;
 
 		vi.mocked(useBuilderStore).mockReturnValue(mockStore);
+
+		const { builderCreditsUpdated } = useBuilderCreditsUpdated();
 
 		const event: BuilderCreditsPushMessage = {
 			type: 'updateBuilderCredits',

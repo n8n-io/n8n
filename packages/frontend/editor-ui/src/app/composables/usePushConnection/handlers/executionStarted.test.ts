@@ -1,6 +1,6 @@
+import { ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { executionStarted } from './executionStarted';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useExecutionStarted } from './executionStarted';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -12,9 +12,13 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
+vi.mock('../../useWorkflowId', () => ({
+	useWorkflowId: vi.fn(() => ref('wf-123')),
+}));
+
 describe('executionStarted', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let executionStarted: ReturnType<typeof useExecutionStarted>['executionStarted'];
 
 	function makeEvent(executionId = 'exec-1'): ExecutionStarted {
 		return {
@@ -26,13 +30,12 @@ describe('executionStarted', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 
-		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('wf-123');
-
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
 
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-123'));
+
+		({ executionStarted } = useExecutionStarted());
 	});
 
 	it('should skip when activeExecutionId is undefined', async () => {
