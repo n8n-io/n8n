@@ -11,12 +11,15 @@ describe('search-projects MCP tool', () => {
 	const createMocks = (overrides?: {
 		projects?: Array<{ id: string; name: string; type: string }>;
 		count?: number;
+		exactProjects?: Array<{ id: string; name: string; type: string }>;
 	}) => {
 		const projects = overrides?.projects ?? [];
 		const count = overrides?.count ?? projects.length;
+		const exactProjects = overrides?.exactProjects ?? [];
 
 		const projectRepository = mockInstance(ProjectRepository, {
 			getAccessibleProjectsAndCount: jest.fn().mockResolvedValue([projects, count]),
+			getAccessibleProjectsByExactName: jest.fn().mockResolvedValue(exactProjects),
 		});
 
 		const telemetry = mockInstance(Telemetry, {
@@ -174,6 +177,56 @@ describe('search-projects MCP tool', () => {
 
 		const output = result.structuredContent as { hint?: string };
 		expect(output.hint).toBeUndefined();
+	});
+
+	test('surfaces exact match even when it falls outside the paginated partial page', async () => {
+		// Partial page returns only the alphabetically-first partials, exact match not among them
+		const partialProjects = [
+			{ id: 'proj-a', name: 'Finance Archive', type: 'team' },
+			{ id: 'proj-b', name: 'Finance Backups', type: 'team' },
+		];
+		const exactProjects = [{ id: 'proj-exact', name: 'Finance', type: 'team' }];
+		const { projectRepository, telemetry } = createMocks({
+			projects: partialProjects,
+			count: 5,
+			exactProjects,
+		});
+
+		const tool = createSearchProjectsTool(
+			user,
+			projectRepository as unknown as ProjectRepository,
+			telemetry,
+		);
+
+		const result = await callHandler(tool, { query: 'Finance', limit: 2 });
+
+		const output = result.structuredContent as {
+			data: Array<{ id: string; matchType: string }>;
+			hint?: string;
+		};
+		expect(output.data[0]).toEqual(
+			expect.objectContaining({ id: 'proj-exact', matchType: 'exact' }),
+		);
+		// hint should not fire because we now have an exact match
+		expect(output.hint).toBeUndefined();
+		// effectiveLimit is honored — total returned stays at the user's limit
+		expect(output.data.length).toBeLessThanOrEqual(2);
+	});
+
+	test('does not query exact-name endpoint when no query is provided', async () => {
+		const { projectRepository, telemetry } = createMocks({
+			projects: [{ id: 'proj-1', name: 'Anything', type: 'team' }],
+		});
+
+		const tool = createSearchProjectsTool(
+			user,
+			projectRepository as unknown as ProjectRepository,
+			telemetry,
+		);
+
+		await callHandler(tool, {});
+
+		expect(projectRepository.getAccessibleProjectsByExactName).not.toHaveBeenCalled();
 	});
 
 	test('does not attach matchType when no query is provided', async () => {

@@ -87,14 +87,26 @@ export const createSearchProjectsTool = (
 		};
 
 		try {
-			const [projects, count] = await projectRepository.getAccessibleProjectsAndCount(user.id, {
-				search: query,
-				type,
-				take: Math.min(Math.max(1, limit), MAX_RESULTS),
-			});
+			const effectiveLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
+			const trimmedQuery = query?.trim();
+			const [[partialProjects, count], exactProjects] = await Promise.all([
+				projectRepository.getAccessibleProjectsAndCount(user.id, {
+					search: query,
+					type,
+					take: effectiveLimit,
+				}),
+				trimmedQuery
+					? projectRepository.getAccessibleProjectsByExactName(user.id, trimmedQuery, type)
+					: Promise.resolve([]),
+			]);
 
-			const normalizedQuery = query?.trim().toLowerCase();
-			const scoredProjects = projects.map((project) => ({
+			// Exact matches outside the partial page would otherwise be invisible to the ranker.
+			const partialIds = new Set(partialProjects.map((p) => p.id));
+			const novelExactProjects = exactProjects.filter((p) => !partialIds.has(p.id));
+			const mergedProjects = [...novelExactProjects, ...partialProjects].slice(0, effectiveLimit);
+
+			const normalizedQuery = trimmedQuery?.toLowerCase();
+			const scoredProjects = mergedProjects.map((project) => ({
 				project,
 				isExact:
 					normalizedQuery !== undefined && project.name.trim().toLowerCase() === normalizedQuery,

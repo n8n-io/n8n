@@ -300,6 +300,32 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 		});
 
+		test('includes targetProject in recovery output when post-save errors but workflow persists', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-1';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-1',
+				name: 'Recovered',
+				nodes: mockNodes,
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.workflowId).toBe('wf-recovery-1');
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
+			expect(response.note).toContain('post-save operation failed');
+		});
+
 		test('returns error when service throws permission error', async () => {
 			createWorkflowMock.mockRejectedValue(
 				new Error("You don't have the permissions to save the workflow in this project."),

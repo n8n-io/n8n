@@ -150,6 +150,7 @@ export const createCreateWorkflowFromCodeTool = (
 		}
 
 		let newWorkflow: WorkflowEntity | undefined;
+		let landingProject: Awaited<ReturnType<typeof projectRepository.findOneBy>> | null = null;
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -178,7 +179,7 @@ export const createCreateWorkflowFromCodeTool = (
 			stripNullCredentialStubs(newWorkflow.nodes);
 
 			let effectiveProjectId = projectId;
-			let landingProject = effectiveProjectId
+			landingProject = effectiveProjectId
 				? await projectRepository.findOneBy({ id: effectiveProjectId })
 				: null;
 			if (!effectiveProjectId) {
@@ -265,12 +266,17 @@ export const createCreateWorkflowFromCodeTool = (
 					};
 					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+					const targetProject = landingProject
+						? { id: landingProject.id, name: landingProject.name, type: landingProject.type }
+						: undefined;
+
 					const output = {
 						workflowId: persisted.id,
 						name: persisted.name,
 						nodeCount: persisted.nodes.length,
 						url: workflowUrl,
 						autoAssignedCredentials: [],
+						targetProject,
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
 					};
 
