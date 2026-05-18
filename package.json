@@ -184,6 +184,7 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
+      "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch"
     }
   }
