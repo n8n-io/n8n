@@ -73,7 +73,9 @@ runs:
       shell: bash
 
     - name: Configure Turborepo Cache
-      uses: rharkor/caching-for-turbo@564b6d155a4aec5ada97411ba7f7956e4bac890a # v2.4.0
+      uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+      with:
+        server-port: 0
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}
