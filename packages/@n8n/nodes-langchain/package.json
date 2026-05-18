@@ -225,6 +225,7 @@
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "catalog:",
+    "@ibm-cloud/watsonx-ai": "^1.7.9",
     "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.6",
     "@getzep/zep-js": "0.9.0",

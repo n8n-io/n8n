@@ -54,6 +54,7 @@
   "dependencies": {
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
+    "@ibm-cloud/watsonx-ai": "^1.7.9",
     "@langchain/core": "catalog:",
     "@langchain/classic": "1.0.27",
     "@langchain/community": "catalog:",
