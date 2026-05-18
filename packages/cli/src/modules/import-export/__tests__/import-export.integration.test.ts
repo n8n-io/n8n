@@ -1,9 +1,10 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Readable } from 'node:stream';
 import { Parser, type ReadEntry } from 'tar';
 
-import { createOwner } from '@test-integration/db/users';
+import { createMember, createOwner } from '@test-integration/db/users';
 
 import { ImportExportService } from '../import-export.service';
 import { FORMAT_VERSION } from '../spec/constants';
@@ -150,5 +151,41 @@ describe('workflow package export', () => {
 				workflowIds: [wf.id, 'missing-1', 'missing-2'],
 			}),
 		).rejects.toThrow(/missing-1.*missing-2/);
+	});
+
+	it('rejects export of workflows the caller has no access to with "not found"', async () => {
+		const owner = await createOwner();
+		const ownerProject = await createTeamProject('Owner Project', owner);
+		const ownerWorkflow = await createWorkflow(
+			{ name: 'Owners Workflow', nodes: [], connections: {} },
+			ownerProject,
+		);
+
+		const member = await createMember();
+
+		await expect(
+			service.exportWorkflows({
+				user: member,
+				workflowIds: [ownerWorkflow.id],
+			}),
+		).rejects.toThrow(ownerWorkflow.id);
+	});
+
+	it('lets a member export workflows in their personal project', async () => {
+		const member = await createMember();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			member.id,
+		);
+		const wf = await createWorkflow(
+			{ name: 'Member Workflow', nodes: [], connections: {} },
+			personalProject,
+		);
+
+		const stream = await service.exportWorkflows({ user: member, workflowIds: [wf.id] });
+		const entries = await unpackTar(await streamToBuffer(stream));
+
+		const manifest = JSON.parse(entries[0].content.toString()) as PackageManifest;
+		expect(manifest.workflows).toHaveLength(1);
+		expect(manifest.workflows![0].id).toBe(wf.id);
 	});
 });

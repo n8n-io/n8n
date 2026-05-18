@@ -19,6 +19,7 @@ const UI_OPERATIONS = {
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
 		'read',
+		'export',
 		'execute',
 		'export',
 		'update',
