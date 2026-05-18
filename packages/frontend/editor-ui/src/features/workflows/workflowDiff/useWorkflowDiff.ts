@@ -12,6 +12,7 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 export function mapConnections(connections: CanvasConnection[]) {
@@ -130,7 +131,7 @@ function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>,
 
 		workflowDocumentStore = useWorkflowDocumentStore(docId);
 		workflowDocumentStore.hydrate({ ...wf, versionId } as IWorkflowDb);
-		renderData.value = workflowDocumentStore.render;
+		renderData.value = useWorkflowDocumentRenderData(docId);
 	});
 
 	function dispose() {
