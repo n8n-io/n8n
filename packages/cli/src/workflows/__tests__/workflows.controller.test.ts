@@ -1,6 +1,6 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
@@ -12,6 +12,7 @@ import { WorkflowsController } from '../workflows.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
+import type { NamingService } from '@/services/naming.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
 import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
@@ -210,6 +211,56 @@ describe('WorkflowsController', () => {
 				expect(ssrfProtectionService.validateUrl).not.toHaveBeenCalled();
 				expect(ssrfProtectionService.createSecureLookup).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('getNewName', () => {
+		const namingService = mock<NamingService>();
+		const globalConfig = mock<GlobalConfig>({
+			workflows: { defaultName: 'My workflow' },
+			generic: { timezone: 'Europe/Berlin' },
+		});
+
+		beforeEach(() => {
+			controller.namingService = namingService;
+			controller.globalConfig = globalConfig;
+		});
+
+		it('should return name and defaultSettings with timezone from config', async () => {
+			const req = mock<AuthenticatedRequest>({ query: { projectId: 'project-1' } });
+			projectService.getProjectWithScope.mockResolvedValue({} as never);
+			namingService.getUniqueWorkflowName.mockResolvedValue('My workflow');
+
+			const result = await controller.getNewName(req);
+
+			expect(result).toEqual({
+				name: 'My workflow',
+				defaultSettings: {
+					executionOrder: 'v1',
+					timezone: 'Europe/Berlin',
+				},
+			});
+		});
+
+		it('should throw ForbiddenError when user lacks workflow:create scope', async () => {
+			const req = mock<AuthenticatedRequest>({ query: { projectId: 'project-1' } });
+			projectService.getProjectWithScope.mockResolvedValue(null);
+
+			await expect(controller.getNewName(req)).rejects.toThrow(ForbiddenError);
+			expect(namingService.getUniqueWorkflowName).not.toHaveBeenCalled();
+		});
+
+		it('should use requested name when provided', async () => {
+			const req = mock<AuthenticatedRequest>({
+				query: { projectId: 'project-1', name: 'Custom Name' },
+			});
+			projectService.getProjectWithScope.mockResolvedValue({} as never);
+			namingService.getUniqueWorkflowName.mockResolvedValue('Custom Name');
+
+			const result = await controller.getNewName(req);
+
+			expect(namingService.getUniqueWorkflowName).toHaveBeenCalledWith('Custom Name');
+			expect(result.name).toBe('Custom Name');
 		});
 	});
 

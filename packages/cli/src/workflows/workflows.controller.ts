@@ -8,6 +8,7 @@ import {
 	ROLE,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type GetNewWorkflowResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
@@ -163,11 +164,14 @@ export class WorkflowsController {
 		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
-		const defaultSettings = {
-			executionOrder: 'v1' as const,
-			timezone: this.globalConfig.generic.timezone,
+		const response: GetNewWorkflowResponse = {
+			name,
+			defaultSettings: {
+				executionOrder: 'v1',
+				timezone: this.globalConfig.generic.timezone,
+			},
 		};
-		return { name, defaultSettings };
+		return response;
 	}
 
 	@Get('/from-url')

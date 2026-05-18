@@ -1,6 +1,7 @@
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
 	FrontendSettings,
+	GetNewWorkflowResponse,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
@@ -228,10 +229,7 @@ export interface IWorkflowToShare extends WorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
 
-export interface NewWorkflowResponse {
-	name: string;
-	defaultSettings: IWorkflowSettings;
-}
+export type { GetNewWorkflowResponse as NewWorkflowResponse };
 
 export interface INewWorkflowData {
 	name: string;
