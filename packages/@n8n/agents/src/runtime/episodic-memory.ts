@@ -2,6 +2,13 @@ import { embed, embedMany } from 'ai';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
+import {
+	DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
+	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+	DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
+	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
+	DEFAULT_EPISODIC_MEMORY_TOP_K,
+} from './episodic-memory-defaults';
 import type { AgentEventBus } from './event-bus';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
 import { renderObservationLog } from './observation-log-renderer';
@@ -24,12 +31,6 @@ import type { ObservationLogEntry, ObservationLogScope } from '../types/sdk/obse
 
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
-const DEFAULT_TOP_K = 5;
-const DEFAULT_HALF_LIFE_DAYS = 180;
-const DEFAULT_MAX_ENTRIES_PER_RUN = 5;
-const DEFAULT_MAX_ENTRY_LENGTH = 800;
-const DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION =
-	'Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.';
 const RRF_K = 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const RECENCY_RRF_WEIGHT = 1;
@@ -108,22 +109,20 @@ export function withEpisodicMemoryDefaults(
 	config: EpisodicMemoryConfig,
 ): NormalizedEpisodicMemoryConfig {
 	if (!config.embedder) {
-		throw new Error(
-			'Episodic memory requires an embedding model supplied by the SDK consumer. Pass a Vercel AI SDK EmbeddingModel as episodicMemory.embedder.',
-		);
+		throw new Error('Episodic memory requires a resolved embedding model before runtime use.');
 	}
 
 	return {
-		topK: config.topK ?? DEFAULT_TOP_K,
-		halfLifeDays: config.halfLifeDays ?? DEFAULT_HALF_LIFE_DAYS,
-		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_MAX_ENTRIES_PER_RUN,
-		maxEntryLength: config.maxEntryLength ?? DEFAULT_MAX_ENTRY_LENGTH,
+		topK: config.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K,
+		halfLifeDays: config.halfLifeDays ?? DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
+		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+		maxEntryLength: config.maxEntryLength ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
 		embedder: config.embedder,
 		embeddingModel: config.embeddingModel ?? 'custom',
 		extract: config.extract,
 		reflect: config.reflect,
 		recallToolInstruction:
-			config.prompts?.recallToolInstruction ?? DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION,
+			config.prompts?.recallToolInstruction ?? DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	};
 }
 
@@ -233,7 +232,7 @@ export function rankEpisodicMemoryEntries(
 	query: string,
 	opts: EpisodicMemorySearchOptions = {},
 ): RetrievedEpisodicMemoryEntry[] {
-	const topK = opts.topK ?? DEFAULT_TOP_K;
+	const topK = opts.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K;
 	const statuses = new Set(opts.includeStatuses ?? ['active']);
 	const candidates = entries.filter((entry) => statuses.has(entry.status));
 	const queryTokens = tokenize(query);
@@ -590,7 +589,10 @@ function getEntryRecencyDate(entry: Pick<EpisodicMemoryEntry, 'createdAt' | 'las
 	return entry.lastSeenAt ?? entry.createdAt;
 }
 
-function computeRecencyFactor(createdAt: Date, halfLifeDays = DEFAULT_HALF_LIFE_DAYS): number {
+function computeRecencyFactor(
+	createdAt: Date,
+	halfLifeDays = DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
+): number {
 	const ageMs = Math.max(0, Date.now() - createdAt.getTime());
 	const ageDays = ageMs / MS_PER_DAY;
 	return Math.pow(0.5, ageDays / halfLifeDays);

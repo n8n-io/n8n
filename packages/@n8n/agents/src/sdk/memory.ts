@@ -1,9 +1,15 @@
+import { hasEpisodicMemoryStore, isEpisodicMemoryEnabled } from '../runtime/episodic-memory';
 import {
-	hasEpisodicMemoryStore,
-	isEpisodicMemoryEnabled,
-	withEpisodicMemoryDefaults,
-} from '../runtime/episodic-memory';
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+	DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
+	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+	DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
+	DEFAULT_EPISODIC_MEMORY_TOP_K,
+	createEpisodicMemoryExtractFn,
+	createEpisodicMemoryReflectFn,
+} from '../runtime/episodic-memory-defaults';
 import { InMemoryMemory } from '../runtime/memory-store';
+import { createEmbeddingModel } from '../runtime/model-factory';
 import {
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
@@ -32,6 +38,8 @@ export interface ResolveObservationalMemoryConfigOptions {
 	defaultModel: ModelConfig;
 }
 
+export type ResolveMemoryConfigDefaultsOptions = ResolveObservationalMemoryConfigOptions;
+
 export function resolveObservationalMemoryConfig(
 	config: ObservationalMemoryConfig,
 	options: ResolveObservationalMemoryConfigOptions,
@@ -52,19 +60,66 @@ export function resolveObservationalMemoryConfig(
 	};
 }
 
+export function resolveEpisodicMemoryConfig(
+	config: EpisodicMemoryConfig,
+	options: ResolveMemoryConfigDefaultsOptions,
+): EpisodicMemoryConfig {
+	const embeddingModel = config.embeddingModel ?? DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const extractorModel = options.defaultModel;
+	const reflectorModel = options.defaultModel;
+
+	return {
+		enabled: config.enabled,
+		topK: config.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K,
+		halfLifeDays: config.halfLifeDays ?? DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
+		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+		maxEntryLength: config.maxEntryLength ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
+		sync: config.sync,
+		embedder:
+			config.embedder ?? createEmbeddingModel(embeddingModel, config.embeddingProviderOptions),
+		embeddingModel,
+		extract:
+			config.extract ??
+			createEpisodicMemoryExtractFn(extractorModel, {
+				extractionPrompt: config.prompts?.extraction,
+			}),
+		reflect:
+			config.reflect ??
+			createEpisodicMemoryReflectFn(reflectorModel, {
+				reflectionPrompt: config.prompts?.reflection,
+			}),
+		prompts: config.prompts,
+	};
+}
+
 export function resolveMemoryConfigDefaults(
 	config: MemoryConfig,
-	options: ResolveObservationalMemoryConfigOptions,
+	options: ResolveMemoryConfigDefaultsOptions,
 ): MemoryConfig {
+	const episodicMemory = isEpisodicMemoryEnabled(config.episodicMemory)
+		? resolveEpisodicMemoryConfig(config.episodicMemory, options)
+		: config.episodicMemory;
+
 	if (!config.observationalMemory) {
-		return config;
+		return normalizeMemoryConfig({
+			...config,
+			episodicMemory,
+		});
+	}
+
+	if (!hasObservationLogStore(config.memory)) {
+		throw new Error(
+			"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
+		);
 	}
 
 	const observationalMemory = resolveObservationalMemoryConfig(config.observationalMemory, options);
 
 	return normalizeMemoryConfig({
 		...config,
+		memory: config.memory,
 		observationalMemory,
+		episodicMemory,
 	});
 }
 
@@ -211,7 +266,6 @@ export class Memory {
 					'Episodic memory requires a storage backend that implements BuiltEpisodicMemoryStore.',
 				);
 			}
-			withEpisodicMemoryDefaults(this.episodicMemoryConfig);
 		}
 
 		const baseConfig = {

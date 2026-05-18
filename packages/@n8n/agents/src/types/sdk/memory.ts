@@ -302,6 +302,11 @@ export interface EpisodicMemoryPrompts {
 	recallToolInstruction?: string;
 }
 
+export interface EpisodicMemoryEmbeddingProviderOptions {
+	apiKey?: string;
+	baseURL?: string;
+}
+
 export interface EpisodicMemoryConfig {
 	enabled?: boolean;
 	topK?: number;
@@ -311,6 +316,7 @@ export interface EpisodicMemoryConfig {
 	sync?: boolean;
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
+	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
 	extract?: EpisodicMemoryExtractFn;
 	reflect?: EpisodicMemoryReflectFn;
 	prompts?: EpisodicMemoryPrompts;

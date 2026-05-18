@@ -95,6 +95,10 @@ describe('buildFromJson()', () => {
 						maxEntryLength?: number;
 						embedder?: unknown;
 						embeddingModel?: string;
+						embeddingProviderOptions?: {
+							apiKey?: string;
+							baseURL?: string;
+						};
 						extract?: unknown;
 						reflect?: unknown;
 					};
@@ -588,17 +592,17 @@ describe('buildFromJson()', () => {
 
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('openai-key');
 		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
-		const embedder = getMemoryConfig(agent)?.episodicMemory?.embedder as Record<string, unknown>;
 		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
 			topK: 7,
 			maxEntryLength: 800,
-			embeddingModel: 'openai/text-embedding-3-small',
-			embedder: expect.any(Object),
-			extract: expect.any(Function),
-			reflect: expect.any(Function),
+			embeddingProviderOptions: {
+				apiKey: 'test-api-key',
+				baseURL: 'https://custom.example/v1',
+			},
 		});
-		expect(embedder.apiKey).toBe('test-api-key');
-		expect(embedder.baseURL).toBe('https://custom.example/v1');
+		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.extract).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
 	it('can disable observational memory while keeping message memory', async () => {

@@ -64,6 +64,7 @@ export type {
 	BuiltEpisodicMemoryStore,
 	EpisodicMemoryConfig,
 	EpisodicMemoryCursor,
+	EpisodicMemoryEmbeddingProviderOptions,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
 	EpisodicMemoryExtractFn,

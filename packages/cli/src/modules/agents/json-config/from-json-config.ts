@@ -7,7 +7,13 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import { Agent, createEmbeddingModel, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
+import {
+	Agent,
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+	Memory,
+	Tool,
+	wrapToolForApproval,
+} from '@n8n/agents';
 import { z } from 'zod';
 import type {
 	AgentSkill,
@@ -19,11 +25,6 @@ import type {
 
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveProviderToolName } from './provider-tool-aliases';
-import {
-	createN8nEpisodicMemoryExtractFn,
-	createN8nEpisodicMemoryReflectFn,
-	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-} from '../episodic-memory';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -96,7 +97,6 @@ export async function buildFromJson(
 			agent,
 			config.memory,
 			options.memoryFactory,
-			resolvedModelConfig,
 			options.credentialProvider,
 		);
 	}
@@ -265,7 +265,6 @@ async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
-	modelConfig: ModelConfig,
 	credentialProvider: CredentialProvider,
 ) {
 	const memory = new Memory();
@@ -283,11 +282,7 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
-			await resolveEpisodicMemoryConfig(
-				memoryConfig.episodicMemory,
-				credentialProvider,
-				modelConfig,
-			),
+			await resolveEpisodicMemoryConfig(memoryConfig.episodicMemory, credentialProvider),
 		);
 	}
 
@@ -321,12 +316,11 @@ async function applyMemoryFromConfig(
 async function resolveEpisodicMemoryConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
-	modelConfig: ModelConfig,
 ) {
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const raw = await credentialProvider.resolve(config.credential);
 	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	const embeddingCredentials = {
+	const embeddingProviderOptions = {
 		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
 		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
 	};
@@ -337,10 +331,7 @@ async function resolveEpisodicMemoryConfig(
 		...(config.halfLifeDays !== undefined && { halfLifeDays: config.halfLifeDays }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		...(config.maxEntryLength !== undefined && { maxEntryLength: config.maxEntryLength }),
-		embedder: createEmbeddingModel(embeddingModel, embeddingCredentials),
-		embeddingModel,
-		extract: createN8nEpisodicMemoryExtractFn(modelConfig),
-		reflect: createN8nEpisodicMemoryReflectFn(modelConfig),
+		embeddingProviderOptions,
 	};
 }
 
