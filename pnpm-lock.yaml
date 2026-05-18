@@ -2283,7 +2283,7 @@ importers:
         specifier: ^6.17.0
         version: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
       mysql2:
-        specifier: 3.17.0
+        specifier: 'catalog:'
         version: 3.17.0
       n8n-nodes-base:
         specifier: workspace:*

@@ -266,7 +266,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-16",
-    "mysql2": "3.17.0",
+    "mysql2": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",
