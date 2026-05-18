@@ -104,7 +104,11 @@ export async function enrichResponse(
 }
 
 function shouldProbeResult(record: Record<string, unknown>): boolean {
-	return typeof record.snapshot === 'string' || typeof record.content === 'string';
+	return (
+		typeof record.snapshot === 'string' ||
+		typeof record.content === 'string' ||
+		Object.prototype.hasOwnProperty.call(record, 'result')
+	);
 }
 
 // ---------------------------------------------------------------------------
