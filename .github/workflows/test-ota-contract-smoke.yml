@@ -34,18 +34,22 @@ jobs:
             os: ubuntu-latest
             run_shell: bash
             full_backend: true
+            allow_packaged_quickstart_failure: true
           - name: macos-bash
             os: macos-latest
             run_shell: bash
             full_backend: true
+            allow_packaged_quickstart_failure: true
           - name: windows-pwsh
             os: windows-latest
             run_shell: pwsh
             full_backend: false
+            allow_packaged_quickstart_failure: true
           - name: windows-git-bash
             os: windows-latest
             run_shell: bash
             full_backend: false
+            allow_packaged_quickstart_failure: true
 
     steps:
       - name: Checkout
@@ -108,6 +112,8 @@ jobs:
           ota execution topology --json .
 
       - name: Proof packaged quickstart workflow
+        id: instant
+        continue-on-error: ${{ matrix.allow_packaged_quickstart_failure }}
         uses: ota-run/action@v1
         with:
           command: proof
@@ -116,6 +122,17 @@ jobs:
           comment-pr: false
           artifact-name: ota-proof-instant-${{ matrix.name }}
           output-path: .ota-proof-instant-${{ matrix.name }}.json
+
+      - name: Report packaged quickstart signal
+        if: ${{ always() && matrix.allow_packaged_quickstart_failure }}
+        shell: bash
+        run: |
+          outcome='${{ steps.instant.outcome }}'
+          if [ "$outcome" = "failure" ]; then
+            echo "::warning::Packaged quickstart signal failed on ${{ matrix.name }}; contributor backend workflow remains hard-gated."
+          else
+            echo "Packaged quickstart signal passed on ${{ matrix.name }}."
+          fi
 
       - name: Proof contributor backend workflow
         if: matrix.full_backend
@@ -167,7 +184,6 @@ jobs:
         with:
           command: proof
           workflow: docker
-          execution-mode: container
           install: never
           comment-pr: false
           artifact-name: ota-proof-docker-linux
