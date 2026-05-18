@@ -168,6 +168,9 @@ catalogs:
     eslint-plugin-oxlint:
       specifier: ^1.61.0
       version: 1.61.0
+    esprima-next:
+      specifier: 5.8.4
+      version: 5.8.4
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
@@ -2532,7 +2535,7 @@ importers:
         specifier: 0.16.1
         version: 0.16.1
       esprima-next:
-        specifier: ^5.8.4
+        specifier: 'catalog:'
         version: 5.8.4
       recast:
         specifier: ^0.22.0
@@ -4029,7 +4032,7 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       esprima-next:
-        specifier: 5.8.4
+        specifier: 'catalog:'
         version: 5.8.4
       fast-json-stable-stringify:
         specifier: ^2.1.0
@@ -4852,7 +4855,7 @@ importers:
         specifier: 'catalog:'
         version: 3.1.0
       esprima-next:
-        specifier: 5.8.4
+        specifier: 'catalog:'
         version: 5.8.4
       form-data:
         specifier: 4.0.4

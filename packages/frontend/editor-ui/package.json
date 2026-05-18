@@ -75,7 +75,7 @@
     "dateformat": "^3.0.3",
     "element-plus": "catalog:frontend",
     "email-providers": "^2.0.1",
-    "esprima-next": "5.8.4",
+    "esprima-next": "catalog:",
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.2",
     "flatted": "catalog:",

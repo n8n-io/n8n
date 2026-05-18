@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "ast-types": "^0.16.1",
-    "esprima-next": "^5.8.4",
+    "esprima-next": "catalog:",
     "recast": "^0.22.0"
   }
 }
