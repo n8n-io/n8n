@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { defineComponent, h, type Component, type PropType } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
-import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions } from '../emptyStateSuggestions';
+import {
+	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions,
+	isPromptSuggestion,
+	type InstanceAiEmptyStateSuggestion,
+} from '../emptyStateSuggestions';
 
 const telemetryTrack = vi.fn();
 
@@ -16,6 +21,8 @@ type InputTestProps = {
 	contextualSuggestion: string | null;
 	researchMode: boolean;
 	suggestions?: typeof suggestions;
+	suggestionsComponent?: Component;
+	suggestionCatalogVersion?: string;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -38,6 +45,86 @@ function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
 }));
+
+const CustomSuggestionsComponent = defineComponent({
+	name: 'CustomSuggestionsComponent',
+	props: {
+		suggestions: {
+			type: Array as PropType<readonly InstanceAiEmptyStateSuggestion[]>,
+			required: true,
+		},
+		disabled: {
+			type: Boolean,
+			required: true,
+		},
+	},
+	emits: ['submit-suggestion'],
+	setup(props, { emit }) {
+		return () =>
+			h(
+				'button',
+				{
+					type: 'button',
+					'data-test-id': 'custom-suggestion-submit',
+					disabled: props.disabled,
+					onClick: () => {
+						const [suggestion] = props.suggestions;
+						if (!suggestion || !isPromptSuggestion(suggestion)) {
+							return;
+						}
+
+						emit('submit-suggestion', {
+							promptKey: suggestion.promptKey,
+							suggestionId: 'custom-build-workflow',
+							suggestionKind: 'prompt',
+							position: 1,
+						});
+					},
+				},
+				'Custom suggestion',
+			);
+	},
+});
+
+const CustomInsertSuggestionsComponent = defineComponent({
+	name: 'CustomInsertSuggestionsComponent',
+	props: {
+		suggestions: {
+			type: Array as PropType<readonly InstanceAiEmptyStateSuggestion[]>,
+			required: true,
+		},
+		disabled: {
+			type: Boolean,
+			required: true,
+		},
+	},
+	emits: ['insert-suggestion'],
+	setup(props, { emit }) {
+		return () =>
+			h(
+				'button',
+				{
+					type: 'button',
+					'data-test-id': 'custom-suggestion-insert',
+					disabled: props.disabled,
+					onClick: () => {
+						const [suggestion] = props.suggestions;
+						if (!suggestion || !isPromptSuggestion(suggestion)) {
+							return;
+						}
+
+						emit('insert-suggestion', {
+							promptKey: suggestion.promptKey,
+							suggestionId: 'custom-build-workflow',
+							suggestionKind: 'prompt',
+							position: 1,
+						});
+					},
+				},
+				'Custom insert suggestion',
+			);
+	},
+});
 
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
@@ -229,6 +316,63 @@ describe('InstanceAiInput', () => {
 			undefined,
 		]);
 		expect(textbox).toHaveValue('');
+	});
+
+	it('submits from a caller-provided suggestions component through the existing flow', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomSuggestionsComponent,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.click(getByTestId('custom-suggestion-submit'));
+
+		expect(emitted().submit?.[0]).toEqual([
+			"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
+			undefined,
+		]);
+		expect(textbox).toHaveValue('');
+	});
+
+	it('inserts from a caller-provided suggestions component without submitting', async () => {
+		const { emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+			},
+		});
+
+		telemetryTrack.mockClear();
+		const textbox = getByRole('textbox');
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+
+		await waitFor(() => {
+			expect(textbox).toHaveValue(
+				"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
+			);
+			expect(queryByTestId('custom-suggestion-insert')).not.toBeInTheDocument();
+		});
+		expect(emitted().submit).toBeUndefined();
+		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
+			thread_id: 'thread-1',
+			suggestion_catalog_version: 'v2',
+			research_mode: false,
+			suggestion_id: 'custom-build-workflow',
+			suggestion_kind: 'prompt',
+			position: 1,
+		});
+
+		const payload = telemetryTrack.mock.calls[0]?.[1] as Record<string, unknown>;
+		expect(payload).not.toHaveProperty('prompt');
+		expect(Object.values(payload)).not.toContain(
+			"I want to build a new workflow. Help me figure out what to build. Ask me what's the end goal, what should trigger it, and what apps or services are involved.",
+		);
 	});
 
 	it('submits typed text and attachments from the send button', async () => {
@@ -480,6 +624,25 @@ describe('InstanceAiInput', () => {
 				([eventName]) => eventName === 'Instance AI prompt suggestions shown',
 			),
 		).toHaveLength(2);
+	});
+
+	it('tracks shown telemetry with a caller-provided catalog version', async () => {
+		renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: 'thread-v2',
+			},
+		});
+
+		await waitFor(() => {
+			expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
+				thread_id: 'thread-v2',
+				suggestion_catalog_version: 'v2',
+				research_mode: false,
+			});
+		});
 	});
 
 	it('tracks quick examples opened with semantic payload', async () => {

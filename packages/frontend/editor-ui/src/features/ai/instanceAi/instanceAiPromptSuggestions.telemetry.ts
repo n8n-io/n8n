@@ -7,6 +7,7 @@ export type TelemetryTracker = Pick<ReturnType<typeof useTelemetry>, 'track'>;
 export type InstanceAiPromptSuggestionsShownContext = {
 	threadId: string;
 	researchMode: boolean;
+	suggestionCatalogVersion?: string;
 };
 
 export type InstanceAiQuickExampleOpenedContext = InstanceAiPromptSuggestionsShownContext & {
@@ -28,11 +29,14 @@ type InstanceAiPromptSuggestionsBasePayload = {
 
 const shownImpressionKeys = new Set<string>();
 
+const resolveSuggestionCatalogVersion = (context: InstanceAiPromptSuggestionsShownContext) =>
+	context.suggestionCatalogVersion ?? INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION;
+
 const createBasePayload = (
 	context: InstanceAiPromptSuggestionsShownContext,
 ): InstanceAiPromptSuggestionsBasePayload => ({
 	thread_id: context.threadId,
-	suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
+	suggestion_catalog_version: resolveSuggestionCatalogVersion(context),
 	research_mode: context.researchMode,
 });
 
@@ -42,7 +46,7 @@ export function createInstanceAiPromptSuggestionsTelemetry(
 ) {
 	return {
 		trackSuggestionsShown(context: InstanceAiPromptSuggestionsShownContext) {
-			const impressionKey = context.threadId + ':' + INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION;
+			const impressionKey = context.threadId + ':' + resolveSuggestionCatalogVersion(context);
 			if (shownKeys.has(impressionKey)) {
 				return;
 			}

@@ -35,6 +35,51 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(shownSerializedPayload).not.toContain('"prompt_text":"');
 	});
 
+	test('tracks suggestion impressions with a caller-provided catalog version', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, new Set<string>());
+
+		helper.trackSuggestionsShown({
+			threadId: 'thread-v2',
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
+			thread_id: 'thread-v2',
+			suggestion_catalog_version: 'v2',
+			research_mode: false,
+		});
+	});
+
+	test('dedupes suggestion impressions by thread and resolved catalog version', () => {
+		const shownKeys = new Set<string>();
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, shownKeys);
+
+		helper.trackSuggestionsShown({ threadId: 'thread-versioned', researchMode: false });
+		helper.trackSuggestionsShown({
+			threadId: 'thread-versioned',
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+		helper.trackSuggestionsShown({
+			threadId: 'thread-versioned',
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+
+		expect(track).toHaveBeenCalledTimes(2);
+		expect(track.mock.calls[0][1]).toEqual({
+			thread_id: 'thread-versioned',
+			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
+			research_mode: false,
+		});
+		expect(track.mock.calls[1][1]).toEqual({
+			thread_id: 'thread-versioned',
+			suggestion_catalog_version: 'v2',
+			research_mode: false,
+		});
+	});
+
 	test('tracks quick example opens with suggestion metadata', () => {
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
 
@@ -85,5 +130,27 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const selectedSerializedPayload = JSON.stringify(selectedPayload);
 		expect(selectedSerializedPayload).not.toContain('"prompt":"');
 		expect(selectedSerializedPayload).not.toContain('"prompt_text":"');
+	});
+
+	test('tracks suggestion selections with a caller-provided catalog version', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
+
+		helper.trackSuggestionSelected({
+			threadId: 'thread-v2',
+			researchMode: true,
+			suggestionCatalogVersion: 'v2',
+			suggestionId: 'plan-workflow',
+			suggestionKind: 'prompt',
+			position: 2,
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
+			thread_id: 'thread-v2',
+			suggestion_catalog_version: 'v2',
+			research_mode: true,
+			suggestion_id: 'plan-workflow',
+			suggestion_kind: 'prompt',
+			position: 2,
+		});
 	});
 });

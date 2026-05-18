@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -7,10 +7,20 @@ import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import type { InstanceAiAttachment } from '@n8n/api-types';
-import type { InstanceAiEmptyStateSuggestion } from '../emptyStateSuggestions';
+import {
+	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
+	type InstanceAiEmptyStateSuggestion,
+} from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
 type AmendContext = { agentId: string; role: string } | null;
+type SuggestionSelectionPayload = {
+	promptKey: BaseTextKey;
+	suggestionId: string;
+	suggestionKind: 'prompt' | 'quick_example';
+	position: number;
+};
+const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 
 const props = withDefaults(
 	defineProps<{
@@ -22,6 +32,8 @@ const props = withDefaults(
 		contextualSuggestion?: string | null;
 		researchMode: boolean;
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+		suggestionsComponent?: Component;
+		suggestionCatalogVersion?: string;
 	}>(),
 	{
 		isStreaming: false,
@@ -64,6 +76,12 @@ const canShowSuggestions = computed(
 		!isBusy.value &&
 		!isGatedBySetup.value,
 );
+const resolvedSuggestionsComponent = computed(
+	() => props.suggestionsComponent ?? InstanceAiPromptSuggestions,
+);
+const resolvedSuggestionCatalogVersion = computed(
+	() => props.suggestionCatalogVersion ?? INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
+);
 const visibleSuggestionThreadId = computed(() =>
 	canShowSuggestions.value ? props.currentThreadId : null,
 );
@@ -87,12 +105,13 @@ const placeholder = computed(() => {
 });
 
 watch(
-	visibleSuggestionThreadId,
-	(threadId) => {
+	[visibleSuggestionThreadId, resolvedSuggestionCatalogVersion],
+	([threadId, suggestionCatalogVersion]) => {
 		if (threadId) {
 			promptSuggestionsTelemetry.trackSuggestionsShown({
 				threadId,
 				researchMode: props.researchMode,
+				suggestionCatalogVersion,
 			});
 			return;
 		}
@@ -169,6 +188,7 @@ function getTelemetryContext() {
 	return {
 		threadId: props.currentThreadId,
 		researchMode: props.researchMode,
+		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
 	};
 }
 
@@ -184,19 +204,27 @@ function handleQuickExamplesOpened(payload: { suggestionId: string; position: nu
 	});
 }
 
-function handleSuggestionSubmit(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 	promptSuggestionsTelemetry.trackSuggestionSelected({
 		...getTelemetryContext(),
 		suggestionId: payload.suggestionId,
 		suggestionKind: payload.suggestionKind,
 		position: payload.position,
 	});
+}
+
+function handleSuggestionSubmit(payload: SuggestionSelectionPayload) {
+	trackSuggestionSelected(payload);
 	submitComposerMessage(i18n.baseText(payload.promptKey));
+}
+
+async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
+	trackSuggestionSelected(payload);
+	previewPromptKey.value = null;
+	inputText.value = i18n.baseText(payload.promptKey);
+
+	await nextTick();
+	chatInputRef.value?.focus();
 }
 
 const resizable = computed(() => {
@@ -261,13 +289,15 @@ const resizable = computed(() => {
 				</N8nTooltip>
 			</template>
 		</ChatInputBase>
-		<Transition name="suggestions-fade">
-			<InstanceAiPromptSuggestions
+		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
+			<component
+				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
+				@insert-suggestion="handleSuggestionInsert"
 				@submit-suggestion="handleSuggestionSubmit"
 			/>
 		</Transition>
@@ -328,16 +358,25 @@ const resizable = computed(() => {
 	flex-shrink: 0;
 }
 
-:global(.suggestions-fade-enter-active),
-:global(.suggestions-fade-leave-active) {
+:global(.suggestions-fade-enter-active) {
 	transition:
 		opacity 0.15s ease,
 		transform 0.15s ease;
 }
 
-:global(.suggestions-fade-enter-from),
-:global(.suggestions-fade-leave-to) {
+:global(.suggestions-fade-leave-active) {
+	transition:
+		opacity 0.18s ease,
+		transform 0.18s ease;
+}
+
+:global(.suggestions-fade-enter-from) {
 	opacity: 0;
 	transform: translateY(-4px);
+}
+
+:global(.suggestions-fade-leave-to) {
+	opacity: 0;
+	transform: translateY(4px);
 }
 </style>

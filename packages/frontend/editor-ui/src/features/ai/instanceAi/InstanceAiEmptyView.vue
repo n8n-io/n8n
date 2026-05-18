@@ -15,6 +15,12 @@ import {
 	InstanceAiProactiveStarterMessage,
 	useInstanceAiProactiveAgentExperiment,
 } from '@/experiments/instanceAiProactiveAgent';
+import {
+	InstanceAiPromptSuggestionsV2,
+	INSTANCE_AI_PROMPT_SUGGESTIONS_V2,
+	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
+	useInstanceAiPromptSuggestionsV2Experiment,
+} from '@/experiments/instanceAiPromptSuggestionsV2';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -29,7 +35,26 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
+const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
+	useInstanceAiPromptSuggestionsV2Experiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+const emptyStatePromptSuggestionProps = computed(() => {
+	if (showProactiveStarter.value) {
+		return {};
+	}
+
+	if (isPromptSuggestionsV2ExperimentEnabled.value) {
+		return {
+			suggestions: INSTANCE_AI_PROMPT_SUGGESTIONS_V2,
+			suggestionsComponent: InstanceAiPromptSuggestionsV2,
+			suggestionCatalogVersion: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
+		};
+	}
+
+	return {
+		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
+	};
+});
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
@@ -102,7 +127,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:research-mode="store.researchMode"
-						:suggestions="INSTANCE_AI_EMPTY_STATE_SUGGESTIONS"
+						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@toggle-research-mode="store.toggleResearchMode()"
 					/>
