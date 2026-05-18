@@ -910,7 +910,7 @@ async function startAndFinishProductChildSpan(
 			canonicalName: options.canonicalName,
 			runType: options.runType ?? 'chain',
 			tags: options.tags,
-			metadata: options.metadata,
+			metadata: mergeMetadata(currentTrace.currentRun.metadata, options.metadata),
 			inputs: options.inputs,
 			parentRun: currentTrace.currentRun,
 			...(activeParentContext ? { parentContext: activeParentContext } : {}),

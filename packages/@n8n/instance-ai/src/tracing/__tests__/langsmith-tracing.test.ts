@@ -378,6 +378,7 @@ describe('createInstanceAiTraceContext', () => {
 	it('starts foreground agent spans under the message root when activated', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
+			messageGroupId: 'group-1',
 			messageId: 'message-1',
 			runId: 'run-1',
 			userId: 'user-1',
@@ -1216,6 +1217,7 @@ describe('createInstanceAiTraceContext', () => {
 	it('traces suspendable tools and HITL suspension spans', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
+			messageGroupId: 'group-1',
 			messageId: 'message-1',
 			runId: 'run-1',
 			userId: 'user-1',
@@ -1254,8 +1256,13 @@ describe('createInstanceAiTraceContext', () => {
 		const spans = agentsMock.getSpans();
 		const spanNames = spans.map((span) => span.name);
 		expect(spanNames).toContain('hitl: suspend');
-		expect(spans.find((span) => span.name === 'hitl: suspend')?.attributes.tool_call_id).toBe(
-			'toolu-ask',
+		expect(spans.find((span) => span.name === 'hitl: suspend')?.attributes).toEqual(
+			expect.objectContaining({
+				agent_role: 'orchestrator',
+				thread_id: 'thread-1',
+				message_group_id: 'group-1',
+				tool_call_id: 'toolu-ask',
+			}),
 		);
 		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
