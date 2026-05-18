@@ -44,7 +44,7 @@ export class PostHogClient {
 
 	async stop(): Promise<void> {
 		if (this.postHog) {
-			return this.postHog.shutdown();
+			return await this.postHog.shutdown();
 		}
 	}
 
