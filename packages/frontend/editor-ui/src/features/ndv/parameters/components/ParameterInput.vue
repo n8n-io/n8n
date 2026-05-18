@@ -236,9 +236,9 @@ const isFocused = ref(false);
 const isSwitchingMode = ref(false);
 
 const node = computed(() => {
-	const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
-		expressionLocalResolveCtx.value.nodeName,
-	);
+	const contextNode =
+		expressionLocalResolveCtx?.value &&
+		workflowDocumentStore.value.getNodeByName(expressionLocalResolveCtx.value.nodeName);
 	return contextNode ?? ndvStore.activeNode ?? undefined;
 });
 const nodeType = computed(
@@ -492,7 +492,10 @@ const dependentParametersValues = computedAsync(async () => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = node.value?.parameters;
 	try {
-		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -813,6 +816,7 @@ async function loadRemoteParameterOptions() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
@@ -1431,7 +1435,6 @@ onUpdated(async () => {
 
 		<ExperimentalEmbeddedNdvMapper
 			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
-			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="wrapper"

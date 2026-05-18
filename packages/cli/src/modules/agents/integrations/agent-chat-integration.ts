@@ -1,7 +1,7 @@
-import type { AgentIntegrationSettings } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { SuspendComponent } from './component-mapper';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -112,6 +112,19 @@ export abstract class AgentChatIntegration {
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
+	 * Optional hook run BEFORE `chat.shutdown()` — use it to release any
+	 * external state owned by this integration (e.g. Telegram `deleteWebhook`
+	 * to free the bot for other applications). Runs only when the disconnect
+	 * is user-initiated; peer mains reacting to a multi-main PubSub broadcast,
+	 * graceful shutdowns, and leader-stepdown teardown all skip this hook so
+	 * the cluster-wide state isn't released by every main in turn.
+	 *
+	 * Errors are logged by the caller and swallowed — local teardown always
+	 * proceeds so a transient remote failure can't leak in-process resources.
+	 */
+	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
 	 * Optional per-platform component normalization (applied before toCard).
 	 * Convert unsupported types into close-enough equivalents — e.g. Telegram
 	 * turns select options into individual buttons.
@@ -133,7 +146,7 @@ export abstract class AgentChatIntegration {
 	 * Default (no implementation): allow. Telegram uses this to enforce the
 	 * Private-mode allowlist.
 	 */
-	isUserAllowed?(author: Author, settings: AgentIntegrationSettings | undefined): boolean;
+	isUserAllowed?(author: Author, settings: AgentCredentialIntegrationConfig | undefined): boolean;
 }
 
 /**
