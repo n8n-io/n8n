@@ -8,7 +8,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
-import ConfirmationFooter from './ConfirmationFooter.vue';
+import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
@@ -118,6 +118,53 @@ const chunks = computed((): ConfirmationChunk[] => {
 
 function isDestructive(item: PendingConfirmationItem): boolean {
 	return item.toolCall.confirmation.severity === 'destructive';
+}
+
+/**
+ * Build the floating-approval option list. Destructive confirmations hide
+ * "Always allow" — by design, irreversible actions must be opted into one
+ * at a time.
+ */
+function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
+	const destructive = isDestructive(item);
+	const options: ApprovalOption[] = [];
+	if (!destructive) {
+		options.push({
+			key: 'always-allow',
+			icon: 'check',
+			label: i18n.baseText('instanceAi.confirmation.alwaysAllow'),
+			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
+			testId: 'instance-ai-panel-confirm-always-allow',
+		});
+	}
+	options.push({
+		key: 'allow-once',
+		icon: 'check',
+		label: i18n.baseText('instanceAi.confirmation.approve'),
+		destructive,
+		testId: 'instance-ai-panel-confirm-approve',
+	});
+	options.push({
+		key: 'deny',
+		icon: 'ban',
+		label: i18n.baseText('instanceAi.confirmation.deny'),
+		withArrow: false,
+		testId: 'instance-ai-panel-confirm-deny',
+	});
+	return options;
+}
+
+function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
+	switch (key) {
+		case 'always-allow':
+			handleAlwaysAllow(item);
+			return;
+		case 'allow-once':
+			handleConfirm(item, true);
+			return;
+		case 'deny':
+			handleConfirm(item, false);
+	}
 }
 
 // Text input state per requestId
@@ -458,33 +505,10 @@ function handlePlanRequestChanges(
 									}}</ConfirmationPreview>
 								</div>
 
-								<ConfirmationFooter>
-									<N8nButton
-										data-test-id="instance-ai-panel-confirm-deny"
-										size="medium"
-										variant="outline"
-										@click="handleConfirm(chunk.item, false)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.deny') }}
-									</N8nButton>
-									<N8nButton
-										data-test-id="instance-ai-panel-confirm-approve"
-										size="medium"
-										:variant="isDestructive(chunk.item) ? 'destructive' : 'subtle'"
-										@click="handleConfirm(chunk.item, true)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.approve') }}
-									</N8nButton>
-									<N8nButton
-										v-if="!isDestructive(chunk.item)"
-										data-test-id="instance-ai-panel-confirm-always-allow"
-										size="medium"
-										variant="solid"
-										@click="handleAlwaysAllow(chunk.item)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.alwaysAllow') }}
-									</N8nButton>
-								</ConfirmationFooter>
+								<ApprovalOptionList
+									:options="buildApprovalOptions(chunk.item)"
+									@select="(key) => handleApprovalSelect(chunk.item, key)"
+								/>
 							</div>
 						</div>
 					</div>
