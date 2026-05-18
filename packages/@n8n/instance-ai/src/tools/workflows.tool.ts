@@ -291,7 +291,25 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
-	return await context.workflowService.get(input.workflowId);
+	// Convert hallucinated-id errors into structured not-found responses so the agent stops guessing.
+	try {
+		return await context.workflowService.get(input.workflowId);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to fetch workflow';
+		const available = await context.workflowService
+			.list({ limit: 25 })
+			.then((items) => items.map((w) => ({ id: w.id, name: w.name })))
+			.catch(() => [] as Array<{ id: string; name: string }>);
+		return {
+			workflowId: input.workflowId,
+			found: false as const,
+			error: message,
+			availableWorkflows: available,
+			hint:
+				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflows(action="list")` for the current set. ' +
+				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
+		};
+	}
 }
 
 async function handleGetAsCode(

@@ -11,9 +11,8 @@ import InsightsSummary from '@/features/execution/insights/components/InsightsSu
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { getResourcePermissions } from '@n8n/permissions';
 import { listAgents } from '../composables/useAgentApi';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
@@ -27,15 +26,10 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
-const sourceControlStore = useSourceControlStore();
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
-const canCreateAgent = computed(
-	() =>
-		!sourceControlStore.preferences.branchReadOnly &&
-		!!getResourcePermissions(homeProject.value?.scopes)?.agent?.create,
-);
+const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
 
 const allAgents = ref<AgentResource[]>([]);
 const loading = ref(true);
