@@ -2,16 +2,6 @@
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
-/**
- * What category of response the proxy sent for a confirmation event.
- * Mostly mirrors the `kind` of the InstanceAiConfirmRequest, with two
- * overlay categories — `dismissal` (e.g. zero-answer questions, empty
- * setup-wizard apply) and `rejection` (approval with approved=false).
- */
-export type ProxyDecisionCategory = InstanceAiConfirmRequest['kind'] | 'dismissal' | 'rejection';
-
-export type ProxyDecisionStats = Partial<Record<ProxyDecisionCategory, number>>;
-
 import { createUserProxyAgent, type UserProxyAgent } from './agent';
 import {
 	getNextUnsentReferenceUserTurn,
@@ -24,6 +14,16 @@ import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
 import type { CapturedEvent, ConversationTurn } from '../../types';
 import { getNestedRecord, getString } from '../safe-extract';
+
+/**
+ * What category of response the proxy sent for a confirmation event.
+ * Mostly mirrors the `kind` of the InstanceAiConfirmRequest, with two
+ * overlay categories — `dismissal` (e.g. zero-answer questions, empty
+ * setup-wizard apply) and `rejection` (approval with approved=false).
+ */
+export type ProxyDecisionCategory = InstanceAiConfirmRequest['kind'] | 'dismissal' | 'rejection';
+
+export type ProxyDecisionStats = Partial<Record<ProxyDecisionCategory, number>>;
 
 // ---------------------------------------------------------------------------
 // Constants
