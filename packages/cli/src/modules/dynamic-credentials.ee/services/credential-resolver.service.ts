@@ -11,11 +11,13 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
+import { SystemResolverModificationError } from '../errors/system-resolver-modification.error';
 
 export interface CreateResolverParams {
 	name: string;
@@ -85,11 +87,22 @@ export class DynamicCredentialResolverService {
 		);
 	}
 
+	/** Same as findAll() but excludes the system-managed resolver. Used by admin-facing endpoints. */
+	async findAllPublic(): Promise<DynamicCredentialResolver[]> {
+		const resolvers = await this.findAll();
+		return resolvers.filter((r) => r.id !== SYSTEM_RESOLVER_ID);
+	}
+
 	/**
 	 * Retrieves all available resolver types.
 	 */
 	getAvailableTypes(): ICredentialResolver[] {
 		return this.registry.getAllResolvers();
+	}
+
+	/** Same as getAvailableTypes() but excludes the system N8N resolver type. */
+	getAvailablePublicTypes(): ICredentialResolver[] {
+		return this.getAvailableTypes().filter((r) => r.metadata.name !== SYSTEM_RESOLVER_TYPE);
 	}
 
 	/**
@@ -111,6 +124,9 @@ export class DynamicCredentialResolverService {
 	 * @throws {CredentialResolverValidationError} When the config is invalid for the resolver type
 	 */
 	async update(id: string, params: UpdateResolverParams): Promise<DynamicCredentialResolver> {
+		if (id === SYSTEM_RESOLVER_ID) {
+			throw new SystemResolverModificationError('update');
+		}
 		const existing = await this.repository.findOneBy({ id });
 		if (!existing) {
 			throw new DynamicCredentialResolverNotFoundError(id);
@@ -175,6 +191,9 @@ export class DynamicCredentialResolverService {
 	 * @throws {DynamicCredentialResolverNotFoundError} When resolver is not found
 	 */
 	async delete(id: string): Promise<void> {
+		if (id === SYSTEM_RESOLVER_ID) {
+			throw new SystemResolverModificationError('delete');
+		}
 		const existing = await this.repository.findOneBy({ id });
 		if (!existing) {
 			throw new DynamicCredentialResolverNotFoundError(id);
