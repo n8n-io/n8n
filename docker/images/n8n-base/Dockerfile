@@ -31,8 +31,8 @@ RUN apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontc
     apk del apk-tools
 
 WORKDIR /home/node
-# Point node's require() at npm's global install prefix so users extending this
-# image with `RUN npm install -g <pkg>` can `require(<pkg>)` from a Function/Code
-# node at runtime (gh #24191).
+# npm prefix -g is /usr/local but node's built-in search path is /usr/lib/node_modules.
+# Bridge the two so users extending this image with `RUN npm install -g <pkg>` can
+# `require(<pkg>)` from a Function/Code node at runtime (gh #24191).
 ENV NODE_PATH=/usr/local/lib/node_modules
 EXPOSE 5678/tcp

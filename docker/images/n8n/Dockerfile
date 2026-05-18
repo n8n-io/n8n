@@ -19,10 +19,16 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
+# DHI's alpine3.23-dev base does not expose /usr/local/lib/node_modules as a
+# writable install destination, so n8n itself is installed under /usr/lib.
+COPY --from=builder /usr/local/lib/node_modules/n8n /usr/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+RUN ln -s /usr/lib/node_modules/n8n/bin/n8n /usr/bin/n8n && \
+    # /usr/local/bin/n8n is the long-standing public contract that downstream
+    # stacks (n8n-cloud helm charts, AppArmor profiles, user overrides) exec
+    # by absolute path. Keep it as a symlink to the real binary.
+    ln -s /usr/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*
