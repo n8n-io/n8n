@@ -199,6 +199,8 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
+export { ExportWorkflowsRequestDto } from './import-export/export-workflows-request.dto';
+
 export * from './evaluations';
 
 export {

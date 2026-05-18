@@ -31,6 +31,7 @@ export const MODULE_NAMES = [
 	'encryption-key-manager',
 	'oauth-jwe',
 	'inbound-secrets',
+	'import-export',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
