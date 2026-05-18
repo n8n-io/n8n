@@ -5,20 +5,19 @@ test.use({
 	capability: {
 		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 		env: {
-			N8N_ENABLED_MODULES: 'instance-ai',
-			N8N_INSTANCE_AI_MODEL: 'anthropic/claude-sonnet-4-6',
-			N8N_INSTANCE_AI_MODEL_API_KEY: 'fake-key',
+			N8N_ENABLED_MODULES: 'agents',
+			N8N_AI_ANTHROPIC_KEY: 'fake-key',
 		},
 	},
 });
 
 test.describe(
-	'Instance AI Memory Consumption @capability:observability',
+	'Agents Memory Consumption @capability:observability',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Agent' }],
 	},
 	() => {
-		test('Idle baseline with Instance AI module loaded', async ({
+		test('Idle baseline with Agents module loaded', async ({
 			n8nContainer,
 			services,
 		}, testInfo) => {
@@ -26,13 +25,13 @@ test.describe(
 
 			const result = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 
-			await attachMetric(testInfo, 'instance-ai-heap-used-baseline', result.heapUsedMB, 'MB');
-			await attachMetric(testInfo, 'instance-ai-heap-total-baseline', result.heapTotalMB, 'MB');
-			await attachMetric(testInfo, 'instance-ai-rss-baseline', result.rssMB, 'MB');
-			await attachMetric(testInfo, 'instance-ai-pss-baseline', result.pssMB ?? 0, 'MB');
+			await attachMetric(testInfo, 'agents-heap-used-baseline', result.heapUsedMB, 'MB');
+			await attachMetric(testInfo, 'agents-heap-total-baseline', result.heapTotalMB, 'MB');
+			await attachMetric(testInfo, 'agents-rss-baseline', result.rssMB, 'MB');
+			await attachMetric(testInfo, 'agents-pss-baseline', result.pssMB ?? 0, 'MB');
 			await attachMetric(
 				testInfo,
-				'instance-ai-non-heap-overhead-baseline',
+				'agents-non-heap-overhead-baseline',
 				result.nonHeapOverheadMB,
 				'MB',
 			);
@@ -42,7 +41,7 @@ test.describe(
 			expect(result.rssMB).toBeGreaterThan(0);
 
 			console.log(
-				`[INSTANCE AI IDLE] Heap used: ${result.heapUsedMB.toFixed(1)} MB | ` +
+				`[AGENTS IDLE] Heap used: ${result.heapUsedMB.toFixed(1)} MB | ` +
 					`Heap total: ${result.heapTotalMB.toFixed(1)} MB | ` +
 					`RSS: ${result.rssMB.toFixed(1)} MB | ` +
 					`Non-heap overhead: ${result.nonHeapOverheadMB.toFixed(1)} MB`,
