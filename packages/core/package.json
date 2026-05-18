@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.19.0",
+  "version": "2.21.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -41,7 +41,7 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "zod": ">=3.25.0 <4"
+    "zod": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",
@@ -58,7 +58,7 @@
     "axios": "catalog:",
     "callsites": "catalog:",
     "chardet": "2.0.0",
-    "cron": "4.4.0",
+    "cron": "catalog:",
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
     "form-data": "catalog:",

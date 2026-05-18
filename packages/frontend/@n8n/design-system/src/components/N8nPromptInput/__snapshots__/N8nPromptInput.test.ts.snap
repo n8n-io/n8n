@@ -41,7 +41,7 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
           aria-disabled="true"
           aria-label="Send"
           aria-live="polite"
-          class="button button solid small iconOnly disabled sendButton"
+          class="button button solid small iconOnly disabled is-disabled sendButton"
           data-icon-only="true"
           data-test-id="send-message-button"
           disabled=""

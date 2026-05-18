@@ -563,8 +563,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 */
 	function initManualExecutionScaffold() {
 		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
-		workflowsStore.workflowExecutionData = {
+		workflowsStore.setWorkflowExecutionData({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',
@@ -576,8 +579,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			data: createRunExecutionData({
 				resultData: { runData: {} },
 			}),
-			workflowData: workflowsStore.workflow,
-		};
+			workflowData: workflowDocumentStore.getSnapshot(),
+		});
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
 		workflowsStore.private.setActiveExecutionId(null);

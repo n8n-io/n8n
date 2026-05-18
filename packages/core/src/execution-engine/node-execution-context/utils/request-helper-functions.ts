@@ -424,7 +424,11 @@ export async function proxyRequestToAxios(
 ): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
-		maxContentLength: Infinity,
+		// -1 is the Axios sentinel for "no limit". Infinity also means no limit but
+		// Axios 1.15.1+ treats any value > -1 as a finite cap, wrapping stream responses
+		// in Readable.from() even when the limit is Infinity. That breaks the downstream
+		// `instanceof IncomingMessage` checks in parseIncomingMessage / prepareBinaryData.
+		maxContentLength: -1,
 	};
 	let configObject: IRequestOptions;
 	if (typeof uriOrObject === 'string') {
@@ -757,6 +761,17 @@ interface RefreshOAuth2TokenContext {
 	helpers: IAllExecuteFunctions['helpers'];
 }
 
+async function decryptOAuth2TokenDataIfConfigured<T extends IDataObject | undefined>(
+	additionalData: IWorkflowExecuteAdditionalData,
+	tokenData: T,
+	jweEnabled: boolean,
+): Promise<T | IDataObject> {
+	if (!jweEnabled) return tokenData;
+	const proxy = additionalData['oauth-jwe']?.oauthJweProxyProvider;
+	if (!proxy || !tokenData) return tokenData;
+	return await proxy.decryptOAuth2TokenData(tokenData);
+}
+
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
 	const {
 		credentials,
@@ -795,7 +810,13 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 	);
 
-	credentials.oauthTokenData = newToken.data;
+	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
+		additionalData,
+		newToken.data,
+		credentials.jweEnabled === true,
+	);
+
+	credentials.oauthTokenData = refreshedTokenData as typeof credentials.oauthTokenData;
 
 	// Apply preAuthentication so custom credential types extending oAuth2Api can transform
 	// refreshed token data (e.g. extracting a claim from a decrypted JWE/JWT) before signing.
@@ -890,7 +911,12 @@ export async function requestOAuth2(
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
-		credentials.oauthTokenData = data;
+		const initialTokenData = (await decryptOAuth2TokenDataIfConfigured(
+			additionalData,
+			data,
+			credentials.jweEnabled === true,
+		)) as ClientOAuth2TokenData;
+		credentials.oauthTokenData = initialTokenData;
 
 		// Save the refreshed token
 		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
@@ -900,7 +926,7 @@ export async function requestOAuth2(
 			additionalData,
 		);
 
-		oauthTokenData = data;
+		oauthTokenData = initialTokenData;
 	}
 
 	// Apply preAuthentication for custom OAuth2 credential types extending oAuth2Api.

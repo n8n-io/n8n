@@ -8,8 +8,13 @@ import { resolveMainInputCount } from './input-resolver';
 import { validateNodeConfig } from './schema-validator';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
+import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
 
-export { setSchemaBaseDirs } from './schema-validator';
+export {
+	setSchemaBaseDirs,
+	validateNodeConfig,
+	type SchemaValidationResult,
+} from './schema-validator';
 
 /**
  * Validation error codes
@@ -37,6 +42,7 @@ export type ValidationErrorCode =
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
 	| 'INVALID_OUTPUT_FOR_MODE'
+	| 'SWITCH_FALLBACK_OUTPUT_DISABLED'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
@@ -185,6 +191,7 @@ interface NodeJSON {
 	typeVersion?: number | string;
 	position?: [number, number];
 	parameters?: Record<string, unknown>;
+	onError?: string;
 }
 
 /**
@@ -498,7 +505,13 @@ export function validateWorkflow(
 		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
 		// Validate that emitted connection types are actually exposed by the source node's mode
 		validateOutputUsage(json, options.nodeTypesProvider, warnings);
+		// Reject placeholder() in slots that opt out via builderHint.placeholderSupported === false
+		validatePlaceholderSlots(json, options.nodeTypesProvider, errors);
 	}
+
+	// Switch fallback output validation does not need node metadata. It is derived from
+	// the Switch node's dynamic output contract in rules mode.
+	validateSwitchFallbackOutputConnections(json, warnings);
 
 	// Merge node input-count consistency
 	checkMergeNodeInputCount(json, warnings);
@@ -1006,6 +1019,133 @@ function validateOutputUsage(
 					undefined,
 					undefined,
 					'major',
+				),
+			);
+		}
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getSwitchRulesCount(parameters: Record<string, unknown> | undefined): number {
+	const rules = parameters?.rules;
+	if (!isRecord(rules)) return 0;
+
+	const values = rules.values;
+	if (Array.isArray(values)) return values.length;
+
+	const legacyRules = rules.rules;
+	if (Array.isArray(legacyRules)) return legacyRules.length;
+
+	return 0;
+}
+
+function getSwitchFallbackOutput(parameters: Record<string, unknown> | undefined): unknown {
+	const options = parameters?.options;
+	if (!isRecord(options)) return undefined;
+
+	return options.fallbackOutput;
+}
+
+function hasOutputConnections(
+	outputs: Array<Array<{ node: string; type: string; index: number }> | null>,
+	outputIndex: number,
+): boolean {
+	const output = outputs[outputIndex];
+	return Array.isArray(output) && output.length > 0;
+}
+
+/**
+ * Validate that Switch fallback branches are only connected when the node
+ * actually exposes an extra fallback output.
+ */
+function validateSwitchFallbackOutputConnections(
+	json: WorkflowJSON,
+	warnings: ValidationWarning[],
+): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.switch') continue;
+
+		const mode = sourceNode.parameters?.mode;
+		if (mode !== undefined && mode !== 'rules') continue;
+
+		const outgoing = json.connections[sourceNode.name];
+		const mainOutputs = outgoing?.main;
+		if (!Array.isArray(mainOutputs)) continue;
+
+		const rulesCount = getSwitchRulesCount(sourceNode.parameters);
+		const fallbackOutput = getSwitchFallbackOutput(sourceNode.parameters);
+		if (fallbackOutput === 'extra') continue;
+
+		for (let outputIndex = rulesCount; outputIndex < mainOutputs.length; outputIndex++) {
+			if (!hasOutputConnections(mainOutputs, outputIndex)) continue;
+
+			const isErrorOutput =
+				sourceNode.onError === 'continueErrorOutput' && outputIndex === rulesCount;
+			if (isErrorOutput) continue;
+
+			warnings.push(
+				new ValidationWarning(
+					'SWITCH_FALLBACK_OUTPUT_DISABLED',
+					`Switch node '${sourceNode.name}' has a connection from output ${outputIndex}, but rules mode only creates fallback output ${rulesCount} when options.fallbackOutput is set to 'extra'. Set options.fallbackOutput to 'extra' before wiring a catch-all branch, or route unmatched items to an existing rule output with a numeric fallbackOutput value.`,
+					sourceNode.name,
+					'options.fallbackOutput',
+					undefined,
+					'major',
+				),
+			);
+		}
+	}
+}
+
+/**
+ * Reject `placeholder()` markers found in parameter slots whose property
+ * description carries `builderHint.placeholderSupported === false`.
+ *
+ * This is the runtime side of the type-level signal that used to live in the
+ * generated `string | Expression<string>` union (which previously omitted
+ * `PlaceholderValue`). Now that `placeholder()` returns a plain `string`, the
+ * type system can no longer block placement; this validator does at runtime.
+ *
+ * Uses `containsPlaceholderMarker` (not `isPlaceholderValue`) so that the
+ * marker is rejected anywhere in the value — including `expr(placeholder())`,
+ * which produces `=<__PLACEHOLDER_VALUE__…__>`, and placeholders embedded
+ * inside `={{ … }}` expressions.
+ *
+ * Walks top-level properties only — the known declarations
+ * (webhook `path`, langchain agent `text`) are top-level fields. Nested
+ * collection / fixedCollection support can be added later if a node opts out
+ * of placeholders for a nested field.
+ */
+function validatePlaceholderSlots(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	errors: ValidationError[],
+): void {
+	for (const node of json.nodes) {
+		if (!node.name || !node.parameters) continue;
+
+		const version =
+			typeof node.typeVersion === 'string' ? parseFloat(node.typeVersion) : (node.typeVersion ?? 1);
+
+		const nodeType = nodeTypesProvider.getByNameAndVersion(node.type, version);
+		const properties = nodeType?.description?.properties;
+		if (!properties) continue;
+
+		const params = node.parameters as Record<string, unknown>;
+		for (const prop of properties) {
+			if (prop.builderHint?.placeholderSupported !== false) continue;
+			const value = params[prop.name];
+			if (!containsPlaceholderMarker(value)) continue;
+
+			errors.push(
+				new ValidationError(
+					'INVALID_PARAMETER',
+					`Node "${node.name}": placeholder() is not supported for parameter '${prop.name}'. Use a literal value or expr() instead.`,
+					node.name,
+					prop.name,
 				),
 			);
 		}

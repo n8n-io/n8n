@@ -21,11 +21,28 @@ const CONFIRMATION_PAYLOAD = {
 	options: ['denyOnce', 'allowOnce', 'allowForSession'],
 };
 
+const CONFIRMATION_PAYLOAD_WITH_UNSUPPORTED_OPTION = {
+	...CONFIRMATION_PAYLOAD,
+	options: ['denyOnce', 'alwaysAllow', 'allowOnce'],
+};
+
 const PLAIN_CONFIRMATION_ERROR: McpToolCallResult = {
 	content: [
 		{
 			type: 'text',
 			text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(CONFIRMATION_PAYLOAD)}`,
+		},
+	],
+	isError: true,
+};
+
+const PLAIN_CONFIRMATION_ERROR_WITH_UNSUPPORTED_OPTION: McpToolCallResult = {
+	content: [
+		{
+			type: 'text',
+			text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(
+				CONFIRMATION_PAYLOAD_WITH_UNSUPPORTED_OPTION,
+			)}`,
 		},
 	],
 	isError: true,
@@ -108,6 +125,114 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(() => createToolsFromLocalMcpServer(server)).not.toThrow();
 			expect(createToolsFromLocalMcpServer(server)['bad_tool']).toBeDefined();
 		});
+
+		it('skips tools with invalid names', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'bad tool' },
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools['bad tool']).toBeUndefined();
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'bad tool',
+				}),
+			);
+		});
+
+		it('skips tools with unsafe object key names', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'constructor' },
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(Object.prototype.hasOwnProperty.call(tools, 'constructor')).toBe(false);
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'constructor',
+				}),
+			);
+		});
+
+		it('skips normalized name collisions between local gateway tools', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'custom_tool' },
+				{ ...SAMPLE_TOOL, name: 'custom-tool' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools.custom_tool).toBeDefined();
+			expect(tools['custom-tool']).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'custom-tool',
+				}),
+			);
+		});
+
+		it('skips compatibility-normalized non-ASCII tool names', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'ＴＯＯＬ' },
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools['ＴＯＯＬ']).toBeUndefined();
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'ＴＯＯＬ',
+				}),
+			);
+		});
+
+		it('skips oversized raw schemas before tool construction', () => {
+			const logger = { warn: jest.fn() };
+			const properties = Object.fromEntries(
+				Array.from({ length: 251 }, (_, index) => [`field_${index}`, { type: 'string' }]),
+			);
+			const server = makeMockServer([
+				{
+					...SAMPLE_TOOL,
+					name: 'huge_tool',
+					inputSchema: { type: 'object', properties },
+				},
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools.huge_tool).toBeUndefined();
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsupported schema',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'huge_tool',
+					limitType: 'objectProperties',
+				}),
+			);
+		});
 	});
 
 	describe('execute — first-call path', () => {
@@ -166,6 +291,22 @@ describe('createToolsFromLocalMcpServer', () => {
 				resourceDecision: CONFIRMATION_PAYLOAD,
 				message: expect.stringContaining('write_file') as string,
 				requestId: expect.any(String) as string,
+			});
+		});
+
+		it('filters unsupported confirmation options after parsing the daemon payload', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR_WITH_UNSUPPORTED_OPTION);
+			const suspend = jest.fn().mockResolvedValue(undefined);
+			const execute = getExecute(server);
+
+			await execute({ filePath: 'test.ts' }, makeCtx({ suspend }));
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			expect(suspend.mock.calls[0][0].resourceDecision).toMatchObject({
+				...CONFIRMATION_PAYLOAD,
+				options: ['denyOnce', 'allowOnce'],
 			});
 		});
 

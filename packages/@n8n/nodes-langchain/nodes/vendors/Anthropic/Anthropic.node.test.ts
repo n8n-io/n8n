@@ -1,5 +1,5 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 
@@ -7,20 +7,20 @@ import * as file from './actions/file';
 import * as image from './actions/image';
 import * as prompt from './actions/prompt';
 import * as text from './actions/text';
+import type { File } from './helpers/interfaces';
 import * as utils from './helpers/utils';
 import * as transport from './transport';
-import type { File } from './helpers/interfaces';
 
 describe('Anthropic Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
-	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
-	const getBaseUrlMock = jest.spyOn(utils, 'getBaseUrl');
+	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
+	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+	const downloadFileMock = vi.spyOn(utils, 'downloadFile');
+	const uploadFileMock = vi.spyOn(utils, 'uploadFile');
+	const getBaseUrlMock = vi.spyOn(utils, 'getBaseUrl');
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Text -> Message', () => {

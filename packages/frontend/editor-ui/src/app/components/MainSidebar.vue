@@ -24,7 +24,6 @@ import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
-import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
@@ -57,8 +56,15 @@ if (resourceCenterStore.shouldAutoExpandSidebar) {
 	resourceCenterStore.markSidebarAutoExpanded();
 }
 
-const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
-	useSidebarLayout();
+const {
+	isCollapsed,
+	isResizing,
+	sidebarWidth,
+	onResizeStart,
+	onResize,
+	onResizeEnd,
+	toggleCollapse,
+} = useSidebarLayout();
 
 const { settingsItems } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
@@ -278,10 +284,6 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
-		case 'resource-center': {
-			resourceCenterStore.markResourceCenterTooltipDismissed();
-			break;
-		}
 		case 'about': {
 			trackHelpItemClick('about');
 			uiStore.openModal(ABOUT_MODAL_KEY);
@@ -339,6 +341,7 @@ useKeybindings({
 		:class="{
 			[$style.sideMenu]: true,
 			[$style.sideMenuCollapsed]: isCollapsed,
+			[$style.sideMenuResizing]: isResizing,
 		}"
 		:width="sidebarWidth"
 		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
@@ -376,7 +379,6 @@ useKeybindings({
 			@select="handleSelect"
 		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
 
@@ -388,10 +390,16 @@ useKeybindings({
 	flex-direction: column;
 	border-right: var(--border);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
+	transition: width var(--duration--snappy) var(--easing--ease-out);
+	will-change: width;
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
 		min-width: auto;
+	}
+
+	&.sideMenuResizing {
+		transition: none;
 	}
 }
 

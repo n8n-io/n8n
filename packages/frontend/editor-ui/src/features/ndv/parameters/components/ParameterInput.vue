@@ -73,7 +73,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -173,7 +173,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -236,9 +236,9 @@ const isFocused = ref(false);
 const isSwitchingMode = ref(false);
 
 const node = computed(() => {
-	const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
-		expressionLocalResolveCtx.value.nodeName,
-	);
+	const contextNode =
+		expressionLocalResolveCtx?.value &&
+		workflowDocumentStore.value.getNodeByName(expressionLocalResolveCtx.value.nodeName);
 	return contextNode ?? ndvStore.activeNode ?? undefined;
 });
 const nodeType = computed(
@@ -492,7 +492,10 @@ const dependentParametersValues = computedAsync(async () => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = node.value?.parameters;
 	try {
-		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -813,6 +816,7 @@ async function loadRemoteParameterOptions() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
@@ -1431,7 +1435,6 @@ onUpdated(async () => {
 
 		<ExperimentalEmbeddedNdvMapper
 			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
-			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="wrapper"
@@ -2213,6 +2216,26 @@ onUpdated(async () => {
 			color: var(--color--primary);
 		}
 	}
+}
+
+.input-with-opener .textarea-modal-opener {
+	top: 1px;
+	bottom: auto;
+	border-top: none;
+	border-bottom: var(--border);
+	border-top-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border-top-right-radius: var(--radius);
+	border-bottom-left-radius: var(--radius);
+}
+
+.input-with-opener textarea {
+	resize: both;
+	max-width: 100%;
+}
+
+.input-with-opener .n8n-input__wrapper {
+	gap: 0;
 }
 
 .focused {

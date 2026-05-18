@@ -14,6 +14,8 @@ import { handlesMultipleItems } from './handles-multiple-items';
 import { hasNodes } from './has-nodes';
 import { hasStartNode } from './has-start-node';
 import { hasTrigger } from './has-trigger';
+import { httpGenericAuthTypeMatchesPrompt } from './http-generic-auth-type-matches-prompt';
+import { inboundTriggerAuthDefaults } from './inbound-trigger-auth-defaults';
 import { memoryProperlyConnected } from './memory-properly-connected';
 import { memorySessionKeyExpression } from './memory-session-key-expression';
 import { noDisabledNodes } from './no-disabled-nodes';
@@ -23,6 +25,7 @@ import { noInvalidFromAi } from './no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
 import { responseMatchesWorkflowChanges } from './response-matches-workflow-changes';
+import { switchFallbackOutputEnabled } from './switch-fallback-output-enabled';
 import { toolsHaveParameters } from './tools-have-parameters';
 import { validDataFlow } from './valid-data-flow';
 import { validFieldReferences } from './valid-field-references';
@@ -48,6 +51,9 @@ export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	noInvalidFromAi,
 	toolsHaveParameters,
 	noUnreachableNodes,
+	inboundTriggerAuthDefaults,
+	httpGenericAuthTypeMatchesPrompt,
+	switchFallbackOutputEnabled,
 	validNodeConfig,
 ];
 

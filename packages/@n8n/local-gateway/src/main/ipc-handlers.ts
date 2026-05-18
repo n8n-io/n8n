@@ -7,7 +7,8 @@ import type { AppSettings, SettingsStore } from './settings-store';
 export function registerIpcHandlers(
 	controller: DaemonController,
 	settingsStore: SettingsStore,
-	restartDaemon: () => void,
+	/** Tears down the local gateway connection (Electron app). */
+	disconnectGateway: () => Promise<void>,
 ): void {
 	ipcMain.handle('settings:get', (): AppSettings => {
 		logger.debug('IPC settings:get');
@@ -24,10 +25,7 @@ export function registerIpcHandlers(
 					configure({ level: partial.logLevel });
 					logger.info('Log level updated', { level: partial.logLevel });
 				}
-				const requiresRestart = Object.keys(partial).some((k) => k !== 'logLevel');
-				if (requiresRestart) {
-					restartDaemon();
-				}
+				// Changing tool/capability toggles does not hot-reload an active connection; disconnect and connect again if needed.
 				return { ok: true };
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -42,15 +40,9 @@ export function registerIpcHandlers(
 		return controller.getSnapshot();
 	});
 
-	ipcMain.handle('daemon:start', (): { ok: boolean } => {
-		logger.debug('IPC daemon:start');
-		restartDaemon();
-		return { ok: true };
-	});
-
-	ipcMain.handle('daemon:stop', async (): Promise<{ ok: boolean }> => {
-		logger.debug('IPC daemon:stop');
-		await controller.stop();
+	ipcMain.handle('gateway:disconnect', async (): Promise<{ ok: boolean }> => {
+		logger.debug('IPC gateway:disconnect');
+		await disconnectGateway();
 		return { ok: true };
 	});
 }
