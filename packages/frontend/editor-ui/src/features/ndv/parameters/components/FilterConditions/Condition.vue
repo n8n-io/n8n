@@ -27,6 +27,7 @@ import type { ConditionResult } from './types';
 import { useDebounce } from '@/app/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	path: string;
 	condition: FilterConditionValue;
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { debounce } = useDebounce();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const condition = ref<FilterConditionValue>(props.condition);
 
@@ -85,6 +87,7 @@ const conditionResult = computedAsync<ConditionResult>(
 		return await resolveCondition({
 			condition: currentCondition,
 			options: currentOptions,
+			workflowDocumentId: workflowDocumentStore.value.documentId,
 		});
 	},
 	{ status: 'resolve_error' },

@@ -105,6 +105,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'microsoftOAuth2Api',
 	'highLevelOAuth2Api',
 	'mcpOAuth2Api',
+	'snowflakeOAuth2Api',
 	'facebookGraphApiOAuth2Api',
 	'facebookGraphAppOAuth2Api',
 	'stravaOAuth2Api',
