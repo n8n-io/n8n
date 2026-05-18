@@ -1,4 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import type { CredentialsEntity } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
@@ -205,6 +207,13 @@ describe('DynamicCredentialsProxy', () => {
 
 			// Verify by checking it doesn't throw when storing resolvable credential
 			expect(() => proxy.setStorageProvider(mockStorageProvider)).not.toThrow();
+		});
+	});
+
+	describe('getPrivateCredentialResolverId', () => {
+		it('returns null', () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true });
+			expect(proxy.getPrivateCredentialResolverId(credential)).toBeNull();
 		});
 	});
 });

@@ -5,7 +5,9 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
+import { AuthService } from '@/auth/auth.service';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -19,6 +21,8 @@ describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const externalHooks = mockInstance(ExternalHooks);
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
+	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
+	const authService = mockInstance(AuthService);
 
 	mockInstance(Logger);
 
@@ -48,7 +52,7 @@ describe('OAuth2CredentialController', () => {
 					}) as any,
 			);
 
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: false });
 			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.getOAuthCredentials.mockResolvedValueOnce({
 				clientId: 'client_id',
@@ -73,6 +77,57 @@ describe('OAuth2CredentialController', () => {
 				cid: '1',
 				origin: 'static-credential',
 				userId: '123',
+			});
+			expect(dynamicCredentialsProxy.getPrivateCredentialResolverId).not.toHaveBeenCalled();
+		});
+
+		it('falls back to static-credential origin when credential is resolvable but no resolver id is configured', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
+			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockReturnValueOnce(null);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+				user: mock<User>({ id: '123' }),
+				query: { id: '1' },
+			});
+
+			await controller.getAuthUri(req);
+
+			expect(dynamicCredentialsProxy.getPrivateCredentialResolverId).toHaveBeenCalledWith(
+				mockResolvedCredential,
+			);
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
+				cid: '1',
+				origin: 'static-credential',
+				userId: '123',
+			});
+		});
+
+		it('routes through dynamic-credential origin when credential is resolvable and resolver id is configured', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
+			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockReturnValueOnce(
+				'private-resolver-id',
+			);
+			authService.getCookieToken.mockReturnValueOnce('user-jwt-token');
+
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+				user: mock<User>({ id: '123' }),
+				query: { id: '1' },
+			});
+
+			await controller.getAuthUri(req);
+
+			expect(authService.getCookieToken).toHaveBeenCalledWith(req);
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
+				cid: '1',
+				origin: 'dynamic-credential',
+				userId: '123',
+				credentialResolverId: 'private-resolver-id',
+				authorizationHeader: 'Bearer user-jwt-token',
+				authMetadata: { source: 'manual-execution' },
 			});
 		});
 	});

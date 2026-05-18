@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { CredentialsEntity } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type {
@@ -35,6 +36,18 @@ export class DynamicCredentialsProxy
 
 	setResolverProvider(provider: ICredentialResolutionProvider) {
 		this.resolvingProvider = provider;
+	}
+
+	/**
+	 * Returns the system resolver id to use when storing a private credential
+	 * on the user's behalf (e.g. OAuth2 callback for `isResolvable` credentials).
+	 * Returns null when no private credential resolver is configured.
+	 */
+	// TODO: delegate to the dynamic credentials provider once the N8N identifier
+	// accepts manual-execution metadata. Currently returns null so callers fall
+	// back to the static-credential origin.
+	getPrivateCredentialResolverId(_credential: CredentialsEntity): string | null {
+		return null;
 	}
 
 	async resolveIfNeeded(
