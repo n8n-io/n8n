@@ -78,7 +78,7 @@ function onAgentDeleted(agentId: string) {
 }
 
 function onCreateAgentClick() {
-	agentTelemetry.trackClickedNewAgent('button', { startSessionRecording: true });
+	agentTelemetry.trackClickedNewAgent('button');
 	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
 }
 

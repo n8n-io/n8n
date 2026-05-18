@@ -90,6 +90,7 @@ describe('EmptyStateLayout', () => {
 			firstName: 'John',
 			lastName: 'Doe',
 			email: 'john@example.com',
+			globalScopes: ['agent:create'],
 			isDefaultUser: false,
 			isPendingUser: false,
 			mfaEnabled: false,
@@ -246,7 +247,7 @@ describe('EmptyStateLayout', () => {
 
 			await userEvent.click(getByTestId('build-agent-card'));
 
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('card', { startSessionRecording: true });
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('card');
 		});
 	});
 

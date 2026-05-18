@@ -5,9 +5,6 @@ import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTeleme
 
 export type AgentChatMode = 'build' | 'test';
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
-export type AgentCreateTelemetryOptions = {
-	startSessionRecording?: boolean;
-};
 export type AgentConfigPart =
 	| 'instructions'
 	| 'model'
@@ -35,21 +32,7 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function startSessionRecording() {
-		try {
-			window.posthog?.startSessionRecording?.();
-		} catch {
-			// Swallow — telemetry must not break user-facing flows.
-		}
-	}
-
-	function trackClickedNewAgent(
-		source: AgentCreateSource,
-		options: AgentCreateTelemetryOptions = {},
-	) {
-		if (options.startSessionRecording) {
-			startSessionRecording();
-		}
+	function trackClickedNewAgent(source: AgentCreateSource) {
 		safeTrack('User clicked new agent', { source, ...common() });
 	}
 
