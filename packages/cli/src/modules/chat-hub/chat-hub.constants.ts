@@ -93,6 +93,10 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 		version: 1,
 	},
+	nvidia: {
+		name: '@n8n/n8n-nodes-langchain.lmChatNvidia',
+		version: 1,
+	},
 };
 
 export const NODE_NAMES = {

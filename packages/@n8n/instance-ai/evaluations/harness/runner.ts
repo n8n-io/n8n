@@ -508,6 +508,25 @@ function buildVerificationArtifact(
 			sections.push(`- **${node.name ?? '(unnamed)'}** (${node.type}) — ${status}`);
 		}
 		sections.push('');
+		sections.push(
+			'**All node configs** (from saved workflow JSON, including nodes that did not run):',
+		);
+		sections.push(
+			'```json',
+			JSON.stringify(
+				wf.nodes.map((node) => ({
+					name: node.name ?? '(unnamed)',
+					type: node.type,
+					typeVersion: node.typeVersion,
+					...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
+					parameters: node.parameters ?? {},
+				})),
+				null,
+				2,
+			),
+			'```',
+		);
+		sections.push('');
 		sections.push('**Connections:**');
 		sections.push('```json', JSON.stringify(wf.connections, null, 2), '```');
 		sections.push('');

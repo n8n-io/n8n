@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import { ConnectionLostError } from '../errors';
 import { createLogger } from '../logger';
+import { redactCallToolResult } from '../redaction/redact';
 import type {
 	AffectedResource,
 	CallToolResult,
@@ -119,19 +120,23 @@ export function createConnectedTool<
 					if (pageInfo) pageInfo.url = currentUrl;
 				}
 
-				return result;
+				return redactCallToolResult(result);
 			} catch (error) {
 				// Playwright throws TargetClosedError when browser/page dies mid-operation.
 				// Re-throw as our typed error so the AI gets a clear message + hint.
 				if (error instanceof Error && error.name === 'TargetClosedError') {
-					return await buildErrorResponse(
-						new ConnectionLostError('browser_closed'),
-						connection,
-						args,
-						options ?? {},
+					return redactCallToolResult(
+						await buildErrorResponse(
+							new ConnectionLostError('browser_closed'),
+							connection,
+							args,
+							options ?? {},
+						),
 					);
 				}
-				return await buildErrorResponse(error, connection, args, options ?? {});
+				return redactCallToolResult(
+					await buildErrorResponse(error, connection, args, options ?? {}),
+				);
 			}
 		},
 		getAffectedResources(args: z.infer<TSchema>, _context: ToolContext): AffectedResource[] {

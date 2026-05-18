@@ -694,5 +694,100 @@ describe('research tool', () => {
 				expect.objectContaining({ maxContentLength: 5000 }),
 			);
 		});
+
+		// ── Same-eTLD+1 redirect auto-allow (TRUST-73) ───────────────
+		// The research tool builds an `authorizeUrl` callback that the fetch
+		// loop calls on each redirect hop. We capture that callback by mocking
+		// the underlying webResearchService.fetchUrl, then exercise it directly
+		// to assert security boundaries without spinning up a real network stack.
+
+		describe('redirect authorizer (same-eTLD+1)', () => {
+			type AuthorizeUrl = (targetUrl: string) => Promise<void>;
+
+			async function captureAuthorizeUrl(inputUrl: string): Promise<AuthorizeUrl> {
+				// Tracker: original host pre-allowed (so the initial fetch passes
+				// without suspending), but every other host is unknown — that
+				// keeps the redirect check live, which is what we want to test.
+				const inputHost = new URL(inputUrl).hostname;
+				const tracker = {
+					isHostAllowed: jest.fn((host: string) => host === inputHost),
+					approveDomain: jest.fn(),
+					approveAllDomains: jest.fn(),
+					approveOnce: jest.fn(),
+					clearRun: jest.fn(),
+					setPendingApprovalHost: jest.fn(),
+					consumePendingApprovalHost: jest.fn(),
+					isAllDomainsApproved: jest.fn().mockReturnValue(false),
+					isWebSearchAllowed: jest.fn().mockReturnValue(false),
+					approveWebSearch: jest.fn(),
+					approveWebSearchOnce: jest.fn(),
+				};
+				let captured: AuthorizeUrl | undefined;
+				const context = createMockContext({
+					domainAccessTracker: tracker as never,
+					permissions: {},
+				});
+				context.webResearchService!.fetchUrl = jest.fn(
+					async (_url: string, options?: { authorizeUrl?: AuthorizeUrl }) => {
+						await Promise.resolve();
+						captured = options?.authorizeUrl;
+						return {
+							url: inputUrl,
+							finalUrl: inputUrl,
+							title: '',
+							content: '',
+							truncated: false,
+							contentLength: 0,
+						};
+					},
+				) as never;
+
+				const tool = createResearchTool(context);
+				await tool.execute!(
+					{ action: 'fetch-url' as const, url: inputUrl },
+					createAgentCtx() as never,
+				);
+				if (!captured) throw new Error('authorizeUrl was not captured');
+				return captured;
+			}
+
+			it('allows redirect within the same registrable domain over HTTPS', async () => {
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('https://linear.app/developers')).resolves.toBeUndefined();
+			});
+
+			it('blocks redirect to a host that only superficially resembles the source', async () => {
+				// `attacker-linear.app` "ends with" `linear.app` for naive checks —
+				// PSL correctly identifies it as a different registrable domain.
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('https://attacker-linear.app/x')).rejects.toThrow(
+					/redirect.*not allowed/i,
+				);
+			});
+
+			it('blocks HTTPS-to-HTTP redirect even within the same registrable domain', async () => {
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('http://linear.app/developers')).rejects.toThrow(
+					/redirect.*not allowed/i,
+				);
+			});
+
+			it('blocks redirect to a different registrable domain', async () => {
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				await expect(authorize('https://evil.example/x')).rejects.toThrow(/redirect.*not allowed/i);
+			});
+
+			it('rejection error does not echo the blocked URL as a retry hint (TRUST-73)', async () => {
+				// Pre-fix wording was "Retry with the direct URL: <blocked>" — that
+				// caused the LLM to retry the same blocked host forever. Lock in
+				// the new clearer phrasing so the message can't regress.
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				const caught = await authorize('https://evil.example/x').catch((e: unknown) => e);
+				expect(caught).toBeInstanceOf(Error);
+				const message = (caught as Error).message;
+				expect(message).toMatch(/skip this URL/i);
+				expect(message).not.toMatch(/retry with the direct URL/i);
+			});
+		});
 	});
 });

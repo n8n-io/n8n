@@ -1,11 +1,7 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
-import {
-	resolveCredentials,
-	type CredentialEntry,
-	type CredentialMap,
-} from '../resolve-credentials';
+import { resolveCredentials, type CredentialEntry } from '../resolve-credentials';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,8 +41,8 @@ function makeWorkflow(overrides: Partial<WorkflowJSON> = {}): WorkflowJSON {
 // ---------------------------------------------------------------------------
 
 describe('resolveCredentials', () => {
-	describe('credential map resolution', () => {
-		it('resolves credentials from the credential map', async () => {
+	describe('missing credential mocking', () => {
+		it('mocks missing credentials', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -60,15 +56,36 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const credMap: CredentialMap = new Map([['slackApi', { id: 'cred-1', name: 'My Slack' }]]);
+			const result = await resolveCredentials(json, undefined, createMockContext());
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), credMap);
-
-			expect(result.mockedNodeNames).toEqual([]);
-			expect(result.mockedCredentialTypes).toEqual([]);
-			expect(json.nodes[0].credentials).toEqual({
-				slackApi: { id: 'cred-1', name: 'My Slack' },
+			expect(result.mockedNodeNames).toEqual(['Slack']);
+			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.verificationPinData).toEqual({
+				Slack: [{ _mockedCredential: 'slackApi' }],
 			});
+		});
+
+		it('mocks null credentials', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: null as unknown as { id: string; name: string } },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext());
+
+			expect(result.mockedNodeNames).toEqual(['Slack']);
+			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
+			expect(json.nodes[0].credentials).toEqual({});
 		});
 	});
 
@@ -101,7 +118,7 @@ describe('resolveCredentials', () => {
 			});
 
 			const ctx = createMockContext(existingWorkflow);
-			const result = await resolveCredentials(json, 'wf-123', ctx, new Map());
+			const result = await resolveCredentials(json, 'wf-123', ctx);
 
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(json.nodes[0].credentials).toEqual({
@@ -111,7 +128,7 @@ describe('resolveCredentials', () => {
 	});
 
 	describe('credential mocking with sidecar verification data', () => {
-		it('mocks unresolved credentials and preserves existing pinData', async () => {
+		it('mocks unresolved credentials and marks existing pinData as verification-ready', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -128,7 +145,7 @@ describe('resolveCredentials', () => {
 				},
 			});
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), new Map());
+			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Slack']);
 			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
@@ -139,8 +156,9 @@ describe('resolveCredentials', () => {
 			expect(json.pinData).toEqual({
 				Slack: [{ ok: true, channel: 'C123', message: { text: 'Hello' } }],
 			});
-			// No verification pin data needed — existing pinData suffices
+			// No sidecar pin data needed — existing workflow pinData suffices
 			expect(result.verificationPinData).toEqual({});
+			expect(result.usesWorkflowPinDataForVerification).toBe(true);
 		});
 
 		it('produces sidecar verification pinData when no existing pinData', async () => {
@@ -157,7 +175,7 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), new Map());
+			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
 			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
@@ -185,7 +203,7 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), new Map());
+			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(result.mockedCredentialTypes).toEqual([]);
@@ -218,7 +236,7 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), new Map());
+			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Slack 1', 'Slack 2']);
 			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
@@ -257,14 +275,10 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const credMap: CredentialMap = new Map([
-				['slackApi', { id: 'slack-2', name: 'Backup Slack' }],
-			]);
 			const result = await resolveCredentials(
 				json,
 				undefined,
 				createMockContext(),
-				credMap,
 				availableCredentials,
 			);
 
@@ -274,7 +288,7 @@ describe('resolveCredentials', () => {
 			});
 		});
 
-		it('mocks a synthesized raw credential id instead of replacing it with the type-map fallback', async () => {
+		it('mocks a synthesized raw credential id', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -288,12 +302,10 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const credMap: CredentialMap = new Map([['slackApi', { id: 'slack-1', name: 'Team Slack' }]]);
 			const result = await resolveCredentials(
 				json,
 				undefined,
 				createMockContext(),
-				credMap,
 				availableCredentials,
 			);
 
@@ -324,7 +336,6 @@ describe('resolveCredentials', () => {
 				json,
 				undefined,
 				createMockContext(),
-				new Map(),
 				availableCredentials,
 			);
 
@@ -351,7 +362,6 @@ describe('resolveCredentials', () => {
 				json,
 				undefined,
 				createMockContext(),
-				new Map(),
 				availableCredentials,
 			);
 
@@ -387,13 +397,9 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const result = await resolveCredentials(
-				json,
-				'wf-123',
-				createMockContext(existingWorkflow),
-				new Map(),
-				[{ id: 'existing-slack', name: 'Existing Slack', type: 'slackApi' }],
-			);
+			const result = await resolveCredentials(json, 'wf-123', createMockContext(existingWorkflow), [
+				{ id: 'existing-slack', name: 'Existing Slack', type: 'slackApi' },
+			]);
 
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(json.nodes[0].credentials).toEqual({
@@ -402,8 +408,8 @@ describe('resolveCredentials', () => {
 		});
 	});
 
-	describe('existing workflow takes priority over credential map', () => {
-		it('preserves the existing credential on an edit even when the map has a different credential of the same type', async () => {
+	describe('existing workflow restoration priority', () => {
+		it('preserves the existing credential on an edit', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -430,12 +436,8 @@ describe('resolveCredentials', () => {
 				],
 			});
 
-			const credMap: CredentialMap = new Map([
-				['openAiApi', { id: 'some-other-id', name: 'Other OpenAI' }],
-			]);
-
 			const ctx = createMockContext(existingWorkflow);
-			const result = await resolveCredentials(json, 'wf-123', ctx, credMap);
+			const result = await resolveCredentials(json, 'wf-123', ctx);
 
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(json.nodes[0].credentials).toEqual({
@@ -444,8 +446,8 @@ describe('resolveCredentials', () => {
 		});
 	});
 
-	describe('credential map takes priority over mocking', () => {
-		it('uses credential map even when pinData exists', async () => {
+	describe('mocking with existing pinData', () => {
+		it('mocks missing credentials and preserves user pinData', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -462,20 +464,21 @@ describe('resolveCredentials', () => {
 				},
 			});
 
-			const credMap: CredentialMap = new Map([['slackApi', { id: 'real-id', name: 'Real Slack' }]]);
+			const result = await resolveCredentials(json, undefined, createMockContext());
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), credMap);
-
-			// Should use credential map, not mock
-			expect(result.mockedNodeNames).toEqual([]);
-			expect(json.nodes[0].credentials).toEqual({
-				slackApi: { id: 'real-id', name: 'Real Slack' },
+			expect(result.mockedNodeNames).toEqual(['Slack']);
+			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(json.pinData).toEqual({
+				Slack: [{ ok: true }],
 			});
+			expect(result.verificationPinData).toEqual({});
+			expect(result.usesWorkflowPinDataForVerification).toBe(true);
 		});
 	});
 
 	describe('mock pinData cleanup', () => {
-		it('removes mock pinData when credential is resolved from credential map', async () => {
+		it('removes mock pinData when an explicit credential is valid for the type', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -484,7 +487,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.slack',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { slackApi: undefined as unknown as { id: string; name: string } },
+						credentials: { slackApi: { id: 'real-id', name: 'Real Slack' } },
 					},
 				],
 				pinData: {
@@ -492,14 +495,14 @@ describe('resolveCredentials', () => {
 				},
 			});
 
-			const credMap: CredentialMap = new Map([['slackApi', { id: 'real-id', name: 'Real Slack' }]]);
-			await resolveCredentials(json, undefined, createMockContext(), credMap);
+			await resolveCredentials(json, undefined, createMockContext(), [
+				{ id: 'real-id', name: 'Real Slack', type: 'slackApi' },
+			]);
 
-			// Mock pinData should be cleaned up since real credential was found
 			expect(json.pinData).toEqual({});
 		});
 
-		it('preserves user-defined pinData when credential is resolved', async () => {
+		it('preserves user-defined pinData when an explicit credential is valid for the type', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -508,7 +511,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.slack',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { slackApi: undefined as unknown as { id: string; name: string } },
+						credentials: { slackApi: { id: 'real-id', name: 'Real Slack' } },
 					},
 				],
 				pinData: {
@@ -516,10 +519,10 @@ describe('resolveCredentials', () => {
 				},
 			});
 
-			const credMap: CredentialMap = new Map([['slackApi', { id: 'real-id', name: 'Real Slack' }]]);
-			await resolveCredentials(json, undefined, createMockContext(), credMap);
+			await resolveCredentials(json, undefined, createMockContext(), [
+				{ id: 'real-id', name: 'Real Slack', type: 'slackApi' },
+			]);
 
-			// User-defined pinData (no _mockedCredential marker) should be preserved
 			expect(json.pinData).toEqual({
 				Slack: [{ ok: true, channel: 'C123' }],
 			});
@@ -552,7 +555,7 @@ describe('resolveCredentials', () => {
 				},
 			});
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), new Map());
+			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
 			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);

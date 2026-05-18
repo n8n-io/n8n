@@ -17,11 +17,10 @@ export const instanceAiTestConfig = {
 } as const;
 
 export const test = base.extend<InstanceAiMemoryFixtures>({
-	instanceAiDriver: async ({ n8n, backendUrl, services }, use) => {
+	instanceAiDriver: async ({ n8n, backendUrl }, use) => {
 		const config: InstanceAiDriverConfig = {
 			n8n,
 			baseUrl: backendUrl,
-			metrics: services.observability.metrics,
 		};
 
 		const driver = new InstanceAiDriver(config);

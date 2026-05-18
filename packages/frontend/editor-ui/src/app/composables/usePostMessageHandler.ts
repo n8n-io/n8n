@@ -21,9 +21,9 @@ import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
-	type useWorkflowDocumentStore,
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
@@ -31,7 +31,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>;
 }
 

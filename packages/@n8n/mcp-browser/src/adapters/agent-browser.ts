@@ -192,9 +192,14 @@ export class AgentBrowserAdapter implements Adapter {
 
 		if (!this.relay.isExtensionConnected()) {
 			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort!);
+			// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` mirrors the playwright adapter — see
+			// `playwright.ts` for the full justification. The extension only honors
+			// the flag when the relay URL is localhost, which it always is here.
+			const autoConnect = process.env.N8N_EVAL_AUTO_BROWSER_CONNECT === '1';
 			const connectUrl =
 				`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
-				`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
+				`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}` +
+				(autoConnect ? '&autoConnect=1' : '');
 			log.debug('launch: opening browser at', connectUrl);
 
 			await new Promise<void>((resolve, reject) => {

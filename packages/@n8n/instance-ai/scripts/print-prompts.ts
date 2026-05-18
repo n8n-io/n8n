@@ -75,7 +75,7 @@ function collectAgents(): AgentEntry[] {
 						researchMode: true,
 						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						localGateway: { status: 'connected' },
+						localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
 						toolSearchEnabled: true,
 						licenseHints: ['<sample license hint — replace with real hint at runtime>'],
 						timeZone: 'UTC',
@@ -101,10 +101,7 @@ function collectAgents(): AgentEntry[] {
 						"localGateway disconnected with filesystem + browser capabilities — renders the 'install Computer Use' pitch and 'Browser Automation (Unavailable)' note",
 					body: getSystemPrompt({
 						webhookBaseUrl: 'https://your-instance.example.com',
-						localGateway: {
-							status: 'disconnected',
-							capabilities: ['filesystem', 'browser'],
-						},
+						localGateway: { status: 'disconnected' },
 						browserAvailable: false,
 					}),
 				},
@@ -115,7 +112,7 @@ function collectAgents(): AgentEntry[] {
 					body: getSystemPrompt({
 						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						localGateway: { status: 'connected' },
+						localGateway: { status: 'connected', capabilities: ['filesystem'] },
 						browserAvailable: false,
 					}),
 				},

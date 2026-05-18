@@ -45,7 +45,12 @@ describe('createDeepLazyProxy', () => {
 
 	// Helper to create proxy with current mocks
 	function proxy(basePath?: string[], knownKeys?: string[]) {
-		return createDeepLazyProxy(basePath, knownKeys, mocks.callbacks);
+		const meta = knownKeys ? { kind: 'object' as const, keys: knownKeys } : undefined;
+		return createDeepLazyProxy(basePath, meta, mocks.callbacks);
+	}
+
+	function arrayProxy(basePath: string[], length: number) {
+		return createDeepLazyProxy(basePath, { kind: 'array' as const, length }, mocks.callbacks);
 	}
 
 	// -----------------------------------------------------------------------
@@ -452,6 +457,114 @@ describe('createDeepLazyProxy', () => {
 			const p = proxy(['$root']);
 			p.fn();
 			expect(mocks.callFunctionAtPath).toHaveBeenCalledWith(null, [['$root', 'fn']], ivmCallOpts);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// 11. Array-shaped proxy (meta.kind = 'array')
+	// -----------------------------------------------------------------------
+
+	describe('array-shaped proxy', () => {
+		it('Array.isArray() returns true', () => {
+			const p = arrayProxy(['arr'], 3);
+			expect(Array.isArray(p)).toBe(true);
+		});
+
+		it('length is the meta length without a bridge call', () => {
+			const p = arrayProxy(['arr'], 5);
+			expect(p.length).toBe(5);
+			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
+			expect(mocks.getArrayElement).not.toHaveBeenCalled();
+		});
+
+		it('Object.keys() returns numeric index strings only', () => {
+			const p = arrayProxy(['arr'], 3);
+			expect(Object.keys(p)).toEqual(['0', '1', '2']);
+		});
+
+		it('length descriptor is non-enumerable, non-configurable, writable', () => {
+			const p = arrayProxy(['arr'], 2);
+			const desc = Object.getOwnPropertyDescriptor(p, 'length');
+			expect(desc).toEqual({
+				configurable: false,
+				enumerable: false,
+				writable: true,
+				value: 2,
+			});
+		});
+
+		it('index descriptor includes the actual value (matches native array)', () => {
+			const p = arrayProxy(['arr'], 3);
+			mocks.getArrayElement.mockReturnValue('first');
+			const desc = Object.getOwnPropertyDescriptor(p, '0');
+			expect(desc).toEqual({
+				configurable: true,
+				enumerable: true,
+				writable: false,
+				value: 'first',
+			});
+		});
+
+		it('indexed access fetches via getArrayElement', () => {
+			const p = arrayProxy(['arr'], 3);
+			mocks.getArrayElement.mockReturnValue('first');
+			expect(p[0]).toBe('first');
+			expect(mocks.getArrayElement).toHaveBeenCalledWith(null, [['arr'], 0], ivmCallOpts);
+		});
+
+		it('nested array element returns an array-shaped child proxy', () => {
+			const p = arrayProxy(['arr'], 2);
+			mocks.getArrayElement.mockReturnValue({ __isArray: true, __length: 4 });
+			const child = p[0];
+			expect(Array.isArray(child)).toBe(true);
+			expect(child.length).toBe(4);
+			expect(getProxyPath(child)).toEqual(['arr', '0']);
+		});
+
+		it('object element returns an object-shaped child proxy', () => {
+			const p = arrayProxy(['arr'], 2);
+			mocks.getArrayElement.mockReturnValue({ __isObject: true, __keys: ['a', 'b'] });
+			const child = p[0];
+			expect(Array.isArray(child)).toBe(false);
+			expect(isLazyProxy(child)).toBe(true);
+			expect(Object.keys(child)).toEqual(['a', 'b']);
+		});
+
+		it('empty array proxy has zero indices', () => {
+			const p = arrayProxy(['arr'], 0);
+			expect(p.length).toBe(0);
+			expect(Object.keys(p)).toEqual([]);
+			expect(Array.isArray(p)).toBe(true);
+		});
+
+		it('out-of-bounds index returns undefined without a bridge call', () => {
+			const p = arrayProxy(['arr'], 2);
+			expect(p[2]).toBeUndefined();
+			expect(p[100]).toBeUndefined();
+			expect(mocks.getArrayElement).not.toHaveBeenCalled();
+		});
+
+		it('non-canonical index strings are rejected', () => {
+			const p = arrayProxy(['arr'], 5);
+			// '00' is not a canonical index; native arrays don't treat it as arr[0]
+			expect(p['00' as any]).toBeUndefined();
+			expect(mocks.getArrayElement).not.toHaveBeenCalled();
+		});
+
+		it('caches elements after first access', () => {
+			const p = arrayProxy(['arr'], 1);
+			mocks.getArrayElement.mockReturnValue('val');
+			p[0];
+			p[0];
+			expect(mocks.getArrayElement).toHaveBeenCalledTimes(1);
+		});
+
+		it("'in' operator works for valid indices and length", () => {
+			const p = arrayProxy(['arr'], 3);
+			expect(0 in p).toBe(true);
+			expect(2 in p).toBe(true);
+			expect(3 in p).toBe(false);
+			expect('length' in p).toBe(true);
 		});
 	});
 });
