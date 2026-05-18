@@ -4,6 +4,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
@@ -145,6 +146,19 @@ export const createUpdateWorkflowTool = (
 			if (!credentialCheck.ok) {
 				throw new Error(credentialCheck.error);
 			}
+
+			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
+				{
+					name: result.workflow.name,
+					nodes: result.workflow.nodes,
+					connections: result.workflow.connections,
+				} as unknown as WorkflowJSON,
+				nodeTypes,
+				(errorMessage) => ({ error: errorMessage }),
+				telemetryPayload,
+				telemetry,
+			);
+			if (invalidToolSourceResponse) return invalidToolSourceResponse;
 
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
