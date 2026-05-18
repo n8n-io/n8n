@@ -247,8 +247,8 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Notify Slack
         env:
-          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
         run: |
           node .github/scripts/slack/notify.mjs \
-            --channel '#updates-and-product-releases' \
+            --channel C036AELNMV0 \
             --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Release publish failed for n8n@${{ needs.determine-version-info.outputs.version }}>. Please Go to the actions page and retry failed runs to recover a flake in the release pipeline.'
