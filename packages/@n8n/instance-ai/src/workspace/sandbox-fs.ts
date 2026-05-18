@@ -39,6 +39,8 @@ export interface SandboxWorkspace {
 
 import { getTemplateTelemetrySession } from './template-telemetry';
 
+const BASE64_WRITE_CHUNK_SIZE = 32_000;
+
 /**
  * Execute a shell command in the sandbox and wait for completion.
  * Tries `executeCommand` first, falls back to `processes.spawn` + wait.
@@ -90,22 +92,38 @@ export async function writeFileViaSandbox(
 	filePath: string,
 	content: string | Buffer,
 ): Promise<void> {
+	const runWriteCommand = async (command: string) => {
+		const result = await runInSandbox(workspace, command);
+		if (result.exitCode !== 0) {
+			throw new Error(`Failed to write file ${filePath}: ${result.stderr}`);
+		}
+	};
+
 	// Ensure parent directory exists
 	const dir = filePath.substring(0, filePath.lastIndexOf('/'));
 	if (dir) {
-		await runInSandbox(workspace, `mkdir -p '${escapeSingleQuotes(dir)}'`);
+		await runWriteCommand(`mkdir -p '${escapeSingleQuotes(dir)}'`);
 	}
 
-	// Encode content as base64 and decode in the sandbox
+	// Encode content as base64, transfer it in small chunks, then decode in the sandbox.
+	// Some providers run commands through spawn(), where a single huge argument can hit E2BIG.
 	const b64 =
 		typeof content === 'string'
 			? Buffer.from(content, 'utf-8').toString('base64')
 			: content.toString('base64');
-	const cmd = `echo '${b64}' | base64 -d > '${escapeSingleQuotes(filePath)}'`;
-	const result = await runInSandbox(workspace, cmd);
-	if (result.exitCode !== 0) {
-		throw new Error(`Failed to write file ${filePath}: ${result.stderr}`);
+	const tempPath = `${filePath}.base64.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	const escapedTempPath = escapeSingleQuotes(tempPath);
+
+	await runWriteCommand(`: > '${escapedTempPath}'`);
+
+	for (let offset = 0; offset < b64.length; offset += BASE64_WRITE_CHUNK_SIZE) {
+		const chunk = b64.slice(offset, offset + BASE64_WRITE_CHUNK_SIZE);
+		await runWriteCommand(`printf '%s' '${chunk}' >> '${escapedTempPath}'`);
 	}
+
+	await runWriteCommand(
+		`base64 -d '${escapedTempPath}' > '${escapeSingleQuotes(filePath)}'; status=$?; rm -f '${escapedTempPath}'; exit $status`,
+	);
 }
 
 /**
