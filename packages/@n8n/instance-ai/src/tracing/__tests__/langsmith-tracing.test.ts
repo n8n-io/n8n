@@ -197,176 +197,18 @@ jest.mock('@n8n/agents', () => {
 });
 
 jest.mock('langsmith', () => {
-	let runCounter = 0;
-	const createdLegacyLegacyRunTrees: Array<{
-		id: string;
-		dotted_order: string;
-		name: string;
-		run_type: string;
-		parent_run_id?: string;
-		client?: unknown;
-	}> = [];
-
-	class MockLegacyRunTree {
-		id: string;
-		name: string;
-		run_type: string;
-		project_name: string;
-		parent_run?: MockLegacyRunTree;
-		parent_run_id?: string;
-		child_runs: MockLegacyRunTree[];
-		start_time: number;
-		end_time?: number;
-		extra: { metadata?: Record<string, unknown> };
-		tags?: string[];
-		error?: string;
-		serialized: Record<string, never>;
-		inputs: Record<string, unknown>;
-		outputs?: Record<string, unknown>;
-		events?: Array<Record<string, unknown>>;
-		trace_id: string;
-		dotted_order: string;
-		execution_order: number;
-		child_execution_order: number;
-		client?: unknown;
-
-		constructor(config: {
-			id?: string;
-			name: string;
-			run_type?: string;
-			project_name?: string;
-			parent_run?: MockLegacyRunTree;
-			parent_run_id?: string;
-			start_time?: number;
-			end_time?: number;
-			metadata?: Record<string, unknown>;
-			tags?: string[];
-			error?: string;
-			inputs?: Record<string, unknown>;
-			outputs?: Record<string, unknown>;
-			execution_order?: number;
-			child_execution_order?: number;
-			trace_id?: string;
-			dotted_order?: string;
-			serialized?: Record<string, never>;
-			client?: unknown;
-		}) {
-			runCounter += 1;
-			this.id = config.id ?? `run-${runCounter}`;
-			this.name = config.name;
-			this.run_type = config.run_type ?? 'chain';
-			this.project_name = config.project_name ?? 'instance-ai';
-			this.parent_run = config.parent_run;
-			this.parent_run_id = config.parent_run_id;
-			this.child_runs = [];
-			this.start_time = config.start_time ?? runCounter;
-			this.end_time = config.end_time;
-			this.extra = config.metadata ? { metadata: { ...config.metadata } } : {};
-			this.tags = config.tags;
-			this.error = config.error;
-			this.serialized = config.serialized ?? {};
-			this.inputs = config.inputs ?? {};
-			this.outputs = config.outputs;
-			this.events = [];
-			this.execution_order = config.execution_order ?? 1;
-			this.child_execution_order = config.child_execution_order ?? this.execution_order;
-			this.trace_id = config.trace_id ?? this.parent_run?.trace_id ?? this.id;
-			this.dotted_order =
-				config.dotted_order ??
-				(this.parent_run ? `${this.parent_run.dotted_order}.${this.id}` : this.id);
-			this.client = config.client;
-
-			createdLegacyLegacyRunTrees.push({
-				id: this.id,
-				dotted_order: this.dotted_order,
-				name: this.name,
-				run_type: this.run_type,
-				...(this.parent_run_id ? { parent_run_id: this.parent_run_id } : {}),
-				...(this.client ? { client: this.client } : {}),
-			});
-		}
-
-		get metadata(): Record<string, unknown> | undefined {
-			return this.extra.metadata;
-		}
-
-		set metadata(metadata: Record<string, unknown> | undefined) {
-			this.extra = metadata ? { ...this.extra, metadata: { ...metadata } } : this.extra;
-		}
-
-		createChild(config: {
-			name: string;
-			run_type?: string;
-			tags?: string[];
-			metadata?: Record<string, unknown>;
-			inputs?: Record<string, unknown>;
-		}): MockLegacyRunTree {
-			const childExecutionOrder = this.child_execution_order + 1;
-			const child = new MockLegacyRunTree({
-				...config,
-				parent_run: this,
-				parent_run_id: this.id,
-				project_name: this.project_name,
-				execution_order: childExecutionOrder,
-				child_execution_order: childExecutionOrder,
-			});
-
-			this.child_execution_order = Math.max(this.child_execution_order, childExecutionOrder);
-			this.child_runs.push(child);
-
-			return child;
-		}
-
-		async postRun(): Promise<void> {
-			await Promise.resolve();
-		}
-
-		async end(
-			outputs?: Record<string, unknown>,
-			error?: string,
-			endTime = Date.now(),
-			metadata?: Record<string, unknown>,
-		): Promise<void> {
-			this.outputs = outputs ?? this.outputs;
-			this.error = error ?? this.error;
-			this.end_time = endTime;
-			if (metadata) {
-				this.metadata = {
-					...(this.metadata ?? {}),
-					...metadata,
-				};
-			}
-			await Promise.resolve();
-		}
-
-		async patchRun(): Promise<void> {
-			if (this.parent_run_id === undefined && this.dotted_order.includes('.')) {
-				await Promise.resolve();
-				throw new Error(
-					'invalid dotted_order: dotted_order must contain a single part for root runs',
-				);
-			}
-			await Promise.resolve();
-		}
-
-		addEvent(event: Record<string, unknown> | string): void {
-			this.events?.push(typeof event === 'string' ? { message: event } : event);
-		}
-
-		toHeaders(): { 'langsmith-trace': string; baggage: string } {
-			return {
-				'langsmith-trace': this.dotted_order,
-				baggage: '',
-			};
-		}
-	}
-
 	const createFeedbackCalls: Array<{
 		runId: string;
 		key: string;
 		options: Record<string, unknown>;
 		clientApiUrl: string;
 	}> = [];
+
+	class ForbiddenRunTree {
+		constructor() {
+			throw new Error('Instance AI tracing must use OTel spans, not LangSmith RunTree');
+		}
+	}
 
 	class MockClient {
 		apiUrl: string;
@@ -389,33 +231,26 @@ jest.mock('langsmith', () => {
 
 	return {
 		Client: MockClient,
-		LegacyRunTree: MockLegacyRunTree,
+		RunTree: ForbiddenRunTree,
 		__mock: {
 			reset: () => {
-				runCounter = 0;
-				createdLegacyLegacyRunTrees.length = 0;
 				createFeedbackCalls.length = 0;
 			},
-			getCreatedLegacyLegacyRunTrees: () => createdLegacyLegacyRunTrees,
 			getCreateFeedbackCalls: () => createFeedbackCalls,
 		},
 	};
 });
 
 jest.mock('langsmith/traceable', () => {
-	let currentLegacyRunTree: unknown;
-
 	return {
-		traceable: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
-		getCurrentLegacyRunTree: () => currentLegacyRunTree,
-		withActiveSpan: async <T>(legacyRunTree: unknown, fn: () => Promise<T>): Promise<T> => {
-			const previous = currentLegacyRunTree;
-			currentLegacyRunTree = legacyRunTree;
-			try {
-				return await fn();
-			} finally {
-				currentLegacyRunTree = previous;
-			}
+		traceable: () => {
+			throw new Error('Instance AI tracing must use OTel spans, not langsmith/traceable');
+		},
+		getCurrentRunTree: () => {
+			throw new Error('Instance AI tracing must use OTel spans, not langsmith/traceable');
+		},
+		withRunTree: () => {
+			throw new Error('Instance AI tracing must use OTel spans, not langsmith/traceable');
 		},
 	};
 });
@@ -423,14 +258,6 @@ jest.mock('langsmith/traceable', () => {
 type LangSmithMockModule = {
 	__mock: {
 		reset: () => void;
-		getCreatedLegacyLegacyRunTrees: () => Array<{
-			id: string;
-			dotted_order: string;
-			name: string;
-			run_type: string;
-			parent_run_id?: string;
-			client?: unknown;
-		}>;
 		getCreateFeedbackCalls: () => Array<{
 			runId: string;
 			key: string;
@@ -1688,24 +1515,6 @@ describe('createInstanceAiTraceContext', () => {
 
 		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'turn');
 		expect(rootSpan).toBeDefined();
-		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
-	});
-
-	it('does not create LegacyRunTree spans without proxyConfig', async () => {
-		// Regression: normal tracing must not mix LegacyRunTree product spans with OTel
-		// native spans, because LangSmith treats those ingestion paths as separate
-		// trace hierarchies.
-		await createInstanceAiTraceContext({
-			threadId: 'thread-no-proxy',
-			messageId: 'message-no-proxy',
-			runId: 'run-no-proxy',
-			userId: 'user-no-proxy',
-			input: { message: 'no proxy test' },
-		});
-
-		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'turn');
-		expect(rootSpan).toBeDefined();
-		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
 	});
 
 	it('keeps product, native provider, and local tool spans in one foreground OTel trace', async () => {
@@ -1813,7 +1622,6 @@ describe('createInstanceAiTraceContext', () => {
 		expect(localToolSpan?.attributes['ai.toolCall.id']).toBe('toolu-write-file');
 		expect(localToolSpan?.attributes['ai.toolCall.name']).toBe('workspace_write_file');
 		expect(spans.some((span) => span.name.startsWith('instance-ai.tool.'))).toBe(false);
-		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
 	});
 
 	it('returns undefined when tracing is explicitly disabled even with proxy', async () => {

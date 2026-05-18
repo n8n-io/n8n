@@ -2482,6 +2482,50 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 	};
 }
 
+function buildDetachedSubAgentMetadata(
+	options: CreateDetachedSubAgentTraceContextOptions,
+	includeSpawnMetadata: boolean,
+): Record<string, unknown> {
+	return {
+		agent_role: options.role,
+		agent_id: options.agentId,
+		execution_mode: 'background_subagent',
+		trace_kind: 'background_subagent',
+		task_kind: options.kind,
+		...(options.taskId ? { task_id: options.taskId } : {}),
+		...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
+		...(options.workItemId ? { work_item_id: options.workItemId } : {}),
+		...(includeSpawnMetadata && options.spawnedByTraceId
+			? { spawned_by_trace_id: options.spawnedByTraceId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedBySpanId
+			? { spawned_by_span_id: options.spawnedBySpanId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByRunId
+			? { spawned_by_run_id: options.spawnedByRunId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByAgentId
+			? { spawned_by_agent_id: options.spawnedByAgentId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByAgentRole
+			? { spawned_by_agent_role: options.spawnedByAgentRole }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByToolCallId
+			? { spawned_by_tool_call_id: options.spawnedByToolCallId }
+			: {}),
+		subagent_role: options.role,
+	};
+}
+
+function buildInternalOperationMetadata(operationName: string): Record<string, unknown> {
+	return {
+		agent_role: operationName,
+		execution_mode: 'internal',
+		trace_kind: 'internal_operation',
+		operation_name: operationName,
+	};
+}
+
 function createTelemetryFactory(options: {
 	projectName: string;
 	traceKind: InstanceAiTraceContext['traceKind'];
@@ -2741,6 +2785,8 @@ export async function createDetachedSubAgentTraceContext(
 
 	const createDetachedRuns = async () => {
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const rootMetadata = buildDetachedSubAgentMetadata(options, true);
+		const actorMetadata = buildDetachedSubAgentMetadata(options, false);
 		const rootRun = startProductSpan(otelRuntime, {
 			projectName,
 			name: `background task: ${formatAgentRoleLabel(options.role)}`,
@@ -2750,27 +2796,7 @@ export async function createDetachedSubAgentTraceContext(
 				['sub-agent', 'background'],
 				options.plannedTaskId ? ['planned'] : undefined,
 			),
-			metadata: mergeMetadata(baseMetadata, {
-				agent_role: options.role,
-				agent_id: options.agentId,
-				execution_mode: 'background_subagent',
-				trace_kind: 'background_subagent',
-				task_kind: options.kind,
-				...(options.taskId ? { task_id: options.taskId } : {}),
-				...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
-				...(options.workItemId ? { work_item_id: options.workItemId } : {}),
-				...(options.spawnedByTraceId ? { spawned_by_trace_id: options.spawnedByTraceId } : {}),
-				...(options.spawnedBySpanId ? { spawned_by_span_id: options.spawnedBySpanId } : {}),
-				...(options.spawnedByRunId ? { spawned_by_run_id: options.spawnedByRunId } : {}),
-				...(options.spawnedByAgentId ? { spawned_by_agent_id: options.spawnedByAgentId } : {}),
-				...(options.spawnedByAgentRole
-					? { spawned_by_agent_role: options.spawnedByAgentRole }
-					: {}),
-				...(options.spawnedByToolCallId
-					? { spawned_by_tool_call_id: options.spawnedByToolCallId }
-					: {}),
-				subagent_role: options.role,
-			}),
+			metadata: mergeMetadata(baseMetadata, rootMetadata),
 			inputs: options.input,
 			root: true,
 		});
@@ -2783,17 +2809,7 @@ export async function createDetachedSubAgentTraceContext(
 				['sub-agent', 'background'],
 				options.plannedTaskId ? ['planned'] : undefined,
 			),
-			metadata: mergeMetadata(baseMetadata, {
-				agent_role: options.role,
-				agent_id: options.agentId,
-				execution_mode: 'background_subagent',
-				trace_kind: 'background_subagent',
-				task_kind: options.kind,
-				...(options.taskId ? { task_id: options.taskId } : {}),
-				...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
-				...(options.workItemId ? { work_item_id: options.workItemId } : {}),
-				subagent_role: options.role,
-			}),
+			metadata: mergeMetadata(baseMetadata, actorMetadata),
 			inputs: options.input,
 			parentRun: rootRun,
 		});
@@ -2810,28 +2826,7 @@ export async function createDetachedSubAgentTraceContext(
 				traceKind: 'background_subagent',
 				rootRun,
 				actorRun,
-				baseMetadata:
-					mergeMetadata(baseMetadata, {
-						agent_role: options.role,
-						agent_id: options.agentId,
-						execution_mode: 'background_subagent',
-						trace_kind: 'background_subagent',
-						task_kind: options.kind,
-						...(options.taskId ? { task_id: options.taskId } : {}),
-						...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
-						...(options.workItemId ? { work_item_id: options.workItemId } : {}),
-						...(options.spawnedByTraceId ? { spawned_by_trace_id: options.spawnedByTraceId } : {}),
-						...(options.spawnedBySpanId ? { spawned_by_span_id: options.spawnedBySpanId } : {}),
-						...(options.spawnedByRunId ? { spawned_by_run_id: options.spawnedByRunId } : {}),
-						...(options.spawnedByAgentId ? { spawned_by_agent_id: options.spawnedByAgentId } : {}),
-						...(options.spawnedByAgentRole
-							? { spawned_by_agent_role: options.spawnedByAgentRole }
-							: {}),
-						...(options.spawnedByToolCallId
-							? { spawned_by_tool_call_id: options.spawnedByToolCallId }
-							: {}),
-						subagent_role: options.role,
-					}) ?? baseMetadata,
+				baseMetadata: mergeMetadata(baseMetadata, rootMetadata) ?? baseMetadata,
 				baseTelemetry: otelRuntime.telemetry,
 				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
 			}),
@@ -2869,18 +2864,14 @@ export async function createInternalOperationTraceContext(
 
 	const createInternalRuns = async () => {
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const internalMetadata = buildInternalOperationMetadata(options.operationName);
 		const rootRun = startProductSpan(otelRuntime, {
 			projectName,
 			name: `internal: ${formatInternalOperationLabel(options.operationName)}`,
 			canonicalName: `instance-ai.internal.${options.operationName}`,
 			runType: 'chain',
 			tags: ['internal-operation'],
-			metadata: mergeMetadata(baseMetadata, {
-				agent_role: options.operationName,
-				execution_mode: 'internal',
-				trace_kind: 'internal_operation',
-				operation_name: options.operationName,
-			}),
+			metadata: mergeMetadata(baseMetadata, internalMetadata),
 			inputs: options.input,
 			root: true,
 		});
@@ -2897,13 +2888,7 @@ export async function createInternalOperationTraceContext(
 				traceKind: 'internal_operation',
 				rootRun,
 				actorRun: rootRun,
-				baseMetadata:
-					mergeMetadata(baseMetadata, {
-						agent_role: options.operationName,
-						execution_mode: 'internal',
-						trace_kind: 'internal_operation',
-						operation_name: options.operationName,
-					}) ?? baseMetadata,
+				baseMetadata: mergeMetadata(baseMetadata, internalMetadata) ?? baseMetadata,
 				baseTelemetry: otelRuntime.telemetry,
 				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
 			}),
