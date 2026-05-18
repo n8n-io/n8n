@@ -93,6 +93,9 @@ catalogs:
     '@mastra/memory':
       specifier: 1.10.0
       version: 1.10.0
+    '@mozilla/readability':
+      specifier: 0.6.0
+      version: 0.6.0
     '@n8n/typeorm':
       specifier: 0.3.20-17
       version: 0.3.20-17
@@ -192,6 +195,9 @@ catalogs:
     js-tiktoken:
       specifier: 1.0.21
       version: 1.0.21
+    jsdom:
+      specifier: 23.0.1
+      version: 23.0.1
     jsonrepair:
       specifier: 3.13.2
       version: 3.13.2
@@ -792,7 +798,7 @@ importers:
         specifier: 'catalog:'
         version: 1.4.4(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@mozilla/readability':
-        specifier: 0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/ai-utilities':
         specifier: workspace:*
@@ -822,7 +828,7 @@ importers:
         specifier: 6.2.1
         version: 6.2.1
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 'catalog:'
@@ -1753,7 +1759,7 @@ importers:
         specifier: 'catalog:'
         version: 1.10.0(@mastra/core@1.17.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(zod@3.25.67)
       '@mozilla/readability':
-        specifier: ^0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/agents':
         specifier: workspace:*
@@ -1917,13 +1923,13 @@ importers:
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
       '@mozilla/readability':
-        specifier: ^0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       agent-browser:
         specifier: 'catalog:'
         version: 0.26.0
       jsdom:
-        specifier: ^23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       nanoid:
         specifier: 'catalog:'
@@ -2184,7 +2190,7 @@ importers:
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
       '@mozilla/readability':
-        specifier: 0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/ai-utilities':
         specifier: workspace:*
@@ -2259,7 +2265,7 @@ importers:
         specifier: 'catalog:'
         version: 1.0.21
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 'catalog:'
@@ -4295,7 +4301,7 @@ importers:
         specifier: 3.8.0
         version: 3.8.0
       '@mozilla/readability':
-        specifier: 0.6.0
+        specifier: 'catalog:'
         version: 0.6.0
       '@n8n/config':
         specifier: workspace:*
@@ -4385,7 +4391,7 @@ importers:
         specifier: 1.4.0
         version: 1.4.0
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jsonwebtoken:
         specifier: 'catalog:'

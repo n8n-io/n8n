@@ -900,7 +900,7 @@
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@kafkajs/confluent-schema-registry": "3.8.0",
-    "@mozilla/readability": "0.6.0",
+    "@mozilla/readability": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
@@ -930,7 +930,7 @@
     "isbot": "3.6.13",
     "iso-639-1": "2.1.15",
     "js-nacl": "1.4.0",
-    "jsdom": "23.0.1",
+    "jsdom": "catalog:",
     "jsonwebtoken": "catalog:",
     "kafkajs": "catalog:",
     "ldapts": "4.2.6",

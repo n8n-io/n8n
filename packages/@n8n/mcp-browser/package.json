@@ -25,9 +25,9 @@
   "dependencies": {
     "@joplin/turndown-plugin-gfm": "1.0.64",
     "@modelcontextprotocol/sdk": "1.26.0",
-    "@mozilla/readability": "^0.6.0",
+    "@mozilla/readability": "catalog:",
     "agent-browser": "catalog:",
-    "jsdom": "^23.0.1",
+    "jsdom": "catalog:",
     "nanoid": "catalog:",
     "picocolors": "catalog:",
     "playwright-core": "catalog:",

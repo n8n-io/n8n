@@ -54,7 +54,7 @@
     "@mastra/mcp": "catalog:",
     "@mastra/memory": "catalog:",
     "langsmith": "catalog:",
-    "@mozilla/readability": "^0.6.0",
+    "@mozilla/readability": "catalog:",
     "@n8n/api-types": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/sandbox-client": "0.0.4",
