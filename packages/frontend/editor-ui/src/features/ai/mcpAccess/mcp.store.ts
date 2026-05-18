@@ -101,7 +101,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		if (!(response.updatedIds ?? []).includes(workflowId)) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(workflowId)) {
 			throw new Error(
 				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
 					interpolate: { workflowId },
@@ -128,7 +133,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		for (const id of response.updatedIds ?? []) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		for (const id of confirmedIds) {
 			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 

@@ -194,6 +194,8 @@ describe('McpSettingsService', () => {
 			expect(result).toEqual({
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				// wf-unauthorized was in the request but filtered out — counts as skipped.
 				skippedCount: 1,
 				failedCount: 0,
@@ -285,6 +287,8 @@ describe('McpSettingsService', () => {
 			expect(result).toEqual({
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 1,
 				failedCount: 0,
 				changedWorkflows: [
@@ -321,11 +325,11 @@ describe('McpSettingsService', () => {
 			expect(stubs.find).toHaveBeenCalledTimes(2);
 			expect(stubs.find.mock.calls[0][1].select).toEqual(['id', 'settings']);
 			expect(stubs.find.mock.calls[1][1].where.id.value).toEqual(['wf-1']);
-			// Both ids are reported as updated (the DB is in the requested state
-			// for both). No-ops go last in the list.
 			expect(result).toEqual({
-				updatedCount: 2,
-				updatedIds: ['wf-1', 'wf-2'],
+				updatedCount: 1,
+				updatedIds: ['wf-1'],
+				unchangedCount: 1,
+				unchangedIds: ['wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [
@@ -358,8 +362,10 @@ describe('McpSettingsService', () => {
 			expect(stubs.update).not.toHaveBeenCalled();
 			expect(stubs.find).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({
-				updatedCount: 2,
-				updatedIds: ['wf-1', 'wf-2'],
+				updatedCount: 0,
+				updatedIds: [],
+				unchangedCount: 2,
+				unchangedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
@@ -408,13 +414,14 @@ describe('McpSettingsService', () => {
 			expect(stubs.manager.transaction).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
 			});
 		});
 
-		test('omits updatedIds from the response when scoped by projectId', async () => {
+		test('omits workflow ids from the response when scoped by projectId', async () => {
 			setupRepository([
 				{ id: 'wf-1', settings: {} },
 				{ id: 'wf-2', settings: {} },
@@ -430,6 +437,7 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 2,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [
@@ -446,9 +454,10 @@ describe('McpSettingsService', () => {
 				],
 			});
 			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
-		test('omits updatedIds from the response when scoped by folderId', async () => {
+		test('omits workflow ids from the response when scoped by folderId', async () => {
 			setupRepository([{ id: 'wf-1', settings: {} }]);
 			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1']);
 
@@ -461,6 +470,7 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 1,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [
@@ -472,6 +482,7 @@ describe('McpSettingsService', () => {
 				],
 			});
 			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
 		test('resolves candidates via findAllWorkflowIdsForUser when scoped by folderId', async () => {
@@ -515,6 +526,7 @@ describe('McpSettingsService', () => {
 			expect(stubs.manager.transaction).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
@@ -535,14 +547,16 @@ describe('McpSettingsService', () => {
 			expect(stubs.manager.transaction).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
 			});
 			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
-		test('returns an empty updatedIds array when scoped by workflowIds and none are accessible', async () => {
+		test('returns empty id arrays when scoped by workflowIds and none are accessible', async () => {
 			setupRepository([]);
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 
@@ -555,10 +569,12 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 2,
 				failedCount: 0,
 				changedWorkflows: [],
 				updatedIds: [],
+				unchangedIds: [],
 			});
 		});
 
@@ -629,7 +645,7 @@ describe('McpSettingsService', () => {
 			);
 		});
 
-		test('surfaces chunk failures in updatedIds when scoped by workflowIds', async () => {
+		test('surfaces chunk failures in id arrays when scoped by workflowIds', async () => {
 			const stubs = setupRepository([{ id: 'wf-1', settings: {} }]);
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
@@ -646,10 +662,12 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 1,
 				changedWorkflows: [],
 				updatedIds: [],
+				unchangedIds: [],
 			});
 		});
 

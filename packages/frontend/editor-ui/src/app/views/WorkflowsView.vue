@@ -71,6 +71,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import type { ToggleWorkflowsMcpAccessResponse } from '@/features/ai/mcpAccess/mcp.api';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -1392,33 +1393,88 @@ function openSettingsFromToast(event?: MouseEvent) {
 	void router.push(settingsLink.value);
 }
 
-function showMCPAccessSuccessToast(enabled: boolean, count: number) {
-	const title = enabled
-		? i18n.baseText('resourceActions.mcpAccess.success.enabled.title')
-		: i18n.baseText('resourceActions.mcpAccess.success.disabled.title');
-	const message = enabled
-		? i18n.baseText('resourceActions.mcpAccess.success.enabled.message', {
+function getMCPAccessUpdatedSummary(enabled: boolean, count: number, scopeName: string) {
+	return enabled
+		? i18n.baseText('resourceActions.mcpAccess.summary.updated.enabled', {
 				adjustToNumber: count,
-				interpolate: {
-					count: String(count),
-					link: settingsLink.value,
-					scopeName: mcpAccessScope.value?.name ?? '',
-				},
+				interpolate: { count: String(count), scopeName },
 			})
-		: i18n.baseText('resourceActions.mcpAccess.success.disabled.message', {
+		: i18n.baseText('resourceActions.mcpAccess.summary.updated.disabled', {
 				adjustToNumber: count,
-				interpolate: {
-					count: String(count),
-					link: settingsLink.value,
-					scopeName: mcpAccessScope.value?.name ?? '',
-				},
+				interpolate: { count: String(count), scopeName },
 			});
+}
+
+function getMCPAccessUnchangedSummary(enabled: boolean, count: number, scopeName: string) {
+	return enabled
+		? i18n.baseText('resourceActions.mcpAccess.summary.unchanged.enabled', {
+				adjustToNumber: count,
+				interpolate: { count: String(count), scopeName },
+			})
+		: i18n.baseText('resourceActions.mcpAccess.summary.unchanged.disabled', {
+				adjustToNumber: count,
+				interpolate: { count: String(count), scopeName },
+			});
+}
+
+function getMCPAccessSkippedSummary(count: number, scopeName: string) {
+	return i18n.baseText('resourceActions.mcpAccess.summary.skipped', {
+		adjustToNumber: count,
+		interpolate: { count: String(count), scopeName },
+	});
+}
+
+function getMCPAccessOutcomeMessage(enabled: boolean, response: ToggleWorkflowsMcpAccessResponse) {
+	const scopeName = mcpAccessScope.value?.name ?? '';
+	const summaries: string[] = [];
+
+	if (response.updatedCount > 0) {
+		summaries.push(getMCPAccessUpdatedSummary(enabled, response.updatedCount, scopeName));
+	}
+
+	if (response.unchangedCount > 0) {
+		summaries.push(getMCPAccessUnchangedSummary(enabled, response.unchangedCount, scopeName));
+	}
+
+	if (response.skippedCount > 0) {
+		summaries.push(getMCPAccessSkippedSummary(response.skippedCount, scopeName));
+	}
+
+	if (summaries.length === 0) {
+		return i18n.baseText('resourceActions.mcpAccess.noWorkflows.message', {
+			interpolate: { link: settingsLink.value, scopeName },
+		});
+	}
+
+	return i18n.baseText('resourceActions.mcpAccess.outcome.message', {
+		interpolate: { link: settingsLink.value, summary: `${summaries.join('. ')}.` },
+	});
+}
+
+function showMCPAccessOutcomeToast(enabled: boolean, response: ToggleWorkflowsMcpAccessResponse) {
+	const hasUpdated = response.updatedCount > 0;
+	const hasSkipped = response.skippedCount > 0;
+	const hasUnchanged = response.unchangedCount > 0;
+	let title = i18n.baseText('resourceActions.mcpAccess.noWorkflows.title');
+	let type: 'info' | 'success' | 'warning' = 'info';
+
+	if (hasSkipped) {
+		title = i18n.baseText('resourceActions.mcpAccess.partial.title');
+		type = 'warning';
+	} else if (hasUpdated) {
+		title = enabled
+			? i18n.baseText('resourceActions.mcpAccess.success.enabled.title')
+			: i18n.baseText('resourceActions.mcpAccess.success.disabled.title');
+		type = 'success';
+	} else if (hasUnchanged) {
+		title = i18n.baseText('resourceActions.mcpAccess.noChanges.title');
+	}
 
 	toast.showToast({
 		title,
-		message,
+		message: getMCPAccessOutcomeMessage(enabled, response),
 		onClick: openSettingsFromToast,
-		type: 'success',
+		type,
 	});
 }
 
@@ -1478,7 +1534,7 @@ async function toggleMcpAccess(enabled: boolean) {
 			return;
 		}
 
-		showMCPAccessSuccessToast(enabled, response.updatedCount);
+		showMCPAccessOutcomeToast(enabled, response);
 	} catch {
 		showMCPAccessErrorToast(enabled);
 	}

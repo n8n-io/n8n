@@ -329,6 +329,8 @@ describe('McpSettingsController', () => {
 			const bulkResult = {
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [
@@ -357,6 +359,8 @@ describe('McpSettingsController', () => {
 			expect(result).toEqual({
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 0,
 				failedCount: 0,
 			});

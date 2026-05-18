@@ -26,10 +26,12 @@ const WORKFLOW_SETTINGS_FIELDS: Array<keyof WorkflowEntity> = ['id', 'settings']
 
 type BulkSetAvailableInMCPResult = {
 	updatedCount: number;
+	unchangedCount: number;
 	skippedCount: number;
 	failedCount: number;
 	changedWorkflows: WorkflowMCPAvailabilityChange[];
 	updatedIds?: string[];
+	unchangedIds?: string[];
 };
 
 type WorkflowMCPAvailabilityChange = {
@@ -98,10 +100,11 @@ export class McpSettingsService {
 		if (candidateIds.length === 0) {
 			return {
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: baselineSize,
 				failedCount: 0,
 				changedWorkflows: [],
-				...(isWorkflowIdsScope ? { updatedIds: [] } : {}),
+				...(isWorkflowIdsScope ? { updatedIds: [], unchangedIds: [] } : {}),
 			};
 		}
 
@@ -188,14 +191,13 @@ export class McpSettingsService {
 			}
 		}
 
-		const confirmedIds = [...writtenIds, ...noOpIds];
-
 		return {
-			updatedCount: confirmedIds.length,
-			skippedCount: Math.max(0, baselineSize - confirmedIds.length - failedCount),
+			updatedCount: writtenIds.length,
+			unchangedCount: noOpIds.length,
+			skippedCount: Math.max(0, baselineSize - writtenIds.length - noOpIds.length - failedCount),
 			failedCount,
 			changedWorkflows,
-			...(isWorkflowIdsScope ? { updatedIds: confirmedIds } : {}),
+			...(isWorkflowIdsScope ? { updatedIds: writtenIds, unchangedIds: noOpIds } : {}),
 		};
 	}
 
