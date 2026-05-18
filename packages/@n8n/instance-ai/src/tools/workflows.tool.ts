@@ -121,7 +121,6 @@ const updateVersionAction = z.object({
 const confirmationSuspendSchema = setupSuspendSchema.pick({
 	requestId: true,
 	message: true,
-	actionPhrase: true,
 	severity: true,
 });
 
@@ -333,8 +332,7 @@ async function handleDelete(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			actionPhrase: 'archive workflow',
-			message: `Archive "${workflowName}" (ID: ${input.workflowId})`,
+			message: `Archive workflow "${workflowName}" (ID: ${input.workflowId})? This will deactivate it if needed and can be undone later.`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -367,8 +365,7 @@ async function handleUnarchive(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			actionPhrase: 'restore archived workflow',
-			message: `Restore "${workflowName}" (ID: ${input.workflowId})`,
+			message: `Restore archived workflow "${workflowName}" (ID: ${input.workflowId})? This will make it visible again but will not publish it.`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -620,10 +617,9 @@ async function handlePublish(
 
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			actionPhrase: 'publish workflow',
 			message: input.versionId
-				? `Publish version "${input.versionId}" of "${workflowName}" (ID: ${input.workflowId})${dependencyNote}`
-				: `Publish "${workflowName}" (ID: ${input.workflowId})${dependencyNote}`,
+				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`
+				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -770,8 +766,7 @@ async function handleUnpublish(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			actionPhrase: 'unpublish workflow',
-			message: `Unpublish "${workflowName}" (ID: ${input.workflowId})`,
+			message: `Unpublish workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -836,8 +831,7 @@ async function handleRestoreVersion(
 
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			actionPhrase: 'restore workflow version',
-			message: `Restore to version ${versionLabel}`,
+			message: `Restore workflow to version ${versionLabel}? This will overwrite the current draft.`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -884,8 +878,7 @@ async function handleUpdateVersion(
 
 		await suspend?.({
 			requestId: nanoid(),
-			actionPhrase: 'update workflow version',
-			message: `Update version "${input.versionId}" — set ${summary}`,
+			message: `Update workflow version "${input.versionId}" — set ${summary}?`,
 			severity: 'info' as const,
 		});
 		return { success: false };

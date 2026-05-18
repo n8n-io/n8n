@@ -5487,7 +5487,6 @@
 	"instanceAi.confirmation.approve": "Allow once",
 	"instanceAi.confirmation.alwaysAllow": "Always allow",
 	"instanceAi.confirmation.alwaysAllowSuffix": "during this session",
-	"instanceAi.confirmation.allowPrompt": "Allow AI Assistant to {action}?",
 	"instanceAi.confirmation.deny": "Deny",
 	"instanceAi.confirmation.approved": "Allowed",
 	"instanceAi.confirmation.denied": "Denied",

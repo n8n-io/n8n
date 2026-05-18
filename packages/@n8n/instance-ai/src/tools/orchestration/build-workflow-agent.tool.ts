@@ -1749,7 +1749,6 @@ export const buildWorkflowAgentInputSchema = z.object({
 const buildWorkflowAgentSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
-	actionPhrase: z.string().optional(),
 	severity: z.literal('warning'),
 });
 
@@ -1890,8 +1889,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						const reason = input.reason?.trim();
 						await suspend?.({
 							requestId: nanoid(),
-							actionPhrase: 'edit workflow',
-							message: `Edit "${workflowName}" (ID: ${input.workflowId})`,
+							message: `Edit existing workflow "${workflowName}" (ID: ${input.workflowId})?${reason ? ` Reason: ${reason}` : ''}`,
 							severity: 'warning',
 						});
 						return { result: '', taskId: '' };

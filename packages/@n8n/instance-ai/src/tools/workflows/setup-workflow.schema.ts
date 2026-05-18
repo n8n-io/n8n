@@ -16,7 +16,6 @@ export type SetupRequest = InstanceAiWorkflowSetupNode;
 export const setupSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
-	actionPhrase: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 	setupRequests: z.array(workflowSetupNodeSchema),
 	workflowId: z.string(),
