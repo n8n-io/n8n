@@ -6,7 +6,7 @@ import NodeCredentials from '@/features/credentials/components/NodeCredentials.v
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { Workflow, type IConnections, type INodeProperties } from 'n8n-workflow';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
@@ -31,6 +31,17 @@ const selectedCredentialId = computed(() =>
 		? (ctx.credentialSelections.value[props.section.targetNodeName]?.[credentialType.value] ?? null)
 		: null,
 );
+
+const selectedCredentials = computed<INodeUi['credentials']>(() => {
+	const type = credentialType.value;
+	if (!type) return undefined;
+
+	const cred = selectedCredentialId.value
+		? credentialsStore.getCredentialById(selectedCredentialId.value)
+		: undefined;
+
+	return cred ? { [type]: { id: cred.id, name: cred.name } } : {};
+});
 
 const targetNodeNames = computed(() =>
 	props.section.credentialTargetNodes.map((node) => node.name),
@@ -79,12 +90,9 @@ function getRootParameterName(parameterName: string) {
 const displayNode = computed<INodeUi>(() => {
 	const node = ctx.getDisplayNode(props.section);
 	if (!credentialType.value) return node;
-	const cred = selectedCredentialId.value
-		? credentialsStore.getCredentialById(selectedCredentialId.value)
-		: undefined;
 	return {
 		...node,
-		credentials: cred ? { [credentialType.value]: { id: cred.id, name: cred.name } } : {},
+		credentials: selectedCredentials.value,
 	} as INodeUi;
 });
 

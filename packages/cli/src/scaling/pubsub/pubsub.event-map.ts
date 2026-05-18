@@ -1,4 +1,9 @@
-import type { ChatHubMessageStatus, PushMessage, WorkerStatus } from '@n8n/api-types';
+import type {
+	AgentCredentialIntegrationConfig,
+	ChatHubMessageStatus,
+	PushMessage,
+	WorkerStatus,
+} from '@n8n/api-types';
 import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
@@ -195,8 +200,7 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		type: string;
-		credentialId: string;
+		integration: AgentCredentialIntegrationConfig;
 		action: 'connect' | 'disconnect';
 	};
 
