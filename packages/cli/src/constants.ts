@@ -41,11 +41,11 @@ type BuildInfo = { commitHash: string; branch: string; buildDate: string };
 
 function readBuildInfo(): BuildInfo | undefined {
 	if (process.env.N8N_INCLUDE_BUILD_INFO !== 'true') return undefined;
-	return {
-		commitHash: process.env.N8N_BUILD_COMMIT_HASH ?? '',
-		branch: process.env.N8N_BUILD_BRANCH ?? '',
-		buildDate: process.env.N8N_BUILD_DATE ?? '',
-	};
+	const commitHash = process.env.N8N_BUILD_COMMIT_HASH ?? '';
+	const branch = process.env.N8N_BUILD_BRANCH ?? '';
+	const buildDate = process.env.N8N_BUILD_DATE ?? '';
+	if (!commitHash && !branch && !buildDate) return undefined;
+	return { commitHash, branch, buildDate };
 }
 
 export const BUILD_INFO = readBuildInfo();
