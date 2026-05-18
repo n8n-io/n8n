@@ -5,13 +5,6 @@ import { createVitestConfig } from './node.js';
 export const createVitestConfigWithDecorators = (options: InlineConfig = {}) => {
 	const baseConfig = createVitestConfig(options);
 	return mergeConfig(baseConfig, {
-		server: {
-			deps: {
-				// Inline all dependencies so SWC can transform TypeScript in node_modules
-				// (e.g. `@n8n/tournament`).
-				inline: [/.*/],
-			},
-		},
 		test: {
 			server: {
 				deps: {
