@@ -164,21 +164,7 @@ describe('PostHog', () => {
 			afterEach(() => {
 				// Mutated per test; reset so test ordering doesn't leak override
 				// state into unrelated cases.
-				globalConfig.evaluation.parallelExecutionEnabled = false;
 				globalConfig.evaluation.collectionsEnabled = false;
-			});
-
-			it('force-enables the parallel-execution flag when N8N_EVAL_PARALLEL_EXECUTION_ENABLED is set', async () => {
-				(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue({});
-				globalConfig.evaluation.parallelExecutionEnabled = true;
-
-				const ph = new PostHogClient(instanceSettings, globalConfig);
-				await ph.init();
-
-				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-				expect(flags).toMatchObject({ '080_eval_parallel_execution': true });
-				expect(flags).not.toHaveProperty('084_eval_collections');
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -191,23 +177,6 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '084_eval_collections': true });
-				expect(flags).not.toHaveProperty('080_eval_parallel_execution');
-			});
-
-			it('applies both eval overrides independently', async () => {
-				(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue({});
-				globalConfig.evaluation.parallelExecutionEnabled = true;
-				globalConfig.evaluation.collectionsEnabled = true;
-
-				const ph = new PostHogClient(instanceSettings, globalConfig);
-				await ph.init();
-
-				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-				expect(flags).toMatchObject({
-					'080_eval_parallel_execution': true,
-					'084_eval_collections': true,
-				});
 			});
 
 			it('leaves flags untouched when no override is configured', async () => {

@@ -1,5 +1,6 @@
 import { BrowserConnection } from '../connection';
 import type { BrowserToolkit, Config, ToolDefinition } from '../types';
+import { createCredentialTools } from './credential';
 import { createInspectionTools } from './inspection';
 import { createInteractionTools } from './interaction';
 import { createNavigationTools } from './navigation';
@@ -19,6 +20,7 @@ export function createBrowserTools(config?: Partial<Config>): BrowserToolkit {
 		...createInspectionTools(connection),
 		...createWaitTools(connection),
 		...createStateTools(connection),
+		...createCredentialTools(connection),
 	];
 
 	return { tools, connection };
