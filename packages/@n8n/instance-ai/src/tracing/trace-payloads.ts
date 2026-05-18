@@ -516,6 +516,24 @@ function firstNumberAttribute(
 	return undefined;
 }
 
+function calculateInputTokenAccounting(
+	inputTokens: number | undefined,
+	cacheReadTokens: number,
+	cacheCreationTokens: number,
+): { regularInputTokens: number; totalInputTokens: number } {
+	const cachedInputTokens = cacheReadTokens + cacheCreationTokens;
+	const observedInputTokens = inputTokens ?? 0;
+	const regularInputTokens =
+		observedInputTokens >= cachedInputTokens
+			? Math.max(0, observedInputTokens - cachedInputTokens)
+			: observedInputTokens;
+
+	return {
+		regularInputTokens,
+		totalInputTokens: regularInputTokens + cachedInputTokens,
+	};
+}
+
 function buildLangSmithUsageMetadata(
 	attributes: Record<string, unknown>,
 ): Record<string, unknown> | undefined {
@@ -572,10 +590,11 @@ function buildLangSmithUsageMetadata(
 		]) ??
 		0;
 
-	const regularInputTokens =
-		inputTokens === undefined
-			? 0
-			: Math.max(0, inputTokens - cacheReadTokens - cacheCreationTokens);
+	const { totalInputTokens } = calculateInputTokenAccounting(
+		inputTokens,
+		cacheReadTokens,
+		cacheCreationTokens,
+	);
 	const inputTokenDetails: Record<string, number> = {};
 	if (cacheReadTokens > 0) {
 		inputTokenDetails.cache_read = cacheReadTokens;
@@ -586,9 +605,9 @@ function buildLangSmithUsageMetadata(
 	}
 
 	return {
-		input_tokens: regularInputTokens,
+		input_tokens: totalInputTokens,
 		output_tokens: outputTokens,
-		total_tokens: regularInputTokens + outputTokens,
+		total_tokens: totalInputTokens + outputTokens,
 		...(Object.keys(inputTokenDetails).length > 0
 			? { input_token_details: inputTokenDetails }
 			: {}),
@@ -606,7 +625,6 @@ function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>
 		'ai.usage.inputTokens',
 		'ai.usage.promptTokens',
 	]);
-	const regularInputTokens = numberFromAttribute(usageMetadata.input_tokens) ?? 0;
 	const outputTokens = numberFromAttribute(usageMetadata.output_tokens) ?? 0;
 	const inputTokenDetails = isRecord(usageMetadata.input_token_details)
 		? usageMetadata.input_token_details
@@ -616,15 +634,22 @@ function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>
 		numberFromAttribute(inputTokenDetails.cache_creation) ??
 		numberFromAttribute(inputTokenDetails.ephemeral_5m_input_tokens) ??
 		0;
+	const totalInputTokens = numberFromAttribute(usageMetadata.input_tokens) ?? 0;
+	const { regularInputTokens } = calculateInputTokenAccounting(
+		inputTokens,
+		cacheReadTokens,
+		cacheCreationTokens,
+	);
 
-	attributes[GEN_AI_USAGE_INPUT_TOKENS] = regularInputTokens;
+	attributes[GEN_AI_USAGE_INPUT_TOKENS] = totalInputTokens;
 	attributes[GEN_AI_USAGE_OUTPUT_TOKENS] = outputTokens;
-	attributes[GEN_AI_USAGE_TOTAL_TOKENS] = regularInputTokens + outputTokens;
-	attributes['ai.usage.inputTokens'] = regularInputTokens;
+	attributes[GEN_AI_USAGE_TOTAL_TOKENS] = totalInputTokens + outputTokens;
+	attributes['ai.usage.inputTokens'] = totalInputTokens;
 	attributes[LANGSMITH_USAGE_METADATA] = JSON.stringify(usageMetadata);
 	if (inputTokens !== undefined) {
 		attributes['langsmith.metadata.anthropic_original_input_tokens'] = inputTokens;
 	}
+	attributes['langsmith.metadata.anthropic_total_input_tokens'] = totalInputTokens;
 	attributes['langsmith.metadata.anthropic_regular_input_tokens'] = regularInputTokens;
 	attributes['langsmith.metadata.anthropic_cache_read_input_tokens'] = cacheReadTokens;
 	attributes['langsmith.metadata.anthropic_cache_creation_input_tokens'] = cacheCreationTokens;

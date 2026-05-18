@@ -521,13 +521,13 @@ describe('createInstanceAiTraceContext', () => {
 				]),
 				'ai.response.text': 'Authorization: Bearer [redacted]',
 				'ai.telemetry.metadata.thread_id': 'thread-1',
-				'ai.usage.inputTokens': 56,
+				'ai.usage.inputTokens': 123,
 				'ai.usage.outputTokens': 45,
 				'ai.usage.cachedInputTokens': 67,
 				'ai.usage.inputTokenDetails.cacheReadTokens': 67,
-				'gen_ai.usage.input_tokens': 56,
+				'gen_ai.usage.input_tokens': 123,
 				'gen_ai.usage.output_tokens': 45,
-				'gen_ai.usage.total_tokens': 101,
+				'gen_ai.usage.total_tokens': 168,
 				'gen_ai.usage.input_token_details': JSON.stringify({
 					cache_read: 67,
 					cache_creation: 0,
@@ -535,9 +535,9 @@ describe('createInstanceAiTraceContext', () => {
 					original_input_tokens: 123,
 				}),
 				'langsmith.usage_metadata': JSON.stringify({
-					input_tokens: 56,
+					input_tokens: 123,
 					output_tokens: 45,
-					total_tokens: 101,
+					total_tokens: 168,
 					input_token_details: { cache_read: 67 },
 				}),
 				'headers.authorization': '[redacted]',
@@ -546,6 +546,7 @@ describe('createInstanceAiTraceContext', () => {
 				'langsmith.span.kind': 'llm',
 				'langsmith.is_root': true,
 				'langsmith.metadata.anthropic_original_input_tokens': 123,
+				'langsmith.metadata.anthropic_total_input_tokens': 123,
 				'langsmith.metadata.anthropic_regular_input_tokens': 56,
 				'langsmith.metadata.anthropic_cache_read_input_tokens': 67,
 				'langsmith.metadata.anthropic_cache_creation_input_tokens': 0,
@@ -554,6 +555,39 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(redacted.attributes['ai.operationId']).toBeUndefined();
 		expect(redacted.attributes['instance_ai.usage.ai.usage.inputTokens']).toBeUndefined();
+	});
+
+	it('uses cache-only Anthropic input tokens for LangSmith prompt totals', () => {
+		const span = {
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.usage.inputTokens': 0,
+				'ai.usage.outputTokens': 12,
+				'ai.usage.cachedInputTokens': 100,
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+
+		expect(redacted.attributes).toEqual(
+			expect.objectContaining({
+				'ai.usage.inputTokens': 100,
+				'gen_ai.usage.input_tokens': 100,
+				'gen_ai.usage.output_tokens': 12,
+				'gen_ai.usage.total_tokens': 112,
+				'langsmith.usage_metadata': JSON.stringify({
+					input_tokens: 100,
+					output_tokens: 12,
+					total_tokens: 112,
+					input_token_details: { cache_read: 100 },
+				}),
+				'langsmith.metadata.anthropic_total_input_tokens': 100,
+				'langsmith.metadata.anthropic_regular_input_tokens': 0,
+				'langsmith.metadata.anthropic_cache_read_input_tokens': 100,
+			}),
+		);
 	});
 
 	it('moves counted usage attributes off non-LLM spans', () => {
