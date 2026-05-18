@@ -2,6 +2,7 @@ import type { Workspace } from '@mastra/core/workspace';
 import { nanoid } from 'nanoid';
 
 import type { BuilderWorkspace } from '../workspace/builder-sandbox-factory';
+import type { FilesystemMutationGuardSetter } from '../workspace/guarded-filesystem';
 
 interface BuilderSandboxSessionInternal {
 	sessionId: string;
@@ -13,6 +14,7 @@ interface BuilderSandboxSessionInternal {
 	workspace: Workspace;
 	root: string;
 	cleanup: () => Promise<void>;
+	setFilesystemMutationGuard?: FilesystemMutationGuardSetter;
 	busy: boolean;
 	createdAt: number;
 	updatedAt: number;
@@ -29,6 +31,7 @@ export interface BuilderSandboxSession {
 	builderResourceId: string;
 	workspace: Workspace;
 	root: string;
+	setFilesystemMutationGuard?: FilesystemMutationGuardSetter;
 	busy: boolean;
 	createdAt: number;
 	updatedAt: number;
@@ -50,7 +53,7 @@ function sessionKey(threadId: string, value: string): string {
 }
 
 function toPublicSession(session: BuilderSandboxSessionInternal): BuilderSandboxSession {
-	return {
+	const publicSession: BuilderSandboxSession = {
 		sessionId: session.sessionId,
 		threadId: session.threadId,
 		workflowId: session.workflowId,
@@ -64,6 +67,10 @@ function toPublicSession(session: BuilderSandboxSessionInternal): BuilderSandbox
 		updatedAt: session.updatedAt,
 		expiresAt: session.expiresAt,
 	};
+	if (session.setFilesystemMutationGuard) {
+		publicSession.setFilesystemMutationGuard = session.setFilesystemMutationGuard;
+	}
+	return publicSession;
 }
 
 export class BuilderSandboxSessionRegistry {
@@ -109,6 +116,9 @@ export class BuilderSandboxSessionRegistry {
 			updatedAt: now,
 			expiresAt: now + this.ttlMs,
 		};
+		if (input.builderWorkspace.setFilesystemMutationGuard) {
+			session.setFilesystemMutationGuard = input.builderWorkspace.setFilesystemMutationGuard;
+		}
 
 		this.sessions.set(session.sessionId, session);
 		if (session.workflowId) {

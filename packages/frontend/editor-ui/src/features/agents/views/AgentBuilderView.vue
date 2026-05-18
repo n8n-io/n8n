@@ -10,6 +10,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { deepCopy } from 'n8n-workflow';
@@ -20,11 +21,12 @@ import {
 	createAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolRef, AgentSkill } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolConfig, AgentSkill } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
@@ -57,6 +59,7 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -65,6 +68,8 @@ const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
 const agentId = computed(() => route.params.agentId as string);
+
+const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
 // UI state
 const {
@@ -86,6 +91,10 @@ const {
 const initialized = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
+
+watch(agentName, (name) => {
+	documentTitle.set(name || locale.baseText('agents.heading'));
+});
 const {
 	activeChatSessionId,
 	continueSessionId,
@@ -131,11 +140,11 @@ const builderTelemetry = useAgentBuilderTelemetry({
 });
 
 /**
- * An agent is considered "built" once it has instructions configured.
+ * The backend owns runnable validation so the Test tab matches the chat endpoint.
  * In that state the home screen + send flow routes to the chat endpoint
  * instead of the builder.
  */
-const isBuilt = computed(() => !!localConfig.value?.instructions?.trim());
+const isBuilt = computed(() => agent.value?.isRunnable === true);
 
 function getMaxChatPanelWidth(containerWidth: number): number {
 	return Math.max(
@@ -183,13 +192,15 @@ const projectName = computed<string | null>(() => {
 	return match?.name ?? null;
 });
 
-async function fetchAgent() {
-	// Capture the target id at call-time so a fetch that resolves after the
+async function fetchAgent(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
+	// Capture the target at call-time so a fetch that resolves after the
 	// user has switched to a different agent is dropped instead of clobbering
 	// the new agent's resource state.
-	const targetAgentId = agentId.value;
-	const data = await getAgent(rootStore.restApiContext, projectId.value, targetAgentId);
-	if (agentId.value !== targetAgentId) return;
+	const data = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+	if (agentId.value !== targetAgentId || projectId.value !== targetProjectId) return;
 	agent.value = data;
 	agentName.value = data.name;
 }
@@ -265,9 +276,8 @@ function bindTestSession() {
 
 function setChatMode(next: ChatMode) {
 	if (chatMode.value === next) return;
-	// Test is locked until the agent has instructions — see chatModeOptions
-	// which surfaces a tooltip explaining why. No-op on the click so the
-	// user doesn't get bounced into a half-configured chat.
+	// Test is locked until the backend says the agent is runnable. No-op on
+	// the click so the user doesn't get bounced into a half-configured chat.
 	if (next === 'test' && !isBuilt.value) return;
 	chatMode.value = next;
 	if (next === 'test') {
@@ -293,11 +303,10 @@ function setChatMode(next: ChatMode) {
 }
 
 /**
- * Test is locked until the agent has instructions. Before that, chatting
- * would be meaningless — the agent has nothing to act on. Locking the tab
- * (rather than silently redirecting home→Build) keeps the UX honest: users
- * see WHY they can't chat yet instead of getting bounced to a different
- * surface after sending a message.
+ * Test is locked until the persisted config passes backend runnable validation.
+ * Locking the tab (rather than silently redirecting home→Build) keeps the UX
+ * honest: users see WHY they can't chat yet instead of getting bounced to a
+ * different surface after sending a message.
  *
  * This also closes the first-build cancellation hole: a mid-stream first
  * build is always `!isBuilt`, so the Test tab stays locked while the build
@@ -343,6 +352,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
+	await fetchAgent(snapshot.projectId, snapshot.agentId);
 }
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
@@ -451,7 +461,11 @@ async function onConfigUpdated() {
 	builderTelemetry.trackSkillsAdded();
 }
 
-const headerActions = [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }];
+const headerActions = computed(() =>
+	canDeleteAgent.value
+		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
+		: [],
+);
 
 async function onHeaderAction(action: string) {
 	if (action === 'delete') {
@@ -622,7 +636,7 @@ function onOpenAddToolModal() {
 			tools: localConfig.value?.tools ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolRef[]) => onConfigFieldUpdate({ tools }),
+			onConfirm: (tools: AgentJsonToolConfig[]) => onConfigFieldUpdate({ tools }),
 		},
 	});
 }
@@ -658,9 +672,9 @@ function onOpenToolFromList(index: number) {
 			projectId: projectId.value,
 			agentId: agentId.value,
 			existingToolNames: tools
-				.map((toolRef, i) => (i === index ? null : toolRef.name))
+				.map((toolRef, i) => (i === index || toolRef.type === 'custom' ? null : toolRef.name))
 				.filter((name): name is string => !!name),
-			onConfirm: (updatedTool: AgentJsonToolRef) => {
+			onConfirm: (updatedTool: AgentJsonToolConfig) => {
 				const nextTools = [...(localConfig.value?.tools ?? [])];
 				nextTools[index] = updatedTool;
 				onConfigFieldUpdate({ tools: nextTools });
@@ -783,7 +797,7 @@ function onOpenAddSkillModal() {
 	});
 }
 
-function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
+function onQuickActionAddTool(tools: AgentJsonToolConfig[]) {
 	onConfigFieldUpdate({ tools });
 }
 
@@ -888,6 +902,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:is-build-chat-streaming="isBuildChatStreaming"
 					:is-published="Boolean(agent?.publishedVersion)"
 					:is-full-width="isChatFullWidth"
+					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"
 					@session-select="onSessionPick"
 					@new-chat="onNewChat"
@@ -915,6 +930,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:applied-skills="appliedSkills"
 				:connected-triggers="connectedTriggers"
 				:is-build-chat-streaming="isBuildChatStreaming"
+				:can-edit-agent="canEditAgent"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
 				@update:config="onConfigFieldUpdate"

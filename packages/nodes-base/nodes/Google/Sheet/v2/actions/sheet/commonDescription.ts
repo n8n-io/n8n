@@ -1,4 +1,17 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
+
+/**
+ * Builder hint shared by every Google Sheets `columns` resourceMapper parameter
+ * (append, appendOrUpdate, update). The full resourceMapper object shape is
+ * non-obvious, and a bare string like `'autoMapInputData'` silently fails
+ * validation. The matching `<patterns>` example lives on the node-level
+ * `builderHint.extraTypeDefContent` in `Google/Sheet/GoogleSheets.node.ts`,
+ * gated by `displayOptions: { show: { resource: ['sheet'], operation: [...] } }`.
+ */
+export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
+	propertyHint:
+		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation.",
+};
 
 export const dataLocationOnSheet: INodeProperties = {
 	displayName: 'Data Location on Sheet',

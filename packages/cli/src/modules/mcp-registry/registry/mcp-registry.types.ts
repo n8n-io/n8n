@@ -7,6 +7,7 @@ export type McpRegistryServer = {
 	slug: string;
 	title: string;
 	description: string;
+	tagline: string;
 	version: string;
 	updatedAt: string;
 	icons: McpRegistryIcon[];
