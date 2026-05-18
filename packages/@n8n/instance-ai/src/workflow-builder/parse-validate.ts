@@ -10,6 +10,7 @@ import { parseWorkflowCodeToBuilder, validateWorkflow } from '@n8n/workflow-sdk'
 import type { INodeTypes } from 'n8n-workflow';
 
 import { stripImportStatements } from './extract-code';
+import { checkSemanticIssues } from './semantic-checks';
 import type { ParseAndValidateResult, ValidationWarning } from './types';
 
 export interface ParseAndValidateOptions {
@@ -86,6 +87,12 @@ export function parseAndValidate(
 		const schemaValidation = validateWorkflow(json, { nodeTypesProvider, strictMode: true });
 		collectValidationIssues(schemaValidation.errors, allWarnings);
 		collectValidationIssues(schemaValidation.warnings, allWarnings);
+
+		// Stage 3: Defensive semantic checks for known runtime-failure patterns
+		// that slip past the Zod schema (e.g. trigger-data $json refs after a
+		// $json-clobbering node, parallel branches into Merge with no onError
+		// tolerance, resource-mapper match column with volatile value).
+		collectValidationIssues(checkSemanticIssues(json), allWarnings);
 
 		return { workflow: json, warnings: allWarnings };
 	} catch (error) {

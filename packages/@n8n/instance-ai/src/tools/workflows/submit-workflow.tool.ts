@@ -21,6 +21,7 @@ import { appendGeneratedWorkflowIdToRootMetadata } from '../../tracing/langsmith
 import type { InstanceAiContext, InstanceAiTraceRun } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
+import { checkSemanticIssues } from '../../workflow-builder/semantic-checks';
 import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
@@ -370,6 +371,12 @@ export function createSubmitWorkflowTool(
 					message: issue.message,
 					nodeName: issue.nodeName,
 				});
+			}
+
+			// Defensive semantic checks for known runtime-failure patterns that
+			// slip past the Zod schema (mirrors parse-validate's stage 3).
+			for (const issue of checkSemanticIssues(buildOutput.workflow)) {
+				allWarnings.push(issue);
 			}
 
 			const { errors, informational } = partitionWarnings(allWarnings);
