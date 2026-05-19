@@ -96,6 +96,18 @@ describe('sql-utils', () => {
 			expect(result[0].updatedAt).toEqual(new Date('2024-01-15T10:30:00Z'));
 		});
 
+		it('should normalize date values from postgres TIMESTAMP strings with microseconds', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const dateString = '2024-01-15 10:30:00.000000';
+			const rows = [{ id: 1, birthday: dateString, createdAt: dateString, updatedAt: dateString }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toEqual(new Date('2024-01-15T10:30:00Z'));
+			expect(result[0].createdAt).toEqual(new Date('2024-01-15T10:30:00Z'));
+			expect(result[0].updatedAt).toEqual(new Date('2024-01-15T10:30:00Z'));
+		});
+
 		it('should normalize date values from timestamps', () => {
 			const columns = [createColumn('birthday', 'date')];
 			const timestamp = 1705318200000; // 2024-01-15T10:30:00Z
@@ -218,6 +230,24 @@ describe('sql-utils', () => {
 			const query = addColumnQuery(tableName, column, 'postgres');
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "email" DOUBLE PRECISION');
+		});
+
+		it('should use TIMESTAMPTZ for date columns in postgres to preserve timezone info', () => {
+			const tableName = 'data_table_user_abc';
+			const column = { name: 'birthday', type: 'date' as const };
+
+			const query = addColumnQuery(tableName, column, 'postgres');
+
+			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "birthday" TIMESTAMPTZ');
+		});
+
+		it('should use DATETIME for date columns in sqlite', () => {
+			const tableName = 'data_table_user_abc';
+			const column = { name: 'birthday', type: 'date' as const };
+
+			const query = addColumnQuery(tableName, column, 'sqlite');
+
+			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "birthday" DATETIME');
 		});
 	});
 

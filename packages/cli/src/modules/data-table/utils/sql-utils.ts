@@ -61,7 +61,7 @@ function dataTableColumnTypeToSql(
 			return 'BOOLEAN';
 		case 'date':
 			if (dbType === 'postgres') {
-				return 'TIMESTAMP';
+				return 'TIMESTAMPTZ';
 			}
 			return 'DATETIME';
 		default:
@@ -205,8 +205,15 @@ export function normalizeDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
 
 	if (typeof value === 'string') {
-		// sqlite returns date strings without timezone information, but we store them as UTC
-		const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+		// SQLite returns date strings without timezone info; Postgres TIMESTAMP (legacy) returns
+		// space-separated strings like "2026-05-19 18:15:00.000000". Normalize both to valid ISO
+		// before appending 'Z' to treat as UTC, since we always store in UTC.
+		const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+		const withZ =
+			normalized.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(normalized)
+				? normalized
+				: normalized + 'Z';
+		const parsed = new Date(withZ);
 		if (!isNaN(parsed.getTime())) return parsed;
 	}
 
