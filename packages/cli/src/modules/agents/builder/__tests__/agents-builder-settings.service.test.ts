@@ -356,6 +356,17 @@ describe('AgentsBuilderSettingsService', () => {
 			).resolves.not.toThrow();
 		});
 
+		it('accepts mode=custom for nvidia', async () => {
+			await expect(
+				service.updateAdminSettings({
+					mode: 'custom',
+					provider: 'nvidia',
+					credentialId: 'cred-1',
+					modelName: 'nvidia/llama-3.3-nemotron-super-49b-v1',
+				}),
+			).resolves.not.toThrow();
+		});
+
 		it('rejects mode=custom with unknown provider', async () => {
 			// Provider shape (non-empty string) is enforced upstream by the Zod
 			// schema on the controller. The service only checks the runtime

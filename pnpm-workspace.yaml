@@ -13,6 +13,7 @@ catalog:
   '@ai-sdk/gateway': ^3.0.104
   '@ai-sdk/groq': ^3.0.35
   '@ai-sdk/mistral': ^3.0.30
+  '@ai-sdk/openai-compatible': ^2.0.37
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1

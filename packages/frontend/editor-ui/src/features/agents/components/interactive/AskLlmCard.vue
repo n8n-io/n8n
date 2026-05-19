@@ -2,20 +2,25 @@
 import { computed, watch } from 'vue';
 import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
 import type { AskLlmResume } from '@n8n/api-types';
-import type { ChatHubConversationModel, ChatHubProvider, ChatModelsResponse } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
-import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import { CHATHUB_TO_CATALOG, AGENT_UNSUPPORTED_PROVIDERS } from '../../provider-mapping';
+import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
+import AgentModelSelector from '../AgentModelSelector.vue';
 import { sanitizeModelId } from '../../utils/model-string';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useModelCatalog } from '../../composables/useModelCatalog';
+import {
+	type AgentModelProvider,
+	type AgentModelSelection,
+	type AgentModelsByProvider,
+} from '../../model-providers';
 
 const props = defineProps<{
 	purpose?: string;
 	disabled?: boolean;
 	resolvedValue?: AskLlmResume;
+	projectId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -29,47 +34,41 @@ const emit = defineEmits<{
 	];
 }>();
 
+const i18n = useI18n();
 const usersStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
-const chatStore = useChatStore();
-const { credentialsByProvider, selectCredential } = useChatCredentials(
+const projectsStore = useProjectsStore();
+const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 );
 
-// Fetch models when credentials are ready — same pattern as AgentSettingsSidebar
+const projectId = computed(() => props.projectId ?? projectsStore.personalProject?.id ?? '');
+
 watch(
-	credentialsByProvider,
-	(credentials) => {
-		if (credentials) {
-			void chatStore.fetchAgents(credentials);
-		}
+	projectId,
+	(id) => {
+		if (id) void ensureLoaded(id);
 	},
 	{ immediate: true },
 );
 
-// Filter out providers the agents runtime doesn't support
-const filteredAgents = computed<ChatModelsResponse>(
-	() =>
-		Object.fromEntries(
-			Object.entries(chatStore.agents).filter(
-				([provider]) => !AGENT_UNSUPPORTED_PROVIDERS.has(provider),
-			),
-		) as ChatModelsResponse,
-);
+const filteredAgents = computed<AgentModelsByProvider>(() => getModelsForPicker());
 
-function onModelChange(selection: ChatHubConversationModel) {
-	if (!isLlmProviderModel(selection) || props.disabled) return;
+function onModelChange(selection: AgentModelSelection) {
+	if (props.disabled) return;
 
-	const catalogProvider = CHATHUB_TO_CATALOG[selection.provider] ?? selection.provider;
 	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
+	if (!credentialId) return;
+
 	const credentialName =
 		credentialsStore.allCredentials.find((c) => c.id === credentialId)?.name ?? '';
-	const model = sanitizeModelId(catalogProvider, selection.model);
+	const model = sanitizeModelId(selection.provider, selection.model);
 
-	emit('submit', { provider: catalogProvider, model, credentialId, credentialName });
+	emit('submit', { provider: selection.provider, model, credentialId, credentialName });
 }
 
-function onSelectCredential(provider: ChatHubProvider, credentialId: string | null) {
+function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
 }
 </script>
@@ -78,7 +77,7 @@ function onSelectCredential(provider: ChatHubProvider, credentialId: string | nu
 	<N8nCard :class="[$style.card, disabled && $style.disabled]" data-testid="ask-llm-card">
 		<div :class="$style.cardBody">
 			<N8nText tag="p" bold :class="$style.purpose">
-				{{ purpose ?? 'Choose a model' }}
+				{{ purpose ?? i18n.baseText('agents.askLlm.chooseModel') }}
 			</N8nText>
 
 			<!-- Resolved state: show what was selected instead of the live picker -->
@@ -93,13 +92,12 @@ function onSelectCredential(provider: ChatHubProvider, credentialId: string | nu
 			</div>
 
 			<!-- Live picker: shown when not yet resolved -->
-			<ModelSelector
+			<AgentModelSelector
 				v-else
-				:selected-agent="null"
-				:include-custom-agents="false"
+				:selected-model="null"
 				:credentials="credentialsByProvider"
-				:agents="filteredAgents"
-				:is-loading="false"
+				:models-by-provider="filteredAgents"
+				:is-loading="isLoading"
 				:warn-missing-credentials="true"
 				horizontal
 				@change="onModelChange"

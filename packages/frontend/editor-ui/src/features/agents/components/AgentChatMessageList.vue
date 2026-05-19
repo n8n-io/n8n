@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
-import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import {
 	buildDisplayGroups,
 	type ChatMessage,
@@ -11,6 +9,8 @@ import {
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import { CHAT_MESSAGE_STATUS } from '../constants';
+import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
+import AgentTypingIndicator from './AgentTypingIndicator.vue';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -152,13 +152,10 @@ watch(
 						]"
 					>
 						<div :class="$style.markdownContent">
-							<ChatMarkdownChunk
-								:source="{ type: 'text', content: group.finalMessage.content }"
-								@open-artifact="() => {}"
-							/>
+							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
-					<ChatTypingIndicator
+					<AgentTypingIndicator
 						v-if="
 							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.finalMessage.content &&
@@ -199,10 +196,7 @@ watch(
 						]"
 					>
 						<div :class="$style.markdownContent">
-							<ChatMarkdownChunk
-								:source="{ type: 'text', content: group.message.content }"
-								@open-artifact="() => {}"
-							/>
+							<AgentMarkdownChunk :source="group.message.content" />
 						</div>
 					</div>
 
@@ -217,7 +211,7 @@ watch(
 							@submit="onInteractiveSubmit(group.message.interactive, $event)"
 						/>
 					</div>
-					<ChatTypingIndicator
+					<AgentTypingIndicator
 						v-if="
 							group.message.role === 'assistant' &&
 							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
@@ -232,7 +226,7 @@ watch(
 
 		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
 			<div :class="$style.content">
-				<ChatTypingIndicator :class="$style.typingIndicator" />
+				<AgentTypingIndicator :class="$style.typingIndicator" />
 			</div>
 		</div>
 	</div>

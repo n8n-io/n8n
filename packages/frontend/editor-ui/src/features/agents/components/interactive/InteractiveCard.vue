@@ -59,6 +59,7 @@ function onSubmit(resumeData: unknown) {
 		:purpose="payload.input.purpose"
 		:disabled="disabled"
 		:resolved-value="payload.resolvedValue"
+		:project-id="projectId"
 		@submit="onSubmit"
 	/>
 	<AskQuestionCard

@@ -22,6 +22,34 @@ vi.mock('@n8n/design-system', () => ({
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
 }));
 
+vi.mock('../components/AgentAdvancedPanel.vue', () => ({
+	default: { name: 'AgentAdvancedPanel', template: '<div />' },
+}));
+
+vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
+	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
+}));
+
+vi.mock('../components/AgentIdentityHeader.vue', () => ({
+	default: { name: 'AgentIdentityHeader', template: '<div />' },
+}));
+
+vi.mock('../components/AgentInfoPanel.vue', () => ({
+	default: { name: 'AgentInfoPanel', template: '<div />' },
+}));
+
+vi.mock('../components/AgentJsonEditor.vue', () => ({
+	default: { name: 'AgentJsonEditor', template: '<div />' },
+}));
+
+vi.mock('../components/AgentPanelHeader.vue', () => ({
+	default: { name: 'AgentPanelHeader', template: '<div />' },
+}));
+
+vi.mock('../views/AgentSessionsListView.vue', () => ({
+	default: { name: 'AgentSessionsListView', template: '<div />' },
+}));
+
 async function mountColumn() {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'

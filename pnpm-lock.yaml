@@ -27,6 +27,9 @@ catalogs:
     '@ai-sdk/mistral':
       specifier: ^3.0.30
       version: 3.0.30
+    '@ai-sdk/openai-compatible':
+      specifier: ^2.0.37
+      version: 2.0.37
     '@codemirror/autocomplete':
       specifier: 6.20.0
       version: 6.20.0
@@ -637,6 +640,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.41
         version: 3.0.47(zod@3.25.67)
+      '@ai-sdk/openai-compatible':
+        specifier: 'catalog:'
+        version: 2.0.37(zod@3.25.67)
       '@ai-sdk/provider-utils':
         specifier: ^4.0.21
         version: 4.0.21(zod@3.25.67)

@@ -1,46 +1,43 @@
 <script setup lang="ts">
 import { AGENT_BUILDER_DEFAULT_MODEL } from '@n8n/api-types';
-import type {
-	ChatHubConversationModel,
-	ChatHubProvider,
-	ChatModelDto,
-	ChatModelsResponse,
-} from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
-import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
+import AgentModelSelector from '../AgentModelSelector.vue';
 import { computed, watch } from 'vue';
 import { useToast } from '@/app/composables/useToast';
-import {
-	AGENT_UNSUPPORTED_PROVIDERS,
-	CATALOG_TO_CHATHUB,
-	CHATHUB_TO_CATALOG,
-} from '../../provider-mapping';
 import { useAgentBuilderSettingsStore } from '../../agentBuilderSettings.store';
 import { sanitizeModelId } from '../../utils/model-string';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useModelCatalog } from '../../composables/useModelCatalog';
+import {
+	type AgentModelOption,
+	type AgentModelProvider,
+	type AgentModelSelection,
+	isAgentModelProvider,
+	type AgentModelsByProvider,
+} from '../../model-providers';
 
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const chatStore = useChatStore();
+const projectsStore = useProjectsStore();
 const toast = useToast();
 const store = useAgentBuilderSettingsStore();
+const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
-const { credentialsByProvider, selectCredential } = useChatCredentials(
+const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 );
 
+const projectId = computed(() => projectsStore.personalProject?.id ?? '');
+
 watch(
-	credentialsByProvider,
-	(credentials) => {
-		if (credentials) {
-			void chatStore.fetchAgents(credentials);
-		}
+	projectId,
+	(id) => {
+		if (id) void ensureLoaded(id);
 	},
 	{ immediate: true },
 );
@@ -60,39 +57,32 @@ const showModePicker = computed(() => isProxyAvailable.value);
  */
 const showCustomPicker = computed(() => store.mode === 'custom' || !isProxyAvailable.value);
 
-const filteredAgents = computed<ChatModelsResponse>(
-	() =>
-		Object.fromEntries(
-			Object.entries(chatStore.agents).filter(
-				([provider]) => !AGENT_UNSUPPORTED_PROVIDERS.has(provider),
-			),
-		) as ChatModelsResponse,
-);
+const filteredAgents = computed<AgentModelsByProvider>(() => getModelsForPicker());
 
-const selectedAgent = computed<ChatModelDto | null>(() => {
+const selectedAgent = computed<AgentModelOption | null>(() => {
 	const settings = store.effectiveSettings;
 	if (settings.mode !== 'custom') return null;
-	const chatHubProvider = CATALOG_TO_CHATHUB[settings.provider];
-	if (!chatHubProvider) return null;
+	if (!isAgentModelProvider(settings.provider)) return null;
+
+	const registryEntry = filteredAgents.value[settings.provider]?.models.find(
+		(model) => model.model === settings.modelName,
+	);
+	if (registryEntry) return registryEntry;
+
 	return {
-		model: {
-			provider: chatHubProvider,
-			model: settings.modelName,
-		} as ChatHubConversationModel,
+		provider: settings.provider,
+		model: settings.modelName,
 		name: settings.modelName,
 		description: null,
-		icon: null,
-		updatedAt: null,
 		createdAt: null,
-		metadata: {} as ChatModelDto['metadata'],
-		groupName: null,
-		groupIcon: null,
+		metadata: {
+			functionCalling: false,
+			available: true,
+		},
 	};
 });
 
-function onModelChange(selection: ChatHubConversationModel) {
-	if (!isLlmProviderModel(selection)) return;
-	const catalogProvider = CHATHUB_TO_CATALOG[selection.provider] ?? selection.provider;
+function onModelChange(selection: AgentModelSelection) {
 	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
 	if (!credentialId) {
 		toast.showMessage({
@@ -103,17 +93,18 @@ function onModelChange(selection: ChatHubConversationModel) {
 		return;
 	}
 	store.setCustomSelection({
-		provider: catalogProvider,
+		provider: selection.provider,
 		credentialId,
-		modelName: sanitizeModelId(catalogProvider, selection.model),
+		modelName: sanitizeModelId(selection.provider, selection.model),
 	});
 }
 
-function onSelectCredential(provider: ChatHubProvider, credentialId: string | null) {
+function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	if (!credentialId) return;
 	selectCredential(provider, credentialId);
 	const settings = store.effectiveSettings;
 	if (settings.mode !== 'custom') return;
+	if (settings.provider !== provider) return;
 	store.setCustomSelection({
 		provider: settings.provider,
 		credentialId,
@@ -206,12 +197,11 @@ function onCancel() {
 		</div>
 
 		<div v-if="showCustomPicker" :class="$style.picker">
-			<ModelSelector
-				:selected-agent="selectedAgent"
-				:include-custom-agents="false"
+			<AgentModelSelector
+				:selected-model="selectedAgent"
 				:credentials="credentialsByProvider"
-				:agents="filteredAgents"
-				:is-loading="false"
+				:models-by-provider="filteredAgents"
+				:is-loading="isLoading"
 				:warn-missing-credentials="true"
 				horizontal
 				@change="onModelChange"

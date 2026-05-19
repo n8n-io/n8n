@@ -21,6 +21,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	mistral: apiKeyCreds,
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
+	nvidia: apiKeyCreds,
 
 	'azure-openai': z.object({
 		apiKey: z.string().optional(),

@@ -1,5 +1,16 @@
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
+const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
+	'amazon-bedrock': 'aws-bedrock',
+	azure: 'azure-openai',
+	'azure-cognitive-services': 'azure-openai',
+};
+
+const AGENT_PROVIDER_NAMES: Record<string, string> = {
+	'aws-bedrock': 'AWS Bedrock',
+	'azure-openai': 'Azure OpenAI',
+};
+
 /** Cost per million tokens. */
 export interface ModelCost {
 	/** Cost per million input tokens (USD). */
@@ -67,6 +78,10 @@ interface ModelsDevProvider {
 	models?: Record<string, ModelsDevModel>;
 }
 
+function toAgentProviderId(modelsDevProviderId: string): string {
+	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
+}
+
 /**
  * Fetch the provider/model catalog from models.dev.
  *
@@ -120,10 +135,14 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			models[modelId] = info;
 		}
 
-		catalog[key] = {
-			id: provider.id,
-			name: provider.name,
-			models,
+		const providerId = toAgentProviderId(key);
+		catalog[providerId] = {
+			id: providerId,
+			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
+			models: {
+				...(catalog[providerId]?.models ?? {}),
+				...models,
+			},
 		};
 	}
 

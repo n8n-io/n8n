@@ -54,6 +54,7 @@ import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { filterOfferedAgentModelProviders } from './model-catalog';
 import { AgentRepository } from './repositories/agent.repository';
 import type { Agent } from './entities/agent.entity';
 
@@ -260,7 +261,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
-		return await fetchProviderCatalog();
+		return filterOfferedAgentModelProviders(await fetchProviderCatalog());
 	}
 
 	@Get('/catalog/integrations')

@@ -23,6 +23,8 @@ export const LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_SELECTED_MODEL`;
 export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_CREDENTIALS`;
+export const LOCAL_STORAGE_AGENT_MODEL_CREDENTIALS = (userId: string) =>
+	`${userId}_N8N_AGENT_MODEL_CREDENTIALS`;
 export const LOCAL_STORAGE_CHAT_HUB_STATIC_SIDEBAR = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_STATIC_SIDEBAR`;
 export const LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE = (userId: string) =>

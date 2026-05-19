@@ -3,13 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 
+const selectorState = vi.hoisted(() => ({
+	selection: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+}));
+
 const credentialsByProvider = ref<Record<string, string> | undefined>({ anthropic: 'cred-1' });
 const selectCredential = vi.fn();
-const fetchAgents = vi.fn();
-const agents = ref<Record<string, unknown>>({
-	anthropic: { claude: 'claude-sonnet-4-5' },
-	ollama: { llama: 'llama3' },
-});
+const ensureLoaded = vi.fn();
+const getModelsForPicker = vi.fn(() => ({
+	anthropic: { models: [] },
+}));
+const isLoading = ref(false);
+const personalProject = ref<{ id: string } | null>({ id: 'p1' });
 const allCredentials = ref<Array<{ id: string; name: string }>>([
 	{ id: 'cred-1', name: 'My Anthropic' },
 ]);
@@ -31,42 +36,44 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/ai/chatHub/chat.store', () => ({
-	useChatStore: () => ({
-		fetchAgents,
-		get agents() {
-			return agents.value;
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({
+		get personalProject() {
+			return personalProject.value;
 		},
 	}),
 }));
 
-vi.mock('@/features/ai/chatHub/composables/useChatCredentials', () => ({
-	useChatCredentials: () => ({ credentialsByProvider, selectCredential }),
+vi.mock('../composables/useModelCatalog', () => ({
+	useModelCatalog: () => ({
+		ensureLoaded,
+		getModelsForPicker,
+		isLoading,
+	}),
 }));
 
-vi.mock('@/features/ai/chatHub/chat.utils', () => ({
-	isLlmProviderModel: (selection: unknown) =>
-		typeof selection === 'object' &&
-		selection !== null &&
-		'provider' in selection &&
-		'model' in selection,
+vi.mock('../composables/useAgentModelCredentials', () => ({
+	useAgentModelCredentials: () => ({ credentialsByProvider, selectCredential }),
 }));
 
-vi.mock('@/features/ai/chatHub/components/ModelSelector.vue', () => ({
+vi.mock('../components/AgentModelSelector.vue', () => ({
 	default: {
-		name: 'ModelSelector',
+		name: 'AgentModelSelector',
 		props: [
-			'selectedAgent',
-			'includeCustomAgents',
+			'selectedModel',
 			'credentials',
-			'agents',
+			'modelsByProvider',
 			'isLoading',
 			'warnMissingCredentials',
 			'horizontal',
 		],
 		emits: ['change', 'select-credential'],
-		template:
-			"<div data-testid=\"model-selector\" @click=\"$emit('change', { provider: 'anthropic', model: 'claude-sonnet-4-5' })\" />",
+		setup(_props: unknown, { emit }: { emit: (event: string, payload: unknown) => void }) {
+			return {
+				selectModel: () => emit('change', selectorState.selection),
+			};
+		},
+		template: '<div data-testid="model-selector" @click="selectModel" />',
 	},
 }));
 
@@ -86,12 +93,10 @@ function mountCard(props: Record<string, unknown> = {}) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	selectorState.selection = { provider: 'anthropic', model: 'claude-sonnet-4-5' };
 	credentialsByProvider.value = { anthropic: 'cred-1' };
+	personalProject.value = { id: 'p1' };
 	allCredentials.value = [{ id: 'cred-1', name: 'My Anthropic' }];
-	agents.value = {
-		anthropic: { claude: 'claude-sonnet-4-5' },
-		ollama: { llama: 'llama3' },
-	};
 });
 
 describe('AskLlmCard', () => {
@@ -107,10 +112,10 @@ describe('AskLlmCard', () => {
 		expect(wrapper.text()).toContain('Choose a model');
 	});
 
-	it('fetches the model catalog on mount when credentials are available', async () => {
+	it('fetches the model catalog on mount', async () => {
 		mountCard();
 		await flushPromises();
-		expect(fetchAgents).toHaveBeenCalledWith({ anthropic: 'cred-1' });
+		expect(ensureLoaded).toHaveBeenCalledWith('p1');
 	});
 
 	it('emits a complete resume payload when the model selector emits a change', async () => {
@@ -157,22 +162,11 @@ describe('AskLlmCard', () => {
 	});
 
 	it('strips the "models/" prefix from Google model ids before emitting', async () => {
-		const wrapper = mount(AskLlmCard, {
-			props: {},
-			global: {
-				stubs: {
-					N8nText: { template: '<span><slot/></span>' },
-					N8nIcon: { template: '<i></i>' },
-					ModelSelector: {
-						template:
-							"<div data-testid=\"model-selector\" @click=\"$emit('change', { provider: 'google', model: 'models/gemini-2.5-pro' })\" />",
-						emits: ['change', 'select-credential'],
-					},
-				},
-			},
-		});
+		selectorState.selection = { provider: 'google', model: 'models/gemini-2.5-pro' };
 		credentialsByProvider.value = { google: 'cred-g' };
 		allCredentials.value = [{ id: 'cred-g', name: 'My Google' }];
+
+		const wrapper = mountCard();
 		await flushPromises();
 
 		await wrapper.find('[data-testid="model-selector"]').trigger('click');

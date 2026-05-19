@@ -328,7 +328,7 @@ const commonStubs = {
 		],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
-	// in stores / composables (users, chatHub, credentials, sessions list)
+	// in stores / composables (users, credentials, sessions list)
 	// that the view-level test isn't trying to exercise — leaving them real
 	// would require mocking the full surrounding ecosystem just to mount.
 	AgentInfoPanel: {

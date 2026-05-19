@@ -34,6 +34,7 @@
     "@ai-sdk/groq": "catalog:",
     "@ai-sdk/mistral": "catalog:",
     "@ai-sdk/openai": "^3.0.41",
+    "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider-utils": "^4.0.21",
     "@ai-sdk/xai": "^3.0.67",
     "@modelcontextprotocol/sdk": "1.26.0",
