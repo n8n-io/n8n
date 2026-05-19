@@ -517,12 +517,6 @@ const mcpImageContentSchema = z.object({
 	mimeType: z.string(),
 });
 
-const mcpAudioContentSchema = z.object({
-	type: z.literal('audio'),
-	data: z.string(),
-	mimeType: z.string(),
-});
-
 const mcpBlobResourceContentSchema = z.object({
 	type: z.literal('resource'),
 	resource: z.object({
@@ -534,12 +528,7 @@ const mcpBlobResourceContentSchema = z.object({
 
 export const mcpToolCallResultSchema = z.object({
 	content: z.array(
-		z.union([
-			mcpTextContentSchema,
-			mcpImageContentSchema,
-			mcpAudioContentSchema,
-			mcpBlobResourceContentSchema,
-		]),
+		z.union([mcpTextContentSchema, mcpImageContentSchema, mcpBlobResourceContentSchema]),
 	),
 	structuredContent: z.record(z.string(), z.unknown()).optional(),
 	isError: z.boolean().optional(),

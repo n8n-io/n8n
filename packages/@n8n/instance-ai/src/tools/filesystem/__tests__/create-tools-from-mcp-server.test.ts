@@ -373,21 +373,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
-		it('converts MCP audio to Mastra media', () => {
-			const server = makeMockServer();
-			const toModel = getToModelOutput(server);
-
-			const out = toModel({
-				output: { content: [{ type: 'audio', data: 'BBBB', mimeType: 'audio/mpeg' }] },
-			});
-
-			expect(out).toEqual({
-				type: 'content',
-				value: [{ type: 'media', data: 'BBBB', mediaType: 'audio/mpeg' }],
-			});
-		});
-
-		it('converts MCP blob resource to Mastra media with resource mimeType', () => {
+		it('converts MCP blob resource to Mastra media', () => {
 			const server = makeMockServer();
 			const toModel = getToModelOutput(server);
 

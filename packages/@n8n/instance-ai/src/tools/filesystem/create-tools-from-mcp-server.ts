@@ -62,7 +62,7 @@ function isGatewayResourceDecision(
 }
 
 function isMediaContent(item: { type: string; resource?: { blob?: string } }): boolean {
-	if (item.type === 'image' || item.type === 'audio') return true;
+	if (item.type === 'image') return true;
 	if (item.type === 'resource' && item.resource?.blob) return true;
 	return false;
 }
@@ -154,8 +154,9 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  * server restarts. On resume, the tool re-calls the daemon with the selected
  * decision token.
  *
- * The `toModelOutput` callback converts MCP content blocks (text and image)
- * into the AI SDK's multimodal format so the LLM receives images.
+ * The `toModelOutput` callback converts MCP content blocks (text, image, and
+ * blob resources) into the AI SDK's multimodal format so the LLM receives
+ * media alongside text.
  */
 export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: Logger): ToolsInput {
 	const tools: ToolsInput = {};
@@ -276,7 +277,7 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 						text?: string;
 						data?: string;
 						mimeType?: string;
-						resource?: { uri?: string; mimeType?: string; blob?: string; text?: string };
+						resource?: { mimeType?: string; blob?: string };
 					}>;
 					structuredContent?: Record<string, unknown>;
 				};
@@ -295,7 +296,7 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 					};
 				}
 
-				// Convert MCP image/audio/resource(blob) → Mastra 'media' with the original IANA
+				// Convert MCP image/resource(blob) → Mastra 'media' with the original IANA
 				// mediaType, so AI SDK passes it through as a file part to the provider.
 				const value = raw.content.map((item) => {
 					if (item.type === 'image') {
@@ -305,22 +306,12 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 							mediaType: item.mimeType ?? 'image/jpeg',
 						};
 					}
-					if (item.type === 'audio') {
-						return {
-							type: 'media' as const,
-							data: item.data ?? '',
-							mediaType: item.mimeType ?? 'audio/mpeg',
-						};
-					}
 					if (item.type === 'resource' && item.resource?.blob) {
 						return {
 							type: 'media' as const,
 							data: item.resource.blob,
 							mediaType: item.resource.mimeType ?? 'application/octet-stream',
 						};
-					}
-					if (item.type === 'resource' && item.resource?.text) {
-						return { type: 'text' as const, text: item.resource.text };
 					}
 					return { type: 'text' as const, text: item.text ?? '' };
 				});

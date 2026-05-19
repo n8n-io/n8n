@@ -7,8 +7,6 @@ describe('detectSupportedBinaryFile', () => {
 		['photo.png', 'image', 'image/png'],
 		['photo.gif', 'image', 'image/gif'],
 		['photo.webp', 'image', 'image/webp'],
-		['song.mp3', 'audio', 'audio/mpeg'],
-		['song.wav', 'audio', 'audio/wav'],
 		['doc.pdf', 'pdf', 'application/pdf'],
 	])('maps %s to %s/%s', (filePath, kind, mimeType) => {
 		expect(detectSupportedBinaryFile(filePath)).toEqual({ kind, mimeType });
@@ -20,7 +18,9 @@ describe('detectSupportedBinaryFile', () => {
 		'config.json',
 		'README',
 		'photo.svg', // SVG is XML — must not be classified as media
-		'song.flac', // not supported by Claude/OpenAI
+		'song.mp3', // audio — Claude does not accept audio input
+		'song.wav', // audio — Claude does not accept audio input
+		'song.flac', // not supported by Claude
 		'movie.mp4', // video — out of scope
 		'archive.zip',
 	])('returns null for unsupported file %s', (filePath) => {

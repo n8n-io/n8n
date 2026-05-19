@@ -197,17 +197,6 @@ describe('readFileTool', () => {
 			expect(item.resource.blob).toBe(bytes.toString('base64'));
 		});
 
-		it.each([
-			['song.mp3', 'audio/mpeg'],
-			['song.wav', 'audio/wav'],
-		])('returns %s as audio content with mime %s', async (filePath, mimeType) => {
-			mockStat(8);
-			mockReadFile(Buffer.alloc(8));
-
-			const result = await readFileTool.execute({ filePath }, CONTEXT);
-			expect(result.content[0]).toMatchObject({ type: 'audio', mimeType });
-		});
-
 		it('rejects path traversal', async () => {
 			await expect(
 				readFileTool.execute({ filePath: '../../../etc/passwd' }, CONTEXT),

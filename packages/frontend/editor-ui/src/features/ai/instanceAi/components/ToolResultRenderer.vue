@@ -4,7 +4,8 @@ import type { McpToolCallResult } from '@n8n/api-types';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultTable from './ToolResultTable.vue';
 import ToolResultCode from './ToolResultCode.vue';
-import ToolResultMedia from './ToolResultMedia.vue';
+import ToolResultImage from './ToolResultImage.vue';
+import ToolResultFile from './ToolResultFile.vue';
 import ToolResultText from './ToolResultText.vue';
 
 const props = defineProps<{
@@ -101,7 +102,12 @@ const tableRows = computed(() => extractTableRows(props.result));
 <template>
 	<div v-if="resultType === 'content' && contentItems" :class="$style.contentList">
 		<template v-for="(item, idx) in contentItems" :key="idx">
-			<ToolResultMedia v-if="item.type === 'image'" :data="item.data" :mime-type="item.mimeType" />
+			<ToolResultImage v-if="item.type === 'image'" :data="item.data" :mime-type="item.mimeType" />
+			<ToolResultFile
+				v-else-if="item.type === 'resource' && item.resource.mimeType"
+				:data="item.resource.blob"
+				:mime-type="item.resource.mimeType"
+			/>
 			<ToolResultText v-else-if="item.type === 'text'" :text="item.text" />
 		</template>
 	</div>

@@ -26,7 +26,7 @@ const inputSchema = z.object({
 export const readFileTool: ToolDefinition<typeof inputSchema> = {
 	name: 'read_file',
 	description:
-		'Read a file. Text is returned line-by-line; supported binaries (PNG, JPEG, GIF, WebP, PDF, MP3, WAV) are returned as base64 content the model can consume directly.',
+		'Read a file. Text is returned line-by-line; supported binaries (PNG, JPEG, GIF, WebP, PDF) are returned as base64 content the model can consume directly.',
 	inputSchema,
 	annotations: { readOnlyHint: true },
 	async getAffectedResources({ filePath }, { dir }) {
@@ -53,9 +53,7 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 		}
 
 		if (isLikelyBinaryContent(buffer)) {
-			throw new Error(
-				'Unsupported binary file — only PNG, JPEG, GIF, WebP, PDF, MP3 and WAV are readable',
-			);
+			throw new Error('Unsupported binary file — only PNG, JPEG, GIF, WebP and PDF are readable');
 		}
 
 		return buildTextResult(filePath, buffer.toString('utf-8'), startLine, maxLines);
@@ -89,12 +87,8 @@ function buildBinaryResult(
 	type: SupportedBinaryFile,
 ): CallToolResult {
 	const data = buffer.toString('base64');
-
 	if (type.kind === 'image') {
 		return { content: [{ type: 'image', data, mimeType: type.mimeType }] };
-	}
-	if (type.kind === 'audio') {
-		return { content: [{ type: 'audio', data, mimeType: type.mimeType }] };
 	}
 	return {
 		content: [

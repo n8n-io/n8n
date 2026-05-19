@@ -1,6 +1,6 @@
 import { lookup } from 'mime-types';
 
-export type SupportedBinaryKind = 'image' | 'audio' | 'pdf';
+export type SupportedBinaryKind = 'image' | 'pdf';
 
 export interface SupportedBinaryFile {
 	kind: SupportedBinaryKind;
@@ -8,17 +8,16 @@ export interface SupportedBinaryFile {
 }
 
 /**
- * IANA media types (as returned by `mime-types.lookup()`) that current LLM
- * providers (Anthropic, OpenAI) can consume natively.
+ * IANA media types (as returned by `mime-types.lookup()`) that Claude can
+ * consume natively. Audio is intentionally excluded — Anthropic's API does
+ * not accept audio content, so passing it through would surface a provider
+ * error to the user.
  */
 const SUPPORTED_BINARY_MIMES = new Map<string, SupportedBinaryKind>([
 	['image/jpeg', 'image'],
 	['image/png', 'image'],
 	['image/gif', 'image'],
 	['image/webp', 'image'],
-	['audio/mpeg', 'audio'],
-	['audio/wav', 'audio'],
-	['audio/x-wav', 'audio'],
 	['application/pdf', 'pdf'],
 ]);
 
