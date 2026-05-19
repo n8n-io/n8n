@@ -6679,5 +6679,14 @@
 	"tools.connection.detail.readTools": "Read tools",
 	"tools.connection.detail.writeTools": "Write tools",
 	"tools.connection.detail.otherTools": "Tools",
-	"tools.connection.detail.noAdditionalDetails": "No additional details available"
+	"tools.connection.detail.noAdditionalDetails": "No additional details available",
+	"generic.disconnect": "Disconnect",
+	"agents.channels.modal.title": "Channels",
+	"agents.channels.modal.connectTitle": "Connect {channel}",
+	"agents.channels.modal.editTitle": "Edit {channel}",
+	"agents.channels.modal.backToChannels": "Back to channels",
+	"agents.channels.modal.description": "Choose a channel to connect to your agent. Channels allow your agent to receive messages and respond to events.",
+	"agents.channels.modal.connectDescription": "Connect your {channel} account",
+	"agents.channels.modal.setupPlaceholder": "Setup view for {channel} will go here.",
+	"agents.channels.modal.editPlaceholder": "Edit view for {channel} will go here."
 }

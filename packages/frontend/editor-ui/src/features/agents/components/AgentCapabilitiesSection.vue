@@ -3,7 +3,11 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	type AgentJsonTaskConfig,
+	type AgentTaskDto,
+} from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
@@ -19,6 +23,7 @@ import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -63,12 +68,16 @@ type TaskRow = AgentTaskDto & {
 	enabled: boolean;
 };
 
+const channelModalOpen = ref(false);
+const channelModalView = ref<ChannelView>('list');
+
 function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;
 }
 
-function triggerIcon(integrationIcon?: string): IconName {
+function triggerIcon(trigger: string, integrationIcon?: string): IconName {
 	if (isIconName(integrationIcon)) return integrationIcon;
+	if (trigger === AGENT_SCHEDULE_TRIGGER_TYPE) return 'clock';
 	return 'zap';
 }
 
@@ -77,8 +86,12 @@ const triggerRows = computed<Array<{ type: string; label: string; icon: IconName
 		const integration = catalog.value?.find(({ type }) => type === trigger);
 		return {
 			type: trigger,
-			label: integration?.label ?? trigger,
-			icon: triggerIcon(integration?.icon),
+			label:
+				integration?.label ??
+				(trigger === AGENT_SCHEDULE_TRIGGER_TYPE
+					? i18n.baseText('agents.schedule.title')
+					: trigger),
+			icon: triggerIcon(trigger, integration?.icon),
 		};
 	}),
 );
@@ -303,6 +316,29 @@ function onToolMenuSelect(key: string) {
 	if (!target) return;
 	emit('open-tool', target);
 }
+
+function openChannelModal() {
+	channelModalView.value = 'list';
+	channelModalOpen.value = true;
+}
+
+function openChannelEdit(channelType: string) {
+	channelModalView.value = `${channelType}_edit` as ChannelView;
+	channelModalOpen.value = true;
+}
+
+function handleChannelConnected(channelType: string) {
+	if (props.connectedTriggers.includes(channelType)) return;
+	emit('update:connected-triggers', [...props.connectedTriggers, channelType]);
+	emit('trigger-added', { triggerType: channelType, triggers: [...props.connectedTriggers, channelType] });
+}
+
+function handleChannelDisconnected(channelType: string) {
+	emit(
+		'update:connected-triggers',
+		props.connectedTriggers.filter((trigger) => trigger !== channelType),
+	);
+}
 </script>
 
 <template>
@@ -322,7 +358,7 @@ function onToolMenuSelect(key: string) {
 					:key="trigger.type"
 					:icon="trigger.icon"
 					data-testid="agent-capabilities-trigger-row"
-					@click="emit('open-trigger', trigger.type)"
+					@click="openChannelEdit(trigger.type)"
 				>
 					{{ trigger.label }}
 				</AgentChipButton>
@@ -338,7 +374,7 @@ function onToolMenuSelect(key: string) {
 						:icon-only="hasTriggers"
 						:disabled="props.disabled"
 						data-testid="agent-capabilities-add-trigger"
-						@click="emit('add-trigger')"
+						@click="openChannelModal"
 					>
 						<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
 						<template v-if="!hasTriggers">
@@ -505,6 +541,16 @@ function onToolMenuSelect(key: string) {
 			</div>
 		</div>
 	</div>
+
+	<AgentChannelModal
+		v-model:open="channelModalOpen"
+		v-model:view="channelModalView"
+		:agent-id="agentId"
+		:project-id="projectId"
+		:connected-channels="connectedTriggers"
+		@channel-connected="handleChannelConnected"
+		@channel-disconnected="handleChannelDisconnected"
+	/>
 </template>
 
 <style module lang="scss">
