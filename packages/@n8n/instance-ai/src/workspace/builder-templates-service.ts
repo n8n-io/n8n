@@ -28,7 +28,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { Logger } from '../logger';
 
-const DEFAULT_CDN_BASE_URL = 'https://cdn.n8n.io/n8n-sdk-templates/v1';
+const DEFAULT_CDN_BASE_URL = 'https://sdk-templates.n8n.io/v1';
 const DEFAULT_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_FETCH_TIMEOUT_MS = 30_000;
 const DEFAULT_CACHE_SUBDIR = 'n8n-sdk-templates';
