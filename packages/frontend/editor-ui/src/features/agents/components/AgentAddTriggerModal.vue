@@ -87,7 +87,6 @@ const credentialIdsBeforeNew = ref<Record<string, Set<string>>>({});
 const pendingNewCredentialType = ref<string | null>(null);
 
 const linearCopied = ref(false);
-const manifestCopied = ref(false);
 
 const SCHEDULE_ICON: IconName = 'clock';
 
@@ -157,109 +156,6 @@ async function copyLinearWebhookUrl() {
 	linearCopied.value = true;
 	setTimeout(() => {
 		linearCopied.value = false;
-	}, 2000);
-}
-
-const oauthCallbackUrl = computed(() => {
-	const configured = (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '';
-	if (!configured) return '';
-	try {
-		// Preserve the configured path (which may include a custom rest endpoint
-		// or base path) but rebase onto `urlBaseWebhook` so the callback uses
-		// the publicly reachable host from `WEBHOOK_URL` instead of the local
-		// browser origin (which is `http://localhost:5678` in dev).
-		const parsed = new URL(configured);
-		const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
-		return `${base}${parsed.pathname}${parsed.search}`;
-	} catch {
-		return configured;
-	}
-});
-
-const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
-
-// Slack app names accept letters, digits, spaces, periods, hyphens and
-// underscores (max 35 chars per Slack's submission guidelines). Strip anything
-// else and fall back to a sensible default if the agent name is empty after
-// sanitisation, so the manifest always validates on Slack's side.
-function sanitiseSlackAppName(raw: string): string {
-	const cleaned = raw
-		.replace(/[^a-zA-Z0-9 ._-]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.slice(0, 35);
-	return cleaned.length > 0 ? cleaned : DEFAULT_SLACK_APP_NAME;
-}
-
-const slackAppManifest = computed(() => {
-	const agentName = sanitiseSlackAppName(props.data.agentName);
-	return JSON.stringify(
-		{
-			display_information: {
-				name: agentName,
-			},
-			features: {
-				app_home: {
-					home_tab_enabled: true,
-					messages_tab_enabled: false,
-					messages_tab_read_only_enabled: false,
-				},
-				bot_user: {
-					display_name: agentName,
-					always_online: true,
-				},
-			},
-			oauth_config: {
-				redirect_urls: [oauthCallbackUrl.value],
-				scopes: {
-					bot: [
-						'app_mentions:read',
-						'assistant:write',
-						'channels:history',
-						'channels:join',
-						'channels:manage',
-						'channels:read',
-						'chat:write',
-						'chat:write.customize',
-						'files:read',
-						'files:write',
-						'groups:read',
-						'im:history',
-						'im:read',
-						'im:write',
-						'mpim:read',
-						'mpim:write',
-						'search:read.public',
-						'users:read',
-						'users:read.email',
-					],
-				},
-				pkce_enabled: false,
-			},
-			settings: {
-				event_subscriptions: {
-					request_url: webhookUrlFor('slack'),
-					bot_events: ['app_mention', 'assistant_thread_context_changed', 'message.im'],
-				},
-				interactivity: {
-					is_enabled: true,
-					request_url: webhookUrlFor('slack'),
-				},
-				org_deploy_enabled: false,
-				socket_mode_enabled: false,
-				token_rotation_enabled: false,
-			},
-		},
-		null,
-		2,
-	);
-});
-
-async function copyManifest() {
-	await navigator.clipboard.writeText(slackAppManifest.value);
-	manifestCopied.value = true;
-	setTimeout(() => {
-		manifestCopied.value = false;
 	}, 2000);
 }
 
@@ -579,6 +475,9 @@ onMounted(async () => {
 						:disabled="isConnected(currentIntegration.type) || isLoading(currentIntegration.type)"
 						:connected="isConnected(currentIntegration.type)"
 						:saved-settings="integrationSettings[currentIntegration.type]"
+						:agent-name="data.agentName"
+						:project-id="data.projectId"
+						:agent-id="data.agentId"
 					/>
 
 					<N8nText
@@ -598,36 +497,6 @@ onMounted(async () => {
 							>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
 						>
 					</N8nText>
-
-					<!-- Slack manifest reference material. Integration actions live
-						 in the modal footer so they stay aligned with other modals. -->
-					<div v-if="currentIntegration.type === 'slack'" :class="$style.manifestSection">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestTitle') }}
-						</N8nText>
-						<N8nText :class="$style.manifestHint" size="small">
-							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
-						</N8nText>
-						<div :class="$style.codeBlock">
-							<N8nButton
-								variant="outline"
-								size="small"
-								:class="$style.codeBlockCopy"
-								:data-testid="`${currentIntegration.type}-copy-manifest`"
-								@click="copyManifest"
-							>
-								<template #prefix>
-									<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
-								</template>
-								{{
-									manifestCopied
-										? i18n.baseText('agents.builder.addTrigger.copied')
-										: i18n.baseText('agents.builder.addTrigger.copy')
-								}}
-							</N8nButton>
-							<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
-						</div>
-					</div>
 				</div>
 			</div>
 		</template>
@@ -770,50 +639,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-}
-
-.manifestSection {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.manifestHint {
-	color: var(--color--text--tint-1);
-}
-
-.codeBlock {
-	position: relative;
-	margin-top: var(--spacing--3xs);
-}
-
-/* Sit on top of the rounded container itself rather than inside the scrolling
-   <pre>, so the button stays put as the user scrolls and never collides with
-   the scrollbar groove. The right offset clears typical macOS / overlay
-   scrollbars (~14px) plus our normal inner padding. */
-.codeBlockCopy {
-	position: absolute;
-	top: var(--spacing--2xs);
-	right: var(--spacing--lg);
-	z-index: 1;
-}
-
-.manifestCode {
-	margin: 0;
-	padding: var(--spacing--xs);
-	padding-right: calc(var(--spacing--2xl) + var(--spacing--lg));
-	background-color: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--xl);
-	overflow-x: auto;
-	max-height: 240px;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	white-space: pre;
-	font-family: monospace;
-	color: var(--color--text);
 }
 
 .errorText {

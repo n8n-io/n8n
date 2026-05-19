@@ -48,7 +48,7 @@ import type {
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -58,6 +58,7 @@ import { mock } from 'jest-mock-extended';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
 
@@ -99,6 +100,8 @@ describe('InstanceAiController', () => {
 	});
 
 	const subAgentEvalService = mock<SubAgentEvalService>();
+	const userRepository = mock<UserRepository>();
+	const credentialsService = mock<CredentialsService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -110,6 +113,8 @@ describe('InstanceAiController', () => {
 		moduleRegistry,
 		push,
 		urlService,
+		userRepository,
+		credentialsService,
 		globalConfig,
 	);
 
@@ -124,7 +129,6 @@ describe('InstanceAiController', () => {
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
-			researchMode: false,
 			timeZone: 'Europe/Helsinki',
 		});
 
@@ -144,7 +148,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payload.message,
-				payload.researchMode,
 				payload.attachments,
 				payload.timeZone,
 				payload.pushRef,
@@ -177,7 +180,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payloadWithPushRef.message,
-				payloadWithPushRef.researchMode,
 				payloadWithPushRef.attachments,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
@@ -1150,6 +1152,69 @@ describe('InstanceAiController', () => {
 				[USER_ID],
 			);
 			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('gatewayCreateCredential', () => {
+		const makeGatewayReq = (key: string) =>
+			({ headers: { 'x-gateway-key': key } }) as unknown as Request;
+
+		const payload = {
+			name: 'My Slack Cred',
+			type: 'slackApi',
+			data: { accessToken: 'xoxb-token' },
+		};
+
+		it('should have no access scope (skipAuth)', () => {
+			expect(scopeOf('gatewayCreateCredential')).toBeUndefined();
+		});
+
+		it('should create credential and return credentialId', async () => {
+			const user = mock<User>({ id: USER_ID });
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			credentialsService.createUnmanagedCredential.mockResolvedValue(
+				mock<Awaited<ReturnType<CredentialsService['createUnmanagedCredential']>>>({
+					id: 'cred-1',
+				}),
+			);
+
+			const result = await controller.gatewayCreateCredential(
+				makeGatewayReq('session-key'),
+				res,
+				payload,
+			);
+
+			expect(result).toEqual({ credentialId: 'cred-1' });
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(payload, user);
+		});
+
+		it('should throw ForbiddenError when using the static env-var key', async () => {
+			const gatewayReq = makeGatewayReq('static-key');
+
+			await expect(controller.gatewayCreateCredential(gatewayReq, res, payload)).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('should throw ForbiddenError when the user is not found', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should throw ForbiddenError when the gateway is disabled', async () => {
+			const user = mock<User>({ id: USER_ID });
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 

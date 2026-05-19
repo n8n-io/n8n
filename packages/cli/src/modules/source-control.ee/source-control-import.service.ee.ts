@@ -2,6 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
+	Folder,
 	Project,
 	TagEntity,
 	User,
@@ -683,7 +684,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -1095,7 +1096,7 @@ export class SourceControlImportService {
 					},
 				});
 
-				await this.folderRepository.upsert(folderCopy, {
+				await this.folderRepository.upsert(folderCopy as QueryDeepPartialEntity<Folder>, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1761,7 +1762,7 @@ export class SourceControlImportService {
 
 		this.resolvePublishedStatus(
 			importedWorkflow,
-			existingWorkflow?.activeVersionId,
+			existingWorkflow,
 			mustUnpublishLocal,
 			unpublishedLocal,
 		);
@@ -1773,7 +1774,7 @@ export class SourceControlImportService {
 	 * Resolves the publish status for the upsert of the imported workflow.
 	 * We set active to false here and handle publishing after upsert.
 	 * @param importedWorkflow The imported workflow.
-	 * @param existingWorkflowActiveVersionId The existing workflow active version id, if it exists.
+	 * @param existingWorkflow The existing workflow entity, if it exists.
 	 * @param mustUnpublishLocal Whether the local workflow must be unpublished.
 	 * @param unpublishedLocal Whether the local workflow was unpublished.
 	 */
@@ -1781,12 +1782,17 @@ export class SourceControlImportService {
 		// Note: Workflow's active status is not saved in the remote workflow files,
 		// and the field is missing despite IWorkflowToImport having it typed as boolean.
 		importedWorkflow: IWorkflowToImport,
-		existingWorkflowActiveVersionId: string | null | undefined,
+		existingWorkflow: WorkflowEntity | undefined,
 		mustUnpublishLocal: boolean,
 		unpublishedLocal: boolean,
 	) {
+		const existingWorkflowActiveVersionId = existingWorkflow?.activeVersionId;
+		const isExistingArchived = !!existingWorkflow?.isArchived;
+
 		const shouldPreserve =
-			!!existingWorkflowActiveVersionId && (!mustUnpublishLocal || !unpublishedLocal);
+			!isExistingArchived &&
+			!!existingWorkflowActiveVersionId &&
+			(!mustUnpublishLocal || !unpublishedLocal);
 
 		if (shouldPreserve) {
 			importedWorkflow.active = !!existingWorkflowActiveVersionId;

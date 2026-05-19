@@ -539,6 +539,13 @@ export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 }) {}
 export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
 
+export class InstanceAiGatewayCreateCredentialDto extends Z.class({
+	name: z.string().min(1).max(128),
+	type: z.string().min(1).max(128),
+	data: z.record(z.unknown()),
+	projectId: z.string().optional(),
+}) {}
+
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
 // ---------------------------------------------------------------------------
@@ -661,7 +668,6 @@ export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
-	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),

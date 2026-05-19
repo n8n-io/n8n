@@ -112,6 +112,7 @@ function createContext(spawnBackgroundTask: jest.Mock): OrchestrationContext {
 		domainContext: createDomainContext(),
 		domainTools: {
 			'build-workflow': { execute: jest.fn() },
+			research: { execute: jest.fn() },
 		},
 		spawnBackgroundTask,
 		abortSignal: new AbortController().signal,
@@ -156,6 +157,7 @@ describe('builder sub-agent tool surface', () => {
 		);
 		const tools = getSpawnedToolSchemas();
 
+		expect(tools.research).toBeDefined();
 		expect(
 			tools.workflows?.inputSchema?.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success,
 		).toBe(true);

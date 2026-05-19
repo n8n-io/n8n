@@ -2,16 +2,26 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
 const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.literal('n8n'),
 	lastMessages: z.number().int().min(1).max(200).optional(),
+	observationalMemory: z
+		.object({
+			enabled: z.boolean().optional(),
+			observerThresholdTokens: z.number().int().min(1).optional(),
+			reflectorThresholdTokens: z.number().int().min(1).optional(),
+			renderTokenBudget: z.number().int().min(1).optional(),
+			observationLogTailLimit: z.number().int().min(1).optional(),
+			lockTtlMs: z.number().int().min(0).optional(),
+		})
+		.optional(),
 });
 
-const BuilderPromptAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend({
 	memory: BuilderPromptMemoryConfigSchema.optional(),
 });
 
@@ -205,8 +215,8 @@ Use resolve_llm before ask_llm whenever the user's request contains enough
 information to resolve the main LLM without a picker.
 
 ### resolve_llm
-When: the user explicitly names a provider/model, or a fresh agent needs a
-default LLM and the user did not ask to choose.
+When: the user explicitly names a provider/model, or a fresh agent needs its
+main LLM set and the user did not ask to choose.
 
 Inputs: optional \`provider\`, optional \`model\`.
 - If the user says "Anthropic via OpenRouter", pass
@@ -237,6 +247,12 @@ list_credentials. Pick the action by reason:
 
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.
+- User does not know which model to use and the Recommended LLM models section
+  is present → choose from that section, then pass that provider/model to
+  resolve_llm. Prefer a provider the user already has credentials for.
+- If the Recommended LLM models section is absent, do not recommend or name
+  current, best, latest, or fallback model IDs from memory. Call ask_llm when
+  the user needs model guidance or choice.
 - User asks to pick/change/use a different model → ask_llm.
 - User needs to choose/confirm/configure a model or main LLM credential →
   ask_llm, never a plain-text question.
@@ -278,7 +294,8 @@ OpenAI image generation:
 { "providerTools": { "openai.image_generation": {} } }
 \`\`\``;
 
-export const CONVERSATION_MODE_SECTION = `\
+export function getConversationModeSection(agentPreviewPath: string): string {
+	return `\
 ## When to build vs when to converse
 
 Not every user message is a build request. Before calling \`write_config\`,
@@ -291,12 +308,15 @@ want the agent to do, what systems it needs to touch, what triggers it. Only
 start building once you have a real goal.
 
 If the user tries to test, run, chat with, or interact with the newly built
-agent in this Build chat, reply exactly: "Please click the Test toggle next to
-Build below to chat with your new agent."
+agent in this Build chat, do not call tools. Reply exactly:
+"Head to the [Preview](${agentPreviewPath}) section to chat with your agent."
+Do not say anything else. Keep the Preview link as a relative app path; do not
+expand it to an absolute URL.
 
 Never call \`write_config\` with empty, placeholder, or guessed \`instructions\`.
 An agent without real instructions is broken and can't chat. If you don't have
 enough detail to write meaningful instructions, ask the user first.`;
+}
 
 export const RESEARCH_SECTION = `\
 ## Research
@@ -318,17 +338,20 @@ export const MEMORY_PRESETS_SECTION = `\
 ## Memory
 
 Use n8n session-scoped memory only. It keeps recent conversation context and
-thread-scoped working memory for the current chat session.
+an observation log for the current chat session. The agent reads the rendered
+observation log directly as private context.
 
 Shape:
 \`\`\`json
-{ "enabled": true, "storage": "n8n", "lastMessages": 50 }
+{ "enabled": true, "storage": "n8n", "lastMessages": 50, "observationalMemory": { "renderTokenBudget": 4500 } }
 \`\`\`
 
 Rules:
 - Set \`storage\` to "n8n".
 - \`lastMessages\` default: 50.
-- Keep memory to these fields: \`enabled\`, \`storage\`, and \`lastMessages\`.`;
+- Observation-log memory is enabled by default when memory is enabled.
+- Keep \`observationalMemory\` optional; use it only for explicit memory tuning.
+- Supported tuning fields: \`enabled\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.`;
 
 export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)
@@ -348,14 +371,14 @@ Two kinds:
 2. **Chat integrations** — connect the agent to a messaging platform. Multiple allowed.
    Shape:
    \`\`\`json
-   { "type": "slack", "credentialId": "<id>", "credentialName": "<name>" }
+   { "type": "slack", "credentialId": "<id>" }
    \`\`\`
 
 ### Workflow for adding integrations
 
 1. Call \`list_integration_types\` to discover available platforms and their \`credentialTypes\`.
 2. For chat integrations: pick **one** entry from the \`credentialTypes\` array returned by \`list_integration_types\` (prefer the OAuth variant — e.g. \`slackOAuth2Api\` over \`slackApi\`) and pass it to \`ask_credential\` as the singular \`credentialType\` arg. It returns \`{ credentialId, credentialName }\`.
-3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, both \`credentialId\` and \`credentialName\` are required and must come from the \`ask_credential\` result. For schedule, write the cron expression directly.
+3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, only persist \`type\` and \`credentialId\`. For schedule, write the cron expression directly.
 
 Never invent credential IDs or names. Always go through \`ask_credential\`.`;
 
@@ -369,7 +392,7 @@ configuration as a JSON string and the \`baseConfigHash\` from that same
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"<credentialId>\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
+  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"{provider}/{model}\\", \\"credential\\": \\"<credentialId>\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
 }
 \`\`\`
 
@@ -399,7 +422,7 @@ Examples:
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"anthropic/claude-sonnet-4-5\\" }]"
+  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialId>\\" }]"
 }
 \`\`\`
 \`\`\`json
@@ -449,7 +472,7 @@ export const WORKFLOW_SECTION = `\
 ## Workflow
 
 1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call resolve_llm
-   when the user specified a provider/model or did not ask to choose. If
+   when the user specified a provider/model or left model choice to the builder. If
    resolve_llm reports ambiguity, or the user asks to choose/change/use a
    different model, call ask_llm. Then call read_config and write_config
    with the chosen \`model\` and \`credential\` plus a draft \`instructions\`.
@@ -568,16 +591,19 @@ Be concise but informative.
 // Dynamic sections — depend on runtime values
 // ---------------------------------------------------------------------------
 
-export function getConfigRulesSection(builderModel: string): string {
+export function getConfigRulesSection(): string {
 	return `\
 ## Agent config rules
 
-- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
-- \`credential\` must be the \`credentialId\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
-- \`memory.storage\` must be "n8n"
-- \`memory.lastMessages\` default: 50
-- Use n8n session-scoped memory for all agents
-- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
+	- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
+	- \`credential\` must be the \`credentialId\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
+	- \`memory.storage\` must be "n8n"
+	- \`memory.lastMessages\` default: 50
+	- Use "n8n" as the default memory storage for all agents
+	- \`memory.observationalMemory\` tunes observation-log memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
+	  - Defaults: \`observerThresholdTokens: 500\`, \`reflectorThresholdTokens: 4000\`, \`renderTokenBudget: 4500\`, \`observationLogTailLimit: 20\`.
+	  - Cost: observing and reflecting use background LLM calls on the agent's main model. Mention this if the user asks about cost.
+	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
 }
 
 export function getSchemaReferenceSection(): string {
@@ -601,26 +627,35 @@ export interface BuilderPromptContext {
 	configHash: string | null;
 	configUpdatedAt: string | null;
 	toolList: string;
-	builderModel: string;
+	agentPreviewPath: string;
+	modelRecommendationsSection: string | null;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, configHash, configUpdatedAt, toolList, builderModel } = ctx;
+	const {
+		configJson,
+		configHash,
+		configUpdatedAt,
+		toolList,
+		agentPreviewPath,
+		modelRecommendationsSection,
+	} = ctx;
 
-	return [
+	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		READ_CONFIG_SECTION,
-		CONVERSATION_MODE_SECTION,
+		getConversationModeSection(agentPreviewPath),
 		TOOL_TYPES_SECTION,
 		LLM_RESOLUTION_SECTION,
+		modelRecommendationsSection,
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		PROVIDER_TOOLS_SECTION,
 		MEMORY_PRESETS_SECTION,
 		INTEGRATIONS_SECTION,
 		RESEARCH_SECTION,
-		getConfigRulesSection(builderModel),
+		getConfigRulesSection(),
 		getSchemaReferenceSection(),
 		WORKFLOW_SECTION,
 		WRITE_CONFIG_SECTION,
@@ -628,5 +663,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		FEW_SHOT_FLOWS_SECTION,
 		IMPORTANT_SECTION,
 		RESPONSE_STYLE_SECTION,
-	].join('\n\n');
+	];
+
+	return sections.filter((section): section is string => section !== null).join('\n\n');
 }

@@ -298,6 +298,56 @@ describe('HttpRequestV3', () => {
 				'URL parameter must be a string, got number',
 			);
 		});
+		it('should throw error when URL is only whitespace', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '   ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter cannot be empty',
+			);
+		});
+
+		it('should trim whitespace from valid URL', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '  http://example.com  ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+			const requestArgs = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
+		});
 	});
 
 	describe('JSON Parameter Validation', () => {
