@@ -1077,13 +1077,10 @@ export async function startBuildWorkflowAgentTask(
 							// per-stream callback, so observe via the event bus instead — every
 							// tool-call/result published by the sub-agent flows through it.
 							const templateToolObserver = createTypedToolObserver(telemetrySession);
-							unsubscribeTelemetry = context.eventBus.subscribe(
-								context.threadId,
-								(stored) => {
-									if (stored.event.agentId !== subAgentId) return;
-									templateToolObserver(stored.event);
-								},
-							);
+							unsubscribeTelemetry = context.eventBus.subscribe(context.threadId, (stored) => {
+								if (stored.event.agentId !== subAgentId) return;
+								templateToolObserver(stored.event);
+							});
 
 							prompt = createSandboxBuilderAgentPrompt(root);
 							if (!activeBuilderSession && builderWs) {
