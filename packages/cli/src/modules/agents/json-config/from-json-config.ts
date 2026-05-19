@@ -7,7 +7,13 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
+import {
+	Agent,
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+	Memory,
+	Tool,
+	wrapToolForApproval,
+} from '@n8n/agents';
 import { z } from 'zod';
 import type {
 	AgentSkill,
@@ -87,7 +93,12 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(agent, config.memory, options.memoryFactory);
+		await applyMemoryFromConfig(
+			agent,
+			config.memory,
+			options.memoryFactory,
+			options.credentialProvider,
+		);
 	}
 
 	// Config options
@@ -254,6 +265,7 @@ async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
+	credentialProvider: CredentialProvider,
 ) {
 	const memory = new Memory();
 
@@ -266,6 +278,12 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.semanticRecall) {
 		memory.semanticRecall(memoryConfig.semanticRecall);
+	}
+
+	if (memoryConfig.episodicMemory?.enabled === true) {
+		memory.episodicMemory(
+			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
+		);
 	}
 
 	if (memoryConfig.observationalMemory?.enabled !== false) {
@@ -295,6 +313,26 @@ async function applyMemoryFromConfig(
 	agent.memory(memory);
 }
 
+async function resolveEpisodicMemoryJsonConfig(
+	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
+	credentialProvider: CredentialProvider,
+) {
+	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
+	const embeddingProviderOptions = {
+		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
+		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
+	};
+
+	return {
+		enabled: true,
+		...(config.topK !== undefined && { topK: config.topK }),
+		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		embeddingProviderOptions,
+	};
+}
+
 async function resolveModelConfig(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
@@ -306,4 +344,9 @@ async function resolveModelConfig(
 	const raw = await credentialProvider.resolve(config.credential);
 	const mapped = mapCredentialForProvider(providerPrefix, raw);
 	return { id: config.model, ...mapped } as ModelConfig;
+}
+
+function getProviderPrefix(modelId: string): string {
+	const slashIdx = modelId.indexOf('/');
+	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }

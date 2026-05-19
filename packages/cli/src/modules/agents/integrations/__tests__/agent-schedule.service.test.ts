@@ -257,7 +257,8 @@ describe('AgentScheduleService', () => {
 				message: expect.stringContaining('Wake up and check the queue.'),
 				memory: {
 					threadId: expect.stringMatching(/^schedule-agent-1-/),
-					resourceId: expect.stringMatching(/^user-1/),
+					resourceId: 'user-1',
+					episodicMemoryResourceId: expect.stringMatching(/^schedule:schedule-agent-1-/),
 				},
 			}),
 		);

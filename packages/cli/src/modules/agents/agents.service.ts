@@ -109,6 +109,7 @@ export function chatThreadId(agentId: string, userId?: string): string {
 export interface AgentMemoryScope {
 	threadId: string;
 	resourceId: string;
+	episodicMemoryResourceId?: string;
 }
 
 export interface ExecuteForChatConfig {
@@ -868,6 +869,8 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
+	 *   - "episodicMemory.credential": configured cross-session recall credential
+	 *                     does not resolve to a real credential in the project
 	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
@@ -895,17 +898,33 @@ export class AgentsService {
 			missing.push('model');
 		}
 
+		let credentialList: Awaited<ReturnType<CredentialProvider['list']>> | undefined;
+		const credentialExists = async (credentialId: string) => {
+			credentialList ??= await credentialProvider.list();
+			return credentialList.some((credential) => credential.id === credentialId);
+		};
+
 		if (!config.credential?.trim()) {
 			missing.push('credential');
 		} else {
 			try {
 				const credentialId = config.credential.trim();
-				const creds = await credentialProvider.list();
-				const exists = creds.some((c) => c.id === credentialId);
-				if (!exists) missing.push('credential');
+				if (!(await credentialExists(credentialId))) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
 				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		const episodicMemory = config.memory?.episodicMemory;
+		if (config.memory?.enabled && episodicMemory?.enabled === true) {
+			try {
+				if (!(await credentialExists(episodicMemory.credential.trim()))) {
+					missing.push('episodicMemory.credential');
+				}
+			} catch {
+				// Same behavior as the main model credential: runtime reconstruction
+				// surfaces permission/listing failures with the concrete error.
 			}
 		}
 
@@ -955,7 +974,7 @@ export class AgentsService {
 	 * Clear the current user's test-chat messages for an agent.
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
-		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
+		await this.n8nMemory.deleteThread(chatThreadId(agentId, userId));
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
@@ -1035,12 +1054,17 @@ export class AgentsService {
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
 		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
-		const { threadId, resourceId } = memory;
+		const { threadId, resourceId, episodicMemoryResourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId },
+			persistence: {
+				threadId,
+				resourceId,
+				agentId,
+				...(episodicMemoryResourceId !== undefined && { episodicMemoryResourceId }),
+			},
 			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
@@ -1167,7 +1191,7 @@ export class AgentsService {
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
 
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { resourceId: executionId, threadId },
+			persistence: { resourceId: executionId, threadId, agentId },
 			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
