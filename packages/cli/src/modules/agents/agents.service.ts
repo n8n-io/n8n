@@ -109,6 +109,7 @@ export function chatThreadId(agentId: string, userId?: string): string {
 export interface AgentMemoryScope {
 	threadId: string;
 	resourceId: string;
+	episodicMemoryResourceId?: string;
 }
 
 export interface ExecuteForChatConfig {
@@ -1053,12 +1054,17 @@ export class AgentsService {
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
 		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
-		const { threadId, resourceId } = memory;
+		const { threadId, resourceId, episodicMemoryResourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId, agentId },
+			persistence: {
+				threadId,
+				resourceId,
+				agentId,
+				...(episodicMemoryResourceId !== undefined && { episodicMemoryResourceId }),
+			},
 			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 

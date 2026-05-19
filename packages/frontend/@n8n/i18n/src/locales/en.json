@@ -6078,6 +6078,7 @@
 	"agents.builder.memory.description": "Keeps recent messages from this session available as context.",
 	"agents.builder.memory.episodicMemory.label": "Cross-session recall",
 	"agents.builder.memory.episodicMemory.hint": "Retrieves source-backed memories from previous conversations.",
+	"agents.builder.memory.episodicMemory.changeCredential": "Change credential",
 	"agents.builder.episodicMemoryCredentialModal.title": "Connect OpenAI embeddings",
 	"agents.builder.episodicMemoryCredentialModal.description": "Select the OpenAI credential used to embed and retrieve cross-session memories.",
 	"agents.builder.episodicMemoryCredentialModal.confirm": "Enable recall",

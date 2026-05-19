@@ -172,6 +172,7 @@ export {
 	createRecallMemoryTool,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
+	hashEpisodicMemoryEvidence,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
 	rankEpisodicMemoryEntries,

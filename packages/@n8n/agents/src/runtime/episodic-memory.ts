@@ -309,11 +309,18 @@ export function hashEpisodicMemoryContent(content: string): string {
 	return createHash('sha256').update(normalizeHashContent(content)).digest('hex');
 }
 
+export function hashEpisodicMemoryEvidence(evidenceText: string): string {
+	return createHash('sha256').update(normalizeHashContent(evidenceText)).digest('hex');
+}
+
 function requireEpisodicMemoryScope(
 	persistence: AgentPersistenceOptions | undefined,
 ): EpisodicMemoryScope | null {
 	if (!persistence?.agentId || !persistence.resourceId) return null;
-	return { agentId: persistence.agentId, resourceId: persistence.resourceId };
+	return {
+		agentId: persistence.agentId,
+		resourceId: persistence.episodicMemoryResourceId ?? persistence.resourceId,
+	};
 }
 
 export function getEpisodicMemoryScope(

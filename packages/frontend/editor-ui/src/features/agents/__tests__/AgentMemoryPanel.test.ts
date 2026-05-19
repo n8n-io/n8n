@@ -20,9 +20,11 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 vi.mock('@n8n/design-system', () => ({
 	N8nSwitch: {
+		props: ['modelValue'],
 		emits: ['update:modelValue'],
-		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', true)" />',
+		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
+	N8nButton: { template: '<button v-bind="$attrs"><slot /></button>', props: ['variant', 'size'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
 }));
 
@@ -56,7 +58,7 @@ describe('AgentMemoryPanel', () => {
 			props: { config },
 		});
 
-		await wrapper.get('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
+		await wrapper.get('[data-testid="agent-episodic-memory-change-credential"]').trigger('click');
 
 		const [{ data }] = openModalWithDataMock.mock.calls[0];
 		data.onSelect('new-credential');
@@ -71,6 +73,39 @@ describe('AgentMemoryPanel', () => {
 					maxEntriesPerRun: 8,
 					maxEntryLength: 1200,
 				},
+			},
+		});
+	});
+
+	it('disables episodic memory when the enabled switch is turned off', async () => {
+		const config = {
+			name: 'Agent',
+			model: 'openai/gpt-5.5',
+			instructions: 'Help the user.',
+			credential: 'agent-credential',
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				lastMessages: 10,
+				episodicMemory: {
+					enabled: true,
+					credential: 'old-credential',
+					topK: 7,
+				},
+			},
+		} satisfies AgentJsonConfig;
+
+		const wrapper = mount(AgentMemoryPanel, {
+			props: { config },
+		});
+
+		await wrapper.get('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
+
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
+			memory: {
+				enabled: true,
+				episodicMemory: { enabled: false },
 			},
 		});
 	});

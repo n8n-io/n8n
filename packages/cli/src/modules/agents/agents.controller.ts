@@ -55,6 +55,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { draftChatEpisodicMemoryResourceId } from './utils/agent-memory-scope';
 import type { Agent } from './entities/agent.entity';
 
 /**
@@ -481,7 +482,11 @@ export class AgentsController {
 					projectId,
 					message,
 					userId: req.user.id,
-					memory: { threadId, resourceId: req.user.id },
+					memory: {
+						threadId,
+						resourceId: req.user.id,
+						episodicMemoryResourceId: draftChatEpisodicMemoryResourceId(req.user.id),
+					},
 				}),
 				send,
 			);

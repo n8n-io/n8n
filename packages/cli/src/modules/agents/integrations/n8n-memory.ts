@@ -4,6 +4,7 @@ import {
 	normalizeObservationLogReflection,
 	createObservationLogThreadScopePrefix,
 	hashEpisodicMemoryContent,
+	hashEpisodicMemoryEvidence,
 	markLifecycleActive,
 	normalizeFlatReflectionActions,
 	rankEpisodicMemoryEntries,
@@ -523,6 +524,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		const saved: EpisodicMemoryEntry[] = [];
 
 		for (const entry of entries) {
+			await this.ensureResource(entry.resourceId);
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
 			const now = new Date();
 			const entity = this.memoryEntryRepository.create({
@@ -566,10 +568,12 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 	): Promise<EpisodicMemoryEntrySource[]> {
 		const saved: EpisodicMemoryEntrySource[] = [];
 		for (const source of sources) {
+			const evidenceHash = hashEpisodicMemoryEvidence(source.evidenceText);
 			const entity = this.memoryEntrySourceRepository.create({
 				memoryEntryId: source.memoryEntryId,
 				observationId: source.observationId,
 				threadId: source.threadId,
+				evidenceHash,
 				evidenceText: source.evidenceText,
 				createdAt: source.createdAt,
 			});
@@ -581,7 +585,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				const existing = await this.memoryEntrySourceRepository.findOneBy({
 					memoryEntryId: source.memoryEntryId,
 					observationId: source.observationId,
-					evidenceText: source.evidenceText,
+					evidenceHash,
 				});
 				if (!existing) throw error;
 				saved.push(this.toEpisodicMemoryEntrySource(existing));
@@ -594,6 +598,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
 	): Promise<EpisodicMemoryEntry | null> {
+		await this.ensureResource(entry.resourceId);
 		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
 			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
 			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
@@ -634,10 +639,12 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			if (!persisted) return null;
 
 			for (const source of sources) {
+				const evidenceHash = hashEpisodicMemoryEvidence(source.evidenceText);
 				const sourceEntity = sourceRepo.create({
 					memoryEntryId: persisted.id,
 					observationId: source.observationId,
 					threadId: source.threadId,
+					evidenceHash,
 					evidenceText: source.evidenceText,
 					createdAt: source.createdAt,
 				});
@@ -648,7 +655,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 					const existing = await sourceRepo.findOneBy({
 						memoryEntryId: persisted.id,
 						observationId: source.observationId,
-						evidenceText: source.evidenceText,
+						evidenceHash,
 					});
 					if (!existing) throw error;
 				}
@@ -831,11 +838,11 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				});
 				const existingKeys = new Set(
 					existingReplacementSources.map(
-						(source) => `${source.observationId}\n${source.evidenceText}`,
+						(source) => `${source.observationId}\n${source.evidenceHash}`,
 					),
 				);
 				const copiedSources = sourceRows.flatMap((source) => {
-					const key = `${source.observationId}\n${source.evidenceText}`;
+					const key = `${source.observationId}\n${source.evidenceHash}`;
 					if (existingKeys.has(key)) return [];
 					existingKeys.add(key);
 					return [
@@ -843,6 +850,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 							memoryEntryId: replacement.id,
 							observationId: source.observationId,
 							threadId: source.threadId,
+							evidenceHash: source.evidenceHash,
 							evidenceText: source.evidenceText,
 							createdAt: now,
 						}),

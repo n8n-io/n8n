@@ -1,4 +1,4 @@
-import type { NewObservationLogEntry } from '@n8n/agents';
+import { hashEpisodicMemoryEvidence, type NewObservationLogEntry } from '@n8n/agents';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
@@ -64,6 +64,7 @@ describe('N8nMemory', () => {
 		memoryEntryRepository = mock<AgentMemoryEntryRepository>();
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
 		memoryEntryCursorRepository = mock<AgentMemoryEntryCursorRepository>();
+		resourceRepository.existsBy.mockResolvedValue(true);
 		transactionDelete = jest.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionObservationCreate = jest.fn((input) => ({ ...input }) as AgentObservationEntity);
 		transactionObservationFind = jest.fn().mockResolvedValue([]);
@@ -675,12 +676,14 @@ describe('N8nMemory', () => {
 		overrides: Partial<AgentMemoryEntrySourceEntity> = {},
 	): AgentMemoryEntrySourceEntity {
 		const createdAt = new Date('2026-05-05T00:00:00Z');
+		const evidenceText = overrides.evidenceText ?? 'User chose Postgres';
 		return {
 			id: 'source-1',
 			memoryEntryId: 'memory-1',
 			observationId: 'obs-1',
 			threadId: 'thread-1',
-			evidenceText: 'User chose Postgres',
+			evidenceHash: hashEpisodicMemoryEvidence(evidenceText),
+			evidenceText,
 			createdAt,
 			updatedAt: createdAt,
 			...overrides,
@@ -1205,6 +1208,7 @@ describe('N8nMemory', () => {
 				memoryEntryId: 'memory-1',
 				observationId: 'obs-1',
 				threadId: 'thread-1',
+				evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
 				evidenceText: 'User chose Postgres',
 				createdAt,
 				updatedAt: createdAt,
@@ -1267,6 +1271,7 @@ describe('N8nMemory', () => {
 				expect.objectContaining({
 					memoryEntryId: 'memory-atomic',
 					observationId: 'obs-atomic',
+					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
 					evidenceText: 'User chose Postgres',
 				}),
 			]);
@@ -1377,11 +1382,13 @@ describe('N8nMemory', () => {
 				expect.objectContaining({
 					memoryEntryId: 'merged-memory-1',
 					observationId: 'obs-1',
+					evidenceHash: hashEpisodicMemoryEvidence('User planned SQLite'),
 					evidenceText: 'User planned SQLite',
 				}),
 				expect.objectContaining({
 					memoryEntryId: 'merged-memory-1',
 					observationId: 'obs-2',
+					evidenceHash: hashEpisodicMemoryEvidence('User switched to Postgres'),
 					evidenceText: 'User switched to Postgres',
 				}),
 			]);

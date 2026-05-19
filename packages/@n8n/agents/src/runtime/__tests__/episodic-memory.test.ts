@@ -7,6 +7,7 @@ import type {
 } from '../../types';
 import {
 	createRecallMemoryTool,
+	getEpisodicMemoryScope,
 	rankEpisodicMemoryEntries,
 	runEpisodicMemoryIndexer,
 } from '../episodic-memory';
@@ -167,6 +168,35 @@ describe('createRecallMemoryTool', () => {
 		expect(tool.systemInstruction).toContain('complete lists');
 		expect(tool.systemInstruction).toContain('exact names');
 		expect(tool.description).toContain('prior artifacts');
+	});
+});
+
+describe('getEpisodicMemoryScope', () => {
+	it('uses the episodic-specific resource partition when provided', () => {
+		expect(
+			getEpisodicMemoryScope({
+				agentId: 'agent-1',
+				resourceId: 'chat-user-1',
+				threadId: 'thread-1',
+				episodicMemoryResourceId: 'integration:slack:thread-1',
+			}),
+		).toEqual({
+			agentId: 'agent-1',
+			resourceId: 'integration:slack:thread-1',
+		});
+	});
+
+	it('falls back to the persistence resourceId for existing SDK callers', () => {
+		expect(
+			getEpisodicMemoryScope({
+				agentId: 'agent-1',
+				resourceId: 'chat-user-1',
+				threadId: 'thread-1',
+			}),
+		).toEqual({
+			agentId: 'agent-1',
+			resourceId: 'chat-user-1',
+		});
 	});
 });
 

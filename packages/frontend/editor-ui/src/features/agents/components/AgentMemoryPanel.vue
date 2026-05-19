@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nText, N8nSwitch } from '@n8n/design-system';
+import { N8nButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY } from '../constants';
@@ -84,12 +84,7 @@ function disableEpisodicMemory() {
 	});
 }
 
-function onEpisodicMemoryToggle(enabled: boolean) {
-	if (!enabled) {
-		disableEpisodicMemory();
-		return;
-	}
-
+function openEpisodicMemoryCredentialModal() {
 	uiStore.openModalWithData({
 		name: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 		data: {
@@ -97,6 +92,15 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 			onSelect: enableEpisodicMemory,
 		},
 	});
+}
+
+function onEpisodicMemoryToggle(enabled: boolean) {
+	if (!enabled) {
+		disableEpisodicMemory();
+		return;
+	}
+
+	openEpisodicMemoryCredentialModal();
 }
 </script>
 
@@ -128,12 +132,24 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.hint') }}
 				</N8nText>
 			</div>
-			<N8nSwitch
-				:model-value="episodicMemoryEnabled"
-				:disabled="props.disabled"
-				data-testid="agent-episodic-memory-toggle"
-				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
-			/>
+			<div :class="$style.actions">
+				<N8nButton
+					v-if="episodicMemoryEnabled"
+					variant="ghost"
+					size="small"
+					:disabled="props.disabled"
+					data-testid="agent-episodic-memory-change-credential"
+					@click="openEpisodicMemoryCredentialModal"
+				>
+					{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
+				</N8nButton>
+				<N8nSwitch
+					:model-value="episodicMemoryEnabled"
+					:disabled="props.disabled"
+					data-testid="agent-episodic-memory-toggle"
+					@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -168,6 +184,12 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 /* Scoped overlay — title group stays interactive so the heading and toggle can render. */
