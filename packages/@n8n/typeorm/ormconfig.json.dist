@@ -1,0 +1,38 @@
+[
+  {
+    "skip": false,
+    "name": "sqlite",
+    "type": "sqlite",
+    "database": "./temp/sqlitedb-1.db",
+    "logging": false,
+    "relationLoadStrategy": "join"
+  },
+  {
+    "skip": false,
+    "name": "sqlite-2",
+    "type": "sqlite",
+    "database": "./temp/sqlitedb-2.db",
+    "logging": false,
+    "relationLoadStrategy": "query"
+  },
+  {
+    "skip": false,
+    "name": "sqlite-pooled",
+    "type": "sqlite-pooled",
+    "database": "./temp/sqlitedb-pooled.db",
+    "logging": false,
+    "relationLoadStrategy": "query",
+    "poolSize": 4
+  },
+  {
+    "skip": false,
+    "name": "postgres",
+    "type": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "username": "test",
+    "password": "test",
+    "database": "test",
+    "logging": false
+  }
+]
