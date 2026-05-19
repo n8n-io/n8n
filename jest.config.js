@@ -27,7 +27,9 @@ const esmDependencies = [
 ];
 
 const esmDependenciesPattern = esmDependencies.join('|');
-const esmDependenciesRegex = `node_modules/(${esmDependenciesPattern})/.+\\.m?js$`;
+// Match ESM packages in both flat npm (node_modules/uuid/) and
+// pnpm's nested structure (node_modules/.pnpm/uuid@x/node_modules/uuid/)
+const esmDependenciesRegex = `node_modules[/\\\\\\\\](?:\\.pnpm[/\\\\\\\\][^/\\\\\\\\]+[/\\\\\\\\]node_modules[/\\\\\\\\])?(${esmDependenciesPattern})[/\\\\\\\\].+\\.m?js$`;
 
 /** @type {import('jest').Config} */
 const config = {
@@ -45,7 +47,11 @@ const config = {
 			},
 		],
 	},
-	transformIgnorePatterns: [`/node_modules/(?!${esmDependenciesPattern})/`],
+	// Handle both flat npm and pnpm's nested .pnpm/<pkg>@<ver>/node_modules/<pkg>/ structure.
+	// The lookahead allows the optional pnpm prefix so ESM packages are not ignored.
+	transformIgnorePatterns: [
+		`[/\\\\\\\\]node_modules[/\\\\\\\\](?!(?:\\.pnpm[/\\\\\\\\][^/\\\\\\\\]+[/\\\\\\\\]node_modules[/\\\\\\\\])?(?:${esmDependenciesPattern})[/\\\\\\\\])`,
+	],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: {
 		'^@n8n/utils$': resolve(__dirname, 'packages/@n8n/utils/dist/index.cjs'),
