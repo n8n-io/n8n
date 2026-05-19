@@ -87,6 +87,19 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 }));
 
+vi.mock('@/app/api/workflows', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/api/workflows')>();
+	return {
+		...actual,
+		getNewWorkflow: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
+	};
+});
+
+vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
+	getWorkflowHistory: vi.fn().mockResolvedValue([]),
+	getWorkflowVersion: vi.fn().mockResolvedValue({ workflow: { nodes: [], connections: {} } }),
+}));
+
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';

@@ -413,3 +413,20 @@ Object.defineProperty(window, 'speechSynthesis', {
 });
 
 loadLanguage('en', englishBaseText as unknown as LocaleMessages);
+
+// Block jsdom XHRs from making real network requests in tests. Unmocked store
+// actions used to fire real /rest/* calls; on Node 22 the resulting dual-stack
+// DNS AggregateError emits via socketErrorListener AFTER the test has finished,
+// and vitest 4 promotes that to a test-run failure (~22% miss rate on shard 2).
+// Short-circuiting send() means any unmocked request fails synchronously during
+// the test instead of racing teardown.
+XMLHttpRequest.prototype.send = function (this: XMLHttpRequest) {
+	Object.defineProperty(this, 'readyState', { value: 4, configurable: true });
+	Object.defineProperty(this, 'status', { value: 0, configurable: true });
+	Object.defineProperty(this, 'statusText', { value: '', configurable: true });
+	queueMicrotask(() => {
+		this.dispatchEvent(new Event('readystatechange'));
+		this.dispatchEvent(new Event('error'));
+		this.dispatchEvent(new Event('loadend'));
+	});
+};
