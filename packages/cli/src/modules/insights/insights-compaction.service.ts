@@ -6,8 +6,6 @@ import { sleep } from 'n8n-workflow';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsConfig } from './insights.config';
-<<<<<<< HEAD
-=======
 
 type CompactionRunState = {
 	startedAt: number;
@@ -16,7 +14,6 @@ type CompactionRunState = {
 };
 
 type CompactionStopReason = 'max-batches' | 'max-runtime';
->>>>>>> d67cef8b25 (fix(core): Limit Insights compaction runs (#30503))
 
 /**
  * This service is responsible for compacting lower granularity insights data
