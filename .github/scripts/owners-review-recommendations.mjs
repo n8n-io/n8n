@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { minimatch } from "minimatch";
 import { ensureEnvVar, initGithub } from "./github-helpers.mjs";
+
+// Resolve relative to this file so the path works regardless of cwd
+// (workflow runs from repo root; `npm test` runs from .github/scripts).
+const OWNERS_FILE = join(import.meta.dirname, "..", "OWNERS");
 
 /**
  * @typedef Owner
@@ -22,7 +27,7 @@ import { ensureEnvVar, initGithub } from "./github-helpers.mjs";
  * @returns { Owner[] }
  * */
 export function parseOwnersFile() {
-	const content = readFileSync("../OWNERS", "utf8");
+	const content = readFileSync(OWNERS_FILE, "utf8");
 
 	const owners = content.split("\n")
 	.filter(line => line.includes("@n8n-io"))
