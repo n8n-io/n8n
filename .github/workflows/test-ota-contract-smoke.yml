@@ -60,6 +60,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Activate pnpm via Corepack [bash]
         if: matrix.run_shell == 'bash'
         shell: bash
@@ -76,8 +79,17 @@ jobs:
           corepack prepare pnpm@10.32.1 --activate
           pnpm --version
 
-      - name: Setup ota
-        uses: ota-run/setup@v1
+      - name: Install ota from source [bash]
+        if: matrix.run_shell == 'bash'
+        shell: bash
+        run: |
+          cargo install --git https://github.com/ota-run/ota --branch main ota --locked --force
+
+      - name: Install ota from source [pwsh]
+        if: matrix.run_shell == 'pwsh'
+        shell: pwsh
+        run: |
+          cargo install --git https://github.com/ota-run/ota --branch main ota --locked --force
 
       - name: Verify ota install [bash]
         if: matrix.run_shell == 'bash'
@@ -170,8 +182,13 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup ota
-        uses: ota-run/setup@v1
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install ota from source
+        shell: bash
+        run: |
+          cargo install --git https://github.com/ota-run/ota --branch main ota --locked --force
 
       - name: Verify Docker and ota
         shell: bash
