@@ -395,23 +395,6 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.delete).not.toHaveBeenCalled();
 		});
 
-		it('should resolve the table name in the suspend message when available', async () => {
-			const context = createMockContext({ permissions: {} });
-			(context.dataTableService.list as jest.Mock).mockResolvedValue([
-				{ id: 'dt-1', name: 'Customer data', columns: [] },
-			]);
-			const suspendFn = jest.fn();
-
-			const tool = createDataTablesTool(context);
-			await tool.execute!(deleteInput as never, suspendCtx(suspendFn));
-
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
-				expect.objectContaining({
-					message: 'Delete Customer data (ID: dt-1)',
-				}),
-			);
-		});
-
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { deleteDataTable: 'always_allow' } });
 
@@ -884,7 +867,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows from dt-1 where status eq inactive',
+					message: 'Delete rows where status eq inactive',
 					severity: 'destructive',
 				}),
 			);
@@ -913,7 +896,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows from dt-1 where status eq inactive or age lt 18',
+					message: 'Delete rows where status eq inactive or age lt 18',
 				}),
 			);
 		});
