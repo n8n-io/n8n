@@ -712,6 +712,13 @@ export class AgentsController {
 		const credential = usableCredentials.find((c) => c.id === credentialId);
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
 
+		const integrationImpl = this.chatIntegrationRegistry.require(integration.type);
+		if (!integrationImpl.credentialTypes.includes(credential.type)) {
+			throw new BadRequestError(
+				`${integrationImpl.displayLabel} integrations do not support ${credential.type} credentials`,
+			);
+		}
+
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
 
 		await this.agentsService.saveCredentialIntegration(agent, integration);

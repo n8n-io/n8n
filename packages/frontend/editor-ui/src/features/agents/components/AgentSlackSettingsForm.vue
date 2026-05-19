@@ -31,30 +31,11 @@ function sanitiseSlackAppName(raw: string): string {
 	return cleaned.length > 0 ? cleaned : DEFAULT_SLACK_APP_NAME;
 }
 
-function slackWebhookUrl(): string {
-	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
-	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/slack`;
-}
-
-const oauthCallbackUrl = computed(() => {
-	const configured = (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '';
-	if (!configured) return '';
-	try {
-		// Preserve the configured path (which may include a custom rest endpoint
-		// or base path) but rebase onto `urlBaseWebhook` so the callback uses
-		// the publicly reachable host from `WEBHOOK_URL` instead of the local
-		// browser origin (which is `http://localhost:5678` in dev).
-		const parsed = new URL(configured);
-		const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
-		return `${base}${parsed.pathname}${parsed.search}`;
-	} catch {
-		return configured;
-	}
-});
-
 const slackAppManifest = computed(() => {
 	const agentName = sanitiseSlackAppName(props.agentName);
-	const webhookUrl = slackWebhookUrl();
+	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
+	const webhookUrl = `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/slack`;
+
 	return JSON.stringify(
 		{
 			display_information: {
@@ -72,7 +53,6 @@ const slackAppManifest = computed(() => {
 				},
 			},
 			oauth_config: {
-				redirect_urls: [oauthCallbackUrl.value],
 				scopes: {
 					bot: [
 						'app_mentions:read',
@@ -96,7 +76,6 @@ const slackAppManifest = computed(() => {
 						'users:read.email',
 					],
 				},
-				pkce_enabled: false,
 			},
 			settings: {
 				event_subscriptions: {

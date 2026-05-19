@@ -36,13 +36,26 @@ function makeController({
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentScheduleService = mock<AgentScheduleService>(),
 	agentRepository = mock<AgentRepository>(),
+	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
 	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
 	agentScheduleService?: jest.Mocked<AgentScheduleService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
+	chatIntegrationRegistry?: jest.Mocked<ChatIntegrationRegistry>;
 } = {}) {
+	if (!chatIntegrationRegistry.require.getMockImplementation()) {
+		chatIntegrationRegistry.require.mockImplementation(
+			(type: string) =>
+				({
+					type,
+					displayLabel: type,
+					credentialTypes: type === 'telegram' ? ['telegramApi'] : [`${type}Api`],
+				}) as never,
+		);
+	}
+
 	const controller = new AgentsController(
 		agentsService,
 		mock<AgentsBuilderService>(),
@@ -51,7 +64,7 @@ function makeController({
 		agentScheduleService,
 		agentRepository,
 		mock<AgentExecutionService>(),
-		mock<ChatIntegrationRegistry>(),
+		chatIntegrationRegistry,
 	);
 
 	return {
@@ -61,6 +74,7 @@ function makeController({
 		chatIntegrationService,
 		agentScheduleService,
 		agentRepository,
+		chatIntegrationRegistry,
 	};
 }
 
@@ -155,6 +169,57 @@ describe('AgentsController integration credentials', () => {
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
 					body: { type: 'telegram', credentialId: 'cred-telegram' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow(BadRequestError);
+
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+	});
+
+	it('rejects credentials whose type is not supported by the chat integration', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-oauth',
+				name: 'Slack OAuth',
+				type: 'slackOAuth2Api',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+			},
+		]);
+
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			publishedVersion: {},
+			integrations: [],
+		} as never);
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.require.mockReturnValue({
+			type: 'slack',
+			credentialTypes: ['slackApi'],
+		} as never);
+
+		const { controller } = makeController({
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+			chatIntegrationRegistry,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-oauth' },
 				} as never,
 				undefined as never,
 				'agent-1',

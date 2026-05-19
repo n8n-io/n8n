@@ -35,7 +35,7 @@ const slackIntegration = {
 	icon: 'slack',
 	description: 'Connect Slack',
 	connectedDescription: 'Connected to Slack',
-	credentialTypes: ['slackOAuth2Api', 'slackApi'],
+	credentialTypes: ['slackApi'],
 	noCredentialsMessage: 'No Slack credentials found.',
 };
 
@@ -58,7 +58,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: {},
 		urlBaseWebhook: 'https://hooks.example',
-		OAuthCallbackUrls: { oauth2: 'https://hooks.example/rest/oauth2-credential/callback' },
 	}),
 }));
 
@@ -176,7 +175,7 @@ describe('agent integration credential picker usage', () => {
 		getIntegrationStatus.mockResolvedValue({ integrations: [] });
 		ensureLoaded.mockResolvedValue([slackIntegration, telegramIntegration]);
 		fetchAllCredentialsForWorkflow.mockResolvedValue([
-			{ id: 'cred-1', name: 'Workspace Slack', type: 'slackOAuth2Api' },
+			{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
 			{ id: 'cred-telegram', name: 'Telegram Bot', type: 'telegramApi' },
 		]);
 	});
@@ -208,7 +207,7 @@ describe('agent integration credential picker usage', () => {
 		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
 
 		expect(openNewCredential).toHaveBeenCalledWith(
-			'slackOAuth2Api',
+			'slackApi',
 			false,
 			false,
 			'project-1',
@@ -217,6 +216,30 @@ describe('agent integration credential picker usage', () => {
 			undefined,
 			{ hideAskAssistant: true },
 		);
+	});
+
+	it('does not include n8n OAuth callback URLs in the Slack app manifest', async () => {
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		const manifest = wrapper.find('pre').text();
+		expect(manifest).not.toContain('redirect_urls');
+		expect(manifest).not.toContain('oauth2-credential');
 	});
 
 	it('passes denied credential creation permission to the shared picker', async () => {
