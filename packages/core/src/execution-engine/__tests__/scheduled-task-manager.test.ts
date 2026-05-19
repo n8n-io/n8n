@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import type { CronContext, Workflow } from 'n8n-workflow';
+import type { CronContext, CronExpression, Workflow } from 'n8n-workflow';
 
 import type { InstanceSettings } from '@/instance-settings';
 
@@ -186,7 +186,7 @@ describe('ScheduledTaskManager', () => {
 	});
 
 	describe('N8N_MIN_SCHEDULE_INTERVAL_SECONDS enforcement', () => {
-		const buildCtx = (expression: string): CronContext => ({
+		const buildCtx = (expression: CronExpression): CronContext => ({
 			workflowId: workflow.id,
 			nodeId: 'test-node-id',
 			timezone: workflow.timezone,
