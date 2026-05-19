@@ -10,7 +10,6 @@ import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
 import { AgentEventBus } from '../event-bus';
-import { InMemoryMemory } from '../memory-store';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -561,10 +560,10 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 });
 
 // ---------------------------------------------------------------------------
-// stream() — working memory
+// stream() — legacy working memory
 // ---------------------------------------------------------------------------
 
-describe('AgentRuntime.stream() — working memory', () => {
+describe('AgentRuntime.stream() — legacy working memory', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
@@ -621,6 +620,8 @@ describe('AgentRuntime.stream() — working memory', () => {
 		const calls = streamText.mock.calls as Array<[Record<string, unknown>]>;
 		const callArgs = calls[0]?.[0] ?? {};
 		expect(callArgs.tools ?? {}).not.toHaveProperty('update_working_memory');
+		expect(memory.getWorkingMemory).not.toHaveBeenCalled();
+		expect(memory.saveWorkingMemory).not.toHaveBeenCalled();
 		expect(savedWorkingMemory).toEqual([]);
 	});
 });
@@ -2977,77 +2978,5 @@ describe('AgentRuntime — telemetry propagation', () => {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect(callArgs.experimental_telemetry).toBeUndefined();
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Observational memory — post-turn writer
-// ---------------------------------------------------------------------------
-
-describe('AgentRuntime — observational memory writer', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-		generateText.mockResolvedValue(makeGenerateSuccess());
-	});
-
-	it('runs the observer after saving the turn and compacts into thread working memory', async () => {
-		const store = new InMemoryMemory();
-		const observe = jest.fn().mockResolvedValue([
-			{
-				scopeKind: 'thread',
-				scopeId: 't-obs',
-				kind: 'observation',
-				payload: { text: 'User prefers concise answers.' },
-				durationMs: null,
-				schemaVersion: 1,
-				createdAt: new Date(),
-			},
-		]);
-		const compact = jest.fn().mockResolvedValue({
-			content: '# Thread memory\n- User preferences: concise answers',
-		});
-
-		const runtime = new AgentRuntime({
-			name: 'obs-writer',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'base instructions',
-			memory: store,
-			workingMemory: {
-				template: '# Thread memory\n- User preferences:',
-				structured: false,
-				scope: 'thread',
-			},
-			observationalMemory: { observe, compact, compactionThreshold: 1, sync: true },
-		});
-
-		await runtime.generate('remember that I like concise answers', {
-			persistence: { threadId: 't-obs', resourceId: 'u-1' },
-		});
-
-		expect(observe).toHaveBeenCalledTimes(1);
-		expect(compact).toHaveBeenCalledTimes(1);
-		expect(
-			await store.getWorkingMemory({ threadId: 't-obs', resourceId: 'u-1', scope: 'thread' }),
-		).toBe('# Thread memory\n- User preferences: concise answers');
-		expect(await store.getObservations({ scopeKind: 'thread', scopeId: 't-obs' })).toEqual([]);
-	});
-
-	it('does not run when observational memory is not configured', async () => {
-		const store = new InMemoryMemory();
-		const runtime = new AgentRuntime({
-			name: 'obs-disabled',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'base instructions',
-			memory: store,
-			workingMemory: {
-				template: '# Thread memory',
-				structured: false,
-				scope: 'thread',
-			},
-		});
-
-		await runtime.generate('hi', { persistence: { threadId: 't-none', resourceId: 'u-1' } });
-
-		expect(await store.getCursor('thread', 't-none')).toBeNull();
 	});
 });
