@@ -12,11 +12,13 @@ export const RUNTIME_ONLY_NODE_FIELDS = [
 	'forceCustomOperation',
 ] as const satisfies ReadonlyArray<keyof INode>;
 
-export const SerializableNodeSchema = INodeSchema.omit({
-	extendsCredential: true,
-	rewireOutputLogTo: true,
-	forceCustomOperation: true,
-}).extend({
+const RUNTIME_ONLY_OMIT_MASK = Object.fromEntries(
+	RUNTIME_ONLY_NODE_FIELDS.map((field) => [field, true as const]),
+) as { [K in (typeof RUNTIME_ONLY_NODE_FIELDS)[number]]: true };
+
+// `parameters` is overridden as an opaque record: INodeParametersSchema is too
+// strict for arbitrary user-defined node parameters on the wire.
+export const SerializableNodeSchema = INodeSchema.omit(RUNTIME_ONLY_OMIT_MASK).extend({
 	parameters: z.record(z.string(), z.unknown()),
 });
 
@@ -43,7 +45,7 @@ type _AllINodeFieldsAccountedFor = [_MissingFromSerializableNode] extends [never
 const _allINodeFieldsAccountedFor = true as const satisfies _AllINodeFieldsAccountedFor;
 void _allINodeFieldsAccountedFor;
 
-const serializableConnectionLeafSchema = z.object({
+export const SerializableConnectionLeafSchema = z.object({
 	node: z.string(),
 	type: z.string(),
 	index: z.number(),
@@ -51,24 +53,12 @@ const serializableConnectionLeafSchema = z.object({
 
 export const SerializableConnectionsSchema = z.record(
 	z.string(),
-	z.record(z.string(), z.array(z.array(serializableConnectionLeafSchema).nullable())),
+	z.record(z.string(), z.array(z.array(SerializableConnectionLeafSchema).nullable())),
 );
 
 export type SerializableConnections = z.infer<typeof SerializableConnectionsSchema>;
 
-export interface SerializableWorkflow {
-	id: string;
-	name: string;
-	nodes: SerializableNode[];
-	connections: SerializableConnections;
-	settings?: Record<string, unknown>;
-	versionId: string;
-	parentFolderId: string | null;
-	active: boolean;
-	isArchived: boolean;
-}
-
-export const SerializableWorkflowSchema: z.ZodType<SerializableWorkflow> = z.object({
+export const SerializableWorkflowSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodes: z.array(SerializableNodeSchema),
@@ -79,3 +69,5 @@ export const SerializableWorkflowSchema: z.ZodType<SerializableWorkflow> = z.obj
 	active: z.boolean(),
 	isArchived: z.boolean(),
 });
+
+export type SerializableWorkflow = z.infer<typeof SerializableWorkflowSchema>;
