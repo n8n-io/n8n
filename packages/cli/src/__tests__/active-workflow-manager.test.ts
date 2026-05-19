@@ -194,6 +194,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 		});
 
@@ -359,6 +360,7 @@ describe('ActiveWorkflowManager', () => {
 				eventService,
 				mock(),
 				mock(),
+				mock(),
 			);
 		});
 
@@ -423,10 +425,14 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.emit(triggerData, undefined, undefined, 'wf-1:node-1:1700000000000');
+
+				// resolveWorkflowData().then(...) adds a microtask tick before runWorkflow.
+				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
 					workflowData,
@@ -457,6 +463,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -485,6 +492,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
