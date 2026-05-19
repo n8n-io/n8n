@@ -5,6 +5,7 @@ import {
 	type CredentialResolverConfiguration,
 	type ICredentialResolver,
 } from '@n8n/decorators';
+import { Not } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -12,7 +13,7 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
-import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../../constants';
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../../constants';
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import { SystemResolverModificationError } from '../../errors/system-resolver-modification.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
@@ -649,22 +650,20 @@ describe('DynamicCredentialResolverService', () => {
 	});
 
 	describe('findAllPublic', () => {
-		it('returns every resolver except the system one', async () => {
-			const systemRow = createMockEntity({
-				id: SYSTEM_RESOLVER_ID,
-				name: SYSTEM_RESOLVER_NAME,
-				type: SYSTEM_RESOLVER_TYPE,
-			});
+		it('excludes the system resolver at the database layer', async () => {
 			const customRow = createMockEntity({
 				id: 'custom-1',
 				name: 'Custom',
 				type: 'credential-resolver.oauth2-1.0',
 			});
-			mockRepository.find.mockResolvedValue([systemRow, customRow]);
+			mockRepository.find.mockResolvedValue([customRow]);
 			mockCipher.decryptV2.mockResolvedValue('{}');
 
 			const result = await service.findAllPublic();
 
+			expect(mockRepository.find).toHaveBeenCalledWith({
+				where: { id: Not(SYSTEM_RESOLVER_ID) },
+			});
 			expect(result).toHaveLength(1);
 			expect(result[0].id).toBe('custom-1');
 		});

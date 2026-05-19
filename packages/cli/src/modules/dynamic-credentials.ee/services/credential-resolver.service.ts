@@ -6,6 +6,7 @@ import {
 	ICredentialResolver,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
@@ -92,8 +93,10 @@ export class DynamicCredentialResolverService {
 
 	/** Same as findAll() but excludes the system-managed resolver. Used by admin-facing endpoints. */
 	async findAllPublic(): Promise<DynamicCredentialResolver[]> {
-		const resolvers = await this.findAll();
-		return resolvers.filter((r) => r.id !== SYSTEM_RESOLVER_ID);
+		const resolvers = await this.repository.find({ where: { id: Not(SYSTEM_RESOLVER_ID) } });
+		return await Promise.all(
+			resolvers.map(async (resolver) => await this.withDecryptedConfig(resolver)),
+		);
 	}
 
 	/**
