@@ -6,6 +6,11 @@ import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
+import {
+	isFixWithAiError,
+	type FixWithAiError,
+	type FixWithAiOfferState,
+} from '../useFixWithAiOffer';
 
 const props = withDefaults(
 	defineProps<{
@@ -16,12 +21,7 @@ const props = withDefaults(
 	{ refreshKey: 0 },
 );
 
-export interface WorkflowFailuresReport {
-	workflowId: string;
-	workflowName?: string;
-	executionId: string;
-	errors: Array<{ nodeName: string; errorMessage: string }>;
-}
+export type WorkflowFailuresReport = FixWithAiOfferState;
 
 const emit = defineEmits<{
 	'iframe-ready': [];
@@ -49,17 +49,9 @@ function getPreviewIframe(): HTMLIFrameElement | null {
 	);
 }
 
-function parseWorkflowFailureErrors(
-	errors: unknown,
-): Array<{ nodeName: string; errorMessage: string }> {
+function parseWorkflowFailureErrors(errors: unknown): FixWithAiError[] {
 	if (!Array.isArray(errors)) return [];
-	return errors.filter(
-		(e: unknown): e is { nodeName: string; errorMessage: string } =>
-			typeof e === 'object' &&
-			e !== null &&
-			typeof (e as { nodeName?: unknown }).nodeName === 'string' &&
-			typeof (e as { errorMessage?: unknown }).errorMessage === 'string',
-	);
+	return errors.filter(isFixWithAiError);
 }
 
 function isMessageFromPreviewIframe(event: MessageEvent): boolean {

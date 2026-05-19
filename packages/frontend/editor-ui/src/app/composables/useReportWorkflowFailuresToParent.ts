@@ -2,12 +2,11 @@ import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { FixWithAiError } from '@/features/ai/instanceAi/useFixWithAiOffer';
 import type { IRunData } from 'n8n-workflow';
 
-function collectErrorsFromRunData(
-	runData: IRunData,
-): Array<{ nodeName: string; errorMessage: string }> {
-	const errors: Array<{ nodeName: string; errorMessage: string }> = [];
+function collectErrorsFromRunData(runData: IRunData): FixWithAiError[] {
+	const errors: FixWithAiError[] = [];
 
 	for (const [nodeName, tasks] of Object.entries(runData)) {
 		const lastTask = tasks?.at(-1);

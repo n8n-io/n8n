@@ -49,7 +49,7 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
-import { useFixWithAiOffer, type FixWithAiError } from './useFixWithAiOffer';
+import { buildFixWithAiPrompt, useFixWithAiOffer } from './useFixWithAiOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -515,45 +515,6 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 
 function handleStop() {
 	void thread.cancelRun();
-}
-
-interface FixWithAiPromptContext {
-	workflowName?: string;
-	errors: FixWithAiError[];
-}
-
-function buildFixWithAiPrompt(context: FixWithAiPromptContext): string {
-	if (context.errors.length === 1) {
-		const { nodeName, errorMessage } = context.errors[0];
-
-		if (context.workflowName) {
-			return i18n.baseText('instanceAi.fixWithAi.prompt.singleInWorkflow', {
-				interpolate: { nodeName, errorMessage, workflowName: context.workflowName },
-			});
-		}
-
-		return i18n.baseText('instanceAi.fixWithAi.prompt.single', {
-			interpolate: { nodeName, errorMessage },
-		});
-	}
-
-	const errorList = context.errors
-		.map(({ nodeName, errorMessage }) =>
-			i18n.baseText('instanceAi.fixWithAi.prompt.errorLine', {
-				interpolate: { nodeName, errorMessage },
-			}),
-		)
-		.join('\n');
-
-	if (context.workflowName) {
-		return i18n.baseText('instanceAi.fixWithAi.prompt.multipleInWorkflow', {
-			interpolate: { errorList, workflowName: context.workflowName },
-		});
-	}
-
-	return i18n.baseText('instanceAi.fixWithAi.prompt.multiple', {
-		interpolate: { errorList },
-	});
 }
 
 function handleFixWithAiFromOffer() {

@@ -45,12 +45,6 @@ export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
 
-type QueuedUserMessage = {
-	message: string;
-	attachments?: InstanceAiAttachment[];
-	pushRef?: string;
-};
-
 /**
  * Cross-runtime hooks the store wires up at creation time.
  *
@@ -63,8 +57,6 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** A user message was queued because a run is still active. */
-	onMessageQueued: () => void;
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -259,7 +251,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	let sseGeneration = 0;
 	let hydrationGeneration = 0;
 	let hydrationPromise: Promise<HistoricalHydrationStatus> | null = null;
-	const messageQueue: QueuedUserMessage[] = [];
 
 	// --- Computeds ---
 	const isStreaming = computed(() => activeRunId.value !== null);
@@ -403,7 +394,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				hooks.onRunFinish();
-				processMessageQueue();
 			}
 		} catch {
 			// Malformed JSON — skip
@@ -567,7 +557,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		lastEventId.value = undefined;
-		messageQueue.length = 0;
 	}
 
 	function dispose(): void {
@@ -697,24 +686,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		});
 	}
 
-	function isBusySending(): boolean {
-		return isStreaming.value || pendingMessageCount.value > 0;
-	}
-
-	function processMessageQueue(): void {
-		if (messageQueue.length === 0 || isBusySending()) return;
-
-		const next = messageQueue.shift();
-
-		if (!next) return;
-
-		void sendMessageNow(next.message, next.attachments, next.pushRef).finally(() => {
-			if (!isBusySending()) {
-				processMessageQueue();
-			}
-		});
-	}
-
 	async function dispatchUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
@@ -755,21 +726,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	}
 
 	async function sendMessage(
-		message: string,
-		attachments?: InstanceAiAttachment[],
-		pushRef?: string,
-	): Promise<void> {
-		if (isBusySending()) {
-			messageQueue.push({ message, attachments, pushRef });
-			hooks.onMessageQueued();
-
-			return;
-		}
-
-		await sendMessageNow(message, attachments, pushRef);
-	}
-
-	async function sendMessageNow(
 		message: string,
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,

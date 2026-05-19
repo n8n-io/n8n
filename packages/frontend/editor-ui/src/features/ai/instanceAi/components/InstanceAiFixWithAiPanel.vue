@@ -107,11 +107,6 @@ const title = computed(() =>
 	min-width: 0;
 }
 
-.dismiss {
-	flex-shrink: 0;
-	margin-right: calc(-1 * var(--spacing--4xs));
-}
-
 .body {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 }

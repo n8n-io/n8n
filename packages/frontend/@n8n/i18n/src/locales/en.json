@@ -5468,8 +5468,6 @@
 	"instanceAi.sidebar.chatHistory": "Chat history",
 	"instanceAi.sidebar.collapse": "Collapse sidebar",
 	"instanceAi.message.reasoning": "Reasoning",
-	"instanceAi.toast.messageQueued.title": "Message queued",
-	"instanceAi.toast.messageQueued.description": "It will be sent after the ongoing conversation is completed",
 	"instanceAi.sidebar.noThreads": "No conversations yet",
 	"instanceAi.sidebar.group.thisWeek": "This week",
 	"instanceAi.sidebar.group.older": "Older",

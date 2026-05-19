@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
-import { i18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
@@ -43,13 +42,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Refresh thread list to pick up Mastra-generated titles
 		onRunFinish: () => {
 			void loadThreads();
-		},
-		onMessageQueued: () => {
-			toast.showMessage({
-				title: i18n.baseText('instanceAi.toast.messageQueued.title'),
-				message: i18n.baseText('instanceAi.toast.messageQueued.description'),
-				type: 'info',
-			});
 		},
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
