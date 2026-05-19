@@ -33,26 +33,6 @@ export interface ToolExecutor {
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
-const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
-- User facts:
-- User preferences/instructions:
-- Current goal/task:
-- Current state:
-- Key active items:
-- Decisions made:
-- Open follow-ups:
-- Resolved or superseded:`;
-
-const DEFAULT_WORKING_MEMORY_INSTRUCTION = [
-	'Thread working memory is maintained automatically after turns by an out-of-band observer.',
-	'Thread working memory applies only to this same session/thread.',
-	'Do not claim it is available in a different session, new thread, or cross-thread profile unless the product explicitly provides that context.',
-	'Use it silently as private read-only context for this session.',
-	'Treat working memory as internal context; do not reveal, quote, append, or reproduce the raw working-memory document in user-visible replies.',
-	'If the user asks what you remember, answer conversationally from relevant memory instead of dumping the document.',
-	'Do not try to edit, summarize, refresh, or maintain working memory directly.',
-].join(' ');
-
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
@@ -80,19 +60,8 @@ export async function buildFromJson(
 	const { Agent } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
-	// Derive the provider prefix for credential field remapping.
-	const slashIdx = config.model.indexOf('/');
-	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
-
-	// Resolve credentials upfront and embed them directly in the model config
-	// object so createModel() receives the full set of fields it needs.
-	if (config.credential) {
-		const raw = await options.credentialProvider.resolve(config.credential);
-		const mapped = mapCredentialForProvider(providerPrefix, raw);
-		agent.model({ id: config.model, ...mapped } as ModelConfig);
-	} else {
-		agent.model(config.model);
-	}
+	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
+	agent.model(resolvedModelConfig);
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
 	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
@@ -293,10 +262,6 @@ async function applyMemoryFromConfig(
 
 	const builtMemory = memoryFactory(memoryConfig);
 	memory.storage(await Promise.resolve(builtMemory));
-	memory
-		.freeform(DEFAULT_WORKING_MEMORY_TEMPLATE)
-		.scope('thread')
-		.instruction(DEFAULT_WORKING_MEMORY_INSTRUCTION);
 
 	if (memoryConfig.lastMessages) {
 		memory.lastMessages(memoryConfig.lastMessages);
@@ -306,7 +271,42 @@ async function applyMemoryFromConfig(
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
 
+	if (memoryConfig.observationalMemory?.enabled !== false) {
+		const observationalMemory = memoryConfig.observationalMemory;
+
+		memory.observationalMemory({
+			...(observationalMemory?.observerThresholdTokens !== undefined && {
+				observerThresholdTokens: observationalMemory.observerThresholdTokens,
+			}),
+			...(observationalMemory?.reflectorThresholdTokens !== undefined && {
+				reflectorThresholdTokens: observationalMemory.reflectorThresholdTokens,
+			}),
+			...(observationalMemory?.renderTokenBudget !== undefined && {
+				renderTokenBudget: observationalMemory.renderTokenBudget,
+			}),
+			...(observationalMemory?.observationLogTailLimit !== undefined && {
+				observationLogTailLimit: observationalMemory.observationLogTailLimit,
+			}),
+			...(observationalMemory?.lockTtlMs !== undefined && {
+				lockTtlMs: observationalMemory.lockTtlMs,
+			}),
+		});
+	}
+
 	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
+}
+
+async function resolveModelConfig(
+	config: AgentJsonConfig,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	if (!config.credential) return config.model;
+
+	const slashIdx = config.model.indexOf('/');
+	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(providerPrefix, raw);
+	return { id: config.model, ...mapped } as ModelConfig;
 }

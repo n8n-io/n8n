@@ -174,7 +174,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// Use pre-built memory if provided, otherwise create from config
 	const memory = options.memory ?? createMemory(memoryConfig);
 	const systemPrompt = getSystemPrompt({
-		researchMode: orchestrationContext?.researchMode,
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,

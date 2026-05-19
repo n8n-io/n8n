@@ -129,7 +129,6 @@ describe('InstanceAiController', () => {
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
-			researchMode: false,
 			timeZone: 'Europe/Helsinki',
 		});
 
@@ -149,7 +148,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payload.message,
-				payload.researchMode,
 				payload.attachments,
 				payload.timeZone,
 				payload.pushRef,
@@ -182,7 +180,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payloadWithPushRef.message,
-				payloadWithPushRef.researchMode,
 				payloadWithPushRef.attachments,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',

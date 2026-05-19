@@ -323,16 +323,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
-			case 'working-memory-update': {
-				const msg = ensureCurrent(session);
-				msg.toolCalls = msg.toolCalls ?? [];
-				msg.toolCalls.push({
-					tool: event.toolName,
-					toolCallId: crypto.randomUUID(),
-					state: TOOL_CALL_STATE.DONE,
-				});
-				break;
-			}
 			case 'code-delta': {
 				params.onCodeDelta?.(event.delta);
 				break;
