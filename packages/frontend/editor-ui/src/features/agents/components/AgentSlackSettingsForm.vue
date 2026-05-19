@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { N8nButton, N8nCollapsiblePanel, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { getSlackAgentAppManifest } from '../composables/useAgentApi';
 
 const props = defineProps<{
 	agentName: string;
@@ -21,93 +22,36 @@ const appConfigurationToken = ref('');
 const setupLoading = ref(false);
 const setupError = ref(false);
 const manualConfigurationOpen = ref(false);
-
-const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
-
-// Slack app names accept letters, digits, spaces, periods, hyphens and
-// underscores (max 35 chars per Slack's submission guidelines). Strip anything
-// else and fall back to a sensible default if the agent name is empty after
-// sanitisation, so the manifest always validates on Slack's side.
-function sanitiseSlackAppName(raw: string): string {
-	const cleaned = raw
-		.replace(/[^a-zA-Z0-9 ._-]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.slice(0, 35);
-	return cleaned.length > 0 ? cleaned : DEFAULT_SLACK_APP_NAME;
-}
-
-const slackAppManifest = computed(() => {
-	const agentName = sanitiseSlackAppName(props.agentName);
-	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
-	const webhookUrl = `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/slack`;
-
-	return JSON.stringify(
-		{
-			display_information: {
-				name: agentName,
-			},
-			features: {
-				app_home: {
-					home_tab_enabled: true,
-					messages_tab_enabled: false,
-					messages_tab_read_only_enabled: false,
-				},
-				bot_user: {
-					display_name: agentName,
-					always_online: true,
-				},
-			},
-			oauth_config: {
-				scopes: {
-					bot: [
-						'app_mentions:read',
-						'assistant:write',
-						'channels:history',
-						'channels:join',
-						'channels:manage',
-						'channels:read',
-						'chat:write',
-						'chat:write.customize',
-						'files:read',
-						'files:write',
-						'groups:read',
-						'im:history',
-						'im:read',
-						'im:write',
-						'mpim:read',
-						'mpim:write',
-						'search:read.public',
-						'users:read',
-						'users:read.email',
-					],
-				},
-			},
-			settings: {
-				event_subscriptions: {
-					request_url: webhookUrl,
-					bot_events: ['app_mention', 'assistant_thread_context_changed', 'message.im'],
-				},
-				interactivity: {
-					is_enabled: true,
-					request_url: webhookUrl,
-				},
-				org_deploy_enabled: false,
-				socket_mode_enabled: false,
-				token_rotation_enabled: false,
-			},
-		},
-		null,
-		2,
-	);
-});
+const slackAppManifest = ref('');
+const manifestLoading = ref(false);
+const manifestError = ref(false);
 
 async function copyManifest() {
+	if (!slackAppManifest.value) return;
+
 	await navigator.clipboard.writeText(slackAppManifest.value);
 	manifestCopied.value = true;
 	setTimeout(() => {
 		manifestCopied.value = false;
 	}, 2000);
+}
+
+async function loadSlackAppManifest() {
+	manifestLoading.value = true;
+	manifestError.value = false;
+	try {
+		const { manifest } = await getSlackAgentAppManifest(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		slackAppManifest.value = JSON.stringify(manifest, null, 2);
+	} catch {
+		slackAppManifest.value = '';
+		manifestError.value = true;
+	} finally {
+		manifestLoading.value = false;
+	}
 }
 
 async function createSlackApp() {
@@ -127,6 +71,16 @@ async function createSlackApp() {
 		setupLoading.value = false;
 	}
 }
+
+watch(
+	() => [props.projectId, props.agentId, props.connected] as const,
+	() => {
+		if (!props.connected) {
+			void loadSlackAppManifest();
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -211,11 +165,28 @@ async function createSlackApp() {
 							{{ i18n.baseText('agents.builder.addTrigger.slack.docsCalloutLink') }}
 						</a>
 					</N8nText>
-					<div :class="$style.codeBlock">
+					<N8nText
+						v-if="manifestLoading"
+						:class="$style.manifestHint"
+						size="small"
+						data-testid="slack-manifest-loading"
+					>
+						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestLoading') }}
+					</N8nText>
+					<N8nText
+						v-else-if="manifestError"
+						:class="$style.setupError"
+						size="small"
+						data-testid="slack-manifest-error"
+					>
+						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestError') }}
+					</N8nText>
+					<div v-else :class="$style.codeBlock">
 						<N8nButton
 							variant="outline"
 							size="small"
 							:class="$style.codeBlockCopy"
+							:disabled="!slackAppManifest"
 							data-testid="slack-copy-manifest"
 							@click="copyManifest"
 						>

@@ -6190,6 +6190,8 @@
 	"agents.builder.addTrigger.slack.hideJson": "Hide JSON",
 	"agents.builder.addTrigger.slack.copyManifest": "Copy manifest",
 	"agents.builder.addTrigger.slack.manifestTitle": "Slack app manifest",
+	"agents.builder.addTrigger.slack.manifestLoading": "Loading Slack app manifest...",
+	"agents.builder.addTrigger.slack.manifestError": "Couldn't load Slack app manifest. Try again.",
 	"agents.builder.addTrigger.slack.docsCalloutLink": "See docs",
 	"agents.builder.addTrigger.telegram.accessMode.label": "Access mode",
 	"agents.builder.addTrigger.telegram.accessMode.private": "Private",

@@ -111,6 +111,7 @@ describe('AgentsController route access scopes', () => {
 		['deleteSkill', 'agent:update'],
 		['revertToPublished', 'agent:update'],
 		['createSlackApp', 'agent:update'],
+		['getSlackAppManifest', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -396,6 +397,65 @@ describe('AgentsController integration credentials', () => {
 			agentId: 'agent-1',
 			appConfigurationToken: 'xoxe-config',
 			user: { id: 'user-1' },
+		});
+	});
+
+	it('returns the manual Slack app manifest', async () => {
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		slackAppSetupService.getManualManifest.mockResolvedValue({
+			manifest: {
+				display_information: { name: 'Support Agent' },
+				features: {
+					app_home: {
+						home_tab_enabled: true,
+						messages_tab_enabled: false,
+						messages_tab_read_only_enabled: false,
+					},
+					bot_user: {
+						display_name: 'Support Agent',
+						always_online: true,
+					},
+				},
+				oauth_config: {
+					scopes: { bot: ['chat:write'] },
+				},
+				settings: {
+					event_subscriptions: {
+						request_url:
+							'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
+						bot_events: ['app_mention'],
+					},
+					interactivity: {
+						is_enabled: true,
+						request_url:
+							'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
+					},
+					org_deploy_enabled: false,
+					socket_mode_enabled: false,
+					token_rotation_enabled: false,
+				},
+			},
+		});
+		const { controller } = makeController({ slackAppSetupService });
+
+		await expect(
+			controller.getSlackAppManifest(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toEqual({
+			manifest: expect.objectContaining({
+				display_information: { name: 'Support Agent' },
+				oauth_config: {
+					scopes: { bot: ['chat:write'] },
+				},
+			}),
+		});
+
+		expect(slackAppSetupService.getManualManifest).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
 		});
 	});
 

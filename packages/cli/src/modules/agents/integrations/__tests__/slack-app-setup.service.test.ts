@@ -166,6 +166,25 @@ describe('SlackAppSetupService', () => {
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
+	it('returns the manual Slack app manifest without OAuth redirect URLs', async () => {
+		const result = await service.getManualManifest({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		});
+
+		expect(result.manifest.display_information.name).toBe('Support Agent');
+		expect(result.manifest.oauth_config).not.toHaveProperty('redirect_urls');
+		expect(result.manifest.oauth_config.scopes.bot).toContain('chat:write');
+		expect(result.manifest.settings.event_subscriptions.request_url).toBe(
+			'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
+		);
+		expect(result.manifest.settings.interactivity).toEqual({
+			is_enabled: true,
+			request_url: 'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
 	it('exchanges the OAuth code, creates a Slack API credential, and connects the agent', async () => {
 		fetchMock
 			.mockResolvedValueOnce(

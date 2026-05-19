@@ -13,6 +13,7 @@ const {
 	connectIntegration,
 	disconnectIntegration,
 	createSlackAgentApp,
+	getSlackAgentAppManifest,
 	ensureLoaded,
 } = vi.hoisted(() => ({
 	fetchAllCredentialsForWorkflow: vi.fn(),
@@ -22,6 +23,7 @@ const {
 	connectIntegration: vi.fn(),
 	disconnectIntegration: vi.fn(),
 	createSlackAgentApp: vi.fn(),
+	getSlackAgentAppManifest: vi.fn(),
 	ensureLoaded: vi.fn(),
 }));
 
@@ -89,6 +91,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	connectIntegration,
 	disconnectIntegration,
 	createSlackAgentApp,
+	getSlackAgentAppManifest,
 }));
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
@@ -210,6 +213,7 @@ describe('agent integration credential picker usage', () => {
 		connectIntegration.mockReset();
 		disconnectIntegration.mockReset();
 		createSlackAgentApp.mockReset();
+		getSlackAgentAppManifest.mockReset();
 		ensureLoaded.mockReset();
 		broadcastHandler = undefined;
 		class BroadcastChannelTestDouble {
@@ -237,6 +241,40 @@ describe('agent integration credential picker usage', () => {
 		projectState.myProjects = [];
 		clearAgentIntegrationStatusCache('project-1', 'agent-1');
 		getIntegrationStatus.mockResolvedValue({ integrations: [] });
+		getSlackAgentAppManifest.mockResolvedValue({
+			manifest: {
+				display_information: { name: 'Backend Slack App' },
+				features: {
+					app_home: {
+						home_tab_enabled: true,
+						messages_tab_enabled: false,
+						messages_tab_read_only_enabled: false,
+					},
+					bot_user: {
+						display_name: 'Backend Slack App',
+						always_online: true,
+					},
+				},
+				oauth_config: {
+					scopes: { bot: ['chat:write'] },
+				},
+				settings: {
+					event_subscriptions: {
+						request_url:
+							'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
+						bot_events: ['app_mention'],
+					},
+					interactivity: {
+						is_enabled: true,
+						request_url:
+							'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
+					},
+					org_deploy_enabled: false,
+					socket_mode_enabled: false,
+					token_rotation_enabled: false,
+				},
+			},
+		});
 		ensureLoaded.mockResolvedValue([slackIntegration, telegramIntegration]);
 		fetchAllCredentialsForWorkflow.mockResolvedValue([
 			{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
@@ -287,6 +325,8 @@ describe('agent integration credential picker usage', () => {
 		expect(picker.attributes('data-can-create')).toBe('true');
 		expect(wrapper.text()).toContain('agents.builder.addTrigger.slack.manual.description');
 		expect(wrapper.find('pre').exists()).toBe(true);
+		expect(wrapper.find('pre').text()).toContain('"name": "Backend Slack App"');
+		expect(getSlackAgentAppManifest).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		const manualContentHtml = wrapper
 			.find('[data-testid="slack-manual-configuration-content"]')
 			.html();

@@ -12,6 +12,7 @@ import {
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
+	type SlackAgentAppManifestResponse,
 	CreateAgentDto,
 	CreateAgentSkillDto,
 	isAgentCredentialIntegration,
@@ -743,6 +744,19 @@ export class AgentsController {
 			agentId,
 			appConfigurationToken: payload.appConfigurationToken,
 			user: req.user,
+		});
+	}
+
+	@Get('/:agentId/integrations/slack/manifest')
+	@ProjectScope('agent:read')
+	async getSlackAppManifest(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<SlackAgentAppManifestResponse> {
+		return await this.slackAppSetupService.getManualManifest({
+			projectId: req.params.projectId,
+			agentId,
 		});
 	}
 

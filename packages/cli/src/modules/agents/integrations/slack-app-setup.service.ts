@@ -1,6 +1,11 @@
 import { randomBytes } from 'node:crypto';
 
-import type { AgentCredentialIntegrationConfig, CreateSlackAgentAppResponse } from '@n8n/api-types';
+import type {
+	AgentCredentialIntegrationConfig,
+	CreateSlackAgentAppResponse,
+	SlackAgentAppManifest,
+	SlackAgentAppManifestResponse,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -57,6 +62,11 @@ interface CreateSlackAppOptions {
 	user: User;
 }
 
+interface GetSlackAppManifestOptions {
+	projectId: string;
+	agentId: string;
+}
+
 interface CompleteSlackAppInstallOptions {
 	projectId: string;
 	agentId: string;
@@ -73,42 +83,6 @@ interface SlackAppSetupSession {
 	clientSecret: string;
 	signingSecret: string;
 	redirectUrl: string;
-}
-
-interface SlackAppManifest {
-	display_information: {
-		name: string;
-	};
-	features: {
-		app_home: {
-			home_tab_enabled: boolean;
-			messages_tab_enabled: boolean;
-			messages_tab_read_only_enabled: boolean;
-		};
-		bot_user: {
-			display_name: string;
-			always_online: boolean;
-		};
-	};
-	oauth_config: {
-		redirect_urls: string[];
-		scopes: {
-			bot: string[];
-		};
-	};
-	settings: {
-		event_subscriptions: {
-			request_url: string;
-			bot_events: string[];
-		};
-		interactivity: {
-			is_enabled: boolean;
-			request_url: string;
-		};
-		org_deploy_enabled: boolean;
-		socket_mode_enabled: boolean;
-		token_rotation_enabled: boolean;
-	};
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -165,12 +139,9 @@ export class SlackAppSetupService {
 		}
 
 		const redirectUrl = this.callbackUrl(options.projectId, options.agentId);
-		const manifest = this.buildManifest(
-			agent.name,
-			options.projectId,
-			options.agentId,
+		const manifest = this.buildManifest(agent.name, options.projectId, options.agentId, {
 			redirectUrl,
-		);
+		});
 		const response = await this.callSlackApi('apps.manifest.create', {
 			token: appConfigurationToken,
 			manifest: JSON.stringify(manifest),
@@ -209,6 +180,15 @@ export class SlackAppSetupService {
 		return {
 			appId,
 			installUrl: this.installUrl(oauthAuthorizeUrl, state, redirectUrl),
+		};
+	}
+
+	async getManualManifest(
+		options: GetSlackAppManifestOptions,
+	): Promise<SlackAgentAppManifestResponse> {
+		const agent = await this.getAgent(options.agentId, options.projectId);
+		return {
+			manifest: this.buildManifest(agent.name, options.projectId, options.agentId),
 		};
 	}
 
@@ -275,11 +255,16 @@ export class SlackAppSetupService {
 		await this.agentsService.saveCredentialIntegration(agent, integration);
 	}
 
-	private async getPublishedAgent(agentId: string, projectId: string): Promise<Agent> {
+	private async getAgent(agentId: string, projectId: string): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+		return agent;
+	}
+
+	private async getPublishedAgent(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.getAgent(agentId, projectId);
 		if (!agent.publishedVersion) {
 			throw new ConflictError(
 				`Agent "${agentId}" must be published before connecting an integration`,
@@ -292,8 +277,8 @@ export class SlackAppSetupService {
 		agentName: string,
 		projectId: string,
 		agentId: string,
-		redirectUrl: string,
-	): SlackAppManifest {
+		options: { redirectUrl?: string } = {},
+	): SlackAgentAppManifest {
 		const slackAppName = this.sanitiseSlackAppName(agentName);
 		const webhookUrl = this.webhookUrl(projectId, agentId);
 		return {
@@ -312,7 +297,7 @@ export class SlackAppSetupService {
 				},
 			},
 			oauth_config: {
-				redirect_urls: [redirectUrl],
+				...(options.redirectUrl ? { redirect_urls: [options.redirectUrl] } : {}),
 				scopes: {
 					bot: [...REQUIRED_BOT_SCOPES],
 				},

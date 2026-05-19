@@ -8,6 +8,7 @@ import type {
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
+	SlackAgentAppManifestResponse,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -192,6 +193,18 @@ export const createSlackAgentApp = async (
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/app`,
 		{ appConfigurationToken },
+	);
+};
+
+export const getSlackAgentAppManifest = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<SlackAgentAppManifestResponse> => {
+	return await makeRestApiRequest<SlackAgentAppManifestResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
 	);
 };
 
