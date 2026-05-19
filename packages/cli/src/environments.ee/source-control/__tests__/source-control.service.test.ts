@@ -276,17 +276,6 @@ describe('SourceControlService', () => {
 			});
 			gitService.requiresAdminPushForProjectsMigration.mockResolvedValueOnce(true);
 
-			await expect(sourceControlService.ensureCanPushWorkfolder(user)).rejects.toThrow(
-				new ForbiddenError(SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE),
-			);
-		});
-
-		it('should throw ForbiddenError from pushWorkfolder when projects migration requires admin push', async () => {
-			const user = Object.assign(new User(), {
-				role: GLOBAL_MEMBER_ROLE,
-			});
-			gitService.requiresAdminPushForProjectsMigration.mockResolvedValueOnce(true);
-
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
 					fileNames: [],

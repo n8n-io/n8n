@@ -245,16 +245,11 @@ export class SourceControlService {
 		return await this.gitService.setBranch(branch);
 	}
 
-	// will reset the branch to the remote branch and pull
-	// this will discard all local changes
-	async ensureCanPushWorkfolder(user: User): Promise<void> {
-		if (await this.gitService.requiresAdminPushForProjectsMigration()) {
-			if (!hasGlobalScope(user, 'sourceControl:push')) {
-				throw new ForbiddenError(SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE);
-			}
-		}
-	}
-
+	/**
+	 * Resets the current local branch to match its remote counterpart, discarding all local changes.
+	 * This operation overwrites any uncommitted or divergent local changes with the state from the remote branch.
+	 * Use with caution, as this action cannot be undone.
+	 */
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
 		if (!this.gitService.git) {
 			await this.initGitService();
@@ -557,6 +552,14 @@ export class SourceControlService {
 			}
 			default:
 				throw new BadRequestError(`Unsupported file type: ${type}`);
+		}
+	}
+
+	private async ensureCanPushWorkfolder(user: User): Promise<void> {
+		if (await this.gitService.requiresAdminPushForProjectsMigration()) {
+			if (!hasGlobalScope(user, 'sourceControl:push')) {
+				throw new ForbiddenError(SOURCE_CONTROL_ADMIN_PUSH_REQUIRED_MESSAGE);
+			}
 		}
 	}
 }
