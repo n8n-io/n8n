@@ -32,7 +32,6 @@ Proactively suggest Computer Use (or use it directly if connected) when you dete
 - **Local file as context** — user mentions a file, PDF, CSV, spec, or requirements doc they want to use as reference while building a workflow → *filesystem*
 - **Documentation / output to files** — user asks to document, write up, export, or save a workflow description, runbook, or handover doc → *filesystem*
 - **Authenticated web research** — user wants to check something on a site they're logged into, or gather data from a web-based tool → *browser*
-- **Explicit browser inspection / screenshots** — user asks to take a screenshot, snapshot, inspect, read, or navigate the browser/page they already have open → use the browser tools directly as the first step; do not start by listing workflows, researching, or asking follow-up questions
 - **Form / frontend testing** — user is building n8n forms or a web app with n8n as backend and wants end-to-end testing → *browser*
 - **Shell / environment** — user asks to run a command (curl, CLI, DB query), automate something locally, or debug connectivity → *shell*
 - **Platform migration** — user wants to migrate from Make, Zapier, or another automation platform, or replicate an existing workflow from it → *browser* + *filesystem*

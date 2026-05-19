@@ -143,7 +143,105 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		expect(task).toContain(
 			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression(sourceNodeName, sourceField)} }}`)}`,
 		);
-		expect(task).toContain(`with \`{{ ${currentJsonExpression(column)} }}\``);
-		expect(task).toContain(`with \`{{ ${nodeItemJsonExpression(agentNodeName, 'sender-id')} }}\``);
+		expect(task).toContain(`with \`{{ ${currentJsonExpression('user_message')} }}\``);
+		expect(task).toContain(`with \`{{ ${nodeItemJsonExpression(agentNodeName, 'sender_id')} }}\``);
+	});
+});
+
+describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
+	it('normalizes DataTable columns and rewrites expressions to the normalized names', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['User Query'],
+			suggestedOutputColumns: ['expected-response'],
+			enabledMetrics: [
+				{
+					id: 'correctness',
+					name: 'Correctness',
+					kind: 'llm-judge',
+					description: 'Factual correctness of the response.',
+					prompt: 'Judge if the response is correct.',
+					cannedMetricKey: 'correctness',
+					defaultEnabled: true,
+				},
+			],
+			namedRefs: [
+				{
+					nodeName: 'Webhook',
+					field: 'User Query',
+					originalExpression: '$("Webhook").item.json["User Query"]',
+					column: 'User Query',
+					targetNodeName: 'General Agent',
+				},
+			],
+		});
+
+		expect(task).toContain('Create an empty DataTable named "Telegram AI Q&A Bot — eval samples"');
+		expect(task).toContain('Columns to create as strings:\n- user_query\n- expected_response');
+		expect(task).toContain(
+			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression('Webhook', 'User Query')} }}`)}`,
+		);
+		expect(task).toContain(
+			'Replace `$("Webhook").item.json["User Query"]` with `{{ $json.user_query }}`',
+		);
+		expect(task).toContain("expectedAnswer: ={{ $('Eval Trigger').item.json.expected_response }}");
+		expect(task).not.toContain('Telegram AI Q&A Bot eval dataset');
+		expect(task).not.toContain('- User Query');
+		expect(task).not.toContain('- expected-response');
+	});
+
+	it('keeps dataTableId unconfigured when the user chose to wire data later', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			datasetChoice: 'later',
+		});
+
+		expect(task).toContain('Leave setOutputs dataTableId empty until the user selects a DataTable');
+		expect(task).not.toContain("value: '<same as EvaluationTrigger>'");
+	});
+});
+
+describe('formatEvalSetupTask — metric instructions', () => {
+	it('maps tool_use to the native toolsUsed metric parameter', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			enabledMetrics: [
+				{
+					id: 'tool_use',
+					name: 'Tool use',
+					kind: 'llm-judge',
+					description: 'Tool choice',
+					prompt: 'Check tools.',
+					cannedMetricKey: 'tool_use',
+					defaultEnabled: false,
+				},
+			],
+		});
+
+		expect(task).toContain("metric: 'toolsUsed'");
+		expect(task).toContain('expectedTools');
+		expect(task).toContain('intermediateSteps');
+		expect(task).not.toContain("metric: 'tool_use'");
+	});
+
+	it('does not instruct builders to use a non-existent relevance metric parameter', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			enabledMetrics: [
+				{
+					id: 'relevance',
+					name: 'Relevance',
+					kind: 'llm-judge',
+					description: 'Context relevance',
+					prompt: 'Check relevance.',
+					cannedMetricKey: 'relevance',
+					defaultEnabled: false,
+				},
+			],
+		});
+
+		expect(task).toContain("metric: 'helpfulness'");
+		expect(task).toContain('There is no native `relevance` metric option');
+		expect(task).not.toContain("metric: 'relevance'");
 	});
 });

@@ -97,9 +97,9 @@ function getSafeMcpServers(
  * Two buckets:
  * - regular: external MCP servers configured by the admin. Their tools are
  *   merged into the orchestrator's toolset.
- * - browser: browser MCP. Kept separate for cache/lifecycle isolation, then
- *   exposed to the orchestrator and browser-oriented sub-agents when browser
- *   automation is available.
+ * - browser: browser MCP. Excluded from the orchestrator and only handed to
+ *   browser-oriented sub-agents to keep screenshots/snapshots out of the
+ *   orchestrator context.
  *
  * Tool listings are cached by config hash; clients are tracked in one map so
  * `disconnect()` cleans up everything regardless of which bucket created them.

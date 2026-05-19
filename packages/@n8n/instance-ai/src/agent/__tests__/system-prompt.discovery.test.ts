@@ -97,14 +97,6 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			expect(line).toContain('browser');
 		});
 
-		it('routes explicit browser screenshot requests to browser tools before workflow inspection', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
-			const line = findSignalLine(prompt, 'Explicit browser inspection / screenshots');
-
-			expect(line).toContain('browser tools directly as the first step');
-			expect(line).toContain('do not start by listing workflows');
-		});
-
 		it('pairs Form / frontend testing with the browser tool', () => {
 			const prompt = getSystemPrompt(browserCapableOptions);
 			const line = findSignalLine(prompt, 'Form / frontend testing');

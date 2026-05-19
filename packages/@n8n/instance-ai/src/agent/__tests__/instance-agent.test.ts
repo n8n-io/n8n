@@ -84,6 +84,10 @@ const { createToolsFromLocalMcpServer } =
 	require('../../tools/filesystem/create-tools-from-mcp-server') as {
 		createToolsFromLocalMcpServer: jest.Mock;
 	};
+const { createOrchestratorDomainTools } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../../tools') as { createOrchestratorDomainTools: jest.Mock };
+
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
 	browserTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
@@ -264,12 +268,18 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 	});
 
-	it('exposes localMcpServer browser tools when eager-loading tools', async () => {
+	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
+		createOrchestratorDomainTools.mockReturnValueOnce(
+			new Map([
+				['workflows', { id: 'workflows' }],
+				['browser_connect', { id: 'browser_connect' }],
+				['browser_navigate', { id: 'browser_navigate' }],
+			]),
+		);
 		createToolsFromLocalMcpServer.mockReturnValue(
 			new Map([
 				['browser_connect', { id: 'browser_connect' }],
 				['browser_navigate', { id: 'browser_navigate' }],
-				['browser_screenshot', { id: 'browser_screenshot' }],
 			]),
 		);
 
@@ -277,11 +287,7 @@ describe('createInstanceAgent', () => {
 		const localMcpServer = {
 			getToolsByCategory: jest
 				.fn()
-				.mockReturnValue([
-					{ name: 'browser_connect' },
-					{ name: 'browser_navigate' },
-					{ name: 'browser_screenshot' },
-				]),
+				.mockReturnValue([{ name: 'browser_connect' }, { name: 'browser_navigate' }]),
 		};
 
 		await createInstanceAgent({
@@ -302,7 +308,6 @@ describe('createInstanceAgent', () => {
 		expect(agentTools).toMatchObject({
 			browser_connect: { id: 'browser_connect' },
 			browser_navigate: { id: 'browser_navigate' },
-			browser_screenshot: { id: 'browser_screenshot' },
 		});
 	});
 
