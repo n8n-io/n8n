@@ -27,6 +27,7 @@ const i18n = useI18n();
 const insightsStore = useInsightsStore();
 const input = ref('');
 const isWaiting = ref(false);
+const isStreaming = ref(false);
 const messages = ref<ChatMessage[]>([
 	{
 		id: 'welcome',
@@ -37,7 +38,9 @@ const messages = ref<ChatMessage[]>([
 ]);
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 
-const canSubmit = computed(() => input.value.trim().length > 0 && !isWaiting.value);
+const canSubmit = computed(
+	() => input.value.trim().length > 0 && !isWaiting.value && !isStreaming.value,
+);
 const showSuggestedPrompts = computed(
 	() => messages.value.length === 1 && props.suggestedPrompts.length > 0,
 );
@@ -63,7 +66,7 @@ const scrollToMessage = async (messageId: string) => {
 
 const submitPrompt = async (prompt = input.value) => {
 	const question = prompt.trim();
-	if (!question || isWaiting.value) return;
+	if (!question || isWaiting.value || isStreaming.value) return;
 
 	messages.value.push({
 		id: `user-${Date.now()}`,
@@ -76,25 +79,50 @@ const submitPrompt = async (prompt = input.value) => {
 
 	let responseMessageId = '';
 	try {
-		const response = await insightsStore.askAnalyst(question);
 		responseMessageId = `assistant-${Date.now()}`;
 		messages.value.push({
 			id: responseMessageId,
 			role: 'assistant',
-			content: response.answer,
-			mode: response.mode,
-			citations: response.citations,
-		});
-	} catch {
-		responseMessageId = `assistant-${Date.now()}`;
-		messages.value.push({
-			id: responseMessageId,
-			role: 'assistant',
-			content: i18n.baseText('insights.analyst.chat.error'),
+			content: '',
 			citations: [],
 		});
+		isWaiting.value = false;
+		isStreaming.value = true;
+		await scrollToMessage(responseMessageId);
+
+		await insightsStore.streamAnalyst(question, (chunk) => {
+			const message = messages.value.find(({ id }) => id === responseMessageId);
+			if (!message) return;
+
+			if (chunk.type === 'delta') {
+				message.content += chunk.text;
+				return;
+			}
+
+			message.content = chunk.response.answer;
+			message.mode = chunk.response.mode;
+			message.citations = chunk.response.citations;
+		});
+	} catch {
+		if (!responseMessageId) {
+			responseMessageId = `assistant-${Date.now()}`;
+		}
+
+		const message = messages.value.find(({ id }) => id === responseMessageId);
+		if (message) {
+			message.content = i18n.baseText('insights.analyst.chat.error');
+			message.citations = [];
+		} else {
+			messages.value.push({
+				id: responseMessageId,
+				role: 'assistant',
+				content: i18n.baseText('insights.analyst.chat.error'),
+				citations: [],
+			});
+		}
 	} finally {
 		isWaiting.value = false;
+		isStreaming.value = false;
 		await scrollToMessage(responseMessageId);
 	}
 };
@@ -171,9 +199,9 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 			<ChatInputBase
 				v-model="input"
 				:placeholder="i18n.baseText('insights.analyst.chat.placeholder')"
-				:is-streaming="false"
+				:is-streaming="isStreaming"
 				:can-submit="canSubmit"
-				:disabled="isWaiting"
+				:disabled="isWaiting || isStreaming"
 				:show-voice="false"
 				:show-attach="false"
 				@submit="submitPrompt()"

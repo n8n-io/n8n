@@ -85,4 +85,48 @@ describe('InsightsAnalystChatService', () => {
 			]),
 		);
 	});
+
+	test('uses deterministic fallback when Anthropic key is whitespace', async () => {
+		const config = mock<InsightsConfig>({
+			analystAnthropicApiKey: '   ',
+			analystModel: 'claude-sonnet-4-6',
+		});
+		const demoService = mock<InsightsDemoService>({
+			getOverview: jest.fn().mockResolvedValue(overview),
+		});
+		const logger = mock<Logger>({
+			scoped: jest.fn().mockReturnThis(),
+		});
+		const service = new InsightsAnalystChatService(config, demoService, logger);
+
+		const response = await service.ask('Why did failures increase?');
+
+		expect(response.mode).toBe('fallback');
+	});
+
+	test('streams deterministic fallback when Anthropic key is empty', async () => {
+		const config = mock<InsightsConfig>({
+			analystAnthropicApiKey: '',
+			analystModel: 'claude-sonnet-4-6',
+		});
+		const demoService = mock<InsightsDemoService>({
+			getOverview: jest.fn().mockResolvedValue(overview),
+		});
+		const logger = mock<Logger>({
+			scoped: jest.fn().mockReturnThis(),
+		});
+		const service = new InsightsAnalystChatService(config, demoService, logger);
+
+		const chunks = [];
+		for await (const chunk of service.askStream('Why did failures increase?')) {
+			chunks.push(chunk);
+		}
+
+		expect(chunks).toEqual([
+			expect.objectContaining({
+				type: 'complete',
+				response: expect.objectContaining({ mode: 'fallback' }),
+			}),
+		]);
+	});
 });

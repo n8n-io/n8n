@@ -1,4 +1,4 @@
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InsightsSummary,
@@ -78,3 +78,19 @@ export const askInsightsAnalyst = async (
 	request: InsightsAnalystChatRequest,
 ): Promise<InsightsAnalystChatResponse> =>
 	await makeRestApiRequest(context, 'POST', '/insights/analyst/chat', request);
+
+export type InsightsAnalystChatStreamChunk =
+	| { type: 'delta'; text: string }
+	| { type: 'complete'; response: InsightsAnalystChatResponse };
+
+export const streamInsightsAnalyst = async (
+	context: IRestApiContext,
+	request: InsightsAnalystChatRequest,
+	onChunk: (chunk: InsightsAnalystChatStreamChunk) => void,
+): Promise<void> =>
+	await streamRequest<InsightsAnalystChatStreamChunk>(
+		context,
+		'/insights/analyst/chat/stream',
+		request,
+		onChunk,
+	);

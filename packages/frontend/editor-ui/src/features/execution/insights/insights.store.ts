@@ -84,6 +84,13 @@ export const useInsightsStore = defineStore('insights', () => {
 		return await insightsApi.askInsightsAnalyst(rootStore.restApiContext, { question });
 	};
 
+	const streamAnalyst = async (
+		question: string,
+		onChunk: (chunk: insightsApi.InsightsAnalystChatStreamChunk) => void,
+	): Promise<void> => {
+		await insightsApi.streamInsightsAnalyst(rootStore.restApiContext, { question }, onChunk);
+	};
+
 	return {
 		globalInsightsPermissions,
 		isInsightsEnabled,
@@ -96,5 +103,6 @@ export const useInsightsStore = defineStore('insights', () => {
 		dateRanges,
 		analystOverview,
 		askAnalyst,
+		streamAnalyst,
 	};
 });

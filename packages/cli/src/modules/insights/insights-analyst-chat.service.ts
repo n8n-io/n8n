@@ -4,7 +4,6 @@ import type {
 	InsightsAnalystOverview,
 	InsightsByWorkflow,
 } from '@n8n/api-types';
-import { insightsAnalystChatResponseSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
@@ -12,7 +11,22 @@ import { z } from 'zod';
 import { InsightsConfig } from './insights.config';
 import { InsightsDemoService } from './insights-demo.service';
 
-const llmResponseSchema = insightsAnalystChatResponseSchema.omit({ mode: true });
+const llmOutputSchema = z.object({
+	answer: z.string(),
+	citations: z.array(
+		z.object({
+			workflowId: z.string(),
+			workflowName: z.string(),
+			metric: z.string(),
+			value: z.number(),
+			unit: z.enum(['count', 'ratio', 'millisecond', 'minute']),
+		}),
+	),
+});
+
+export type InsightsAnalystChatStreamChunk =
+	| { type: 'delta'; text: string }
+	| { type: 'complete'; response: InsightsAnalystChatResponse };
 
 @Service()
 export class InsightsAnalystChatService {
@@ -26,25 +40,13 @@ export class InsightsAnalystChatService {
 
 	async ask(question: string): Promise<InsightsAnalystChatResponse> {
 		const overview = await this.insightsDemoService.getOverview();
-		if (!this.config.analystAnthropicApiKey) {
+		if (!this.hasAnthropicApiKey()) {
 			return this.fallbackAnswer(question, overview);
 		}
 
 		try {
-			const [{ createAnthropic }, { generateText }] = await Promise.all([
-				import('@ai-sdk/anthropic'),
-				import('ai'),
-			]);
-			const provider = createAnthropic({ apiKey: this.config.analystAnthropicApiKey });
-			const result = await generateText({
-				model: provider(this.config.analystModel),
-				prompt: this.createPrompt(question, overview),
-			});
-			const parsed = this.parseLlmResponse(result.text, overview.byWorkflow.data);
-			if (parsed) return { ...parsed, mode: 'llm' };
-			this.logger.warn('Insights Analyst LLM returned malformed JSON', {
-				model: this.config.analystModel,
-			});
+			const llmResponse = await this.generateLlmResponse(question, overview);
+			if (llmResponse) return llmResponse;
 		} catch (error) {
 			this.logger.warn('Insights Analyst LLM call failed, using fallback response', {
 				model: this.config.analystModel,
@@ -55,7 +57,94 @@ export class InsightsAnalystChatService {
 		return this.fallbackAnswer(question, overview);
 	}
 
-	private createPrompt(question: string, overview: InsightsAnalystOverview): string {
+	async *askStream(question: string): AsyncGenerator<InsightsAnalystChatStreamChunk> {
+		const overview = await this.insightsDemoService.getOverview();
+		if (!this.hasAnthropicApiKey()) {
+			yield { type: 'complete', response: this.fallbackAnswer(question, overview) };
+			return;
+		}
+
+		try {
+			const [{ createAnthropic }, { streamObject }] = await Promise.all([
+				import('@ai-sdk/anthropic'),
+				import('ai'),
+			]);
+			const provider = createAnthropic({ apiKey: this.getAnthropicApiKey() });
+			const result = streamObject({
+				model: provider(this.config.analystModel),
+				schema: llmOutputSchema,
+				system: this.createSystemPrompt(),
+				prompt: this.createUserPrompt(question, overview),
+			});
+
+			let previousAnswer = '';
+			for await (const partial of result.partialObjectStream) {
+				const nextAnswer = partial.answer ?? '';
+				if (nextAnswer.length <= previousAnswer.length) continue;
+
+				const delta = nextAnswer.slice(previousAnswer.length);
+				previousAnswer = nextAnswer;
+				if (delta) {
+					yield { type: 'delta', text: delta };
+				}
+			}
+
+			const object = await result.object;
+			const llmResponse = this.toChatResponse(object, overview.byWorkflow.data);
+			if (llmResponse) {
+				yield { type: 'complete', response: llmResponse };
+				return;
+			}
+
+			this.logger.warn('Insights Analyst streamed LLM returned invalid object', {
+				model: this.config.analystModel,
+			});
+		} catch (error) {
+			this.logger.warn('Insights Analyst streamed LLM call failed, using fallback response', {
+				model: this.config.analystModel,
+				error,
+			});
+		}
+
+		yield { type: 'complete', response: this.fallbackAnswer(question, overview) };
+	}
+
+	private hasAnthropicApiKey(): boolean {
+		return this.getAnthropicApiKey().length > 0;
+	}
+
+	private getAnthropicApiKey(): string {
+		return this.config.analystAnthropicApiKey.trim();
+	}
+
+	private async generateLlmResponse(
+		question: string,
+		overview: InsightsAnalystOverview,
+	): Promise<InsightsAnalystChatResponse | null> {
+		const [{ createAnthropic }, { generateObject }] = await Promise.all([
+			import('@ai-sdk/anthropic'),
+			import('ai'),
+		]);
+		const provider = createAnthropic({ apiKey: this.getAnthropicApiKey() });
+		const { object } = await generateObject({
+			model: provider(this.config.analystModel),
+			schema: llmOutputSchema,
+			system: this.createSystemPrompt(),
+			prompt: this.createUserPrompt(question, overview),
+		});
+
+		return this.toChatResponse(object, overview.byWorkflow.data);
+	}
+
+	private createSystemPrompt(): string {
+		return [
+			'You are an operations analyst for an n8n demo workspace.',
+			'Answer with concise operational guidance grounded only in the provided workspace data.',
+			'Every citation workflowId must come from the workspace data.',
+		].join(' ');
+	}
+
+	private createUserPrompt(question: string, overview: InsightsAnalystOverview): string {
 		const workflows = overview.byWorkflow.data.map((workflow) => ({
 			workflowId: workflow.workflowId,
 			workflowName: workflow.workflowName,
@@ -67,54 +156,28 @@ export class InsightsAnalystChatService {
 		}));
 
 		return [
-			'You are an operations analyst for an n8n demo workspace.',
-			'Answer the user with concise operational guidance grounded only in the JSON data.',
-			'Return JSON only with this shape: {"answer":"string","citations":[{"workflowId":"string","workflowName":"string","metric":"string","value":number,"unit":"count|ratio|millisecond|minute"}]}.',
-			'Every citation workflowId must come from the data.',
 			`Question: ${question}`,
 			`Workspace data: ${JSON.stringify({ summary: overview.summary, workflows })}`,
 		].join('\n');
 	}
 
-	private parseLlmResponse(
-		text: string,
+	private toChatResponse(
+		object: z.infer<typeof llmOutputSchema>,
 		workflowRows: InsightsByWorkflow['data'],
-	): Omit<InsightsAnalystChatResponse, 'mode'> | null {
-		const jsonText = this.extractJsonObject(text);
-		if (!jsonText) return null;
-
-		const parsedJson = z
-			.string()
-			.transform((value, ctx) => {
-				try {
-					const parsedValue: unknown = JSON.parse(value);
-					return parsedValue;
-				} catch {
-					ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid JSON' });
-					return z.NEVER;
-				}
-			})
-			.safeParse(jsonText);
-		if (!parsedJson.success) return null;
-
-		const parsed = llmResponseSchema.safeParse(parsedJson.data);
+	): InsightsAnalystChatResponse | null {
+		const parsed = llmOutputSchema.safeParse(object);
 		if (!parsed.success) return null;
 
 		const workflowIds = new Set(
 			workflowRows.flatMap(({ workflowId }) => (workflowId ? [workflowId] : [])),
 		);
 		const citations = parsed.data.citations.filter(({ workflowId }) => workflowIds.has(workflowId));
+
 		return {
-			answer: parsed.data.answer,
+			mode: 'llm',
+			answer: parsed.data.answer.trim(),
 			citations,
 		};
-	}
-
-	private extractJsonObject(text: string): string | null {
-		const start = text.indexOf('{');
-		const end = text.lastIndexOf('}');
-		if (start === -1 || end === -1 || end <= start) return null;
-		return text.slice(start, end + 1);
 	}
 
 	private fallbackAnswer(

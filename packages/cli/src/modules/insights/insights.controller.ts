@@ -15,6 +15,8 @@ import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { FlushableResponse } from '@/controllers/ai.controller';
+import { STREAM_SEPARATOR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -127,6 +129,26 @@ export class InsightsController {
 		}
 
 		return await this.insightsAnalystChatService.ask(parsed.data.question);
+	}
+
+	@Post('/analyst/chat/stream', { usesTemplates: true })
+	@GlobalScope('insights:list')
+	async streamInsightsAnalyst(req: AuthenticatedRequest, res: FlushableResponse): Promise<void> {
+		const parsed = insightsAnalystChatRequestSchema.safeParse(req.body);
+		if (!parsed.success) {
+			throw new BadRequestError(parsed.error.errors.map(({ message }) => message).join(' '));
+		}
+
+		res.header('Content-type', 'application/json-lines').flush();
+
+		try {
+			for await (const chunk of this.insightsAnalystChatService.askStream(parsed.data.question)) {
+				res.flush();
+				res.write(JSON.stringify(chunk) + STREAM_SEPARATOR);
+			}
+		} finally {
+			res.end();
+		}
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
