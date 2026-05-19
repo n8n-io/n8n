@@ -35,7 +35,12 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;
 
-	/** Minimum allowed schedule interval in seconds for schedule triggers */
+	/**
+	 * Minimum allowed interval, in seconds, between consecutive fires for any
+	 * schedule-driven trigger (Schedule Trigger, Cron node) on the instance.
+	 * Set to `0` (default) to disable the check; set to a positive integer to
+	 * enforce that minimum across all workflows.
+	 */
 	@Env('N8N_MIN_SCHEDULE_INTERVAL_SECONDS')
-	minScheduleIntervalSeconds: number = 300;
+	minScheduleIntervalSeconds: number = 0;
 }
