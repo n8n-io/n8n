@@ -244,7 +244,7 @@ onMounted(async () => {
 
 .container {
 	width: 100%;
-	max-width: var(--content-container--width);
+	max-width: calc(var(--content-container--width) + var(--spacing--5xl) + var(--spacing--5xl));
 	margin: 0 auto;
 	padding: var(--spacing--lg) var(--spacing--2xl);
 
@@ -259,9 +259,14 @@ onMounted(async () => {
 
 .title {
 	display: flex;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--spacing--lg);
 	margin-bottom: var(--spacing--lg);
+
+	> div {
+		min-width: 0;
+	}
 
 	p {
 		margin: var(--spacing--2xs) 0 0;
@@ -292,14 +297,19 @@ onMounted(async () => {
 
 .layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(320px, 32%);
-	gap: var(--spacing--lg);
+	grid-template-columns:
+		minmax(0, 1fr)
+		minmax(
+			calc(var(--spacing--5xl) + var(--spacing--xl) + var(--spacing--xl)),
+			calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))
+		);
+	gap: var(--spacing--xl);
 	align-items: start;
 
-	// Below the medium breakpoint, the chat sidebar overlaps the main
-	// content because the grid still tries to fit two columns. Collapse
-	// to a single column and let the chat sit beneath the dashboard.
-	@media (max-width: vars.$breakpoint-md) {
+	// The analyst rail needs enough room to sit beside the dashboard without
+	// compressing cards or charts. Stack earlier than the regular Insights
+	// page so medium desktop and laptop widths stay clean.
+	@media (max-width: vars.$breakpoint-lg) {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
@@ -313,16 +323,11 @@ onMounted(async () => {
 .highlights,
 .lowImpactGrid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(
+		auto-fit,
+		minmax(min(100%, calc(var(--spacing--5xl) + var(--spacing--xl))), 1fr)
+	);
 	gap: var(--spacing--sm);
-
-	@media (max-width: vars.$breakpoint-sm) {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
-	@media (max-width: vars.$breakpoint-xs) {
-		grid-template-columns: minmax(0, 1fr);
-	}
 }
 
 .highlight,
@@ -396,10 +401,18 @@ onMounted(async () => {
 }
 
 .chartCard {
-	height: calc(
-		var(--spacing--5xl) + var(--spacing--5xl) + var(--spacing--5xl) + var(--spacing--xl)
+	height: clamp(
+		calc(var(--spacing--5xl) + var(--spacing--xl)),
+		45vh,
+		calc(var(--spacing--5xl) + var(--spacing--5xl))
 	);
+	min-width: 0;
+	overflow: hidden;
 	padding: var(--spacing--lg);
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--sm);
+	}
 }
 
 .rankings {
@@ -443,6 +456,13 @@ onMounted(async () => {
 	}
 
 	@media (max-width: vars.$breakpoint-xs) {
+		flex-wrap: wrap;
+		align-items: flex-start;
+
+		> span:nth-child(2) {
+			flex-basis: calc(100% - var(--spacing--xl) - var(--spacing--sm));
+		}
+
 		.trendChip {
 			display: none;
 		}
@@ -470,6 +490,10 @@ onMounted(async () => {
 
 .openInline {
 	opacity: 0;
+
+	@media (max-width: vars.$breakpoint-sm) {
+		display: none;
+	}
 }
 
 .lowImpact {
@@ -489,7 +513,7 @@ onMounted(async () => {
 
 	// Once the dashboard collapses to a single column, the chat sits
 	// below the main content and shouldn't try to stick to the viewport.
-	@media (max-width: vars.$breakpoint-md) {
+	@media (max-width: vars.$breakpoint-lg) {
 		position: static;
 	}
 }

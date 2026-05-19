@@ -218,19 +218,25 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	display: grid;
 	grid-template-rows: auto 1fr auto;
 	min-height: 0;
-	height: calc(100vh - var(--spacing--5xl) - var(--spacing--5xl));
+	height: min(
+		calc(100vh - var(--spacing--5xl) - var(--spacing--xl)),
+		calc(var(--spacing--5xl) + var(--spacing--5xl) + var(--spacing--3xl))
+	);
 	border: var(--border);
 	border-radius: var(--radius--xl);
 	background: var(--background--surface);
 	overflow: hidden;
 
-	// On narrower viewports the dashboard stacks the chat below the main
-	// content, so a viewport-tall panel makes the page feel broken. Cap
-	// the panel height instead of relying on the sidebar layout.
-	@media (max-width: vars.$breakpoint-md) {
+	// Keep this in sync with the dashboard breakpoint where the chat rail
+	// stacks below the main content. A viewport-tall panel in that layout
+	// reads like it is covering the dashboard instead of following it.
+	@media (max-width: vars.$breakpoint-lg) {
 		height: auto;
-		max-height: 70vh;
-		min-height: 420px;
+		min-height: calc(var(--spacing--5xl) + var(--spacing--3xl));
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		min-height: 0;
 	}
 }
 
@@ -245,6 +251,10 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 		margin: var(--spacing--3xs) 0 0;
 		color: var(--text-color--subtle);
 	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
 }
 
 .messages {
@@ -255,6 +265,10 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	padding: var(--spacing--lg);
 	overflow: auto;
 	min-height: 0;
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
 }
 
 .message {
@@ -342,6 +356,14 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	padding: var(--spacing--lg);
 	border-top: var(--border);
 	background: var(--background--surface);
+
+	@media (max-width: vars.$breakpoint-lg) {
+		position: static;
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
 }
 
 .suggestions {
