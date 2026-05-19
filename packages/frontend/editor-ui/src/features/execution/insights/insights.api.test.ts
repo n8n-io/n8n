@@ -3,6 +3,8 @@ import {
 	fetchInsightsByTime,
 	fetchInsightsTimeSaved,
 	fetchInsightsByWorkflow,
+	fetchInsightsAnalystOverview,
+	askInsightsAnalyst,
 	serializeInsightsFilter,
 } from '@/features/execution/insights/insights.api';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -406,6 +408,41 @@ describe('insights.api', () => {
 				sortBy: 'workflowName:asc',
 			});
 			expect(result).toEqual(mockInsightsByWorkflow);
+		});
+	});
+
+	describe('fetchInsightsAnalystOverview', () => {
+		it('should make GET request to /insights/analyst/overview', async () => {
+			const overview = {
+				project: { id: 'project-1', name: 'Demo Operations' },
+			};
+			vi.mocked(makeRestApiRequest).mockResolvedValue(overview);
+
+			const result = await fetchInsightsAnalystOverview(mockContext);
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				mockContext,
+				'GET',
+				'/insights/analyst/overview',
+			);
+			expect(result).toEqual(overview);
+		});
+	});
+
+	describe('askInsightsAnalyst', () => {
+		it('should make POST request to /insights/analyst/chat', async () => {
+			const response = { answer: 'Done', mode: 'fallback', citations: [] };
+			vi.mocked(makeRestApiRequest).mockResolvedValue(response);
+
+			const result = await askInsightsAnalyst(mockContext, { question: 'Summarize this' });
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				mockContext,
+				'POST',
+				'/insights/analyst/chat',
+				{ question: 'Summarize this' },
+			);
+			expect(result).toEqual(response);
 		});
 	});
 });

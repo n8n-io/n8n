@@ -32,22 +32,7 @@ pnpm --filter n8n-editor-ui build
 
 Then restart `pnpm start`. The CLI loads the built editor from `packages/frontend/editor-ui/dist`.
 
-## 3. Is the env flag enabled?
-
-Demo features default to `false`. Confirm with:
-
-```bash
-echo "$N8N_DEMO_INSIGHTS_ANALYST"
-```
-
-Export, then restart:
-
-```bash
-export N8N_DEMO_INSIGHTS_ANALYST=true
-pnpm start
-```
-
-## 4. Is `pnpm dev:fe` actually healthy?
+## 3. Is `pnpm dev:fe` actually healthy?
 
 Vite often half-starts and serves stale chunks if a workspace dep failed to build. If the editor at `:8080` shows import errors in the console (`Failed to resolve import "@n8n/rest-api-client"`), build the workspace deps first:
 

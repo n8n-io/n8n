@@ -1,7 +1,11 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { useAsyncState } from '@vueuse/core';
-import type { ListInsightsWorkflowQueryDto, InsightsDateFilterDto } from '@n8n/api-types';
+import type {
+	ListInsightsWorkflowQueryDto,
+	InsightsDateFilterDto,
+	InsightsAnalystChatResponse,
+} from '@n8n/api-types';
 import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -68,6 +72,18 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const dateRanges = computed(() => settingsStore.moduleSettings.insights?.dateRanges ?? []);
 
+	const analystOverview = useAsyncState(
+		async () => {
+			return await insightsApi.fetchInsightsAnalystOverview(rootStore.restApiContext);
+		},
+		null,
+		{ immediate: false, resetOnExecute: false },
+	);
+
+	const askAnalyst = async (question: string): Promise<InsightsAnalystChatResponse> => {
+		return await insightsApi.askInsightsAnalyst(rootStore.restApiContext, { question });
+	};
+
 	return {
 		globalInsightsPermissions,
 		isInsightsEnabled,
@@ -78,5 +94,7 @@ export const useInsightsStore = defineStore('insights', () => {
 		charts,
 		table,
 		dateRanges,
+		analystOverview,
+		askAnalyst,
 	};
 });

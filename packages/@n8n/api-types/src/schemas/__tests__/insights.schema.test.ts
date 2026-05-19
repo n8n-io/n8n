@@ -2,6 +2,9 @@ import {
 	insightsByTimeSchema,
 	insightsByWorkflowSchema,
 	insightsDateRangeSchema,
+	insightsAnalystChatRequestSchema,
+	insightsAnalystChatResponseSchema,
+	insightsAnalystOverviewSchema,
 	insightsSummarySchema,
 } from '../insights.schema';
 
@@ -65,6 +68,105 @@ describe('insightsSummarySchema', () => {
 	])('should validate $name', ({ value, expected }) => {
 		const result = insightsSummarySchema.safeParse(value);
 		expect(result.success).toBe(expected);
+	});
+});
+
+describe('insightsAnalyst schemas', () => {
+	const summary = {
+		total: { value: 10, deviation: 2, unit: 'count' },
+		failed: { value: 1, deviation: 0, unit: 'count' },
+		failureRate: { value: 0.1, deviation: 0.02, unit: 'ratio' },
+		timeSaved: { value: 120, deviation: 30, unit: 'minute' },
+		averageRunTime: { value: 300, deviation: null, unit: 'millisecond' },
+	};
+
+	const byWorkflow = {
+		count: 1,
+		data: [
+			{
+				workflowId: 'workflow-1',
+				workflowName: 'Demo workflow',
+				projectId: 'project-1',
+				projectName: 'Demo project',
+				total: 10,
+				succeeded: 9,
+				failed: 1,
+				failureRate: 0.1,
+				runTime: 3000,
+				averageRunTime: 300,
+				timeSaved: 120,
+			},
+		],
+	};
+
+	test('validates an analyst overview', () => {
+		const result = insightsAnalystOverviewSchema.safeParse({
+			project: { id: 'project-1', name: 'Demo project' },
+			dateRange: {
+				startDate: '2026-05-01T00:00:00.000Z',
+				endDate: '2026-05-19T00:00:00.000Z',
+			},
+			summary,
+			byTime: [
+				{
+					date: '2026-05-19T00:00:00.000Z',
+					values: {
+						total: 10,
+						succeeded: 9,
+						failed: 1,
+						failureRate: 0.1,
+						averageRunTime: 300,
+						timeSaved: 120,
+					},
+				},
+			],
+			byWorkflow,
+			highlights: [
+				{
+					id: 'highest-impact',
+					title: 'Highest automation impact',
+					workflowId: 'workflow-1',
+					workflowName: 'Demo workflow',
+					description: 'Saved the most time',
+					trend: 'positive',
+					value: 120,
+					unit: 'minute',
+				},
+			],
+			lowImpactWorkflows: [
+				{
+					workflowId: 'workflow-1',
+					workflowName: 'Demo workflow',
+					description: 'Review this workflow',
+					timeSaved: 120,
+					total: 10,
+				},
+			],
+			suggestedPrompts: ['Which workflows saved us the most time?'],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('validates chat request and response', () => {
+		expect(insightsAnalystChatRequestSchema.safeParse({ question: 'What changed?' }).success).toBe(
+			true,
+		);
+		expect(
+			insightsAnalystChatResponseSchema.safeParse({
+				answer: 'Demo workflow saved the most time.',
+				mode: 'fallback',
+				citations: [
+					{
+						workflowId: 'workflow-1',
+						workflowName: 'Demo workflow',
+						metric: 'time saved',
+						value: 120,
+						unit: 'minute',
+					},
+				],
+			}).success,
+		).toBe(true);
 	});
 });
 

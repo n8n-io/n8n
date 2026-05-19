@@ -1,12 +1,16 @@
-import type {
-	InsightsByTime,
-	InsightsByWorkflow,
-	InsightsSummary,
-	RestrictedInsightsByTime,
+import {
+	InsightsDateFilterDto,
+	type InsightsByTime,
+	type InsightsByWorkflow,
+	type InsightsSummary,
+	type InsightsAnalystChatResponse,
+	type InsightsAnalystOverview,
+	type RestrictedInsightsByTime,
+	ListInsightsWorkflowQueryDto,
+	insightsAnalystChatRequestSchema,
 } from '@n8n/api-types';
-import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -15,11 +19,17 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
+import { InsightsAnalystChatService } from './insights-analyst-chat.service';
+import { InsightsDemoService } from './insights-demo.service';
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
-	constructor(private readonly insightsService: InsightsService) {}
+	constructor(
+		private readonly insightsService: InsightsService,
+		private readonly insightsDemoService: InsightsDemoService,
+		private readonly insightsAnalystChatService: InsightsAnalystChatService,
+	) {}
 
 	@Get('/summary')
 	@GlobalScope('insights:list')
@@ -97,6 +107,26 @@ export class InsightsController {
 			startDate,
 			endDate,
 		})) as RestrictedInsightsByTime[];
+	}
+
+	@Get('/analyst/overview')
+	@GlobalScope('insights:list')
+	async getInsightsAnalystOverview(): Promise<InsightsAnalystOverview> {
+		return await this.insightsDemoService.getOverview();
+	}
+
+	@Post('/analyst/chat')
+	@GlobalScope('insights:list')
+	async askInsightsAnalyst(
+		req: AuthenticatedRequest,
+		_res: Response,
+	): Promise<InsightsAnalystChatResponse> {
+		const parsed = insightsAnalystChatRequestSchema.safeParse(req.body);
+		if (!parsed.success) {
+			throw new BadRequestError(parsed.error.errors.map(({ message }) => message).join(' '));
+		}
+
+		return await this.insightsAnalystChatService.ask(parsed.data.question);
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {

@@ -141,6 +141,9 @@ catalogs:
     agent-browser:
       specifier: 0.26.0
       version: 0.26.0
+    ai:
+      specifier: ^6.0.134
+      version: 6.0.134
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
@@ -2778,6 +2781,9 @@ importers:
       '@sentry/node':
         specifier: catalog:sentry
         version: 10.36.0
+      ai:
+        specifier: 'catalog:'
+        version: 6.0.134(zod@3.25.67)
       aws4:
         specifier: 1.11.0
         version: 1.11.0

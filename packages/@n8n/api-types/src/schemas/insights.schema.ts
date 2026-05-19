@@ -108,3 +108,84 @@ export const insightsDateRangeSchema = z
 	})
 	.strict();
 export type InsightsDateRange = z.infer<typeof insightsDateRangeSchema>;
+
+export const insightsAnalystChatModeSchema = z.enum(['llm', 'fallback']);
+export type InsightsAnalystChatMode = z.infer<typeof insightsAnalystChatModeSchema>;
+
+export const insightsAnalystCitationSchema = z
+	.object({
+		workflowId: z.string(),
+		workflowName: z.string(),
+		metric: z.string(),
+		value: z.number(),
+		unit: insightsSummaryUnitSchema,
+	})
+	.strict();
+export type InsightsAnalystCitation = z.infer<typeof insightsAnalystCitationSchema>;
+
+export const insightsAnalystHighlightSchema = z
+	.object({
+		id: z.string(),
+		title: z.string(),
+		workflowId: z.string(),
+		workflowName: z.string(),
+		description: z.string(),
+		trend: z.enum(['positive', 'negative', 'neutral']),
+		value: z.number(),
+		unit: insightsSummaryUnitSchema,
+	})
+	.strict();
+export type InsightsAnalystHighlight = z.infer<typeof insightsAnalystHighlightSchema>;
+
+export const insightsAnalystLowImpactWorkflowSchema = z
+	.object({
+		workflowId: z.string(),
+		workflowName: z.string(),
+		description: z.string(),
+		timeSaved: z.number(),
+		total: z.number(),
+	})
+	.strict();
+export type InsightsAnalystLowImpactWorkflow = z.infer<
+	typeof insightsAnalystLowImpactWorkflowSchema
+>;
+
+export const insightsAnalystOverviewSchema = z
+	.object({
+		project: z
+			.object({
+				id: z.string(),
+				name: z.string(),
+			})
+			.strict(),
+		dateRange: z
+			.object({
+				startDate: z.string(),
+				endDate: z.string(),
+			})
+			.strict(),
+		summary: insightsSummarySchema,
+		byTime: z.array(insightsByTimeSchema),
+		byWorkflow: insightsByWorkflowSchema,
+		highlights: z.array(insightsAnalystHighlightSchema),
+		lowImpactWorkflows: z.array(insightsAnalystLowImpactWorkflowSchema),
+		suggestedPrompts: z.array(z.string()),
+	})
+	.strict();
+export type InsightsAnalystOverview = z.infer<typeof insightsAnalystOverviewSchema>;
+
+export const insightsAnalystChatRequestSchema = z
+	.object({
+		question: z.string().trim().min(1).max(1_000),
+	})
+	.strict();
+export type InsightsAnalystChatRequest = z.infer<typeof insightsAnalystChatRequestSchema>;
+
+export const insightsAnalystChatResponseSchema = z
+	.object({
+		answer: z.string(),
+		mode: insightsAnalystChatModeSchema,
+		citations: z.array(insightsAnalystCitationSchema),
+	})
+	.strict();
+export type InsightsAnalystChatResponse = z.infer<typeof insightsAnalystChatResponseSchema>;

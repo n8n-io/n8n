@@ -79,4 +79,18 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_COMPACTION_BATCH_DELAY_MILLISECONDS')
 	compactionBatchDelayMilliseconds: number = 100;
+
+	/**
+	 * Anthropic API key used by the Insights Analyst demo chat.
+	 * Default: empty, which uses deterministic fallback responses.
+	 */
+	@Env('N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY')
+	analystAnthropicApiKey: string = '';
+
+	/**
+	 * Anthropic model used by the Insights Analyst demo chat.
+	 * Default: claude-sonnet-4-5-20250929
+	 */
+	@Env('N8N_INSIGHTS_ANALYST_MODEL')
+	analystModel: string = 'claude-sonnet-4-5-20250929';
 }

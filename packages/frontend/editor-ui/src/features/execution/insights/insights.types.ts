@@ -10,7 +10,9 @@ export type InsightsSummaryDisplay = Array<
 	{
 		[K in keyof InsightsDisplayUnits]: {
 			id: K;
+			rawValue?: number;
 			value: number;
+			rawDeviation?: number | null;
 			deviation: number | null;
 			deviationUnit: ReturnType<InsightsDisplayDeviationUnits[K]>;
 			unit: ReturnType<InsightsDisplayUnits[K]>;

@@ -7,20 +7,37 @@ import {
 } from '@/features/execution/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import type { DateValue } from '@internationalized/date';
-import type { InsightsSummary } from '@n8n/api-types';
+import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { useRoute } from 'vue-router';
-import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
+import { RouterLink, useRoute } from 'vue-router';
+import {
+	formatDateRange,
+	formatInsightsTimeSavedLabel,
+	getMatchingPreset,
+	getTimeRangeLabels,
+} from '../insights.utils';
 
-const props = defineProps<{
-	summary: InsightsSummaryDisplay;
-	startDate?: DateValue;
-	endDate?: DateValue;
-	loading?: boolean;
+const props = withDefaults(
+	defineProps<{
+		summary: InsightsSummaryDisplay;
+		startDate?: DateValue;
+		endDate?: DateValue;
+		loading?: boolean;
+		linkVariant?: 'route' | 'static';
+		activeInsightType?: InsightsSummaryType;
+	}>(),
+	{
+		linkVariant: 'route',
+		activeInsightType: undefined,
+	},
+);
+
+const emit = defineEmits<{
+	select: [insightType: InsightsSummaryType];
 }>();
 
 const i18n = useI18n();
@@ -82,6 +99,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
 	});
 };
+
+const handleSummaryClick = (insightType: InsightsSummaryType) => {
+	trackTabClick(insightType);
+	emit('select', insightType);
+};
 </script>
 
 <template>
@@ -89,7 +111,16 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		<div :class="$style.insights">
 			<ul data-test-id="insights-summary-tabs">
 				<li
-					v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+					v-for="{
+						id,
+						rawValue,
+						value,
+						rawDeviation,
+						deviation,
+						deviationUnit,
+						unit,
+						to,
+					} in summaryWithRouteLocations"
 					:key="id"
 					:data-test-id="`insights-summary-tab-${id}`"
 				>
@@ -110,7 +141,15 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</template>
 							</I18nT>
 						</template>
-						<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+						<component
+							:is="props.linkVariant === 'static' ? 'button' : RouterLink"
+							v-bind="props.linkVariant === 'static' ? { type: 'button' } : { to }"
+							:class="{
+								[$style.activeTab]: props.linkVariant === 'static' && id === activeInsightType,
+							}"
+							:exact-active-class="props.linkVariant === 'static' ? undefined : $style.activeTab"
+							@click="handleSummaryClick(id)"
+						>
 							<strong>
 								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 									<template #content>
@@ -138,7 +177,10 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</small>
 							</span>
 							<span v-else>
-								<em
+								<em v-if="id === 'timeSaved'">{{
+									formatInsightsTimeSavedLabel(rawValue ?? value)
+								}}</em>
+								<em v-else
 									>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
 								>
 								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
@@ -156,12 +198,17 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 										<template #content>
 											{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
 										</template>
-										{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US')
-										}}{{ deviationUnit }}
+										<template v-if="id === 'timeSaved'">
+											{{ formatInsightsTimeSavedLabel(Math.abs(rawDeviation ?? deviation)) }}
+										</template>
+										<template v-else>
+											{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US')
+											}}{{ deviationUnit }}
+										</template>
 									</N8nTooltip>
 								</small>
 							</span>
-						</RouterLink>
+						</component>
 					</N8nTooltip>
 				</li>
 			</ul>
@@ -209,7 +256,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			}
 		}
 
-		a {
+		a,
+		button {
 			display: grid;
 			align-items: center;
 			align-content: center;
@@ -218,6 +266,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			padding: var(--spacing--3xs) var(--spacing--lg) 0;
 			background-color: var(--background--surface);
 			border-bottom: 3px solid transparent;
+			border-top: 0;
+			border-left: 0;
+			border-right: 0;
+			font-family: var(--font-family);
+			text-align: left;
+			cursor: pointer;
 
 			&:hover {
 				background-color: var(--background-hover);

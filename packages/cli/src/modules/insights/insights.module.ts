@@ -13,6 +13,9 @@ export class InsightsModule implements ModuleInterface {
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();
+
+		const { InsightsDemoService } = await import('./insights-demo.service');
+		await Container.get(InsightsDemoService).seed();
 	}
 
 	async entities() {

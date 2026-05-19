@@ -2,9 +2,9 @@
 import { useI18n } from '@n8n/i18n';
 import { INSIGHTS_UNIT_MAPPING } from '@/features/execution/insights/insights.constants';
 import {
+	formatInsightsTimeSavedLabel,
 	transformInsightsAverageRunTime,
 	transformInsightsFailureRate,
-	transformInsightsTimeSaved,
 } from '@/features/execution/insights/insights.utils';
 import type { InsightsByWorkflow } from '@n8n/api-types';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
@@ -90,10 +90,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 		title: i18n.baseText('insights.banner.title.timeSaved'),
 		key: 'timeSaved',
 		value(row) {
-			return (
-				smartDecimal(transformInsightsTimeSaved(row.timeSaved)) +
-				INSIGHTS_UNIT_MAPPING.timeSaved(row.timeSaved)
-			);
+			return formatInsightsTimeSavedLabel(row.timeSaved);
 		},
 		disableSort: !props.isDashboardEnabled,
 	},
