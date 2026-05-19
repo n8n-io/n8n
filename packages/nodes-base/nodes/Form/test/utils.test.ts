@@ -3461,19 +3461,26 @@ describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
 
 	it('rejects a tampered signature', () => {
 		const token = generateFormUserAuthToken(node, user);
-		const parts = token.split('|');
-		parts[2] = parts[2].replace(/.$/, (c) => (c === '0' ? '1' : '0'));
-		const tampered = parts.join('|');
+		const parts = token.split('.');
+		parts[2] = parts[2].replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'));
+		const tampered = parts.join('.');
 		expect(verifyFormUserAuthToken(tampered, node)).toBeNull();
 	});
 
-	it('rejects a tampered user blob', () => {
+	it('rejects a tampered payload', () => {
 		const token = generateFormUserAuthToken(node, user);
-		const parts = token.split('|');
-		parts[0] = Buffer.from(
-			JSON.stringify({ id: 'attacker', email: 'a@b', firstName: 'a', lastName: 'b' }),
+		const parts = token.split('.');
+		parts[1] = Buffer.from(
+			JSON.stringify({
+				sub: 'attacker',
+				email: 'a@b',
+				firstName: 'a',
+				lastName: 'b',
+				nid: node.id,
+				wid: node.webhookId,
+			}),
 		).toString('base64url');
-		const tampered = parts.join('|');
+		const tampered = parts.join('.');
 		expect(verifyFormUserAuthToken(tampered, node)).toBeNull();
 	});
 
@@ -3492,7 +3499,7 @@ describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
 
 	it('rejects malformed tokens', () => {
 		expect(verifyFormUserAuthToken('garbage', node)).toBeNull();
-		expect(verifyFormUserAuthToken('one|two', node)).toBeNull();
-		expect(verifyFormUserAuthToken('one|two|three|four', node)).toBeNull();
+		expect(verifyFormUserAuthToken('a.b', node)).toBeNull();
+		expect(verifyFormUserAuthToken('a.b.c.d', node)).toBeNull();
 	});
 });

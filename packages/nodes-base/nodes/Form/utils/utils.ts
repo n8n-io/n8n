@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
+import jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
@@ -26,7 +27,6 @@ import {
 	tryToParseJsonToFormFields,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
@@ -44,7 +44,29 @@ import type { FormTriggerData, FormField } from '../interfaces';
  * Long enough for users to fill out a form, short enough to limit damage
  * if the token leaks (e.g. via malicious HTML in form fields).
  */
-const FORM_USER_AUTH_TOKEN_TTL_MS = 60 * 60 * 1000;
+const FORM_USER_AUTH_TOKEN_TTL_SECONDS = 60 * 60;
+
+type FormUserAuthClaims = {
+	sub: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+	nid: string;
+	wid: string;
+};
+
+function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
+	if (typeof value !== 'object' || value === null) return false;
+	const c = value as Record<string, unknown>;
+	return (
+		typeof c.sub === 'string' &&
+		typeof c.email === 'string' &&
+		typeof c.firstName === 'string' &&
+		typeof c.lastName === 'string' &&
+		typeof c.nid === 'string' &&
+		typeof c.wid === 'string'
+	);
+}
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -627,30 +649,29 @@ export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
 
 /**
  * Generate a form auth token for n8nUserAuth. The token embeds the user info
- * and an HMAC signature so the POST handler can authenticate the submission
- * without relying on the `n8n-auth` cookie (cookies aren't sent on fetch
- * requests from the sandboxed form page because the document has a null
- * origin and the cookie is `SameSite=Lax`).
+ * in a signed JWT so the POST handler can authenticate the submission without
+ * relying on the `n8n-auth` cookie (cookies aren't sent on fetch requests from
+ * the sandboxed form page because the document has a null origin and the
+ * cookie is `SameSite=Lax`).
  *
- * Format: `<base64url-user-json>|<timestamp-ms>|<hmac-hex>`
- * Signature covers: user blob + timestamp + node id + webhook id, signed with
- * the instance's hmac signature secret.
+ * The `nid` and `wid` claims bind the token to a specific node + webhook,
+ * preventing replay across forms. Signed with HS256 using the instance's
+ * hmac signature secret.
  */
 export function generateFormUserAuthToken(node: INode, user: IUser): string {
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
-	const userBlob = Buffer.from(
-		JSON.stringify({
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-		}),
-	).toString('base64url');
-	const ts = Date.now().toString();
-	const signature = createHmac('sha256', secret)
-		.update(`${userBlob}|${ts}|${node.id}|${node.webhookId ?? ''}`)
-		.digest('hex');
-	return `${userBlob}|${ts}|${signature}`;
+	const payload: FormUserAuthClaims = {
+		sub: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		nid: node.id,
+		wid: node.webhookId ?? '',
+	};
+	return jwt.sign(payload, secret, {
+		algorithm: 'HS256',
+		expiresIn: FORM_USER_AUTH_TOKEN_TTL_SECONDS,
+	});
 }
 
 /**
@@ -659,27 +680,22 @@ export function generateFormUserAuthToken(node: INode, user: IUser): string {
  * wrong signature, wrong node). The caller decides how to surface the failure.
  */
 export function verifyFormUserAuthToken(token: string, node: INode): IUser | null {
-	const parts = token.split('|');
-	if (parts.length !== 3) return null;
-	const [userBlob, tsStr, signature] = parts;
-	const ts = Number(tsStr);
-	if (!Number.isFinite(ts) || Date.now() - ts > FORM_USER_AUTH_TOKEN_TTL_MS) return null;
-
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
-	const expectedSignature = createHmac('sha256', secret)
-		.update(`${userBlob}|${tsStr}|${node.id}|${node.webhookId ?? ''}`)
-		.digest('hex');
-	if (
-		signature.length !== expectedSignature.length ||
-		!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
-	) {
+	let claims: unknown;
+	try {
+		claims = jwt.verify(token, secret, { algorithms: ['HS256'] });
+	} catch {
 		return null;
 	}
-
-	// HMAC verified — the payload is what we signed (an IUser).
-	return jsonParse<IUser | null>(Buffer.from(userBlob, 'base64url').toString(), {
-		fallbackValue: null,
-	});
+	if (!isFormUserAuthClaims(claims)) return null;
+	if (claims.nid !== node.id) return null;
+	if (claims.wid !== (node.webhookId ?? '')) return null;
+	return {
+		id: claims.sub,
+		email: claims.email,
+		firstName: claims.firstName,
+		lastName: claims.lastName,
+	};
 }
 
 /**

@@ -31,6 +31,7 @@ describe('formCompletionUtils', () => {
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
+		webhookId: 'test-webhook',
 	});
 
 	const nodeNameWithFileToDownload = 'prevNode0';
