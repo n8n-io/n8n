@@ -25,6 +25,8 @@ export const ADVANCED_SECTION_KEY = '__advanced';
 export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
 export const EXECUTIONS_SECTION_KEY = '__executions';
+/** Synthetic tree key for the agent knowledge tab. */
+export const KNOWLEDGE_SECTION_KEY = '__knowledge';
 
 /**
  * Status of an assistant message during/after streaming.
