@@ -98,7 +98,7 @@ export async function createStubServices(
 			};
 		},
 		async archive() {},
-		async delete() {},
+		async unarchive() {},
 		async clearAiTemporary() {},
 		async archiveIfAiTemporary() {
 			return false;
@@ -520,6 +520,7 @@ function emptyWorkflowDetail(id: string): WorkflowDetail {
 		name: 'eval-workflow',
 		versionId: 'v1',
 		activeVersionId: null,
+		isArchived: false,
 		createdAt: now,
 		updatedAt: now,
 		nodes: [],

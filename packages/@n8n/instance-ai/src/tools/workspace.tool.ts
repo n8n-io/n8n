@@ -1,7 +1,7 @@
 /**
  * Consolidated workspace tool — projects, tags, folders, execution cleanup.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -133,13 +133,9 @@ type Input = z.infer<ReturnType<typeof buildInputSchema>>;
 // ── Suspend/resume helpers ──────────────────────────────────────────────────
 
 type ResumeData = z.infer<typeof resumeSchema> | undefined;
-type SuspendFn = ((payload: z.infer<typeof suspendSchema>) => Promise<void>) | undefined;
-
-function extractCtx(ctx: { agent?: { resumeData?: unknown; suspend?: unknown } }) {
-	return {
-		resumeData: ctx?.agent?.resumeData as ResumeData,
-		suspend: ctx?.agent?.suspend as SuspendFn,
-	};
+interface WorkspaceToolContext {
+	resumeData: ResumeData;
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -157,9 +153,9 @@ async function handleListTags(context: InstanceAiContext) {
 async function handleTagWorkflow(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'tag-workflow' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData, suspend } = extractCtx(ctx);
+	const { resumeData } = ctx;
 
 	if (context.permissions?.tagWorkflow === 'blocked') {
 		return { appliedTags: [], denied: true, reason: 'Action blocked by admin' };
@@ -169,13 +165,11 @@ async function handleTagWorkflow(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Tag workflow "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId}) with [${input.tags.join(', ')}]?`,
 			severity: 'info' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { appliedTags: [] };
 	}
 
 	// State 2: Denied
@@ -191,9 +185,9 @@ async function handleTagWorkflow(
 async function handleCleanupTestExecutions(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'cleanup-test-executions' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData, suspend } = extractCtx(ctx);
+	const { resumeData } = ctx;
 
 	if (context.permissions?.cleanupTestExecutions === 'blocked') {
 		return { deletedCount: 0, denied: true, reason: 'Action blocked by admin' };
@@ -204,12 +198,11 @@ async function handleCleanupTestExecutions(
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const hours = input.olderThanHours ?? 1;
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete test executions for workflow "${input.workflowName ?? input.workflowId}" older than ${hours} hour(s)?`,
 			severity: 'warning' as const,
 		});
-		return { deletedCount: 0 };
 	}
 
 	// State 2: Denied
@@ -235,9 +228,9 @@ async function handleListFolders(
 async function handleCreateFolder(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'create-folder' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData, suspend } = extractCtx(ctx);
+	const { resumeData } = ctx;
 
 	if (context.permissions?.createFolder === 'blocked') {
 		return {
@@ -253,13 +246,11 @@ async function handleCreateFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Create folder "${input.name}" in project "${input.projectId}"?`,
 			severity: 'info' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { id: '', name: '', parentFolderId: null };
 	}
 
 	// State 2: Denied
@@ -285,9 +276,9 @@ async function handleCreateFolder(
 async function handleDeleteFolder(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'delete-folder' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData, suspend } = extractCtx(ctx);
+	const { resumeData } = ctx;
 
 	if (context.permissions?.deleteFolder === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -300,13 +291,11 @@ async function handleDeleteFolder(
 		const transferNote = input.transferToFolderId
 			? ` Contents will be moved to folder "${input.transferToFolderName ?? input.transferToFolderId}".`
 			: ' Contents will be flattened to project root and archived.';
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete folder "${input.folderName ?? input.folderId}"?${transferNote}`,
 			severity: 'destructive' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -326,9 +315,9 @@ async function handleDeleteFolder(
 async function handleMoveWorkflowToFolder(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'move-workflow-to-folder' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData, suspend } = extractCtx(ctx);
+	const { resumeData } = ctx;
 
 	if (context.permissions?.moveWorkflowToFolder === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -338,13 +327,11 @@ async function handleMoveWorkflowToFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Move workflow "${input.workflowName ?? input.workflowId}" to folder "${input.folderName ?? input.folderId}"?`,
 			severity: 'info' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -361,26 +348,26 @@ async function handleMoveWorkflowToFolder(
 
 export function createWorkspaceTool(context: InstanceAiContext) {
 	if (!context.workspaceService) {
-		return createTool({
-			id: 'workspace',
-			description: 'Workspace management is not available in this environment.',
-			inputSchema: z.object({ action: z.string() }),
-			// eslint-disable-next-line @typescript-eslint/require-await -- must be async to match execute signature
-			execute: async () => {
-				return { error: 'Workspace service is not available in this environment.' };
-			},
-		});
+		return (
+			new Tool('workspace')
+				.description('Workspace management is not available in this environment.')
+				.input(z.object({ action: z.string() }))
+				// eslint-disable-next-line @typescript-eslint/require-await -- must be async to match execute signature
+				.handler(async () => {
+					return { error: 'Workspace service is not available in this environment.' };
+				})
+				.build()
+		);
 	}
 
 	const inputSchema = buildInputSchema(context);
 
-	return createTool({
-		id: 'workspace',
-		description: 'Manage workspace resources — projects, tags, folders, and execution cleanup.',
-		inputSchema,
-		suspendSchema,
-		resumeSchema,
-		execute: async (input: Input, ctx) => {
+	return new Tool('workspace')
+		.description('Manage workspace resources — projects, tags, folders, and execution cleanup.')
+		.input(inputSchema)
+		.suspend(suspendSchema)
+		.resume(resumeSchema)
+		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'list-projects':
 					return await handleListProjects(context);
@@ -399,6 +386,6 @@ export function createWorkspaceTool(context: InstanceAiContext) {
 				case 'move-workflow-to-folder':
 					return await handleMoveWorkflowToFolder(context, input, ctx);
 			}
-		},
-	});
+		})
+		.build();
 }

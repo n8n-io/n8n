@@ -39,6 +39,9 @@ describe('credential guardrail prompts', () => {
 		expect(PLANNER_AGENT_PROMPT).toContain('If there is exactly one matching credential');
 		expect(PLANNER_AGENT_PROMPT).toContain('auto-select it, do not ask');
 		expect(PLANNER_AGENT_PROMPT).toContain('If there are no matching credentials, do not ask');
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'Do not offer a choice like "build now and set up credentials later"',
+		);
 		expect(PLANNER_AGENT_PROMPT).toContain('builder will use a mocked or unresolved credential');
 		expect(PLANNER_AGENT_PROMPT).toContain(
 			'If there is more than one credential of the same required type',
@@ -71,6 +74,16 @@ describe('credential guardrail prompts', () => {
 		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).toContain(
 			"If `explore-resources` returns more than one match and the user did not name a specific one, use `placeholder('Select <resource>')`",
 		);
+	});
+
+	it('keeps builder prompts grounded in the inline setup card', () => {
+		for (const prompt of [
+			BUILDER_AGENT_PROMPT,
+			createSandboxBuilderAgentPrompt('/tmp/workspace'),
+		]) {
+			expect(prompt).toContain('inline setup card in the AI Assistant panel');
+			expect(prompt).not.toMatch(/setup wizard/i);
+		}
 	});
 
 	it('does not inline bulky static node guides in builder prompts', () => {

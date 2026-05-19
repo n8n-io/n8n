@@ -516,12 +516,12 @@ test.describe(
 					type: 'httpBasicAuth',
 					data: { user: 'initial-http-user', password: 'initial-http-password' },
 				});
-				await n8n.api.credentials.createCredential({
+				const sharedHttpCredential = await n8n.api.credentials.createCredential({
 					name: MIXED_SHARED_HTTP_CREDENTIAL_NAME,
 					type: 'httpBasicAuth',
 					data: { user: 'shared-http-user', password: 'shared-http-password' },
 				});
-				await n8n.api.credentials.createCredential({
+				const otherHttpCredential = await n8n.api.credentials.createCredential({
 					name: MIXED_OTHER_HTTP_CREDENTIAL_NAME,
 					type: 'httpBasicAuth',
 					data: { user: 'other-http-user', password: 'other-http-password' },
@@ -534,7 +534,7 @@ test.describe(
 						privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
 					},
 				});
-				await n8n.api.credentials.createCredential({
+				const googleCredential = await n8n.api.credentials.createCredential({
 					name: MIXED_GOOGLE_CREDENTIAL_NAME,
 					type: 'googleApi',
 					data: {
@@ -557,10 +557,10 @@ test.describe(
 				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toHaveText(
 					'Used by 2 nodes',
 				);
-				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_SHARED_HTTP_CREDENTIAL_NAME);
-				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-					MIXED_SHARED_HTTP_CREDENTIAL_NAME,
-				);
+				await n8n.instanceAi.workflowSetup.selectCredentialById(sharedHttpCredential.id);
+				await expect
+					.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+					.toBe(MIXED_SHARED_HTTP_CREDENTIAL_NAME);
 				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 				await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -568,19 +568,19 @@ test.describe(
 				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toHaveText(
 					'Used by 2 nodes',
 				);
-				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_GOOGLE_CREDENTIAL_NAME);
-				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-					MIXED_GOOGLE_CREDENTIAL_NAME,
-				);
+				await n8n.instanceAi.workflowSetup.selectCredentialById(googleCredential.id);
+				await expect
+					.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+					.toBe(MIXED_GOOGLE_CREDENTIAL_NAME);
 				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 				await n8n.instanceAi.workflowSetup.getApplyButton().click();
 				await expect(n8n.instanceAi.workflowSetup.getStepText('3 of 3')).toBeVisible();
 				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toBeHidden();
-				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_OTHER_HTTP_CREDENTIAL_NAME);
-				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-					MIXED_OTHER_HTTP_CREDENTIAL_NAME,
-				);
+				await n8n.instanceAi.workflowSetup.selectCredentialById(otherHttpCredential.id);
+				await expect
+					.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+					.toBe(MIXED_OTHER_HTTP_CREDENTIAL_NAME);
 
 				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 				await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -652,56 +652,66 @@ test.describe(
 			).toBeUndefined();
 		});
 
-		test('should partially apply credentials when user completes one card and skips the last', async ({
-			n8n,
-		}) => {
-			const workflow = await n8n.api.workflows.createWorkflow(
-				createTwoCardWorkflow(PARTIAL_WORKFLOW_NAME),
-			);
+		test(
+			'should partially apply credentials when user completes one card and skips the last',
+			{
+				annotation: [
+					{
+						type: 'expectation-slug',
+						description:
+							'should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last',
+					},
+				],
+			},
+			async ({ n8n }) => {
+				const workflow = await n8n.api.workflows.createWorkflow(
+					createTwoCardWorkflow(PARTIAL_WORKFLOW_NAME),
+				);
 
-			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(`Set up the workflow named "${PARTIAL_WORKFLOW_NAME}".`);
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(`Set up the workflow named "${PARTIAL_WORKFLOW_NAME}".`);
 
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
-			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+				await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
 
-			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
-			await n8n.instanceAi.credentialModal.waitForModal();
-			await n8n.instanceAi.credentialModal.addCredential(
-				{
-					user: 'partial-basic-user',
-					password: 'partial-basic-password',
-				},
-				{ name: PARTIAL_BASIC_CREDENTIAL_NAME },
-			);
+				await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
+				await n8n.instanceAi.credentialModal.waitForModal();
+				await n8n.instanceAi.credentialModal.addCredential(
+					{
+						user: 'partial-basic-user',
+						password: 'partial-basic-password',
+					},
+					{ name: PARTIAL_BASIC_CREDENTIAL_NAME },
+				);
 
-			// Card 1 is now complete; continue explicitly to card 2.
-			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
-			await n8n.instanceAi.workflowSetup.getApplyButton().click();
-			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
+				// Card 1 is now complete; continue explicitly to card 2.
+				await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+				await n8n.instanceAi.workflowSetup.getApplyButton().click();
+				await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
 
-			// Skip card 2 — terminal action with one completion → partial apply.
-			await n8n.instanceAi.workflowSetup.getLaterButton().click();
-			await n8n.instanceAi.waitForResponseComplete();
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeHidden();
+				// Skip card 2 — terminal action with one completion → partial apply.
+				await n8n.instanceAi.workflowSetup.getLaterButton().click();
+				await n8n.instanceAi.waitForResponseComplete();
+				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeHidden();
 
-			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
-			expectAssignedCredentialName(
-				persisted,
-				'HTTP Request Basic',
-				'httpBasicAuth',
-				PARTIAL_BASIC_CREDENTIAL_NAME,
-			);
-			expectAssignedCredentialName(
-				persisted,
-				'HTTP Request Basic Copy',
-				'httpBasicAuth',
-				PARTIAL_BASIC_CREDENTIAL_NAME,
-			);
-			expect(
-				getNode(persisted, 'HTTP Request Header')?.credentials?.httpHeaderAuth,
-			).toBeUndefined();
-		});
+				const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
+				expectAssignedCredentialName(
+					persisted,
+					'HTTP Request Basic',
+					'httpBasicAuth',
+					PARTIAL_BASIC_CREDENTIAL_NAME,
+				);
+				expectAssignedCredentialName(
+					persisted,
+					'HTTP Request Basic Copy',
+					'httpBasicAuth',
+					PARTIAL_BASIC_CREDENTIAL_NAME,
+				);
+				expect(
+					getNode(persisted, 'HTTP Request Header')?.credentials?.httpHeaderAuth,
+				).toBeUndefined();
+			},
+		);
 
 		test('should mark a skipped card and keep the wizard open while other cards are unhandled', async ({
 			n8n,
@@ -789,44 +799,54 @@ test.describe(
 			await expect(n8n.instanceAi.workflowSetup.getApplyButton()).toBeEnabled();
 		});
 
-		test('should apply parameter and credential edits and persist them to the workflow', async ({
-			n8n,
-		}) => {
-			const workflow = await n8n.api.workflows.createWorkflow(
-				createParameterAndCredentialWorkflow(PARAMETER_APPLY_WORKFLOW_NAME),
-			);
+		test(
+			'should apply parameter and credential edits and persist them to the workflow',
+			{
+				annotation: [
+					{
+						type: 'expectation-slug',
+						description:
+							'should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow',
+					},
+				],
+			},
+			async ({ n8n }) => {
+				const workflow = await n8n.api.workflows.createWorkflow(
+					createParameterAndCredentialWorkflow(PARAMETER_APPLY_WORKFLOW_NAME),
+				);
 
-			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(
-				`Set up the workflow named "${PARAMETER_APPLY_WORKFLOW_NAME}".`,
-			);
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(
+					`Set up the workflow named "${PARAMETER_APPLY_WORKFLOW_NAME}".`,
+				);
 
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
 
-			await n8n.instanceAi.workflowSetup.fillParameter('url', 'https://example.com/api');
-			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
-			await n8n.instanceAi.credentialModal.waitForModal();
-			await n8n.instanceAi.credentialModal.addCredential(
-				{
-					name: 'x-parameter-token',
-					value: 'parameter-header-value',
-				},
-				{ name: PARAMETER_CREDENTIAL_NAME },
-			);
+				await n8n.instanceAi.workflowSetup.fillParameter('url', 'https://example.com/api');
+				await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
+				await n8n.instanceAi.credentialModal.waitForModal();
+				await n8n.instanceAi.credentialModal.addCredential(
+					{
+						name: 'x-parameter-token',
+						value: 'parameter-header-value',
+					},
+					{ name: PARAMETER_CREDENTIAL_NAME },
+				);
 
-			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
-			await n8n.instanceAi.workflowSetup.getApplyButton().click();
-			await n8n.instanceAi.waitForResponseComplete();
+				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+				await n8n.instanceAi.workflowSetup.getApplyButton().click();
+				await n8n.instanceAi.waitForResponseComplete();
 
-			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
-			expectNodeParameter(persisted, 'HTTP Request', 'url', 'https://example.com/api');
-			expectAssignedCredentialName(
-				persisted,
-				'HTTP Request',
-				'httpHeaderAuth',
-				PARAMETER_CREDENTIAL_NAME,
-			);
-		});
+				const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
+				expectNodeParameter(persisted, 'HTTP Request', 'url', 'https://example.com/api');
+				expectAssignedCredentialName(
+					persisted,
+					'HTTP Request',
+					'httpHeaderAuth',
+					PARAMETER_CREDENTIAL_NAME,
+				);
+			},
+		);
 
 		test('should create and apply a mocked testable Slack credential from setup', async ({
 			n8n,
@@ -907,14 +927,14 @@ test.describe(
 			);
 
 			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
-			await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-				firstCrdentialInList.name,
-			);
+			await expect
+				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+				.toBe(firstCrdentialInList.name);
 
-			await n8n.instanceAi.workflowSetup.selectCredential(secondCrdentialInList.name);
-			await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-				secondCrdentialInList.name,
-			);
+			await n8n.instanceAi.workflowSetup.selectCredentialById(secondCrdentialInList.id);
+			await expect
+				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+				.toBe(secondCrdentialInList.name);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();

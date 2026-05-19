@@ -253,6 +253,10 @@ function handlePreviewResize({ width }: { width: number }) {
 
 function handlePreviewPanelAfterEnter() {
 	isPreviewPanelTransitioning.value = false;
+	// The slide-in animates the panel width from 0 to its target, so any
+	// fitView the iframe ran during the transition computed zoom against a
+	// near-zero viewport. Re-fit now that the iframe has its final size.
+	workflowPreviewRef.value?.requestFitView();
 }
 
 function handlePreviewPanelAfterLeave() {
@@ -608,10 +612,8 @@ function handleStop() {
 								:current-thread-id="thread.id"
 								:amend-context="thread.amendContext"
 								:contextual-suggestion="thread.contextualSuggestion"
-								:research-mode="store.researchMode"
 								@submit="handleSubmit"
 								@stop="handleStop"
-								@toggle-research-mode="store.toggleResearchMode()"
 							/>
 						</div>
 					</div>

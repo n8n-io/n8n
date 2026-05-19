@@ -167,6 +167,7 @@ jobs:
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          FILTER: ${{ inputs.filter }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           URLS=()
@@ -174,12 +175,20 @@ jobs:
             URLS+=("http://localhost:$port")
           done
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
-          pnpm eval:instance-ai \
-            --base-url "$BASE_URLS" \
-            --concurrency 32 \
-            --verbose \
-            --iterations 5 \
-            ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
+          if [ -n "$FILTER" ]; then
+            pnpm eval:instance-ai \
+              --base-url "$BASE_URLS" \
+              --concurrency 32 \
+              --verbose \
+              --iterations 5 \
+              --filter "$FILTER"
+          else
+            pnpm eval:instance-ai \
+              --base-url "$BASE_URLS" \
+              --concurrency 32 \
+              --verbose \
+              --iterations 5
+          fi
 
       # Captures sandbox/builder/Daytona signals that surface during the eval
       # (after migrations finish). Two layers of secret-leak defense:

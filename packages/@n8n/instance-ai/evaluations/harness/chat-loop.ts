@@ -284,6 +284,12 @@ export function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirm
 	return { kind: 'approval', approved: true };
 }
 
+function isResourceDecision(
+	value: string | undefined,
+): value is 'denyOnce' | 'allowOnce' | 'allowForSession' {
+	return value === 'denyOnce' || value === 'allowOnce' || value === 'allowForSession';
+}
+
 // ---------------------------------------------------------------------------
 // Event helpers
 // ---------------------------------------------------------------------------
