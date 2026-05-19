@@ -8,7 +8,7 @@ import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import type { ExportWorkflowsRequest } from './import-export.types';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { FORMAT_VERSION } from './spec/constants';
-import type { PackageManifest } from './spec/manifest.types';
+import { packageManifestSchema } from './spec/manifest.schema';
 
 @Service()
 export class ImportExportService {
@@ -26,13 +26,13 @@ export class ImportExportService {
 			writer,
 		});
 
-		const manifest: PackageManifest = {
+		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
 			exportedAt: new Date().toISOString(),
 			sourceN8nVersion: N8N_VERSION,
 			sourceId: this.instanceSettings.instanceId,
 			workflows: workflowEntries,
-		};
+		});
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 		return writer.finalize();
