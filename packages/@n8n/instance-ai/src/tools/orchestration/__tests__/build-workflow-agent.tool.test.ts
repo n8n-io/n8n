@@ -34,9 +34,11 @@ const {
 	shouldRecoverSavedWorkflowAfterFailedSubmit,
 	createBuildWorkflowAgentTool,
 	buildWarmBuilderFollowUp,
+	createMainWorkflowSnapshot,
 	determineSetupRequirement,
 	determineVerificationReadiness,
 	mergeLatestVerificationIntoOutcome,
+	settleMissingMainWorkflowSubmit,
 	supportingWorkflowIdsFromSubmitAttempts,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -853,6 +855,395 @@ describe('attemptFromAutoResubmit', () => {
 		});
 
 		expect(attempt).toBe(freshAttempt);
+	});
+});
+
+describe('settleMissingMainWorkflowSubmit', () => {
+	function createWorkflowTaskService() {
+		return {
+			reportBuildOutcome: jest.fn().mockResolvedValue({ type: 'continue_building' }),
+			reportVerificationVerdict: jest.fn(),
+			getBuildOutcome: jest.fn().mockResolvedValue(undefined),
+			getWorkflowLoopState: jest.fn().mockResolvedValue(undefined),
+			updateBuildOutcome: jest.fn(),
+		} as unknown as OrchestrationContext['workflowTaskService'];
+	}
+
+	function sourceHash(source: string): string {
+		const snapshot = createMainWorkflowSnapshot(source);
+		if (!snapshot.sourceHash) throw new Error('Expected snapshot hash');
+		return snapshot.sourceHash;
+	}
+
+	type BuildResult = {
+		text: string;
+		outcome: WorkflowBuildOutcome;
+	};
+
+	function createRecoveredSubmitHandler(): jest.Mock<Promise<BuildResult>, [BuildResult]> {
+		return jest.fn(async (result: BuildResult) => await Promise.resolve(result));
+	}
+
+	function createSuccessfulSubmitHandler(): jest.Mock<
+		Promise<BuildResult>,
+		[SubmitWorkflowAttempt]
+	> {
+		return jest.fn(
+			async (attempt: SubmitWorkflowAttempt) =>
+				await Promise.resolve(createSuccessfulResult(attempt)),
+		);
+	}
+
+	function createSubmitTool(handler: (args: Record<string, unknown>) => SubmitWorkflowOutput): {
+		execute: jest.Mock<Promise<SubmitWorkflowOutput>, [Record<string, unknown>]>;
+	} {
+		return {
+			execute: jest.fn(
+				async (args: Record<string, unknown>) => await Promise.resolve(handler(args)),
+			),
+		};
+	}
+
+	function createSuccessfulResult(attempt: SubmitWorkflowAttempt): {
+		text: string;
+		outcome: WorkflowBuildOutcome;
+	} {
+		return {
+			text: 'Submitted',
+			outcome: {
+				workItemId: 'wi_test',
+				runId: 'run_test',
+				taskId: 'task_test',
+				workflowId: attempt.workflowId,
+				submitted: true,
+				triggerType: 'manual_or_testable',
+				needsUserInput: false,
+				summary: 'Submitted',
+			},
+		};
+	}
+
+	it('final-submits a newly created main workflow file', async () => {
+		const context = createMockContext({ workflowTaskService: createWorkflowTaskService() });
+		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+		const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
+		const currentMainWorkflow = 'workflow code';
+		const finalAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: sourceHash(currentMainWorkflow),
+			success: true,
+			workflowId: 'WF_CREATED',
+		};
+		const submitTool = createSubmitTool(() => {
+			submitAttempts.set(MAIN_PATH, finalAttempt);
+			submitAttemptHistory.push(finalAttempt);
+			return { success: true, workflowId: 'WF_CREATED' };
+		});
+		const onSuccessfulSubmit = createSuccessfulSubmitHandler();
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: undefined,
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(null),
+			currentMainWorkflow,
+			currentMainWorkflowHash: finalAttempt.sourceHash,
+			submitTool,
+			submitAttempts,
+			submitAttemptHistory,
+			finalText: 'Builder finished',
+			onSuccessfulSubmit,
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(submitTool.execute).toHaveBeenCalledWith({ filePath: MAIN_PATH });
+		expect(onSuccessfulSubmit).toHaveBeenCalledWith(finalAttempt);
+		expect(result.outcome).toMatchObject({ submitted: true, workflowId: 'WF_CREATED' });
+	});
+
+	it('reports not_submitted when an existing preloaded workflow is unchanged', async () => {
+		const workflowTaskService = createWorkflowTaskService();
+		const context = createMockContext({ workflowTaskService });
+		const unchangedWorkflow = 'existing code';
+		const submitTool = { execute: jest.fn() };
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: 'WF_EXISTING',
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(unchangedWorkflow),
+			currentMainWorkflow: unchangedWorkflow,
+			currentMainWorkflowHash: sourceHash(unchangedWorkflow),
+			submitTool,
+			submitAttempts: new Map(),
+			submitAttemptHistory: [],
+			finalText: 'Builder finished',
+			onSuccessfulSubmit: createSuccessfulSubmitHandler(),
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(submitTool.execute).not.toHaveBeenCalled();
+		const reportBuildOutcome = workflowTaskService?.reportBuildOutcome as jest.Mock<
+			Promise<unknown>,
+			[WorkflowBuildOutcome]
+		>;
+		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0];
+		expect(reportedOutcome).toMatchObject({
+			submitted: false,
+			failureSignature: 'workflow:not_submitted',
+			verificationReadiness: {
+				status: 'not_verifiable',
+				reason: 'not-submitted',
+			},
+		});
+		expect(result.outcome).toMatchObject({
+			submitted: false,
+			failureSignature: 'workflow:not_submitted',
+		});
+	});
+
+	it('reports not_submitted when no main workflow file exists', async () => {
+		const workflowTaskService = createWorkflowTaskService();
+		const context = createMockContext({ workflowTaskService });
+		const submitTool = { execute: jest.fn() };
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: undefined,
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(null),
+			currentMainWorkflow: null,
+			currentMainWorkflowHash: sourceHash(''),
+			submitTool,
+			submitAttempts: new Map(),
+			submitAttemptHistory: [],
+			finalText: 'Builder finished',
+			onSuccessfulSubmit: createSuccessfulSubmitHandler(),
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(submitTool.execute).not.toHaveBeenCalled();
+		expect(result.text).toBe(
+			'Error: workflow builder finished without creating or submitting /src/workflow.ts.',
+		);
+		expect(result.outcome).toMatchObject({
+			submitted: false,
+			failureSignature: 'workflow:not_submitted',
+		});
+	});
+
+	it('final-submits a changed preloaded workflow with the existing workflow ID', async () => {
+		const context = createMockContext({ workflowTaskService: createWorkflowTaskService() });
+		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+		const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
+		const changedWorkflow = 'changed code';
+		const finalAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: sourceHash(changedWorkflow),
+			success: true,
+			workflowId: 'WF_EXISTING',
+		};
+		const submitTool = createSubmitTool(() => {
+			submitAttempts.set(MAIN_PATH, finalAttempt);
+			submitAttemptHistory.push(finalAttempt);
+			return { success: true, workflowId: 'WF_EXISTING' };
+		});
+		const onSuccessfulSubmit = createSuccessfulSubmitHandler();
+
+		await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: 'WF_EXISTING',
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot('existing code'),
+			currentMainWorkflow: changedWorkflow,
+			currentMainWorkflowHash: finalAttempt.sourceHash,
+			submitTool,
+			submitAttempts,
+			submitAttemptHistory,
+			finalText: 'Builder finished',
+			onSuccessfulSubmit,
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(submitTool.execute).toHaveBeenCalledWith({
+			filePath: MAIN_PATH,
+			workflowId: 'WF_EXISTING',
+		});
+		expect(onSuccessfulSubmit).toHaveBeenCalledWith(finalAttempt);
+	});
+
+	it('returns a failed outcome when the final submit is code-fixable', async () => {
+		const context = createMockContext({ workflowTaskService: createWorkflowTaskService() });
+		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+		const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
+		const changedWorkflow = 'changed code';
+		const failedAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: sourceHash(changedWorkflow),
+			success: false,
+			errors: ['Validation failed'],
+			remediation: createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'validation_failed',
+				guidance: 'Fix the workflow code and submit again.',
+			}),
+		};
+		const submitTool = createSubmitTool(() => {
+			submitAttempts.set(MAIN_PATH, failedAttempt);
+			submitAttemptHistory.push(failedAttempt);
+			return { success: false, errors: ['Validation failed'] };
+		});
+		const onSuccessfulSubmit = createSuccessfulSubmitHandler();
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: undefined,
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(null),
+			currentMainWorkflow: changedWorkflow,
+			currentMainWorkflowHash: failedAttempt.sourceHash,
+			submitTool,
+			submitAttempts,
+			submitAttemptHistory,
+			finalText: 'Builder finished',
+			onSuccessfulSubmit,
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(onSuccessfulSubmit).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			text: 'Error: final submit of /src/workflow.ts failed. Validation failed',
+			outcome: {
+				submitted: false,
+				failureSignature: 'Validation failed',
+				remediation: { reason: 'validation_failed' },
+			},
+		});
+	});
+
+	it('returns terminal remediation from the final submit when there is no earlier main submit', async () => {
+		const context = createMockContext({ workflowTaskService: createWorkflowTaskService() });
+		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+		const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
+		const changedWorkflow = 'changed code';
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'pre_save_submit_budget_exhausted',
+			guidance: 'Stop editing.',
+		});
+		const failedAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: sourceHash(changedWorkflow),
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		};
+		const submitTool = createSubmitTool(() => {
+			submitAttempts.set(MAIN_PATH, failedAttempt);
+			submitAttemptHistory.push(failedAttempt);
+			return { success: false, errors: ['Stop editing.'], remediation };
+		});
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: undefined,
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(null),
+			currentMainWorkflow: changedWorkflow,
+			currentMainWorkflowHash: failedAttempt.sourceHash,
+			submitTool,
+			submitAttempts,
+			submitAttemptHistory,
+			finalText: 'Builder finished',
+			onSuccessfulSubmit: createSuccessfulSubmitHandler(),
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(result.outcome).toMatchObject({
+			submitted: false,
+			remediation: { shouldEdit: false, reason: 'pre_save_submit_budget_exhausted' },
+		});
+	});
+
+	it('keeps supporting subworkflow submits available when the final main submit succeeds', async () => {
+		const context = createMockContext({ workflowTaskService: createWorkflowTaskService() });
+		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+		const submitAttemptHistory: SubmitWorkflowAttempt[] = [
+			{
+				filePath: '/home/daytona/workspace/src/subworkflow.ts',
+				sourceHash: 'sub',
+				success: true,
+				workflowId: 'WF_SUB',
+			},
+		];
+		const changedWorkflow = 'changed code';
+		const finalAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: sourceHash(changedWorkflow),
+			success: true,
+			workflowId: 'WF_MAIN',
+			referencedWorkflowIds: ['WF_SUB'],
+		};
+		const submitTool = createSubmitTool(() => {
+			submitAttempts.set(MAIN_PATH, finalAttempt);
+			submitAttemptHistory.push(finalAttempt);
+			return { success: true, workflowId: 'WF_MAIN' };
+		});
+		const onSuccessfulSubmit = jest.fn(
+			async (attempt: SubmitWorkflowAttempt) =>
+				await Promise.resolve({
+					...createSuccessfulResult(attempt),
+					outcome: {
+						...createSuccessfulResult(attempt).outcome,
+						supportingWorkflowIds: supportingWorkflowIdsFromSubmitAttempts(
+							submitAttemptHistory,
+							MAIN_PATH,
+							attempt.workflowId,
+							attempt.referencedWorkflowIds,
+						),
+					},
+				}),
+		);
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: undefined,
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(null),
+			currentMainWorkflow: changedWorkflow,
+			currentMainWorkflowHash: finalAttempt.sourceHash,
+			submitTool,
+			submitAttempts,
+			submitAttemptHistory,
+			finalText: 'Builder finished',
+			onSuccessfulSubmit,
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(result.outcome.supportingWorkflowIds).toEqual(['WF_SUB']);
 	});
 });
 
