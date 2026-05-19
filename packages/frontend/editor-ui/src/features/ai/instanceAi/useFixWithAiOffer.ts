@@ -27,12 +27,14 @@ export function useFixWithAiOffer() {
 		if (input.errors.length === 0) return;
 
 		const next = new Map(offersByWorkflow.value);
+
 		next.set(input.workflowId, {
 			workflowId: input.workflowId,
 			workflowName: input.workflowName,
 			executionId: input.executionId,
 			errors: input.errors,
 		});
+
 		offersByWorkflow.value = next;
 	}
 
