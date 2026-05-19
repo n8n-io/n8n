@@ -1,7 +1,9 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
+import { isRecord } from './column-ref-utils';
 import { detectAiNodes } from './detect-ai-nodes';
+import type { Logger } from '../../logger';
 import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agents';
 
 const FACET_COUNT = 5;
@@ -53,7 +55,7 @@ export const SAMPLE_ROW_FACETS: readonly SampleRowFacet[] = [
 		instructions:
 			'Produce robustness probes: an empty input, an input of one or two characters, an input that mixes two languages, and an input with malformed structure (e.g., truncated JSON, broken markup). Use whatever the agent would plausibly stumble on in production.',
 	},
-] as const;
+];
 
 export function distributeRowCount(rowCount: number): number[] {
 	const safe = Math.max(0, Math.floor(rowCount));
@@ -69,8 +71,8 @@ function readSystemPrompt(parameters: Record<string, unknown> | undefined): stri
 		return direct.slice(0, SYSTEM_PROMPT_MAX_CHARS);
 	}
 	const options = parameters.options;
-	if (options && typeof options === 'object') {
-		const nested = (options as Record<string, unknown>).systemMessage;
+	if (isRecord(options)) {
+		const nested = options.systemMessage;
 		if (typeof nested === 'string' && nested.length > 0) {
 			return nested.slice(0, SYSTEM_PROMPT_MAX_CHARS);
 		}
@@ -86,19 +88,14 @@ function readPromptTemplate(parameters: Record<string, unknown> | undefined): st
 
 function findConnectedTools(workflow: WorkflowJSON, agentName: string): string[] {
 	const tools: string[] = [];
-	const connections = (workflow.connections ?? {}) as Record<string, Record<string, unknown>>;
+	const connections = workflow.connections ?? {};
 	for (const [sourceName, byType] of Object.entries(connections)) {
+		if (!isRecord(byType)) continue;
 		const aiTool = byType?.ai_tool;
 		if (!Array.isArray(aiTool)) continue;
 		const matches = aiTool.some((slot) => {
 			if (!Array.isArray(slot)) return false;
-			return slot.some(
-				(link) =>
-					link !== null &&
-					typeof link === 'object' &&
-					'node' in link &&
-					(link as { node: unknown }).node === agentName,
-			);
+			return slot.some((link) => isRecord(link) && link.node === agentName);
 		});
 		if (matches) tools.push(sourceName);
 	}
@@ -111,7 +108,7 @@ export function extractAgentContext(
 ): AgentContext | undefined {
 	const node = (workflow.nodes ?? []).find((n) => n.name === agentNodeName);
 	if (!node) return undefined;
-	const parameters = node.parameters as Record<string, unknown> | undefined;
+	const parameters = isRecord(node.parameters) ? node.parameters : undefined;
 	return {
 		workflowName: workflow.name ?? 'Untitled',
 		agentNodeName,
@@ -161,6 +158,7 @@ export interface RunBatchInput {
 	rowCount: number;
 	context: AgentContext | undefined;
 	columns: string[];
+	logger?: Pick<Logger, 'warn'>;
 }
 
 function normalizeBatchRow(
@@ -188,7 +186,8 @@ function stripMarkdownFences(text: string): string {
 }
 
 export async function runBatch(input: RunBatchInput): Promise<Array<Record<string, string>>> {
-	if (input.rowCount <= 0) return [];
+	const requestedRowCount = Math.max(0, Math.floor(input.rowCount));
+	if (requestedRowCount <= 0) return [];
 	try {
 		const generatedColumns = input.columns.filter((column) => !isExpectedOutputColumn(column));
 		const agent = createEvalAgent('eval-sample-rows', {
@@ -204,17 +203,29 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 			input.facet.instructions,
 			'',
 			`Columns: ${generatedColumns.join(', ')}`,
-			`Generate exactly ${input.rowCount} rows.`,
+			`Generate exactly ${requestedRowCount} rows.`,
 		].join('\n');
-		const result = await agent.generate([
-			{ role: 'user' as const, content: [{ type: 'text' as const, text: userText }] },
-		]);
+		const result = await agent.generate(userText);
 		const text = extractText(result);
 		const parsed: unknown = JSON.parse(stripMarkdownFences(text));
 		const validated = batchRowSchema.safeParse(parsed);
-		if (!validated.success) return [];
-		return validated.data.map((rawRow) => normalizeBatchRow(rawRow, input.columns));
-	} catch {
+		if (!validated.success) {
+			input.logger?.warn('generate-sample-rows: invalid batch rows returned', {
+				rowCount: requestedRowCount,
+				facet: input.facet.edgeMode,
+				issues: validated.error.issues,
+			});
+			return [];
+		}
+		return validated.data
+			.slice(0, requestedRowCount)
+			.map((rawRow) => normalizeBatchRow(rawRow, input.columns));
+	} catch (error) {
+		input.logger?.warn('generate-sample-rows: batch generation failed', {
+			rowCount: requestedRowCount,
+			facet: input.facet.edgeMode,
+			error,
+		});
 		return [];
 	}
 }
@@ -224,6 +235,7 @@ export interface GenerateSampleRowsInput {
 	columns: string[];
 	rowCount?: number;
 	targetAgentNodeName?: string;
+	logger?: Pick<Logger, 'warn'>;
 }
 
 function resolveAgentContext(
@@ -251,11 +263,16 @@ export async function generateSampleRows(
 	const context = resolveAgentContext(input.workflow, input.targetAgentNodeName);
 
 	const settled = await Promise.allSettled(
-		SAMPLE_ROW_FACETS.map(async (facet, i) =>
-			counts[i] > 0
-				? await runBatch({ facet, rowCount: counts[i], context, columns: input.columns })
-				: await Promise.resolve([] as Array<Record<string, string>>),
-		),
+		SAMPLE_ROW_FACETS.map(async (facet, i) => {
+			if (counts[i] <= 0) return [];
+			return await runBatch({
+				facet,
+				rowCount: counts[i],
+				context,
+				columns: input.columns,
+				logger: input.logger,
+			});
+		}),
 	);
 
 	const merged: Array<Record<string, string>> = [];

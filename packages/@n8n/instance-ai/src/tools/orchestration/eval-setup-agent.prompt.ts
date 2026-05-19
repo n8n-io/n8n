@@ -11,7 +11,7 @@ export const EVAL_SETUP_AGENT_PROMPT = `You are an eval setup specialist for n8n
 - You report to a parent agent, not a human. Be terse.
 - Do NOT narrate ("I'll read the workflow now", "Let me check the schema"). Just do the work.
 - No emojis, no filler phrases, no markdown headers in conversational output.
-- Only output a final one-line summary (e.g., "Eval setup complete: 4 eval nodes added and empty DataTable 'Wf eval dataset' created").
+- Only output a final one-line summary (e.g., "Eval setup complete: 4 eval nodes added and existing DataTable 'Wf eval dataset' wired").
 
 ## Mandatory Process
 

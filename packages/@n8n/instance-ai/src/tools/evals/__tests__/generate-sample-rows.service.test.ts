@@ -28,6 +28,18 @@ function setupAgentMock(responseText: string) {
 	mockExtractText.mockReturnValue(responseText);
 }
 
+type GenerateMock = jest.Mock<Promise<{ messages: [] }>, [string]>;
+
+function createGenerateMock(): GenerateMock {
+	return jest.fn<Promise<{ messages: [] }>, [string]>().mockResolvedValue({ messages: [] });
+}
+
+function getPromptText(generate: GenerateMock): string {
+	const firstCall = generate.mock.calls[0];
+	if (!firstCall) throw new Error('Expected generate to be called');
+	return firstCall[0];
+}
+
 const WF: WorkflowJSON = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
 
 describe('generateSampleRows', () => {
@@ -136,8 +148,19 @@ describe('runBatch', () => {
 		expect(rows).toEqual([{ input: 'q1', expected_output: '' }]);
 	});
 
+	it('caps over-generated rows to the requested batch size', async () => {
+		setupAgentMock(JSON.stringify([{ input: 'q1' }, { input: 'q2' }, { input: 'q3' }]));
+		const rows = await runBatch({
+			facet: BATCH_FACET,
+			rowCount: 2,
+			context: BATCH_CONTEXT,
+			columns: ['input'],
+		});
+		expect(rows).toEqual([{ input: 'q1' }, { input: 'q2' }]);
+	});
+
 	it('does not send expected output columns to the sample-row agent', async () => {
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		const generate = createGenerateMock();
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -150,10 +173,7 @@ describe('runBatch', () => {
 			columns: ['input', 'expected_output'],
 		});
 
-		const calls = generate.mock.calls as unknown as Array<
-			Array<Array<{ content: Array<{ text: string }> }>>
-		>;
-		const promptText = calls[0][0][0].content[0].text;
+		const promptText = getPromptText(generate);
 		expect(promptText).toContain('Columns: input');
 		expect(promptText).not.toContain('expected_output');
 	});
@@ -170,6 +190,24 @@ describe('runBatch', () => {
 			columns: ['input'],
 		});
 		expect(rows).toEqual([]);
+	});
+
+	it('logs and returns empty array when parsing fails', async () => {
+		const logger = { warn: jest.fn<undefined, [string, Record<string, unknown>?]>() };
+		setupAgentMock('not json');
+		const rows = await runBatch({
+			facet: BATCH_FACET,
+			rowCount: 1,
+			context: BATCH_CONTEXT,
+			columns: ['input'],
+			logger,
+		});
+		expect(rows).toEqual([]);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		const [message, metadata] = logger.warn.mock.calls[0];
+		expect(message).toBe('generate-sample-rows: batch generation failed');
+		expect(metadata).toEqual(expect.objectContaining({ rowCount: 1 }));
+		expect(metadata?.error).toBeInstanceOf(SyntaxError);
 	});
 
 	it('returns empty array when JSON is malformed', async () => {
@@ -206,7 +244,7 @@ describe('runBatch', () => {
 	});
 
 	it('passes facet instructions, rowCount, and agent context into the prompt', async () => {
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		const generate = createGenerateMock();
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -217,10 +255,7 @@ describe('runBatch', () => {
 			context: BATCH_CONTEXT,
 			columns: ['input'],
 		});
-		const calls = generate.mock.calls as unknown as Array<
-			Array<Array<{ content: Array<{ text: string }> }>>
-		>;
-		const promptText = calls[0][0][0].content[0].text;
+		const promptText = getPromptText(generate);
 		expect(promptText).toContain('Produce typical inputs.');
 		expect(promptText).toContain('7');
 		expect(promptText).toContain('Be helpful.');
@@ -406,7 +441,7 @@ describe('generateSampleRows orchestration', () => {
 			],
 			connections: {},
 		} as unknown as WorkflowJSON;
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		const generate = createGenerateMock();
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
@@ -417,10 +452,7 @@ describe('generateSampleRows orchestration', () => {
 			rowCount: 5,
 			targetAgentNodeName: 'AgentX',
 		});
-		const calls = generate.mock.calls as unknown as Array<
-			Array<Array<{ content: Array<{ text: string }> }>>
-		>;
-		const promptText = calls[0][0][0].content[0].text;
+		const promptText = getPromptText(generate);
 		expect(promptText).toContain('TARGETED-AGENT-SYSTEM');
 	});
 
@@ -447,16 +479,13 @@ describe('generateSampleRows orchestration', () => {
 			],
 			connections: {},
 		} as unknown as WorkflowJSON;
-		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		const generate = createGenerateMock();
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
 		mockExtractText.mockReturnValue(JSON.stringify([]));
 		await generateSampleRows({ workflow: wf, columns: ['input'], rowCount: 5 });
-		const calls = generate.mock.calls as unknown as Array<
-			Array<Array<{ content: Array<{ text: string }> }>>
-		>;
-		const promptText = calls[0][0][0].content[0].text;
+		const promptText = getPromptText(generate);
 		expect(promptText).toContain('FIRST-AGENT-SYSTEM');
 		expect(promptText).not.toContain('SECOND-AGENT-SYSTEM');
 	});
