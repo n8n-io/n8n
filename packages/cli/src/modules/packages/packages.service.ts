@@ -5,13 +5,13 @@ import type { Readable } from 'node:stream';
 import { N8N_VERSION } from '@/constants';
 
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
-import type { ExportWorkflowsRequest } from './import-export.types';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
+import type { ExportWorkflowsRequest } from './packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import { packageManifestSchema } from './spec/manifest.schema';
 
 @Service()
-export class ImportExportService {
+export class PackagesService {
 	constructor(
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly instanceSettings: InstanceSettings,

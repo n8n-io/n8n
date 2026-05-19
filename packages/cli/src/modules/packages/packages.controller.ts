@@ -4,14 +4,14 @@ import { Body, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 import type { Readable } from 'node:stream';
 
-import { ImportExportService } from './import-export.service';
+import { PackagesService } from './packages.service';
 
 @RestController('/packages')
-export class ImportExportController {
-	constructor(private readonly importExportService: ImportExportService) {}
+export class PackagesController {
+	constructor(private readonly packagesService: PackagesService) {}
 
 	@Post('/export')
-	@Licensed('feat:packageExport')
+	@Licensed('feat:packages')
 	async exportWorkflows(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -20,7 +20,7 @@ export class ImportExportController {
 		res.setHeader('Content-Type', 'application/gzip');
 		res.setHeader('Content-Disposition', 'attachment; filename="export.n8np"');
 
-		return await this.importExportService.exportWorkflows({
+		return await this.packagesService.exportWorkflows({
 			user: req.user,
 			workflowIds: body.workflowIds,
 		});

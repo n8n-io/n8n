@@ -3,11 +3,11 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 
 @BackendModule({
-	name: 'import-export',
-	licenseFlag: LICENSE_FEATURES.PACKAGE_EXPORT,
+	name: 'packages',
+	licenseFlag: LICENSE_FEATURES.PACKAGES,
 })
-export class ImportExportModule implements ModuleInterface {
+export class PackagesModule implements ModuleInterface {
 	async init() {
-		await import('./import-export.controller');
+		await import('./packages.controller');
 	}
 }

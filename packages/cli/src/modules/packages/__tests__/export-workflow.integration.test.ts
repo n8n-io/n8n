@@ -14,7 +14,7 @@ import { Parser, type ReadEntry } from 'tar';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
-import { ImportExportService } from '../import-export.service';
+import { PackagesService } from '../packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import type { PackageManifest } from '../spec/manifest.schema';
 
@@ -57,7 +57,7 @@ async function readExport(stream: Readable) {
 }
 
 beforeAll(async () => {
-	await testModules.loadModules(['import-export']);
+	await testModules.loadModules(['packages']);
 	await testDb.init();
 });
 
@@ -70,10 +70,10 @@ beforeEach(async () => {
 });
 
 describe('workflow package export', () => {
-	let service: ImportExportService;
+	let service: PackagesService;
 
 	beforeAll(() => {
-		service = Container.get(ImportExportService);
+		service = Container.get(PackagesService);
 	});
 
 	async function exportSingleWorkflow(user: User, workflowId: string) {
