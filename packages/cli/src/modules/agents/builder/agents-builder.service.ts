@@ -154,7 +154,7 @@ export class AgentsBuilderService {
 		// Warm the node catalog in the background so the first node-related tool call
 		// can reuse an initialized parser.
 		void this.nodeCatalogService.initialize().catch((error) => {
-			this.logger.debug('Failed to initialize node catalog in builder warmup', {
+			this.logger.warn('Failed to initialize node catalog in builder warmup', {
 				error: error instanceof Error ? error.message : String(error),
 				agentId,
 			});
