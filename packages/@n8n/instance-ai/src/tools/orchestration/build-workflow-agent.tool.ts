@@ -93,6 +93,9 @@ interface SubmitWorkflowExecutable {
 	execute: (args: Record<string, unknown>) => Promise<SubmitWorkflowOutput>;
 }
 
+const WORKFLOW_NOT_SUBMITTED_FAILURE_SIGNATURE = 'workflow:not_submitted';
+const WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE = 'workflow:final_submit_failed';
+
 function createBuilderResourceId(userId: string): string {
 	return `${userId}:workflow-builder`;
 }
@@ -625,7 +628,7 @@ function buildNotSubmittedOutcome(
 	runId: string,
 	taskId: string,
 	finalText: string,
-	failureSignature = 'workflow:not_submitted',
+	failureSignature = WORKFLOW_NOT_SUBMITTED_FAILURE_SIGNATURE,
 ): WorkflowBuildOutcome {
 	return withDeterministicRouting({
 		workItemId,
@@ -1033,12 +1036,25 @@ export async function settleMissingMainWorkflowSubmit(input: {
 	onRecoveredSubmit: (result: BuildWorkflowAgentRunResult) => Promise<BuildWorkflowAgentRunResult>;
 }): Promise<BuildWorkflowAgentRunResult> {
 	const currentSnapshot = createMainWorkflowSnapshot(input.currentMainWorkflow);
-	if (
-		!shouldFinalSubmitMainWorkflow({
-			initial: input.initialMainWorkflowSnapshot,
-			current: currentSnapshot,
-		})
-	) {
+	const shouldFinalSubmit = shouldFinalSubmitMainWorkflow({
+		initial: input.initialMainWorkflowSnapshot,
+		current: currentSnapshot,
+	});
+	input.context.trackTelemetry?.('Builder finished without submit', {
+		thread_id: input.context.threadId,
+		run_id: input.runId,
+		work_item_id: input.workItemId,
+		...(input.workflowId ? { workflow_id: input.workflowId } : {}),
+		has_main_workflow_file: currentSnapshot.exists,
+		main_workflow_changed: shouldFinalSubmit,
+		final_settlement: shouldFinalSubmit
+			? 'final_submit'
+			: input.currentMainWorkflow === null
+				? 'missing_file'
+				: 'unchanged_file',
+	});
+
+	if (!shouldFinalSubmit) {
 		const text =
 			input.currentMainWorkflow === null
 				? 'Error: workflow builder finished without creating or submitting /src/workflow.ts.'
@@ -1059,7 +1075,7 @@ export async function settleMissingMainWorkflowSubmit(input: {
 				input.runId,
 				input.taskId,
 				text,
-				'workflow:final_submit_failed',
+				WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE,
 			),
 		});
 	}
@@ -1082,7 +1098,7 @@ export async function settleMissingMainWorkflowSubmit(input: {
 				input.runId,
 				input.taskId,
 				text,
-				'workflow:final_submit_failed',
+				WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE,
 			),
 		};
 		if (input.submitAttemptHistory.length === attemptsBeforeFinalSubmit) {
@@ -1132,10 +1148,13 @@ export async function settleMissingMainWorkflowSubmit(input: {
 					input.runId,
 					input.taskId,
 					text,
-					'workflow:final_submit_failed',
+					WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE,
 				),
 	};
-	if (refreshedAttempt !== input.submitAttempts.get(input.mainWorkflowPath)) {
+	const reportedMainAttempt = input.submitAttempts.get(input.mainWorkflowPath);
+	// The submit tool's onAttempt hook reports recorded main-path attempts; only
+	// report here when final settlement failed before that hook captured one.
+	if (!refreshedAttempt || refreshedAttempt !== reportedMainAttempt) {
 		return await reportAndFinalizeBuildResult(input.context, input.workItemId, result);
 	}
 	return await finalizeBuildResult(input.context, input.workItemId, result);

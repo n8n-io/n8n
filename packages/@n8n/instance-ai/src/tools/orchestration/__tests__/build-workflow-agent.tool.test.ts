@@ -924,7 +924,11 @@ describe('settleMissingMainWorkflowSubmit', () => {
 	}
 
 	it('final-submits a newly created main workflow file', async () => {
-		const context = createMockContext({ workflowTaskService: createWorkflowTaskService() });
+		const trackTelemetry = jest.fn();
+		const context = createMockContext({
+			trackTelemetry,
+			workflowTaskService: createWorkflowTaskService(),
+		});
 		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
 		const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
 		const currentMainWorkflow = 'workflow code';
@@ -960,6 +964,17 @@ describe('settleMissingMainWorkflowSubmit', () => {
 		});
 
 		expect(submitTool.execute).toHaveBeenCalledWith({ filePath: MAIN_PATH });
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'Builder finished without submit',
+			expect.objectContaining({
+				thread_id: 'test-thread',
+				run_id: 'run_test',
+				work_item_id: 'wi_test',
+				has_main_workflow_file: true,
+				main_workflow_changed: true,
+				final_settlement: 'final_submit',
+			}),
+		);
 		expect(onSuccessfulSubmit).toHaveBeenCalledWith(finalAttempt);
 		expect(result.outcome).toMatchObject({ submitted: true, workflowId: 'WF_CREATED' });
 	});
@@ -1134,6 +1149,46 @@ describe('settleMissingMainWorkflowSubmit', () => {
 				failureSignature: 'Validation failed',
 				remediation: { reason: 'validation_failed' },
 			},
+		});
+	});
+
+	it('reports final submit failure when no main attempt is recorded', async () => {
+		const workflowTaskService = createWorkflowTaskService();
+		const context = createMockContext({ workflowTaskService });
+		const currentMainWorkflow = 'workflow code';
+		const submitTool = createSubmitTool(() => ({ success: true, workflowId: 'WF_CREATED' }));
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: undefined,
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(null),
+			currentMainWorkflow,
+			currentMainWorkflowHash: sourceHash(currentMainWorkflow),
+			submitTool,
+			submitAttempts: new Map(),
+			submitAttemptHistory: [],
+			finalText: 'Builder finished',
+			onSuccessfulSubmit: createSuccessfulSubmitHandler(),
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		const reportBuildOutcome = workflowTaskService?.reportBuildOutcome as jest.Mock<
+			Promise<unknown>,
+			[WorkflowBuildOutcome]
+		>;
+		expect(reportBuildOutcome).toHaveBeenCalledWith(
+			expect.objectContaining({
+				submitted: false,
+				failureSignature: 'workflow:final_submit_failed',
+			}),
+		);
+		expect(result.outcome).toMatchObject({
+			submitted: false,
+			failureSignature: 'workflow:final_submit_failed',
 		});
 	});
 
