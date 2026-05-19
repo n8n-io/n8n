@@ -491,12 +491,14 @@ const EpisodicMemoryExtractionSchema = z.object({
 	entries: z.array(
 		z.object({
 			content: z.string(),
-			sources: z.array(
-				z.object({
-					observationId: z.string(),
-					evidence: z.string(),
-				}),
-			),
+			sources: z
+				.array(
+					z.object({
+						observationId: z.string(),
+						evidence: z.string(),
+					}),
+				)
+				.min(1),
 		}),
 	),
 });
@@ -505,7 +507,7 @@ const EpisodicMemoryReflectionSchema = z.object({
 	drop: z.array(z.string()),
 	merge: z.array(
 		z.object({
-			supersedes: z.array(z.string()),
+			supersedes: z.array(z.string()).min(1),
 			content: z.string(),
 		}),
 	),

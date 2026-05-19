@@ -1,12 +1,40 @@
+import type * as AiImport from 'ai';
+
+import type { ModelConfig } from '../../types';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	buildEpisodicMemoryExtractorPrompt,
 	buildEpisodicMemoryReflectorPrompt,
+	createEpisodicMemoryExtractFn,
+	createEpisodicMemoryReflectFn,
 } from '../episodic-memory-defaults';
 
+type GenerateObjectCall = {
+	schema: {
+		parse(value: unknown): unknown;
+	};
+};
+
+const mockGenerateObject = jest.fn<Promise<{ object: unknown }>, [GenerateObjectCall]>();
+
+jest.mock('ai', () => {
+	const actual = jest.requireActual<typeof AiImport>('ai');
+	return {
+		...actual,
+		generateObject: async (call: GenerateObjectCall): Promise<{ object: unknown }> =>
+			await mockGenerateObject(call),
+	};
+});
+
+const fakeModel = { doGenerate: jest.fn() } as unknown as ModelConfig;
+
 describe('episodic memory defaults', () => {
+	beforeEach(() => {
+		mockGenerateObject.mockReset();
+	});
+
 	it('defines the default extraction and reflection policy', () => {
 		expect(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL).toBe('openai/text-embedding-3-small');
 		expect(DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT).toContain('Return JSON only');
@@ -92,5 +120,58 @@ describe('episodic memory defaults', () => {
 		expect(reflectorPrompt).toContain('Seed entry IDs: mem-1');
 		expect(reflectorPrompt).toContain('source observation obs-1');
 		expect(reflectorPrompt).toContain('User planned SQLite');
+	});
+
+	it('rejects extracted entries without source evidence', async () => {
+		mockGenerateObject.mockImplementation(async ({ schema }) => {
+			const object = schema.parse({
+				entries: [
+					{
+						content: 'User chose Postgres for the memory store.',
+						sources: [],
+					},
+				],
+			});
+			return await Promise.resolve({ object });
+		});
+
+		await expect(
+			createEpisodicMemoryExtractFn(fakeModel)({
+				scope: { agentId: 'agent-1', resourceId: 'user-1' },
+				observationScope: {
+					scopeKind: 'thread',
+					scopeId: 'thread:thread-1:resource:user-1',
+				},
+				now: new Date('2026-05-12T15:00:00.000Z'),
+				observations: [],
+				renderedObservations: '',
+				existingEntries: [],
+			}),
+		).rejects.toThrow();
+	});
+
+	it('rejects reflection merges without superseded entry IDs', async () => {
+		mockGenerateObject.mockImplementation(async ({ schema }) => {
+			const object = schema.parse({
+				drop: [],
+				merge: [
+					{
+						supersedes: [],
+						content: 'User chose Postgres for the memory store.',
+					},
+				],
+			});
+			return await Promise.resolve({ object });
+		});
+
+		await expect(
+			createEpisodicMemoryReflectFn(fakeModel)({
+				scope: { agentId: 'agent-1', resourceId: 'user-1' },
+				now: new Date('2026-05-12T15:00:00.000Z'),
+				seedEntryIds: [],
+				entries: [],
+				sources: [],
+			}),
+		).rejects.toThrow();
 	});
 });
