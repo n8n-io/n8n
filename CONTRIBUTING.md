@@ -66,6 +66,18 @@ The most important directories:
 If you want to change or extend n8n you have to make sure that all the needed
 dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
 
+### Optional: Ota readiness workflow
+
+If you prefer a reproducible readiness check before starting development, this repo includes an optional `ota.yaml` contract.
+
+```bash
+ota doctor
+ota proof --workflow instant
+ota proof --workflow backend
+```
+
+Use this as a fast-path validation layer. The pnpm/corepack/Docker setup below remains the canonical contributor setup.
+
 ### Dev Container
 
 If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.

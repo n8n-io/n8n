@@ -499,6 +499,11 @@ agent:
     - .env.local.example
   protected_paths:
     - ota.yaml
+  bootstrap:
+    ota:
+      note: Install ota when missing so contributors and agents can run the repo readiness workflows in this contract.
+      sh: curl -fsSL https://dist.ota.run/install.sh | sh
+      powershell: irm https://dist.ota.run/install.ps1 | iex
   notes: |
     n8n is a large pnpm monorepo with one canonical full local app workflow and several selective workflows.
     The default repo workflow should stay the full `pnpm dev` path because that is the documented contributor front door.

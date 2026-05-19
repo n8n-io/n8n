@@ -60,6 +60,7 @@ Additional information about the license model can be found in the [docs](https:
 ## Contributing
 
 Found a bug 🐛 or have a feature idea ✨? Check our [Contributing Guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) for a setup guide & best practices.
+For reproducible repo-readiness checks, contributors can also use the optional Ota contract in [`ota.yaml`](./ota.yaml).
 
 ## Join the Team
 
