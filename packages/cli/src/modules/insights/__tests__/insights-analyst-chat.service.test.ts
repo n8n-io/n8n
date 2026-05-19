@@ -60,7 +60,7 @@ describe('InsightsAnalystChatService', () => {
 	test('uses deterministic fallback when Anthropic key is empty', async () => {
 		const config = mock<InsightsConfig>({
 			analystAnthropicApiKey: '',
-			analystModel: 'claude-sonnet-4-5-20250929',
+			analystModel: 'claude-sonnet-4-6',
 		});
 		const demoService = mock<InsightsDemoService>({
 			getOverview: jest.fn().mockResolvedValue(overview),
