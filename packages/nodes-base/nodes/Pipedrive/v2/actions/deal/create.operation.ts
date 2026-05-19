@@ -13,9 +13,11 @@ import {
 	coerceToNumber,
 	toRfc3339,
 	addFieldsToBody,
+	applyCustomFieldsMapping,
 } from '../../helpers';
 import {
 	customFieldsCollection,
+	customFieldsMappingProperty,
 	rawCustomFieldKeysOption,
 	visibleToOption,
 } from '../common.description';
@@ -207,6 +209,7 @@ const properties: INodeProperties[] = [
 			customFieldsCollection,
 		],
 	},
+	customFieldsMappingProperty,
 	rawCustomFieldKeysOption,
 ];
 
@@ -245,6 +248,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 			addFieldsToBody(body, additionalFields);
+
+			const mapping = this.getNodeParameter('customFieldsMapping', i, {}) as {
+				value?: IDataObject | null;
+			};
+			applyCustomFieldsMapping(body, mapping?.value);
 
 			if (body.expected_close_date) {
 				body.expected_close_date = toRfc3339(body.expected_close_date as string);

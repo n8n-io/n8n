@@ -1,0 +1,70 @@
+{
+	"name": "Pipedrive v2 deal create with mapping",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "aa111111-bb22-cc33-dd44-ee5555555556",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "deal",
+				"operation": "create",
+				"title": "Mapping Test Deal",
+				"associateWith": "organization",
+				"org_id": 7,
+				"customFieldsMapping": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"f5ed368466cf0477371c6ee076252f49a188848e": "from-mapper"
+					}
+				}
+			},
+			"id": "bb222222-cc33-dd44-ee55-ff6666666667",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "cc333333-dd44-ee55-ff66-aa7777777778",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 9,
+					"title": "Mapping Test Deal",
+					"org_id": 7,
+					"custom_fields": {
+						"test_string": "from-mapper"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

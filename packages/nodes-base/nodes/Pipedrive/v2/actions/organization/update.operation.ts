@@ -7,9 +7,15 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, resolveCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	addFieldsToBody,
+	applyCustomFieldsMapping,
+} from '../../helpers';
 import {
 	customFieldsCollection,
+	customFieldsMappingProperty,
 	rawCustomFieldKeysOption,
 	visibleToOption,
 } from '../common.description';
@@ -63,6 +69,7 @@ const properties: INodeProperties[] = [
 			customFieldsCollection,
 		],
 	},
+	customFieldsMappingProperty,
 	rawCustomFieldKeysOption,
 ];
 
@@ -92,6 +99,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const updateFields = this.getNodeParameter('updateFields', i);
 			addFieldsToBody(body, updateFields);
+
+			const mapping = this.getNodeParameter('customFieldsMapping', i, {}) as {
+				value?: IDataObject | null;
+			};
+			applyCustomFieldsMapping(body, mapping?.value);
 
 			// Clear label when set to 'null' string
 			if (body.label === 'null') {

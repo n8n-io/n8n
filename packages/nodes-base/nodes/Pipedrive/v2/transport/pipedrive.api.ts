@@ -94,7 +94,7 @@ export async function pipedriveApiRequest(
 }
 
 export async function pipedriveApiRequestAllItemsCursor(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
@@ -124,7 +124,7 @@ export async function pipedriveApiRequestAllItemsCursor(
 }
 
 export async function pipedriveApiRequestAllItemsOffset(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
@@ -168,7 +168,7 @@ export async function pipedriveApiRequestAllItemsOffset(
 }
 
 export async function pipedriveGetCustomProperties(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	resource: string,
 ): Promise<ICustomProperties> {
 	const v2Endpoints: Record<string, string> = {

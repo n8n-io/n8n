@@ -1,4 +1,4 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { FieldType, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import type { ICustomProperties, ICustomInterface } from '../transport';
 
@@ -43,19 +43,30 @@ export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: 
 		const customPropertyData = nameMap.get(key) ?? customProperties[key];
 
 		if (customPropertyData !== undefined) {
+			const isSet = customPropertyData.field_type === 'set';
+			const isEnumLike = ['enum', 'visible_to'].includes(customPropertyData.field_type);
+
+			// Empty/null normalization: send [] for set, null for enum-like
+			if ((isSet || isEnumLike) && (value === null || value === undefined || value === '')) {
+				resolved[customPropertyData.key] = isSet ? [] : null;
+				continue;
+			}
+
 			if (
 				value !== null &&
 				value !== undefined &&
 				customPropertyData.options !== undefined &&
 				Array.isArray(customPropertyData.options)
 			) {
-				if (customPropertyData.field_type === 'set') {
-					// Set fields: resolve each label to its option ID
-					const labels: string[] = Array.isArray(value)
-						? (value as string[]).map(String)
-						: String(value)
-								.split(',')
-								.map((s) => s.trim());
+				if (isSet) {
+					// Set fields: resolve each label to its option ID, skip empty entries
+					const labels: string[] = (
+						Array.isArray(value)
+							? (value as string[]).map(String)
+							: String(value)
+									.split(',')
+									.map((s) => s.trim())
+					).filter((s) => s !== '');
 					const ids = labels.map((label) => {
 						const opt = customPropertyData.options!.find(
 							(option) => option.label.toString() === label,
@@ -149,4 +160,47 @@ export function resolveCustomFieldsV2(
 
 	json.custom_fields = resolved;
 	item.json = json;
+}
+
+const PIPEDRIVE_FIELD_TYPE_TO_N8N: Record<string, FieldType> = {
+	varchar: 'string',
+	varchar_auto: 'string',
+	text: 'string',
+	phone: 'string',
+	address: 'string',
+	int: 'number',
+	double: 'number',
+	monetary: 'number',
+	boolean: 'boolean',
+	date: 'dateTime',
+	daterange: 'dateTime',
+	time: 'time',
+	timerange: 'time',
+	enum: 'options',
+	visible_to: 'options',
+	set: 'string',
+	org: 'number',
+	people: 'number',
+	person: 'number',
+	user: 'number',
+	deal: 'number',
+	product: 'number',
+};
+
+export function mapPipedriveFieldType(fieldType: string | undefined): FieldType {
+	if (!fieldType) return 'string';
+	return PIPEDRIVE_FIELD_TYPE_TO_N8N[fieldType] ?? 'string';
+}
+
+export function applyCustomFieldsMapping(
+	body: IDataObject,
+	mappingValue: IDataObject | null | undefined,
+): void {
+	if (!mappingValue || typeof mappingValue !== 'object') return;
+	if (Object.keys(mappingValue).length === 0) return;
+
+	body.custom_fields = {
+		...((body.custom_fields as IDataObject) ?? {}),
+		...mappingValue,
+	};
 }

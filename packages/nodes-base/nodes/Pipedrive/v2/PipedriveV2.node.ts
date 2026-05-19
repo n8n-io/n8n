@@ -8,7 +8,7 @@ import type {
 
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
-import { loadOptions } from './methods';
+import { loadOptions, resourceMapping } from './methods';
 
 export class PipedriveV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -23,6 +23,7 @@ export class PipedriveV2 implements INodeType {
 
 	methods = {
 		loadOptions,
+		resourceMapping,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

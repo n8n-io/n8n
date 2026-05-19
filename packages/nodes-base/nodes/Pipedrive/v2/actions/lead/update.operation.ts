@@ -6,8 +6,9 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { pipedriveApiRequest } from '../../transport';
-import { visibleToOption } from '../common.description';
+import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
+import { encodeCustomFieldsV2 } from '../../helpers';
+import { customFieldsMappingProperty, visibleToOption } from '../common.description';
 import { currencies } from '../../../utils';
 
 const properties: INodeProperties[] = [
@@ -118,6 +119,7 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	customFieldsMappingProperty,
 ];
 
 const displayOptions = {
@@ -132,6 +134,13 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
+
+	let leadCustomProperties;
+	try {
+		leadCustomProperties = await pipedriveGetCustomProperties.call(this, 'lead');
+	} catch {
+		leadCustomProperties = undefined;
+	}
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -160,6 +169,20 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (expected_close_date) {
 				body.expected_close_date = expected_close_date.split('T')[0];
+			}
+
+			const mapping = this.getNodeParameter('customFieldsMapping', i, {}) as {
+				value?: IDataObject | null;
+			};
+			const mappingValue = mapping?.value;
+			if (mappingValue && Object.keys(mappingValue).length > 0) {
+				if (leadCustomProperties) {
+					const wrapper: IDataObject = { custom_fields: { ...mappingValue } };
+					encodeCustomFieldsV2(leadCustomProperties, wrapper);
+					Object.assign(body, (wrapper.custom_fields as IDataObject) ?? {});
+				} else {
+					Object.assign(body, mappingValue);
+				}
 			}
 
 			const responseData = await pipedriveApiRequest.call(
