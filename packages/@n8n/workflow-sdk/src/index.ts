@@ -165,6 +165,12 @@ export {
 export { generateWorkflowCode } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 
+// Post-layout sticky sanity checks (used by AI builder to surface overlap warnings)
+export {
+	detectStickyLayoutWarnings,
+	type StickyLayoutWarning,
+} from './workflow-builder/sticky-layout-warnings';
+
 // Type generation utilities (for runtime type generation in CLI)
 export * from './generate-types';
 

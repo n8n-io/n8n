@@ -7,7 +7,12 @@
  */
 
 import type { Logger } from '@n8n/backend-common';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import {
+	detectStickyLayoutWarnings,
+	parseWorkflowCodeToBuilder,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { ParseAndValidateResult, ValidationWarning } from '../types';
@@ -197,6 +202,16 @@ export class ParseValidateHandler {
 
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
 			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true });
+
+			// Sticky layout warnings — overlap, content fit. The agent can use
+			// these to decide whether to merge stickies, shorten content, or pin
+			// positions explicitly.
+			this.collectValidationIssues(
+				detectStickyLayoutWarnings(workflowJson),
+				allWarnings,
+				'STICKY LAYOUT WARNINGS',
+				'info',
+			);
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,
