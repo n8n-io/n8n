@@ -1108,6 +1108,16 @@ export interface InstanceAiEvalMockedCredential {
 }
 
 /**
+ * PostHog kill-switch flag for the eval vendor SDK interception code path.
+ * Defaults to true (rewrite enabled for every caller that opts in via
+ * `unpinNodes`). Flipping to false in PostHog disables the credential URL
+ * rewrite so `EvalMockedCredentialsHelper` reverts to today's behaviour —
+ * the wire server keeps booting but never receives traffic. Fail-open on
+ * PostHog outage: if the flag can't be resolved, treat as enabled.
+ */
+export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
+
+/**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated when the caller opts into the unpin
  * path via `InstanceAiEvalExecutionRequest.unpinNodes`. Field added in the
