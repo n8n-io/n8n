@@ -511,7 +511,7 @@ const handleCreateNewResolver = async () => {
 
 	openCreateModal({
 		onSave: async (resolverId: string) => {
-			await loadCredentialResolvers();
+			await loadCredentialResolvers({ includeSystem: true });
 			workflowSettings.value.credentialResolverId = resolverId;
 		},
 	});
@@ -522,10 +522,10 @@ const handleEditResolver = async () => {
 
 	openEditModal(workflowSettings.value.credentialResolverId, {
 		onSave: async () => {
-			await loadCredentialResolvers();
+			await loadCredentialResolvers({ includeSystem: true });
 		},
 		onDelete: async (deletedResolverId: string) => {
-			await loadCredentialResolvers();
+			await loadCredentialResolvers({ includeSystem: true });
 			if (workflowSettings.value.credentialResolverId === deletedResolverId) {
 				workflowSettings.value.credentialResolverId = undefined;
 			}
@@ -720,7 +720,7 @@ onMounted(async () => {
 
 		if (isCredentialResolverEnabled.value && canListCredentialResolvers) {
 			promises.push(
-				loadCredentialResolvers().then((success) => {
+				loadCredentialResolvers({ includeSystem: true }).then((success) => {
 					resolversLoaded = success;
 				}),
 				loadCredentialResolverTypes(),

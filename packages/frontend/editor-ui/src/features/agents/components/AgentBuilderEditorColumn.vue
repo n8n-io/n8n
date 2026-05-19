@@ -121,6 +121,7 @@ const i18n = useI18n();
 							:config="localConfig"
 							:disabled="childrenDisabled"
 							embedded
+							data-testid="agent-memory-panel"
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>

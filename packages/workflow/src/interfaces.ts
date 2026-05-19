@@ -1380,6 +1380,9 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	customTelemetryTags?: {
+		tag?: Array<{ key: string; value: string }>;
+	};
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
@@ -3025,6 +3028,12 @@ export interface IWaitingForExecutionSource {
 
 export type WorkflowId = IWorkflowBase['id'];
 
+export interface IWorkflowGroup {
+	id: string;
+	name: string;
+	nodeIds: string[];
+}
+
 export interface IWorkflowBase {
 	id: string;
 	name: string;
@@ -3044,6 +3053,10 @@ export interface IWorkflowBase {
 	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+	/** Optional here because IWorkflowBase is used in contexts where node groups
+	 * are irrelevant (executions, telemetry, tests). The DB column is NOT NULL
+	 * with default `[]` and `WorkflowEntity` has this as required. */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 interface IWorkflowHistory {
@@ -3051,6 +3064,7 @@ interface IWorkflowHistory {
 	workflowId: string;
 	nodes: INode[];
 	connections: IConnections;
+	nodeGroups: IWorkflowGroup[];
 	authors: string;
 	name: string | null;
 	description: string | null;
