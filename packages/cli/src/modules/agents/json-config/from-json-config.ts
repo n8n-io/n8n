@@ -282,7 +282,7 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
-			await resolveEpisodicMemoryConfig(memoryConfig.episodicMemory, credentialProvider),
+			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
 		);
 	}
 
@@ -313,7 +313,7 @@ async function applyMemoryFromConfig(
 	agent.memory(memory);
 }
 
-async function resolveEpisodicMemoryConfig(
+async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
 ) {

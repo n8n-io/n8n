@@ -35,6 +35,8 @@ import {
 	type ObservationLogReflectionResult,
 	type ObservationLogScope,
 	type ObservationLogScopeKind,
+	type ObservationLogTaskKind,
+	type ObservationLogTaskLockHandle,
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
 } from '@n8n/agents';
@@ -65,16 +67,6 @@ import { AgentResourceRepository } from '../repositories/agent-resource.reposito
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
-
-type ObservationLogTaskKind = 'observer' | 'reflector' | 'episodic-indexer';
-
-interface ObservationLogTaskLockHandle {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
-	taskKind: ObservationLogTaskKind;
-	holderId: string;
-	heldUntil: Date;
-}
 
 @Service()
 export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEpisodicMemoryStore {
