@@ -403,7 +403,6 @@ describe('enqueueExecution', () => {
 			status: 'success',
 		};
 		waitForJobResult.mockResolvedValue(mockResult);
-		popJobResult.mockReturnValue(mockResult);
 
 		// @ts-expect-error Private method
 		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
@@ -425,6 +424,7 @@ describe('enqueueExecution', () => {
 				status: 'success',
 			}),
 		);
+		expect(popJobResult).not.toHaveBeenCalled();
 	});
 
 	it('should handle timeout error in waitForJobResult', async () => {

@@ -29,7 +29,7 @@ import type {
 	JobFailedMessage,
 } from './scaling.types';
 
-const JOB_RESULT_WAIT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
+const JOB_RESULT_WAIT_TIMEOUT_MS = 24 * 60 * Time.minutes.toMilliseconds;
 const JOB_RESULT_WAIT_POLL_INTERVAL_MS = 250;
 
 @Service()
@@ -237,7 +237,7 @@ export class ScalingService {
 					return;
 				}
 
-				if (Date.now() - start >= timeoutMs) {
+				if (timeoutMs > 0 && Date.now() - start >= timeoutMs) {
 					cleanup();
 					reject(new Error(`Timeout waiting for job result for execution ${executionId}`));
 				}

@@ -48,7 +48,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
-import type { Job, JobData } from '@/scaling/scaling.types';
+import type { Job, JobData, JobFinishedProps } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -559,8 +559,10 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
+				let jobResult: JobFinishedProps | undefined;
+
 				try {
-					await this.scalingService.waitForJobResult(
+					jobResult = await this.scalingService.waitForJobResult(
 						executionId,
 						undefined,
 						undefined,
@@ -602,8 +604,6 @@ export class WorkflowRunner {
 
 					return reject(error);
 				}
-
-				const jobResult = this.scalingService.popJobResult(executionId);
 
 				let runData: IRun;
 
