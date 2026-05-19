@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateAgentEvaluationCaseTable1784000000007 implements ReversibleMigration {
+export class CreateAgentEvaluationCaseTable1784000000009 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agent_evaluation_case')
 			.withColumns(
