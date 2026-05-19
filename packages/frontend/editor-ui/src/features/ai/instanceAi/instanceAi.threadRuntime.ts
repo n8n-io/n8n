@@ -708,7 +708,11 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 		if (!next) return;
 
-		void sendMessageNow(next.message, next.attachments, next.pushRef);
+		void sendMessageNow(next.message, next.attachments, next.pushRef).finally(() => {
+			if (!isBusySending()) {
+				processMessageQueue();
+			}
+		});
 	}
 
 	async function dispatchUserMessage(

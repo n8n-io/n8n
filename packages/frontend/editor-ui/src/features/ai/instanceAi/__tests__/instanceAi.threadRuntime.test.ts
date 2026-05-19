@@ -911,6 +911,54 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
+	test('continues the message queue when a queued send fails', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+
+		await activeRuntime(registry).sendMessage('first queued');
+		await activeRuntime(registry).sendMessage('second queued');
+
+		expect(mockPostMessage).not.toHaveBeenCalled();
+
+		mockPostMessage
+			.mockRejectedValueOnce(new Error('post failed'))
+			.mockResolvedValueOnce({ runId: 'run-2' });
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			}),
+		);
+
+		await vi.waitFor(() => {
+			expect(mockPostMessage).toHaveBeenCalledTimes(2);
+		});
+
+		expect(mockPostMessage).toHaveBeenNthCalledWith(
+			1,
+			expect.anything(),
+			activeThreadId,
+			'first queued',
+			undefined,
+			undefined,
+			expect.any(String),
+			undefined,
+		);
+		expect(mockPostMessage).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			activeThreadId,
+			'second queued',
+			undefined,
+			undefined,
+			expect.any(String),
+			undefined,
+		);
+	});
+
 	test('sendMessage sets activeRunId from postMessage response before run-start', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-from-post' });
 
