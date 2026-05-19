@@ -29,7 +29,7 @@ describe('N8nResolverSeeder', () => {
 		it('creates the system resolver with the well-known id when missing', async () => {
 			repository.findOneBy.mockResolvedValue(null);
 
-			await buildSeeder(true).seed();
+			const result = await buildSeeder(true).seed();
 
 			expect(repository.findOneBy).toHaveBeenCalledWith({ id: SYSTEM_RESOLVER_ID });
 			expect(cipher.encryptV2).toHaveBeenCalledWith({});
@@ -40,43 +40,54 @@ describe('N8nResolverSeeder', () => {
 				config: 'encrypted-empty-config',
 			});
 			expect(repository.save).toHaveBeenCalledTimes(1);
+			expect(result).toMatchObject({
+				id: SYSTEM_RESOLVER_ID,
+				name: SYSTEM_RESOLVER_NAME,
+				type: SYSTEM_RESOLVER_TYPE,
+				config: 'encrypted-empty-config',
+			});
 		});
 
-		it('is idempotent — does not insert when the row already exists', async () => {
-			repository.findOneBy.mockResolvedValue({
+		it('is idempotent — returns the existing row without re-inserting', async () => {
+			const preExisting = {
 				id: SYSTEM_RESOLVER_ID,
 				name: SYSTEM_RESOLVER_NAME,
 				type: SYSTEM_RESOLVER_TYPE,
 				config: 'pre-existing',
-			} as DynamicCredentialResolver);
+			} as DynamicCredentialResolver;
+			repository.findOneBy.mockResolvedValue(preExisting);
 
 			const seeder = buildSeeder(true);
-			await seeder.seed();
-			await seeder.seed();
+			const first = await seeder.seed();
+			const second = await seeder.seed();
 
 			expect(cipher.encryptV2).not.toHaveBeenCalled();
 			expect(repository.create).not.toHaveBeenCalled();
 			expect(repository.save).not.toHaveBeenCalled();
+			expect(first).toBe(preExisting);
+			expect(second).toBe(preExisting);
 		});
 	});
 
 	describe('on a follower main', () => {
-		it('does not touch the repository or cipher', async () => {
-			await buildSeeder(false).seed();
+		it('returns undefined and does not touch the repository or cipher', async () => {
+			const result = await buildSeeder(false).seed();
 
 			expect(repository.findOneBy).not.toHaveBeenCalled();
 			expect(cipher.encryptV2).not.toHaveBeenCalled();
 			expect(repository.create).not.toHaveBeenCalled();
 			expect(repository.save).not.toHaveBeenCalled();
+			expect(result).toBeUndefined();
 		});
 
 		it('does not touch the repository even when the row is missing', async () => {
 			repository.findOneBy.mockResolvedValue(null);
 
-			await buildSeeder(false).seed();
+			const result = await buildSeeder(false).seed();
 
 			expect(repository.findOneBy).not.toHaveBeenCalled();
 			expect(repository.save).not.toHaveBeenCalled();
+			expect(result).toBeUndefined();
 		});
 	});
 });

@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../constants';
+import type { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 /**
@@ -24,7 +25,7 @@ export class N8nResolverSeeder {
 		this.logger = this.logger.scoped('dynamic-credentials');
 	}
 
-	async seed(): Promise<void> {
+	async seed(): Promise<DynamicCredentialResolver | undefined> {
 		if (!this.instanceSettings.isLeader) {
 			this.logger.debug('Skipping n8n resolver seed — instance is not the leader main');
 			return;
@@ -33,7 +34,7 @@ export class N8nResolverSeeder {
 		const existing = await this.repository.findOneBy({ id: SYSTEM_RESOLVER_ID });
 		if (existing) {
 			this.logger.debug(`System credential resolver "${SYSTEM_RESOLVER_ID}" already seeded`);
-			return;
+			return existing;
 		}
 
 		const encryptedConfig = await this.cipher.encryptV2({});
@@ -46,5 +47,7 @@ export class N8nResolverSeeder {
 
 		await this.repository.save(entity);
 		this.logger.info(`Seeded system credential resolver "${SYSTEM_RESOLVER_ID}"`);
+
+		return entity;
 	}
 }

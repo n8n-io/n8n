@@ -4,6 +4,7 @@ import {
 	credentialResolverSchema,
 	credentialResolversSchema,
 	credentialResolverAffectedWorkflowsSchema,
+	ListCredentialResolversQueryDto,
 	UpdateCredentialResolverDto,
 	CredentialResolverType,
 	credentialResolverTypesSchema,
@@ -18,6 +19,7 @@ import {
 	Param,
 	Patch,
 	Post,
+	Query,
 	RestController,
 	CredentialResolverValidationError,
 } from '@n8n/decorators';
@@ -38,9 +40,16 @@ export class CredentialResolversController {
 
 	@Get('/')
 	@GlobalScope('credentialResolver:list')
-	async listResolvers(_req: AuthenticatedRequest, _res: Response): Promise<CredentialResolver[]> {
+	async listResolvers(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListCredentialResolversQueryDto,
+	): Promise<CredentialResolver[]> {
 		try {
-			const resolvers = credentialResolversSchema.parse(await this.service.findAllPublic());
+			const rows = query.includeSystem
+				? await this.service.findAll()
+				: await this.service.findAllPublic();
+			const resolvers = credentialResolversSchema.parse(rows);
 			return resolvers.map(({ decryptedConfig: _, ...rest }) => ({ ...rest, config: '' }));
 		} catch (e: unknown) {
 			if (e instanceof Error) {

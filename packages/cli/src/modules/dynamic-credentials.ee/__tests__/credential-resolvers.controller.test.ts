@@ -24,6 +24,45 @@ describe('CredentialResolversController', () => {
 		jest.clearAllMocks();
 	});
 
+	describe('listResolvers', () => {
+		const baseRow = {
+			id: 'row-id',
+			name: 'A',
+			type: 'credential-resolver.oauth2-1.0',
+			config: 'encrypted',
+			decryptedConfig: {},
+			createdAt: new Date('2024-01-01'),
+			updatedAt: new Date('2024-01-01'),
+		};
+
+		it('calls findAllPublic by default (excludes system resolver)', async () => {
+			service.findAllPublic.mockResolvedValue([baseRow]);
+
+			await controller.listResolvers(req, res, {});
+
+			expect(service.findAllPublic).toHaveBeenCalledTimes(1);
+			expect(service.findAll).not.toHaveBeenCalled();
+		});
+
+		it('calls findAll when includeSystem=true (workflow-settings dropdown)', async () => {
+			service.findAll.mockResolvedValue([baseRow]);
+
+			await controller.listResolvers(req, res, { includeSystem: true });
+
+			expect(service.findAll).toHaveBeenCalledTimes(1);
+			expect(service.findAllPublic).not.toHaveBeenCalled();
+		});
+
+		it('strips decryptedConfig and encrypted config from the response', async () => {
+			service.findAllPublic.mockResolvedValue([baseRow]);
+
+			const result = await controller.listResolvers(req, res, {});
+
+			expect(result[0]).not.toHaveProperty('decryptedConfig');
+			expect(result[0].config).toBe('');
+		});
+	});
+
 	describe('createResolver', () => {
 		it('should throw BadRequestError when service throws CredentialResolverValidationError', async () => {
 			service.create.mockRejectedValue(new CredentialResolverValidationError('Invalid config'));

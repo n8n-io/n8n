@@ -35,10 +35,10 @@ export function useCredentialResolvers() {
 	const isLoading = ref(false);
 	const isDeleting = ref(false);
 
-	const fetchResolvers = async (): Promise<boolean> => {
+	const fetchResolvers = async (options: { includeSystem?: boolean } = {}): Promise<boolean> => {
 		try {
 			isLoading.value = true;
-			resolvers.value = await getCredentialResolvers(rootStore.restApiContext);
+			resolvers.value = await getCredentialResolvers(rootStore.restApiContext, options);
 			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('workflowSettings.showError.fetchSettings.title'));
@@ -106,11 +106,13 @@ export function useCredentialResolvers() {
 		}
 	};
 
+	const refreshResolvers = () => fetchResolvers();
+
 	const openCreateModal = (callbacks?: ModalCallbacks): void => {
 		uiStore.openModalWithData({
 			name: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 			data: {
-				onSave: callbacks?.onSave ?? fetchResolvers,
+				onSave: callbacks?.onSave ?? refreshResolvers,
 			},
 		});
 	};
@@ -120,8 +122,8 @@ export function useCredentialResolvers() {
 			name: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 			data: {
 				resolverId,
-				onSave: callbacks?.onSave ?? fetchResolvers,
-				onDelete: callbacks?.onDelete ?? fetchResolvers,
+				onSave: callbacks?.onSave ?? refreshResolvers,
+				onDelete: callbacks?.onDelete ?? refreshResolvers,
 			},
 		});
 	};
