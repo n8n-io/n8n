@@ -16,7 +16,7 @@ import { createMember, createOwner } from '@test-integration/db/users';
 
 import { ImportExportService } from '../import-export.service';
 import { FORMAT_VERSION } from '../spec/constants';
-import type { PackageManifest } from '../spec/manifest.types';
+import type { PackageManifest } from '../spec/manifest.schema';
 
 interface UnpackedEntry {
 	name: string;

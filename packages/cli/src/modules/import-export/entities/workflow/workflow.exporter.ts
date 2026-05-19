@@ -7,7 +7,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { generateSlug } from '../../io/slug.utils';
-import type { ManifestEntry } from '../../spec/manifest.types';
+import type { ManifestEntry } from '../../spec/manifest.schema';
 
 export interface WorkflowExportRequest {
 	user: User;
