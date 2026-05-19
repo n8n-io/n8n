@@ -27,6 +27,7 @@ jest.mock('../mock-handler', () => ({
 	createLlmMockHandler: jest.fn(),
 }));
 jest.mock('../workflow-analysis', () => ({
+	assertUnpinCompatibility: jest.fn(),
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
@@ -74,12 +75,14 @@ jest.mock('n8n-workflow', () => {
 
 import { EvalExecutionService } from '../execution.service';
 import {
+	assertUnpinCompatibility,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 } from '../workflow-analysis';
 import { createLlmMockHandler } from '../mock-handler';
 import type { MockHints } from '../workflow-analysis';
+import { UserError } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -88,6 +91,7 @@ import type { MockHints } from '../workflow-analysis';
 const generateMockHintsMock = jest.mocked(generateMockHints);
 const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
+const assertUnpinCompatibilityMock = jest.mocked(assertUnpinCompatibility);
 const createLlmMockHandlerMock = jest.mocked(createLlmMockHandler);
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
@@ -177,6 +181,7 @@ describe('EvalExecutionService', () => {
 		// Default mock returns — happy path
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
+		assertUnpinCompatibilityMock.mockImplementation(() => undefined);
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		createLlmMockHandlerMock.mockReturnValue(jest.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
@@ -276,6 +281,72 @@ describe('EvalExecutionService', () => {
 			expect(result.executionId).toBeDefined();
 			expect(typeof result.executionId).toBe('string');
 			expect(result.executionId.length).toBeGreaterThan(0);
+		});
+	});
+
+	// ── unpinNodes handling ──────────────────────────────────────────
+
+	describe('unpinNodes', () => {
+		beforeEach(() => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+		});
+
+		it('calls assertUnpinCompatibility with an empty list when unpinNodes is omitted', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(expect.anything(), []);
+		});
+
+		it('forwards unpinNodes to assertUnpinCompatibility', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
+
+			expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				['Agent'],
+			);
+		});
+
+		it('forwards an exclusion set to identifyNodesForPinData when unpinNodes is non-empty', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
+
+			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				new Set(['Agent']),
+			);
+		});
+
+		it('omits the exclusion set when unpinNodes is empty', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: [] });
+
+			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				undefined,
+			);
+		});
+
+		it('returns an error result and skips workflow execution when the guard refuses', async () => {
+			assertUnpinCompatibilityMock.mockImplementation(() => {
+				throw new UserError('Cannot unpin "Agent" — incompatible memory backend');
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+				unpinNodes: ['Agent'],
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual([expect.stringContaining('Cannot unpin "Agent"')]);
+			expect(generateMockHintsMock).not.toHaveBeenCalled();
+			expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+		});
+
+		it('rethrows non-UserError failures from the guard', async () => {
+			assertUnpinCompatibilityMock.mockImplementation(() => {
+				throw new Error('boom');
+			});
+
+			await expect(
+				service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] }),
+			).rejects.toThrow('boom');
 		});
 	});
 

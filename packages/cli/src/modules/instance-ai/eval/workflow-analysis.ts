@@ -12,7 +12,14 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { type INode, type IPinData, type IWorkflowBase, jsonParse } from 'n8n-workflow';
+import {
+	type INode,
+	type IPinData,
+	type IWorkflowBase,
+	jsonParse,
+	mapConnectionsByDestination,
+	UserError,
+} from 'n8n-workflow';
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './node-config';
@@ -94,18 +101,91 @@ const BYPASS_NODE_TYPES = new Set([
 ]);
 
 /**
+ * AI sub-node types that use a protocol-binary client (TCP, native driver, etc.).
+ * These cannot be intercepted via the HTTP wire server, so the root they hang off
+ * cannot be unpinned safely. `assertUnpinCompatibility` refuses unpin requests
+ * for roots whose sub-nodes match this set.
+ */
+const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
+	// Memory backends
+	'@n8n/n8n-nodes-langchain.memoryPostgresChat',
+	'@n8n/n8n-nodes-langchain.memoryRedisChat',
+	'@n8n/n8n-nodes-langchain.memoryMongoDbChat',
+	// Vector stores
+	'@n8n/n8n-nodes-langchain.vectorStorePGVector',
+	'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+	'@n8n/n8n-nodes-langchain.vectorStoreRedis',
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
+]);
+
+/**
  * Identify nodes that bypass the HTTP mock layer and need pin data instead.
  * Returns AI root nodes (Agent, Chain) and protocol/bypass nodes.
+ *
+ * `exclusionSet` opts AI root names out of pinning so their sub-nodes run real
+ * vendor SDK code (routed through the eval wire server). `BYPASS_NODE_TYPES`
+ * nodes ignore the exclusion set — they use protocol-binary clients and have
+ * no HTTP interception path, so they must always be pinned.
  */
-export function identifyNodesForPinData(workflow: IWorkflowBase): INode[] {
+export function identifyNodesForPinData(
+	workflow: IWorkflowBase,
+	exclusionSet?: Set<string>,
+): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow);
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
-		if (aiRootNodes.has(node.name)) return true;
+		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
 		return false;
 	});
+}
+
+/**
+ * Refuse unpinning AI roots whose inbound `ai_*` sub-nodes can't be intercepted
+ * over HTTP. Walks the workflow's destination-indexed connections once per
+ * call and throws a `UserError` listing every offending root → sub-node pair.
+ */
+export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
+	if (unpinNodes.length === 0) return;
+
+	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+
+	const refusals: Array<{ root: string; subNode: string; subNodeType: string }> = [];
+
+	for (const rootName of unpinNodes) {
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const sourceNode = nodesByName.get(conn.node);
+					if (!sourceNode || sourceNode.disabled) continue;
+					if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) {
+						refusals.push({
+							root: rootName,
+							subNode: sourceNode.name,
+							subNodeType: sourceNode.type,
+						});
+					}
+				}
+			}
+		}
+	}
+
+	if (refusals.length > 0) {
+		const detail = refusals
+			.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`)
+			.join(', ');
+		throw new UserError(
+			`Cannot unpin AI root nodes whose sub-nodes use a protocol-binary client: ${detail}. ` +
+				'These sub-nodes cannot be intercepted via HTTP — leave the root pinned or replace the sub-node with an HTTP-based alternative.',
+		);
+	}
 }
 
 /**

@@ -23,6 +23,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	createRunExecutionData,
 	NodeHelpers,
+	UserError,
 	Workflow,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -37,6 +38,7 @@ import { normalizePinData } from '@n8n/workflow-sdk';
 import { generatePinData } from './pin-data-generator';
 
 import {
+	assertUnpinCompatibility,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
@@ -91,7 +93,18 @@ export class EvalExecutionService {
 			return this.errorResult(executionId, `Workflow ${workflowId} not found or not accessible`);
 		}
 
-		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints);
+		const unpinNodes = options.unpinNodes ?? [];
+		try {
+			assertUnpinCompatibility(workflowEntity, unpinNodes);
+		} catch (error) {
+			if (error instanceof UserError) {
+				return this.errorResult(executionId, error.message);
+			}
+			throw error;
+		}
+
+		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
+		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
 
 		return await this.execute(workflowEntity, user, executionId, hints, options.scenarioHints);
 	}
@@ -101,6 +114,7 @@ export class EvalExecutionService {
 	private async analyzeWorkflow(
 		workflowEntity: IWorkflowBase,
 		scenarioHints?: string,
+		unpinSet?: Set<string>,
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -127,7 +141,7 @@ export class EvalExecutionService {
 		);
 
 		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
-		const bypassNodes = identifyNodesForPinData(workflowEntity);
+		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet);
 		const bypassNodeNames = bypassNodes.map((n) => n.name);
 
 		if (bypassNodeNames.length > 0) {
@@ -484,6 +498,7 @@ export class EvalExecutionService {
 				bypassPinData: {},
 			},
 			mockedCredentials: [],
+			rewrittenCredentials: [],
 		};
 	}
 }
