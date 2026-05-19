@@ -3,6 +3,7 @@ import { taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { PlanValidationError } from '../../planned-tasks/planned-task-service';
 import type { OrchestrationContext, PlannedTask } from '../../types';
 
 const plannedTaskSchema = z.object({
@@ -165,14 +166,32 @@ export function createPlanTool(context: OrchestrationContext) {
 
 			// First call — persist plan, show to user, suspend for approval
 			if (isFirstCall) {
-				await context.plannedTaskService.createPlan(
-					context.threadId,
-					input.tasks as PlannedTask[],
-					{
-						planRunId: context.runId,
-						messageGroupId: context.messageGroupId,
-					},
-				);
+				try {
+					await context.plannedTaskService.createPlan(
+						context.threadId,
+						input.tasks as PlannedTask[],
+						{
+							planRunId: context.runId,
+							messageGroupId: context.messageGroupId,
+						},
+					);
+				} catch (error) {
+					// Surface only validator rejections back to the LLM as a tool result
+					// so it can re-call with a corrected graph. Storage failures, abort
+					// signals, and bugs propagate.
+					if (!(error instanceof PlanValidationError)) {
+						throw error;
+					}
+					context.logger.warn('plan tool: createPlan rejected by validator', {
+						threadId: context.threadId,
+						taskCount: input.tasks.length,
+						error: error.message,
+					});
+					return {
+						result: `Error: ${error.message}. Revise the task graph and call this tool again.`,
+						taskCount: 0,
+					};
+				}
 
 				// Emit tasks-update so the checklist appears in the chat immediately
 				const taskItems = input.tasks.map((t: z.infer<typeof plannedTaskSchema>) => ({
