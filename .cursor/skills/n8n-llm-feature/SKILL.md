@@ -45,7 +45,7 @@ description: Pattern for adding LLM-backed features in n8n. Use when integrating
 
 ## Hard rules
 
-- Do not default a feature to Opus-class models. The bugbot rule `bugbot/cost-controls.md` will flag the PR. Use Sonnet maximum unless an Opus run was approved (link the approval in the PR and add an `// opus-approved: <link>` comment beside the model id).
+- Do not default a feature to Opus-class models. The Bugbot rule in `.cursor/BUGBOT.md` will flag the PR. Use `claude-sonnet-4-6` unless an Opus run was approved (link the approval in the PR and add an `// opus-approved: <link>` comment beside the model id).
 - Do not add a new direct dependency on `@anthropic-ai/sdk` or `openai` in n8n product code; those are reserved for tests and SDK adapters.
 - All user-facing text (system prompts visible in tooltips, badges, errors) goes through `@n8n/i18n`.
 - Streaming UIs (SSE/push) are heavier than they look — keep v1 sync JSON unless the feature truly needs token streaming.
@@ -63,4 +63,4 @@ Cover, in unit tests:
 
 - `n8n-build-feature`
 - `n8n-demo-feature`
-- `bugbot/cost-controls.md`
+- `.cursor/BUGBOT.md`

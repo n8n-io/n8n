@@ -39,4 +39,4 @@ A demo feature is one that we want to ship to community/demo builds but never to
 - `n8n-build-feature` (orchestrator)
 - `n8n-llm-feature` (LLM integration patterns)
 - `n8n-rebuild-doctor` (when the demo doesn't update after a change)
-- `bugbot/cost-controls.md` (if you add an LLM provider)
+- `.cursor/BUGBOT.md` (if you add an LLM provider)
