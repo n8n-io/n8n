@@ -26,6 +26,8 @@ export interface ModelInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Claude Sonnet 4.5'). */
 	name: string;
+	/** Release date in ISO date format when available from models.dev. */
+	releaseDate?: string;
 	/** Whether the model supports reasoning / thinking. */
 	reasoning: boolean;
 	/** Whether the model supports tool calling. */
@@ -52,6 +54,7 @@ export type ProviderCatalog = Record<string, ProviderInfo>;
 interface ModelsDevModel {
 	id: string;
 	name: string;
+	release_date?: string;
 	reasoning?: boolean;
 	tool_call?: boolean;
 	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
@@ -96,6 +99,7 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
+				...(model.release_date !== undefined && { releaseDate: model.release_date }),
 				reasoning: model.reasoning ?? false,
 				toolCall: model.tool_call ?? false,
 			};

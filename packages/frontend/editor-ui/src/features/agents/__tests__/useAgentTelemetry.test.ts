@@ -24,6 +24,14 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackClickedNewAgent tracks card source', () => {
+		useAgentTelemetry().trackClickedNewAgent('card');
+		expect(trackMock).toHaveBeenCalledWith('User clicked new agent', {
+			source: 'card',
+			session_id: 'session-xyz',
+		});
+	});
+
 	it('trackSubmittedMessage includes mode, status, agent_config (no raw message)', () => {
 		const fingerprint = {
 			instructions: 'hello',

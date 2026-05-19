@@ -17,8 +17,6 @@ export function useCanvasNode() {
 				type: '',
 				typeVersion: 1,
 				disabled: false,
-				inputs: [],
-				outputs: [],
 				connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 				issues: { execution: [], validation: [], visible: false },
 				pinnedData: { count: 0, visible: false },
@@ -38,8 +36,6 @@ export function useCanvasNode() {
 
 	const subtitle = computed(() => data.value.subtitle);
 	const name = computed(() => data.value.name);
-	const inputs = computed(() => data.value.inputs);
-	const outputs = computed(() => data.value.outputs);
 	const connections = computed(() => data.value.connections);
 
 	const isDisabled = computed(() => data.value.disabled);
@@ -83,8 +79,6 @@ export function useCanvasNode() {
 		name,
 		label,
 		subtitle,
-		inputs,
-		outputs,
 		connections,
 		isDisabled,
 		isReadOnly,

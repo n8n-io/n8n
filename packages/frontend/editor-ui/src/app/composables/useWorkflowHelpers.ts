@@ -28,8 +28,7 @@ import {
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
 
-import type { INodeTypesMaxCount, INodeUi, IWorkflowDb, TargetItem, XYPosition } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { INodeTypesMaxCount, IWorkflowDb, TargetItem, XYPosition } from '@/Interface';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -55,8 +54,8 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -71,54 +70,31 @@ export type ResolveParameterOptions = {
 
 export async function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+	workflowDocumentId: WorkflowDocumentId,
+	opts_: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<T | null> {
-	if ('localResolve' in opts && opts.localResolve) {
-		return await resolveParameterImpl(
-			parameter,
-			opts.workflow,
-			opts.connections,
-			opts.envVars,
-			opts.workflow.getNode(opts.nodeName),
-			opts.execution,
-			opts.workflow.pinData,
-			{
-				inputNodeName: opts.inputNode?.name,
-				inputRunIndex: opts.inputNode?.runIndex,
-				inputBranchIndex: opts.inputNode?.branchIndex,
-				additionalKeys: opts.additionalKeys,
-			},
-		);
-	}
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+	const envVars = useEnvironmentsStore().variablesAsObject;
+	const ndvActiveNode =
+		'localResolve' in opts_ && opts_.localResolve
+			? workflowDocumentStore.getNodeByName(opts_.nodeName)
+			: useNDVStore().activeNode;
+	const opts: ResolveParameterOptions =
+		'localResolve' in opts_ && opts_.localResolve
+			? {
+					inputNodeName: opts_.inputNode?.name,
+					inputRunIndex: opts_.inputNode?.runIndex,
+					inputBranchIndex: opts_.inputNode?.branchIndex,
+					additionalKeys: opts_.additionalKeys,
+				}
+			: opts_;
 
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const workflowObject = workflowDocumentStore.getWorkflowObjectAccessorSnapshot();
+	const connections = workflowDocumentStore.connectionsBySourceNode;
+	const executionData = workflowsStore.workflowExecutionData;
+	const pinData = workflowDocumentStore.getPinDataSnapshot();
 
-	return await resolveParameterImpl(
-		parameter,
-		workflowDocumentStore.getWorkflowObjectAccessorSnapshot(),
-		workflowDocumentStore.connectionsBySourceNode,
-		useEnvironmentsStore().variablesAsObject,
-		useNDVStore().activeNode,
-		workflowsStore.workflowExecutionData,
-		workflowDocumentStore.getPinDataSnapshot(),
-		opts,
-	);
-}
-
-// TODO: move to separate file
-function resolveParameterImpl<T = IDataObject>(
-	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: WorkflowObjectAccessors,
-	connections: IConnections,
-	envVars: Record<string, string | boolean | number>,
-	ndvActiveNode: INodeUi | null,
-	executionData: IExecutionResponse | null,
-	pinData: IPinData | undefined,
-	opts: ResolveParameterOptions = {},
-): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 
@@ -299,6 +275,7 @@ function resolveParameterImpl<T = IDataObject>(
 export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
+	workflowDocumentId: WorkflowDocumentId,
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
@@ -309,10 +286,16 @@ export async function resolveRequiredParameters(
 			const required = loadOptionsDependsOn.has(name);
 
 			if (required) {
-				return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
+				return [
+					name,
+					await resolveParameter(parameter as NodeParameterValue, workflowDocumentId, opts),
+				];
 			} else {
 				try {
-					return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
+					return [
+						name,
+						await resolveParameter(parameter as NodeParameterValue, workflowDocumentId, opts),
+					];
 				} catch (error) {
 					// ignore any expressions errors for non required parameters
 					return [name, null];
@@ -651,7 +634,11 @@ export function useWorkflowHelpers() {
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
-		const returnData: IDataObject | null = await resolveParameter(parameters, opts);
+		const returnData: IDataObject | null = await resolveParameter(
+			parameters,
+			workflowDocumentStore.value.documentId,
+			opts,
+		);
 		if (!returnData) {
 			return null;
 		}

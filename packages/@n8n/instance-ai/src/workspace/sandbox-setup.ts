@@ -22,13 +22,18 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
-import { getExampleFiles } from '@n8n/workflow-sdk/examples-loader';
+import { getExampleFiles, type ExampleFile } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
-import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-fs';
+import {
+	runInSandbox,
+	readFileViaSandbox,
+	escapeSingleQuotes,
+	writeFileViaSandbox,
+} from './sandbox-fs';
 
 const hostRequire = createRequire(__filename);
 
@@ -226,36 +231,6 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 /** Dirs the agent's `list_files` may probe; some providers 404 on missing dirs. */
 const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows'];
 
-/**
- * Build a shell script that writes all files at once.
- * Each file is base64-encoded and decoded in-place.
- * This fallback is only used when the workspace has no filesystem adapter.
- */
-function buildBatchWriteScript(root: string, files: Map<string, string>): string {
-	const lines: string[] = ['#!/bin/bash', 'set -e'];
-
-	// Collect all unique directories
-	const dirs = new Set<string>(ALWAYS_PRESENT_DIRS);
-	for (const path of files.keys()) {
-		const lastSlash = path.lastIndexOf('/');
-		if (lastSlash > 0) {
-			dirs.add(path.substring(0, lastSlash));
-		}
-	}
-
-	// Create all directories in one mkdir call (single-quoted + escaped to prevent shell injection)
-	const dirList = [...dirs].map((d) => `'${escapeSingleQuotes(`${root}/${d}`)}'`).join(' ');
-	lines.push(`mkdir -p ${dirList}`);
-
-	// Write each file via base64 decode (single-quoted paths to prevent shell injection)
-	for (const [path, content] of files) {
-		const b64 = Buffer.from(content, 'utf-8').toString('base64');
-		lines.push(`echo '${b64}' | base64 -d > '${escapeSingleQuotes(`${root}/${path}`)}'`);
-	}
-
-	return lines.join('\n');
-}
-
 async function writeWorkspaceFiles(
 	workspace: Workspace,
 	root: string,
@@ -277,12 +252,16 @@ async function writeWorkspaceFiles(
 		return;
 	}
 
-	const script = buildBatchWriteScript(root, files);
-	const scriptB64 = Buffer.from(script, 'utf-8').toString('base64');
-
-	const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`);
+	const dirList = ALWAYS_PRESENT_DIRS.map(
+		(dir) => `'${escapeSingleQuotes(`${root}/${dir}`)}'`,
+	).join(' ');
+	const result = await runInSandbox(workspace, `mkdir -p ${dirList}`);
 	if (result.exitCode !== 0) {
 		throw new Error(`Sandbox setup failed: ${result.stderr}`);
+	}
+
+	for (const [path, content] of files) {
+		await writeFileViaSandbox(workspace, `${root}/${path}`, content);
 	}
 }
 
@@ -329,7 +308,17 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
  */
 export async function writeCuratedExamples(workspace: Workspace, logger?: Logger): Promise<void> {
 	const start = Date.now();
-	const { files: exampleFiles, indexTxt } = getExampleFiles();
+	// Examples are nice-to-have — never block the build when loading them fails.
+	let exampleFiles: ExampleFile[];
+	let indexTxt: string;
+	try {
+		({ files: exampleFiles, indexTxt } = getExampleFiles());
+	} catch (error) {
+		logger?.warn('[sandbox-setup] curated examples unavailable, continuing without', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return;
+	}
 	if (exampleFiles.length === 0) return;
 
 	const root = await getWorkspaceRoot(workspace);

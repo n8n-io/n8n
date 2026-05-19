@@ -17,6 +17,7 @@ export interface AgentBuilder {
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this;
 	instructions(text: string): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
+	deferredTool(t: BuiltTool | BuiltTool[], options?: { search?: { topK?: number } }): this;
 	providerTool(t: BuiltProviderTool): this;
 	thinking(provider: string, config?: Record<string, unknown>): this;
 	toolCallConcurrency(n: number): this;

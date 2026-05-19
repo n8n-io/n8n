@@ -104,7 +104,9 @@ const ElDialogStub = {
 
 const MODAL_NAME = 'AgentToolConfigModal';
 
-function toolRef(overrides: Partial<AgentJsonToolRef['node']> = {}): AgentJsonToolRef {
+function toolRef(
+	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>> = {},
+): Extract<AgentJsonToolRef, { type: 'node' }> {
 	return {
 		type: 'node',
 		name: 'Slack',
