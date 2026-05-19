@@ -1,3 +1,5 @@
+import type { InstanceAiTraceRun } from '../../types';
+
 jest.mock('langsmith', () => {
 	let runCounter = 0;
 	const createdRunTrees: Array<{
@@ -163,6 +165,13 @@ jest.mock('langsmith', () => {
 		}
 	}
 
+	const createFeedbackCalls: Array<{
+		runId: string;
+		key: string;
+		options: Record<string, unknown>;
+		clientApiUrl: string;
+	}> = [];
+
 	class MockClient {
 		apiUrl: string;
 		apiKey: string;
@@ -170,6 +179,15 @@ jest.mock('langsmith', () => {
 		constructor(config: { apiUrl?: string; apiKey?: string }) {
 			this.apiUrl = config.apiUrl ?? '';
 			this.apiKey = config.apiKey ?? '';
+		}
+
+		// eslint-disable-next-line @typescript-eslint/require-await
+		async createFeedback(
+			runId: string,
+			key: string,
+			options: Record<string, unknown>,
+		): Promise<void> {
+			createFeedbackCalls.push({ runId, key, options, clientApiUrl: this.apiUrl });
 		}
 	}
 
@@ -180,8 +198,10 @@ jest.mock('langsmith', () => {
 			reset: () => {
 				runCounter = 0;
 				createdRunTrees.length = 0;
+				createFeedbackCalls.length = 0;
 			},
 			getCreatedRunTrees: () => createdRunTrees,
+			getCreateFeedbackCalls: () => createFeedbackCalls,
 		},
 	};
 });
@@ -215,6 +235,12 @@ type LangSmithMockModule = {
 			parent_run_id?: string;
 			client?: unknown;
 		}>;
+		getCreateFeedbackCalls: () => Array<{
+			runId: string;
+			key: string;
+			options: Record<string, unknown>;
+			clientApiUrl: string;
+		}>;
 	};
 };
 
@@ -232,11 +258,15 @@ function isExecutableTool(value: unknown): value is ExecutableTool {
 }
 
 const {
+	appendRootRunMetadata,
+	appendGeneratedWorkflowIdToRootMetadata,
 	buildAgentTraceInputs,
 	createDetachedSubAgentTraceContext,
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
+	mergeCurrentTraceMetadata,
 	mergeTraceRunInputs,
+	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -475,6 +505,44 @@ describe('createInstanceAiTraceContext', () => {
 		expect(inputs.model).toBe('openai-compat/gpt-4o');
 		expect(JSON.stringify(inputs)).not.toContain('sk-super-secret-key');
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
+	});
+
+	it('includes n8n and workflow SDK versions in trace metadata when provided', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			n8nVersion: '1.123.4',
+			workflowSdkVersion: '0.13.0',
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).toEqual(
+			expect.objectContaining({
+				n8n_version: '1.123.4',
+				workflow_sdk_version: '0.13.0',
+			}),
+		);
+		expect(tracing?.orchestratorRun.metadata).toEqual(
+			expect.objectContaining({
+				n8n_version: '1.123.4',
+				workflow_sdk_version: '0.13.0',
+			}),
+		);
+	});
+
+	it('omits version metadata when not provided', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).not.toHaveProperty('n8n_version');
+		expect(tracing?.messageRun.metadata).not.toHaveProperty('workflow_sdk_version');
 	});
 
 	it('redacts model secrets from trace metadata', async () => {
@@ -772,5 +840,246 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeUndefined();
+	});
+});
+
+describe('submitLangsmithUserFeedback', () => {
+	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
+	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
+	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+
+	beforeEach(() => {
+		langsmithMock.reset();
+		process.env.LANGSMITH_API_KEY = 'test-key';
+		delete process.env.LANGSMITH_TRACING;
+		delete process.env.LANGCHAIN_TRACING_V2;
+	});
+
+	afterAll(() => {
+		process.env.LANGSMITH_API_KEY = originalLangSmithApiKey;
+		if (originalLangSmithTracing === undefined) {
+			delete process.env.LANGSMITH_TRACING;
+		} else {
+			process.env.LANGSMITH_TRACING = originalLangSmithTracing;
+		}
+		if (originalLangChainTracingV2 === undefined) {
+			delete process.env.LANGCHAIN_TRACING_V2;
+		} else {
+			process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+		}
+	});
+
+	it('calls Client.createFeedback with the full payload', async () => {
+		const submitted = await submitLangsmithUserFeedback({
+			langsmithRunId: 'ls-run-1',
+			langsmithTraceId: 'ls-trace-1',
+			key: 'user_score',
+			score: 1,
+			value: 'up',
+			comment: 'nice',
+			feedbackId: 'fb-1',
+			sourceInfo: { thread_id: 'thread-1' },
+		});
+
+		expect(submitted).toBe(true);
+		const calls = langsmithMock.getCreateFeedbackCalls();
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toMatchObject({
+			runId: 'ls-run-1',
+			key: 'user_score',
+			options: {
+				score: 1,
+				value: 'up',
+				comment: 'nice',
+				feedbackId: 'fb-1',
+				sourceInfo: { thread_id: 'thread-1' },
+				feedbackSourceType: 'api',
+			},
+		});
+	});
+
+	it('returns false and does not hit the network when tracing is disabled', async () => {
+		delete process.env.LANGSMITH_API_KEY;
+		process.env.LANGCHAIN_TRACING_V2 = 'false';
+
+		const submitted = await submitLangsmithUserFeedback({
+			langsmithRunId: 'ls-run-2',
+			langsmithTraceId: 'ls-trace-2',
+			key: 'user_score',
+			score: 0,
+		});
+
+		expect(submitted).toBe(false);
+		expect(langsmithMock.getCreateFeedbackCalls()).toHaveLength(0);
+	});
+
+	it('routes through the proxy client when proxyConfig is provided', async () => {
+		const getAuthHeaders = jest.fn().mockResolvedValue({ Authorization: 'Bearer token' });
+		await submitLangsmithUserFeedback({
+			langsmithRunId: 'ls-run-3',
+			langsmithTraceId: 'ls-trace-3',
+			key: 'user_score',
+			score: 1,
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				getAuthHeaders,
+			},
+		});
+
+		const calls = langsmithMock.getCreateFeedbackCalls();
+		expect(calls).toHaveLength(1);
+		expect(calls[0].clientApiUrl).toBe('https://proxy.example.com/langsmith');
+		expect(getAuthHeaders).toHaveBeenCalled();
+	});
+});
+
+describe('appendGeneratedWorkflowIdToRootMetadata', () => {
+	function makeRoot(metadata?: Record<string, unknown>): InstanceAiTraceRun {
+		return {
+			id: 'root-1',
+			name: 'message_turn',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-1',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+			...(metadata ? { metadata: { ...metadata } } : {}),
+		};
+	}
+
+	it('initialises generated_workflow_ids array on first append', () => {
+		const root = makeRoot();
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-1');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+	});
+
+	it('appends additional ids without losing existing entries', () => {
+		const root = makeRoot({ generated_workflow_ids: ['wf-1'] });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-2');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1', 'wf-2']);
+	});
+
+	it('dedupes repeated ids', () => {
+		const root = makeRoot({ generated_workflow_ids: ['wf-1'] });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-1');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+	});
+
+	it('ignores non-string entries when reading existing metadata', () => {
+		const root = makeRoot({ generated_workflow_ids: [42, null, 'wf-1'] as unknown[] });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-2');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1', 'wf-2']);
+	});
+
+	it('preserves unrelated metadata', () => {
+		const root = makeRoot({ user_id: 'u-1', thread_id: 't-1' });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-1');
+		expect(root.metadata).toMatchObject({
+			user_id: 'u-1',
+			thread_id: 't-1',
+			generated_workflow_ids: ['wf-1'],
+		});
+	});
+
+	it('preserves live RunTree metadata mutations when appending root metadata', async () => {
+		const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
+		const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
+		const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+
+		langsmithMock.reset();
+		process.env.LANGSMITH_API_KEY = 'test-key';
+		delete process.env.LANGSMITH_TRACING;
+		delete process.env.LANGCHAIN_TRACING_V2;
+
+		try {
+			const tracing = await createDetachedSubAgentTraceContext({
+				threadId: 'thread-1',
+				conversationId: 'thread-1',
+				messageGroupId: 'group-1',
+				messageId: 'message-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				agentId: 'agent-builder-1',
+				role: 'workflow-builder',
+				kind: 'builder',
+				taskId: 'build-1',
+				input: { task: 'Build a workflow' },
+			});
+
+			if (!tracing) {
+				throw new Error('Expected tracing context');
+			}
+
+			expect(tracing.rootRun.metadata?.agent_role).toBe('workflow-builder');
+
+			await tracing.withRunTree(tracing.actorRun, async () => {
+				await Promise.resolve();
+				// Overwrite an existing root metadata key on the live RunTree so the
+				// two diverge on the same key with different values. The subsequent
+				// append must preserve the live value instead of rolling it back to
+				// the stale root state.
+				mergeCurrentTraceMetadata({ agent_role: 'planner' });
+				appendGeneratedWorkflowIdToRootMetadata(tracing.rootRun, 'wf-1');
+				expect(tracing.rootRun.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+				expect(tracing.rootRun.metadata?.agent_role).toBe('planner');
+			});
+
+			expect(tracing.rootRun.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+			expect(tracing.rootRun.metadata?.agent_role).toBe('planner');
+		} finally {
+			if (originalLangSmithApiKey === undefined) {
+				delete process.env.LANGSMITH_API_KEY;
+			} else {
+				process.env.LANGSMITH_API_KEY = originalLangSmithApiKey;
+			}
+			if (originalLangSmithTracing === undefined) {
+				delete process.env.LANGSMITH_TRACING;
+			} else {
+				process.env.LANGSMITH_TRACING = originalLangSmithTracing;
+			}
+			if (originalLangChainTracingV2 === undefined) {
+				delete process.env.LANGCHAIN_TRACING_V2;
+			} else {
+				process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+			}
+		}
+	});
+});
+
+describe('appendRootRunMetadata', () => {
+	it('merges new fields into root metadata', () => {
+		const root: InstanceAiTraceRun = {
+			id: 'root-1',
+			name: 'message_turn',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-1',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+			metadata: { user_id: 'u-1' },
+		};
+		appendRootRunMetadata(root, { primary_workflow_id: 'wf-1' });
+		expect(root.metadata).toEqual({ user_id: 'u-1', primary_workflow_id: 'wf-1' });
+	});
+
+	it('overwrites existing values for the same key', () => {
+		const root: InstanceAiTraceRun = {
+			id: 'root-1',
+			name: 'message_turn',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-1',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+			metadata: { final_status: 'pending' },
+		};
+		appendRootRunMetadata(root, { final_status: 'completed' });
+		expect(root.metadata?.final_status).toBe('completed');
 	});
 });

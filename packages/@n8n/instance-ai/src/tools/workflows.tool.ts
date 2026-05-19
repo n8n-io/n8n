@@ -1,6 +1,7 @@
 /**
- * Consolidated workflows tool — list, get, get-as-code, delete, setup,
- * publish, unpublish, list-versions, get-version, restore-version, update-version.
+ * Consolidated workflows tool — list, get, get-as-code, delete/archive,
+ * unarchive, setup, publish, unpublish, list-versions, get-version,
+ * restore-version, update-version.
  */
 import { createTool } from '@mastra/core/tools';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -10,12 +11,17 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { formatTimestamp } from '../utils/format-timestamp';
-import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
+import {
+	setupSuspendSchema,
+	setupResumeSchema,
+	type SetupRequest,
+} from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
+import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -23,6 +29,12 @@ const listAction = z.object({
 	action: z.literal('list').describe('List workflows accessible to the current user'),
 	query: z.string().optional().describe('Filter workflows by name'),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
+	status: z
+		.enum(['active', 'archived', 'all'])
+		.optional()
+		.describe(
+			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
+		),
 });
 
 const getAction = z.object({
@@ -36,15 +48,25 @@ const getAsCodeAction = z.object({
 });
 
 const deleteAction = z.object({
-	action: z.literal('delete').describe('Archive a workflow by ID (soft delete)'),
+	action: z
+		.literal('delete')
+		.describe('Archive a workflow by ID. This is reversible with the unarchive action.'),
 	workflowId: z.string().describe('ID of the workflow'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+});
+
+const unarchiveAction = z.object({
+	action: z
+		.literal('unarchive')
+		.describe('Restore an archived workflow by ID without publishing it'),
+	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const setupAction = z.object({
 	action: z
 		.literal('setup')
-		.describe('Open the workflow setup UI for credential and parameter configuration'),
+		.describe(
+			'Open the inline AI Assistant workflow setup card for credential and parameter configuration',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
 });
@@ -54,7 +76,6 @@ const publishBaseAction = z.object({
 		.literal('publish')
 		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 	versionId: z.string().optional().describe('Version ID'),
 });
 
@@ -66,7 +87,6 @@ const publishExtendedAction = publishBaseAction.extend({
 const unpublishAction = z.object({
 	action: z.literal('unpublish').describe('Unpublish a workflow — stop it from running'),
 	workflowId: z.string().describe('ID of the workflow'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 });
 
 const listVersionsAction = z.object({
@@ -100,10 +120,13 @@ const updateVersionAction = z.object({
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
 
-// Setup suspend is a superset of the standard confirmation suspend (has
-// requestId, message, severity plus extra fields), so we use it as the base.
-// Add optional fields so the union covers both standard and setup payloads.
-const suspendSchema = setupSuspendSchema;
+const confirmationSuspendSchema = setupSuspendSchema.pick({
+	requestId: true,
+	message: true,
+	severity: true,
+});
+
+const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
 // Resume: union of standard confirmation (approved) and setup-specific fields.
 const resumeSchema = setupResumeSchema;
@@ -117,6 +140,7 @@ type Input =
 	| z.infer<typeof getAction>
 	| z.infer<typeof getAsCodeAction>
 	| z.infer<typeof deleteAction>
+	| z.infer<typeof unarchiveAction>
 	| z.infer<typeof setupAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
@@ -126,51 +150,168 @@ type Input =
 	| z.infer<typeof updateVersionAction>;
 
 type PublishInput = z.infer<typeof publishExtendedAction>;
+type PublishRollbackResult = {
+	rolledBackWorkflowIds: string[];
+	rollbackErrors: Array<{ workflowId: string; error: string }>;
+};
 
-function buildInputSchema(context: InstanceAiContext, surface: 'full' | 'orchestrator') {
+export type WorkflowAction =
+	| 'list'
+	| 'get'
+	| 'get-as-code'
+	| 'delete'
+	| 'unarchive'
+	| 'setup'
+	| 'publish'
+	| 'unpublish'
+	| 'list-versions'
+	| 'get-version'
+	| 'restore-version'
+	| 'update-version';
+
+type WorkflowActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
+
+export interface WorkflowsToolOptions {
+	allowedActions?: readonly WorkflowAction[];
+	descriptionPrefix?: string;
+	descriptionSuffix?: string;
+}
+
+const WORKFLOW_ACTION_ORDER = [
+	'list',
+	'get',
+	'get-as-code',
+	'delete',
+	'unarchive',
+	'setup',
+	'publish',
+	'unpublish',
+	'list-versions',
+	'get-version',
+	'restore-version',
+	'update-version',
+] as const satisfies readonly WorkflowAction[];
+
+const WORKFLOW_ACTION_LABELS = {
+	list: 'list',
+	get: 'inspect',
+	'get-as-code': 'convert existing workflows to TypeScript SDK code',
+	delete: 'archive',
+	unarchive: 'restore archived workflows',
+	setup: 'set up credentials and parameters',
+	publish: 'publish',
+	unpublish: 'unpublish',
+	'list-versions': 'list versions',
+	'get-version': 'inspect versions',
+	'restore-version': 'restore versions',
+	'update-version': 'update version metadata',
+} satisfies Record<WorkflowAction, string>;
+
+function getSupportedWorkflowActionSchemas(
+	context: InstanceAiContext,
+): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
 
-	const actions: Array<z.ZodObject<z.ZodRawShape>> = [
-		listAction,
-		getAction,
-		deleteAction,
-		setupAction,
-		hasNamedVersions ? publishExtendedAction : publishBaseAction,
-		unpublishAction,
-	];
+	return {
+		list: listAction,
+		get: getAction,
+		'get-as-code': getAsCodeAction,
+		delete: deleteAction,
+		unarchive: unarchiveAction,
+		setup: setupAction,
+		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
+		unpublish: unpublishAction,
+		...(hasVersions
+			? {
+					'list-versions': listVersionsAction,
+					'get-version': getVersionAction,
+					'restore-version': restoreVersionAction,
+				}
+			: {}),
+		...(hasNamedVersions ? { 'update-version': updateVersionAction } : {}),
+	};
+}
 
-	// get-as-code excluded from orchestrator surface
-	if (surface !== 'orchestrator') {
-		actions.push(getAsCodeAction);
+function getWorkflowActions(
+	supportedSchemas: Partial<Record<WorkflowAction, WorkflowActionSchema>>,
+	options: WorkflowsToolOptions,
+): WorkflowAction[] {
+	const allowedActions = new Set(options.allowedActions ?? WORKFLOW_ACTION_ORDER);
+	return WORKFLOW_ACTION_ORDER.filter(
+		(action) => supportedSchemas[action] !== undefined && allowedActions.has(action),
+	);
+}
+
+function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const actionSchemas: WorkflowActionSchema[] = [];
+	for (const action of getWorkflowActions(supportedSchemas, options)) {
+		const schema = supportedSchemas[action];
+		if (schema) actionSchemas.push(schema);
 	}
 
-	// Version-related actions only when the context supports them
-	if (hasVersions) {
-		actions.push(listVersionsAction);
-		actions.push(getVersionAction);
-		actions.push(restoreVersionAction);
-	}
-	if (hasNamedVersions) {
-		actions.push(updateVersionAction);
+	if (actionSchemas.length === 0) {
+		throw new Error('Workflows tool requires at least one allowed action');
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return sanitizeInputSchema(z.discriminatedUnion('action', actions as any));
+	if (actionSchemas.length === 1) {
+		return sanitizeInputSchema(actionSchemas[0]);
+	}
+
+	return sanitizeInputSchema(
+		z.discriminatedUnion(
+			'action',
+			actionSchemas as unknown as [
+				WorkflowActionSchema,
+				WorkflowActionSchema,
+				...WorkflowActionSchema[],
+			],
+		),
+	);
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
+
+async function resolveWorkflowName(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string> {
+	return await context.workflowService
+		.get(workflowId)
+		.then((wf) => wf.name)
+		.catch(() => workflowId);
+}
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
 	const workflows = await context.workflowService.list({
 		limit: input.limit,
 		query: input.query,
+		...(input.status ? { status: input.status } : {}),
 	});
 	return { workflows };
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
-	return await context.workflowService.get(input.workflowId);
+	// Convert hallucinated-id errors into structured not-found responses so the agent stops guessing.
+	try {
+		return await context.workflowService.get(input.workflowId);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to fetch workflow';
+		const available = await context.workflowService
+			.list({ limit: 25 })
+			.then((items) => items.map((w) => ({ id: w.id, name: w.name })))
+			.catch(() => [] as Array<{ id: string; name: string }>);
+		return {
+			workflowId: input.workflowId,
+			found: false as const,
+			error: message,
+			availableWorkflows: available,
+			hint:
+				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflows(action="list")` for the current set. ' +
+				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
+		};
+	}
 }
 
 async function handleGetAsCode(
@@ -198,7 +339,7 @@ async function handleDelete(
 	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
 	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
 
 	if (context.permissions?.deleteWorkflow === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -208,13 +349,13 @@ async function handleDelete(
 
 	// First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		const suspension = await suspend?.({
 			requestId: nanoid(),
-			message: `Archive workflow "${input.workflowName ?? input.workflowId}"? This will deactivate it if needed and can be undone later.`,
+			message: `Archive workflow "${workflowName}" (ID: ${input.workflowId})? This will deactivate it if needed and can be undone later.`,
 			severity: 'warning' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { success: false };
+		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
 	}
 
 	// Denied
@@ -222,9 +363,47 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	// Approved or always_allow — execute
 	await context.workflowService.archive(input.workflowId);
 	return { success: true };
+}
+
+async function handleUnarchive(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'unarchive' }>,
+	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+) {
+	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
+
+	if (context.permissions?.deleteWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
+	const needsApproval = context.permissions?.deleteWorkflow !== 'always_allow';
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		const suspension = await suspend?.({
+			requestId: nanoid(),
+			message: `Restore archived workflow "${workflowName}" (ID: ${input.workflowId})? This will make it visible again but will not publish it.`,
+			severity: 'warning' as const,
+		});
+		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	await context.workflowService.unarchive(input.workflowId);
+	return { success: true };
+}
+
+function isActionableSetupRequest(req: SetupRequest): boolean {
+	return (
+		req.needsAction === true &&
+		(req.credentialType !== undefined || (req.editableParameters?.length ?? 0) > 0)
+	);
 }
 
 async function handleSetup(
@@ -233,12 +412,21 @@ async function handleSetup(
 	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 	state: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null },
 ) {
+	// `setup` mutates workflow nodes via applyNodeChanges (credentials and
+	// parameters are workflow-record fields), so it's gated under
+	// `updateWorkflow` like other workflow-mutating actions.
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
 	const resumeData = ctx?.agent?.resumeData as z.infer<typeof setupResumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const setupRequests = (await analyzeWorkflow(context, input.workflowId)).filter(
+			isActionableSetupRequest,
+		);
 
 		if (setupRequests.length === 0) {
 			return { success: true, reason: 'No nodes require setup.' };
@@ -430,26 +618,31 @@ async function handlePublish(
 	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
 	const resumeData = ctx?.agent?.resumeData as { approved: boolean } | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 
 	if (context.permissions?.publishWorkflow === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
+	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const label = input.workflowName ?? input.workflowId;
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		const dependencyNote =
+			supportingWorkflowIds.length > 0
+				? ` and ${String(supportingWorkflowIds.length)} referenced supporting workflow(s)`
+				: '';
 
-		await suspend?.({
+		const suspension = await suspend?.({
 			requestId: nanoid(),
 			message: input.versionId
-				? `Publish version "${input.versionId}" of workflow "${label}"?`
-				: `Publish workflow "${label}"?`,
+				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`
+				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`,
 			severity: 'warning' as const,
 		});
-		return { success: false };
+		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
 	}
 
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
@@ -457,21 +650,121 @@ async function handlePublish(
 	}
 
 	try {
-		const result = await context.workflowService.publish(input.workflowId, {
-			versionId: input.versionId,
-			...(hasNamedVersions
-				? {
-						name: input.name,
-						description: input.description,
-					}
-				: {}),
-		});
-		return { success: true, activeVersionId: result.activeVersionId };
+		const previousActiveVersionIds = await snapshotActiveVersionIds(context, [
+			...supportingWorkflowIds,
+			input.workflowId,
+		]);
+		const publishedSupportingWorkflowIds: string[] = [];
+		const publishedWorkflowIds: string[] = [];
+
+		try {
+			for (const supportingWorkflowId of supportingWorkflowIds) {
+				await context.workflowService.publish(supportingWorkflowId);
+				publishedSupportingWorkflowIds.push(supportingWorkflowId);
+				publishedWorkflowIds.push(supportingWorkflowId);
+			}
+
+			const result = await context.workflowService.publish(input.workflowId, {
+				versionId: input.versionId,
+				...(hasNamedVersions
+					? {
+							name: input.name,
+							description: input.description,
+						}
+					: {}),
+			});
+			publishedWorkflowIds.push(input.workflowId);
+
+			return {
+				success: true,
+				activeVersionId: result.activeVersionId,
+				publishedWorkflowIds,
+				...(publishedSupportingWorkflowIds.length > 0
+					? { supportingWorkflowIds: publishedSupportingWorkflowIds }
+					: {}),
+			};
+		} catch (error) {
+			const rollback = await rollbackPublishedWorkflows(
+				context,
+				previousActiveVersionIds,
+				publishedWorkflowIds,
+			);
+			return buildPublishFailure(error, rollback);
+		}
 	} catch (error) {
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : 'Publish failed',
 		};
+	}
+}
+
+async function snapshotActiveVersionIds(
+	context: InstanceAiContext,
+	workflowIds: string[],
+): Promise<Map<string, string | null>> {
+	const activeVersionIds = new Map<string, string | null>();
+
+	for (const workflowId of workflowIds) {
+		const workflow = await context.workflowService.get(workflowId);
+		activeVersionIds.set(workflowId, workflow.activeVersionId);
+	}
+
+	return activeVersionIds;
+}
+
+async function rollbackPublishedWorkflows(
+	context: InstanceAiContext,
+	previousActiveVersionIds: Map<string, string | null>,
+	publishedWorkflowIds: string[],
+): Promise<PublishRollbackResult> {
+	const result: PublishRollbackResult = {
+		rolledBackWorkflowIds: [],
+		rollbackErrors: [],
+	};
+
+	for (const workflowId of publishedWorkflowIds.toReversed()) {
+		try {
+			const previousActiveVersionId = previousActiveVersionIds.get(workflowId);
+			if (previousActiveVersionId) {
+				await context.workflowService.publish(workflowId, { versionId: previousActiveVersionId });
+			} else {
+				await context.workflowService.unpublish(workflowId);
+			}
+			result.rolledBackWorkflowIds.push(workflowId);
+		} catch (error) {
+			result.rollbackErrors.push({
+				workflowId,
+				error: error instanceof Error ? error.message : 'Rollback failed',
+			});
+		}
+	}
+
+	return result;
+}
+
+function buildPublishFailure(error: unknown, rollback: PublishRollbackResult) {
+	return {
+		success: false,
+		error: error instanceof Error ? error.message : 'Publish failed',
+		...(rollback.rolledBackWorkflowIds.length > 0
+			? { rolledBackWorkflowIds: rollback.rolledBackWorkflowIds }
+			: {}),
+		...(rollback.rollbackErrors.length > 0 ? { rollbackErrors: rollback.rollbackErrors } : {}),
+	};
+}
+
+async function resolveSupportingWorkflowIds(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string[]> {
+	try {
+		const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+		return getReferencedWorkflowIds(workflowJson).filter(
+			(supportingWorkflowId) => supportingWorkflowId !== workflowId,
+		);
+	} catch {
+		return [];
 	}
 }
 
@@ -481,7 +774,7 @@ async function handleUnpublish(
 	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
 	const resumeData = ctx?.agent?.resumeData as { approved: boolean } | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
 
 	if (context.permissions?.publishWorkflow === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -490,12 +783,13 @@ async function handleUnpublish(
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		const suspension = await suspend?.({
 			requestId: nanoid(),
-			message: `Unpublish workflow "${input.workflowName ?? input.workflowId}"?`,
+			message: `Unpublish workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
 		});
-		return { success: false };
+		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
 	}
 
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
@@ -537,7 +831,7 @@ async function handleRestoreVersion(
 	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
 	const resumeData = ctx?.agent?.resumeData as { approved: boolean } | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
 
 	if (context.permissions?.restoreWorkflowVersion === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -555,12 +849,12 @@ async function handleRestoreVersion(
 			? `"${version.name}" (${timestamp})`
 			: `"${input.versionId}" (${timestamp ?? 'unknown date'})`;
 
-		await suspend?.({
+		const suspension = await suspend?.({
 			requestId: nanoid(),
 			message: `Restore workflow to version ${versionLabel}? This will overwrite the current draft.`,
 			severity: 'warning' as const,
 		});
-		return { success: false };
+		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
 	}
 
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
@@ -581,19 +875,84 @@ async function handleRestoreVersion(
 async function handleUpdateVersion(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'update-version' }>,
+	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
-	await context.workflowService.updateVersion!(input.workflowId, input.versionId, {
-		name: input.name,
-		description: input.description,
-	});
-	return { success: true };
+	// Gated under `updateWorkflow` — version metadata edits are workflow-record
+	// mutations, treated the same as live-workflow updates.
+	const resumeData = ctx?.agent?.resumeData as { approved: boolean } | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
+	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const fields: string[] = [];
+		if (input.name !== undefined) fields.push(`name to ${formatFieldValue(input.name)}`);
+		if (input.description !== undefined) {
+			fields.push(`description to ${formatFieldValue(input.description)}`);
+		}
+		const summary = fields.length > 0 ? fields.join(', ') : 'metadata';
+
+		await suspend?.({
+			requestId: nanoid(),
+			message: `Update workflow version "${input.versionId}" — set ${summary}?`,
+			severity: 'info' as const,
+		});
+		return { success: false };
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	try {
+		await context.workflowService.updateVersion!(input.workflowId, input.versionId, {
+			name: input.name,
+			description: input.description,
+		});
+		return { success: true };
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : 'Update failed',
+		};
+	}
+}
+
+function formatFieldValue(value: string | null): string {
+	if (value === null) return '(cleared)';
+	return `"${value}"`;
+}
+
+function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
+	const labels = actions.map((action) => WORKFLOW_ACTION_LABELS[action]);
+	if (labels.length <= 2) return labels.join(' and ');
+
+	const lastLabel = labels[labels.length - 1];
+	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
+}
+
+function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
+	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
+	const suffix =
+		options.descriptionSuffix ??
+		(options.descriptionPrefix
+			? undefined
+			: 'Workflow results use activeVersionId: null for unpublished workflows.');
+
+	return suffix ? `${description} ${suffix}` : description;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createWorkflowsTool(
 	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
+	options: WorkflowsToolOptions = {},
 ) {
 	// Closure state for the setup action's suspend/resume cycle
 	const setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null } = {
@@ -601,12 +960,11 @@ export function createWorkflowsTool(
 		preTestSnapshot: null,
 	};
 
-	const inputSchema = buildInputSchema(context, surface);
+	const inputSchema = buildInputSchema(context, options);
 
 	return createTool({
 		id: 'workflows',
-		description:
-			'Manage workflows — list, inspect, delete, set up, publish, unpublish, and manage versions.',
+		description: getToolDescription(context, options),
 		inputSchema,
 		suspendSchema,
 		resumeSchema,
@@ -620,6 +978,8 @@ export function createWorkflowsTool(
 					return await handleGetAsCode(context, input);
 				case 'delete':
 					return await handleDelete(context, input, ctx);
+				case 'unarchive':
+					return await handleUnarchive(context, input, ctx);
 				case 'setup':
 					return await handleSetup(context, input, ctx, setupState);
 				case 'publish':
@@ -633,7 +993,7 @@ export function createWorkflowsTool(
 				case 'restore-version':
 					return await handleRestoreVersion(context, input, ctx);
 				case 'update-version':
-					return await handleUpdateVersion(context, input);
+					return await handleUpdateVersion(context, input, ctx);
 				default:
 					return { error: `Unknown action: ${(input as { action: string }).action}` };
 			}

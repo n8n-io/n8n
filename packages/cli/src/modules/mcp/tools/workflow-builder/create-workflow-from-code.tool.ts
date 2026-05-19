@@ -13,6 +13,7 @@ import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = {
 	code: z
@@ -56,6 +57,7 @@ const outputSchema = {
 			z.object({
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
+				credentialType: z.string().describe('The credential type that was auto-assigned'),
 			}),
 		)
 		.describe('List of credentials that were automatically assigned to nodes'),
@@ -80,6 +82,7 @@ const outputSchema = {
 export const createCreateWorkflowFromCodeTool = (
 	user: User,
 	workflowCreationService: WorkflowCreationService,
+	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
 	telemetry: Telemetry,
 	nodeTypes: NodeTypes,
@@ -88,7 +91,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. Parses the code into a workflow and saves it. Always validate with ${CODE_BUILDER_VALIDATE_TOOL.toolName} first.`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation.`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -134,6 +137,8 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 		}
 
+		let newWorkflow: WorkflowEntity | undefined;
+
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
@@ -142,9 +147,10 @@ export const createCreateWorkflowFromCodeTool = (
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+
 			const workflowJson = result.workflow;
 
-			const newWorkflow = new WorkflowEntity();
+			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
 				...(description ? { description } : {}),
@@ -152,7 +158,7 @@ export const createCreateWorkflowFromCodeTool = (
 				connections: workflowJson.connections,
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
-				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
+				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
 			});
 
 			resolveNodeWebhookIds(newWorkflow, nodeTypes);
@@ -178,6 +184,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
 				parentFolderId: folderId,
+				source: 'n8n-mcp',
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
@@ -210,13 +217,60 @@ export const createCreateWorkflowFromCodeTool = (
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
+			// Check whether the workflow was actually persisted despite the error.
+			// TypeORM sets the entity id during save(), even inside a transaction that
+			// may later roll back, so newWorkflow.id alone is not a reliable signal.
+			// A DB lookup confirms the row truly exists before we report success.
+			if (newWorkflow?.id) {
+				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+					null;
+				try {
+					persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
+						'workflow:read',
+					]);
+				} catch {
+					// Verification lookup failed — fall through and report the original error.
+				}
+
+				if (persisted) {
+					const baseUrl = urlService.getInstanceBaseUrl();
+					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+					telemetryPayload.results = {
+						success: true,
+						data: {
+							workflowId: persisted.id,
+							nodeCount: persisted.nodes.length,
+							postSaveError: errorMessage,
+						},
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+					const output = {
+						workflowId: persisted.id,
+						name: persisted.name,
+						nodeCount: persisted.nodes.length,
+						url: workflowUrl,
+						autoAssignedCredentials: [],
+						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+					};
+
+					return {
+						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+						structuredContent: output,
+					};
+				}
+			}
+
 			telemetryPayload.results = {
 				success: false,
 				error: errorMessage,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const hint = getSdkReferenceHint(error);
+			const hint = getSdkReferenceHint(error, {
+				afterReference: `Rewrite the code, call ${CODE_BUILDER_VALIDATE_TOOL.toolName} until it returns valid=true, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
+			});
 			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
 			return {

@@ -75,6 +75,15 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
 
+	function isActionSupported(nodeName: string, resource: string, operation: string): boolean {
+		if (!config.value) return true;
+		const nodeActions = config.value.supportedActions?.[nodeName];
+		if (!nodeActions) return true;
+		const ops = nodeActions[resource];
+		if (!ops) return false;
+		return ops.includes(operation);
+	}
+
 	return {
 		config,
 		balance,
@@ -88,5 +97,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		fetchMoreUsage,
 		isNodeSupported,
 		isCredentialTypeSupported,
+		isActionSupported,
 	};
 });

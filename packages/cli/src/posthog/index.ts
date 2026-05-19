@@ -100,6 +100,16 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
+		try {
+			return await this.fetchFlagsFromPostHog(user);
+		} catch {
+			return {};
+		}
+	}
+
+	private async fetchFlagsFromPostHog(
+		user: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlags> {
 		if (!this.postHog) return {};
 
 		const { instanceId } = this.instanceSettings;

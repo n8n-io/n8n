@@ -11,10 +11,11 @@ import { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 
 import { TokenExchangeConfig } from '../../token-exchange.config';
+import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import { TokenExchangeController } from '../token-exchange.controller';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '../../token-exchange.schemas';
 import { TokenExchangeService } from '../../services/token-exchange.service';
-import type { IssuedTokenResult } from '../../token-exchange.types';
+import { TokenExchangeFailureReason, type IssuedTokenResult } from '../../token-exchange.types';
 
 describe('TokenExchangeController', () => {
 	mockInstance(ErrorReporter);
@@ -231,11 +232,16 @@ describe('TokenExchangeController', () => {
 				expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'server_error' }));
 			});
 
-			test('emits failure reason from AuthError in token-exchange-failed event', async () => {
+			test('emits typed failure reason from TokenExchangeAuthError in token-exchange-failed event', async () => {
 				req.body = validBody;
 				jest
 					.mocked(tokenExchangeService.exchange)
-					.mockRejectedValue(new AuthError('Token has already been used'));
+					.mockRejectedValue(
+						new TokenExchangeAuthError(
+							TokenExchangeFailureReason.TokenReplay,
+							'Token has already been used',
+						),
+					);
 
 				await controller.exchangeToken(req, res);
 
@@ -243,7 +249,7 @@ describe('TokenExchangeController', () => {
 					'token-exchange-failed',
 					expect.objectContaining({
 						subject: '',
-						failureReason: 'Token has already been used',
+						failureReason: TokenExchangeFailureReason.TokenReplay,
 						grantType: TOKEN_EXCHANGE_GRANT_TYPE,
 						clientIp: '127.0.0.1',
 					}),

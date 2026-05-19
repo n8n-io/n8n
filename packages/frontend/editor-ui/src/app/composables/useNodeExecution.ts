@@ -24,10 +24,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -103,11 +100,7 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 	const workflowState = injectWorkflowState();
 
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
@@ -133,7 +126,9 @@ export function useNodeExecution(
 	const isChatNode = computed(() => nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE);
 
 	const isChatChild = computed(() =>
-		nodeRef.value ? workflowsStore.checkIfNodeHasChatParent(nodeRef.value.name) : false,
+		nodeRef.value
+			? workflowDocumentStore.value.checkIfNodeHasChatParent(nodeRef.value.name)
+			: false,
 	);
 
 	const isFormTriggerNode = computed(() => nodeType.value?.name === FORM_TRIGGER_NODE_TYPE);
@@ -290,6 +285,7 @@ export function useNodeExecution(
 			const updateInformation = await generateCodeForAiTransform(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
+				workflowDocumentStore.value.documentId,
 				5,
 			);
 
@@ -299,7 +295,7 @@ export function useNodeExecution(
 			}
 
 			// Update node with generated code
-			workflowDocumentStore.value?.updateNodeProperties({
+			workflowDocumentStore.value.updateNodeProperties({
 				name: nodeRef.value.name,
 				properties: {
 					parameters: {
@@ -343,10 +339,10 @@ export function useNodeExecution(
 
 	function chatTriggerHasInputData(): boolean {
 		if (!nodeRef.value) return false;
-		const startNode = workflowsStore.workflowObject.getStartNode(nodeRef.value.name);
+		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
 		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
-		const hasPinData = !!workflowDocumentStore.value?.pinData?.[startNode.name];
+		const hasPinData = !!workflowDocumentStore.value.pinData?.[startNode.name];
 		return hasRunData || hasPinData;
 	}
 

@@ -72,24 +72,30 @@ export async function runAlaSqlInSandbox(
 	// don't collide on alasql.databases.
 	const dbId = randomUUID();
 
-	// Double-serialization: outer JSON.stringify produces a JSON string, inner produces a JSON literal
-	// embedded in the script source. Inside the isolate, JSON.parse reconstructs the plain array.
-	// This ensures data enters the isolate as a parsed JSON literal, never as live objects.
-	const script = `(function() {
-		const __rows = JSON.parse(${JSON.stringify(JSON.stringify(tableData))});
-		const __db = new alasql.Database(${JSON.stringify(dbId)});
+	// evalClosure binds ($0, $1, $2) as parameters of an implicit wrapping function,
+	// so they stay local to this call — unlike context.global.set, they can't be
+	// overwritten by a concurrent invocation on the shared singleton context.
+	// arguments.copy uses V8 structured clone, which strips prototypes and functions
+	// so only inert plain data crosses the isolate boundary.
+	const script = `
+		const rows = $0, dbId = $1, query = $2;
+		const db = new alasql.Database(dbId);
 		try {
-			for (let i = 0; i < __rows.length; i++) {
-				__db.exec('CREATE TABLE input' + (i + 1));
-				__db.tables['input' + (i + 1)].data = __rows[i];
+			for (let i = 0; i < rows.length; i++) {
+				db.exec('CREATE TABLE input' + (i + 1));
+				db.tables['input' + (i + 1)].data = rows[i];
 			}
-			return JSON.stringify(__db.exec(${JSON.stringify(query)}));
+			return JSON.stringify(db.exec(query));
 		} finally {
-			delete alasql.databases[${JSON.stringify(dbId)}];
+			delete alasql.databases[dbId];
 		}
-	})()`;
+	`;
 
-	const resultJson = (await context.eval(script, { timeout: 5000, copy: true })) as string;
+	const resultJson = (await context.evalClosure(script, [tableData, dbId, query], {
+		arguments: { copy: true },
+		result: { copy: true },
+		timeout: 30000,
+	})) as string;
 	try {
 		return JSON.parse(resultJson) as IDataObject[];
 	} catch (e) {

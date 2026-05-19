@@ -2,10 +2,6 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-function isFeatureFlagEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_INSTANCE_REGISTRY === 'true';
-}
-
 /**
  * Instance Registry Module
  *
@@ -17,25 +13,27 @@ function isFeatureFlagEnabled(): boolean {
 @BackendModule({ name: 'instance-registry' })
 export class InstanceRegistryModule implements ModuleInterface {
 	async init() {
-		if (!isFeatureFlagEnabled()) {
-			return;
-		}
-
 		await import('./instance-registry.controller');
 
 		const { InstanceRegistryService } = await import('./instance-registry.service');
-		await Container.get(InstanceRegistryService).init();
+		const instanceRegistryService = Container.get(InstanceRegistryService);
+		await instanceRegistryService.init();
+
+		const { InstanceRegistryProxyService } = await import(
+			'@/services/instance-registry-proxy.service'
+		);
+		Container.get(InstanceRegistryProxyService).registerProvider(instanceRegistryService);
 
 		const { StaleMemberCleanupService } = await import('./stale-member-cleanup.service');
 		Container.get(StaleMemberCleanupService).init();
+
+		await import('./checks');
+		const { CheckService } = await import('./checks/check.service');
+		Container.get(CheckService).init();
 	}
 
 	@OnShutdown()
 	async shutdown() {
-		if (!isFeatureFlagEnabled()) {
-			return;
-		}
-
 		const { InstanceRegistryService } = await import('./instance-registry.service');
 		await Container.get(InstanceRegistryService).shutdown();
 	}

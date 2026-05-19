@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.14.1 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 24.15.0 by default for reproducible builds.'
     required: false
-    default: '24.14.1'
+    default: '24.15.0'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -22,6 +22,10 @@ inputs:
     description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
     required: false
     default: 'pnpm install --frozen-lockfile'
+  cache-dependency-path:
+    description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
+    required: false
+    default: 'pnpm-lock.yaml'
 
 runs:
   using: 'composite'
@@ -34,6 +38,7 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137
@@ -45,13 +50,19 @@ runs:
             mkdir -p "$PNPM_STORE_PATH"
         fi
 
-    - name: Install Aikido SafeChain
-      if: runner.os != 'Windows'
+    - name: Configure SafeChain
+      shell: bash
       run: |
-        VERSION="1.4.1"
-        EXPECTED_SHA256="628235987175072a4255aa3f5f0128f31795b63970f1970ae8a04d07bf8527b0"
-        node .github/scripts/retry.mjs --attempts 3 --delay 10 \
-          "curl -fsSL -o install-safe-chain.sh https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
+        # SafeChain only reads configs from this directory https://github.com/AikidoSec/safe-chain#configuration-options-1
+        mkdir -p "$HOME/.safe-chain"
+        cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
+
+    - name: Install Aikido SafeChain
+      run: |
+        VERSION="1.5.3"
+        EXPECTED_SHA256="0107cbbbf90159379756157e902acae512d62ffbd174307e42c5fe9f266792d3"
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
+          curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
         sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
@@ -59,17 +70,17 @@ runs:
 
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
+      env:
+        INSTALL_COMMAND: ${{ inputs.install-command }}
+        SAFE_CHAIN_LOGGING: verbose
       run: |
-        ${{ inputs.install-command }}
-      shell: bash
-
-    - name: Disable safe-chain
-      if: runner.os != 'Windows'
-      run: safe-chain teardown
+        timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
       shell: bash
 
     - name: Configure Turborepo Cache
-      uses: rharkor/caching-for-turbo@0abc2381e688c4d2832f0665a68a01c6e82f0d6c # v2.3.11
+      uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+      with:
+        server-port: 0
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}
@@ -81,8 +92,10 @@ runs:
 
     - name: Build Project
       if: ${{ inputs.build-command != '' }}
+      env:
+        BUILD_COMMAND: ${{ inputs.build-command }}
       run: |
-        ${{ inputs.build-command }} --summarize
+        $BUILD_COMMAND --summarize
         node .github/scripts/send-build-stats.mjs || true
         node .github/scripts/send-docker-stats.mjs || true
       shell: bash

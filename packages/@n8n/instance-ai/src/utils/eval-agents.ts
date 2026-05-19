@@ -1,9 +1,4 @@
-/**
- * Shared agent factory for eval LLM calls.
- *
- * Centralizes model config, API key resolution, and text extraction
- * for the 3 eval call sites (hint generation, mock responses, pin data).
- */
+/** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
 import { Agent, Tool, type GenerateResult } from '@n8n/agents';
 
@@ -21,10 +16,13 @@ export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 // ---------------------------------------------------------------------------
 
 function getApiKey(): string {
-	const key = process.env.N8N_INSTANCE_AI_MODEL_API_KEY ?? process.env.N8N_AI_ANTHROPIC_KEY;
+	const key =
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
+		process.env.N8N_AI_ANTHROPIC_KEY ??
+		process.env.ANTHROPIC_API_KEY;
 	if (!key) {
 		throw new Error(
-			'Missing API key. Set N8N_INSTANCE_AI_MODEL_API_KEY (or N8N_AI_ANTHROPIC_KEY) in your environment.',
+			'Missing API key. Set N8N_INSTANCE_AI_MODEL_API_KEY, N8N_AI_ANTHROPIC_KEY, or ANTHROPIC_API_KEY in your environment.',
 		);
 	}
 	return key;
@@ -46,6 +44,13 @@ export function createEvalAgent(
 		model?: string;
 		instructions: string;
 		cache?: boolean;
+		/**
+		 * Extended-thinking config:
+		 * - 'adaptive' (default): model decides per request.
+		 * - 'off': no thinking.
+		 * - { budgetTokens: N }: fixed budget mode.
+		 */
+		thinking?: 'adaptive' | 'off' | { budgetTokens: number };
 	},
 ): Agent {
 	const agent = new Agent(name).model({
@@ -57,6 +62,13 @@ export function createEvalAgent(
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);
 	} else {
 		agent.instructions(options.instructions);
+	}
+
+	const thinking = options.thinking ?? 'adaptive';
+	if (thinking === 'adaptive') {
+		agent.thinking('anthropic', { mode: 'adaptive' });
+	} else if (typeof thinking === 'object') {
+		agent.thinking('anthropic', { mode: 'enabled', budgetTokens: thinking.budgetTokens });
 	}
 
 	return agent;

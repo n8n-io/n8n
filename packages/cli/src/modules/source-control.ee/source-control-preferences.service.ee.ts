@@ -80,7 +80,7 @@ export class SourceControlPreferencesService {
 
 		if (!dbKeyPair) throw new UnexpectedError('Failed to find key pair in database');
 
-		return this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
+		return await this.cipher.decryptV2(dbKeyPair.encryptedPrivateKey);
 	}
 
 	private async getPublicKeyFromDatabase() {
@@ -107,8 +107,8 @@ export class SourceControlPreferencesService {
 		const credentials = await this.getHttpsCredentialsFromDatabase();
 
 		return {
-			username: this.cipher.decrypt(credentials.encryptedUsername),
-			password: this.cipher.decrypt(credentials.encryptedPassword),
+			username: await this.cipher.decryptV2(credentials.encryptedUsername),
+			password: await this.cipher.decryptV2(credentials.encryptedPassword),
 		};
 	}
 
@@ -117,8 +117,8 @@ export class SourceControlPreferencesService {
 			await this.settingsRepository.save({
 				key: 'features.sourceControl.httpsCredentials',
 				value: JSON.stringify({
-					encryptedUsername: this.cipher.encrypt(username),
-					encryptedPassword: this.cipher.encrypt(password),
+					encryptedUsername: await this.cipher.encryptV2(username),
+					encryptedPassword: await this.cipher.encryptV2(password),
 				}),
 				loadOnStartup: true,
 			});
@@ -213,7 +213,7 @@ export class SourceControlPreferencesService {
 			await this.settingsRepository.save({
 				key: 'features.sourceControl.sshKeys',
 				value: JSON.stringify({
-					encryptedPrivateKey: this.cipher.encrypt(keyPair.privateKey),
+					encryptedPrivateKey: await this.cipher.encryptV2(keyPair.privateKey),
 					publicKey: keyPair.publicKey,
 				}),
 				loadOnStartup: true,

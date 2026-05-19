@@ -8,6 +8,8 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
+const showSuccessCallout = ref(false);
+
 export function useFreeAiCredits() {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
@@ -36,12 +38,13 @@ export function useFreeAiCredits() {
 	const userCanClaimOpenAiCredits = computed(
 		() =>
 			isAiCreditsEnabled.value &&
+			!settingsStore.isAiGatewayEnabled &&
 			!userHasOpenAiCredentialAlready.value &&
 			!userHasClaimedAiCreditsAlready.value,
 	);
 
 	async function claimCredits(
-		source: 'chatHubAutoClaim' | 'freeAiCreditsCallout',
+		source: 'chatHubAutoClaim' | 'freeAiCreditsCallout' | 'instanceAiWorkflowSetup',
 	): Promise<boolean> {
 		if (!userCanClaimOpenAiCredits.value) {
 			return false;
@@ -56,6 +59,7 @@ export function useFreeAiCredits() {
 				usersStore.currentUser.settings.userClaimedAiCredits = true;
 			}
 
+			showSuccessCallout.value = true;
 			telemetry.track('User claimed OpenAI credits', { source });
 
 			return true;
@@ -74,6 +78,7 @@ export function useFreeAiCredits() {
 		aiCreditsQuota,
 		userCanClaimOpenAiCredits,
 		claimingCredits,
+		showSuccessCallout,
 		claimCredits,
 	};
 }

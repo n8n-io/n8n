@@ -1,17 +1,96 @@
-import type { z } from 'zod';
-
 import { InMemoryMemory } from '../runtime/memory-store';
-import { templateFromSchema } from '../runtime/working-memory';
+import {
+	createObservationLogObserveFn,
+	createObservationLogReflectFn,
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from '../runtime/observation-log-defaults';
+import { hasObservationLogStore } from '../runtime/observation-log-store';
 import type {
 	BuiltMemory,
 	MemoryConfig,
+	ObservationalMemoryConfig,
 	SemanticRecallConfig,
 	TitleGenerationConfig,
 } from '../types';
-
-type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
+import type { ModelConfig } from '../types/sdk/agent';
 
 const DEFAULT_LAST_MESSAGES = 10;
+
+export { DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS, DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET };
+
+export interface ResolveObservationalMemoryConfigOptions {
+	defaultModel: ModelConfig;
+}
+
+export function resolveObservationalMemoryConfig(
+	config: ObservationalMemoryConfig,
+	options: ResolveObservationalMemoryConfigOptions,
+): ObservationalMemoryConfig {
+	const observerModel = options.defaultModel;
+	const reflectorModel = options.defaultModel;
+
+	return {
+		observerThresholdTokens:
+			config.observerThresholdTokens ?? DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+		reflectorThresholdTokens:
+			config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+		renderTokenBudget: config.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+		observationLogTailLimit: config.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		observe: config.observe ?? createObservationLogObserveFn(observerModel),
+		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
+	};
+}
+
+export function resolveMemoryConfigDefaults(
+	config: MemoryConfig,
+	options: ResolveObservationalMemoryConfigOptions,
+): MemoryConfig {
+	if (!config.observationalMemory) {
+		return config;
+	}
+
+	const observationalMemoryConfig =
+		config.observationLog?.renderTokenBudget !== undefined &&
+		config.observationalMemory.renderTokenBudget === undefined
+			? {
+					...config.observationalMemory,
+					renderTokenBudget: config.observationLog.renderTokenBudget,
+				}
+			: config.observationalMemory;
+	const observationalMemory = resolveObservationalMemoryConfig(observationalMemoryConfig, options);
+
+	return normalizeMemoryConfig({
+		...config,
+		observationalMemory,
+	});
+}
+
+export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
+	if (!config.observationalMemory) {
+		return config;
+	}
+
+	if (!hasObservationLogStore(config.memory)) {
+		throw new Error(
+			"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
+		);
+	}
+
+	return {
+		...config,
+		observationLog: {
+			...config.observationLog,
+			...(config.observationalMemory.renderTokenBudget !== undefined && {
+				renderTokenBudget: config.observationalMemory.renderTokenBudget,
+			}),
+		},
+	};
+}
 
 /**
  * Builder for configuring conversation memory.
@@ -21,7 +100,7 @@ const DEFAULT_LAST_MESSAGES = 10;
  * const memory = new Memory()
  *   .storage('memory')
  *   .lastMessages(20)
- *   .freeform('# User Context\n- **Name**:\n- **City**:');
+ *   .observationalMemory({ renderTokenBudget: 4500 });
  *
  * agent.memory(memory);
  * ```
@@ -31,17 +110,11 @@ export class Memory {
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
-	private workingMemorySchema?: ZodObjectSchema;
-
-	private workingMemoryTemplate?: string;
-
-	private workingMemoryScope: 'resource' | 'thread' = 'resource';
-
-	private workingMemoryInstruction?: string;
-
 	private memoryBackend?: BuiltMemory;
 
 	private titleGenerationConfig?: TitleGenerationConfig;
+
+	private observationalMemoryConfig?: ObservationalMemoryConfig;
 
 	/** The configured number of recent messages to include. */
 	get lastMessageCount(): number {
@@ -52,7 +125,7 @@ export class Memory {
 	 * Set the storage backend for conversation history.
 	 *
 	 * - `'memory'` — in-process memory (default, lost on restart)
-	 * - A `BuiltMemory` instance — for persistent storage (e.g. SqliteMemory)
+	 * - A `BuiltMemory` instance — for a persistent backend (e.g. cli's `N8nMemory`)
 	 */
 	storage(backend: 'memory' | BuiltMemory): this {
 		if (backend === 'memory') {
@@ -76,55 +149,6 @@ export class Memory {
 	}
 
 	/**
-	 * Enable structured working memory with a Zod schema.
-	 * Mutually exclusive with `.freeform()`.
-	 */
-	structured(schema: ZodObjectSchema): this {
-		this.workingMemorySchema = schema;
-		return this;
-	}
-
-	/**
-	 * Enable free-form working memory with a markdown/text template.
-	 * Mutually exclusive with `.structured()`.
-	 */
-	freeform(template: string): this {
-		this.workingMemoryTemplate = template;
-		return this;
-	}
-
-	/**
-	 * Set the working memory scope.
-	 *
-	 * - `'resource'` (default) — working memory is shared across all threads for the same resource/user.
-	 * - `'thread'` — working memory is scoped to a single conversation thread.
-	 */
-	scope(s: 'resource' | 'thread'): this {
-		this.workingMemoryScope = s;
-		return this;
-	}
-
-	/**
-	 * Override the default instruction text injected into the system prompt for working memory.
-	 *
-	 * The instruction tells the model when and how to call the `updateWorkingMemory` tool.
-	 * When omitted, `WORKING_MEMORY_DEFAULT_INSTRUCTION` is used.
-	 *
-	 * Example:
-	 * ```typescript
-	 * import { WORKING_MEMORY_DEFAULT_INSTRUCTION } from '@n8n/agents';
-	 *
-	 * memory.instruction(
-	 *   WORKING_MEMORY_DEFAULT_INSTRUCTION + '\nAlways update after every user message.',
-	 * );
-	 * ```
-	 */
-	instruction(text: string): this {
-		this.workingMemoryInstruction = text;
-		return this;
-	}
-
-	/**
 	 * Enable automatic title generation for new threads.
 	 *
 	 * - `true` — uses the agent's own model and default instructions.
@@ -144,28 +168,17 @@ export class Memory {
 		return this;
 	}
 
+	observationalMemory(config: ObservationalMemoryConfig = {}): this {
+		this.observationalMemoryConfig = config;
+		return this;
+	}
+
 	/**
 	 * Validate configuration and produce a `MemoryConfig`.
 	 *
-	 * @throws if both `.structured()` and `.freeform()` are used
-	 * @throws if `.freeform()` template is empty
 	 * @throws if `.semanticRecall()` is used with a backend that doesn't support search()
 	 */
 	build(): MemoryConfig {
-		if (this.workingMemorySchema && this.workingMemoryTemplate !== undefined) {
-			throw new Error(
-				'Working memory cannot use both .structured() and .freeform(). ' +
-					'Choose one: .structured(zodSchema) for typed state, or .freeform(template) for free-form text.',
-			);
-		}
-
-		if (this.workingMemoryTemplate !== undefined && this.workingMemoryTemplate.trim() === '') {
-			throw new Error(
-				'Free-form working memory template cannot be empty. ' +
-					'Provide a markdown template with slots for the agent to fill.',
-			);
-		}
-
 		const memory: BuiltMemory = this.memoryBackend ?? new InMemoryMemory();
 
 		if (this.semanticRecallConfig) {
@@ -182,34 +195,27 @@ export class Memory {
 			}
 		}
 
-		let workingMemory: MemoryConfig['workingMemory'];
-		if (this.workingMemorySchema) {
-			workingMemory = {
-				template: templateFromSchema(this.workingMemorySchema),
-				structured: true,
-				schema: this.workingMemorySchema,
-				scope: this.workingMemoryScope,
-				...(this.workingMemoryInstruction !== undefined && {
-					instruction: this.workingMemoryInstruction,
-				}),
-			};
-		} else if (this.workingMemoryTemplate !== undefined) {
-			workingMemory = {
-				template: this.workingMemoryTemplate,
-				structured: false,
-				scope: this.workingMemoryScope,
-				...(this.workingMemoryInstruction !== undefined && {
-					instruction: this.workingMemoryInstruction,
-				}),
-			};
-		}
-
-		return {
+		const baseConfig = {
 			memory,
 			lastMessages: this.lastMessagesValue,
-			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
 			titleGeneration: this.titleGenerationConfig,
 		};
+
+		if (!this.observationalMemoryConfig) {
+			return normalizeMemoryConfig(baseConfig);
+		}
+
+		if (!hasObservationLogStore(memory)) {
+			throw new Error(
+				"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
+			);
+		}
+
+		return normalizeMemoryConfig({
+			...baseConfig,
+			memory,
+			observationalMemory: this.observationalMemoryConfig,
+		});
 	}
 }

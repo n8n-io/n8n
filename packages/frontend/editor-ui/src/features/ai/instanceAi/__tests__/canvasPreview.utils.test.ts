@@ -275,6 +275,35 @@ describe('getLatestExecutionId', () => {
 		const parent = makeAgentNode({ children: [child] });
 		expect(getLatestExecutionId(parent)).toEqual({ executionId: 'exec-child', workflowId: 'wf-1' });
 	});
+
+	test('prefers build-workflow result.workflowId over run-workflow args.workflowId', () => {
+		// Trace replay case: the cached LLM's run-workflow args carry the
+		// recording's stale workflowId, but build-workflow's result always
+		// reflects the workflow actually created in this run.
+		const builder = makeAgentNode({
+			agentId: 'builder-1',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					result: { success: true, workflowId: 'wf-real' },
+				}),
+			],
+		});
+		const node = makeAgentNode({
+			children: [builder],
+			toolCalls: [
+				makeToolCall({
+					toolName: 'executions',
+					args: { action: 'run', workflowId: 'wf-stale-from-recording' },
+					result: { executionId: 'exec-1', status: 'success' },
+				}),
+			],
+		});
+		expect(getLatestExecutionId(node)).toEqual({
+			executionId: 'exec-1',
+			workflowId: 'wf-real',
+		});
+	});
 });
 
 describe('getLatestDataTableResult', () => {

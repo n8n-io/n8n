@@ -8,7 +8,7 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import { useEventRelay } from '../useEventRelay';
-import type { useInstanceAiStore } from '../instanceAi.store';
+import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -121,15 +121,14 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 export interface InstanceAiHarness {
 	// Reactive state from composables (for assertions)
-	activeTabId: Ref<string | null>;
+	activeTabId: Ref<string | undefined>;
 	activeWorkflowId: ReturnType<typeof useCanvasPreview>['activeWorkflowId'];
-	activeExecutionId: Ref<string | null>;
 	activeDataTableId: ReturnType<typeof useCanvasPreview>['activeDataTableId'];
+	activeExecutionId: ReturnType<typeof useCanvasPreview>['activeExecutionId'];
 	isPreviewVisible: ReturnType<typeof useCanvasPreview>['isPreviewVisible'];
 	allArtifactTabs: ReturnType<typeof useCanvasPreview>['allArtifactTabs'];
 	workflowRefreshKey: Ref<number>;
 	dataTableRefreshKey: Ref<number>;
-	userSentMessage: Ref<boolean>;
 
 	// Relay tracking
 	relayedEvents: PushMessage[];
@@ -140,10 +139,10 @@ export interface InstanceAiHarness {
 	removeResource: (key: string) => void;
 	simulatePushEvent: (event: PushMessage) => void;
 	simulateIframeReady: () => Promise<void>;
+	simulateWorkflowLoaded: (wfId: string) => Promise<void>;
 	selectTab: (tabId: string) => void;
 	closePreview: () => void;
-	markUserSentMessage: () => void;
-	switchThread: (threadId: string) => Promise<void>;
+	routeToThread: (threadId: string) => Promise<void>;
 	addMessage: (msg: InstanceAiMessage) => void;
 	addBuildResult: (workflowId: string, toolCallId?: string) => void;
 	addExecutionResult: (workflowId: string, executionId: string, toolCallId?: string) => void;
@@ -163,19 +162,17 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Mock store ---
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
-	const resourceRegistry = ref(new Map<string, ResourceEntry>());
-
-	const threadMetadata = new Map<string, Record<string, unknown>>();
+	const isHydratingThread = ref(false);
+	const producedArtifacts = ref(new Map<string, ResourceEntry>());
+	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 
 	const store = reactive({
+		id: 'thread-1',
 		messages,
 		isStreaming,
-		resourceRegistry,
-		currentThreadId: 'thread-1',
-		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
-		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
-			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
-		},
+		isHydratingThread,
+		producedArtifacts,
+		resourceNameIndex,
 	});
 
 	// --- Mock route ---
@@ -195,8 +192,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const executionTracking = useExecutionPushEvents();
 
 	const preview = useCanvasPreview({
-		store: store as unknown as ReturnType<typeof useInstanceAiStore>,
-		route: route as Parameters<typeof useCanvasPreview>[0]['route'],
+		thread: store as unknown as ThreadRuntime,
+		threadId: () => route.params.threadId,
 		workflowExecutions: executionTracking.workflowExecutions,
 	});
 
@@ -213,21 +210,34 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Convenience actions ---
 
 	function registerWorkflow(id: string, name = `Workflow ${id}`) {
-		const next = new Map(store.resourceRegistry);
-		next.set(name.toLowerCase(), { type: 'workflow', id, name });
-		store.resourceRegistry = next;
+		const entry: ResourceEntry = { type: 'workflow', id, name };
+		const nextProduced = new Map(store.producedArtifacts);
+		nextProduced.set(id, entry);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		nextByName.set(name.toLowerCase(), entry);
+		store.resourceNameIndex = nextByName;
 	}
 
 	function registerDataTable(id: string, name = `Table ${id}`, projectId?: string) {
-		const next = new Map(store.resourceRegistry);
-		next.set(name.toLowerCase(), { type: 'data-table', id, name, projectId });
-		store.resourceRegistry = next;
+		const entry: ResourceEntry = { type: 'data-table', id, name, projectId };
+		const nextProduced = new Map(store.producedArtifacts);
+		nextProduced.set(id, entry);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		nextByName.set(name.toLowerCase(), entry);
+		store.resourceNameIndex = nextByName;
 	}
 
-	function removeResource(key: string) {
-		const next = new Map(store.resourceRegistry);
-		next.delete(key);
-		store.resourceRegistry = next;
+	function removeResource(idOrName: string) {
+		const nextProduced = new Map(store.producedArtifacts);
+		const removed = nextProduced.get(idOrName);
+		nextProduced.delete(idOrName);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		if (removed) nextByName.delete(removed.name.toLowerCase());
+		nextByName.delete(idOrName.toLowerCase());
+		store.resourceNameIndex = nextByName;
 	}
 
 	function simulatePushEvent(event: PushMessage) {
@@ -240,7 +250,12 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		await nextTick();
 	}
 
-	async function switchThread(threadId: string) {
+	async function simulateWorkflowLoaded(wfId: string) {
+		eventRelay.handleWorkflowLoaded(wfId);
+		await nextTick();
+	}
+
+	async function routeToThread(threadId: string) {
 		executionTracking.clearAll();
 		route.params.threadId = threadId;
 		await nextTick();
@@ -360,13 +375,12 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		// State
 		activeTabId: preview.activeTabId,
 		activeWorkflowId: preview.activeWorkflowId,
-		activeExecutionId: preview.activeExecutionId,
 		activeDataTableId: preview.activeDataTableId,
+		activeExecutionId: preview.activeExecutionId,
 		isPreviewVisible: preview.isPreviewVisible,
 		allArtifactTabs: preview.allArtifactTabs,
 		workflowRefreshKey: preview.workflowRefreshKey,
 		dataTableRefreshKey: preview.dataTableRefreshKey,
-		userSentMessage: preview.userSentMessage,
 		relayedEvents,
 
 		// Actions
@@ -375,10 +389,10 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		removeResource,
 		simulatePushEvent,
 		simulateIframeReady,
+		simulateWorkflowLoaded,
 		selectTab: preview.selectTab,
 		closePreview: preview.closePreview,
-		markUserSentMessage: preview.markUserSentMessage,
-		switchThread,
+		routeToThread,
 		addMessage,
 		addBuildResult,
 		addExecutionResult,
