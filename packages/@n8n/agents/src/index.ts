@@ -43,17 +43,8 @@ export type {
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
-	BuiltObservationStore,
-	CompactFn,
-	NewObservation,
-	Observation,
-	ObservationCategory,
 	ObservationCursor,
-	ObservationGapContext,
-	ObservationLockHandle,
 	ObservationalMemoryConfig,
-	ObservationalMemoryTrigger,
-	ObserveFn,
 	ScopeKind,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -75,11 +66,8 @@ export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
 export {
-	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
-	OBSERVATION_CATEGORIES,
-	OBSERVATION_SCHEMA_VERSION,
-} from './types';
-export {
+	createObservationLogThreadScopeId,
+	createObservationLogThreadScopePrefix,
 	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
@@ -137,18 +125,6 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
-export { WORKING_MEMORY_DEFAULT_INSTRUCTION } from './runtime/working-memory';
-export {
-	DEFAULT_COMPACTOR_PROMPT,
-	DEFAULT_OBSERVER_PROMPT,
-} from './runtime/observational-cycle';
-export type { SqliteMemoryConfig } from './storage/sqlite-memory';
-export { PostgresMemory } from './storage/postgres-memory';
-export type {
-	PostgresConnectionOptions,
-	PostgresConstructorOptions,
-} from './storage/postgres-memory';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
@@ -160,6 +136,7 @@ export {
 	runObservationLogObserver,
 } from './runtime/observation-log-observer';
 export {
+	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
 	runObservationLogReflector,
@@ -170,10 +147,12 @@ export {
 	buildObservationLogObserverPrompt,
 	createObservationLogReflectFn,
 	createObservationLogObserveFn,
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 } from './runtime/observation-log-defaults';
 export type {
