@@ -36,6 +36,7 @@ export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';
 export * from './schemas';
+export * from './serialization';
 export * from './run-execution-data/run-execution-data';
 export { WorkflowExpression } from './workflow-expression';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };

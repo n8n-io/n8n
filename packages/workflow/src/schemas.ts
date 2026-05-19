@@ -467,7 +467,7 @@ export const INodeCredentialsSchema: z.ZodType<INodeCredentials> = z.record(
 	INodeCredentialsDetailsSchema,
 );
 
-export const INodeSchema: z.ZodType<INode> = z.object({
+export const INodeSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	typeVersion: z.number(),
@@ -494,6 +494,6 @@ export const INodeSchema: z.ZodType<INode> = z.object({
 			operation: z.string(),
 		})
 		.optional(),
-});
+}) satisfies z.ZodType<INode>;
 
 export const INodesSchema: z.ZodType<INode[]> = z.array(INodeSchema);
