@@ -50,17 +50,46 @@ describe('buildFromJson()', () => {
 			agent as {
 				memoryConfig?: {
 					lastMessages: number;
-					workingMemory?: {
-						template: string;
-						structured: boolean;
-						scope: 'resource' | 'thread';
-						instruction?: string;
+					observationLog?: {
+						renderTokenBudget?: number;
+					};
+					observationalMemory?: {
+						observerThresholdTokens?: number;
+						reflectorThresholdTokens?: number;
+						observationLogTailLimit?: number;
+						lockTtlMs?: number;
+						observe?: unknown;
+						reflect?: unknown;
 					};
 				};
 			}
 		).memoryConfig;
 
 	const makeMockMemoryFactory = () => jest.fn();
+
+	const makeMockMemoryBackend = () => ({
+		getThread: jest.fn(),
+		saveThread: jest.fn(),
+		deleteThread: jest.fn(),
+		getMessages: jest.fn().mockResolvedValue([]),
+		saveMessages: jest.fn(),
+		deleteMessages: jest.fn(),
+		appendObservationLogEntries: jest.fn(),
+		getActiveObservationLog: jest.fn(),
+		getObservationLog: jest.fn(),
+		dropObservationLogEntries: jest.fn(),
+		supersedeObservationLogEntries: jest.fn(),
+		applyObservationLogReflection: jest.fn(),
+		getMessagesForScope: jest.fn(),
+		getCursor: jest.fn(),
+		setCursor: jest.fn(),
+		acquireObservationLogTaskLock: jest.fn(),
+		releaseObservationLogTaskLock: jest.fn(),
+		describe: jest
+			.fn()
+			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
+		close: jest.fn(),
+	});
 
 	it('sets name, model, and instructions', async () => {
 		const agent = await buildFromJson(
@@ -418,21 +447,20 @@ describe('buildFromJson()', () => {
 	});
 
 	it('configures memory when enabled', async () => {
-		const mockMemory = {
-			getThread: jest.fn(),
-			saveThread: jest.fn(),
-			deleteThread: jest.fn(),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn(),
-			deleteMessages: jest.fn(),
-			describe: jest
-				.fn()
-				.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
-			close: jest.fn(),
-		};
-
+		const mockMemory = makeMockMemoryBackend();
 		const config = makeConfig({
-			memory: { enabled: true, storage: 'n8n', lastMessages: 15 },
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				lastMessages: 15,
+				observationalMemory: {
+					observerThresholdTokens: 4_000,
+					reflectorThresholdTokens: 12_000,
+					renderTokenBudget: 4_000,
+					observationLogTailLimit: 10,
+					lockTtlMs: 5_000,
+				},
+			},
 		});
 
 		const memoryFactory = jest.fn().mockReturnValue(mockMemory);
@@ -450,26 +478,56 @@ describe('buildFromJson()', () => {
 		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
 		expect(agent.snapshot.hasMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.lastMessages).toBe(15);
-		expect(getMemoryConfig(agent)?.workingMemory).toMatchObject({
-			structured: false,
-			scope: 'thread',
+		expect(getMemoryConfig(agent)?.observationLog).toEqual({ renderTokenBudget: 4_000 });
+		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
+			observerThresholdTokens: 4_000,
+			reflectorThresholdTokens: 12_000,
+			observationLogTailLimit: 10,
+			lockTtlMs: 5_000,
 		});
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Thread memory');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Current goal/task');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Key active items');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Resolved or superseded');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
-			'only to this same session/thread',
+		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
+		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
+	});
+
+	it('enables observational memory by default when memory is enabled', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n' },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
 		);
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('different session');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('new thread');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('cross-thread profile');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
-			'Treat working memory as internal context',
+
+		expect(agent.snapshot.hasObservationalMemory).toBe(true);
+		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
+		expect(getMemoryConfig(agent)?.observationLog).toEqual({});
+	});
+
+	it('can disable observational memory while keeping message memory', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n', observationalMemory: { enabled: false } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
 		);
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
-			'update_working_memory',
-		);
+
+		expect(agent.snapshot.hasMemory).toBe(true);
+		expect(agent.snapshot.hasObservationalMemory).toBe(false);
+		expect(getMemoryConfig(agent)?.observationLog).toBeUndefined();
+		expect(getMemoryConfig(agent)?.observationalMemory).toBeUndefined();
 	});
 
 	it('skips memory when memory.enabled is false', async () => {

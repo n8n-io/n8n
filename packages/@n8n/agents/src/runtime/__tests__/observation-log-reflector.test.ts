@@ -1,3 +1,4 @@
+import type { ObservationLogEntry } from '../../types/sdk/observation-log';
 import { InMemoryMemory } from '../memory-store';
 import {
 	buildObservationLogReflectorPrompt,
@@ -5,16 +6,34 @@ import {
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 } from '../observation-log-defaults';
 import {
+	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
 	runObservationLogReflector,
 } from '../observation-log-reflector';
 
+function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntry {
+	return {
+		id: overrides.id ?? crypto.randomUUID(),
+		scopeKind: overrides.scopeKind ?? 'thread',
+		scopeId: overrides.scopeId ?? 'thread-1',
+		marker: overrides.marker ?? 'important',
+		text: overrides.text ?? 'Observation',
+		parentId: overrides.parentId ?? null,
+		tokenCount: overrides.tokenCount ?? 1,
+		status: overrides.status ?? 'active',
+		supersededBy: overrides.supersededBy ?? null,
+		createdAt: overrides.createdAt ?? new Date('2026-05-12T14:30:00.000Z'),
+	};
+}
+
 describe('observation-log reflector defaults', () => {
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(24_000);
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(4_000);
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('🔴 Critical');
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain(
+			'CRITICAL. Facts, decisions, identities, commitments',
+		);
 	});
 
 	it('builds the default reflector prompt from active log and token budget', () => {
@@ -24,28 +43,28 @@ describe('observation-log reflector defaults', () => {
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			activeObservationLog: [],
 			renderedObservationLog:
-				'* [obs-1] 🔴 2026-05-12T14:30:00.000Z User chose observation-log memory.',
+				'* [obs-1] CRITICAL 2026-05-12T14:30:00.000Z User chose observation-log memory.',
 			tokenCount: 42,
-			tokenBudget: 24_000,
+			tokenBudget: 8_000,
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T15:00:00.000Z');
 		expect(prompt).toContain('Scope: thread:thread-1');
 		expect(prompt).toContain('Active observation log tokens: 42');
-		expect(prompt).toContain('Token budget: 24000');
-		expect(prompt).toContain('[obs-1] 🔴');
+		expect(prompt).toContain('Token budget: 8000');
+		expect(prompt).toContain('[obs-1] CRITICAL');
 	});
 });
 
 describe('parseObservationLogReflectionJson', () => {
-	it('parses reflector JSON with marker symbols into storage markers', () => {
+	it('parses reflector JSON with marker labels into storage markers', () => {
 		const reflection = parseObservationLogReflectionJson(
 			[
 				'```json',
 				'{',
 				'  "drop": ["obs-1"],',
 				'  "merge": [',
-				'    { "supersedes": ["obs-2", "obs-3"], "marker": "🟡", "text": "Merged plan detail" }',
+				'    { "supersedes": ["obs-2", "obs-3"], "marker": "IMPORTANT", "text": "Merged plan detail" }',
 				'  ]',
 				'}',
 				'```',
@@ -94,8 +113,8 @@ describe('renderObservationLogForReflection', () => {
 			},
 		]);
 
-		expect(rendered).toContain('* [parent] 🔴 2026-05-12T14:30:00.000Z User chose');
-		expect(rendered).toContain('  * [child] ✅ 2026-05-12T14:31:00.000Z Plan 7');
+		expect(rendered).toContain('* [parent] CRITICAL 2026-05-12T14:30:00.000Z User chose');
+		expect(rendered).toContain('  * [child] COMPLETION 2026-05-12T14:31:00.000Z Plan 7');
 	});
 
 	it('renders active orphan children as top-level observations', () => {
@@ -114,7 +133,84 @@ describe('renderObservationLogForReflection', () => {
 			},
 		]);
 
-		expect(rendered).toContain('* [orphan] 🟡 2026-05-12T14:32:00.000Z Orphaned active');
+		expect(rendered).toContain('* [orphan] IMPORTANT 2026-05-12T14:32:00.000Z Orphaned active');
+	});
+});
+
+describe('normalizeObservationLogReflection', () => {
+	it('ignores child-only removal while the parent remains active', () => {
+		const parent = observation({ id: 'parent' });
+		const child = observation({ id: 'child', parentId: parent.id, marker: 'completion' });
+
+		expect(
+			normalizeObservationLogReflection([parent, child], {
+				drop: [child.id],
+				merge: [
+					{
+						supersedes: [child.id],
+						marker: 'important',
+						text: 'Child-only replacement',
+					},
+				],
+			}),
+		).toEqual({ drop: [], merge: [] });
+	});
+
+	it('expands parent drops to active descendants and lets merge win conflicting drops', () => {
+		const parent = observation({ id: 'parent' });
+		const child = observation({ id: 'child', parentId: parent.id, marker: 'completion' });
+		const merged = observation({ id: 'merged' });
+
+		expect(
+			normalizeObservationLogReflection([parent, child, merged], {
+				drop: [parent.id, merged.id],
+				merge: [
+					{
+						supersedes: [merged.id],
+						marker: 'important',
+						text: 'Merged replacement',
+					},
+				],
+			}),
+		).toEqual({
+			drop: [parent.id, child.id],
+			merge: [
+				{
+					supersedes: [merged.id],
+					marker: 'important',
+					text: 'Merged replacement',
+				},
+			],
+		});
+	});
+
+	it('expands parent merges to active descendants and clears inactive replacement parents', () => {
+		const parent = observation({ id: 'parent' });
+		const child = observation({ id: 'child', parentId: parent.id, marker: 'completion' });
+
+		expect(
+			normalizeObservationLogReflection([parent, child], {
+				drop: [],
+				merge: [
+					{
+						supersedes: [parent.id],
+						marker: 'important',
+						text: 'Merged parent and child',
+						parentId: parent.id,
+					},
+				],
+			}),
+		).toEqual({
+			drop: [],
+			merge: [
+				{
+					supersedes: [parent.id, child.id],
+					marker: 'important',
+					text: 'Merged parent and child',
+					parentId: null,
+				},
+			],
+		});
 	});
 });
 
@@ -177,14 +273,14 @@ describe('runObservationLogReflector', () => {
 			reflectorThresholdTokens: 10,
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			reflect: async (input) => {
-				expect(input.renderedObservationLog).toContain(`[${stale.id}] 🟢`);
+				expect(input.renderedObservationLog).toContain(`[${stale.id}] INFO`);
 				return await Promise.resolve(
 					JSON.stringify({
 						drop: [stale.id],
 						merge: [
 							{
 								supersedes: [oldA.id, oldB.id],
-								marker: '🟡',
+								marker: 'IMPORTANT',
 								text: 'User compared old plan A and old plan B.',
 							},
 						],
