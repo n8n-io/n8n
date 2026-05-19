@@ -17,6 +17,10 @@ describe('generateSlug', () => {
 		expect(generateSlug('🤷‍♂️', 'shortid12')).toBe('shorti');
 	});
 
+	it("strips unknown emoji's", () => {
+		expect(generateSlug('my-workflow 🤷‍♂️', 'shortid12')).toBe('my-workflow-shorti');
+	});
+
 	it('truncates the id to 6 characters', () => {
 		expect(generateSlug('x', 'this-is-a-long-id')).toBe('x-this-i');
 	});
