@@ -22,16 +22,6 @@ export function createObservationLogThreadScopePrefix(threadId: string): string 
 	return `${OBSERVATION_LOG_THREAD_SCOPE_PREFIX}:${encodeURIComponent(threadId)}:resource:`;
 }
 
-const OBSERVATION_LOG_THREAD_SCOPE_PREFIX = 'thread';
-
-export function createObservationLogThreadScopeId(threadId: string, resourceId: string): string {
-	return `${OBSERVATION_LOG_THREAD_SCOPE_PREFIX}:${encodeURIComponent(threadId)}:resource:${encodeURIComponent(resourceId)}`;
-}
-
-export function createObservationLogThreadScopePrefix(threadId: string): string {
-	return `${OBSERVATION_LOG_THREAD_SCOPE_PREFIX}:${encodeURIComponent(threadId)}:resource:`;
-}
-
 export interface ObservationLogScope {
 	scopeKind: ObservationLogScopeKind;
 	scopeId: string;

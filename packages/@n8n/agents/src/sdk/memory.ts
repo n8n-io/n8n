@@ -7,7 +7,8 @@ import {
 	createEpisodicMemoryReflectFn,
 } from '../runtime/episodic-memory-defaults';
 import { InMemoryMemory } from '../runtime/memory-store';
-import { createEmbeddingModel } from '../runtime/model-factory';import {
+import { createEmbeddingModel } from '../runtime/model-factory';
+import {
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
 	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
@@ -36,6 +37,75 @@ export interface ResolveObservationalMemoryConfigOptions {
 }
 
 export type ResolveMemoryConfigDefaultsOptions = ResolveObservationalMemoryConfigOptions;
+
+export function resolveObservationalMemoryConfig(
+	config: ObservationalMemoryConfig,
+	options: ResolveObservationalMemoryConfigOptions,
+): ObservationalMemoryConfig {
+	const observerModel = options.defaultModel;
+	const reflectorModel = options.defaultModel;
+
+	return {
+		observerThresholdTokens:
+			config.observerThresholdTokens ?? DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+		reflectorThresholdTokens:
+			config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+		renderTokenBudget: config.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+		observationLogTailLimit: config.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		observe: config.observe ?? createObservationLogObserveFn(observerModel),
+		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
+	};
+}
+
+export function resolveEpisodicMemoryConfig(
+	config: EpisodicMemoryConfig,
+	options: ResolveMemoryConfigDefaultsOptions,
+): EpisodicMemoryConfig {
+	const embeddingModel = config.embeddingModel ?? DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const extractorModel = options.defaultModel;
+	const reflectorModel = options.defaultModel;
+
+	return {
+		enabled: config.enabled,
+		topK: config.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K,
+		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+		embedder:
+			config.embedder ?? createEmbeddingModel(embeddingModel, config.embeddingProviderOptions),
+		embeddingModel,
+		extract:
+			config.extract ??
+			createEpisodicMemoryExtractFn(extractorModel, {
+				extractionPrompt: config.prompts?.extraction,
+			}),
+		reflect:
+			config.reflect ??
+			createEpisodicMemoryReflectFn(reflectorModel, {
+				reflectionPrompt: config.prompts?.reflection,
+			}),
+		prompts: config.prompts,
+	};
+}
+
+export function resolveMemoryConfigDefaults(
+	config: MemoryConfig,
+	options: ResolveMemoryConfigDefaultsOptions,
+): MemoryConfig {
+	const episodicMemory = isEpisodicMemoryEnabled(config.episodicMemory)
+		? resolveEpisodicMemoryConfig(config.episodicMemory, options)
+		: config.episodicMemory;
+
+	if (!config.observationalMemory) {
+		return normalizeMemoryConfig({
+			...config,
+			episodicMemory,
+		});
+	}
+
+	if (!hasObservationLogStore(config.memory)) {
+		throw new Error(
+			"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
+		);
 	}
 
 	const observationalMemoryConfig =
@@ -52,7 +122,8 @@ export type ResolveMemoryConfigDefaultsOptions = ResolveObservationalMemoryConfi
 		...config,
 		memory: config.memory,
 		observationalMemory,
-		episodicMemory,	});
+		episodicMemory,
+	});
 }
 
 export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
@@ -96,6 +167,55 @@ export class Memory {
 	private semanticRecallConfig?: SemanticRecallConfig;
 
 	private episodicMemoryConfig?: EpisodicMemoryConfig;
+
+	private memoryBackend?: BuiltMemory;
+
+	private titleGenerationConfig?: TitleGenerationConfig;
+
+	private observationalMemoryConfig?: ObservationalMemoryConfig;
+
+	/** The configured number of recent messages to include. */
+	get lastMessageCount(): number {
+		return this.lastMessagesValue;
+	}
+
+	/**
+	 * Set the storage backend for conversation history.
+	 *
+	 * - `'memory'` — in-process memory (default, lost on restart)
+	 * - A `BuiltMemory` instance — for a persistent backend (e.g. cli's `N8nMemory`)
+	 */
+	storage(backend: 'memory' | BuiltMemory): this {
+		if (backend === 'memory') {
+			this.memoryBackend = undefined;
+		} else {
+			this.memoryBackend = backend;
+		}
+		return this;
+	}
+
+	/** Set the number of recent messages to include in context. */
+	lastMessages(count: number): this {
+		this.lastMessagesValue = count;
+		return this;
+	}
+
+	/** Enable semantic recall (RAG-based retrieval of relevant past messages). */
+	semanticRecall(config: SemanticRecallConfig): this {
+		this.semanticRecallConfig = config;
+		return this;
+	}
+
+	/** Enable source-backed cross-session episodic memory. */
+	episodicMemory(config: EpisodicMemoryConfig = {}): this {
+		if (config.enabled === false) {
+			this.episodicMemoryConfig = undefined;
+		} else {
+			this.episodicMemoryConfig = config;
+		}
+		return this;
+	}
+
 	/**
 	 * Enable automatic title generation for new threads.
 	 *

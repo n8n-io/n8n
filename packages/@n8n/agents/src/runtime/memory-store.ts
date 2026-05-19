@@ -25,7 +25,8 @@ import type {
 	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
 	Thread,
-} from '../types';import type { AgentDbMessage } from '../types/sdk/message';
+} from '../types';
+import type { AgentDbMessage } from '../types/sdk/message';
 import type { ObservationCursor } from '../types/sdk/observation';
 import {
 	createObservationLogThreadScopePrefix,
@@ -88,7 +89,8 @@ export class InMemoryMemory
 		BuiltMemory,
 		BuiltObservationLogStore,
 		BuiltObservationLogTaskLockStore,
-		BuiltEpisodicMemoryStore{
+		BuiltEpisodicMemoryStore
+{
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
@@ -103,7 +105,76 @@ export class InMemoryMemory
 
 	private episodicMemorySources: EpisodicMemoryEntrySource[] = [];
 
-	private episodicMemoryCursorsByScope = new Map<string, EpisodicMemoryCursor>();	}
+	private episodicMemoryCursorsByScope = new Map<string, EpisodicMemoryCursor>();
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async getThread(threadId: string): Promise<Thread | null> {
+		return this.threads.get(threadId) ?? null;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
+		const existing = this.threads.get(thread.id);
+		const now = new Date();
+		const saved: Thread = {
+			...thread,
+			title: thread.title ?? existing?.title,
+			metadata: thread.metadata ?? existing?.metadata,
+			createdAt: existing?.createdAt ?? now,
+			updatedAt: now,
+		};
+		this.threads.set(thread.id, saved);
+		return saved;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async deleteThread(threadId: string): Promise<void> {
+		this.threads.delete(threadId);
+		this.messagesByThread.delete(threadId);
+		const legacyKey = scopeKey('thread', threadId);
+		const resourceScopePrefix = scopeKey('thread', createObservationLogThreadScopePrefix(threadId));
+		for (const key of this.observationLogByScope.keys()) {
+			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
+				this.observationLogByScope.delete(key);
+			}
+		}
+		for (const key of this.cursorsByScope.keys()) {
+			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
+				this.cursorsByScope.delete(key);
+			}
+		}
+		for (const key of this.locksByScope.keys()) {
+			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
+				this.locksByScope.delete(key);
+			}
+		}
+		const affectedEntryIds = uniqueStrings(
+			this.episodicMemorySources
+				.filter((source) => source.threadId === threadId)
+				.map((source) => source.memoryEntryId),
+		);
+		this.episodicMemorySources = this.episodicMemorySources.filter(
+			(source) => source.threadId !== threadId,
+		);
+		if (affectedEntryIds.length > 0) {
+			const entriesWithSources = new Set(
+				this.episodicMemorySources.map((source) => source.memoryEntryId),
+			);
+			for (const memoryEntry of this.episodicMemory) {
+				const hasLostLastSource =
+					affectedEntryIds.includes(memoryEntry.id) && !entriesWithSources.has(memoryEntry.id);
+				if (hasLostLastSource) {
+					markLifecycleDropped(memoryEntry);
+					memoryEntry.updatedAt = new Date();
+				}
+			}
+		}
+		for (const key of this.episodicMemoryCursorsByScope.keys()) {
+			if (key === legacyKey || key.startsWith(resourceScopePrefix)) {
+				this.episodicMemoryCursorsByScope.delete(key);
+			}
+		}
+	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getMessages(

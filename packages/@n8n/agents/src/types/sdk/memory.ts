@@ -1,4 +1,13 @@
 import type { EmbeddingModel } from 'ai';
+
+import type { ModelConfig, SerializableAgentState } from './agent';
+import type { AgentDbMessage } from './message';
+import type {
+	BuiltObservationLogStore,
+	ObservationLogEntry,
+	ObservationLogObserveFn,
+	ObservationLogReflectFn,
+	ObservationLogScope,
 } from './observation-log';
 import type { JSONObject } from '../utils/json';
 
