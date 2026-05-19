@@ -4,11 +4,13 @@ import type { RuleSettingsMap } from '@n8n/rules-engine';
 import type { CodeHealthContext } from './context.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
+import { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
+export { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 export { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 const defaultRuleSettings: RuleSettingsMap = {
@@ -26,6 +28,11 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: true,
 		severity: 'error',
 		options: {},
+	},
+	'stale-overrides': {
+		enabled: true,
+		severity: 'warning',
+		options: { workspaceFile: 'pnpm-workspace.yaml', lockFile: 'pnpm-lock.yaml' },
 	},
 };
 
@@ -47,6 +54,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new CatalogViolationsRule());
 	runner.registerRule(new WorkflowPrTargetSafetyRule());
 	runner.registerRule(new MigrationTimestampRule());
+	runner.registerRule(new StaleOverridesRule());
 	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
 	return runner;
 }

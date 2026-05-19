@@ -25,6 +25,7 @@ catalog:
   '@codemirror/search': 6.5.11
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
+  '@daytonaio/sdk': 0.175.0
   '@langchain/anthropic': 1.3.27
   '@langchain/community': 1.1.27
   '@langchain/core': 1.1.41
@@ -36,13 +37,6 @@ catalog:
   '@lezer/html': 1.3.13
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
-  '@mastra/core': 1.17.0
-  '@mastra/daytona': 0.2.0
-  '@mastra/evals': 1.1.2
-  '@mastra/libsql': 1.7.2
-  '@mastra/mcp': 1.3.1
-  '@mastra/memory': 1.10.0
-  '@mastra/pg': 1.8.3
   '@n8n/typeorm': 0.3.20-17
   '@n8n_io/ai-assistant-sdk': 1.21.0
   '@openrouter/ai-sdk-provider': ^2.8.0
@@ -79,13 +73,14 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
+  isolated-vm: ^6.1.2
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
   jsonrepair: 3.13.2
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
   langchain: 1.2.30
-  langsmith: 0.5.19
+  langsmith: 0.6.0
   lodash: 4.18.1
   luxon: 3.7.2
   mime-types: 3.0.2
@@ -113,7 +108,7 @@ catalog:
   vite-plugin-dts: ^4.5.4
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
-  vm2: 3.11.2
+  vm2: 3.11.3
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3

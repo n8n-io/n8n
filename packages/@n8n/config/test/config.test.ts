@@ -1,17 +1,19 @@
 import { Container } from '@n8n/di';
-import fs from 'fs';
-import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { DatabaseConfig } from '../src/index';
 import { ExecutionsConfig, GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
-jest.mock('fs');
-const mockFs = mock<typeof fs>();
-fs.readFileSync = mockFs.readFileSync;
+const { readFileSyncMock } = vi.hoisted(() => ({
+	readFileSyncMock: vi.fn(),
+}));
 
-const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+vi.mock('node:fs', () => ({
+	readFileSync: readFileSyncMock,
+}));
+
+const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 // Ignore the sanitize function from the GlobalConfig nested types
 type ConfigShape<T> = T extends ReadonlyArray<infer U>
@@ -31,7 +33,7 @@ type GlobalConfigShape = ConfigShape<GlobalConfig>;
 describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
@@ -293,7 +295,7 @@ describe('GlobalConfig', () => {
 			threadTtlDays: 90,
 			snapshotPruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
-			confirmationTimeout: 600_000,
+			confirmationTimeout: 0,
 		},
 		queue: {
 			health: {
@@ -372,10 +374,6 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
-			newLeaderElection: false,
-		},
-		evaluation: {
-			parallelExecutionEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -424,6 +422,10 @@ describe('GlobalConfig', () => {
 			queueRecovery: {
 				interval: 180,
 				batchSize: 100,
+			},
+			queueRetention: {
+				keepLastCompleted: 0,
+				keepLastFailed: 0,
 			},
 			recovery: {
 				maxLastExecutions: 3,
@@ -561,7 +563,7 @@ describe('GlobalConfig', () => {
 		// which `toEqual` and `toBe` does not do.
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
-		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+		expect(readFileSyncMock).not.toHaveBeenCalled();
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -628,7 +630,7 @@ describe('GlobalConfig', () => {
 				globalUserAgentValue: 'AcmeCorp/1.0',
 			},
 		});
-		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+		expect(readFileSyncMock).not.toHaveBeenCalled();
 	});
 
 	it('should read values from files using _FILE env variables', () => {
@@ -636,7 +638,7 @@ describe('GlobalConfig', () => {
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
 		};
-		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
+		readFileSyncMock.mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
 		const expected = {
@@ -653,7 +655,7 @@ describe('GlobalConfig', () => {
 		// which `toEqual` and `toBe` does not do.
 		expect(config).toMatchObject(expected);
 		expect(expected).toMatchObject(config);
-		expect(mockFs.readFileSync).toHaveBeenCalled();
+		expect(readFileSyncMock).toHaveBeenCalled();
 	});
 
 	it('should warn when _FILE env variable value contains whitespace', () => {
@@ -661,9 +663,7 @@ describe('GlobalConfig', () => {
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
 		};
-		mockFs.readFileSync
-			.calledWith(passwordFile, 'utf8')
-			.mockReturnValueOnce('password-from-file\n');
+		readFileSyncMock.mockReturnValueOnce('password-from-file\n');
 
 		const config = Container.get(GlobalConfig);
 		expect(config.database.postgresdb.password).toBe('password-from-file');

@@ -186,6 +186,8 @@ describe('NodeCredentials', () => {
 		renderComponent = createComponentRenderer(NodeCredentials, defaultRenderOptions);
 
 		credentialsStore = mockedStore(useCredentialsStore);
+		// Component triggers this on mount; avoid a real XHR with stubActions: false.
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
 		ndvStore = mockedStore(useNDVStore);
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
@@ -218,6 +220,15 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+	});
+
+	it('should refresh credentials from the server when mounted on an existing node', () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent();
+
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
 	});
 
 	it('should ignore managed credentials in the dropdown if active node is the HTTP node', async () => {
