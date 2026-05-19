@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import { createToolRegistry } from '../../../tool-registry';
 import type { InstanceAiContext, OrchestrationContext } from '../../../types';
-import { buildEvalSetupTools } from '../eval-setup-agent.tool';
+import { buildEvalSetupTools, startEvalSetupAgentTask } from '../eval-setup-agent.tool';
 
 const sentinelNodesTool: BuiltTool = { name: 'nodes', description: 'nodes-sentinel' };
 const sentinelOriginalWorkflows: BuiltTool = {
@@ -29,38 +29,100 @@ function makeContext(
 		['nodes', sentinelNodesTool],
 	]);
 	ctx.domainContext = domainContext;
+	ctx.threadId = 'thread-1';
+	ctx.runId = 'run-1';
+	ctx.orchestratorAgentId = 'root-agent';
+	ctx.modelId = 'test-model' as OrchestrationContext['modelId'];
+	ctx.eventBus = { publish: jest.fn() } as unknown as OrchestrationContext['eventBus'];
+	ctx.tracing = undefined;
 	return ctx;
 }
 
+function getInputSchema(tool: BuiltTool | undefined): {
+	safeParse: (input: unknown) => { success: boolean };
+} {
+	return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
+		.inputSchema;
+}
+
 describe('buildEvalSetupTools', () => {
-	it('overrides update-gated workflow actions so they do not prompt when parent permission is require_approval', async () => {
+	it('allows saving workflow JSON without prompting when parent permission is require_approval', async () => {
 		const ctx = makeContext('require_approval');
 		const tools = buildEvalSetupTools(ctx);
 		const suspend = jest.fn();
 		const workflows = tools.get('workflows');
+		const workflow = { name: 'Eval setup', nodes: [], connections: {} };
 
 		const result = (await workflows?.handler!(
 			{
-				action: 'update-version',
+				action: 'update',
 				workflowId: 'w1',
-				versionId: 'v1',
-				name: 'Eval setup',
+				workflow,
 			},
 			{ suspend, resumeData: undefined } as never,
 		)) as Record<string, unknown>;
 
 		expect(suspend).not.toHaveBeenCalled();
-		expect(ctx.domainContext!.workflowService.updateVersion).toHaveBeenCalledWith(
+		expect(ctx.domainContext!.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'w1',
-			'v1',
-			expect.objectContaining({ name: 'Eval setup' }),
+			workflow,
 		);
-		expect(result).toMatchObject({ success: true });
+		expect(result).toMatchObject({ success: true, workflowId: 'w1' });
+	});
+
+	it('exposes only the workflow actions the eval setup agent needs', () => {
+		const ctx = makeContext('require_approval');
+		const tools = buildEvalSetupTools(ctx);
+		const schema = getInputSchema(tools.get('workflows'));
+
+		expect(schema.safeParse({ action: 'get', workflowId: 'w1' }).success).toBe(true);
+		expect(
+			schema.safeParse({
+				action: 'update',
+				workflowId: 'w1',
+				workflow: { name: 'Eval setup', nodes: [], connections: {} },
+			}).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({
+				action: 'update-version',
+				workflowId: 'w1',
+				versionId: 'v1',
+				name: 'Eval setup',
+			}).success,
+		).toBe(false);
 	});
 
 	it('leaves the original workflows tool in place when admin has blocked updates', () => {
 		const ctx = makeContext('blocked');
 		const tools = buildEvalSetupTools(ctx);
 		expect(tools.get('workflows')).toBe(sentinelOriginalWorkflows);
+	});
+});
+
+describe('startEvalSetupAgentTask', () => {
+	it('deduplicates eval setup background tasks by workflow id', () => {
+		const ctx = makeContext('require_approval');
+		ctx.spawnBackgroundTask = jest.fn().mockReturnValue({
+			status: 'started',
+			taskId: 'task-1',
+			agentId: 'agent-1',
+		});
+
+		startEvalSetupAgentTask(ctx, {
+			workflowId: 'w1',
+			task: 'Set up evals',
+			plannedTaskId: 'planned-1',
+		});
+
+		expect(ctx.spawnBackgroundTask).toHaveBeenCalledWith(
+			expect.objectContaining({
+				dedupeKey: {
+					role: 'eval-setup',
+					workflowId: 'w1',
+					plannedTaskId: 'planned-1',
+				},
+			}),
+		);
 	});
 });

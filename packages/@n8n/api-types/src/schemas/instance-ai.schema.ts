@@ -745,6 +745,7 @@ export interface InstanceAiToolCallState {
 		| 'data-table'
 		| 'researcher'
 		| 'planner'
+		| 'eval-setup'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -1063,6 +1064,7 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
+	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	return 'default';
 }
 

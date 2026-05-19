@@ -28,9 +28,10 @@ import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/co
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
-import { createWorkflowsTool } from '../workflows.tool';
+import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
+const EVAL_SETUP_WORKFLOW_ACTIONS = ['get', 'update'] as const satisfies readonly WorkflowAction[];
 
 /**
  * Build the eval-setup sub-agent's tool set.
@@ -60,10 +61,13 @@ export function buildEvalSetupTools(context: OrchestrationContext): InstanceAiTo
 	) {
 		tools.set(
 			'workflows',
-			createWorkflowsTool({
-				...domainContext,
-				permissions: { ...parentPermissions, updateWorkflow: 'always_allow' },
-			}),
+			createWorkflowsTool(
+				{
+					...domainContext,
+					permissions: { ...parentPermissions, updateWorkflow: 'always_allow' },
+				},
+				{ allowedActions: EVAL_SETUP_WORKFLOW_ACTIONS },
+			),
 		);
 	}
 	return tools;
@@ -120,7 +124,11 @@ export function startEvalSetupAgentTask(
 		role: 'eval-setup',
 		createTraceContext,
 		plannedTaskId: input.plannedTaskId,
-		dedupeKey: { role: 'eval-setup', plannedTaskId: input.plannedTaskId },
+		dedupeKey: {
+			role: 'eval-setup',
+			workflowId: input.workflowId,
+			plannedTaskId: input.plannedTaskId,
+		},
 		parentCheckpointId:
 			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, drainCorrections, waitForCorrection, { traceContext }) => {
