@@ -544,6 +544,7 @@ overrides:
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   langsmith: 0.6.0
+  timeago.js: 4.0.2
 
 patchedDependencies:
   '@lezer/highlight':
@@ -4238,7 +4239,7 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       timeago.js:
-        specifier: ^4.0.2
+        specifier: 4.0.2
         version: 4.0.2
       typescript:
         specifier: 6.0.2
