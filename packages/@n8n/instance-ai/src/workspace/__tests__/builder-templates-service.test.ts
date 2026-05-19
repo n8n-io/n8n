@@ -61,7 +61,7 @@ interface MockState {
 }
 
 function installMockFetch(state: MockState): jest.Mock {
-	const mock = jest.fn(async (input: RequestInfo | URL) => {
+	const mock = jest.fn(async (input: string | URL | Request) => {
 		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 		if (url.endsWith('/manifest.json')) {
 			state.calls.manifest++;
