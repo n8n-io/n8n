@@ -82,7 +82,6 @@ import {
 } from '../workflow-analysis';
 import { createLlmMockHandler } from '../mock-handler';
 import type { MockHints } from '../workflow-analysis';
-import { UserError } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -297,24 +296,6 @@ describe('EvalExecutionService', () => {
 			expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(expect.anything(), []);
 		});
 
-		it('forwards unpinNodes to assertUnpinCompatibility', async () => {
-			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
-
-			expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				['Agent'],
-			);
-		});
-
-		it('forwards an exclusion set to identifyNodesForPinData when unpinNodes is non-empty', async () => {
-			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
-
-			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				new Set(['Agent']),
-			);
-		});
-
 		it('omits the exclusion set when unpinNodes is empty', async () => {
 			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: [] });
 
@@ -324,29 +305,37 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
-		it('returns an error result and skips workflow execution when the guard refuses', async () => {
-			assertUnpinCompatibilityMock.mockImplementation(() => {
-				throw new UserError('Cannot unpin "Agent" — incompatible memory backend');
+		// Safety gate: this PR ships the surface only. Non-empty `unpinNodes`
+		// must not run until TRUST-113 wires the credential rewrite + wire
+		// server, or the workflow would hit real provider APIs.
+		describe('safety gate (no rewriter wired)', () => {
+			it('returns an error result for non-empty unpinNodes without invoking the workflow', async () => {
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('not yet enabled')]);
+				expect(assertUnpinCompatibilityMock).not.toHaveBeenCalled();
+				expect(generateMockHintsMock).not.toHaveBeenCalled();
+				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
 			});
 
-			const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-				unpinNodes: ['Agent'],
+			it('refuses regardless of how many roots are requested', async () => {
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['A', 'B', 'C'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toContain('unpinNodes');
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.errors).toEqual([expect.stringContaining('Cannot unpin "Agent"')]);
-			expect(generateMockHintsMock).not.toHaveBeenCalled();
-			expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
-		});
+			it('still runs the workflow when unpinNodes is omitted', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser());
 
-		it('rethrows non-UserError failures from the guard', async () => {
-			assertUnpinCompatibilityMock.mockImplementation(() => {
-				throw new Error('boom');
+				expect(generateMockHintsMock).toHaveBeenCalled();
+				expect(mockProcessRunExecutionData).toHaveBeenCalled();
 			});
-
-			await expect(
-				service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] }),
-			).rejects.toThrow('boom');
 		});
 	});
 

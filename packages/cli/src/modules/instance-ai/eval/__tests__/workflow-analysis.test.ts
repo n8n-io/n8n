@@ -270,6 +270,7 @@ describe('assertUnpinCompatibility', () => {
 		'@n8n/n8n-nodes-langchain.vectorStorePGVector',
 		'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
 		'@n8n/n8n-nodes-langchain.vectorStoreRedis',
+		'@n8n/n8n-nodes-langchain.vectorStoreMilvus',
 		'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
 	])('refuses unpinning an Agent backed by protocol-binary vector store %s', (vectorStoreType) => {
 		const nodes = [

@@ -94,6 +94,21 @@ export class EvalExecutionService {
 		}
 
 		const unpinNodes = options.unpinNodes ?? [];
+
+		// Safety gate: this PR ships only the API surface for `unpinNodes`. The
+		// credential rewrite + eval wire server that route vendor SDK traffic
+		// through localhost land in TRUST-113. Without them, unpinning would let
+		// AI sub-nodes execute their real SDK code against real credentials,
+		// leaking traffic to the actual provider. Refuse the request until the
+		// rewrite path is wired up — TRUST-113 removes this gate.
+		if (unpinNodes.length > 0) {
+			return this.errorResult(
+				executionId,
+				'`unpinNodes` is reserved — vendor SDK interception is not yet enabled in this build. ' +
+					'Submit the request without `unpinNodes` to use the existing pinned path.',
+			);
+		}
+
 		try {
 			assertUnpinCompatibility(workflowEntity, unpinNodes);
 		} catch (error) {

@@ -115,6 +115,7 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.vectorStorePGVector',
 	'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
 	'@n8n/n8n-nodes-langchain.vectorStoreRedis',
+	'@n8n/n8n-nodes-langchain.vectorStoreMilvus',
 	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
 ]);
 
