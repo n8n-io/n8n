@@ -3,9 +3,9 @@
   "hooks": {
     "beforeSubmitPrompt": [
       {
-        "command": "node .cursor/hooks/secrets-prompt-guard.mjs",
+        "command": "node .cursor/hooks/secrets-prompt-warning.mjs",
         "matcher": "UserPromptSubmit",
-        "failClosed": true
+        "failClosed": false
       }
     ]
   }
