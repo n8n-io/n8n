@@ -4,6 +4,6 @@
 		"types": ["node", "jest"],
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*.ts", "evals/**/*.ts"],
 	"exclude": ["dist/**/*", "node_modules/**/*"]
 }
