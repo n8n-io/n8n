@@ -46,6 +46,7 @@ const emptyCredentialIds = {
 	deepSeek: null,
 	cohere: null,
 	mistralCloud: null,
+	nvidia: null,
 };
 
 describe('ChatHubModelsService', () => {

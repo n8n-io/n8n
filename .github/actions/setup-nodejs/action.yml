@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.14.1 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 24.15.0 by default for reproducible builds.'
     required: false
-    default: '24.14.1'
+    default: '24.15.0'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -54,8 +54,8 @@ runs:
 
     - name: Install Aikido SafeChain
       run: |
-        VERSION="1.5.1"
-        EXPECTED_SHA256="7c910fff717649c86cc8ca960e6c054d3734da2d660050e3bcfc54029e3b485b"
+        VERSION="1.5.3"
+        EXPECTED_SHA256="0107cbbbf90159379756157e902acae512d62ffbd174307e42c5fe9f266792d3"
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
@@ -69,11 +69,13 @@ runs:
         INSTALL_COMMAND: ${{ inputs.install-command }}
         SAFE_CHAIN_LOGGING: verbose
       run: |
-        $INSTALL_COMMAND
+        timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
       shell: bash
 
     - name: Configure Turborepo Cache
-      uses: rharkor/caching-for-turbo@0abc2381e688c4d2832f0665a68a01c6e82f0d6c # v2.3.11
+      uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+      with:
+        server-port: 0
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}

@@ -6,6 +6,7 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
@@ -126,6 +127,12 @@ export const AgentsModule: FrontendModuleDescription = {
 				{
 					name: AGENT_BUILDER_VIEW,
 					path: '',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
+					name: AGENT_PREVIEW_VIEW,
+					path: 'preview',
 					props: true,
 					component: AgentBuilderView,
 				},

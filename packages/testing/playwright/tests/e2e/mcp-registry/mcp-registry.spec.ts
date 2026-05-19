@@ -16,7 +16,8 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},
 	() => {
-		test('exposes Notion MCP as a tool with hidden connection fields', async ({ n8n }) => {
+		test('exposes Notion MCP as a tool with hidden connection fields', async ({ n8n, api }) => {
+			await api.seedMcpRegistry();
 			await n8n.start.fromBlankCanvas();
 
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });

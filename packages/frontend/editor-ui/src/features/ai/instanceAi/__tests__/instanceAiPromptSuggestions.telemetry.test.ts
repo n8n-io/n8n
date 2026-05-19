@@ -35,6 +35,80 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(shownSerializedPayload).not.toContain('"prompt_text":"');
 	});
 
+	test('tracks suggestion impressions with a caller-provided catalog version', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, new Set<string>());
+
+		helper.trackSuggestionsShown({
+			threadId: 'thread-v2',
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
+			thread_id: 'thread-v2',
+			suggestion_catalog_version: 'v2',
+			research_mode: false,
+		});
+	});
+
+	test('tracks suggestion impressions without a thread id for the empty state', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, new Set<string>());
+
+		helper.trackSuggestionsShown({
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
+			suggestion_catalog_version: 'v2',
+			research_mode: false,
+		});
+	});
+
+	test('dedupes suggestion impressions by thread and resolved catalog version', () => {
+		const shownKeys = new Set<string>();
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, shownKeys);
+
+		helper.trackSuggestionsShown({ threadId: 'thread-versioned', researchMode: false });
+		helper.trackSuggestionsShown({
+			threadId: 'thread-versioned',
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+		helper.trackSuggestionsShown({
+			threadId: 'thread-versioned',
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+
+		expect(track).toHaveBeenCalledTimes(2);
+		expect(track.mock.calls[0][1]).toEqual({
+			thread_id: 'thread-versioned',
+			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
+			research_mode: false,
+		});
+		expect(track.mock.calls[1][1]).toEqual({
+			thread_id: 'thread-versioned',
+			suggestion_catalog_version: 'v2',
+			research_mode: false,
+		});
+	});
+
+	test('dedupes empty-state suggestion impressions by catalog version', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, new Set<string>());
+
+		helper.trackSuggestionsShown({
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+		helper.trackSuggestionsShown({
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+		});
+
+		expect(track).toHaveBeenCalledTimes(1);
+	});
+
 	test('tracks quick example opens with suggestion metadata', () => {
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
 
@@ -85,5 +159,78 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const selectedSerializedPayload = JSON.stringify(selectedPayload);
 		expect(selectedSerializedPayload).not.toContain('"prompt":"');
 		expect(selectedSerializedPayload).not.toContain('"prompt_text":"');
+	});
+
+	test('tracks suggestion selections with a caller-provided catalog version', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
+
+		helper.trackSuggestionSelected({
+			threadId: 'thread-v2',
+			researchMode: true,
+			suggestionCatalogVersion: 'v2',
+			suggestionId: 'plan-workflow',
+			suggestionKind: 'prompt',
+			position: 2,
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
+			thread_id: 'thread-v2',
+			suggestion_catalog_version: 'v2',
+			research_mode: true,
+			suggestion_id: 'plan-workflow',
+			suggestion_kind: 'prompt',
+			position: 2,
+		});
+	});
+
+	test('tracks suggestion cycles with the visible suggestions and cycle count', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
+
+		helper.trackSuggestionsCycled({
+			researchMode: true,
+			suggestionCatalogVersion: 'v2',
+			visibleSuggestionIds: [
+				'analyze-exit-interviews',
+				'post-to-linkedin',
+				'customer-health-agent',
+				'automate-order-flow',
+			],
+			cycleCount: 1,
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions cycled', {
+			suggestion_catalog_version: 'v2',
+			research_mode: true,
+			visible_suggestion_ids: [
+				'analyze-exit-interviews',
+				'post-to-linkedin',
+				'customer-health-agent',
+				'automate-order-flow',
+			],
+			cycle_count: 1,
+		});
+		expect(track.mock.calls[0][1]).not.toHaveProperty('thread_id');
+	});
+
+	test('tracks submitted inserted suggestions with modified state', () => {
+		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
+
+		helper.trackSuggestionSubmitted({
+			researchMode: false,
+			suggestionCatalogVersion: 'v2',
+			suggestionId: 'accounts-payable-agent',
+			suggestionKind: 'prompt',
+			position: 1,
+			promptModified: true,
+		});
+
+		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion submitted', {
+			suggestion_catalog_version: 'v2',
+			research_mode: false,
+			suggestion_id: 'accounts-payable-agent',
+			suggestion_kind: 'prompt',
+			position: 1,
+			prompt_modified: true,
+		});
 	});
 });
