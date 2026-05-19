@@ -45,6 +45,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	MARKDOWN_NODE_TYPE,
 	MERGE_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	OTHER_TRIGGER_NODES_SUBCATEGORY,
 	REGULAR_NODE_CREATOR_VIEW,
 	REMOVE_DUPLICATES_NODE_TYPE,
@@ -100,7 +101,8 @@ export interface NodeViewItem {
 		displayName?: string;
 		tag?: {
 			type?: string;
-			text: string;
+			text?: string;
+			preview?: boolean;
 		};
 		forceIncludeNodes?: string[];
 		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };
@@ -169,9 +171,33 @@ function getEvaluationNode(
 	];
 }
 
+function getMessageAnAgentNode(
+	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
+	settingsStore: ReturnType<typeof useSettingsStore>,
+) {
+	if (!settingsStore.isModuleActive('agents')) return [];
+
+	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
+	if (!node) return [];
+
+	const view = getNodeView(node);
+	return [
+		{
+			...view,
+			properties: {
+				...view.properties,
+				tag: {
+					preview: true,
+				},
+			},
+		},
+	];
+}
+
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
@@ -180,6 +206,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
+	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
 
 	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
 	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
@@ -188,7 +215,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		TEMPLATE_CATEGORY_AI,
 	);
 
-	const askAiEnabled = useSettingsStore().isAskAiEnabled;
+	const askAiEnabled = settingsStore.isAskAiEnabled;
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
 	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
 
@@ -200,6 +227,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			...callouts,
+			// shown only when agents module is active
+			// TODO: revert before GA release
+			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
 			...transformNode,
