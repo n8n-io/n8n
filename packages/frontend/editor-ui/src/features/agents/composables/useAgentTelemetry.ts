@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentChatMode = 'build' | 'test';
+export type AgentCreateSource = 'button' | 'dropdown' | 'card';
 export type AgentConfigPart =
 	| 'instructions'
 	| 'model'
@@ -31,7 +32,7 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: 'button' | 'dropdown') {
+	function trackClickedNewAgent(source: AgentCreateSource) {
 		safeTrack('User clicked new agent', { source, ...common() });
 	}
 

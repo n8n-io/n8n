@@ -17,9 +17,16 @@ test.describe(
 			await n8n.instanceAi.approveBuildPlan();
 
 			// Preview should auto-open with canvas nodes visible (no confirmation for simple builds)
-			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
-				timeout: 120_000,
-			});
+			const firstNode = n8n.instanceAi.getPreviewCanvasNodes().first();
+			await expect(firstNode).toBeVisible({ timeout: 120_000 });
+
+			// Regression guard for INS-256: if fitView runs against a near-zero
+			// container (mid slide-in), nodes end up microscopic. The fix re-fits
+			// once the panel transition completes. Poll until the node settles to
+			// a reasonable on-screen width.
+			await expect
+				.poll(async () => (await firstNode.boundingBox())?.width ?? 0, { timeout: 5_000 })
+				.toBeGreaterThan(50);
 		});
 
 		test('should display canvas nodes in preview iframe', async ({ n8n }) => {

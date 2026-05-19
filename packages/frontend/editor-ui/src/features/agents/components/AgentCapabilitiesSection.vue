@@ -79,7 +79,6 @@ function toolLabel(tool: AgentJsonToolRef, index: number) {
 	if (tool.type === 'custom') {
 		return formatToolNameForDisplay(
 			(tool.id ? props.customTools?.[tool.id]?.descriptor.name : undefined) ??
-				tool.name ??
 				tool.id ??
 				`${tool.type}-${index + 1}`,
 		);
