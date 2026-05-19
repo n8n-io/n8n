@@ -1,9 +1,10 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CreateCredentialPayload, SecretsBuffer } from '@n8n/mcp-browser';
 import type { z } from 'zod';
 
 import type { ToolGroup } from '../config';
 
-export type { CallToolResult };
+export type { CallToolResult, CreateCredentialPayload, SecretsBuffer };
 
 export interface McpTool {
 	name: string;
@@ -19,6 +20,8 @@ export interface McpTool {
 export interface ToolContext {
 	/** Base filesystem directory (used by filesystem tools) */
 	dir: string;
+	secretsBuffer?: SecretsBuffer;
+	createCredential?: (payload: CreateCredentialPayload) => Promise<{ credentialId: string }>;
 }
 
 export interface ToolAnnotations {

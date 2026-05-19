@@ -4,6 +4,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -16,12 +17,12 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	CHAT_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 ] as const;
 
 export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 	'n8n-nodes-base.wait',
 	'n8n-nodes-base.form',
-	'n8n-nodes-base.respondToWebhook',
 ] as const;
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
