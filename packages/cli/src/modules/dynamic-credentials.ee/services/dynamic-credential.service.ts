@@ -21,13 +21,14 @@ import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from '../../../credentials/credential-resolution-provider.interface';
+import { SYSTEM_RESOLVER_ID } from '../constants';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -141,6 +142,16 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		} catch (error) {
 			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId);
 		}
+	}
+
+	/**
+	 * Resolves the private credential resolver id used to store per-user OAuth
+	 * tokens during interactive connect flows. Returns the seeded system resolver
+	 * id when present, otherwise null.
+	 */
+	async getPrivateCredentialResolverId(_credential: CredentialsEntity): Promise<string | null> {
+		const seeded = await this.resolverRepository.findOneBy({ id: SYSTEM_RESOLVER_ID });
+		return seeded?.id ?? null;
 	}
 
 	/**

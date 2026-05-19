@@ -9,6 +9,9 @@ import type {
 	IExecutionContext,
 } from 'n8n-workflow';
 
+import type { CredentialsEntity } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
+
 import type {
 	CredentialResolutionResult,
 	CredentialResolveMetadata,
@@ -1090,6 +1093,25 @@ describe('DynamicCredentialService', () => {
 					expect(mockRes.status).not.toHaveBeenCalled();
 				});
 			});
+		});
+	});
+
+	describe('getPrivateCredentialResolverId', () => {
+		const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true });
+
+		it('returns the seeded system resolver id when present', async () => {
+			mockResolverRepository.findOneBy.mockResolvedValue(
+				createMockResolverEntity({ id: 'system-n8n' }),
+			);
+
+			await expect(service.getPrivateCredentialResolverId(credential)).resolves.toBe('system-n8n');
+			expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({ id: 'system-n8n' });
+		});
+
+		it('returns null when no system resolver is seeded', async () => {
+			mockResolverRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.getPrivateCredentialResolverId(credential)).resolves.toBeNull();
 		});
 	});
 });

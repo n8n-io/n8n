@@ -85,7 +85,7 @@ describe('OAuth2CredentialController', () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
 			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
-			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockReturnValueOnce(null);
+			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockResolvedValueOnce(null);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
 				user: mock<User>({ id: '123' }),
@@ -108,7 +108,7 @@ describe('OAuth2CredentialController', () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
 			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
-			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockReturnValueOnce(
+			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockResolvedValueOnce(
 				'private-resolver-id',
 			);
 			authService.getCookieToken.mockReturnValueOnce('user-jwt-token');

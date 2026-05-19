@@ -1,3 +1,4 @@
+import type { CredentialsEntity } from '@n8n/db';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
@@ -39,4 +40,11 @@ export interface ICredentialResolutionProvider {
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
 	): Promise<CredentialResolutionResult>;
+
+	/**
+	 * Returns the resolver id to use when storing a private credential on the
+	 * running user's behalf (e.g. OAuth2 callback for `isResolvable` credentials).
+	 * Returns null when no private credential resolver is available.
+	 */
+	getPrivateCredentialResolverId(credential: CredentialsEntity): Promise<string | null>;
 }

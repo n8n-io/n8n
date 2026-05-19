@@ -43,11 +43,11 @@ export class DynamicCredentialsProxy
 	 * on the user's behalf (e.g. OAuth2 callback for `isResolvable` credentials).
 	 * Returns null when no private credential resolver is configured.
 	 */
-	// TODO: delegate to the dynamic credentials provider once the N8N identifier
-	// accepts manual-execution metadata. Currently returns null so callers fall
-	// back to the static-credential origin.
-	getPrivateCredentialResolverId(_credential: CredentialsEntity): string | null {
-		return null;
+	async getPrivateCredentialResolverId(credential: CredentialsEntity): Promise<string | null> {
+		if (!this.resolvingProvider) {
+			return null;
+		}
+		return await this.resolvingProvider.getPrivateCredentialResolverId(credential);
 	}
 
 	async resolveIfNeeded(
