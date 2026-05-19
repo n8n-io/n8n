@@ -14,6 +14,7 @@ import {
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { Service } from '@n8n/di';
 import {
 	ensureError,
@@ -157,7 +158,8 @@ export class ImportService {
 				workflow.active = false;
 				workflow.activeVersionId = null;
 
-				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
+				const workflowToUpsert = workflow as QueryDeepPartialEntity<WorkflowEntity>;
+				const upsertResult = await tx.upsert(WorkflowEntity, workflowToUpsert, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 

@@ -33,8 +33,6 @@ jest.mock('@n8n/instance-ai', () => {
 		),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
-		createMemory: jest.fn(),
-		mapMastraChunkToEvent: jest.fn(),
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
 
@@ -112,16 +110,6 @@ jest.mock('@n8n/instance-ai', () => {
 		},
 	};
 });
-jest.mock('@mastra/core/agent', () => ({}));
-jest.mock('@mastra/core/storage', () => ({
-	MemoryStorage: class {},
-	MastraCompositeStore: class {},
-	WorkflowsStorage: class {},
-}));
-jest.mock('@mastra/memory', () => ({
-	Memory: class {},
-}));
-jest.mock('@mastra/core/workflows', () => ({}));
 
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
@@ -393,6 +381,44 @@ function createCheckpointService(): ServiceInternals {
 	return service;
 }
 
+type CheckpointPruneServiceInternals = {
+	startCheckpointPruning: () => void;
+	stopCheckpointPruning: () => void;
+	pruneStaleCheckpoints: (now?: number) => Promise<void>;
+	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
+	checkpointStore: {
+		deleteOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
+	};
+	checkpointPruneTimer?: NodeJS.Timeout;
+	checkpointPruningStopped: boolean;
+	instanceAiConfig: {
+		snapshotPruneInterval: number;
+		snapshotRetention: number;
+	};
+	logger: { info: jest.Mock; debug: jest.Mock; warn: jest.Mock };
+};
+
+function createCheckpointPruneService(): CheckpointPruneServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as CheckpointPruneServiceInternals;
+	service.scheduleCheckpointPrune = jest.fn();
+	service.checkpointStore = {
+		deleteOlderThan: jest.fn(async (_olderThan: Date) => 0),
+	};
+	service.checkpointPruningStopped = true;
+	service.instanceAiConfig = {
+		snapshotPruneInterval: 60 * 60 * 1000,
+		snapshotRetention: 7 * 24 * 60 * 60 * 1000,
+	};
+	service.logger = {
+		info: jest.fn(),
+		debug: jest.fn(),
+		warn: jest.fn(),
+	};
+	return service;
+}
+
 function createTemporaryCleanupService({
 	runningTaskCount = 0,
 	markedWorkflows = [],
@@ -542,7 +568,7 @@ type TerminalGuardOrderServiceInternals = {
 		resumeData: unknown,
 		opts: {
 			runId: string;
-			mastraRunId: string;
+			agentRunId: string;
 			threadId: string;
 			user: User;
 			toolCallId: string;
@@ -829,6 +855,38 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 	});
 });
 
+describe('InstanceAiService — checkpoint pruning', () => {
+	it('deletes checkpoints older than the retention window', async () => {
+		const service = createCheckpointPruneService();
+		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
+
+		await service.pruneStaleCheckpoints(now);
+
+		expect(service.checkpointStore.deleteOlderThan).toHaveBeenCalledWith(
+			new Date('2026-05-06T12:00:00.000Z'),
+		);
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('starts checkpoint pruning when configured', () => {
+		const service = createCheckpointPruneService();
+
+		service.startCheckpointPruning();
+
+		expect(service.checkpointPruningStopped).toBe(false);
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith(0);
+	});
+
+	it('does not start checkpoint pruning when disabled', () => {
+		const service = createCheckpointPruneService();
+		service.instanceAiConfig.snapshotPruneInterval = 0;
+
+		service.startCheckpointPruning();
+
+		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
+	});
+});
+
 type RevalidationServiceInternals = {
 	revalidateActiveUser: (userId: string) => Promise<User | null>;
 	userRepository: { findOne: jest.Mock };
@@ -942,6 +1000,108 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 	return service;
 }
 
+type PlannedTaskSchedulerServiceInternals = {
+	doSchedulePlannedTasks: (user: User, threadId: string) => Promise<void>;
+	revalidateActiveUser: jest.Mock<Promise<User | null>, [string]>;
+	cancelRun: jest.Mock;
+	createPlannedTaskState: jest.Mock;
+	syncPlannedTasksToUi: jest.Mock;
+	backgroundTasks: { getRunningTasks: jest.Mock };
+	startInternalFollowUpRun: jest.Mock;
+	buildPlannedTaskFollowUpMessage: jest.Mock;
+	runState: {
+		getThreadResearchMode: jest.Mock;
+		hasLiveRun: jest.Mock;
+	};
+	logger: { warn: jest.Mock };
+};
+
+function createPlannedTaskSchedulerService(): {
+	service: PlannedTaskSchedulerServiceInternals;
+	plannedTaskService: {
+		getGraph: jest.Mock;
+		tick: jest.Mock;
+		revertToActive: jest.Mock;
+		revertCheckpointToPlanned: jest.Mock;
+		markRunning: jest.Mock;
+	};
+	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
+} {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as PlannedTaskSchedulerServiceInternals;
+	const graph = { planRunId: 'plan-run-1', messageGroupId: 'group-1', tasks: [] };
+	const plannedTaskService = {
+		getGraph: jest.fn(async () => graph),
+		tick: jest.fn(async () => ({ type: 'none' })),
+		revertToActive: jest.fn(async () => {}),
+		revertCheckpointToPlanned: jest.fn(async () => {}),
+		markRunning: jest.fn(async () => {}),
+	};
+
+	service.revalidateActiveUser = jest.fn();
+	service.cancelRun = jest.fn();
+	service.createPlannedTaskState = jest.fn(async () => ({ plannedTaskService }));
+	service.syncPlannedTasksToUi = jest.fn(async () => {});
+	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
+	service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
+	service.buildPlannedTaskFollowUpMessage = jest.fn(() => 'follow-up message');
+	service.runState = {
+		getThreadResearchMode: jest.fn(() => false),
+		hasLiveRun: jest.fn(() => false),
+	};
+	service.logger = { warn: jest.fn() };
+
+	return { service, plannedTaskService, graph };
+}
+
+type SuspendedRunResumeServiceInternals = {
+	resumeSuspendedRun: (
+		requestingUserId: string,
+		requestId: string,
+		data: { approved: boolean },
+	) => Promise<boolean>;
+	revalidateActiveUser: jest.Mock<Promise<User | null>, [string]>;
+	cancelRun: jest.Mock;
+	runState: {
+		findSuspendedByRequestId: jest.Mock;
+		activateSuspendedRun: jest.Mock;
+	};
+	logger: { warn: jest.Mock };
+	dbSnapshotStorage: unknown;
+	createOrchestratorResumeTraceContext: jest.Mock;
+	processResumedStream: jest.Mock;
+};
+
+function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as SuspendedRunResumeServiceInternals;
+	service.revalidateActiveUser = jest.fn();
+	service.cancelRun = jest.fn();
+	service.runState = {
+		findSuspendedByRequestId: jest.fn(() => ({
+			agent: {},
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			abortController: new AbortController(),
+			tracing: undefined,
+			modelId: undefined,
+			messageGroupId: 'group-1',
+			checkpoint: undefined,
+		})),
+		activateSuspendedRun: jest.fn(),
+	};
+	service.logger = { warn: jest.fn() };
+	service.dbSnapshotStorage = {};
+	service.createOrchestratorResumeTraceContext = jest.fn(async () => undefined);
+	service.processResumedStream = jest.fn();
+	return service;
+}
+
 describe('InstanceAiService — resolveConfirmation', () => {
 	const approval = { kind: 'approval' as const, approved: true };
 
@@ -1006,6 +1166,77 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		);
 		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiService — planned task user revalidation', () => {
+	it('cancels planned-task scheduling when the user is no longer authorized', async () => {
+		const { service } = createPlannedTaskSchedulerService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+		expect(service.createPlannedTaskState).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Cancelling run: user no longer authorized for AI Assistant',
+			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a' }),
+		);
+	});
+
+	it('uses the revalidated user for planned-task follow-up runs', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'replan',
+			graph,
+			failedTask: undefined,
+		});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'follow-up message',
+			'group-1',
+			true,
+		);
+	});
+});
+
+describe('InstanceAiService — suspended run user revalidation', () => {
+	it('cancels suspended resume when the user is no longer authorized', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toBe(false);
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Cancelling suspended run: user no longer authorized for AI Assistant',
+			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a', requestId: 'req-1' }),
+		);
+	});
+
+	it('passes the revalidated user into the resumed stream', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toBe(true);
+		expect(service.runState.activateSuspendedRun).toHaveBeenCalledWith('thread-a');
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ approved: true }),
+			expect.objectContaining({ user: freshUser }),
+		);
 	});
 });
 
@@ -1280,7 +1511,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			{},
 			{
 				runId: 'run-1',
-				mastraRunId: 'mastra-1',
+				agentRunId: 'agent-run-1',
 				threadId: 'thread-a',
 				user: fakeUser,
 				toolCallId: 'tool-call-1',
@@ -1299,7 +1530,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		const abortController = new AbortController();
 		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
 			status: 'completed',
-			mastraRunId: 'mastra-1',
+			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
 			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
 		});
@@ -1309,7 +1540,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			{},
 			{
 				runId: 'run-1',
-				mastraRunId: 'mastra-1',
+				agentRunId: 'agent-run-1',
 				threadId: 'thread-a',
 				user: fakeUser,
 				toolCallId: 'tool-call-1',
