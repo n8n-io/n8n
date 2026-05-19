@@ -4,13 +4,37 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
-import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from './canvas.types';
+import type {
+	BoundingBox,
+	CanvasConnection,
+	CanvasConnectionPort,
+	CanvasNodeDefaultRenderLabelSize,
+} from './canvas.types';
 import { CanvasConnectionMode } from './canvas.types';
 import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
+import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+
+/**
+ * Per-node canvas render data (input/output port maps) shape, as produced by
+ * the workflow document store's render composable and consumed by canvas
+ * components.
+ */
+export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>['render'];
+
+/**
+ * Injects the canvas render data from the component tree. Provided by an
+ * ancestor canvas component. Throws if no provider is registered.
+ */
+export function injectCanvasRenderData(): Ref<CanvasRenderData> {
+	return injectStrict(CanvasRenderDataKey);
+}
 
 /**
  * Maps multiple legacy n8n connections to VueFlow connections
@@ -263,6 +287,34 @@ export function insertSpacersBetweenEndpoints<T>(endpoints: T[], requiredEndpoin
 	}
 
 	return endpointsWithSpacers;
+}
+
+export function getLabelSize(label: string = ''): number {
+	if (label.length <= 2) {
+		return 0;
+	} else if (label.length <= 6) {
+		return 1;
+	} else {
+		return 2;
+	}
+}
+
+export function getMaxNodePortsLabelSize(
+	ports: CanvasConnectionPort[],
+): CanvasNodeDefaultRenderLabelSize {
+	const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
+	const labelSizeIndexes = ports.reduce<number[]>(
+		(sizeAcc, input) => {
+			if (input.type === NodeConnectionTypes.Main) {
+				sizeAcc.push(getLabelSize(input.label ?? ''));
+			}
+
+			return sizeAcc;
+		},
+		[0],
+	);
+
+	return labelSizes[Math.max(...labelSizeIndexes)];
 }
 
 export function shouldIgnoreCanvasShortcut(el: Element): boolean {

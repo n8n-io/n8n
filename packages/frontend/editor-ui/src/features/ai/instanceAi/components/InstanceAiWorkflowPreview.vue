@@ -80,6 +80,10 @@ function relayPushEvent(event: PushMessage) {
 	);
 }
 
+function requestFitView() {
+	previewRef.value?.requestFitView();
+}
+
 function openWorkflowInEditor() {
 	const workflowId = workflow.value?.id ?? props.workflowId;
 	if (!workflowId) return;
@@ -138,7 +142,7 @@ onBeforeUnmount(() => {
 	window.removeEventListener('message', handleIframeMessage);
 });
 
-defineExpose({ relayPushEvent });
+defineExpose({ relayPushEvent, requestFitView });
 </script>
 
 <template>

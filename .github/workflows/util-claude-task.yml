@@ -76,10 +76,13 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
       - name: Configure git author
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_ACTOR_ID: ${{ github.actor_id }}
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          echo "Git author configured as: ${{ github.actor }}"
+          git config user.name "$GH_ACTOR"
+          git config user.email "$GH_ACTOR_ID+$GH_ACTOR@users.noreply.github.com"
+          echo "Git author configured as: $GH_ACTOR"
 
       - name: Prepare Claude prompt
         env:
