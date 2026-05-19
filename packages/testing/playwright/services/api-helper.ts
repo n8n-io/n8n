@@ -30,6 +30,11 @@ export interface LoginResponseData {
 	[key: string]: unknown;
 }
 
+export interface InstanceAiBackgroundTimeoutSimulation {
+	threadId: string;
+	timeoutAt: number;
+}
+
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
 export type TestState = 'fresh' | 'reset' | 'signin-only';
 
@@ -301,6 +306,34 @@ export class ApiHelpers {
 		return body.data?.events ?? [];
 	}
 
+	async startInstanceAiBackgroundTimeoutSimulation(
+		userId: string,
+		threadId?: string,
+	): Promise<InstanceAiBackgroundTimeoutSimulation> {
+		const response = await this.request.post('/rest/instance-ai/test/background-timeout/start', {
+			data: { userId, ...(threadId ? { threadId } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/background-timeout/start failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiBackgroundTimeoutSimulation };
+		return body.data;
+	}
+
+	async runInstanceAiLivenessSweep(now?: number): Promise<void> {
+		const response = await this.request.post('/rest/instance-ai/test/liveness-sweep', {
+			data: { ...(now !== undefined ? { now } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/liveness-sweep failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
 	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
 		const response = await this.request.put('/rest/instance-ai/settings', {
 			data: { permissions },
@@ -420,6 +453,22 @@ export class ApiHelpers {
 		const destinations = await this.getLogStreamingDestinations();
 		for (const destination of destinations) {
 			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
+	// ===== MCP REGISTRY METHODS =====
+
+	/**
+	 * Seed the MCP registry with mock server data
+	 * This inserts data into the mcp_registry_server table and triggers
+	 * a node type refresh so the synthetic MCP nodes become available.
+	 */
+	async seedMcpRegistry(): Promise<void> {
+		const response = await this.request.post('/rest/mcp-registry/test/seed');
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to seed MCP registry: ${response.status()} ${await response.text()}`,
+			);
 		}
 	}
 

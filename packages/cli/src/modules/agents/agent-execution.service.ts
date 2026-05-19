@@ -89,7 +89,6 @@ export class AgentExecutionService {
 				timeline: record.timeline.length > 0 ? record.timeline : null,
 				error: record.error,
 				hitlStatus: hitlStatus ?? null,
-				workingMemory: record.workingMemory,
 				source: source ?? null,
 			}),
 		);
@@ -178,6 +177,7 @@ export class AgentExecutionService {
 		});
 		if (!thread) return false;
 
+		await this.n8nMemory.deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
 	}

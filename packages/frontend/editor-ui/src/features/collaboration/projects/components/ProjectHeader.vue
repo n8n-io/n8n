@@ -21,6 +21,7 @@ import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -79,6 +80,8 @@ const headerIcon = computed((): IconOrEmoji => {
 });
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
 
 const isPersonalProject = computed(() => {
 	return homeProject.value?.type === ProjectTypes.Personal;
@@ -200,7 +203,7 @@ const createAgentButton = computed(() => ({
 	value: ACTION_TYPES.AGENT,
 	label: i18n.baseText('projects.header.create.agent'),
 	size: 'mini' as const,
-	disabled: sourceControlStore.preferences.branchReadOnly,
+	disabled: !canCreateAgent.value,
 }));
 
 const selectedMainButtonType = computed(() => {
@@ -295,7 +298,7 @@ const menu = computed(() => {
 		items.push({
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
-			disabled: sourceControlStore.preferences.branchReadOnly,
+			disabled: !canCreateAgent.value,
 		});
 	}
 

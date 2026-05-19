@@ -1,7 +1,6 @@
-import type { AgentIntegration } from '@n8n/api-types';
+import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 
 import type { Agent } from '../entities/agent.entity';
-import type { AgentJsonConfig } from './agent-json-config';
 
 /**
  * Build the unified `AgentJsonConfig` view from an agent entity. The schema
@@ -22,7 +21,7 @@ export function composeJsonConfig(agent: Agent): AgentJsonConfig | null {
  */
 export function decomposeJsonConfig(config: AgentJsonConfig): {
 	schemaConfig: Omit<AgentJsonConfig, 'integrations'>;
-	integrations: AgentIntegration[];
+	integrations: AgentIntegrationConfig[];
 } {
 	const { integrations, ...schemaConfig } = config;
 	return { schemaConfig, integrations: integrations ?? [] };
