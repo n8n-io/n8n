@@ -138,6 +138,10 @@ export class HttpRequestV3 implements INodeType {
 		const errorItems: { [key: string]: string } = {};
 		const requestPromises = [];
 
+		let fullResponse = false;
+		let autoDetectResponseFormat = false;
+		let responseFileName: string | undefined;
+
 		// Can not be defined on a per item level
 		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
 			rawExpressions: true,
@@ -163,8 +167,6 @@ export class HttpRequestV3 implements INodeType {
 			options?: IRequestOptions;
 			authKeys: IAuthDataSanitizeKeys;
 			credentialType?: string;
-			responseFileName?: string;
-			responseFormat?: string;
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
@@ -314,11 +316,13 @@ export class HttpRequestV3 implements INodeType {
 					sendCredentialsOnCrossOriginRedirect?: boolean;
 				};
 
-				const responseFileName = response?.response?.outputPropertyName;
+				responseFileName = response?.response?.outputPropertyName;
 
 				const responseFormat = response?.response?.responseFormat || 'autodetect';
 
-				const autoDetectResponseFormat = responseFormat === 'autodetect';
+				fullResponse = response?.response?.fullResponse || false;
+
+				autoDetectResponseFormat = responseFormat === 'autodetect';
 
 				// defaults batch size to 1 of it's set to 0
 				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
@@ -611,8 +615,6 @@ export class HttpRequestV3 implements INodeType {
 					options: requestOptions,
 					authKeys: authDataKeys,
 					credentialType: nodeCredentialType ?? genericCredentialType,
-					responseFileName,
-					responseFormat,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -782,7 +784,9 @@ export class HttpRequestV3 implements INodeType {
 				// Push a placeholder so requests[] stays index-aligned with requestPromises[]/items[].
 				// Without this, items after a failed item would access requests[itemIndex] === undefined.
 				// options is intentionally absent — error items are skipped before options is ever read.
-				requests.push({ authKeys: {} });
+				if (!requests[itemIndex]) {
+					requests[itemIndex] = { authKeys: {} };
+				}
 
 				continue;
 			}
@@ -799,9 +803,7 @@ export class HttpRequestV3 implements INodeType {
 							try {
 								// Secrets need to be read after the request because secrets could have changed
 								// For example: OAuth token refresh, preAuthentication
-								// options is always set here: error items are filtered out above via errorItems[itemIndex]
-								const { options: options_, authKeys, credentialType } = requests[itemIndex];
-								const options = options_!;
+								const { options, authKeys, credentialType } = requests[itemIndex];
 								let secrets: string[] = [];
 								if (credentialType) {
 									const credentials = await this.getCredentials(credentialType, itemIndex);
@@ -828,17 +830,6 @@ export class HttpRequestV3 implements INodeType {
 
 					continue;
 				}
-
-				const fullResponse = this.getNodeParameter(
-					'options.response.response.fullResponse',
-					itemIndex,
-					false,
-				) as boolean;
-
-				const { responseFileName, responseFormat: storedResponseFormat } = requests[itemIndex];
-				let responseFormat = storedResponseFormat ?? 'autodetect';
-
-				const autoDetectResponseFormat = responseFormat === 'autodetect';
 
 				if (responseData!.status !== 'fulfilled') {
 					if (responseData.reason.statusCode === 429) {
@@ -888,6 +879,18 @@ export class HttpRequestV3 implements INodeType {
 					responses = [responseData.value];
 				}
 
+				let responseFormat = this.getNodeParameter(
+					'options.response.response.responseFormat',
+					0,
+					'autodetect',
+				) as string;
+
+				fullResponse = this.getNodeParameter(
+					'options.response.response.fullResponse',
+					0,
+					false,
+				) as boolean;
+
 				// eslint-disable-next-line prefer-const
 				for (let [index, response] of Object.entries(responses)) {
 					if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
@@ -911,7 +914,7 @@ export class HttpRequestV3 implements INodeType {
 							if (!response.__bodyResolved) {
 								const neverError = this.getNodeParameter(
 									'options.response.response.neverError',
-									itemIndex,
+									0,
 									false,
 								) as boolean;
 
@@ -958,7 +961,7 @@ export class HttpRequestV3 implements INodeType {
 					if (responseFormat === 'file') {
 						const outputPropertyName = this.getNodeParameter(
 							'options.response.response.outputPropertyName',
-							itemIndex,
+							0,
 							'data',
 						) as string;
 
@@ -1012,7 +1015,7 @@ export class HttpRequestV3 implements INodeType {
 					} else if (responseFormat === 'text') {
 						const outputPropertyName = this.getNodeParameter(
 							'options.response.response.outputPropertyName',
-							itemIndex,
+							0,
 							'data',
 						) as string;
 						if (fullResponse) {
