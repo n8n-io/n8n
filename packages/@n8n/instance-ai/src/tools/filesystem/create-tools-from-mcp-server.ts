@@ -79,6 +79,10 @@ function isMcpContentBlock(value: unknown): value is McpContentBlock {
 	if (value.type === 'image') {
 		return typeof value.data === 'string' && typeof value.mimeType === 'string';
 	}
+	if (value.type === 'resource') {
+		if (!isRecord(value.resource)) return false;
+		return typeof value.resource.uri === 'string' && typeof value.resource.blob === 'string';
+	}
 	return false;
 }
 
@@ -149,6 +153,14 @@ function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFil
 		};
 	}
 
+	if (block.type === 'resource' && block.resource.blob) {
+		return {
+			type: 'file',
+			data: block.resource.blob,
+			mediaType: block.resource.mimeType ?? 'application/octet-stream',
+		};
+	}
+
 	return undefined;
 }
 
@@ -157,12 +169,23 @@ function mcpBlockToModelTextPart(block: McpContentBlock): { type: 'text'; text: 
 		return { type: 'text', text: block.text };
 	}
 
-	return { type: 'text', text: `[image: ${block.mimeType || 'image/png'}]` };
+	if (block.type === 'image') {
+		return { type: 'text', text: `[image: ${block.mimeType || 'image/png'}]` };
+	}
+
+	return {
+		type: 'text',
+		text: `[file: ${block.resource.mimeType ?? 'application/octet-stream'}]`,
+	};
+}
+
+function isMcpMediaBlock(block: McpContentBlock): boolean {
+	return block.type === 'image' || block.type === 'resource';
 }
 
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 	const raw = unwrapMcpToolResult(result);
-	if (!raw?.content.some((item) => item.type === 'image')) return undefined;
+	if (!raw?.content.some(isMcpMediaBlock)) return undefined;
 
 	const content = raw.content
 		.map(mcpBlockToMessagePart)

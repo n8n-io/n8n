@@ -72,6 +72,19 @@ const SCREENSHOT_RESULT: McpToolCallResult = {
 	],
 };
 
+const PDF_RESULT: McpToolCallResult = {
+	content: [
+		{
+			type: 'resource',
+			resource: {
+				uri: 'file:///doc.pdf',
+				mimeType: 'application/pdf',
+				blob: 'base64-pdf',
+			},
+		},
+	],
+};
+
 const GENERIC_ERROR_RESULT: McpToolCallResult = {
 	content: [{ type: 'text', text: 'Permission denied' }],
 	isError: true,
@@ -96,23 +109,6 @@ function getExecute(server: LocalMcpServer, toolName = 'write_file') {
 	if (!tool) throw new Error(`Tool '${toolName}' was not created`);
 	return async (args: Record<string, unknown>, ctx: unknown) =>
 		await executeTool<McpToolCallResult>(tool, args, ctx);
-}
-
-type ToModelOutput = (result: unknown) =>
-	| { type: 'text'; value: string }
-	| {
-			type: 'content';
-			value: Array<
-				{ type: 'text'; text: string } | { type: 'media'; data: string; mediaType: string }
-			>;
-	  };
-
-function getToModelOutput(server: LocalMcpServer, toolName = 'write_file'): ToModelOutput {
-	const tools = createToolsFromLocalMcpServer(server);
-	const tool = tools[toolName];
-	const fn = (tool as { toModelOutput?: ToModelOutput }).toModelOutput;
-	if (!fn) throw new Error(`Tool '${toolName}' has no toModelOutput function`);
-	return fn;
 }
 
 /** Build a ctx object with suspend/resumeData for use in execute calls. */
@@ -293,6 +289,40 @@ describe('createToolsFromLocalMcpServer', () => {
 				],
 			});
 		});
+
+		it('returns a native file part from toMessage for gateway resource results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			expect(tool?.toMessage?.(PDF_RESULT)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-pdf', mediaType: 'application/pdf' }],
+			});
+		});
+
+		it('falls back to application/octet-stream when resource has no mimeType', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			const result: McpToolCallResult = {
+				content: [{ type: 'resource', resource: { uri: 'file:///x', blob: 'base64-bytes' } }],
+			};
+
+			expect(tool?.toMessage?.(result)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-bytes', mediaType: 'application/octet-stream' }],
+			});
+		});
+
+		it('keeps resource payloads out of the JSON tool result shown to the model', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
+				type: 'content',
+				value: [{ type: 'text', text: '[file: application/pdf]' }],
+			});
+		});
 	});
 
 	describe('execute — first-call path', () => {
@@ -396,62 +426,6 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			// Returns the raw error result unchanged
 			expect(result).toEqual(PLAIN_CONFIRMATION_ERROR);
-		});
-	});
-
-	describe('toModelOutput', () => {
-		it('converts MCP image to Mastra media', () => {
-			const server = makeMockServer();
-			const toModel = getToModelOutput(server);
-
-			const out = toModel({
-				output: {
-					content: [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }],
-				},
-			});
-
-			expect(out).toEqual({
-				type: 'content',
-				value: [{ type: 'media', data: 'AAAA', mediaType: 'image/png' }],
-			});
-		});
-
-		it('converts MCP blob resource to Mastra media', () => {
-			const server = makeMockServer();
-			const toModel = getToModelOutput(server);
-
-			const out = toModel({
-				output: {
-					content: [
-						{
-							type: 'resource',
-							resource: { uri: 'file:///a.pdf', mimeType: 'application/pdf', blob: 'CCCC' },
-						},
-					],
-				},
-			});
-
-			expect(out).toEqual({
-				type: 'content',
-				value: [{ type: 'media', data: 'CCCC', mediaType: 'application/pdf' }],
-			});
-		});
-
-		it('falls back to compact structuredContent text when no media is present', () => {
-			const server = makeMockServer();
-			const toModel = getToModelOutput(server);
-
-			const out = toModel({
-				output: {
-					content: [{ type: 'text', text: 'ignored' }],
-					structuredContent: { ok: true },
-				},
-			});
-
-			expect(out).toEqual({
-				type: 'content',
-				value: [{ type: 'text', text: JSON.stringify({ ok: true }) }],
-			});
 		});
 	});
 
