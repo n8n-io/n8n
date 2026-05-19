@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeCatalogService } from '@/node-catalog';
 
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
@@ -36,6 +37,7 @@ export class AgentsBuilderService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
+		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly builderSettings: AgentsBuilderSettingsService,
@@ -148,6 +150,15 @@ export class AgentsBuilderService {
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+
+		// Warm the node catalog in the background so the first node-related tool call
+		// can reuse an initialized parser.
+		void this.nodeCatalogService.initialize().catch((error) => {
+			this.logger.debug('Failed to initialize node catalog in builder warmup', {
+				error: error instanceof Error ? error.message : String(error),
+				agentId,
+			});
+		});
 
 		// Resolve the model the builder should run on. Throws
 		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
