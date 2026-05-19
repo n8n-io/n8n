@@ -14,6 +14,7 @@ import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
@@ -214,7 +215,10 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			evaluationConcurrencyLimit: this.globalConfig.executions.concurrency.evaluationLimit,
+			evaluationConcurrencyLimit: resolveEvaluationConcurrencyLimit(
+				this.globalConfig.executions,
+				this.license,
+			),
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -469,6 +473,14 @@ export class FrontendService {
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
+
+		// Re-resolve on every settings fetch so a license upgrade/downgrade
+		// (and the tier-default it implies) propagates to the FE without an
+		// instance restart. The env override still wins inside the resolver.
+		this.settings.evaluationConcurrencyLimit = resolveEvaluationConcurrencyLimit(
+			this.globalConfig.executions,
+			this.license,
+		);
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {

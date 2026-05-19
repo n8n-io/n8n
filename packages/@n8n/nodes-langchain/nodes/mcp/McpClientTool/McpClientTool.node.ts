@@ -59,15 +59,14 @@ export class McpClientTool implements INodeType {
 		},
 		group: ['output'],
 		version: [1, 1.1, 1.2],
-		description: 'Connect tools from an MCP Server',
+		description: 'Connect to a custom MCP server',
 		defaults: {
 			name: 'MCP Client',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Tools'],
-				Tools: ['Recommended Tools'],
+				AI: ['Model Context Protocol'],
 			},
 			alias: ['Model Context Protocol', 'MCP Client'],
 			resources: {

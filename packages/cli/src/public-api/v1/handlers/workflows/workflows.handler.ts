@@ -7,6 +7,7 @@ import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { z } from 'zod';
 
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -26,7 +27,7 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
-	if (error instanceof NotFoundError) {
+	if (error instanceof ResponseError) {
 		throw error;
 	}
 	if (error instanceof Error) {

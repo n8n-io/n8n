@@ -114,6 +114,10 @@ export const usePostHog = defineStore('posthog', () => {
 		};
 	}
 
+	const groupIdentify = (groupKey: string, instanceId: string) => {
+		window.posthog?.group?.(groupKey, instanceId);
+	};
+
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
@@ -233,6 +237,7 @@ export const usePostHog = defineStore('posthog', () => {
 		waitForFeatureFlags,
 		reset,
 		identify,
+		groupIdentify,
 		setMetadata,
 		capture,
 		overrides,
