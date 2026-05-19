@@ -54,8 +54,8 @@ runs:
 
     - name: Install Aikido SafeChain
       run: |
-        VERSION="1.5.1"
-        EXPECTED_SHA256="7c910fff717649c86cc8ca960e6c054d3734da2d660050e3bcfc54029e3b485b"
+        VERSION="1.5.3"
+        EXPECTED_SHA256="0107cbbbf90159379756157e902acae512d62ffbd174307e42c5fe9f266792d3"
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
@@ -69,7 +69,7 @@ runs:
         INSTALL_COMMAND: ${{ inputs.install-command }}
         SAFE_CHAIN_LOGGING: verbose
       run: |
-        $INSTALL_COMMAND --reporter=append-only
+        timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
       shell: bash
 
     - name: Configure Turborepo Cache

@@ -18,6 +18,7 @@ import type {
 	GenerateResult,
 	GoogleThinkingConfig,
 	ObservationalMemoryConfig,
+	ObservationLogMemoryConfig,
 	OpenAIThinkingConfig,
 	PendingToolCall,
 	RunOptions,
@@ -39,7 +40,8 @@ import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
-import { hasObservationStore } from './observation-store';
+import { renderObservationLog } from './observation-log-renderer';
+import { hasObservationLogStore } from './observation-log-store';
 import { runObservationalCycle, type RunObservationalCycleOpts } from './observational-cycle';
 import { generateRunId, RunStateManager } from './run-state';
 import {
@@ -177,6 +179,7 @@ export interface AgentRuntimeConfig {
 		scope?: 'resource' | 'thread';
 		instruction?: string;
 	};
+	observationLog?: ObservationLogMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
@@ -331,8 +334,6 @@ export class AgentRuntime {
 
 	private backgroundTasks = new BackgroundTaskTracker();
 
-	private observationTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
 	private deferredToolManager: DeferredToolManager | undefined;
 
 	/** Resolved telemetry for the current run (own config or inherited from parent). */
@@ -357,10 +358,6 @@ export class AgentRuntime {
 	 * observer cycles) to settle. Safe to call multiple times.
 	 */
 	async dispose(): Promise<void> {
-		for (const timer of this.observationTimers.values()) {
-			clearTimeout(timer);
-		}
-		this.observationTimers.clear();
 		await this.backgroundTasks.flush();
 	}
 
@@ -511,8 +508,7 @@ export class AgentRuntime {
 
 			await this.ensureModelCost();
 
-			// Attach working memory to the deserialized list — forLlm() needs it.
-			await this.setListWorkingMemoryConfig(list, state.persistence);
+			await this.setListObservationLogMemory(list, state.persistence);
 
 			if (method === 'generate') {
 				const rawResult = await this.withTelemetryRootSpan(
@@ -595,8 +591,7 @@ export class AgentRuntime {
 			);
 		}
 
-		// Attach working memory to the list — forLlm() appends it to the system prompt.
-		await this.setListWorkingMemoryConfig(list, options?.persistence);
+		await this.setListObservationLogMemory(list, options?.persistence);
 
 		list.addInput(input);
 		return list;
@@ -722,9 +717,6 @@ export class AgentRuntime {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<AgentMessageList> {
 		this.eventBus.resetAbort(options?.abortSignal);
-		if (options?.persistence?.threadId) {
-			this.cancelIdleObservation(options.persistence.threadId);
-		}
 		this.updateState({
 			status: 'running',
 			persistence: options?.persistence,
@@ -1478,8 +1470,6 @@ export class AgentRuntime {
 				delta,
 			);
 		}
-
-		await this.dispatchObservationalMemory(options.persistence);
 	}
 
 	private async saveEmbeddingsForMessages(
@@ -2180,101 +2170,21 @@ export class AgentRuntime {
 		return { ...usage, cost: computeCost(usage, this.modelCost) };
 	}
 
-	private async setListWorkingMemoryConfig(
+	private async setListObservationLogMemory(
 		list: AgentMessageList,
 		options: AgentPersistenceOptions | undefined,
 	) {
-		const wmParams = this.resolveWorkingMemoryParams(options);
-		if (!wmParams || !this.config.memory?.getWorkingMemory) return;
-		const wmState = await this.config.memory.getWorkingMemory(wmParams.memoryParams);
-
-		list.workingMemory = {
-			template: wmParams.template,
-			structured: wmParams.structured,
-			state: wmState,
-			...(wmParams.instruction !== undefined && { instruction: wmParams.instruction }),
-		};
-	}
-
-	private async dispatchObservationalMemory(persistence: AgentPersistenceOptions): Promise<void> {
-		const cycle = this.buildObservationCycleOpts(persistence);
-		if (!cycle) return;
-		const trigger = cycle.trigger ?? { type: 'per-turn' };
-		if (trigger.type === 'idle-timer') {
-			this.scheduleIdleObservation(persistence.threadId, cycle, trigger.idleMs);
-			return;
-		}
-
-		const promise = runObservationalCycle(cycle).then(
-			() => undefined,
-			() => undefined,
-		);
-		if (this.config.observationalMemory?.sync) {
-			await promise;
-		} else {
-			this.backgroundTasks.track(promise);
-		}
-	}
-
-	private scheduleIdleObservation(
-		threadId: string,
-		cycle: RunObservationalCycleOpts,
-		idleMs: number,
-	): void {
-		this.cancelIdleObservation(threadId);
-		const timer = setTimeout(() => {
-			this.observationTimers.delete(threadId);
-			this.backgroundTasks.track(
-				runObservationalCycle(cycle).then(
-					() => undefined,
-					() => undefined,
-				),
-			);
-		}, idleMs);
-		this.observationTimers.set(threadId, timer);
-	}
-
-	private cancelIdleObservation(threadId: string): void {
-		const existing = this.observationTimers.get(threadId);
-		if (!existing) return;
-		clearTimeout(existing);
-		this.observationTimers.delete(threadId);
-	}
-
-	private buildObservationCycleOpts(
-		persistence: AgentPersistenceOptions | undefined,
-	): RunObservationalCycleOpts | null {
-		const obsConfig = this.config.observationalMemory;
 		const memory = this.config.memory;
-		const workingMemory = this.config.workingMemory;
-		if (!obsConfig || !memory || !workingMemory || !persistence) return null;
-		if (!hasObservationStore(memory)) return null;
-		if (!memory.saveWorkingMemory) return null;
-		return {
-			memory,
-			threadId: persistence.threadId,
-			resourceId: persistence.resourceId,
-			model: this.config.model,
-			workingMemory: {
-				template: workingMemory.template,
-				structured: workingMemory.structured,
-				...(workingMemory.schema !== undefined && { schema: workingMemory.schema }),
-			},
-			...(obsConfig.observe !== undefined && { observe: obsConfig.observe }),
-			...(obsConfig.compact !== undefined && { compact: obsConfig.compact }),
-			...(obsConfig.trigger !== undefined && { trigger: obsConfig.trigger }),
-			...(obsConfig.compactionThreshold !== undefined && {
-				compactionThreshold: obsConfig.compactionThreshold,
-			}),
-			...(obsConfig.gapThresholdMs !== undefined && { gapThresholdMs: obsConfig.gapThresholdMs }),
-			...(obsConfig.observerPrompt !== undefined && { observerPrompt: obsConfig.observerPrompt }),
-			...(obsConfig.compactorPrompt !== undefined && {
-				compactorPrompt: obsConfig.compactorPrompt,
-			}),
-			...(obsConfig.lockTtlMs !== undefined && { lockTtlMs: obsConfig.lockTtlMs }),
-			...(this.config.telemetry !== undefined && { telemetry: this.config.telemetry }),
-			eventBus: this.eventBus,
-		};
+		if (!memory || !options?.threadId || !hasObservationLogStore(memory)) return;
+		const observations = await memory.getActiveObservationLog({
+			scopeKind: 'thread',
+			scopeId: options.threadId,
+			order: 'asc',
+		});
+		list.observationLogMemory =
+			renderObservationLog(observations, {
+				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
+			}) ?? undefined;
 	}
 
 	/**
@@ -2285,34 +2195,5 @@ export class AgentRuntime {
 	 */
 	getConfiguredTelemetry(): BuiltTelemetry | undefined {
 		return this.config.telemetry;
-	}
-
-	private resolveWorkingMemoryParams(options: AgentPersistenceOptions | undefined) {
-		if (!options) return null;
-		if (!this.config.workingMemory) return null;
-		const scope = this.config.workingMemory?.scope ?? 'resource';
-		if (scope === 'resource' && !options.resourceId) {
-			throw new Error(
-				'Working memory scope is "resource" but no resourceId was provided. ' +
-					'Pass a resourceId in RunOptions or change the scope to "thread".',
-			);
-		}
-		if (!options) return null;
-		const memoryParams = { ...options, scope };
-		const persistFn =
-			this.config.workingMemory && this.config.memory?.saveWorkingMemory && options
-				? async (content: string) => {
-						await this.config.memory!.saveWorkingMemory!(memoryParams, content);
-					}
-				: undefined;
-		if (!persistFn) return null;
-		return {
-			persistFn,
-			memoryParams,
-			template: this.config.workingMemory.template,
-			structured: this.config.workingMemory.structured,
-			schema: this.config.workingMemory.schema,
-			instruction: this.config.workingMemory.instruction,
-		};
 	}
 }
