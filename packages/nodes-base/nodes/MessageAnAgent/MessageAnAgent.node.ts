@@ -11,15 +11,21 @@ import crypto from 'node:crypto';
 
 export class MessageAnAgent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Message an Agent',
+		displayName: 'Message an n8n Agent',
 		name: 'messageAnAgent',
 		icon: 'node:ai-agent',
 		group: ['transform'],
 		version: 1,
 		hidden: true,
-		description: 'Send a message to an SDK agent and receive its response',
+		description: 'Send a message to a n8n agent',
 		defaults: {
 			name: 'Message an Agent',
+		},
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Agents', 'Root Nodes'],
+			},
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
@@ -27,7 +33,7 @@ export class MessageAnAgent implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Only published agents are listed below. Publish an agent before referencing it from a workflow.',
+					'Create an n8n agent <a href="/new-agent" target="_blank">here</a>. Only published agents are listed below.',
 				name: 'publishedAgentNotice',
 				type: 'notice',
 				default: '',

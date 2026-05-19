@@ -62,6 +62,10 @@ const toast = useToast();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
+const supportedWorkflowToolTriggerTypes = new Set<string>(SUPPORTED_WORKFLOW_TOOL_TRIGGERS);
+const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
+	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+);
 
 interface WorkingToolEntry {
 	localId: string;
@@ -179,12 +183,15 @@ const projectWorkflows = ref<IWorkflowDb[]>([]);
 onMounted(async () => {
 	// Fetch on open so the Available list populates with project-scoped workflows.
 	// Pre-filter by supported trigger types so users can't pick a workflow that
-	// would fail backend compatibility validation on save. Failures are
-	// non-fatal: the Available list just stays workflow-free.
+	// would fail backend compatibility validation on save. Request `nodes` so
+	// the list can also hide workflows with incompatible body nodes before the
+	// user clicks Connect. Failures are non-fatal: the Available list just stays
+	// workflow-free.
 	try {
 		projectWorkflows.value = await workflowsListStore.searchWorkflows({
 			projectId: props.data.projectId,
 			triggerNodeTypes: [...SUPPORTED_WORKFLOW_TOOL_TRIGGERS],
+			select: ['id', 'name', 'description', 'isArchived', 'nodes'],
 		});
 	} catch (error) {
 		// Non-fatal — render without the Workflows section. Log so a flaky fetch
@@ -195,15 +202,27 @@ onMounted(async () => {
 
 /**
  * Workflows eligible to appear in "Workflows (N)": non-archived workflows with
- * a supported trigger (pre-filtered by the server via `triggerNodeTypes`).
+ * a supported trigger and no incompatible body nodes.
  * Already-connected workflows remain listed — users can add the same workflow
- * twice with different descriptions / input schemas. Body-node incompatibility
- * (Wait / RespondToWebhook) is enforced on Connect-click via
- * `handleAddWorkflow`, and again on save in
- * `workflow-tool-factory.ts:validateCompatibility`.
+ * twice with different descriptions / input schemas. Compatibility is checked
+ * again on Connect and on save so stale list data can't bypass validation.
  */
+function isWorkflowCompatibleWithAgentTools(workflow: IWorkflowDb): boolean {
+	const nodes = workflow.nodes ?? [];
+	const hasSupportedTrigger = nodes.some((node) =>
+		supportedWorkflowToolTriggerTypes.has(node.type),
+	);
+	const hasIncompatibleBodyNode = nodes.some((node) =>
+		incompatibleWorkflowToolBodyNodeTypes.has(node.type),
+	);
+
+	return hasSupportedTrigger && !hasIncompatibleBodyNode;
+}
+
 const availableWorkflows = computed<IWorkflowDb[]>(() =>
-	projectWorkflows.value.filter((wf) => !wf.isArchived),
+	projectWorkflows.value.filter(
+		(workflow) => !workflow.isArchived && isWorkflowCompatibleWithAgentTools(workflow),
+	),
 );
 
 /** Configured tools annotated with their node-type description (for the icon + fallback name). */
@@ -360,11 +379,10 @@ function handleAddTool(nodeType: INodeTypeDescription) {
 async function handleAddWorkflow(workflow: IWorkflowDb) {
 	toolTelemetry.trackAddStarted('workflow');
 
-	// Pre-check on Connect click: the list API omits `nodes`, so body-node
-	// incompatibility (Wait / RespondToWebhook / Form) can only be detected
-	// after fetching the full workflow. We hit `GET /workflows/:id` directly
-	// (instead of `workflowsListStore.fetchWorkflow`, which would re-enter the
-	// global store cache) so this modal stays side-effect-free.
+	// Pre-check on Connect click so stale list data can't bypass body-node
+	// compatibility validation. We hit `GET /workflows/:id` directly (instead
+	// of `workflowsListStore.fetchWorkflow`, which would re-enter the global
+	// store cache) so this modal stays side-effect-free.
 	let full: IWorkflowDb;
 	try {
 		full = await getWorkflow(rootStore.restApiContext, workflow.id);
@@ -375,8 +393,8 @@ async function handleAddWorkflow(workflow: IWorkflowDb) {
 		return;
 	}
 
-	const incompatible = (full.nodes ?? []).filter((n) =>
-		(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES as readonly string[]).includes(n.type),
+	const incompatible = (full.nodes ?? []).filter((node) =>
+		incompatibleWorkflowToolBodyNodeTypes.has(node.type),
 	);
 	if (incompatible.length > 0) {
 		const nodeNames = incompatible.map((n) => n.name).join(', ');

@@ -255,7 +255,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
 						<ExpressionOutput
 							ref="expressionResultRef"
-							:class="$style.editor"
+							:class="outputRenderMode === 'text' ? $style.editor : undefined"
 							:segments="segments"
 							:extensions="theme"
 							:render="outputRenderMode"
@@ -323,12 +323,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	display: flex;
 	flex: 1 1 0;
 	min-height: 0;
+	min-width: 0;
 }
 
 .io {
 	display: flex;
 	flex: 1 1 0;
 	gap: var(--spacing--sm);
+	min-width: 0;
 }
 
 .input,
@@ -337,6 +339,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	flex: 1 1 0;
+	min-width: 0;
+	min-height: 0;
 }
 
 .output {

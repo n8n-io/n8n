@@ -20,6 +20,7 @@ import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
 import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
+import { useWorkflowDocumentRenderData } from './workflowDocument/useWorkflowDocumentRenderData';
 import { useWorkflowDocumentVersionData } from './workflowDocument/useWorkflowDocumentVersionData';
 import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
 import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
@@ -164,12 +165,18 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
-		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+		const {
+			onStateDirty: onNodesStateDirty,
+			nodeInputsByNodeId,
+			nodeOutputsByNodeId,
+			...workflowDocumentNodes
+		} = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 			nodeMetadata: workflowDocumentNodeMetadata,
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
 			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -187,6 +194,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+		});
+		const workflowDocumentRenderData = useWorkflowDocumentRenderData({
+			nodeInputsByNodeId,
+			nodeOutputsByNodeId,
 		});
 
 		// --- Cross-cut orchestration ---
@@ -395,6 +406,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
+			...workflowDocumentRenderData,
 			removeAllNodes,
 			hydrate,
 			reset,
