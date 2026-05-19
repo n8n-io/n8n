@@ -531,4 +531,168 @@ describe('ScalingService', () => {
 			expect(() => messageHandler('job-trigger', mcpTriggerResponseMessage)).not.toThrow();
 		});
 	});
+
+	describe('waitForJobResult', () => {
+		it('should resolve immediately when the result already exists', async () => {
+			const mockJobResult = {
+				success: true,
+				status: 'success' as const,
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+			};
+			// @ts-expect-error Private property
+			scalingService.jobResults.set('exec-123', mockJobResult);
+
+			const result = await scalingService.waitForJobResult('exec-123');
+
+			expect(result).toEqual(mockJobResult);
+		});
+
+		it('should resolve when the result arrives during polling', async () => {
+			jest.useFakeTimers();
+
+			const mockJobResult = {
+				success: true,
+				status: 'success' as const,
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+			};
+
+			const promise = scalingService.waitForJobResult('exec-123', 5000, 50);
+
+			jest.advanceTimersByTime(100);
+
+			// @ts-expect-error Private property
+			scalingService.jobResults.set('exec-123', mockJobResult);
+
+			jest.advanceTimersByTime(50);
+
+			const result = await promise;
+			expect(result).toEqual(mockJobResult);
+
+			jest.useRealTimers();
+		});
+
+		it('should reject on timeout', async () => {
+			jest.useFakeTimers();
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+			const promise = scalingService.waitForJobResult('exec-123', 200, 50);
+
+			jest.advanceTimersByTime(200);
+
+			await expect(promise).rejects.toThrow(
+				'Timeout waiting for job result for execution exec-123',
+			);
+			expect(clearIntervalSpy).toHaveBeenCalled();
+
+			clearIntervalSpy.mockRestore();
+			jest.useRealTimers();
+		});
+
+		it('should reject immediately if abortSignal is already aborted', async () => {
+			const controller = new AbortController();
+			controller.abort();
+
+			const promise = scalingService.waitForJobResult('exec-123', 5000, 50, controller.signal);
+
+			await expect(promise).rejects.toThrow(
+				'Waiting for job result for execution exec-123 was cancelled',
+			);
+		});
+
+		it('should reject when abortSignal fires during polling', async () => {
+			jest.useFakeTimers();
+			const controller = new AbortController();
+
+			const promise = scalingService.waitForJobResult('exec-123', 5000, 50, controller.signal);
+
+			jest.advanceTimersByTime(100);
+
+			controller.abort();
+
+			await expect(promise).rejects.toThrow(
+				'Waiting for job result for execution exec-123 was cancelled',
+			);
+
+			jest.useRealTimers();
+		});
+
+		it('should perform proper cleanup of interval and abort listener upon abort', async () => {
+			jest.useFakeTimers();
+			const controller = new AbortController();
+
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const addListenerSpy = jest.spyOn(controller.signal, 'addEventListener');
+			const removeListenerSpy = jest.spyOn(controller.signal, 'removeEventListener');
+
+			const promise = scalingService.waitForJobResult('exec-123', 5000, 50, controller.signal);
+
+			jest.advanceTimersByTime(100);
+
+			controller.abort();
+
+			await expect(promise).rejects.toThrow();
+
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(addListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function), { once: true });
+			expect(removeListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function));
+
+			setIntervalSpy.mockRestore();
+			clearIntervalSpy.mockRestore();
+			addListenerSpy.mockRestore();
+			removeListenerSpy.mockRestore();
+			jest.useRealTimers();
+		});
+
+		it('should resolve if the result arrives exactly at the timeout boundary', async () => {
+			jest.useFakeTimers();
+
+			const mockJobResult = {
+				success: true,
+				status: 'success' as const,
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+			};
+
+			const promise = scalingService.waitForJobResult('exec-123', 100, 50);
+
+			jest.advanceTimersByTime(50);
+
+			// @ts-expect-error Private property
+			scalingService.jobResults.set('exec-123', mockJobResult);
+
+			jest.advanceTimersByTime(50);
+
+			const result = await promise;
+			expect(result).toEqual(mockJobResult);
+
+			jest.useRealTimers();
+		});
+
+		it('should use default parameters for timeout and interval', async () => {
+			jest.useFakeTimers();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			const promise = scalingService.waitForJobResult('exec-123');
+
+			expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 250);
+
+			// @ts-expect-error Private property
+			scalingService.jobResults.set('exec-123', {
+				success: true,
+				status: 'success' as const,
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+			});
+
+			jest.advanceTimersByTime(250);
+			await expect(promise).resolves.toBeDefined();
+
+			setIntervalSpy.mockRestore();
+			jest.useRealTimers();
+		});
+	});
 });

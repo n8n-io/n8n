@@ -282,12 +282,17 @@ describe('run', () => {
 describe('enqueueExecution', () => {
 	const setupQueue = jest.fn();
 	const addJob = jest.fn();
+	const waitForJobResult = jest.fn();
+	const popJobResult = jest.fn();
+	const stopJob = jest.fn();
 
 	@Service()
 	class MockScalingService {
 		setupQueue = setupQueue;
-
 		addJob = addJob;
+		waitForJobResult = waitForJobResult;
+		popJobResult = popJobResult;
+		stopJob = stopJob;
 	}
 
 	beforeAll(() => {
@@ -351,6 +356,199 @@ describe('enqueueExecution', () => {
 			}),
 			expect.any(Object),
 		);
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
+		setupQueue.mockReset();
+		addJob.mockReset();
+		waitForJobResult.mockReset();
+		popJobResult.mockReset();
+		stopJob.mockReset();
+	});
+
+	it('should execute successfully via waitForJobResult', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		jest
+			.spyOn(activeExecutions, 'attachWorkflowExecution')
+			.mockImplementation((_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			});
+		jest.spyOn(activeExecutions, 'getResponseMode').mockImplementation((executionId) => {
+			expect(executionId).toBe('exec-id');
+			return undefined;
+		});
+		const finalizeSpy = jest.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		// @ts-expect-error Private method
+		jest.spyOn(runner, 'needsFullExecutionData').mockReturnValue(false);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({ id: 'job-id' });
+		addJob.mockResolvedValue(mockJob);
+
+		const mockResult = {
+			success: true,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			status: 'success',
+		};
+		waitForJobResult.mockResolvedValue(mockResult);
+		popJobResult.mockReturnValue(mockResult);
+
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		expect(capturedExecution).toBeDefined();
+		await capturedExecution!;
+
+		expect(waitForJobResult).toHaveBeenCalledWith(
+			'exec-id',
+			undefined,
+			undefined,
+			expect.any(AbortSignal),
+		);
+		expect(finalizeSpy).toHaveBeenCalledWith(
+			'exec-id',
+			expect.objectContaining({
+				finished: true,
+				jobId: 'job-id',
+				status: 'success',
+			}),
+		);
+	});
+
+	it('should handle timeout error in waitForJobResult', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		const processErrorSpy = jest.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		jest
+			.spyOn(activeExecutions, 'attachWorkflowExecution')
+			.mockImplementation((_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			});
+		const finalizeSpy = jest.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({
+			id: 'job-id',
+			data: { executionId: 'exec-id', workflowId: 'wf-id' },
+		});
+		addJob.mockResolvedValue(mockJob);
+
+		waitForJobResult.mockRejectedValue(
+			new Error('Timeout waiting for job result for execution exec-id'),
+		);
+
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		await expect(capturedExecution!).rejects.toThrow(
+			'Job completion lost or timed out for execution exec-id',
+		);
+
+		expect(processErrorSpy).toHaveBeenCalled();
+		expect(finalizeSpy).not.toHaveBeenCalled();
+		expect(popJobResult).toHaveBeenCalledWith('exec-id');
+	});
+
+	it('should handle manual cancellation path', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		const processErrorSpy = jest.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		jest
+			.spyOn(activeExecutions, 'attachWorkflowExecution')
+			.mockImplementation((_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			});
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({
+			id: 'job-id',
+			data: { executionId: 'exec-id', workflowId: 'wf-id' },
+		});
+		addJob.mockResolvedValue(mockJob);
+
+		waitForJobResult.mockImplementation(
+			async (
+				execId: string,
+				jobId: string | undefined,
+				timeout: number | undefined,
+				signal: AbortSignal,
+			) => {
+				return new Promise((resolve, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('cancelled')));
+				});
+			},
+		);
+
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		capturedExecution!.cancel();
+
+		await expect(capturedExecution!).rejects.toThrow('The execution was cancelled manually');
+
+		expect(stopJob).toHaveBeenCalledWith(mockJob);
+		expect(processErrorSpy).toHaveBeenCalled();
+	});
+
+	it('should verify AbortController is aborted when execution is cancelled', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		jest
+			.spyOn(activeExecutions, 'attachWorkflowExecution')
+			.mockImplementation((_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			});
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({ id: 'job-id' });
+		addJob.mockResolvedValue(mockJob);
+
+		const abortSpy = jest.spyOn(AbortController.prototype, 'abort');
+
+		waitForJobResult.mockImplementation(
+			async (
+				execId: string,
+				jobId: string | undefined,
+				timeout: number | undefined,
+				signal: AbortSignal,
+			) => {
+				return new Promise((resolve, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('aborted')));
+				});
+			},
+		);
+
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		capturedExecution!.cancel();
+
+		expect(abortSpy).toHaveBeenCalledTimes(1);
+
+		await expect(capturedExecution!).rejects.toThrow('The execution was cancelled manually');
+
+		abortSpy.mockRestore();
 	});
 });
 
