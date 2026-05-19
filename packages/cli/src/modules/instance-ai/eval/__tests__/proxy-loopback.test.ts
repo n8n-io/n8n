@@ -74,4 +74,70 @@ describe('patchNoProxyForLoopback', () => {
 
 		expect(Object.prototype.hasOwnProperty.call(process.env, 'NO_PROXY')).toBe(false);
 	});
+
+	describe('overlapping (reference-counted) patches', () => {
+		it('keeps the loopback exemption in place until every overlapping caller restores', () => {
+			process.env.NO_PROXY = 'example.com';
+
+			const restoreA = patchNoProxyForLoopback();
+			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com');
+
+			const restoreB = patchNoProxyForLoopback();
+			// Second call must not snapshot the *already patched* value, otherwise
+			// restoring would leave the loopback entries permanently.
+			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com');
+
+			restoreA();
+			// A is done, but B is still running — env must stay patched.
+			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com');
+
+			restoreB();
+			// All overlapping evals done — env reverts to the operator's value.
+			expect(process.env.NO_PROXY).toBe('example.com');
+		});
+
+		it('each restore closure is idempotent', () => {
+			process.env.NO_PROXY = 'example.com';
+
+			const restoreA = patchNoProxyForLoopback();
+			const restoreB = patchNoProxyForLoopback();
+
+			restoreA();
+			restoreA(); // duplicate call must not double-decrement
+			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,example.com');
+
+			restoreB();
+			expect(process.env.NO_PROXY).toBe('example.com');
+		});
+
+		it('handles undefined original across overlapping patches', () => {
+			delete process.env.NO_PROXY;
+
+			const restoreA = patchNoProxyForLoopback();
+			const restoreB = patchNoProxyForLoopback();
+			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost');
+
+			restoreB();
+			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost');
+
+			restoreA();
+			expect(Object.prototype.hasOwnProperty.call(process.env, 'NO_PROXY')).toBe(false);
+		});
+
+		it('after every closure fires, a fresh patch starts a new snapshot', () => {
+			process.env.NO_PROXY = 'first.example.com';
+			const restore1 = patchNoProxyForLoopback();
+			restore1();
+			expect(process.env.NO_PROXY).toBe('first.example.com');
+
+			// Operator changes NO_PROXY between eval runs — the next patch should
+			// snapshot the new value, not the original from the previous cycle.
+			process.env.NO_PROXY = 'second.example.com';
+			const restore2 = patchNoProxyForLoopback();
+			expect(process.env.NO_PROXY).toBe('127.0.0.1,localhost,second.example.com');
+
+			restore2();
+			expect(process.env.NO_PROXY).toBe('second.example.com');
+		});
+	});
 });

@@ -120,7 +120,11 @@ describe('EvalMockedCredentialsHelper', () => {
 					{ node: openAiNode } as IExecuteData,
 				);
 
-				expect(result).toEqual({ apiKey: 'sk-real', url: serverUrl });
+				// /v1 must stay on the rewritten URL — the LangChain OpenAI node
+				// uses this verbatim as the SDK's `baseURL`, and the SDK appends
+				// `/chat/completions`. A bare server URL would miss the wire-server
+				// route. See LmChatOpenAi.node.ts:765.
+				expect(result).toEqual({ apiKey: 'sk-real', url: `${serverUrl}/v1` });
 				expect(helper.rewrittenCredentials).toEqual([
 					{
 						nodeName: 'OpenAI Chat Model',
@@ -228,7 +232,7 @@ describe('EvalMockedCredentialsHelper', () => {
 					{ node: openAiNode } as IExecuteData,
 				);
 
-				expect(result).toEqual({ __evalMockedCredential: true, url: serverUrl });
+				expect(result).toEqual({ __evalMockedCredential: true, url: `${serverUrl}/v1` });
 				expect(helper.mockedCredentials).toHaveLength(1);
 				expect(helper.rewrittenCredentials).toHaveLength(1);
 			});

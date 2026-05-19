@@ -47,7 +47,7 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 		} as ICredentialsHelper;
 	}
 
-	it('rewrites the openAiApi base URL to the running wire server', async () => {
+	it('rewrites the openAiApi base URL to the wire server with the /v1 path', async () => {
 		const realCreds: ICredentialDataDecryptedObject = {
 			apiKey: 'sk-real-secret',
 			url: 'https://api.openai.com/v1',
@@ -63,7 +63,7 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 			{ node: { name: 'OpenAI Chat Model', id: 'node-1' } as INode } as IExecuteData,
 		);
 
-		expect(result.url).toBe(server.url);
+		expect(result.url).toBe(`${server.url}/v1`);
 		expect(result.apiKey).toBe('sk-real-secret');
 		expect(helper.rewrittenCredentials).toEqual([
 			{
@@ -75,7 +75,7 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 		]);
 	});
 
-	it('a POST to the rewritten URL returns a usable chat-completion envelope', async () => {
+	it('mirrors the OpenAI SDK baseURL contract — appending /chat/completions reaches the wire server', async () => {
 		const realCreds: ICredentialDataDecryptedObject = {
 			apiKey: 'sk-real-secret',
 			url: 'https://api.openai.com/v1',
@@ -91,7 +91,12 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 			{ node: { name: 'OpenAI Chat Model', id: 'node-1' } as INode } as IExecuteData,
 		);
 
-		const response = await fetch(`${String(rewritten.url)}/v1/chat/completions`, {
+		// Mirror the LangChain OpenAI node behaviour: `credentials.url` becomes
+		// the SDK's `baseURL` verbatim (LmChatOpenAi.node.ts:765), and the SDK
+		// appends `/chat/completions`. So this is the exact URL the SDK would
+		// post to — if the rewrite were missing `/v1`, this would 404.
+		const baseUrl = String(rewritten.url);
+		const response = await fetch(`${baseUrl}/chat/completions`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({

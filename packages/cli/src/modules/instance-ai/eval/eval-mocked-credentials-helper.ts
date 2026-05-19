@@ -25,15 +25,21 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 const MOCK_MARKER = '__evalMockedCredential' as const;
 
 /**
- * Maps credential type → the property on the decrypted credential that holds
- * the vendor base URL. When the eval wire server is running, the matched
- * property gets rewritten so the vendor SDK posts to the local server.
+ * Maps credential type → which field holds the vendor base URL and the path
+ * prefix the rewritten URL needs to carry so the vendor SDK lands on the
+ * correct wire-server route.
+ *
+ * The LangChain OpenAI node passes `credentials.url` straight into the SDK's
+ * `baseURL`. The SDK then appends `/chat/completions`. So the rewritten URL
+ * **must** include `/v1` — otherwise the SDK calls `/chat/completions` and
+ * misses the wire server's `/v1/chat/completions` route. See LmChatOpenAi
+ * `LmChatOpenAi.node.ts:765` (`configuration.baseURL = credentials.url`).
  *
  * Only OpenAI for now — Anthropic, Azure, OpenAI-compat providers, embeddings,
  * vector stores land in the Tier 1–3 follow-up tickets after TRUST-115.
  */
-const EVAL_PROVIDER_URL_FIELD: Record<string, string> = {
-	openAiApi: 'url',
+export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix: string }> = {
+	openAiApi: { field: 'url', pathPrefix: '/v1' },
 };
 
 /**
@@ -178,13 +184,17 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		executeData: IExecuteData | undefined,
 	): ICredentialDataDecryptedObject {
 		if (!this.serverUrl) return credentials;
-		const field = EVAL_PROVIDER_URL_FIELD[type];
-		if (!field) {
+		const mapping = EVAL_PROVIDER_URL_FIELD[type];
+		if (!mapping) {
 			// Wire server is up (caller opted in) but this credential type has no
 			// URL field mapping yet. The vendor SDK will use its built-in default
 			// URL, which means traffic for this provider escapes interception and
 			// hits the real API. Surface this loudly so the gap is visible until
 			// the Tier 1 follow-up tickets extend `EVAL_PROVIDER_URL_FIELD`.
+			// `assertUnpinCompatibility` should refuse this case for vendor LLM
+			// sub-node types — this branch survives for non-LLM credentials
+			// that legitimately go through n8n's HTTP helpers (eval mock layer
+			// intercepts those separately).
 			this.logger?.warn(
 				`[EvalMock] No URL rewrite mapping for credential type "${type}" — ` +
 					`vendor traffic from "${executeData?.node?.name ?? 'unknown'}" will hit the real provider.`,
@@ -192,6 +202,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			return credentials;
 		}
 
+		const { field, pathPrefix } = mapping;
 		this.rewrittenCredentials.push({
 			nodeName: executeData?.node?.name ?? 'unknown',
 			credentialType: type,
@@ -199,7 +210,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			field,
 		});
 
-		return { ...credentials, [field]: this.serverUrl };
+		return { ...credentials, [field]: `${this.serverUrl}${pathPrefix}` };
 	}
 
 	async updateCredentials(

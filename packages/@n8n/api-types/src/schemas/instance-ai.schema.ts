@@ -1109,11 +1109,19 @@ export interface InstanceAiEvalMockedCredential {
 
 /**
  * PostHog kill-switch flag for the eval vendor SDK interception code path.
- * Defaults to true (rewrite enabled for every caller that opts in via
- * `unpinNodes`). Flipping to false in PostHog disables the credential URL
- * rewrite so `EvalMockedCredentialsHelper` reverts to today's behaviour —
- * the wire server keeps booting but never receives traffic. Fail-open on
- * PostHog outage: if the flag can't be resolved, treat as enabled.
+ *
+ * Resolution semantics (consult `EvalExecutionService.isInterceptionEnabled`
+ * for the implementation):
+ *   - **Flag set to `true`**, or **unset** (no rule configured in PostHog):
+ *     interception is ENABLED. The flag is default-on; operators flip it to
+ *     `false` to kill the feature in an emergency.
+ *   - **Flag set to `false`**: interception is DISABLED. Requests with
+ *     `unpinNodes` are refused with a clear error so vendor traffic can
+ *     never reach the real provider — the wire server never boots.
+ *   - **Resolution error** (PostHog unreachable/unhealthy): treated as
+ *     DISABLED (fail-closed). A kill-switch must work when the flag plane
+ *     itself is degraded; an outage is the moment to refuse rather than
+ *     silently run the rewrite.
  */
 export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
 

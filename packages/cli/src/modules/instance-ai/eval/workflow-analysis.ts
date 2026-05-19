@@ -101,6 +101,30 @@ const BYPASS_NODE_TYPES = new Set([
 ]);
 
 /**
+ * AI sub-node types that **are** supported by the eval wire-server rewrite
+ * path. The compatibility guard refuses unpinning when an inbound `ai_*`
+ * sub-node uses a vendor SDK that isn't on this list — its vendor traffic
+ * would escape interception and hit the real provider with real credentials.
+ *
+ * Currently OpenAI only; Tier 1 follow-ups (Anthropic, Azure, Cohere/Groq,
+ * Google Gemini/Vertex, etc.) will extend this set together with the
+ * matching entries in `EVAL_PROVIDER_URL_FIELD`.
+ */
+const SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES = new Set(['@n8n/n8n-nodes-langchain.lmChatOpenAi']);
+
+/**
+ * Heuristic for "this sub-node bakes a vendor base URL into its SDK at
+ * construction time, so the only way to intercept its traffic is to rewrite
+ * the credential URL". All `@n8n/n8n-nodes-langchain.lm*` nodes match — both
+ * the chat (`lmChat*`) and legacy completion (`lmOpenAi`, `lmOllama`, etc.)
+ * variants. The compatibility guard pairs this with
+ * `SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES` to refuse unsupported vendors.
+ */
+function isVendorLlmSubNode(nodeType: string): boolean {
+	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
+}
+
+/**
  * AI sub-node types that use a protocol-binary client (TCP, native driver, etc.).
  * These cannot be intercepted via the HTTP wire server, so the root they hang off
  * cannot be unpinned safely. `assertUnpinCompatibility` refuses unpin requests
@@ -142,10 +166,29 @@ export function identifyNodesForPinData(
 	});
 }
 
+type UnpinRefusal = {
+	root: string;
+	subNode: string;
+	subNodeType: string;
+	reason: 'protocol_binary' | 'unsupported_vendor_llm';
+};
+
 /**
  * Refuse unpinning AI roots whose inbound `ai_*` sub-nodes can't be intercepted
- * over HTTP. Walks the workflow's destination-indexed connections once per
- * call and throws a `UserError` listing every offending root → sub-node pair.
+ * over HTTP. Two categories are refused:
+ *   - **Protocol-binary** sub-nodes (Postgres memory, Redis memory, native
+ *     vector stores) — they don't speak HTTP at all.
+ *   - **Unsupported vendor LLM** sub-nodes (anything matching
+ *     `@n8n/n8n-nodes-langchain.lm*` that isn't on
+ *     `SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES`) — they bake their vendor base
+ *     URL into the SDK and would call the real provider with real
+ *     credentials, because `EVAL_PROVIDER_URL_FIELD` has no rewrite mapping
+ *     for them yet.
+ *
+ * Walks destination-indexed connections once per call and throws a `UserError`
+ * listing every offending root → sub-node pair grouped by reason. Refusing up
+ * front (before any execution) keeps the safety story unambiguous — the only
+ * way to opt into an unmapped vendor is to extend the support set.
  */
 export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
 	if (unpinNodes.length === 0) return;
@@ -153,7 +196,7 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
 
-	const refusals: Array<{ root: string; subNode: string; subNodeType: string }> = [];
+	const refusals: UnpinRefusal[] = [];
 
 	for (const rootName of unpinNodes) {
 		const inbound = connectionsByDestination[rootName];
@@ -166,11 +209,23 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 				for (const conn of group) {
 					const sourceNode = nodesByName.get(conn.node);
 					if (!sourceNode || sourceNode.disabled) continue;
+
 					if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) {
 						refusals.push({
 							root: rootName,
 							subNode: sourceNode.name,
 							subNodeType: sourceNode.type,
+							reason: 'protocol_binary',
+						});
+					} else if (
+						isVendorLlmSubNode(sourceNode.type) &&
+						!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)
+					) {
+						refusals.push({
+							root: rootName,
+							subNode: sourceNode.name,
+							subNodeType: sourceNode.type,
+							reason: 'unsupported_vendor_llm',
 						});
 					}
 				}
@@ -178,15 +233,30 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 		}
 	}
 
-	if (refusals.length > 0) {
-		const detail = refusals
-			.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`)
-			.join(', ');
-		throw new UserError(
-			`Cannot unpin AI root nodes whose sub-nodes use a protocol-binary client: ${detail}. ` +
-				'These sub-nodes cannot be intercepted via HTTP — leave the root pinned or replace the sub-node with an HTTP-based alternative.',
+	if (refusals.length === 0) return;
+
+	const formatPairs = (list: UnpinRefusal[]) =>
+		list.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
+
+	const protocolBinary = refusals.filter((r) => r.reason === 'protocol_binary');
+	const unsupportedVendor = refusals.filter((r) => r.reason === 'unsupported_vendor_llm');
+
+	const segments: string[] = [];
+	if (protocolBinary.length > 0) {
+		segments.push(
+			`protocol-binary sub-nodes (cannot be intercepted via HTTP): ${formatPairs(protocolBinary)}`,
 		);
 	}
+	if (unsupportedVendor.length > 0) {
+		segments.push(
+			`unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet): ${formatPairs(unsupportedVendor)}`,
+		);
+	}
+
+	throw new UserError(
+		`Cannot unpin AI root nodes — ${segments.join('; ')}. ` +
+			'Leave these roots pinned, or replace the sub-node with one that has interception support.',
+	);
 }
 
 /**
