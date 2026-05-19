@@ -100,6 +100,24 @@ describe('BackgroundTaskManager', () => {
 			expect(timedOut).toEqual([]);
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
 		});
+
+		it('skips timeout checks for tasks currently waiting on HITL', async () => {
+			manager.spawn(
+				makeSpawnOptions({
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+			const task = manager.getRunningTasks('thread-1')[0];
+			task.startedAt = 0;
+			task.lastActivityAt = 0;
+
+			const timedOut = await manager.timeoutTimedOutTasks(policy, 30_000, {
+				shouldSkipTask: (candidate) => candidate.threadId === 'thread-1',
+			});
+
+			expect(timedOut).toEqual([]);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
+		});
 	});
 
 	describe('spawn', () => {
