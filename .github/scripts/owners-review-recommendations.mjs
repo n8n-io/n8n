@@ -22,7 +22,7 @@ import { ensureEnvVar, initGithub } from "./github-helpers.mjs";
  * @returns { Owner[] }
  * */
 export function parseOwnersFile() {
-	const content = readFileSync(".github/OWNERS", "utf8");
+	const content = readFileSync("../OWNERS", "utf8");
 
 	const owners = content.split("\n")
 	.filter(line => line.includes("@n8n-io"))
