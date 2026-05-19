@@ -2,6 +2,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	AgentEvaluationDatasetResponse,
+	AgentEvaluationSuiteRunRequest,
 	AgentEvaluationSuiteRunResponse,
 	AgentEvaluationSuiteSetupResponse,
 } from '@n8n/api-types';
@@ -34,10 +35,12 @@ export const runAgentEvaluationSuite = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	payload?: AgentEvaluationSuiteRunRequest,
 ): Promise<AgentEvaluationSuiteRunResponse> => {
 	return await makeRestApiRequest<AgentEvaluationSuiteRunResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/evaluations/suite/run`,
+		payload,
 	);
 };

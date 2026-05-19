@@ -242,4 +242,34 @@ describe('AgentEvaluationsService', () => {
 			}),
 		);
 	});
+
+	it('runs only the selected metrics', async () => {
+		const review = reviewFixture({
+			expectedOutput: 'Expected answer',
+			actualOutput: 'Old answer',
+		});
+		agentEvaluationCaseRepository.countByStatus.mockResolvedValue({
+			total: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			approved: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			rejected: 0,
+		});
+		agentEvaluationCaseRepository.findByAgent.mockResolvedValue([review]);
+		agentsService.executeEvaluationCase.mockResolvedValue({
+			output: 'Expected answer',
+			error: null,
+			finishReason: 'stop',
+			durationMs: 125,
+			toolCalls: [],
+			missingToolMocks: [],
+			warnings: [],
+		});
+
+		const response = await service.runSuite('project-1', 'agent-1', 'user-1', {
+			enabledMetricIds: ['task-completion'],
+		});
+
+		expect(response.run?.cases[0].metrics).toEqual([
+			expect.objectContaining({ id: 'task-completion', pass: true }),
+		]);
+	});
 });

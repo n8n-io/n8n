@@ -85,6 +85,10 @@ export interface AgentEvaluationSuiteRun {
 	warnings: string[];
 }
 
+export interface AgentEvaluationSuiteRunRequest {
+	enabledMetricIds?: string[];
+}
+
 export interface AgentEvaluationSuiteRunResponse {
 	readiness: AgentEvaluationDatasetReadiness;
 	run: AgentEvaluationSuiteRun | null;

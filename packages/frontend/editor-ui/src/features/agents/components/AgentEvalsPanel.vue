@@ -2,14 +2,15 @@
 import type {
 	AgentEvaluationDatasetResponse,
 	AgentEvaluationRunCaseResult,
+	AgentEvaluationMetricSuggestion,
 	AgentEvaluationSuiteDraft,
 	AgentEvaluationSuiteRun,
 } from '@n8n/api-types';
 import { AGENT_EVALUATION_MIN_REVIEWED_CASES } from '@n8n/api-types';
-import { N8nBadge, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
 
@@ -45,6 +46,13 @@ const run = ref<AgentEvaluationSuiteRun | null>(null);
 const loading = ref(false);
 const settingUpSuite = ref(false);
 const runningSuite = ref(false);
+const enabledMetricIds = ref<string[]>([]);
+
+const RUN_PROGRESS_STEPS = ['preparing', 'running', 'scoring', 'finalizing'] as const;
+type RunProgressStep = (typeof RUN_PROGRESS_STEPS)[number];
+
+const runProgressStep = ref<RunProgressStep | null>(null);
+const runProgressTimers: number[] = [];
 
 const evals = computed(() => props.schema?.evaluations ?? []);
 const readiness = computed(() => dataset.value?.readiness ?? null);
@@ -56,6 +64,34 @@ const minimumReviewedCases = computed(
 const remainingCases = computed(
 	() => readiness.value?.remainingCases ?? minimumReviewedCases.value,
 );
+const enabledMetricCount = computed(() => enabledMetricIds.value.length);
+const canRunSuite = computed(() => enabledMetricCount.value > 0 && !runningSuite.value);
+const runProgressStepIndex = computed(() =>
+	runProgressStep.value ? RUN_PROGRESS_STEPS.indexOf(runProgressStep.value) : -1,
+);
+const currentRunProgressStep = computed(() => {
+	if (!runProgressStep.value) return '';
+
+	return i18n.baseText(`agents.builder.evaluations.run.progress.${runProgressStep.value}`);
+});
+const currentRunProgressTitle = computed(() => {
+	if (!runProgressStep.value) return '';
+
+	return i18n.baseText('agents.builder.evaluations.run.progress.step', {
+		interpolate: {
+			current: String(runProgressStepIndex.value + 1),
+			total: String(RUN_PROGRESS_STEPS.length),
+			step: currentRunProgressStep.value,
+		},
+	});
+});
+const currentRunProgressDescription = computed(() => {
+	if (!runProgressStep.value) return '';
+
+	return i18n.baseText(
+		`agents.builder.evaluations.run.progress.${runProgressStep.value}.description`,
+	);
+});
 
 const readinessTitle = computed(() => {
 	if (loading.value && !dataset.value) {
@@ -121,6 +157,7 @@ async function setupSuite() {
 			dataset.value = { ...dataset.value, readiness: response.readiness };
 		}
 		suite.value = response.suite;
+		resetMetricSelection(response.suite);
 		if (!response.suite) {
 			toast.showMessage({
 				title: i18n.baseText('agents.builder.evaluations.setup.notReady'),
@@ -136,14 +173,25 @@ async function setupSuite() {
 
 async function runFirstEvaluation() {
 	if (!props.projectId || !props.agentId) return;
+	if (enabledMetricCount.value === 0) {
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.evaluations.run.noMetrics'),
+			type: 'warning',
+		});
+		return;
+	}
 
 	runningSuite.value = true;
+	run.value = null;
+	startRunProgress();
 	try {
 		const response = await runAgentEvaluationSuite(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
+			{ enabledMetricIds: enabledMetricIds.value },
 		);
+		runProgressStep.value = 'finalizing';
 		if (dataset.value) {
 			dataset.value = { ...dataset.value, readiness: response.readiness };
 		}
@@ -157,6 +205,7 @@ async function runFirstEvaluation() {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.evaluations.run.loadError'));
 	} finally {
+		clearRunProgress();
 		runningSuite.value = false;
 	}
 }
@@ -175,12 +224,56 @@ function getCaseStatusLabel(result: AgentEvaluationRunCaseResult): string {
 	return i18n.baseText('agents.builder.evaluations.run.status.failed');
 }
 
-function getCaseStatusTheme(
-	result: AgentEvaluationRunCaseResult,
-): 'success' | 'danger' | 'warning' {
-	if (result.status === 'passed') return 'success';
-	if (result.status === 'error') return 'danger';
-	return 'warning';
+function resetMetricSelection(nextSuite: AgentEvaluationSuiteDraft | null) {
+	enabledMetricIds.value =
+		nextSuite?.metrics.filter((metric) => metric.enabled).map((metric) => metric.id) ?? [];
+}
+
+function isMetricEnabled(metricId: string) {
+	return enabledMetricIds.value.includes(metricId);
+}
+
+function setMetricEnabled(metricId: string, enabled: boolean) {
+	if (enabled) {
+		enabledMetricIds.value = [...new Set([...enabledMetricIds.value, metricId])];
+		return;
+	}
+
+	enabledMetricIds.value = enabledMetricIds.value.filter((id) => id !== metricId);
+}
+
+function getMetricToggleLabel(metric: AgentEvaluationMetricSuggestion) {
+	return i18n.baseText('agents.builder.evaluations.suite.metric.toggle', {
+		interpolate: { metric: metric.name },
+	});
+}
+
+function getProgressStepLabel(step: RunProgressStep) {
+	return i18n.baseText(`agents.builder.evaluations.run.progress.${step}`);
+}
+
+function startRunProgress() {
+	clearRunProgress();
+	runProgressStep.value = 'preparing';
+	runProgressTimers.push(
+		window.setTimeout(() => {
+			runProgressStep.value = 'running';
+		}, 600),
+		window.setTimeout(() => {
+			runProgressStep.value = 'scoring';
+		}, 2200),
+		window.setTimeout(() => {
+			runProgressStep.value = 'finalizing';
+		}, 4200),
+	);
+}
+
+function clearRunProgress() {
+	for (const timer of runProgressTimers) {
+		window.clearTimeout(timer);
+	}
+	runProgressTimers.length = 0;
+	runProgressStep.value = null;
 }
 
 watch(
@@ -188,6 +281,8 @@ watch(
 	() => void loadDataset(),
 	{ immediate: true },
 );
+
+onBeforeUnmount(clearRunProgress);
 </script>
 
 <template>
@@ -216,13 +311,17 @@ watch(
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('agents.builder.evaluations.dataset.approved') }}
 					</N8nText>
-					<N8nText :bold="true">{{ dataset?.summary.approved ?? 0 }}</N8nText>
+					<N8nText :bold="true" :class="$style.statOk">{{
+						dataset?.summary.approved ?? 0
+					}}</N8nText>
 				</div>
 				<div :class="$style.datasetStat">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('agents.builder.evaluations.dataset.rejected') }}
 					</N8nText>
-					<N8nText :bold="true">{{ dataset?.summary.rejected ?? 0 }}</N8nText>
+					<N8nText :bold="true" :class="$style.statBad">{{
+						dataset?.summary.rejected ?? 0
+					}}</N8nText>
 				</div>
 			</div>
 
@@ -310,15 +409,24 @@ watch(
 					<N8nText :bold="true" size="small">
 						{{ i18n.baseText('agents.builder.evaluations.suite.metrics') }}
 					</N8nText>
-					<div
+					<label
 						v-for="metric in suite.metrics"
 						:key="metric.id"
-						:class="$style.metricRow"
+						:class="[$style.metricRow, !isMetricEnabled(metric.id) && $style.metricRowDisabled]"
 						data-testid="agent-evaluations-suite-metric"
 					>
-						<div :class="$style.metricCopy">
-							<N8nText :bold="true" size="small">{{ metric.name }}</N8nText>
-							<N8nText size="small" color="text-light">{{ metric.description }}</N8nText>
+						<div :class="$style.metricToggle">
+							<N8nCheckbox
+								:model-value="isMetricEnabled(metric.id)"
+								:aria-label="getMetricToggleLabel(metric)"
+								:disabled="runningSuite"
+								data-testid="agent-evaluations-suite-metric-toggle"
+								@update:model-value="(checked: boolean) => setMetricEnabled(metric.id, checked)"
+							/>
+							<div :class="$style.metricCopy">
+								<N8nText :bold="true" size="small">{{ metric.name }}</N8nText>
+								<N8nText size="small" color="text-light">{{ metric.description }}</N8nText>
+							</div>
 						</div>
 						<div :class="$style.metricBadges">
 							<N8nBadge theme="secondary" size="small">
@@ -328,21 +436,55 @@ watch(
 										: i18n.baseText('agents.builder.evaluations.type.judge')
 								}}
 							</N8nBadge>
-							<N8nBadge :theme="metric.enabled ? 'success' : 'secondary'" size="small">
+							<span
+								:class="[
+									$style.statusBadge,
+									isMetricEnabled(metric.id) ? $style.statusBadgeOk : $style.statusBadgeMuted,
+								]"
+							>
 								{{
-									metric.enabled
+									isMetricEnabled(metric.id)
 										? i18n.baseText('agents.builder.evaluations.suite.metric.enabled')
 										: i18n.baseText('agents.builder.evaluations.suite.metric.disabled')
 								}}
-							</N8nBadge>
+							</span>
 						</div>
+					</label>
+				</div>
+
+				<div
+					v-if="runningSuite && runProgressStep"
+					:class="$style.runProgress"
+					data-testid="agent-evaluations-run-progress"
+				>
+					<div :class="$style.readinessCopy">
+						<N8nText :bold="true" size="small">{{ currentRunProgressTitle }}</N8nText>
+						<N8nText size="small" color="text-light">{{ currentRunProgressDescription }}</N8nText>
+					</div>
+					<div :class="$style.progressSteps" aria-hidden="true">
+						<span
+							v-for="(step, index) in RUN_PROGRESS_STEPS"
+							:key="step"
+							:class="[
+								$style.progressStep,
+								index < runProgressStepIndex && $style.progressStepDone,
+								index === runProgressStepIndex && $style.progressStepCurrent,
+							]"
+						>
+							<span :class="$style.progressDot" />
+							<span>{{ getProgressStepLabel(step) }}</span>
+						</span>
 					</div>
 				</div>
 
 				<div :class="$style.suiteActions">
+					<N8nText v-if="enabledMetricCount === 0" size="small" :class="$style.noMetrics">
+						{{ i18n.baseText('agents.builder.evaluations.run.noMetrics') }}
+					</N8nText>
 					<N8nButton
 						icon="play"
 						:label="i18n.baseText('agents.builder.evaluations.run.button')"
+						:disabled="!canRunSuite"
 						:loading="runningSuite"
 						data-testid="agent-evaluations-run-suite"
 						@click="runFirstEvaluation"
@@ -380,13 +522,15 @@ watch(
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('agents.builder.evaluations.run.summary.passed') }}
 						</N8nText>
-						<N8nText :bold="true">{{ run.summary.passedCases }}</N8nText>
+						<N8nText :bold="true" :class="$style.statOk">{{ run.summary.passedCases }}</N8nText>
 					</div>
 					<div :class="$style.datasetStat">
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('agents.builder.evaluations.run.summary.failed') }}
 						</N8nText>
-						<N8nText :bold="true">{{ run.summary.failedCases + run.summary.errorCases }}</N8nText>
+						<N8nText :bold="true" :class="$style.statBad">{{
+							run.summary.failedCases + run.summary.errorCases
+						}}</N8nText>
 					</div>
 				</div>
 
@@ -410,22 +554,32 @@ watch(
 									result.output || result.error
 								}}</N8nText>
 							</div>
-							<N8nBadge :theme="getCaseStatusTheme(result)" size="small">
+							<span
+								:class="[
+									$style.statusBadge,
+									result.status === 'passed' ? $style.statusBadgeOk : $style.statusBadgeBad,
+								]"
+							>
 								{{ getCaseStatusLabel(result) }}
-							</N8nBadge>
+							</span>
 						</div>
 						<div :class="$style.metricBadges">
-							<N8nBadge
+							<span
 								v-for="metric in result.metrics"
 								:key="metric.id"
-								:theme="metric.pass ? 'success' : 'warning'"
-								size="small"
+								:class="[
+									$style.statusBadge,
+									metric.pass ? $style.statusBadgeOk : $style.statusBadgeBad,
+								]"
 							>
 								{{ metric.name }} {{ formatScore(metric.score) }}
-							</N8nBadge>
-							<N8nBadge v-if="result.missingToolMocks.length > 0" theme="warning" size="small">
+							</span>
+							<span
+								v-if="result.missingToolMocks.length > 0"
+								:class="[$style.statusBadge, $style.statusBadgeBad]"
+							>
 								{{ i18n.baseText('agents.builder.evaluations.run.missingMocks') }}
-							</N8nBadge>
+							</span>
 						</div>
 					</div>
 				</div>
@@ -497,7 +651,7 @@ watch(
 }
 
 .readyIcon {
-	color: var(--color--success);
+	color: var(--text-color--info);
 }
 
 .readinessCopy {
@@ -530,6 +684,7 @@ watch(
 
 .suiteActions {
 	display: flex;
+	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
 }
@@ -575,6 +730,25 @@ watch(
 	padding: var(--spacing--xs);
 	border: var(--border);
 	border-radius: var(--border-radius-base);
+	cursor: pointer;
+	transition:
+		background-color var(--duration--snappy),
+		border-color var(--duration--snappy);
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+}
+
+.metricRowDisabled {
+	background-color: var(--background--hover);
+}
+
+.metricToggle {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	min-width: 0;
 }
 
 .metricCopy {
@@ -600,6 +774,87 @@ watch(
 	border: var(--border);
 	border-radius: var(--border-radius-base);
 	background-color: var(--callout--color--background--warning);
+}
+
+.runProgress {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs);
+	border: var(--border-width) var(--border-style) var(--border-color--info);
+	border-radius: var(--border-radius-base);
+	background-color: var(--background--info);
+}
+
+.progressSteps {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--spacing--2xs);
+}
+
+.progressStep {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
+}
+
+.progressStepDone,
+.progressStepCurrent {
+	color: var(--text-color--info);
+}
+
+.progressDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--xl);
+	background-color: var(--border-color);
+	flex-shrink: 0;
+}
+
+.progressStepDone .progressDot,
+.progressStepCurrent .progressDot {
+	background-color: var(--text-color--info);
+}
+
+.statusBadge {
+	display: inline-flex;
+	align-items: center;
+	width: fit-content;
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	border: var(--border-width) var(--border-style) currentColor;
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--sm);
+	white-space: nowrap;
+}
+
+.statusBadgeOk {
+	color: var(--text-color--info);
+	background-color: var(--background--info);
+}
+
+.statusBadgeBad {
+	color: var(--text-color--danger);
+	background-color: var(--background--danger);
+}
+
+.statusBadgeMuted {
+	color: var(--text-color--subtle);
+	background-color: var(--background--hover);
+}
+
+.statOk {
+	color: var(--text-color--info);
+}
+
+.statBad,
+.noMetrics {
+	color: var(--text-color--danger);
 }
 
 .runCases {
@@ -637,13 +892,13 @@ watch(
 }
 
 .badgeCheck {
-	background-color: var(--color--orange-100);
-	color: var(--background--brand--active);
+	background-color: var(--background--hover);
+	color: var(--text-color--subtle);
 }
 
 .badgeJudge {
-	background-color: var(--color--purple-100);
-	color: var(--color--purple-700);
+	background-color: var(--background--hover);
+	color: var(--text-color--subtle);
 }
 
 .credentialRow {
@@ -679,6 +934,10 @@ watch(
 
 	.metricBadges {
 		justify-content: flex-start;
+	}
+
+	.progressSteps {
+		grid-template-columns: 1fr;
 	}
 }
 </style>

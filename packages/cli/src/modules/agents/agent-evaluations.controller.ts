@@ -1,4 +1,5 @@
-import { Get, Post, ProjectScope, RestController } from '@n8n/decorators';
+import type { AgentEvaluationSuiteRunRequest } from '@n8n/api-types';
+import { Body, Get, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { AuthenticatedRequest } from '@n8n/db';
 
 import { AgentEvaluationsService } from './agent-evaluations.service';
@@ -21,11 +22,15 @@ export class AgentEvaluationsController {
 
 	@Post('/suite/run')
 	@ProjectScope('agent:execute')
-	async runSuite(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	async runSuite(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		@Body payload?: AgentEvaluationSuiteRunRequest,
+	) {
 		return await this.agentEvaluationsService.runSuite(
 			req.params.projectId,
 			req.params.agentId,
 			req.user.id,
+			payload,
 		);
 	}
 }

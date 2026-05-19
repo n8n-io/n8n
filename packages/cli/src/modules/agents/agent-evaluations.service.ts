@@ -6,6 +6,7 @@ import type {
 	AgentEvaluationRunMetricResult,
 	AgentEvaluationRunSummary,
 	AgentEvaluationSuiteDraft,
+	AgentEvaluationSuiteRunRequest,
 	AgentEvaluationSuiteRunResponse,
 	AgentEvaluationSuiteSetupResponse,
 	AgentReviewCase,
@@ -71,6 +72,7 @@ export class AgentEvaluationsService {
 		projectId: string,
 		agentId: string,
 		userId: string,
+		options: AgentEvaluationSuiteRunRequest = {},
 	): Promise<AgentEvaluationSuiteRunResponse> {
 		const [summary, cases] = await Promise.all([
 			this.agentEvaluationCaseRepository.countByStatus(projectId, agentId),
@@ -90,7 +92,7 @@ export class AgentEvaluationsService {
 			cases.map((evaluationCase) => evaluationCase.executionId),
 		);
 		const results: AgentEvaluationRunCaseResult[] = [];
-		const metrics = this.suggestMetrics(summary).filter((metric) => metric.enabled);
+		const metrics = this.selectMetrics(summary, options.enabledMetricIds);
 
 		for (const evaluationCase of cases) {
 			const execution = executionsById.get(evaluationCase.executionId) ?? null;
@@ -233,6 +235,17 @@ export class AgentEvaluationsService {
 				enabled: summary.rejected > 0,
 			},
 		];
+	}
+
+	private selectMetrics(
+		summary: AgentReviewSummary,
+		enabledMetricIds: string[] | undefined,
+	): AgentEvaluationMetricSuggestion[] {
+		const metrics = this.suggestMetrics(summary);
+		if (enabledMetricIds === undefined) return metrics.filter((metric) => metric.enabled);
+
+		const enabledIds = new Set(enabledMetricIds);
+		return metrics.filter((metric) => enabledIds.has(metric.id));
 	}
 
 	private async findExecutionsById(
