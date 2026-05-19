@@ -5,9 +5,9 @@ test.use({
 	capability: {
 		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 		env: {
-			N8N_DISABLED_MODULES: 'mcp,mcp-registry',
+			N8N_DISABLED_MODULES: 'mcp',
 		},
 	},
 });
 
-runMemoryBaseline({ name: 'no-mcp', owner: 'AI' });
+runMemoryBaseline({ name: 'no-mcp-only', owner: 'AI' });
