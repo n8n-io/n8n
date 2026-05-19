@@ -1,6 +1,6 @@
-import { detectBinaryFileType } from './file-type';
+import { detectSupportedBinaryFile } from './file-type';
 
-describe('detectBinaryFileType', () => {
+describe('detectSupportedBinaryFile', () => {
 	it.each([
 		['photo.jpg', 'image', 'image/jpeg'],
 		['photo.jpeg', 'image', 'image/jpeg'],
@@ -11,7 +11,7 @@ describe('detectBinaryFileType', () => {
 		['song.wav', 'audio', 'audio/wav'],
 		['doc.pdf', 'pdf', 'application/pdf'],
 	])('maps %s to %s/%s', (filePath, kind, mimeType) => {
-		expect(detectBinaryFileType(filePath)).toEqual({ kind, mimeType });
+		expect(detectSupportedBinaryFile(filePath)).toEqual({ kind, mimeType });
 	});
 
 	it.each([
@@ -24,15 +24,15 @@ describe('detectBinaryFileType', () => {
 		'movie.mp4', // video — out of scope
 		'archive.zip',
 	])('returns null for unsupported file %s', (filePath) => {
-		expect(detectBinaryFileType(filePath)).toBeNull();
+		expect(detectSupportedBinaryFile(filePath)).toBeNull();
 	});
 
 	it('returns null for paths without an extension', () => {
-		expect(detectBinaryFileType('Makefile')).toBeNull();
+		expect(detectSupportedBinaryFile('Makefile')).toBeNull();
 	});
 
 	it('resolves relative paths the same way as absolute ones', () => {
-		expect(detectBinaryFileType('/abs/path/photo.png')).toEqual({
+		expect(detectSupportedBinaryFile('/abs/path/photo.png')).toEqual({
 			kind: 'image',
 			mimeType: 'image/png',
 		});

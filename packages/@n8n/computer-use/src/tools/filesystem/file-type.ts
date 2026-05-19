@@ -1,9 +1,9 @@
 import { lookup } from 'mime-types';
 
-export type BinaryFileKind = 'image' | 'audio' | 'pdf';
+export type SupportedBinaryKind = 'image' | 'audio' | 'pdf';
 
-export interface BinaryFileType {
-	kind: BinaryFileKind;
+export interface SupportedBinaryFile {
+	kind: SupportedBinaryKind;
 	mimeType: string;
 }
 
@@ -11,7 +11,7 @@ export interface BinaryFileType {
  * IANA media types (as returned by `mime-types.lookup()`) that current LLM
  * providers (Anthropic, OpenAI) can consume natively.
  */
-const SUPPORTED_BINARY_MIMES = new Map<string, BinaryFileKind>([
+const SUPPORTED_BINARY_MIMES = new Map<string, SupportedBinaryKind>([
 	['image/jpeg', 'image'],
 	['image/png', 'image'],
 	['image/gif', 'image'],
@@ -28,7 +28,7 @@ const SUPPORTED_BINARY_MIMES = new Map<string, BinaryFileKind>([
  * to a MIME type no supported model can consume natively — the caller should
  * fall back to text reading in that case.
  */
-export function detectBinaryFileType(filePath: string): BinaryFileType | null {
+export function detectSupportedBinaryFile(filePath: string): SupportedBinaryFile | null {
 	const mimeType = lookup(filePath);
 	if (!mimeType) return null;
 	const kind = SUPPORTED_BINARY_MIMES.get(mimeType);

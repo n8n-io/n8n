@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { type BinaryFileType, detectBinaryFileType } from './file-type';
+import { type SupportedBinaryFile, detectSupportedBinaryFile } from './file-type';
 import { buildFilesystemResource, isLikelyBinaryContent, resolveReadablePath } from './fs-utils';
 const DEFAULT_MAX_LINES = 200;
 
@@ -47,7 +47,7 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 		const fileContent = await fs.readFile(resolvedPath);
 		const buffer = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
 
-		const binaryType = detectBinaryFileType(filePath);
+		const binaryType = detectSupportedBinaryFile(filePath);
 		if (binaryType) {
 			return buildBinaryResult(resolvedPath, buffer, binaryType);
 		}
@@ -86,7 +86,7 @@ function buildTextResult(
 function buildBinaryResult(
 	resolvedPath: string,
 	buffer: Buffer,
-	type: BinaryFileType,
+	type: SupportedBinaryFile,
 ): CallToolResult {
 	const data = buffer.toString('base64');
 
