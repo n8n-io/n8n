@@ -546,6 +546,8 @@ describe('ScalingService', () => {
 			const result = await scalingService.waitForJobResult('exec-123');
 
 			expect(result).toEqual(mockJobResult);
+			// @ts-expect-error Private property
+			expect(scalingService.jobResults.has('exec-123')).toBe(false);
 		});
 
 		it('should resolve when the result arrives during polling', async () => {
@@ -569,6 +571,8 @@ describe('ScalingService', () => {
 
 			const result = await promise;
 			expect(result).toEqual(mockJobResult);
+			// @ts-expect-error Private property
+			expect(scalingService.jobResults.has('exec-123')).toBe(false);
 
 			jest.useRealTimers();
 		});
@@ -668,6 +672,8 @@ describe('ScalingService', () => {
 
 			const result = await promise;
 			expect(result).toEqual(mockJobResult);
+			// @ts-expect-error Private property
+			expect(scalingService.jobResults.has('exec-123')).toBe(false);
 
 			jest.useRealTimers();
 		});
@@ -690,6 +696,8 @@ describe('ScalingService', () => {
 
 			jest.advanceTimersByTime(250);
 			await expect(promise).resolves.toBeDefined();
+			// @ts-expect-error Private property
+			expect(scalingService.jobResults.has('exec-123')).toBe(false);
 
 			setIntervalSpy.mockRestore();
 			jest.useRealTimers();
