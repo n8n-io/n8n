@@ -1,6 +1,6 @@
 ---
 description: Env-var conventions for n8n
-globs: "packages/**/*.config.ts,packages/**/*.ts"
+globs: packages/**/*.config.ts, packages/**/*.ts
 alwaysApply: false
 ---
 

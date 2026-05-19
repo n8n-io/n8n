@@ -1,6 +1,6 @@
 ---
 description: Cross-package change discipline for the n8n monorepo
-globs: "packages/@n8n/api-types/**,packages/cli/**,packages/frontend/**"
+globs: packages/@n8n/api-types/**, packages/cli/**, packages/frontend/**
 alwaysApply: false
 ---
 

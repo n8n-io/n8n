@@ -1,6 +1,6 @@
 ---
 description: Testing and verification discipline for n8n TypeScript, Vue, and package changes
-globs: "**/*.{ts,tsx,js,jsx,vue}"
+globs: "**/*.ts, **/*.tsx, **/*.vue"
 alwaysApply: false
 ---
 

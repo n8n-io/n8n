@@ -1,6 +1,6 @@
 ---
 description: n8n built-in node and credential development conventions
-globs: "packages/nodes-base/**/*.ts"
+globs: packages/nodes-base/**/*.ts
 alwaysApply: false
 ---
 

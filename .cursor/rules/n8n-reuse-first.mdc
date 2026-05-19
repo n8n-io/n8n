@@ -1,6 +1,6 @@
 ---
 description: Search the design system and feature locals before adding a new component
-globs: "packages/frontend/editor-ui/src/**/*.{vue,ts}"
+globs: packages/frontend/editor-ui/src/**/*.vue, packages/frontend/editor-ui/src/**/*.ts
 alwaysApply: false
 ---
 

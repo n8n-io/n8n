@@ -1,6 +1,6 @@
 ---
 description: i18n discipline for n8n frontend code
-globs: "packages/frontend/**/*.{ts,vue}"
+globs: packages/frontend/**/*.ts, packages/frontend/**/*.vue
 alwaysApply: false
 ---
 

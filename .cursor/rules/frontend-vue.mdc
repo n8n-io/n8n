@@ -1,6 +1,6 @@
 ---
 description: Frontend implementation standards for n8n Vue and design-system changes
-globs: "packages/frontend/**/*.{vue,ts,tsx,js,jsx,scss,css}"
+globs: packages/frontend/**/*.vue, packages/frontend/**/*.ts, packages/frontend/**/*.tsx, packages/frontend/**/*.scss
 alwaysApply: false
 ---
 
