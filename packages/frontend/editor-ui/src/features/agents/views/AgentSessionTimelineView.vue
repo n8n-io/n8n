@@ -152,7 +152,7 @@ const agentRoute = computed<RouteLocationRaw>(() => ({
 }));
 
 const agentExecutionsRoute = computed<RouteLocationRaw>(() => ({
-	...agentRoute.value,
+	...(typeof agentRoute.value === 'object' ? agentRoute.value : {}),
 	query: { section: EXECUTIONS_SECTION_KEY },
 }));
 
