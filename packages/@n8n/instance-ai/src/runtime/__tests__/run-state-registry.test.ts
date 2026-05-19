@@ -27,7 +27,7 @@ function createSuspendedRunState(
 	return {
 		runId: 'run_abc',
 		abortController: new AbortController(),
-		mastraRunId: 'mastra-1',
+		agentRunId: 'agent-run-1',
 		agent: {},
 		threadId: 'thread-1',
 		user: { id: 'user-1', name: 'Alice' },
