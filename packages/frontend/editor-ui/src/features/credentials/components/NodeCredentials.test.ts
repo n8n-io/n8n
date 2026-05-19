@@ -220,6 +220,15 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
+	it('should refresh credentials from the server when mounted on an existing node', () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent();
+
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+	});
+
 	it('should ignore managed credentials in the dropdown if active node is the HTTP node', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
