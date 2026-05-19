@@ -1,10 +1,8 @@
 /**
  * Maximum LLM steps (inference rounds) for each agent role.
  *
- * Mastra's Agent.stream() defaults to stepCountIs(5) which is too low
- * for most use cases. Each agent sets its own limit based on task complexity.
- *
- * @see https://github.com/mastra-ai/mastra/issues/2930
+ * Native agent iteration limits for each role. Each agent sets its own limit
+ * based on task complexity.
  */
 export const MAX_STEPS = {
 	/** Main orchestrator — coordinates all other agents and handles direct tool calls. */
