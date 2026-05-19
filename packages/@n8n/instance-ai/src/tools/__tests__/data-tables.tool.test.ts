@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createDataTablesTool } from '../data-tables.tool';
 
@@ -35,15 +36,15 @@ function createMockContext(
 }
 
 function suspendCtx(suspendFn: jest.Mock) {
-	return { agent: { resumeData: undefined, suspend: suspendFn } } as never;
+	return { resumeData: undefined, suspend: suspendFn } as never;
 }
 
 function resumeCtx(approved: boolean) {
-	return { agent: { resumeData: { approved } } } as never;
+	return { resumeData: { approved } } as never;
 }
 
 function noSuspendCtx() {
-	return { agent: { resumeData: undefined, suspend: undefined } } as never;
+	return { resumeData: undefined, suspend: undefined } as never;
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -58,7 +59,11 @@ describe('data-tables tool', () => {
 			context.dataTableService.list = jest.fn().mockResolvedValue(tables);
 			const tool = createDataTablesTool(context, 'orchestrator');
 
-			const result = await tool.execute!({ action: 'list', projectId: 'p1' } as never, {} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'list', projectId: 'p1' } as never,
+				{} as never,
+			);
 
 			expect(result).toEqual({ tables });
 		});
@@ -95,7 +100,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.list as jest.Mock).mockResolvedValue(tables);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!({ action: 'list' as const }, noSuspendCtx());
+			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
 
 			expect(context.dataTableService.list).toHaveBeenCalledWith({ projectId: undefined });
 			expect(result).toEqual({ tables });
@@ -106,7 +111,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.list as jest.Mock).mockResolvedValue([]);
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!({ action: 'list' as const, projectId: 'proj-1' }, noSuspendCtx());
+			await executeTool(tool, { action: 'list' as const, projectId: 'proj-1' }, noSuspendCtx());
 
 			expect(context.dataTableService.list).toHaveBeenCalledWith({ projectId: 'proj-1' });
 		});
@@ -117,7 +122,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.list as jest.Mock).mockResolvedValue(tables);
 
 			const tool = createDataTablesTool(context, 'orchestrator');
-			const result = await tool.execute!({ action: 'list' as const }, noSuspendCtx());
+			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
 
 			expect(result).toEqual({ tables });
 		});
@@ -135,7 +140,8 @@ describe('data-tables tool', () => {
 			(context.dataTableService.getSchema as jest.Mock).mockResolvedValue(columns);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'schema' as const, dataTableId: 'dt-1' },
 				noSuspendCtx(),
 			);
@@ -161,7 +167,8 @@ describe('data-tables tool', () => {
 			};
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', filter, limit: 10, offset: 0 },
 				noSuspendCtx(),
 			);
@@ -181,7 +188,8 @@ describe('data-tables tool', () => {
 			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1' },
 				noSuspendCtx(),
 			);
@@ -198,7 +206,8 @@ describe('data-tables tool', () => {
 			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', offset: 20, limit: 10 },
 				noSuspendCtx(),
 			);
@@ -215,7 +224,8 @@ describe('data-tables tool', () => {
 			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1' },
 				noSuspendCtx(),
 			);
@@ -238,7 +248,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { createDataTable: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(createInput as never, noSuspendCtx());
+			const result = await executeTool(tool, createInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.create).not.toHaveBeenCalled();
@@ -249,7 +259,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(createInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, createInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -278,7 +288,11 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!({ ...createInput, projectId: 'proj-1' } as never, suspendCtx(suspendFn));
+			await executeTool(
+				tool,
+				{ ...createInput, projectId: 'proj-1' } as never,
+				suspendCtx(suspendFn),
+			);
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -294,7 +308,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.create as jest.Mock).mockResolvedValue(table);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(createInput as never, noSuspendCtx());
+			const result = await executeTool(tool, createInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.create).toHaveBeenCalledWith(
 				'Contacts',
@@ -310,7 +324,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.create as jest.Mock).mockResolvedValue(table);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(createInput as never, resumeCtx(true));
+			const result = await executeTool(tool, createInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.create).toHaveBeenCalled();
 			expect(result).toEqual({ table });
@@ -320,7 +334,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(createInput as never, resumeCtx(false));
+			const result = await executeTool(tool, createInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.create).not.toHaveBeenCalled();
@@ -340,10 +354,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.create as jest.Mock).mockRejectedValue(wrappedError);
 
 			const tool = createDataTablesTool(context);
-			const result = (await tool.execute!(createInput as never, noSuspendCtx())) as Record<
-				string,
-				unknown
-			>;
+			const result = await executeTool(tool, createInput as never, noSuspendCtx());
 
 			expect(result.denied).toBe(true);
 			expect(result.reason).toContain('already exists');
@@ -357,7 +368,7 @@ describe('data-tables tool', () => {
 
 			const tool = createDataTablesTool(context);
 
-			await expect(tool.execute!(createInput as never, noSuspendCtx())).rejects.toThrow(
+			await expect(executeTool(tool, createInput as never, noSuspendCtx())).rejects.toThrow(
 				'Database connection failed',
 			);
 		});
@@ -372,7 +383,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { deleteDataTable: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteInput as never, noSuspendCtx());
+			const result = await executeTool(tool, deleteInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.delete).not.toHaveBeenCalled();
@@ -383,7 +394,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(deleteInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, deleteInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -400,7 +411,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { deleteDataTable: 'always_allow' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteInput as never, noSuspendCtx());
+			const result = await executeTool(tool, deleteInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1', {
 				projectId: undefined,
@@ -412,7 +423,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteInput as never, resumeCtx(true));
+			const result = await executeTool(tool, deleteInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1', {
 				projectId: undefined,
@@ -424,7 +435,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteInput as never, resumeCtx(false));
+			const result = await executeTool(tool, deleteInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.delete).not.toHaveBeenCalled();
@@ -445,7 +456,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(addColumnInput as never, noSuspendCtx());
+			const result = await executeTool(tool, addColumnInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.addColumn).not.toHaveBeenCalled();
@@ -456,7 +467,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(addColumnInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, addColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -474,7 +485,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.addColumn as jest.Mock).mockResolvedValue(column);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(addColumnInput as never, noSuspendCtx());
+			const result = await executeTool(tool, addColumnInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.addColumn).toHaveBeenCalledWith(
 				'dt-1',
@@ -490,7 +501,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.addColumn as jest.Mock).mockResolvedValue(column);
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(addColumnInput as never, resumeCtx(true));
+			const result = await executeTool(tool, addColumnInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.addColumn).toHaveBeenCalled();
 			expect(result).toEqual({ column });
@@ -500,7 +511,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(addColumnInput as never, resumeCtx(false));
+			const result = await executeTool(tool, addColumnInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.addColumn).not.toHaveBeenCalled();
@@ -520,7 +531,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteColumnInput as never, noSuspendCtx());
+			const result = await executeTool(tool, deleteColumnInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.deleteColumn).not.toHaveBeenCalled();
@@ -531,7 +542,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(deleteColumnInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, deleteColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -548,7 +559,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'always_allow' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteColumnInput as never, noSuspendCtx());
+			const result = await executeTool(tool, deleteColumnInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1', {
 				projectId: undefined,
@@ -560,7 +571,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteColumnInput as never, resumeCtx(true));
+			const result = await executeTool(tool, deleteColumnInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1', {
 				projectId: undefined,
@@ -572,7 +583,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteColumnInput as never, resumeCtx(false));
+			const result = await executeTool(tool, deleteColumnInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.deleteColumn).not.toHaveBeenCalled();
@@ -593,7 +604,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(renameColumnInput as never, noSuspendCtx());
+			const result = await executeTool(tool, renameColumnInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.renameColumn).not.toHaveBeenCalled();
@@ -604,7 +615,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(renameColumnInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, renameColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -620,7 +631,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'always_allow' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(renameColumnInput as never, noSuspendCtx());
+			const result = await executeTool(tool, renameColumnInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.renameColumn).toHaveBeenCalledWith(
 				'dt-1',
@@ -635,7 +646,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(renameColumnInput as never, resumeCtx(true));
+			const result = await executeTool(tool, renameColumnInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.renameColumn).toHaveBeenCalledWith(
 				'dt-1',
@@ -650,7 +661,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(renameColumnInput as never, resumeCtx(false));
+			const result = await executeTool(tool, renameColumnInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.renameColumn).not.toHaveBeenCalled();
@@ -670,7 +681,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(insertRowsInput as never, noSuspendCtx());
+			const result = await executeTool(tool, insertRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
@@ -681,7 +692,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(insertRowsInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, insertRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -698,7 +709,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.insertRows as jest.Mock).mockResolvedValue({ insertedCount: 2 });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(insertRowsInput as never, noSuspendCtx());
+			const result = await executeTool(tool, insertRowsInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
 				'dt-1',
@@ -713,7 +724,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.insertRows as jest.Mock).mockResolvedValue({ insertedCount: 2 });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(insertRowsInput as never, resumeCtx(true));
+			const result = await executeTool(tool, insertRowsInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
 				'dt-1',
@@ -727,7 +738,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(insertRowsInput as never, resumeCtx(false));
+			const result = await executeTool(tool, insertRowsInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
@@ -743,7 +754,7 @@ describe('data-tables tool', () => {
 			});
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(insertRowsInput as never, noSuspendCtx());
+			const result = await executeTool(tool, insertRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({
 				insertedCount: 3,
@@ -771,7 +782,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(updateRowsInput as never, noSuspendCtx());
+			const result = await executeTool(tool, updateRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.updateRows).not.toHaveBeenCalled();
@@ -782,7 +793,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(updateRowsInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, updateRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -799,7 +810,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.updateRows as jest.Mock).mockResolvedValue({ updatedCount: 5 });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(updateRowsInput as never, noSuspendCtx());
+			const result = await executeTool(tool, updateRowsInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.updateRows).toHaveBeenCalledWith(
 				'dt-1',
@@ -815,7 +826,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.updateRows as jest.Mock).mockResolvedValue({ updatedCount: 3 });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(updateRowsInput as never, resumeCtx(true));
+			const result = await executeTool(tool, updateRowsInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.updateRows).toHaveBeenCalledWith(
 				'dt-1',
@@ -830,7 +841,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(updateRowsInput as never, resumeCtx(false));
+			const result = await executeTool(tool, updateRowsInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.updateRows).not.toHaveBeenCalled();
@@ -853,7 +864,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'blocked' } });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteRowsInput as never, noSuspendCtx());
+			const result = await executeTool(tool, deleteRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
 			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
@@ -864,7 +875,7 @@ describe('data-tables tool', () => {
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(deleteRowsInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, deleteRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -893,7 +904,7 @@ describe('data-tables tool', () => {
 			};
 
 			const tool = createDataTablesTool(context);
-			await tool.execute!(multiFilterInput as never, suspendCtx(suspendFn));
+			await executeTool(tool, multiFilterInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
@@ -913,7 +924,7 @@ describe('data-tables tool', () => {
 			});
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteRowsInput as never, noSuspendCtx());
+			const result = await executeTool(tool, deleteRowsInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
 				'dt-1',
@@ -939,7 +950,7 @@ describe('data-tables tool', () => {
 			});
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteRowsInput as never, resumeCtx(true));
+			const result = await executeTool(tool, deleteRowsInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
 				'dt-1',
@@ -959,7 +970,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
-			const result = await tool.execute!(deleteRowsInput as never, resumeCtx(false));
+			const result = await executeTool(tool, deleteRowsInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();

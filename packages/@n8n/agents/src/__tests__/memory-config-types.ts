@@ -18,7 +18,7 @@ type ObservationCapableMemoryConfig = AssertMemoryConfig<{
 	observationalMemory: ObservationalMemoryConfig;
 }>;
 
-// @ts-expect-error Observational memory requires a backend that also implements BuiltObservationStore.
+// @ts-expect-error Observational memory requires a backend that also implements BuiltObservationLogStore.
 type InvalidObservationalMemoryConfig = AssertMemoryConfig<{
 	memory: BuiltMemory;
 	lastMessages: 10;
