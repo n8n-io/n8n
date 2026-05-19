@@ -3,7 +3,10 @@ import Draggable from '@/app/components/Draggable.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import FolderCard from '@/features/core/folders/components/FolderCard.vue';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/core/folders/folders.constants';
+import {
+	FOLDER_LIST_ITEM_ACTIONS,
+	MCP_ACCESS_ACTIONS,
+} from '@/features/core/folders/folders.constants';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
@@ -188,10 +191,11 @@ type BreadcrumbAction = UserAction<IUser> & {
 	tooltip?: string;
 };
 
-const MCP_ACCESS_ACTIONS = {
-	ENABLE: 'enableMcpAccess',
-	DISABLE: 'disableMcpAccess',
-} as const;
+type McpAccessScope = {
+	type: 'folder' | 'project';
+	id: string;
+	name: string;
+};
 
 type ResourcesListLayoutExpose = {
 	getScrollContainer?: () => HTMLElement | null;
@@ -399,7 +403,7 @@ const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	return actions;
 });
 
-const mcpAccessScope = computed(() => {
+const mcpAccessScope = computed<McpAccessScope | null>(() => {
 	if (currentFolderId.value) {
 		if (!currentFolder.value) return null;
 
@@ -439,7 +443,7 @@ const mcpAccessBreadcrumbsAction = computed<BreadcrumbAction | null>(() => {
 
 	return {
 		label: i18n.baseText('resourceActions.mcpAccess.manage'),
-		value: 'manageMcpAccess',
+		value: MCP_ACCESS_ACTIONS.MANAGE,
 		disabled: false,
 		children: [
 			{
@@ -1383,12 +1387,10 @@ const onBreadCrumbsAction = async (action: string) => {
 	}
 };
 
-function getMcpAccessTarget() {
-	if (!mcpAccessScope.value) return null;
+function getMcpAccessTarget(scope: McpAccessScope | null = mcpAccessScope.value) {
+	if (!scope) return null;
 
-	return mcpAccessScope.value.type === 'folder'
-		? { folderId: mcpAccessScope.value.id }
-		: { projectId: mcpAccessScope.value.id };
+	return scope.type === 'folder' ? { folderId: scope.id } : { projectId: scope.id };
 }
 
 function openSettingsFromToast(event?: MouseEvent) {
@@ -1429,8 +1431,11 @@ function getMCPAccessSkippedSummary(count: number, scopeName: string) {
 	});
 }
 
-function getMCPAccessOutcomeMessage(enabled: boolean, response: ToggleWorkflowsMcpAccessResponse) {
-	const scopeName = mcpAccessScope.value?.name ?? '';
+function getMCPAccessOutcomeMessage(
+	enabled: boolean,
+	response: ToggleWorkflowsMcpAccessResponse,
+	scopeName: string,
+) {
 	const summaries: string[] = [];
 
 	if (response.updatedCount > 0) {
@@ -1456,7 +1461,11 @@ function getMCPAccessOutcomeMessage(enabled: boolean, response: ToggleWorkflowsM
 	});
 }
 
-function showMCPAccessOutcomeToast(enabled: boolean, response: ToggleWorkflowsMcpAccessResponse) {
+function showMCPAccessOutcomeToast(
+	enabled: boolean,
+	response: ToggleWorkflowsMcpAccessResponse,
+	scopeName: string,
+) {
 	const hasUpdated = response.updatedCount > 0;
 	const hasSkipped = response.skippedCount > 0;
 	const hasUnchanged = response.unchangedCount > 0;
@@ -1477,13 +1486,13 @@ function showMCPAccessOutcomeToast(enabled: boolean, response: ToggleWorkflowsMc
 
 	toast.showToast({
 		title,
-		message: getMCPAccessOutcomeMessage(enabled, response),
+		message: getMCPAccessOutcomeMessage(enabled, response, scopeName),
 		onClick: openSettingsFromToast,
 		type,
 	});
 }
 
-function showMCPAccessErrorToast(enabled: boolean) {
+function showMCPAccessErrorToast(enabled: boolean, scopeName: string) {
 	const title = enabled
 		? i18n.baseText('resourceActions.mcpAccess.error.enabled.title')
 		: i18n.baseText('resourceActions.mcpAccess.error.disabled.title');
@@ -1491,13 +1500,13 @@ function showMCPAccessErrorToast(enabled: boolean) {
 		? i18n.baseText('resourceActions.mcpAccess.error.enabled.message', {
 				interpolate: {
 					link: settingsLink.value,
-					scopeName: mcpAccessScope.value?.name ?? '',
+					scopeName,
 				},
 			})
 		: i18n.baseText('resourceActions.mcpAccess.error.disabled.message', {
 				interpolate: {
 					link: settingsLink.value,
-					scopeName: mcpAccessScope.value?.name ?? '',
+					scopeName,
 				},
 			});
 
@@ -1521,13 +1530,18 @@ function showMCPAccessDisabledToast() {
 	});
 }
 
-async function toggleMcpAccess(enabled: boolean) {
+async function toggleMcpAccess(
+	enabled: boolean,
+	scope: McpAccessScope | null = mcpAccessScope.value,
+) {
 	if (!mcpEnabled.value) {
 		showMCPAccessDisabledToast();
 		return;
 	}
 
-	const target = getMcpAccessTarget();
+	if (!scope) return;
+
+	const target = getMcpAccessTarget(scope);
 	if (!target) return;
 
 	try {
@@ -1535,13 +1549,13 @@ async function toggleMcpAccess(enabled: boolean) {
 		await fetchWorkflows();
 
 		if (response.failedCount > 0) {
-			showMCPAccessErrorToast(enabled);
+			showMCPAccessErrorToast(enabled, scope.name);
 			return;
 		}
 
-		showMCPAccessOutcomeToast(enabled, response);
+		showMCPAccessOutcomeToast(enabled, response, scope.name);
 	} catch {
-		showMCPAccessErrorToast(enabled);
+		showMCPAccessErrorToast(enabled, scope.name);
 	}
 }
 
@@ -1551,6 +1565,20 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 	const clickedFolder = foldersStore.getCachedFolder(payload.folderId);
 	if (!clickedFolder) return;
 	switch (payload.action) {
+		case MCP_ACCESS_ACTIONS.ENABLE:
+			await toggleMcpAccess(true, {
+				type: 'folder',
+				id: clickedFolder.id,
+				name: clickedFolder.name,
+			});
+			break;
+		case MCP_ACCESS_ACTIONS.DISABLE:
+			await toggleMcpAccess(false, {
+				type: 'folder',
+				id: clickedFolder.id,
+				name: clickedFolder.name,
+			});
+			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
 			await createFolder(
 				{
@@ -2271,6 +2299,7 @@ const onNameSubmit = async (name: string) => {
 							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
 					}"
 					:show-ownership-badge="showCardsBadge"
+					:show-mcp-access-actions="showMcpAccessActions"
 					data-target="folder"
 					data-droppable
 					class="mb-2xs"

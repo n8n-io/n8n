@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { FOLDER_LIST_ITEM_ACTIONS } from '../folders.constants';
+import { computed, getCurrentInstance, ref } from 'vue';
+import { FOLDER_LIST_ITEM_ACTIONS, MCP_ACCESS_ACTIONS } from '../folders.constants';
 import { ProjectTypes, type Project } from '@/features/collaboration/projects/projects.types';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -15,27 +15,41 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
 import {
-	N8nActionToggle,
 	N8nBadge,
 	N8nBreadcrumbs,
 	N8nCard,
+	N8nDropdownMenu,
 	N8nHeading,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
+	N8nTooltip,
+	type DropdownMenuItemProps,
 } from '@n8n/design-system';
+
+type FolderCardAction = UserAction<IUser> & {
+	children?: FolderCardAction[];
+	tooltip?: string;
+};
+
+type MenuItemData = {
+	tooltip?: string;
+};
 
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions?: Array<UserAction<IUser>>;
+	actions?: FolderCardAction[];
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
+	showMcpAccessActions?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	readOnly: true,
 	showOwnershipBadge: false,
+	showMcpAccessActions: false,
 });
 
 const i18n = useI18n();
@@ -49,14 +63,40 @@ const emit = defineEmits<{
 	folderOpened: [{ folder: FolderResource }];
 }>();
 
+const dropdownId = `folder-card-actions-dropdown-${getCurrentInstance()?.uid ?? 0}`;
+
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
 
-const allActions = computed<Array<UserAction<IUser>>>(() => {
-	const favoriteAction = {
+const mcpAccessAction = computed<FolderCardAction>(() => ({
+	label: i18n.baseText('resourceActions.mcpAccess.manage'),
+	value: MCP_ACCESS_ACTIONS.MANAGE,
+	disabled: false,
+	children: [
+		{
+			label: i18n.baseText('resourceActions.mcpAccess.enable'),
+			value: MCP_ACCESS_ACTIONS.ENABLE,
+			disabled: false,
+			tooltip: i18n.baseText('resourceActions.mcpAccess.enable.tooltip', {
+				interpolate: { scopeName: props.data.name },
+			}),
+		},
+		{
+			label: i18n.baseText('resourceActions.mcpAccess.disable'),
+			value: MCP_ACCESS_ACTIONS.DISABLE,
+			disabled: false,
+			tooltip: i18n.baseText('resourceActions.mcpAccess.disable.tooltip', {
+				interpolate: { scopeName: props.data.name },
+			}),
+		},
+	],
+}));
+
+const allActions = computed<FolderCardAction[]>(() => {
+	const favoriteAction: FolderCardAction = {
 		label: favoritesStore.isFavorite(props.data.id, 'folder')
 			? i18n.baseText('favorites.remove')
 			: i18n.baseText('favorites.add'),
@@ -64,13 +104,32 @@ const allActions = computed<Array<UserAction<IUser>>>(() => {
 		disabled: false,
 	};
 	const renameIndex = props.actions.findIndex((a) => a.value === FOLDER_LIST_ITEM_ACTIONS.RENAME);
+	let result: FolderCardAction[];
+
 	if (renameIndex !== -1) {
-		const result = [...props.actions];
+		result = [...props.actions];
 		result.splice(renameIndex, 0, favoriteAction);
-		return result;
+	} else {
+		result = [...props.actions, favoriteAction];
 	}
-	return [...props.actions, favoriteAction];
+
+	return props.showMcpAccessActions ? [...result, mcpAccessAction.value] : result;
 });
+
+function toMenuItem(action: FolderCardAction): DropdownMenuItemProps<string, MenuItemData> {
+	return {
+		id: action.value,
+		testId: `action-${action.value}`,
+		label: action.label,
+		disabled: action.disabled,
+		children: action.children?.map(toMenuItem),
+		data: action.tooltip ? { tooltip: action.tooltip } : undefined,
+	};
+}
+
+const menuItems = computed<Array<DropdownMenuItemProps<string, MenuItemData>>>(() =>
+	allActions.value.map(toMenuItem),
+);
 
 const cardUrl = computed(() => {
 	return getFolderUrl(props.data.id);
@@ -259,12 +318,51 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 								</div>
 							</ProjectCardBadge>
 						</div>
-						<N8nActionToggle
-							:actions="allActions"
-							theme="dark"
-							data-test-id="folder-card-actions"
-							@action="onAction"
-						/>
+						<span data-test-id="folder-card-actions">
+							<N8nDropdownMenu
+								:id="dropdownId"
+								:items="menuItems"
+								placement="bottom-end"
+								:extra-popper-class="$style['actions-menu-dropdown']"
+								@select="onAction"
+							>
+								<template #trigger>
+									<N8nIconButton
+										:class="['action-toggle', $style['actions-menu']]"
+										variant="ghost"
+										icon="ellipsis-vertical"
+										size="medium"
+										role="button"
+										:aria-controls="dropdownId"
+									/>
+								</template>
+								<template #item-label="{ item, ui }">
+									<N8nTooltip
+										v-if="item.data?.tooltip"
+										:content="item.data.tooltip"
+										placement="left"
+										:show-after="300"
+										:teleported="false"
+									>
+										<N8nText
+											:class="ui.class"
+											size="medium"
+											:color="item.disabled ? 'text-light' : 'text-dark'"
+										>
+											{{ item.label }}
+										</N8nText>
+									</N8nTooltip>
+									<N8nText
+										v-else
+										:class="ui.class"
+										size="medium"
+										:color="item.disabled ? 'text-light' : 'text-dark'"
+									>
+										{{ item.label }}
+									</N8nText>
+								</template>
+							</N8nDropdownMenu>
+						</span>
 					</div>
 				</template>
 			</N8nCard>
@@ -324,6 +422,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 .card-actions {
 	display: flex;
 	gap: var(--spacing--xs);
+}
+
+.actions-menu-dropdown {
+	width: 200px;
 }
 
 @include mixins.breakpoint('sm-and-down') {
