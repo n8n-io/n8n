@@ -149,8 +149,15 @@ const unsafeObjectProperties = new Set([
 ]);
 
 export function __sanitize(value: unknown): unknown {
-	if (typeof value === 'string' && unsafeObjectProperties.has(value)) {
-		throw new ExpressionError(`Cannot access "${value}" due to security concerns`);
+	// Symbols cannot reach a string-valued denylist entry and `String(symbol)`
+	// throws, so we pass them through unchanged.
+	if (typeof value === 'symbol') return value;
+	// Coerce to string once so the check sees the same key the subsequent
+	// property access would see. Returning the coerced string locks it in,
+	// preventing a re-trigger of `toString` / `Symbol.toPrimitive` at use site.
+	const key = String(value);
+	if (unsafeObjectProperties.has(key)) {
+		throw new ExpressionError(`Cannot access "${key}" due to security concerns`);
 	}
-	return value;
+	return key;
 }
