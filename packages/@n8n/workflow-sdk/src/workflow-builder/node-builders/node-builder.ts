@@ -21,6 +21,7 @@ import {
 	type IfElseTarget,
 	type SwitchCaseTarget,
 } from '../../types/base';
+import { estimateStickyHeightForContent, STICKY_AUTO_MIN_WIDTH } from '../sticky-text-sizing';
 import {
 	isSwitchCaseComposite,
 	isIfElseComposite,
@@ -1081,14 +1082,30 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		// the sticky around those exact nodes after dagre has assigned them
 		// positions. Names survive regenerateNodeIds (which the AI builder runs
 		// on every parse) — instance ids do not.
-		// Skip auto-layout tracking when the user supplied explicit position or
-		// dimensions: the wrapped nodes were passed for sizing only and the
-		// caller is driving placement.
-		const userOverridesLayout =
-			stickyConfig.position !== undefined ||
-			stickyConfig.width !== undefined ||
-			stickyConfig.height !== undefined;
-		const wrappedNodeNames = userOverridesLayout ? [] : collectWrappedNodeNames(nodes);
+		const wrappedNodeNames = collectWrappedNodeNames(nodes);
+
+		// Record which layout fields the caller pinned, so the layout pass can
+		// preserve those fields and only auto-compute the rest (e.g. caller
+		// gave width only — height still auto-sizes to fit the content).
+		const explicitFields: Record<string, true> = {};
+		if (stickyConfig.position !== undefined) explicitFields.position = true;
+		if (stickyConfig.width !== undefined) explicitFields.width = true;
+		if (stickyConfig.height !== undefined) explicitFields.height = true;
+
+		// Auto-fill a missing dimension from content when the caller gave the
+		// other one. This handles the standalone-sticky case (no wrapped nodes,
+		// no layout pass available) where the caller did `sticky('text', {
+		// position, width: N })` and would otherwise inherit n8n's default
+		// 160px height — which clips multi-line content.
+		const explicitWidth = stickyConfig.width ?? boundingBox?.width;
+		const explicitHeight = stickyConfig.height ?? boundingBox?.height;
+		let resolvedWidth = explicitWidth;
+		let resolvedHeight = explicitHeight;
+		if (resolvedWidth !== undefined && resolvedHeight === undefined) {
+			resolvedHeight = estimateStickyHeightForContent(content, resolvedWidth);
+		} else if (resolvedHeight !== undefined && resolvedWidth === undefined) {
+			resolvedWidth = STICKY_AUTO_MIN_WIDTH;
+		}
 
 		this.config = {
 			name: this.name,
@@ -1096,16 +1113,15 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 			parameters: {
 				content,
 				...(stickyConfig.color !== undefined && { color: stickyConfig.color }),
-				...((stickyConfig.width ?? boundingBox?.width) !== undefined && {
-					width: stickyConfig.width ?? boundingBox?.width,
-				}),
-				...((stickyConfig.height ?? boundingBox?.height) !== undefined && {
-					height: stickyConfig.height ?? boundingBox?.height,
-				}),
+				...(resolvedWidth !== undefined && { width: resolvedWidth }),
+				...(resolvedHeight !== undefined && { height: resolvedHeight }),
 			},
-			...(wrappedNodeNames.length > 0
-				? ({ _wrappedNodeNames: wrappedNodeNames } as Record<string, unknown>)
-				: {}),
+			...(wrappedNodeNames.length > 0 && {
+				_wrappedNodeNames: wrappedNodeNames,
+			}),
+			...(Object.keys(explicitFields).length > 0 && {
+				_userExplicitStickyFields: explicitFields,
+			}),
 		};
 	}
 

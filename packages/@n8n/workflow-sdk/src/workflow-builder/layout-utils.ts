@@ -29,6 +29,12 @@ import {
 	DEFAULT_Y,
 	START_X,
 } from './constants';
+import {
+	estimateStickyTextHeight,
+	estimateStickyWidth,
+	STICKY_MIN_TEXT_RESERVE,
+	STICKY_TEXT_INTERNAL_PADDING,
+} from './sticky-text-sizing';
 import type { GraphNode } from '../types/base';
 
 // ===========================================================================
@@ -410,85 +416,38 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 
 const WRAPPED_STICKY_PADDING = 50;
 
-// Heuristic constants for estimating sticky text dimensions. Rough averages
-// for n8n's default sticky font sizes — pixel-perfect measurement would need
-// DOM/canvas access, which the SDK does not have at serialization time.
-const STICKY_HEADER_CHAR_WIDTH = 11;
-const STICKY_HEADER_LINE_HEIGHT = 30;
-const STICKY_TEXT_CHAR_WIDTH = 7;
-const STICKY_TEXT_LINE_HEIGHT = 20;
-const STICKY_EMPTY_LINE_HEIGHT = 12;
-const STICKY_TEXT_INTERNAL_PADDING = 32;
-const STICKY_MIN_TEXT_RESERVE = 80;
-// Minimum auto-width: comfortable for a short heading + a couple of wrapped
-// body lines. Below this and even a small heading looks cramped.
-const STICKY_AUTO_MIN_WIDTH = 240;
-// Upper bound on heading-driven width. Stickies wider than this start to
-// dominate the canvas; we'd rather let a very long heading wrap to two lines.
-const STICKY_AUTO_MAX_HEADER_WIDTH = 500;
+/** Safely read an arbitrary property off an unknown value. */
+function readUnknownProp(value: unknown, key: string): unknown {
+	if (value === null || value === undefined || typeof value !== 'object') return undefined;
+	return Reflect.get(value, key);
+}
 
 function getWrappedNodeNames(graphNode: GraphNode | undefined): string[] | undefined {
-	const raw = (graphNode?.instance.config as Record<string, unknown> | undefined)
-		?._wrappedNodeNames;
+	const raw = readUnknownProp(graphNode?.instance.config, '_wrappedNodeNames');
 	if (!Array.isArray(raw)) return undefined;
 	const names = raw.filter((name): name is string => typeof name === 'string');
 	return names.length > 0 ? names : undefined;
 }
 
 function getStickyContent(graphNode: GraphNode | undefined): string | undefined {
-	const params = graphNode?.instance.config?.parameters as Record<string, unknown> | undefined;
-	return typeof params?.content === 'string' ? params.content : undefined;
+	const content = graphNode?.instance.config?.parameters?.content;
+	return typeof content === 'string' ? content : undefined;
 }
 
-/**
- * Pick an auto-layout width for a sticky that wraps a node group.
- *
- * Width is the larger of: the wrapped-node bounding box (plus side padding),
- * a comfortable minimum, and the widest markdown header line in the content
- * (so short titles don't wrap). Body text is allowed to word-wrap.
- */
-function estimateStickyWidth(content: string | undefined, nodeGroupWidth: number): number {
-	const baseWidth = Math.max(nodeGroupWidth + WRAPPED_STICKY_PADDING * 2, STICKY_AUTO_MIN_WIDTH);
-	if (!content) return baseWidth;
-
-	let headerWidth = 0;
-	for (const line of content.split('\n')) {
-		const headerMatch = /^(#+)\s(.*)/.exec(line);
-		if (!headerMatch) continue;
-		const headerText = headerMatch[2];
-		const w = headerText.length * STICKY_HEADER_CHAR_WIDTH + STICKY_TEXT_INTERNAL_PADDING * 2;
-		headerWidth = Math.max(headerWidth, w);
-	}
-	headerWidth = Math.min(headerWidth, STICKY_AUTO_MAX_HEADER_WIDTH);
-
-	return Math.max(baseWidth, headerWidth);
+interface UserExplicitStickyFields {
+	position?: boolean;
+	width?: boolean;
+	height?: boolean;
 }
 
-/**
- * Estimate the rendered height of a sticky's markdown content at a given
- * render width. Long lines are assumed to word-wrap based on character count
- * — close enough to keep the sticky from clipping its body text.
- */
-function estimateStickyTextHeight(content: string | undefined, availableWidth: number): number {
-	if (!content) return 0;
-	const usable = Math.max(80, availableWidth - STICKY_TEXT_INTERNAL_PADDING * 2);
-	let totalHeight = 0;
-	for (const line of content.split('\n')) {
-		if (line.length === 0) {
-			totalHeight += STICKY_EMPTY_LINE_HEIGHT;
-			continue;
-		}
-		const headerMatch = /^(#+)\s/.exec(line);
-		if (headerMatch) {
-			const textLen = line.length - headerMatch[1].length - 1;
-			const wrapped = Math.max(1, Math.ceil((textLen * STICKY_HEADER_CHAR_WIDTH) / usable));
-			totalHeight += wrapped * STICKY_HEADER_LINE_HEIGHT;
-		} else {
-			const wrapped = Math.max(1, Math.ceil((line.length * STICKY_TEXT_CHAR_WIDTH) / usable));
-			totalHeight += wrapped * STICKY_TEXT_LINE_HEIGHT;
-		}
-	}
-	return totalHeight;
+function getUserExplicitFields(graphNode: GraphNode | undefined): UserExplicitStickyFields {
+	const raw = readUnknownProp(graphNode?.instance.config, '_userExplicitStickyFields');
+	if (raw === null || raw === undefined || typeof raw !== 'object') return {};
+	return {
+		position: readUnknownProp(raw, 'position') === true ? true : undefined,
+		width: readUnknownProp(raw, 'width') === true ? true : undefined,
+		height: readUnknownProp(raw, 'height') === true ? true : undefined,
+	};
 }
 
 function repositionStickyNotes(
@@ -522,30 +481,39 @@ function repositionStickyNotes(
 
 			const wrappedAfter = compositeBoundingBox(wrappedBoxesAfter);
 			const content = getStickyContent(graphNode);
+			const explicit = getUserExplicitFields(graphNode);
+			const config = graphNode?.instance.config;
+			const explicitWidth = config?.parameters?.width;
+			const explicitHeight = config?.parameters?.height;
 
-			// Width is driven by the wider of the wrapped-node group and the
-			// content's heading; body text is allowed to wrap. Height is then
-			// computed at that width so we have enough vertical room for the
-			// text to sit above the nodes without clipping.
-			const newWidth = estimateStickyWidth(content, wrappedAfter.width);
-			const textHeight = estimateStickyTextHeight(content, newWidth);
+			// Auto values (used unless the caller pinned a field explicitly).
+			const autoWidth = estimateStickyWidth(content, wrappedAfter.width, WRAPPED_STICKY_PADDING);
+			const finalWidth =
+				explicit.width && typeof explicitWidth === 'number' ? explicitWidth : autoWidth;
+
+			const textHeight = estimateStickyTextHeight(content, finalWidth);
 			const topReserve = Math.max(
 				STICKY_MIN_TEXT_RESERVE,
 				textHeight + STICKY_TEXT_INTERNAL_PADDING,
 			);
-			const newHeight = wrappedAfter.height + topReserve + WRAPPED_STICKY_PADDING;
+			const autoHeight = wrappedAfter.height + topReserve + WRAPPED_STICKY_PADDING;
+			const finalHeight =
+				explicit.height && typeof explicitHeight === 'number' ? explicitHeight : autoHeight;
 
-			const newX = wrappedAfter.x - (newWidth - wrappedAfter.width) / 2;
-			const newY = wrappedAfter.y - topReserve;
+			const autoX = wrappedAfter.x - (finalWidth - wrappedAfter.width) / 2;
+			const autoY = wrappedAfter.y - topReserve;
+			const finalX = explicit.position && config?.position ? config.position[0] : autoX;
+			const finalY = explicit.position && config?.position ? config.position[1] : autoY;
 
-			positions.set(stickyName, [snapToGrid(newX), snapToGrid(newY)]);
-			// Snap dimensions to grid too — left edge already snaps via newX,
-			// snapping width/height keeps padding symmetric on the right and
-			// bottom.
-			stickyDimensions.set(stickyName, {
-				width: snapToGrid(newWidth),
-				height: snapToGrid(newHeight),
-			});
+			positions.set(stickyName, [snapToGrid(finalX), snapToGrid(finalY)]);
+			// Only emit dimensions when at least one was auto-computed; if both
+			// were explicit, leave the caller's parameters.width/height alone.
+			if (!explicit.width || !explicit.height) {
+				stickyDimensions.set(stickyName, {
+					width: explicit.width ? finalWidth : snapToGrid(finalWidth),
+					height: explicit.height ? finalHeight : snapToGrid(finalHeight),
+				});
+			}
 			continue;
 		}
 

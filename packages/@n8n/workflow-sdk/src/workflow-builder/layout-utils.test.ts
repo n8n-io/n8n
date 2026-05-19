@@ -543,6 +543,56 @@ describe('calculateNodePositionsDagre', () => {
 				Number(noteShort.parameters?.width),
 			);
 		});
+
+		it('preserves a caller-set position while still auto-sizing width and height', () => {
+			const a1 = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'A1' },
+			});
+			const a2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A2' } });
+
+			const wf = workflow('wf', 'wf')
+				.add(a1.to(a2))
+				.add(
+					sticky('## Pinned group', [a1, a2], {
+						name: 'Pinned',
+						position: [800, 400],
+					}),
+				);
+
+			const json = wf.toJSON({ tidyUp: true });
+			const note = json.nodes.find((n) => n.name === 'Pinned')!;
+
+			expect(note.position).toEqual([800, 400]);
+			// width and height should still be auto-derived, not n8n defaults
+			expect(Number(note.parameters?.width)).toBeGreaterThanOrEqual(240);
+			expect(Number(note.parameters?.height)).toBeGreaterThanOrEqual(160);
+		});
+
+		it('auto-fills height when a standalone sticky sets width but not height', () => {
+			// Standalone intro-style sticky: no wrapped nodes, caller pins width
+			// only. Without auto-fill the body would clip under n8n's default
+			// 160px height.
+			const intro = sticky(
+				'# Intro\n\nLine one of body.\nLine two.\nLine three.\nLine four.\nLine five.',
+				{ position: [-400, -200], width: 360, name: 'Intro' },
+			);
+			const t = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Trig' },
+			});
+
+			const wf = workflow('wf', 'wf').add(t).add(intro);
+			const json = wf.toJSON({ tidyUp: true });
+			const note = json.nodes.find((n) => n.name === 'Intro')!;
+
+			expect(note.position).toEqual([-400, -200]);
+			expect(note.parameters?.width).toBe(360);
+			// Height auto-filled — should be tall enough for ~7 lines of content.
+			expect(Number(note.parameters?.height)).toBeGreaterThan(160);
+		});
 	});
 
 	describe('getNodeDimensions', () => {

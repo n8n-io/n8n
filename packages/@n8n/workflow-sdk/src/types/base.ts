@@ -451,6 +451,26 @@ export interface NodeConfig<TParams = IDataObject> {
 	 */
 	output?: IDataObject[];
 	subnodes?: SubnodeConfig;
+	/**
+	 * @internal Names of nodes a sticky was created to wrap (`sticky('text',
+	 * [n1, n2])`). Read by the layout pass to re-anchor and re-size the sticky
+	 * around those exact nodes after dagre has placed them.
+	 */
+	_wrappedNodeNames?: string[];
+	/**
+	 * @internal Which layout fields the caller pinned explicitly on a sticky.
+	 * The layout pass preserves those fields and only auto-computes the rest.
+	 */
+	_userExplicitStickyFields?: {
+		position?: true;
+		width?: true;
+		height?: true;
+	};
+	/**
+	 * @internal Original node name preserved when a workflow is imported via
+	 * `workflow.fromJSON()` — re-emitted as-is during serialization.
+	 */
+	_originalName?: string;
 }
 
 /**

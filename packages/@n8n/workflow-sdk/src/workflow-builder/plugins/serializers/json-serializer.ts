@@ -69,7 +69,7 @@ function serializeNode(
 	let nodeName: string | undefined;
 	if ('_originalName' in config) {
 		// Node was loaded via fromJSON - preserve original name (may be undefined)
-		nodeName = config._originalName as string | undefined;
+		nodeName = config._originalName;
 	} else {
 		// Node was created via builder - use auto-renamed key if applicable
 		const isAutoRenamed =
