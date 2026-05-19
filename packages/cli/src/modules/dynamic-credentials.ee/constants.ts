@@ -3,7 +3,7 @@
  * seeded by `N8nResolverSeeder` during module init. Downstream tickets (IAM-660 etc.)
  * reference this id from workflow settings and OAuth callbacks.
  */
-export const SYSTEM_RESOLVER_ID = 'system-n8n-resolver';
+export const SYSTEM_RESOLVER_ID = 'system-n8n';
 
 /**
  * Human-readable name persisted on the seeded row and shown in the workflow-settings

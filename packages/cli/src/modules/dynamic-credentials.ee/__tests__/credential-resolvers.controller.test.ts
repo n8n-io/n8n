@@ -7,6 +7,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { SYSTEM_RESOLVER_ID } from '../constants';
 import { IdentifierValidationError } from '../credential-resolvers/identifiers/identifier-interface';
 import { CredentialResolversController } from '../credential-resolvers.controller';
 import type { DynamicCredentialResolver } from '../database/entities/credential-resolver';
@@ -160,7 +161,7 @@ describe('CredentialResolversController', () => {
 			service.update.mockRejectedValue(new SystemResolverModificationError('update'));
 
 			await expect(
-				controller.updateResolver(req, res, 'system-n8n-resolver', { name: 'tampered' }),
+				controller.updateResolver(req, res, SYSTEM_RESOLVER_ID, { name: 'tampered' }),
 			).rejects.toThrow(BadRequestError);
 		});
 
@@ -185,7 +186,7 @@ describe('CredentialResolversController', () => {
 		it('should throw BadRequestError when service throws SystemResolverModificationError', async () => {
 			service.delete.mockRejectedValue(new SystemResolverModificationError('delete'));
 
-			await expect(controller.deleteResolver(req, res, 'system-n8n-resolver')).rejects.toThrow(
+			await expect(controller.deleteResolver(req, res, SYSTEM_RESOLVER_ID)).rejects.toThrow(
 				BadRequestError,
 			);
 		});
