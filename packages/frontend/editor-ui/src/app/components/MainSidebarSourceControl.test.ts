@@ -65,19 +65,6 @@ describe('MainSidebarSourceControl', () => {
 
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
-		vi.spyOn(sourceControlStore, 'prefetchPushStatus').mockResolvedValue([
-			{
-				id: 'workflow-1',
-				name: 'Workflow 1',
-				type: 'workflow',
-				status: 'modified',
-				location: 'local',
-				conflict: false,
-				file: 'workflows/workflow-1.json',
-				updatedAt: '2024-01-01T00:00:00.000Z',
-				pushed: false,
-			},
-		]);
 		mockShowError.mockReset();
 	});
 
@@ -228,7 +215,6 @@ describe('MainSidebarSourceControl', () => {
 			});
 
 			await userEvent.click(getAllByRole('button')[1]);
-			await waitFor(() => expect(sourceControlStore.prefetchPushStatus).toHaveBeenCalled());
 			await waitFor(() =>
 				expect(mockRouterPush).toHaveBeenCalledWith({
 					query: {
@@ -236,19 +222,6 @@ describe('MainSidebarSourceControl', () => {
 					},
 				}),
 			);
-		});
-
-		it('should not navigate to push route when prefetching push status fails', async () => {
-			vi.spyOn(sourceControlStore, 'prefetchPushStatus').mockRejectedValue(new Error('Forbidden'));
-
-			const { getAllByRole } = renderComponent({
-				pinia,
-				props: { isCollapsed: false },
-			});
-
-			await userEvent.click(getAllByRole('button')[1]);
-			await waitFor(() => expect(sourceControlStore.prefetchPushStatus).toHaveBeenCalled());
-			expect(mockRouterPush).not.toHaveBeenCalled();
 		});
 	});
 });

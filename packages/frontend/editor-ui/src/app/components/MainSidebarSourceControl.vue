@@ -17,7 +17,6 @@ const projectStore = useProjectsStore();
 const i18n = useI18n();
 const { openPushModal, openPullModal } = useSourceControlModalRouting();
 const tooltipOpenDelay = ref(300);
-const isLoadingPushStatus = ref(false);
 
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
@@ -43,19 +42,6 @@ const sourceControlAvailable = computed(
 		sourceControlStore.isEnterpriseSourceControlEnabled &&
 		(hasPullPermission.value || hasPushPermission.value),
 );
-
-async function pushWorkfolder() {
-	if (isLoadingPushStatus.value) {
-		return;
-	}
-
-	isLoadingPushStatus.value = true;
-	try {
-		await openPushModal();
-	} finally {
-		isLoadingPushStatus.value = false;
-	}
-}
 </script>
 
 <template>
@@ -127,17 +113,12 @@ async function pushWorkfolder() {
 					<N8nButton
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
-						:disabled="
-							sourceControlStore.preferences.branchReadOnly ||
-							!hasPushPermission ||
-							isLoadingPushStatus
-						"
-						:loading="isLoadingPushStatus"
+						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
 						type="tertiary"
 						size="mini"
-						@click="pushWorkfolder"
+						@click="openPushModal"
 					/>
 				</N8nTooltip>
 			</div>
