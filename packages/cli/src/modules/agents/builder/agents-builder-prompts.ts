@@ -9,6 +9,16 @@ const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.literal('n8n'),
 	lastMessages: z.number().int().min(1).max(200).optional(),
+	observationalMemory: z
+		.object({
+			enabled: z.boolean().optional(),
+			observerThresholdTokens: z.number().int().min(1).optional(),
+			reflectorThresholdTokens: z.number().int().min(1).optional(),
+			renderTokenBudget: z.number().int().min(1).optional(),
+			observationLogTailLimit: z.number().int().min(1).optional(),
+			lockTtlMs: z.number().int().min(0).optional(),
+		})
+		.optional(),
 });
 
 const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend({
@@ -328,17 +338,20 @@ export const MEMORY_PRESETS_SECTION = `\
 ## Memory
 
 Use n8n session-scoped memory only. It keeps recent conversation context and
-thread-scoped working memory for the current chat session.
+an observation log for the current chat session. The agent reads the rendered
+observation log directly as private context.
 
 Shape:
 \`\`\`json
-{ "enabled": true, "storage": "n8n", "lastMessages": 50 }
+{ "enabled": true, "storage": "n8n", "lastMessages": 50, "observationalMemory": { "renderTokenBudget": 4500 } }
 \`\`\`
 
 Rules:
 - Set \`storage\` to "n8n".
 - \`lastMessages\` default: 50.
-- Keep memory to these fields: \`enabled\`, \`storage\`, and \`lastMessages\`.`;
+- Observation-log memory is enabled by default when memory is enabled.
+- Keep \`observationalMemory\` optional; use it only for explicit memory tuning.
+- Supported tuning fields: \`enabled\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.`;
 
 export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)
@@ -582,12 +595,15 @@ export function getConfigRulesSection(): string {
 	return `\
 ## Agent config rules
 
-- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
-- \`credential\` must be the \`credentialId\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
-- \`memory.storage\` must be "n8n"
-- \`memory.lastMessages\` default: 50
-- Use n8n session-scoped memory for all agents
-- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
+	- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
+	- \`credential\` must be the \`credentialId\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
+	- \`memory.storage\` must be "n8n"
+	- \`memory.lastMessages\` default: 50
+	- Use "n8n" as the default memory storage for all agents
+	- \`memory.observationalMemory\` tunes observation-log memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
+	  - Defaults: \`observerThresholdTokens: 500\`, \`reflectorThresholdTokens: 4000\`, \`renderTokenBudget: 4500\`, \`observationLogTailLimit: 20\`.
+	  - Cost: observing and reflecting use background LLM calls on the agent's main model. Mention this if the user asks about cost.
+	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
 }
 
 export function getSchemaReferenceSection(): string {

@@ -162,6 +162,68 @@ describe('HttpRequestV2', () => {
 	});
 
 	describe('URL Parameter Validation', () => {
+		it('should throw error when URL is only whitespace', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'responseFormat':
+						return 'json';
+					case 'requestMethod':
+						return 'GET';
+					case 'url':
+						return '   ';
+					case 'authentication':
+						return 'none';
+					case 'jsonParameters':
+						return false;
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter cannot be empty',
+			);
+		});
+
+		it('should trim whitespace from valid URL', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'responseFormat':
+						return 'json';
+					case 'requestMethod':
+						return 'GET';
+					case 'url':
+						return '  http://example.com  ';
+					case 'authentication':
+						return 'none';
+					case 'jsonParameters':
+						return false;
+					case 'options':
+						return options;
+					case 'bodyParametersUi':
+					case 'headerParametersUi':
+					case 'queryParametersUi':
+						return { parameter: [] };
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				success: true,
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+			const requestArgs = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
+		});
+
 		it.each([
 			{ url: undefined, expectedType: 'undefined' },
 			{ url: null, expectedType: 'null' },
@@ -182,6 +244,10 @@ describe('HttpRequestV2', () => {
 						return false;
 					case 'options':
 						return options;
+					case 'bodyParametersUi':
+					case 'headerParametersUi':
+					case 'queryParametersUi':
+						return { parameter: [] };
 					default:
 						return undefined;
 				}

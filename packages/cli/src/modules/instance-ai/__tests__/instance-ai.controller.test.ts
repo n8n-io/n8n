@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 jest.mock('@n8n/instance-ai', () => ({
-	createMemory: jest.fn(),
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
@@ -18,7 +17,7 @@ jest.mock('@n8n/instance-ai', () => ({
 }));
 
 // The controller imports validation helpers via the parsers subpath so they
-// don't pull in Mastra. Re-export the real implementation for the test.
+// don't pull in native agent. Re-export the real implementation for the test.
 jest.mock('@n8n/instance-ai/parsers', () => jest.requireActual('@n8n/instance-ai/parsers'));
 
 jest.mock('../eval/execution.service', () => ({
@@ -129,7 +128,6 @@ describe('InstanceAiController', () => {
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
-			researchMode: false,
 			timeZone: 'Europe/Helsinki',
 		});
 
@@ -149,7 +147,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payload.message,
-				payload.researchMode,
 				payload.attachments,
 				payload.timeZone,
 				payload.pushRef,
@@ -182,7 +179,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payloadWithPushRef.message,
-				payloadWithPushRef.researchMode,
 				payloadWithPushRef.attachments,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',

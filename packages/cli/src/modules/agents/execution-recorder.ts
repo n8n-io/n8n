@@ -177,7 +177,6 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 	  }
-	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
