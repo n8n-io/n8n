@@ -181,6 +181,9 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 		// Opt-in rule: enforces facade pattern for page object access
 		// Enable in projects that use a facade pattern (e.g., n8n.canvas instead of new CanvasPage())
 		'no-direct-page-instantiation': { enabled: false, severity: 'error' },
+		// Opt-in rule: surfaces getByTestId calls in page objects as a proxy for accessibility coverage.
+		// Enable to track the ratio of role-based selectors vs. test ids and to flag potential WCAG gaps.
+		'prefer-role-selectors': { enabled: false, severity: 'warning' },
 	},
 
 	skipTags: [],

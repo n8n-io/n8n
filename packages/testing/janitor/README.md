@@ -340,6 +340,43 @@ Certain page-level operations are allowed (configurable via `allowPatterns`):
 - `page.waitForURL()` - URL assertions
 - `page.reload()` - Page refresh
 
+#### `prefer-role-selectors`
+
+**Severity:** warning | **Default:** opt-in (disabled by default)
+
+Surfaces `getByTestId(...)` calls in page object files so authors can review whether the element has an accessible role and use `getByRole(...)` instead. When a role-based selector can't be used, the underlying UI usually has a WCAG gap worth filing against the frontend component.
+
+The ratio of `getByRole` to `getByTestId` across page objects can be tracked as a proxy metric for accessibility coverage.
+
+```typescript
+// Flagged - test id selector in a page object
+export class FormPage {
+  async submit() {
+    await this.container.getByTestId('submit-button').click();
+  }
+}
+
+// Preferred - role-based selector (skipped by the rule)
+export class FormPage {
+  async submit() {
+    await this.container.getByRole('button', { name: 'Submit' }).click();
+  }
+}
+```
+
+Enable in config and silence test ids that genuinely have no role equivalent via `allowPatterns`:
+
+```typescript
+rules: {
+  'prefer-role-selectors': {
+    enabled: true,
+    severity: 'warning',
+    // Skip ids that match these patterns (e.g., dynamic node ids, canvas elements)
+    allowPatterns: [/^node-/, /^canvas-/],
+  },
+}
+```
+
 #### `api-purity`
 
 **Severity:** warning
