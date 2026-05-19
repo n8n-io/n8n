@@ -6,19 +6,17 @@ import { INodeSchema } from '../schemas';
 /**
  * Fields that should be excluded when serialising a node.
  * */
-export const RUNTIME_ONLY_NODE_FIELDS = [
+export const EXCLUDED_FROM_SERIALIZATION = [
 	'extendsCredential',
 	'rewireOutputLogTo',
 	'forceCustomOperation',
 ] as const satisfies ReadonlyArray<keyof INode>;
 
-const RUNTIME_ONLY_OMIT_MASK = Object.fromEntries(
-	RUNTIME_ONLY_NODE_FIELDS.map((field) => [field, true as const]),
-) as { [K in (typeof RUNTIME_ONLY_NODE_FIELDS)[number]]: true };
+const EXCLUDED_ITEMS_AS_OBJECT = Object.fromEntries(
+	EXCLUDED_FROM_SERIALIZATION.map((field) => [field, true as const]),
+) as { [K in (typeof EXCLUDED_FROM_SERIALIZATION)[number]]: true };
 
-// `parameters` is overridden as an opaque record: INodeParametersSchema is too
-// strict for arbitrary user-defined node parameters on the wire.
-export const SerializableNodeSchema = INodeSchema.omit(RUNTIME_ONLY_OMIT_MASK).extend({
+export const SerializableNodeSchema = INodeSchema.omit(EXCLUDED_ITEMS_AS_OBJECT).extend({
 	parameters: z.record(z.string(), z.unknown()),
 });
 
@@ -34,7 +32,7 @@ export type SerializableNode = z.infer<typeof SerializableNodeSchema>;
  **/
 type _MissingFromSerializableNode = Exclude<
 	keyof INode,
-	keyof SerializableNode | (typeof RUNTIME_ONLY_NODE_FIELDS)[number]
+	keyof SerializableNode | (typeof EXCLUDED_FROM_SERIALIZATION)[number]
 >;
 type _AllINodeFieldsAccountedFor = [_MissingFromSerializableNode] extends [never]
 	? true

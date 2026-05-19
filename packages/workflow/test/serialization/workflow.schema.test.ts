@@ -1,4 +1,4 @@
-import { RUNTIME_ONLY_NODE_FIELDS } from '../../src/serialization/workflow.schema';
+import { EXCLUDED_FROM_SERIALIZATION } from '../../src/serialization/workflow.schema';
 import {
 	SerializableNodeSchema,
 	SerializableWorkflowSchema,
@@ -25,7 +25,7 @@ describe('SerializableNodeSchema', () => {
 			forceCustomOperation: { resource: 'r', operation: 'o' },
 		};
 		const result = SerializableNodeSchema.parse({ ...validNode, ...runtimeFields });
-		for (const field of RUNTIME_ONLY_NODE_FIELDS) {
+		for (const field of EXCLUDED_FROM_SERIALIZATION) {
 			expect(result).not.toHaveProperty(field);
 		}
 	});
