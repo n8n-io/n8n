@@ -3,10 +3,11 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
+import { PlanEditControllerKey } from '../planEditContext';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -39,6 +40,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
+const planEditController = inject(PlanEditControllerKey, null);
 
 function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
@@ -359,7 +361,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
-const PLAN_REVIEW_OPTIONS = ['approve', 'request-changes', 'deny'] as const;
+const PLAN_REVIEW_OPTIONS = ['approve', 'ask-for-edits', 'deny'] as const;
 
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 	trackInputCompleted(
@@ -372,22 +374,11 @@ function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
-function handlePlanRequestChanges(
-	conf: InstanceAiConfirmation,
-	feedback: string,
-	numTasks: number,
-) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'request-changes' }],
-		[],
-		{ num_tasks: numTasks, feedback },
-	);
-	thread.resolveConfirmation(conf.requestId, 'denied');
-	void thread.confirmAction(conf.requestId, {
-		kind: 'approval',
-		approved: false,
-		userInput: feedback,
+function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
+	planEditController?.startPlanEdit({
+		requestId: conf.requestId,
+		inputThreadId: conf.inputThreadId,
+		taskCount: numTasks,
 	});
 }
 
@@ -462,13 +453,11 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
 						)
 					"
-					@request-changes="
-						(feedback) =>
-							handlePlanRequestChanges(
-								chunk.item.toolCall.confirmation,
-								feedback,
-								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-							)
+					@ask-for-edits="
+						handlePlanAskForEdits(
+							chunk.item.toolCall.confirmation,
+							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+						)
 					"
 					@deny="
 						handlePlanDeny(

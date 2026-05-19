@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
@@ -35,6 +36,7 @@ const props = withDefaults(
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
+		isPlanEditMode?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -48,6 +50,7 @@ const props = withDefaults(
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
+		isPlanEditMode: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
@@ -57,6 +60,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
+	'cancel-plan-edit': [];
 }>();
 
 const i18n = useI18n();
@@ -72,7 +76,9 @@ defineExpose({
 	focus: () => chatInputRef.value?.focus(),
 });
 
-const isBusy = computed(() => props.isStreaming || props.isSubmitting);
+const isBusy = computed(() =>
+	props.isPlanEditMode ? props.isSubmitting : props.isStreaming || props.isSubmitting,
+);
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
@@ -82,6 +88,7 @@ const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGa
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
+		!props.isPlanEditMode &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
@@ -98,6 +105,9 @@ const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
+	}
+	if (props.isPlanEditMode) {
+		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
 	}
 	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
 		return i18n.baseText(previewPromptKey.value);
@@ -135,6 +145,16 @@ watch(inputText, (text) => {
 		selectedSuggestionDraft.value = null;
 	}
 });
+
+watch(
+	() => props.isPlanEditMode,
+	(isPlanEditMode, wasPlanEditMode) => {
+		if (isPlanEditMode || wasPlanEditMode) {
+			previewPromptKey.value = null;
+			resetDraftComposer();
+		}
+	},
+);
 
 function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
 	previewPromptKey.value = null;
@@ -283,22 +303,40 @@ const resizable = computed(() => {
 
 <template>
 	<div :class="$style.composer">
+		<div
+			v-if="props.isPlanEditMode"
+			:class="$style.contextChip"
+			data-test-id="instance-ai-plan-edit-context"
+		>
+			<div :class="$style.contextChipLabel">
+				<N8nIcon icon="message-square" size="small" />
+				<span>{{ i18n.baseText('instanceAi.input.planEditContext' as BaseTextKey) }}</span>
+			</div>
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
+				size="xsmall"
+				:title="i18n.baseText('generic.close')"
+				data-test-id="instance-ai-plan-edit-cancel"
+				@click="emit('cancel-plan-edit')"
+			/>
+		</div>
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
 			:placeholder="placeholder"
-			:is-streaming="props.isStreaming"
+			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"
 			show-voice
-			show-attach
+			:show-attach="!props.isPlanEditMode"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
 		>
-			<template v-if="attachedFiles.length > 0" #attachments>
+			<template v-if="attachedFiles.length > 0 && !props.isPlanEditMode" #attachments>
 				<div :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
@@ -337,6 +375,30 @@ const resizable = computed(() => {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
+}
+
+.contextChip {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	align-self: flex-start;
+	max-width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--3xs) var(--spacing--4xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+	color: var(--color--text--tint-1);
+	box-shadow: var(--shadow--xs);
+}
+
+.contextChipLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
 }
 
 :global(.suggestions-fade-enter-active) {

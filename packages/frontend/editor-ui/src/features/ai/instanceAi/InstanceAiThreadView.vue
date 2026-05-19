@@ -26,6 +26,7 @@ import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { useCanvasPreview } from './useCanvasPreview';
@@ -35,6 +36,7 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { useSidebarState } from './instanceAiLayout';
+import { PlanEditControllerKey, type PlanEditContext } from './planEditContext';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -69,6 +71,7 @@ const creditBanner = useCreditWarningBanner(isLowCredits);
 const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
+const telemetry = useTelemetry();
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -134,6 +137,50 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+
+// --- Plan edit mode ---
+const activePlanEdit = ref<PlanEditContext | null>(null);
+const updatingPlanRequestIds = ref(new Set<string>());
+
+function startPlanEdit(context: PlanEditContext): void {
+	activePlanEdit.value = context;
+	void nextTick(() => chatInputRef.value?.focus());
+}
+
+function cancelPlanEdit(): void {
+	activePlanEdit.value = null;
+}
+
+function markPlanUpdatePending(requestId: string): void {
+	const next = new Set(updatingPlanRequestIds.value);
+	next.add(requestId);
+	updatingPlanRequestIds.value = next;
+}
+
+function clearPlanUpdatePending(requestId: string): void {
+	if (!updatingPlanRequestIds.value.has(requestId)) return;
+	const next = new Set(updatingPlanRequestIds.value);
+	next.delete(requestId);
+	updatingPlanRequestIds.value = next;
+}
+
+provide(PlanEditControllerKey, {
+	activePlanEdit,
+	updatingPlanRequestIds,
+	startPlanEdit,
+	cancelPlanEdit,
+	markPlanUpdatePending,
+	clearPlanUpdatePending,
+});
+
+watch(
+	() => thread.isStreaming,
+	(isStreaming) => {
+		if (!isStreaming && updatingPlanRequestIds.value.size > 0) {
+			updatingPlanRequestIds.value = new Set();
+		}
+	},
+);
 
 // --- Side panels ---
 const showDebugPanel = ref(false);
@@ -536,6 +583,40 @@ const eventRelay = useEventRelay({
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
+
+	const planEdit = activePlanEdit.value;
+	if (planEdit) {
+		activePlanEdit.value = null;
+		telemetry.track('User finished providing input', {
+			thread_id: thread.id,
+			input_thread_id: planEdit.inputThreadId ?? '',
+			instance_id: rootStore.instanceId,
+			type: 'plan-review',
+			provided_inputs: [
+				{
+					label: 'plan',
+					options: ['approve', 'ask-for-edits', 'deny'],
+					option_chosen: 'ask-for-edits',
+				},
+			],
+			skipped_inputs: [],
+			num_tasks: planEdit.taskCount,
+			feedback: message,
+		});
+		markPlanUpdatePending(planEdit.requestId);
+		thread.resolveConfirmation(planEdit.requestId, 'denied');
+		void thread
+			.confirmAction(planEdit.requestId, {
+				kind: 'approval',
+				approved: false,
+				userInput: message,
+			})
+			.then((success) => {
+				if (!success) clearPlanUpdatePending(planEdit.requestId);
+			});
+		return;
+	}
+
 	void thread.sendMessage(message, attachments, rootStore.pushRef);
 }
 
@@ -726,11 +807,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										:is-streaming="thread.isStreaming"
 										:is-submitting="thread.isSendingMessage"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:is-plan-edit-mode="activePlanEdit !== null"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:contextual-suggestion="thread.contextualSuggestion"
 										@submit="handleSubmit"
 										@stop="handleStop"
+										@cancel-plan-edit="cancelPlanEdit"
 									/>
 								</Transition>
 							</div>
