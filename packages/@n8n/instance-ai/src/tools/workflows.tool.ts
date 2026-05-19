@@ -67,6 +67,20 @@ const setupAction = z.object({
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
 });
 
+const updateAction = z.object({
+	action: z
+		.literal('update')
+		.describe(
+			'Save a complete modified WorkflowJSON back to the workflow. Use after reading via `get` and modifying the JSON. Replaces the full workflow definition.',
+		),
+	workflowId: z.string().describe('ID of the workflow'),
+	workflow: z
+		.record(z.unknown())
+		.describe(
+			'Full WorkflowJSON object (same shape as returned by `get`). This completely replaces the current workflow definition — ensure name, nodes, and connections are all included.',
+		),
+});
+
 const publishBaseAction = z.object({
 	action: z
 		.literal('publish')
@@ -143,6 +157,7 @@ type Input =
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof unarchiveAction>
 	| z.infer<typeof setupAction>
+	| z.infer<typeof updateAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
 	| z.infer<typeof listVersionsAction>
@@ -162,6 +177,7 @@ export type WorkflowAction =
 	| 'delete'
 	| 'unarchive'
 	| 'setup'
+	| 'update'
 	| 'publish'
 	| 'unpublish'
 	| 'list-versions'
@@ -187,6 +203,7 @@ const WORKFLOW_ACTION_ORDER = [
 	'delete',
 	'unarchive',
 	'setup',
+	'update',
 	'publish',
 	'unpublish',
 	'list-versions',
@@ -202,6 +219,7 @@ const WORKFLOW_ACTION_LABELS = {
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
+	update: 'save a modified WorkflowJSON',
 	publish: 'publish',
 	unpublish: 'unpublish',
 	'list-versions': 'list versions',
@@ -228,6 +246,7 @@ function getSupportedWorkflowActionSchemas(
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
+		update: updateAction,
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
@@ -604,6 +623,48 @@ async function handleSetup(
 	}
 }
 
+async function handleUpdate(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'update' }>,
+	ctx: WorkflowToolContext,
+) {
+	const resumeData = ctx.resumeData;
+
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
+	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		return await ctx.suspend({
+			requestId: nanoid(),
+			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			severity: 'warning' as const,
+		});
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	try {
+		await context.workflowService.updateFromWorkflowJSON(
+			input.workflowId,
+			input.workflow as unknown as Parameters<
+				typeof context.workflowService.updateFromWorkflowJSON
+			>[1],
+		);
+		return { success: true, workflowId: input.workflowId };
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
 async function handlePublish(
 	context: InstanceAiContext,
 	input: PublishInput,
@@ -967,6 +1028,8 @@ export function createWorkflowsTool(
 					return await handleUnarchive(context, workflowInput, ctx);
 				case 'setup':
 					return await handleSetup(context, workflowInput, ctx, setupState);
+				case 'update':
+					return await handleUpdate(context, workflowInput, ctx);
 				case 'publish':
 					return await handlePublish(context, workflowInput, ctx);
 				case 'unpublish':
