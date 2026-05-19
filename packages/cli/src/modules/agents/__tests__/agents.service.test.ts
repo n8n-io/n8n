@@ -1219,7 +1219,7 @@ describe('AgentsService', () => {
 			expect(result.missing).toContain('credential');
 		});
 
-		it('flags missing episodic memory credential when cross-session recall is enabled', async () => {
+		it('flags missing episodic memory credential when Episodic Memory is enabled', async () => {
 			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
 			const agent = makeAgent({
 				schema: {
@@ -1249,7 +1249,7 @@ describe('AgentsService', () => {
 			expect(result.missing).toContain('episodicMemory.credential');
 		});
 
-		it('accepts episodic memory credential when cross-session recall credential exists', async () => {
+		it('accepts episodic memory credential when Episodic Memory credential exists', async () => {
 			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }, { id: 'embedding-cred' }]);
 			const agent = makeAgent({
 				schema: {

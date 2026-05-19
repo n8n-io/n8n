@@ -869,7 +869,7 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
-	 *   - "episodicMemory.credential": configured cross-session recall credential
+	 *   - "episodicMemory.credential": configured Episodic Memory credential
 	 *                     does not resolve to a real credential in the project
 	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
