@@ -243,6 +243,89 @@ describe('search-projects MCP tool', () => {
 		);
 	});
 
+	test('includes a disambiguation hint when multiple projects share the queried name', async () => {
+		const exactProjects = [
+			{ id: 'proj-a', name: 'Finance', type: 'team' },
+			{ id: 'proj-b', name: 'Finance', type: 'team' },
+		];
+		const { projectRepository, telemetry } = createMocks({
+			projects: exactProjects,
+			exactProjects,
+		});
+
+		const tool = createSearchProjectsTool(
+			user,
+			projectRepository as unknown as ProjectRepository,
+			telemetry,
+		);
+
+		const result = await callHandler(tool, { query: 'Finance' });
+
+		const output = result.structuredContent as { hint?: string };
+		expect(output.hint).toContain('Multiple projects are named "Finance"');
+		expect(output.hint).toContain('disambiguate');
+	});
+
+	test('trims whitespace from the query before querying the repository', async () => {
+		const { projectRepository, telemetry } = createMocks({
+			projects: [{ id: 'proj-1', name: 'Finance', type: 'team' }],
+			exactProjects: [{ id: 'proj-1', name: 'Finance', type: 'team' }],
+		});
+
+		const tool = createSearchProjectsTool(
+			user,
+			projectRepository as unknown as ProjectRepository,
+			telemetry,
+		);
+
+		await callHandler(tool, { query: '  Finance  ' });
+
+		expect(projectRepository.getAccessibleProjectsAndCount).toHaveBeenCalledWith(
+			user.id,
+			expect.objectContaining({ search: 'Finance' }),
+		);
+		expect(projectRepository.getAccessibleProjectsByExactName).toHaveBeenCalledWith(
+			user.id,
+			'Finance',
+			undefined,
+		);
+	});
+
+	test('forwards the type filter to the exact-name lookup', async () => {
+		const { projectRepository, telemetry } = createMocks();
+
+		const tool = createSearchProjectsTool(
+			user,
+			projectRepository as unknown as ProjectRepository,
+			telemetry,
+		);
+
+		await callHandler(tool, { query: 'Finance', type: 'team' });
+
+		expect(projectRepository.getAccessibleProjectsByExactName).toHaveBeenCalledWith(
+			user.id,
+			'Finance',
+			'team',
+		);
+	});
+
+	test('returns an empty data array and no hint when the query has no matches', async () => {
+		const { projectRepository, telemetry } = createMocks({ projects: [], count: 0 });
+
+		const tool = createSearchProjectsTool(
+			user,
+			projectRepository as unknown as ProjectRepository,
+			telemetry,
+		);
+
+		const result = await callHandler(tool, { query: 'nope' });
+
+		const output = result.structuredContent as { data: unknown[]; count: number; hint?: string };
+		expect(output.data).toEqual([]);
+		expect(output.count).toBe(0);
+		expect(output.hint).toBeUndefined();
+	});
+
 	test('does not query exact-name endpoint when no query is provided', async () => {
 		const { projectRepository, telemetry } = createMocks({
 			projects: [{ id: 'proj-1', name: 'Anything', type: 'team' }],
