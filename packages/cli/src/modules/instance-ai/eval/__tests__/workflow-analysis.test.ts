@@ -11,6 +11,7 @@ import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 
 import {
+	detectBinaryDependencies,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
@@ -150,6 +151,180 @@ describe('identifyNodesForPinData', () => {
 		const result = identifyNodesForPinData(makeWorkflow(nodes));
 
 		expect(result).toHaveLength(bypassTypes.length);
+	});
+});
+
+describe('detectBinaryDependencies', () => {
+	it('returns undefined when no node consumes a binary attachment', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: { resource: 'message', operation: 'post', text: 'hello' },
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))).toBeUndefined();
+	});
+
+	it('detects $binary.<key> expressions in node parameters', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Send',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					url: 'https://example.com/upload',
+					body: { value: '={{ $binary.attachment }}' },
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result).toMatchObject({ propertyName: 'attachment' });
+	});
+
+	it('detects Extract from File as a binary consumer (allowlist fallback)', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Extract',
+				type: 'n8n-nodes-base.extractFromFile',
+				parameters: { operation: 'pdf' },
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result).toMatchObject({
+			propertyName: 'data',
+			contentType: 'application/pdf',
+		});
+	});
+
+	it('does NOT mark Telegram as a binary consumer unless $binary is referenced (sendVoice only sometimes uses binary)', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Telegram',
+				type: 'n8n-nodes-base.telegram',
+				parameters: { resource: 'message', operation: 'sendVoice' },
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))).toBeUndefined();
+	});
+
+	it('picks up Telegram sendVoice when it references $binary.data and uses OGG default', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Telegram',
+				type: 'n8n-nodes-base.telegram',
+				parameters: {
+					resource: 'message',
+					operation: 'sendVoice',
+					binaryPropertyName: '={{ $binary.data }}',
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('data');
+		expect(result?.contentType).toBe('audio/ogg');
+		expect(result?.filename).toBe('voice.ogg');
+	});
+
+	it('prefers $binary.<key> expressions over the allowlist when both are present', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Extract',
+				type: 'n8n-nodes-base.extractFromFile',
+				parameters: {
+					operation: 'pdf',
+					binaryPropertyName: '={{ $binary.uploadedFile }}',
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('uploadedFile');
+		expect(result?.contentType).toBe('application/pdf');
+	});
+
+	it('detects literal binaryPropertyName parameters on upload nodes (Slack files.upload)', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: 'image',
+					channels: ['#general'],
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('image');
+	});
+
+	it('detects literal binaryPropertyName on S3 PutObject with default key name', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'S3',
+				type: 'n8n-nodes-base.awsS3',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: 'data',
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('data');
+	});
+
+	it('extracts the literal from a quoted-string expression on binaryPropertyName', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: '={{ "image" }}',
+				},
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))?.propertyName).toBe('image');
+	});
+
+	it('falls back to `data` when binaryPropertyName is a dynamic expression', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: '={{ $json.binaryKey }}',
+				},
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))?.propertyName).toBe('data');
+	});
+
+	it('ignores disabled nodes', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Extract',
+				type: 'n8n-nodes-base.extractFromFile',
+				disabled: true,
+				parameters: { operation: 'pdf' },
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))).toBeUndefined();
 	});
 });
 

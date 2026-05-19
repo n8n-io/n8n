@@ -30,6 +30,7 @@ jest.mock('../workflow-analysis', () => ({
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
+	detectBinaryDependencies: jest.fn(),
 }));
 jest.mock('@n8n/workflow-sdk', () => ({
 	normalizePinData: jest.fn((pd: unknown) => pd),

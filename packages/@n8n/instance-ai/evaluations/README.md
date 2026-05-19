@@ -34,6 +34,36 @@ Each run:
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
 
+### Binary / file scenarios
+
+The mock layer synthesizes minimal-valid binary fixtures (PNG, JPEG, GIF, WebP, PDF, ZIP, GZIP, MP3, WAV, OGG/Opus, MP4, SVG, CSV/JSON/HTML/XML plaintext, octet-stream fallback) on every `type: "binary"` response, so file-download endpoints round-trip through `prepareBinaryData` with the correct `mimeType` / `fileExtension` / `fileType`. Multipart and raw-binary request bodies are redacted to part metadata (`name`, `filename`, `contentType`, `size`) before the LLM prompt so uploads never crash on JSON-serializing raw bytes.
+
+**Per-MIME fixtures** are generated automatically from `contentType` — the LLM picks `type: "binary"` and the MIME, and the mock layer fills in the bytes.
+
+**Scenario-pinned fixtures** (`mockFixtures` on the scenario JSON) bypass the LLM and return exact bytes for a specific request — required when a verifier matches against content (e.g. Whisper transcript text). Precedence: scenario fixture > LLM-chosen binary > LLM-chosen JSON.
+
+```jsonc
+{
+  // existing scenario fields…
+  "mockFixtures": [
+    {
+      "match": {
+        "nodeName": "Telegram",
+        "url": "https://api.telegram.org/file/bot*/voice/**",
+        "method": "GET"
+      },
+      "contentType": "audio/ogg",
+      "filename": "sample-voice.ogg",
+      // resolve either via fixture file path (relative to the scenario JSON)
+      // or inline base64 — see the scenario loader for the schema.
+      "fixture": { "path": "./fixtures/sample-voice.ogg" }
+    }
+  ]
+}
+```
+
+Common upload flows (webhook → file upload to Slack/Telegram/S3) are also covered on the input side: the trigger pin data automatically includes a `binary` map when a downstream node references `$binary.<key>` or is a known binary consumer (`Extract from File`, `Read Binary File`, LangChain document loader).
+
 ## Quick start
 
 You need an n8n instance running with Instance AI enabled, a seeded owner account, and an Anthropic API key. Two paths:
@@ -546,7 +576,7 @@ packages/cli/src/modules/instance-ai/eval/
 ## Known limitations
 
 - **LangChain/AI nodes** — use their own SDKs, not the HTTP mock layer. They fail with credential errors; use pin data instead.
-- **Binary / file nodes** — media attachments, image generation, file downloads. Mock metadata works; realistic binary content is out of scope.
+- **Binary / file nodes** — minimal-valid synthetic fixtures (PDF, PNG, JPEG, OGG/Opus, WAV, MP3, MP4, ZIP, plaintext) are generated per content type and round-trip correctly through `prepareBinaryData`. Image-content correctness and OOXML formats (docx/xlsx — currently mime-sniffed as `application/zip`) remain out of scope. See [Binary / file scenarios](#binary--file-scenarios) for the `mockFixtures` override path.
 - **Streaming nodes** — mocks return complete responses, not streams.
 - **GraphQL APIs** — response shape depends on the query, not just the endpoint. Quality depends on the LLM knowing the API schema.
 - **Non-determinism** — the agent builds different workflows each run. Pass rates vary between 40–65%.

@@ -95,3 +95,8 @@ export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-s
 export { ExecutionContextService } from './execution-context.service';
 export { establishExecutionContext } from './execution-context';
 export { isEngineRequest } from './requests-response';
+export {
+	synthesizeBinaryFixture,
+	type FixtureSizeHint,
+	type SynthesizeBinaryFixtureOptions,
+} from './eval-mock-fixtures';

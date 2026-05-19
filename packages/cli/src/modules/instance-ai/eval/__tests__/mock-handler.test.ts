@@ -4,6 +4,7 @@ interface MockResponseSpec {
 	statusCode?: number;
 	contentType?: string;
 	filename?: string;
+	sizeHint?: 'small' | 'medium' | 'large';
 }
 
 const submitQueue: MockResponseSpec[] = [];
@@ -71,8 +72,13 @@ jest.mock('@n8n/di', () => ({
 			debug: jest.fn(),
 		}),
 	},
+	// No-op decorator factory so n8n-core's @Service-decorated classes load
+	// without registering against a real DI container.
+	Service: () => (target: unknown) => target,
 }));
 
+import FileType from 'file-type';
+import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { buildDateAnchors, createLlmMockHandler } from '../mock-handler';
@@ -165,7 +171,7 @@ describe('createLlmMockHandler', () => {
 		});
 	});
 
-	it('should materialize binary spec with Buffer body', async () => {
+	it('should materialize binary spec with a valid PDF fixture when contentType=application/pdf', async () => {
 		llmSubmits({ type: 'binary', contentType: 'application/pdf', filename: 'doc.pdf' });
 		const handler = createLlmMockHandler();
 		const result = await callHandler(handler);
@@ -173,7 +179,31 @@ describe('createLlmMockHandler', () => {
 		expect(result.statusCode).toBe(200);
 		expect(result.headers['content-type']).toBe('application/pdf');
 		expect(Buffer.isBuffer(result.body)).toBe(true);
-		expect((result.body as Buffer).toString()).toContain('doc.pdf');
+		const sniffed = await FileType.fromBuffer(result.body as Buffer);
+		expect(sniffed?.mime).toBe('application/pdf');
+		expect(sniffed?.ext).toBe('pdf');
+	});
+
+	it('should populate content-disposition and content-length headers for binary responses', async () => {
+		llmSubmits({ type: 'binary', contentType: 'image/png', filename: 'logo.png' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.headers['content-disposition']).toBe('attachment; filename="logo.png"');
+		expect(result.headers['content-length']).toBe(String((result.body as Buffer).length));
+	});
+
+	it('should respect sizeHint=medium for binary responses', async () => {
+		llmSubmits({
+			type: 'binary',
+			contentType: 'application/pdf',
+			filename: 'big.pdf',
+			sizeHint: 'medium',
+		});
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect((result.body as Buffer).length).toBeGreaterThanOrEqual(64 * 1024);
 	});
 
 	it('should use default filename and content-type for binary when omitted', async () => {
@@ -183,8 +213,9 @@ describe('createLlmMockHandler', () => {
 
 		expect(result.statusCode).toBe(200);
 		expect(result.headers['content-type']).toBe('application/octet-stream');
+		expect(result.headers['content-disposition']).toBe('attachment; filename="mock-file.dat"');
 		expect(Buffer.isBuffer(result.body)).toBe(true);
-		expect((result.body as Buffer).toString()).toContain('mock-file.dat');
+		expect((result.body as Buffer).length).toBeGreaterThan(0);
 	});
 
 	it('should materialize error spec with correct status code', async () => {
@@ -252,6 +283,48 @@ describe('createLlmMockHandler', () => {
 		await handler(baseRequest, baseNode);
 
 		expect(extractNodeConfig).toHaveBeenCalledTimes(1);
+	});
+
+	it('should short-circuit to a scenario-pinned fixture without calling the LLM', async () => {
+		const pinnedBytes = Buffer.from('pinned-pdf-bytes');
+		const handler = createLlmMockHandler({
+			mockFixtures: [
+				{
+					match: { nodeName: 'Slack', url: 'https://api.slack.com/**', method: 'POST' },
+					contentType: 'application/pdf',
+					filename: 'pinned.pdf',
+					bytes: pinnedBytes,
+				},
+			],
+		});
+
+		const result = await callHandler(handler);
+
+		expect(result.body).toBe(pinnedBytes);
+		expect(result.headers['content-type']).toBe('application/pdf');
+		expect(result.headers['content-disposition']).toBe('attachment; filename="pinned.pdf"');
+		expect(result.headers['content-length']).toBe(String(pinnedBytes.length));
+		// LLM is never invoked.
+		expect(mockGenerate).not.toHaveBeenCalled();
+	});
+
+	it('should fall through to the LLM when no fixture matches the request', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler({
+			mockFixtures: [
+				{
+					match: { nodeName: 'OtherNode' },
+					contentType: 'application/pdf',
+					filename: 'unmatched.pdf',
+					bytes: Buffer.from('x'),
+				},
+			],
+		});
+
+		const result = await callHandler(handler);
+
+		expect(result.body).toEqual({ ok: true });
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
 	});
 
 	it('should extract config separately for different node names', async () => {
@@ -374,6 +447,55 @@ describe('prompt construction', () => {
 
 		const prompt = mockGenerate.mock.calls[0][0];
 		expect(prompt).toContain('GraphQL');
+	});
+
+	it('should redact raw Buffer request bodies to size metadata', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://api.example.com/upload',
+				method: 'POST',
+				body: Buffer.from('PNG-bytes-would-go-here'),
+				headers: { 'content-type': 'image/png' },
+			} as unknown as IHttpRequestOptions,
+			baseNode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('"__redacted":"buffer"');
+		expect(prompt).toContain('"contentType":"image/png"');
+		expect(prompt).not.toContain('PNG-bytes-would-go-here');
+	});
+
+	it('should redact form-data multipart request bodies to part metadata', async () => {
+		const fd = new FormData();
+		fd.append('caption', 'hello');
+		fd.append('file', Buffer.from('binary-data-here'), {
+			filename: 'voice.ogg',
+			contentType: 'audio/ogg',
+		});
+
+		llmSubmits({ type: 'json', body: { ok: true, file_id: 'abc' } });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{
+				url: 'https://api.telegram.org/bot123/sendVoice',
+				method: 'POST',
+				body: fd,
+			} as unknown as IHttpRequestOptions,
+			baseNode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('"__redacted":"multipart"');
+		expect(prompt).toContain('"name":"caption"');
+		expect(prompt).toContain('"name":"file"');
+		expect(prompt).toContain('"filename":"voice.ogg"');
+		expect(prompt).toContain('"contentType":"audio/ogg"');
+		expect(prompt).not.toContain('binary-data-here');
 	});
 
 	it('should default method to GET when not specified', async () => {
@@ -528,7 +650,10 @@ describe('get_endpoint_quirks tool', () => {
 		llmSubmits({ type: 'json', body: {} });
 		const handler = createLlmMockHandler();
 
-		await handler({ url: 'https://api.slack.com/chat.postMessage', method: 'POST' }, baseNode);
+		await handler({ url: 'https://api.github.com/repos/owner/name/issues', method: 'GET' }, {
+			name: 'GitHub',
+			type: 'n8n-nodes-base.github',
+		} as INode);
 
 		expect(quirksCapture.handler).toBeDefined();
 		const result = await quirksCapture.handler!();

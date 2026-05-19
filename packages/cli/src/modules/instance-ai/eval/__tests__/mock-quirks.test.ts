@@ -58,8 +58,53 @@ describe('findMockQuirks (real registry)', () => {
 	});
 
 	it('returns empty array for services with no quirks registered', () => {
-		expect(findMockQuirks('Slack', 'POST', '/chat.postMessage')).toEqual([]);
 		expect(findMockQuirks('GitHub', 'GET', '/repos/owner/name/issues')).toEqual([]);
+		expect(findMockQuirks('Stripe', 'POST', '/v1/charges')).toEqual([]);
+	});
+
+	describe('binary / file quirks (TRUST-100)', () => {
+		it('returns Telegram guidance that documents both bot-API and file-CDN shapes', () => {
+			const guidance = findMockQuirks('Telegram', 'GET', '/bot123/getFile');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/\/bot\{token\}/);
+			expect(guidance.join('\n')).toMatch(/\/file\/bot/);
+			expect(guidance.join('\n')).toMatch(/\.ogg/);
+		});
+
+		it('returns Openai guidance that mentions transcriptions and image generations', () => {
+			const guidance = findMockQuirks('Openai', 'POST', '/v1/audio/transcriptions');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/transcriptions/);
+			expect(guidance.join('\n')).toMatch(/images\/generations/);
+		});
+
+		it('returns Googleapis guidance that names alt=media as the binary marker', () => {
+			const guidance = findMockQuirks('Googleapis', 'GET', '/drive/v3/files/abc');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/alt=media/);
+		});
+
+		it('returns Slack guidance that steers AWAY from binary for files endpoints', () => {
+			const guidance = findMockQuirks('Slack', 'POST', '/api/files.upload');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/NEVER pick `type: "binary"`/);
+		});
+
+		it('returns Slack guidance that disambiguates singular `file` vs plural `files[]` per endpoint', () => {
+			const guidance = findMockQuirks('Slack', 'POST', '/api/files.completeUploadExternal');
+			const joined = guidance.join('\n');
+			// completeUploadExternal returns the plural array — the Slack v2.4 node reads files[0].
+			expect(joined).toMatch(/files\.completeUploadExternal[\s\S]*plural `files` array/);
+			// files.info / files.upload use the singular envelope.
+			expect(joined).toMatch(/files\.info[\s\S]*singular/);
+		});
+
+		it('returns S3 guidance distinguishing GetObject from PutObject', () => {
+			const guidance = findMockQuirks('S3', 'GET', '/some-key.pdf');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/GetObject/);
+			expect(guidance.join('\n')).toMatch(/PutObject/);
+		});
 	});
 
 	it('is case-sensitive on service name (extractServiceName produces capitalized form)', () => {
