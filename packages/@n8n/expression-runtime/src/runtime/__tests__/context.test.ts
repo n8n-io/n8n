@@ -21,11 +21,12 @@ describe('buildContext proxy', () => {
 			return cur;
 		});
 
-		const ctx = buildContext(
+		const ctx = buildContext({
 			getValueAtPath,
-			makeRef(() => undefined),
-			makeRef(() => undefined),
-		);
+			getArrayElement: makeRef(() => undefined),
+			callFunctionAtPath: makeRef(() => undefined),
+			sendMessage: makeRef(() => undefined),
+		});
 
 		expect('$credentials' in ctx).toBe(true);
 		expect(calls).toContainEqual(['$credentials']);
@@ -33,11 +34,12 @@ describe('buildContext proxy', () => {
 
 	it('returns false from has trap for unknown keys', () => {
 		const getValueAtPath = makeRef(() => undefined);
-		const ctx = buildContext(
+		const ctx = buildContext({
 			getValueAtPath,
-			makeRef(() => undefined),
-			makeRef(() => undefined),
-		);
+			getArrayElement: makeRef(() => undefined),
+			callFunctionAtPath: makeRef(() => undefined),
+			sendMessage: makeRef(() => undefined),
+		});
 
 		expect('$doesNotExist' in ctx).toBe(false);
 	});
@@ -49,11 +51,12 @@ describe('buildContext proxy', () => {
 			return undefined;
 		});
 
-		const ctx = buildContext(
+		const ctx = buildContext({
 			getValueAtPath,
-			makeRef(() => undefined),
-			makeRef(() => undefined),
-		);
+			getArrayElement: makeRef(() => undefined),
+			callFunctionAtPath: makeRef(() => undefined),
+			sendMessage: makeRef(() => undefined),
+		});
 
 		void ('$missing' in ctx);
 		void ('$missing' in ctx);
