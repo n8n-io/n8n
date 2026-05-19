@@ -389,9 +389,13 @@ describe('createPlanTool — createPlan validation failures', () => {
 		const tool = createPlanTool(context);
 
 		await expect(
-			executeTool(tool, { tasks: validTasks(), skipPlannerDiscovery: true, reason: 'bypass' }, {
-				suspend: jest.fn(),
-			}),
+			executeTool(
+				tool,
+				{ tasks: validTasks(), skipPlannerDiscovery: true, reason: 'bypass' },
+				{
+					suspend: jest.fn(),
+				},
+			),
 		).rejects.toBe(storageError);
 	});
 });
