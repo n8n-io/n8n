@@ -28,10 +28,26 @@ test.describe(
 			await n8n.canvas.deselectAll();
 		});
 
-		test('does not offer extraction for a single node', async ({ n8n }) => {
+		test('should extract a single node, succeed execution, and undo successfully', async ({
+			n8n,
+		}) => {
 			await n8n.canvas.rightClickNode(EDIT_FIELDS_NAMES[0]);
 
-			await expect(n8n.canvas.getContextMenuItem('extract_sub_workflow')).toBeHidden();
+			await expect(n8n.canvas.getContextMenuItem('extract_sub_workflow')).toBeVisible();
+			await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
+			await n8n.canvas.convertToSubworkflowModal.waitForModal();
+			await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
+			await n8n.canvas.convertToSubworkflowModal.waitForClose();
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+
+			await n8n.canvas.hitUndo();
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
 		});
 
 		test('should extract all nodes besides trigger, succeed execution, and undo successfully', async ({
