@@ -106,7 +106,7 @@ export function useCredentialResolvers() {
 		}
 	};
 
-	const refreshResolvers = () => fetchResolvers();
+	const refreshResolvers = async () => await fetchResolvers();
 
 	const openCreateModal = (callbacks?: ModalCallbacks): void => {
 		uiStore.openModalWithData({

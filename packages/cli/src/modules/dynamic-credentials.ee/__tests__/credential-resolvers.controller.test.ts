@@ -9,6 +9,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { IdentifierValidationError } from '../credential-resolvers/identifiers/identifier-interface';
 import { CredentialResolversController } from '../credential-resolvers.controller';
+import type { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
 import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { SystemResolverModificationError } from '../errors/system-resolver-modification.error';
@@ -33,7 +34,7 @@ describe('CredentialResolversController', () => {
 			decryptedConfig: {},
 			createdAt: new Date('2024-01-01'),
 			updatedAt: new Date('2024-01-01'),
-		};
+		} as DynamicCredentialResolver;
 
 		it('calls findAllPublic by default (excludes system resolver)', async () => {
 			service.findAllPublic.mockResolvedValue([baseRow]);
