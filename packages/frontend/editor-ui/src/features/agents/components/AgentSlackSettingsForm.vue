@@ -188,6 +188,7 @@ async function createSlackApp() {
 			:class="$style.manualPanel"
 			:title="i18n.baseText('agents.builder.addTrigger.slack.manual.title')"
 			:show-actions-on-hover="false"
+			:disable-animation="true"
 			data-testid="slack-manual-configuration"
 		>
 			<div :class="$style.manualConfiguration">

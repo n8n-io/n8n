@@ -140,10 +140,14 @@ const AgentCredentialSelectStub = {
 };
 
 const N8nCollapsiblePanelStub = {
-	props: ['modelValue', 'title'],
+	props: ['modelValue', 'title', 'disableAnimation'],
 	emits: ['update:modelValue'],
 	template: `
-		<section data-testid="slack-manual-configuration" :data-open="String(modelValue)">
+		<section
+			data-testid="slack-manual-configuration"
+			:data-open="String(modelValue)"
+			:data-disable-animation="String(!!disableAnimation)"
+		>
 			<button
 				data-testid="slack-manual-configuration-toggle"
 				@click="$emit('update:modelValue', !modelValue)"
@@ -268,6 +272,9 @@ describe('agent integration credential picker usage', () => {
 			wrapper.find('[data-testid="slack-app-configuration-token-link"]').attributes('href'),
 		).toBe('https://api.slack.com/apps');
 		expect(wrapper.find('[data-testid="slack-manual-configuration"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="slack-manual-configuration"]').attributes()).toMatchObject({
+			'data-disable-animation': 'true',
+		});
 		expect(wrapper.find('[data-testid="agent-credential-select-stub"]').exists()).toBe(false);
 		expect(wrapper.find('pre').exists()).toBe(false);
 
