@@ -85,6 +85,21 @@ describe('analyzeAgentInputColumns', () => {
 		expect(result.inputColumns.sort()).toEqual(['context', 'q']);
 	});
 
+	it('extracts bracket field references from direct $json access', () => {
+		const workflow = wf([
+			{
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json["user-input"] }} {{ $json["123_id"] }}' },
+				position: [0, 0],
+				id: 'a',
+			},
+		]);
+		const result = analyzeAgentInputColumns(workflow, 'Agent');
+		expect(result.inputColumns).toEqual(['user-input', '123_id']);
+	});
+
 	it('ignores named-node item refs because they are handled by named-ref detection', () => {
 		const workflow = wf([
 			{

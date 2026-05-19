@@ -8,8 +8,8 @@ export interface CreateEmptyEvalDataTableInput {
 	columns: string[];
 }
 
-const NAME_COLLISION_RE = /already exists/i;
 const DATA_TABLE_COLUMN_MAX_LENGTH = 63;
+const NAME_COLLISION_RE = /already exists/i;
 
 export function formatEvalDataTableName(workflowName: string): string {
 	return `${workflowName} — eval samples`;
@@ -37,7 +37,6 @@ export function formatEvalDataTableColumnNameMap(columns: string[]): Map<string,
 	const usedNames = new Set<string>();
 	for (const column of columns) {
 		if (byRawColumn.has(column)) continue;
-
 		const baseName = formatEvalDataTableColumnName(column);
 		let candidate = baseName;
 		let index = 2;
@@ -96,8 +95,8 @@ export async function createEmptyEvalDataTable(
 	const dt = await createWithUniqueName(
 		ctx,
 		formatEvalDataTableName(input.workflowName),
-		formatEvalDataTableColumnNames(input.columns).map((n) => ({
-			name: n,
+		formatEvalDataTableColumnNames(input.columns).map((name) => ({
+			name,
 			type: 'string' as const,
 		})),
 		input.projectId ? { projectId: input.projectId } : undefined,

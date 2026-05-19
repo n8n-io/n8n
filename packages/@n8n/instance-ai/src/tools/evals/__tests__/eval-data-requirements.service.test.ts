@@ -207,6 +207,52 @@ describe('analyzeEvalDataRequirements', () => {
 		expect(result.targets[0].inputColumns).toEqual(['user_query']);
 	});
 
+	it('uses the requested target agent when multiple AI agents are reachable', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'First Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.first_input }}' },
+					position: [200, -100],
+					id: 'a1',
+				},
+				{
+					name: 'Second Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.second_input }}' },
+					position: [200, 100],
+					id: 'a2',
+				},
+			],
+			{
+				EvalTrig: {
+					main: [
+						[
+							{ node: 'First Agent', type: 'main', index: 0 },
+							{ node: 'Second Agent', type: 'main', index: 0 },
+						],
+					],
+				},
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow, 'Second Agent');
+
+		expect(result.targets[0].targetAgentNodeName).toBe('Second Agent');
+		expect(result.targets[0].inputColumns).toEqual(['second_input']);
+	});
+
 	it('extracts expectedToActualPairs from setMetrics nodes', () => {
 		const workflow = wf(
 			[

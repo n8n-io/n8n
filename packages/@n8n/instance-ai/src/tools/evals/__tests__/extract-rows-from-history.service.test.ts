@@ -286,11 +286,10 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.rows).toHaveLength(25);
 	});
 
-	it('lists success and error statuses (two list calls, one per status)', async () => {
+	it('lists only successful executions', async () => {
 		const list = jest
 			.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-			.mockResolvedValueOnce([executionSummary('e1')])
-			.mockResolvedValueOnce([executionSummary('e2', 'error')]);
+			.mockResolvedValueOnce([executionSummary('e1')]);
 		const ctx = buildContext({
 			list,
 			getNodeOutput: jest
@@ -298,8 +297,7 @@ describe('extractRowsFromExecutionHistory', () => {
 					ReturnType<ExecutionService['getNodeOutput']>,
 					Parameters<ExecutionService['getNodeOutput']>
 				>()
-				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' }))
-				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'e' })),
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' })),
 		});
 
 		await extractRowsFromExecutionHistory(ctx, {
@@ -310,8 +308,38 @@ describe('extractRowsFromExecutionHistory', () => {
 			expectedToActualPairs: [],
 		});
 
-		expect(list).toHaveBeenNthCalledWith(1, { workflowId: 'w1', status: 'success', limit: 100 });
-		expect(list).toHaveBeenNthCalledWith(2, { workflowId: 'w1', status: 'error', limit: 100 });
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(list).toHaveBeenCalledWith({ workflowId: 'w1', status: 'success', limit: 100 });
+	});
+
+	it('deduplicates exact-match projected rows and keeps distinct rows', async () => {
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([
+					executionSummary('e1'),
+					executionSummary('e2'),
+					executionSummary('e3'),
+				]),
+			getNodeOutput: jest.fn<
+				ReturnType<ExecutionService['getNodeOutput']>,
+				Parameters<ExecutionService['getNodeOutput']>
+			>(async (executionId) => {
+				const value = executionId === 'e3' ? 'different' : 'same';
+				return await Promise.resolve(nodeOutput('Trigger', { user_query: value }));
+			}),
+		});
+
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflow(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [],
+		});
+
+		expect(result.rows).toEqual([{ user_query: 'same' }, { user_query: 'different' }]);
+		expect(result.scannedExecutions).toBe(3);
 	});
 
 	it('returns 0 rows and skips silently when getNodeOutput throws for an execution', async () => {

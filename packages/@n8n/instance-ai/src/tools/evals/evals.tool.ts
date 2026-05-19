@@ -14,7 +14,11 @@ import {
 import { detectAgentNamedRefs, type NamedRef } from './detect-agent-named-refs.service';
 import { detectAiNodes, type DetectAiNodesResult } from './detect-ai-nodes';
 import { detectToolRefs } from './detect-tool-refs.service';
-import { createEmptyEvalDataTable } from './ensure-eval-data-table.service';
+import {
+	createEmptyEvalDataTable,
+	formatEvalDataTableColumnNameMap,
+} from './ensure-eval-data-table.service';
+import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
 import { generateToolRefPinData } from './generate-tool-ref-pin-data.service';
 import {
@@ -549,6 +553,25 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	}
 	const outputColumns = getMetricDatasetColumns(resolvedMetrics);
 	const dataTableColumns = [...new Set([...inputColumns, ...outputColumns])];
+	const normalizedColumnNames =
+		datasetChoice === 'create-empty'
+			? formatEvalDataTableColumnNameMap(dataTableColumns)
+			: undefined;
+	const taskInputColumns =
+		normalizedColumnNames === undefined
+			? inputColumns
+			: inputColumns.map((column) => normalizedColumnNames.get(column) ?? column);
+	const taskOutputColumns =
+		normalizedColumnNames === undefined
+			? outputColumns
+			: outputColumns.map((column) => normalizedColumnNames.get(column) ?? column);
+	const taskNamedRefs =
+		normalizedColumnNames === undefined
+			? filteredNamedRefs
+			: filteredNamedRefs.map((ref) => ({
+					...ref,
+					column: normalizedColumnNames.get(ref.column) ?? ref.column,
+				}));
 
 	let dataTableId: string | undefined = input.existingDataTableId;
 	let createdTable: { id: string; name: string; projectId?: string } | undefined;
@@ -574,10 +597,10 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		datasetChoice: datasetChoiceForTask,
 		existingDataTableId: dataTableId,
 		projectId: input.projectId,
-		suggestedInputColumns: inputColumns,
-		suggestedOutputColumns: outputColumns,
+		suggestedInputColumns: taskInputColumns,
+		suggestedOutputColumns: taskOutputColumns,
 		enabledMetrics: resolvedMetrics,
-		namedRefs: filteredNamedRefs,
+		namedRefs: taskNamedRefs,
 		targetAgentNodeName: agentName,
 	});
 
@@ -586,6 +609,7 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		shouldDelegateToEvalSetupAgent: true,
 		task,
 		workflowId: input.workflowId,
+		targetAgentNodeName: agentName,
 		...(input.projectId ? { projectId: input.projectId } : {}),
 		...(dataTableId ? { dataTableId } : {}),
 		// `table` lets the artifacts panel pick up the newly created DataTable

@@ -51,6 +51,12 @@ describe('column-ref-utils', () => {
 			).toEqual(['context', 'user_query']);
 		});
 
+		it('extracts bracket field references from direct $json access', () => {
+			expect(extractDirectJsonColumnRefs('hello {{ $json["user-input"] }}')).toEqual([
+				'user-input',
+			]);
+		});
+
 		it('ignores named-node refs', () => {
 			expect(extractDirectJsonColumnRefs("{{ $('Voice').item.json.text }}")).toEqual([]);
 		});

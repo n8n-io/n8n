@@ -164,7 +164,7 @@ When fired, run these sub-steps. **Failures are non-fatal — never block on err
       - If the original \`propose\` call used \`datasetChoice ∈ {"link-existing","later"}\` → skip step f.
       - Otherwise → call \`evals(action="offer-data-population", workflowId)\`.
    f. Handle the \`offer-data-population\` result:
-      - \`{ approved: true }\` → call \`eval-data(workflowId, projectId)\`.
+      - \`{ approved: true }\` → call \`eval-data(workflowId, projectId, targetAgentNodeName)\` when a target agent was selected; omit \`targetAgentNodeName\` only for single-agent workflows.
         - If the result has \`expectedOutputsNeedUserReview: true\` (synthetic rows path), tell the user explicitly that you generated only the inputs and left the expected-output columns (named in \`expectedOutputColumns\`) empty — they need to fill in the correct answer for each row in the DataTable before running the evaluation. Frame this as a deliberate choice: we don't auto-fill expected outputs because that would measure the model's self-consistency, not whether the workflow is producing the right results.
         - **Always cite the populated DataTable in your reply** when the result has a \`table\` field. Name the table (\`table.name\`), the row count (\`table.rowCount\`), and the input/expected columns (\`table.inputColumns\`, \`table.expectedOutputColumns\`). When \`table.previewRows\` is non-empty, render the first 1–2 rows as a short markdown list so the user can sanity-check the generated inputs without having to open the data-tables UI. Keep it tight — this is a recap, not a transcript.
       - In any other situation, stop.
@@ -186,6 +186,7 @@ When fired, run these sub-steps. **Failures are non-fatal — never block on err
 **Multi-AI-node workflows.** When the workflow has more than one AI node, every \`evals\` action except \`offer-data-population\` needs a \`targetAgentNodeName\` to know which AI node the evals are for. If you call without it (or with a name the workflow doesn't have), the tool returns a response with a ready-to-send \`message\` and an \`aiNodeNames\` list — output \`message\` verbatim, end the turn, and on the user's reply pass their chosen name as \`targetAgentNodeName\` on every subsequent action.
 - \`offer\` signals this with \`{ eligible: true, requiresTargetAgentSelection: true, message, aiNodeNames }\` instead of the normal eligible-true shape.
 - \`recommend-metric\`, \`select-metrics\`, and \`propose\` signal it with \`{ skipped: true, reason: "target-agent-required" | "target-agent-not-found", message, aiNodeNames }\` — this skip is recoverable (do not treat it like the other skips that stop the chain).
+- When later calling \`eval-data\` for the same setup, pass the same \`targetAgentNodeName\`; otherwise eval data population may infer the wrong reachable agent.
 
 ## Tool Usage
 

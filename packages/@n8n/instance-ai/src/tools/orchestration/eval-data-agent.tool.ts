@@ -34,6 +34,10 @@ async function ensureColumnsExist(
 const evalDataInputSchema = z.object({
 	workflowId: z.string().describe('ID of the workflow whose eval DataTable should be populated'),
 	projectId: z.string().optional(),
+	targetAgentNodeName: z
+		.string()
+		.optional()
+		.describe('AI agent node name selected during eval setup for multi-agent workflows'),
 });
 
 const PREVIEW_ROW_COUNT = 3;
@@ -113,7 +117,7 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 			log('info', `start workflowId=${input.workflowId} projectId=${j(input.projectId)}`);
 
 			const workflow = await domain.workflowService.getAsWorkflowJSON(input.workflowId);
-			const reqs = analyzeEvalDataRequirements(workflow);
+			const reqs = analyzeEvalDataRequirements(workflow, input.targetAgentNodeName);
 			const target = reqs.targets[0];
 			if (!target) {
 				log('warn', `skip:no-target reason=${j(reqs.reason)}`);

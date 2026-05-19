@@ -96,6 +96,13 @@ function isAiAgentNode(node: WorkflowNode | undefined): boolean {
 	return Boolean(node?.type.includes('n8n-nodes-langchain.agent'));
 }
 
+function isAiAgentNodeName(
+	byName: Map<string, WorkflowNode>,
+	nodeName: string | undefined,
+): nodeName is string {
+	return typeof nodeName === 'string' && isAiAgentNode(byName.get(nodeName));
+}
+
 function extractEvalTriggerColumnRefs(text: string): string[] {
 	return unique([
 		...extractJsonColumnRefs(text),
@@ -192,7 +199,26 @@ function firstReachableTargetNodeName(
 	return reachableNodeNames.find((name) => aiNodeNames.has(name));
 }
 
-export function analyzeEvalDataRequirements(workflow: WorkflowJSON): EvalDataRequirements {
+function resolveTargetAgentName(
+	workflow: WorkflowJSON,
+	evalTriggerName: string,
+	requestedTargetAgentNodeName?: string,
+): string | undefined {
+	const byName = nodeByName(workflow);
+	if (requestedTargetAgentNodeName !== undefined) {
+		const reachableNames = new Set(collectReachableNodeNames(workflow, evalTriggerName));
+		const isReachableTarget =
+			reachableNames.has(requestedTargetAgentNodeName) &&
+			isAiAgentNodeName(byName, requestedTargetAgentNodeName);
+		return isReachableTarget ? requestedTargetAgentNodeName : undefined;
+	}
+	return firstReachableAgentName(workflow, evalTriggerName);
+}
+
+export function analyzeEvalDataRequirements(
+	workflow: WorkflowJSON,
+	targetAgentNodeName?: string,
+): EvalDataRequirements {
 	const evaluationTriggers = (workflow.nodes ?? []).filter(
 		(node): node is WorkflowNode & { name: string } =>
 			nodeHasName(node) && nodeTypeEndsWith(node, 'evaluationTrigger'),
@@ -216,16 +242,21 @@ export function analyzeEvalDataRequirements(workflow: WorkflowJSON): EvalDataReq
 			)
 			.map((node) => node.name);
 
-		const targetAgentNodeName = firstReachableAgentName(workflow, trigger.name);
 		const targetNodeName = firstReachableTargetNodeName(workflow, trigger.name);
-		const inputTargetNodeName = targetAgentNodeName ?? targetNodeName;
+		const resolvedTargetAgentNodeName = resolveTargetAgentName(
+			workflow,
+			trigger.name,
+			targetAgentNodeName,
+		);
+		const inputTargetNodeName =
+			resolvedTargetAgentNodeName ?? (targetAgentNodeName === undefined ? targetNodeName : undefined);
 
 		return [
 			{
 				dataTableId,
 				evaluationTriggerName: trigger.name,
 				targetNodeName,
-				targetAgentNodeName,
+				targetAgentNodeName: resolvedTargetAgentNodeName,
 				inputColumns: inputTargetNodeName
 					? analyzeAgentInputColumns(workflow, inputTargetNodeName).inputColumns
 					: [],

@@ -38,6 +38,31 @@ function aiWf(): WorkflowJSON {
 	} as unknown as WorkflowJSON;
 }
 
+function aiWfWithUnsafeDirectRefs(): WorkflowJSON {
+	return {
+		name: 'AI Flow',
+		nodes: [
+			{
+				id: '1',
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { text: '={{ $json["user-input"] }} {{ $json["123_id"] }}' },
+			},
+		],
+		connections: {},
+	} as unknown as WorkflowJSON;
+}
+
 /** AI workflow whose agent has an ai_tool connection (triggers tool_use default metric). */
 function aiWfWithTools(): WorkflowJSON {
 	return {
@@ -631,6 +656,31 @@ describe('evals tool — propose action (changed)', () => {
 			projectId: 'p1',
 			dataTableId: 'dt-new',
 		});
+	});
+
+	it('uses normalized column names in the created table and setup task', async () => {
+		const ctx = makeCtx(aiWfWithUnsafeDirectRefs());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.handler!(
+			{ action: 'propose', workflowId: 'w1', metrics: ['correctness'] },
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		expect(ctx.dataTableService.create).toHaveBeenCalledWith(
+			'AI Flow — eval samples',
+			[
+				{ name: 'user_input', type: 'string' },
+				{ name: 'column_123_id', type: 'string' },
+				{ name: 'expected_output', type: 'string' },
+			],
+			undefined,
+		);
+		const task = result.task as string;
+		expect(task).toContain('- user_input');
+		expect(task).toContain('- column_123_id');
+		expect(task).not.toContain('- user-input');
+		expect(task).not.toContain('- 123_id');
 	});
 
 	it('returns a structured `table` artifact when create-empty creates a new table', async () => {
