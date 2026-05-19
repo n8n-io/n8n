@@ -1,8 +1,10 @@
 import type { BrowserConnection } from '../connection';
+import type { ConnectedToolOptions } from './helpers';
 import { McpBrowserError } from '../errors';
 import { createLogger } from '../logger';
+import { applyRedactions } from '../redaction/redaction-applier';
+import { analyzeHtmlSensitivity, type SensitivityResult } from '../sensitivity/analyze-html';
 import type { CallToolResult, ConnectionState, ModalState } from '../types';
-import type { ConnectedToolOptions } from './helpers';
 
 const log = createLogger('response-envelope');
 
@@ -39,13 +41,23 @@ export async function enrichResponse(
 	const data = result.structuredContent;
 	if (!data || typeof data !== 'object') return;
 	const record = data as Record<string, unknown>;
+	let sensitivity: SensitivityResult | undefined;
 
 	if (options.autoSnapshot) {
 		try {
 			const snap = await state.adapter.snapshot(pageId);
 			record.snapshot = snap.tree;
+			sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
 		} catch {
 			// Snapshot failure shouldn't break the tool response
+		}
+	}
+
+	if (!options.autoSnapshot && shouldProbeResult(record)) {
+		try {
+			sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
+		} catch (error) {
+			log.warn('sensitivity probe failed during enrichment', { error });
 		}
 	}
 
@@ -83,6 +95,20 @@ export async function enrichResponse(
 			// Tab diff failure shouldn't break the response
 		}
 	}
+
+	if (sensitivity?.ok) {
+		applyRedactions(result, sensitivity);
+	} else if (sensitivity && !sensitivity.ok) {
+		log.warn('sensitivity analysis failed during enrichment', { error: sensitivity.error });
+	}
+}
+
+function shouldProbeResult(record: Record<string, unknown>): boolean {
+	return (
+		typeof record.snapshot === 'string' ||
+		typeof record.content === 'string' ||
+		Object.prototype.hasOwnProperty.call(record, 'result')
+	);
 }
 
 // ---------------------------------------------------------------------------

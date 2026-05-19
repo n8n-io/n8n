@@ -36,6 +36,37 @@ const onMyChange = createEventHook<MyChangeEvent>();
 - Expose only the `.on` subscriber: `onMyChange: onMyChange.on`
 - Use `CHANGE_ACTION.ADD | UPDATE | DELETE` for the `action` field
 
+## Reactivity invariant: events carry reactive references
+
+When an apply method emits a node (or any tracked entity) in its event
+payload, the payload must contain the **reactive proxy** read back from the
+ref — NOT the raw input received by the apply method.
+
+Vue creates proxies lazily on read from a reactive container. The raw object
+passed into the apply method and the proxy returned by `nodes.value[i]` share
+underlying state but are different JS references. Subscribers that store the
+raw reference lose reactivity on subsequent property mutations: property reads
+on the raw object create no dependencies, and downstream computeds never
+invalidate when the underlying node is mutated through its proxy.
+
+Pattern — read back from the ref after the mutation, emit the proxy:
+
+```typescript
+function applyAddNode(node: INodeUi) {
+    nodes.value.push(node);
+    const reactiveNode = nodes.value[nodes.value.length - 1]; // proxy
+    void onChange.trigger({
+        action: CHANGE_ACTION.ADD,
+        payload: { node: reactiveNode },
+    });
+}
+```
+
+This invariant is locked by the `addNode emits the reactive proxy from
+nodes.value` test in `useWorkflowDocumentNodes.test.ts`. Any new apply method
+that emits a tracked entity must follow the same pattern and add an
+equivalent test.
+
 ## Adding a new composable — checklist
 
 1. Create event hook with typed payload extending `ChangeEvent`

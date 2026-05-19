@@ -10,11 +10,10 @@ import { useThreadTitle } from '../utils/thread-title';
 import { useRelativeTimestamp } from '../utils/relative-time';
 
 /**
- * Max chars for session-name display in the chat-header dropdown trigger and
- * its menu rows. Long titles otherwise wrap and push the "new chat" button
- * onto a second line.
+ * Max chars for session-name display in the preview breadcrumb dropdown trigger
+ * and its menu rows. Long titles otherwise crowd the header actions.
  */
-const SESSION_TITLE_MAX_CHARS = 20;
+const SESSION_TITLE_MAX_CHARS = 64;
 
 interface SessionMenuItem {
 	id: string;
@@ -32,7 +31,7 @@ interface SessionMenuItem {
 }
 
 /**
- * Owns the chat-session state that's split across two surfaces in the builder:
+ * Owns the preview chat-session state:
  *
  * - `continueSessionId` — set via the URL query string for shareable deep-links
  *   into a specific session. Takes precedence when present.

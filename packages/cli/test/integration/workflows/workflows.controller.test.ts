@@ -3157,10 +3157,20 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versions[0].versionId).toBe(workflow.versionId);
 	});
 
-	test('should update the version counter', async () => {
+	test('should update the version counter when nodes change', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
-			name: 'name updated',
+			nodes: [
+				{
+					id: 'new-node',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
 			versionId: workflow.versionId,
 		};
 
@@ -3174,6 +3184,21 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		expect(id).toBe(workflow.id);
 		expect(versionCounter).toBe(workflow.versionCounter + 1);
+	});
+
+	test('should not update the version counter on metadata-only changes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updated = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(updated?.versionCounter).toBe(workflow.versionCounter);
 	});
 
 	test('should update workflow without updating its active version', async () => {
