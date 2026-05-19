@@ -139,7 +139,9 @@ export class HttpRequestV3 implements INodeType {
 		const requestPromises = [];
 
 		let fullResponse = false;
+
 		let autoDetectResponseFormat = false;
+
 		let responseFileName: string | undefined;
 
 		// Can not be defined on a per item level
@@ -781,8 +783,9 @@ export class HttpRequestV3 implements INodeType {
 
 				errorItems[itemIndex] = error.message;
 
-				// Push a placeholder so requests[] stays index-aligned with requestPromises[]/items[].
-				// Without this, items after a failed item would access requests[itemIndex] === undefined.
+				// Ensure requests[] stays index-aligned with requestPromises[]/items[].
+				// If an item failed during request building, its slot may be empty.
+				// Assign a placeholder at the exact index so later items don't shift.
 				// options is intentionally absent — error items are skipped before options is ever read.
 				if (!requests[itemIndex]) {
 					requests[itemIndex] = { authKeys: {} };

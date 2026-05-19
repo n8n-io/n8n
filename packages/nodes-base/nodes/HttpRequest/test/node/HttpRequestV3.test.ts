@@ -937,7 +937,7 @@ describe('HttpRequestV3', () => {
 			expect(result[0][1].binary?.data.fileName).toBe('file2.png');
 		});
 
-		it('should use per-item original request URI (not redirect target) as filename fallback', async () => {
+		it('should use per-item original request URI as filename fallback', async () => {
 			setupItems([
 				{
 					json: {
