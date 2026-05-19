@@ -132,10 +132,10 @@ describe('useWorkflowExtraction', () => {
 	});
 
 	describe('extractWorkflow', () => {
-		it('does not track start telemetry for a single-node selection', () => {
+		it('does not track start telemetry for an empty selection', () => {
 			const { extractWorkflow } = useWorkflowExtraction();
 
-			extractWorkflow(['id-A']);
+			extractWorkflow([]);
 
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		});

@@ -156,7 +156,19 @@ describe('useSelectionValidation', () => {
 		expect(result.valid).toBe(true);
 	});
 
-	it('returns too-few-nodes for a single-node selection', () => {
+	it('returns valid for a single-node extraction selection', () => {
+		const graph = makeLinearGraph();
+		setupGraph(graph, {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+		});
+
+		const { isSelectionExtractable } = useSelectionValidation();
+		const result = isSelectionExtractable(['a']);
+
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns too-few-nodes for a single-node grouping selection', () => {
 		const graph = makeLinearGraph();
 		setupGraph(graph, {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),

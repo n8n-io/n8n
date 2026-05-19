@@ -56,10 +56,6 @@ export function validateNodeSelectionForExtraction<TNode extends INode>({
 	getNodeInputs,
 	getNodeOutputs,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
-	if (nodes.length < 2) {
-		return { valid: false, reason: 'too-few-nodes' };
-	}
-
 	const triggers = nodes.filter((node) => {
 		const nodeType = getNodeType(node);
 		return nodeType ? isTriggerNode(nodeType) : false;
@@ -111,6 +107,10 @@ export function validateNodeSelectionForExtraction<TNode extends INode>({
 export function validateNodeSelectionForGrouping<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
 ): NodeGroupValidationResult<TNode> {
+	if (input.nodes.length < 2) {
+		return { valid: false, reason: 'too-few-nodes' };
+	}
+
 	const extractableResult = validateNodeSelectionForExtraction(input);
 	if (!extractableResult.valid) return extractableResult;
 
