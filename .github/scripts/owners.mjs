@@ -114,3 +114,47 @@ export function ownershipsToAllocations(ownerships) {
 		fileCount: files.length,
 	}));
 }
+
+/**
+ * Read a newline-delimited list of changed file paths from disk.
+ * Empty/whitespace-only lines are skipped.
+ *
+ * @param { string } path
+ * @returns { Set<string> }
+ * */
+export function readChangedFilesList(path) {
+	return new Set(
+		readFileSync(path, "utf8")
+			.split("\n")
+			.map(line => line.trim())
+			.filter(Boolean)
+	);
+}
+
+// CLI: `node owners.mjs <changed-files-list>`
+// Reads the given file (one changed path per line), runs ownership
+// allocation against .github/OWNERS. Prints out an object with ownerships for files
+// and the ownership counts per team as JSON on stdout.
+if (import.meta.url === `file://${process.argv[1]}`) {
+	const path = process.argv[2];
+	if (!path) {
+		console.error("Usage: node owners.mjs <changed-files-list>");
+		console.error("  <changed-files-list>: path to a file containing one changed path per line");
+		process.exit(1);
+	}
+
+	const files = readChangedFilesList(path);
+	const ownerships = assignOwnership(files, parseOwnersFile());
+	const totalFiles = files.size;
+
+	const allocations = Array.from(ownerships)
+		.map(([team, ownedFiles]) => ({
+			team,
+			fileCount: ownedFiles.length,
+			share: totalFiles === 0 ? 0 : Math.round((ownedFiles.length / totalFiles) * 100),
+			files: ownedFiles,
+		}))
+		.sort((a, b) => b.fileCount - a.fileCount);
+
+	console.log(JSON.stringify({ totalFiles, allocations }, null, 4));
+}

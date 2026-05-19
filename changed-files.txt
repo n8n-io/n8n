@@ -1,0 +1,17 @@
+README.md
+docker/images/n8n/Dockerfile
+.github/workflows/ci-pull-requests.yml
+packages/cli/src/server.ts
+packages/cli/src/controllers/ai.controller.ts
+packages/cli/src/controllers/users.controller.ts
+packages/core/src/execution-engine/workflow-execute.ts
+packages/workflow/src/workflow.ts
+packages/@n8n/api-types/src/schemas/workflow.schema.ts
+packages/@n8n/instance-ai/src/index.ts
+packages/@n8n/nodes-langchain/nodes/agents/Agent/Agent.node.ts
+packages/frontend/editor-ui/src/App.vue
+packages/frontend/editor-ui/src/features/credentials/CredentialsList.vue
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+packages/nodes-base/nodes/Slack/Slack.node.ts
+packages/testing/playwright/tests/e2e/workflows/run.spec.ts
+some/random/unowned/path.ts
