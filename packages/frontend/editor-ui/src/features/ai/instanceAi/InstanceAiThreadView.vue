@@ -45,7 +45,9 @@ import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
-import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
+import InstanceAiWorkflowPreview, {
+	type FixWithAiContext,
+} from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -474,6 +476,48 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 function handleStop() {
 	void thread.cancelRun();
 }
+
+function buildFixWithAiPrompt(context: FixWithAiContext): string {
+	if (context.errors.length === 1) {
+		const { nodeName, errorMessage } = context.errors[0];
+
+		if (context.workflowName) {
+			return i18n.baseText('instanceAi.fixWithAi.prompt.singleInWorkflow', {
+				interpolate: { nodeName, errorMessage, workflowName: context.workflowName },
+			});
+		}
+
+		return i18n.baseText('instanceAi.fixWithAi.prompt.single', {
+			interpolate: { nodeName, errorMessage },
+		});
+	}
+
+	const errorList = context.errors
+		.map(({ nodeName, errorMessage }) =>
+			i18n.baseText('instanceAi.fixWithAi.prompt.errorLine', {
+				interpolate: { nodeName, errorMessage },
+			}),
+		)
+		.join('\n');
+
+	if (context.workflowName) {
+		return i18n.baseText('instanceAi.fixWithAi.prompt.multipleInWorkflow', {
+			interpolate: { errorList, workflowName: context.workflowName },
+		});
+	}
+
+	return i18n.baseText('instanceAi.fixWithAi.prompt.multiple', {
+		interpolate: { errorList },
+	});
+}
+
+function handleFixWithAi(context: FixWithAiContext) {
+	if (!context.errors.length) return;
+
+	userScrolledUp.value = false;
+
+	void thread.sendMessage(buildFixWithAiPrompt(context), undefined, rootStore.pushRef);
+}
 </script>
 
 <template>
@@ -712,6 +756,7 @@ function handleStop() {
 								:refresh-key="preview.workflowRefreshKey.value"
 								@iframe-ready="eventRelay.handleIframeReady"
 								@workflow-loaded="eventRelay.handleWorkflowLoaded"
+								@fix-with-ai="handleFixWithAi"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.activeDataTableId.value"

@@ -17,6 +17,7 @@ import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
+import CanvasFixWithAiNotice from '@/features/workflows/canvas/components/elements/notices/CanvasFixWithAiNotice.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -1060,6 +1061,69 @@ const isStopWaitingForWebhookButtonVisible = computed(
 	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
 
+const fixWithAiRunFailures = computed(() => {
+	const runData = workflowsStore.getWorkflowRunData;
+	const executionId = workflowsStore.getWorkflowExecution?.id;
+
+	if (!runData) {
+		return { errors: [], dismissKey: null as string | null };
+	}
+
+	const errors: Array<{ nodeName: string; errorMessage: string }> = [];
+	const fingerprintParts: string[] = [];
+
+	for (const [nodeName, tasks] of Object.entries(runData)) {
+		const lastTask = tasks?.at(-1);
+		const error = lastTask?.error;
+
+		if (!error) continue;
+
+		const description = error.description ? ` (${error.description})` : '';
+		const errorMessage = `${error.message ?? 'Unknown error'}${description}`;
+
+		errors.push({ nodeName, errorMessage });
+		fingerprintParts.push(`${nodeName}:${errorMessage}`);
+	}
+
+	if (errors.length === 0) {
+		return { errors: [], dismissKey: null };
+	}
+
+	const dismissKey =
+		executionId ?? (fingerprintParts.length > 0 ? fingerprintParts.sort().join('|') : null);
+
+	return { errors, dismissKey };
+});
+
+const dismissedFixWithAiExecutionId = ref<string | null>(null);
+const isFixWithAiNoticeVisible = computed(
+	() =>
+		isDemoRoute.value &&
+		canExecuteOnCanvas.value &&
+		!isWorkflowRunning.value &&
+		fixWithAiRunFailures.value.errors.length > 0 &&
+		dismissedFixWithAiExecutionId.value !== fixWithAiRunFailures.value.dismissKey,
+);
+
+function requestFixWithAi() {
+	dismissedFixWithAiExecutionId.value = fixWithAiRunFailures.value.dismissKey;
+
+	if (window.parent === window) return;
+
+	window.parent.postMessage(
+		JSON.stringify({
+			command: 'fixWithAi',
+			workflowName: workflowDocumentStore?.value?.name ?? undefined,
+			errors: fixWithAiRunFailures.value.errors,
+		}),
+		'*',
+	);
+}
+
+function dismissFixWithAiNotice() {
+	dismissedFixWithAiExecutionId.value = fixWithAiRunFailures.value.dismissKey;
+}
+
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowDocumentStore?.value?.getNodeById(id);
 	if (!node) return;
@@ -1959,6 +2023,16 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 
+			<CanvasFixWithAiNotice
+				v-if="isFixWithAiNoticeVisible"
+				:class="$style.fixWithAiNotice"
+				:node-name="fixWithAiRunFailures.errors[0].nodeName"
+				:error-message="fixWithAiRunFailures.errors[0].errorMessage"
+				:failed-count="fixWithAiRunFailures.errors.length"
+				@fix-with-ai="requestFixWithAi"
+				@dismiss="dismissFixWithAiNotice"
+			/>
+
 			<N8nCallout
 				v-if="isReadOnlyEnvironment"
 				theme="warning"
@@ -2068,6 +2142,13 @@ onBeforeUnmount(() => {
 	bottom: 16px;
 	left: 50%;
 	transform: translateX(-50%);
+}
+
+.fixWithAiNotice {
+	position: absolute;
+	bottom: calc(var(--spacing--sm) + 56px);
+	right: var(--spacing--sm);
+	z-index: 10;
 }
 
 .canvasCenterPill {

@@ -12,9 +12,12 @@ import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRun
 // Mocks
 // ---------------------------------------------------------------------------
 
+const mockShowError = vi.fn();
+const mockOnMessageQueued = vi.fn();
+
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
-		showError: vi.fn(),
+		showError: (...args: unknown[]) => mockShowError(...args),
 	}),
 }));
 
@@ -163,6 +166,7 @@ function createRuntimeRegistry(): RuntimeRegistry {
 		getResearchMode: () => false,
 		onTitleUpdated: vi.fn(),
 		onRunFinish: vi.fn(),
+		onMessageQueued: (...args: unknown[]) => mockOnMessageQueued(...args),
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	return {
@@ -858,6 +862,67 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		expect(activeRuntime(registry).messages).toHaveLength(0);
 		expect(activeRuntime(registry).isSendingMessage).toBe(false);
+	});
+
+	test('sendMessage queues while a run is active and notifies via hook', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+
+		const queuedPromise = activeRuntime(registry).sendMessage('fix this');
+
+		expect(mockPostMessage).not.toHaveBeenCalled();
+		expect(mockOnMessageQueued).toHaveBeenCalledTimes(1);
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+
+		await queuedPromise;
+	});
+
+	test('queued message is sent after the active run finishes', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+
+		await activeRuntime(registry).sendMessage('fix this');
+
+		expect(mockPostMessage).not.toHaveBeenCalled();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			}),
+		);
+
+		await vi.waitFor(() => {
+			expect(mockPostMessage).toHaveBeenCalledTimes(1);
+		});
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			activeThreadId,
+			'fix this',
+			undefined,
+			undefined,
+			expect.any(String),
+			undefined,
+		);
+		expect(activeRuntime(registry).messages).toHaveLength(2);
+		expect(activeRuntime(registry).messages[1]).toMatchObject({
+			role: 'user',
+			content: 'fix this',
+		});
+	});
+
+	test('sendMessage sets activeRunId from postMessage response before run-start', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-from-post' });
+
+		const sendPromise = activeRuntime(registry).sendMessage('hello');
+		await vi.waitFor(() => {
+			expect(activeRuntime(registry).activeRunId).toBe('run-from-post');
+		});
+
+		await sendPromise;
 	});
 });
 

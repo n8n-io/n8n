@@ -158,4 +158,53 @@ describe('InstanceAiWorkflowPreview', () => {
 			expect(emitted('iframe-ready')).toBeTruthy();
 		});
 	});
+
+	it('should emit fix-with-ai on a valid fixWithAi postMessage with context', async () => {
+		const { emitted } = renderComponent({ props: { workflowId: null } });
+
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'fixWithAi',
+					workflowName: 'My Workflow',
+					errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+				}),
+			}),
+		);
+
+		await waitFor(() => {
+			expect(emitted('fix-with-ai')).toBeTruthy();
+		});
+		expect(emitted('fix-with-ai')).toEqual([
+			[
+				{
+					workflowName: 'My Workflow',
+					errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+				},
+			],
+		]);
+	});
+
+	it('should ignore fixWithAi when errors array is empty or invalid', async () => {
+		const { emitted } = renderComponent({ props: { workflowId: null } });
+
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				data: JSON.stringify({ command: 'fixWithAi', errors: [] }),
+			}),
+		);
+
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'fixWithAi',
+					errors: [{ nodeName: 1, errorMessage: null }, 'not an object'],
+				}),
+			}),
+		);
+
+		await waitFor(() => {
+			expect(emitted('fix-with-ai')).toBeUndefined();
+		});
+	});
 });

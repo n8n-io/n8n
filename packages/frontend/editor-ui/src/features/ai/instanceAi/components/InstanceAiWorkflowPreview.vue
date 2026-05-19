@@ -16,6 +16,11 @@ const props = withDefaults(
 	{ refreshKey: 0 },
 );
 
+export interface FixWithAiContext {
+	workflowName?: string;
+	errors: Array<{ nodeName: string; errorMessage: string }>;
+}
+
 const emit = defineEmits<{
 	'iframe-ready': [];
 	/** Fires after a workflow fetch resolves and the new workflow has been
@@ -23,6 +28,10 @@ const emit = defineEmits<{
 	 * the iframe). Used by `useEventRelay` to gate buffered-event replay so the
 	 * iframe always receives `openWorkflow` before the `executionEvent`s. */
 	'workflow-loaded': [workflowId: string];
+	/** User clicked the "Fix with AI" button on the embedded canvas after one
+	 * or more nodes failed. Carries the workflow name and per-node errors so
+	 * the chat can pre-fill a debugging prompt. */
+	'fix-with-ai': [context: FixWithAiContext];
 }>();
 
 const i18n = useI18n();
@@ -40,6 +49,21 @@ function handleIframeMessage(event: MessageEvent) {
 		const json = JSON.parse(event.data);
 		if (json.command === 'n8nReady') {
 			emit('iframe-ready');
+		} else if (json.command === 'fixWithAi') {
+			const errors = Array.isArray(json.errors)
+				? json.errors.filter(
+						(e: unknown): e is { nodeName: string; errorMessage: string } =>
+							typeof e === 'object' &&
+							e !== null &&
+							typeof (e as { nodeName?: unknown }).nodeName === 'string' &&
+							typeof (e as { errorMessage?: unknown }).errorMessage === 'string',
+					)
+				: [];
+			if (errors.length === 0) return;
+			emit('fix-with-ai', {
+				workflowName: typeof json.workflowName === 'string' ? json.workflowName : undefined,
+				errors,
+			});
 		}
 	} catch {
 		// Ignore parse errors
