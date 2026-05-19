@@ -5,9 +5,9 @@ Date: 2026-05-19
 
 ## Inputs
 
-- `packages/testing/e2e-journey-map.md`
-- `packages/testing/e2e-journey-prioritization.md`
-- `packages/testing/e2e-target-suite-plan.md`
+- `packages/testing/02-e2e-journey-map.md`
+- `packages/testing/03-e2e-journey-prioritization.md`
+- `packages/testing/04-e2e-target-suite-plan.md`
 - `packages/testing/playwright/AGENTS.md`
 - Existing Playwright suite under `packages/testing/playwright/`
 

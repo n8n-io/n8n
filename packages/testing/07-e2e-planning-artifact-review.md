@@ -5,12 +5,12 @@ Date: 2026-05-19
 
 ## Inputs
 
-- `packages/testing/product-feature-inventory.md`
-- `packages/testing/e2e-journey-map.md`
-- `packages/testing/e2e-journey-prioritization.md`
-- `packages/testing/e2e-target-suite-plan.md`
-- `packages/testing/e2e-coverage-matrix.md`
-- `packages/testing/e2e-trust-implementation-backlog.md`
+- `packages/testing/01-product-feature-inventory.md`
+- `packages/testing/02-e2e-journey-map.md`
+- `packages/testing/03-e2e-journey-prioritization.md`
+- `packages/testing/04-e2e-target-suite-plan.md`
+- `packages/testing/05-e2e-coverage-matrix.md`
+- `packages/testing/06-e2e-trust-implementation-backlog.md`
 - `packages/testing/e2e-trust-next-steps-plan.md`
 
 ## Review Results
@@ -27,10 +27,10 @@ Date: 2026-05-19
 
 ## Fixes Made During Review
 
-- Added explicit inspection status to `packages/testing/product-feature-inventory.md`.
-- Strengthened weak P0/P1 journey anchors and success signals in `packages/testing/e2e-journey-map.md`.
-- Scoped D09-CJ01 trusted coverage in `packages/testing/e2e-coverage-matrix.md` to replay-backed container execution only.
-- Added required tags/capabilities to the first P0/P1 repair queue in `packages/testing/e2e-trust-implementation-backlog.md`.
+- Added explicit inspection status to `packages/testing/01-product-feature-inventory.md`.
+- Strengthened weak P0/P1 journey anchors and success signals in `packages/testing/02-e2e-journey-map.md`.
+- Scoped D09-CJ01 trusted coverage in `packages/testing/05-e2e-coverage-matrix.md` to replay-backed container execution only.
+- Added required tags/capabilities to the first P0/P1 repair queue in `packages/testing/06-e2e-trust-implementation-backlog.md`.
 - Added lower-layer handoff slices for public API, runtime/scheduler, expression, MCP, and AI graph protocol coverage.
 
 ## Handoff Conclusion
@@ -44,4 +44,4 @@ The artifact sequence is ready for implementation handoff:
 5. Current Playwright coverage matrix.
 6. Implementation backlog with metadata, smoke suite, repair, and lower-layer migration slices.
 
-The next implementation slice should be Slice 0 from `packages/testing/e2e-trust-implementation-backlog.md`: journey metadata and reporting.
+The next implementation slice should be Slice 0 from `packages/testing/06-e2e-trust-implementation-backlog.md`: journey metadata and reporting.

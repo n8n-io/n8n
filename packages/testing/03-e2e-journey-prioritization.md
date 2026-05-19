@@ -5,12 +5,12 @@ Date: 2026-05-19
 
 ## Inputs
 
-- `packages/testing/e2e-journey-map.md`
-- `packages/testing/product-feature-inventory.md`
+- `packages/testing/02-e2e-journey-map.md`
+- `packages/testing/01-product-feature-inventory.md`
 
 ## Scope
 
-This file ranks the concrete journey candidates from `packages/testing/e2e-journey-map.md`. It does not compare against, reference, or inspect existing E2E coverage.
+This file ranks the concrete journey candidates from `packages/testing/02-e2e-journey-map.md`. It does not compare against, reference, or inspect existing E2E coverage.
 
 Coverage recommendations describe the target testing shape for each journey, not the current test suite.
 

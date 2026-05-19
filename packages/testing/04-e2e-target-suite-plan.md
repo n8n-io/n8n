@@ -5,9 +5,9 @@ Date: 2026-05-19
 
 ## Inputs
 
-- `packages/testing/e2e-journey-prioritization.md`
-- `packages/testing/e2e-journey-map.md`
-- `packages/testing/product-feature-inventory.md`
+- `packages/testing/03-e2e-journey-prioritization.md`
+- `packages/testing/02-e2e-journey-map.md`
+- `packages/testing/01-product-feature-inventory.md`
 
 ## Scope
 
@@ -271,7 +271,7 @@ Task 5 should compare existing coverage against this target model and classify e
 
 ## Task 5 Handoff
 
-Use this file as the scoring model when creating `packages/testing/e2e-coverage-matrix.md`.
+Use this file as the scoring model when creating `packages/testing/05-e2e-coverage-matrix.md`.
 
 For each P0/P1 journey, Task 5 should decide:
 

@@ -5,7 +5,7 @@ Date: 2026-05-19
 
 ## Inputs
 
-- `packages/testing/product-feature-inventory.md`
+- `packages/testing/01-product-feature-inventory.md`
 - Product source under `packages/frontend/editor-ui/src`
 - Backend source under `packages/cli/src`
 - Runtime source under `packages/core/src` and `packages/workflow/src`

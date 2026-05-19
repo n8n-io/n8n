@@ -5,10 +5,10 @@ Date: 2026-05-19
 
 ## Inputs
 
-- `packages/testing/e2e-journey-map.md`
-- `packages/testing/e2e-journey-prioritization.md`
-- `packages/testing/e2e-target-suite-plan.md`
-- `packages/testing/e2e-coverage-matrix.md`
+- `packages/testing/02-e2e-journey-map.md`
+- `packages/testing/03-e2e-journey-prioritization.md`
+- `packages/testing/04-e2e-target-suite-plan.md`
+- `packages/testing/05-e2e-coverage-matrix.md`
 - `packages/testing/playwright/AGENTS.md`
 - Existing Playwright suite under `packages/testing/playwright/`
 
@@ -16,7 +16,7 @@ Date: 2026-05-19
 
 This file turns the journey map, prioritization, target suite plan, and coverage matrix into implementation-ready slices.
 
-It is intentionally separate from `packages/testing/e2e-target-suite-plan.md` because that file records the target model drafted before inspecting existing tests. This backlog is post-comparison and includes existing Playwright paths.
+It is intentionally separate from `packages/testing/04-e2e-target-suite-plan.md` because that file records the target model drafted before inspecting existing tests. This backlog is post-comparison and includes existing Playwright paths.
 
 Task 6 does not rewrite tests. It defines the order, files, metadata conventions, acceptance criteria, and validation commands for the engineers who implement the migration.
 
@@ -521,4 +521,4 @@ These slices keep lower-layer work concrete so browser E2E does not become the f
 - [ ] Smoke tests use unique namespaces and do not depend on execution order.
 - [ ] Existing low-trust tests are not deleted until replacements are merged.
 - [ ] Layer-mismatched coverage is tracked below browser E2E instead of being counted as trusted browser coverage.
-- [ ] `packages/testing/e2e-coverage-matrix.md` can be updated after implementation to move journeys from missing, partial, or low-trust to trusted.
+- [ ] `packages/testing/05-e2e-coverage-matrix.md` can be updated after implementation to move journeys from missing, partial, or low-trust to trusted.
