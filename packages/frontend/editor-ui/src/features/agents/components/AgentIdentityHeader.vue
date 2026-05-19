@@ -37,7 +37,7 @@ function onDescriptionUpdate(value: string) {
 			:model-value="name"
 			:placeholder="i18n.baseText('agents.builder.agent.name.placeholder')"
 			:disabled="props.disabled"
-			:max-width="240"
+			max-width="80%"
 			:min-width="96"
 			:class="$style.title"
 			data-testid="agent-name-inline-edit"
@@ -47,7 +47,7 @@ function onDescriptionUpdate(value: string) {
 			:model-value="description"
 			:placeholder="i18n.baseText('agents.builder.agent.description.placeholder')"
 			:disabled="props.disabled"
-			:max-width="240"
+			max-width="80%"
 			:min-width="96"
 			:class="$style.description"
 			data-testid="agent-description-inline-edit"
@@ -69,14 +69,13 @@ function onDescriptionUpdate(value: string) {
 	font-size: var(--font-size--xl);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--lg);
-	color: var(--text-color--dark);
+	color: var(--text-color);
 }
 
 .description {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--md);
-	color: var(--text-color--light);
-	max-width: 100px;
+	color: var(--text-color--subtler);
 }
 </style>

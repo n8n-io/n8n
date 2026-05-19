@@ -1,7 +1,10 @@
-import type { z } from 'zod';
-
 import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
+import type {
+	BuiltObservationLogStore,
+	ObservationLogObserveFn,
+	ObservationLogReflectFn,
+} from './observation-log';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -9,9 +12,9 @@ import type { JSONObject } from '../utils/json';
  * Contains enough information to reconstruct the backend from a schema without exposing secrets.
  */
 export interface MemoryDescriptor<TParams extends JSONObject = JSONObject> {
-	/** Backend name (e.g. 'postgres', 'sqlite', 'memory'). Used as key in memoryRegistry. */
+	/** Backend name (e.g. 'n8n', 'memory'). Used as key in memoryRegistry. */
 	name: string;
-	/** Constructor name (e.g. 'PostgresMemory', 'SqliteMemory'). Used to construct the backend. */
+	/** Constructor name (e.g. 'N8nMemory', 'InMemoryMemory'). Used to construct the backend. */
 	constructorName: string;
 	/** Non-secret, serializable connection parameters. CredentialConfig refs are safe to store. */
 	connectionParams: TParams | null;
@@ -37,6 +40,7 @@ export interface BuiltMemory {
 		opts?: {
 			limit?: number; // last N messages
 			before?: Date; // pagination cursor
+			resourceId?: string; // per-resource isolation for shared threads
 		},
 	): Promise<AgentDbMessage[]>;
 	/**
@@ -65,16 +69,6 @@ export interface BuiltMemory {
 			messageRange?: { before: number; after: number };
 		},
 	): Promise<AgentDbMessage[]>;
-	// --- Working memory (optional) ---
-	getWorkingMemory?(params: {
-		threadId: string;
-		resourceId: string;
-		scope: 'resource' | 'thread';
-	}): Promise<string | null>;
-	saveWorkingMemory?(
-		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
-		content: string,
-	): Promise<void>;
 	// --- Tier 3: Vector operations (optional — runtime handles embeddings) ---
 	saveEmbeddings?(opts: {
 		scope?: 'thread' | 'resource';
@@ -123,24 +117,47 @@ export interface TitleGenerationConfig {
 	sync?: boolean;
 }
 
-/** Full memory configuration bundle passed from builder to runtime. */
-export interface MemoryConfig {
-	memory: BuiltMemory;
+export type ObservationCapableMemory = BuiltMemory & BuiltObservationLogStore;
+
+export interface ObservationLogMemoryConfig {
+	/** Maximum estimated tokens to render into the system prompt. */
+	renderTokenBudget?: number;
+}
+
+export interface ObservationalMemoryConfig {
+	/** Estimated tokens in unobserved transcript required before the Observer runs. */
+	observerThresholdTokens?: number;
+	/** Estimated active observation-log tokens required before the Reflector runs. */
+	reflectorThresholdTokens?: number;
+	/** Maximum estimated tokens to render into the system prompt. */
+	renderTokenBudget?: number;
+	/** Number of recent observations sent to the Observer as log-tail context. */
+	observationLogTailLimit?: number;
+	/** Lease duration for scoped background memory task locks. */
+	lockTtlMs?: number;
+	/** Policy callback that turns transcript deltas into markdown observations. */
+	observe?: ObservationLogObserveFn;
+	/** Policy callback that returns drop/merge instructions for the active observation log. */
+	reflect?: ObservationLogReflectFn;
+}
+
+interface MemoryConfigBase {
 	lastMessages: number;
-	workingMemory?: {
-		template: string;
-		structured: boolean;
-		schema?: z.ZodObject<z.ZodRawShape>;
-		scope: 'resource' | 'thread';
-		/**
-		 * Custom instruction text injected into the system prompt in place of the default.
-		 * When omitted the runtime uses {@link WORKING_MEMORY_DEFAULT_INSTRUCTION}.
-		 */
-		instruction?: string;
-	};
+	observationLog?: ObservationLogMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	titleGeneration?: TitleGenerationConfig;
 }
+
+/** Full memory configuration bundle passed from builder to runtime. */
+export type MemoryConfig =
+	| (MemoryConfigBase & {
+			memory: BuiltMemory;
+			observationalMemory?: undefined;
+	  })
+	| (MemoryConfigBase & {
+			memory: ObservationCapableMemory;
+			observationalMemory: ObservationalMemoryConfig;
+	  });
 
 /**
  * Interface for persisting agent execution snapshots (used for tool approval / human-in-the-loop).

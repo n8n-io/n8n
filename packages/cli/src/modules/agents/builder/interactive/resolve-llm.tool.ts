@@ -3,10 +3,23 @@ import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/age
 import { z } from 'zod';
 
 import { BUILDER_TOOLS } from '../builder-tool-names';
-import { LLM_PROVIDER_DEFAULTS, type LlmProviderDefault } from './llm-provider-defaults';
+import {
+	LLM_PROVIDER_DEFAULTS,
+	type LlmProviderDefault,
+	type ModelLookupConfig,
+} from './llm-provider-defaults';
+
+export interface ModelLookup {
+	list(
+		credentialId: string,
+		credentialType: string,
+		lookup: ModelLookupConfig,
+	): Promise<Array<{ name: string; value: string }>>;
+}
 
 export interface ResolveLlmToolDeps {
 	credentialProvider: CredentialProvider;
+	modelLookup: ModelLookup;
 }
 
 type LlmCredentialEntry = [credentialType: string, defaults: LlmProviderDefault];
@@ -32,11 +45,57 @@ function toLlmResolution(
 	};
 }
 
+async function resolveModelAgainstLookup(
+	credential: CredentialListItem,
+	defaults: LlmProviderDefault,
+	requestedModel: string,
+	modelLookup: ModelLookup,
+) {
+	const trimmedModel = requestedModel.trim();
+	if (!defaults.modelLookup || !trimmedModel) {
+		return toLlmResolution(credential, defaults, requestedModel);
+	}
+
+	let availableModels: Array<{ name: string; value: string }>;
+	try {
+		availableModels = await modelLookup.list(credential.id, credential.type, defaults.modelLookup);
+	} catch (error) {
+		return {
+			ok: false as const,
+			reason: 'model_lookup_failed' as const,
+			provider: defaults.provider,
+			requestedModel: trimmedModel,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+
+	const lowerHint = trimmedModel.toLowerCase();
+	const exactMatch = availableModels.find((m) => m.value.toLowerCase() === lowerHint);
+	if (exactMatch) {
+		return toLlmResolution(credential, defaults, exactMatch.value);
+	}
+
+	const candidates = availableModels.filter(
+		(m) => m.value.toLowerCase().includes(lowerHint) || m.name.toLowerCase().includes(lowerHint),
+	);
+	if (candidates.length === 1) {
+		return toLlmResolution(credential, defaults, candidates[0].value);
+	}
+
+	return {
+		ok: false as const,
+		reason: 'unknown_model' as const,
+		provider: defaults.provider,
+		requestedModel: trimmedModel,
+		availableModels: candidates.length > 0 ? candidates : availableModels,
+	};
+}
+
 export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.description(
 			'Resolve the agent main LLM without showing a picker. Use this when the user ' +
-				'explicitly requests a provider/model, or when a fresh agent needs a default LLM. ' +
+				'explicitly requests a provider/model, or when a fresh agent needs its main LLM set. ' +
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
 				'provider default model. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
@@ -80,7 +139,11 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				);
 
 				if (matchingCredentials.length === 1) {
-					return toLlmResolution(matchingCredentials[0], defaults, model);
+					const credential = matchingCredentials[0];
+					if (model?.trim()) {
+						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
+					}
+					return toLlmResolution(credential, defaults);
 				}
 
 				return {
@@ -100,7 +163,11 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 
 			if (llmCredentials.length === 1) {
 				const credential = llmCredentials[0];
-				return toLlmResolution(credential, LLM_PROVIDER_DEFAULTS[credential.type], model);
+				const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
+				if (model?.trim()) {
+					return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
+				}
+				return toLlmResolution(credential, defaults);
 			}
 
 			return {

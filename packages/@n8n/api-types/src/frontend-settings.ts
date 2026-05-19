@@ -101,6 +101,7 @@ export interface FrontendSettings {
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
 	concurrency: number;
+	evaluationConcurrencyLimit: number;
 	authCookie: {
 		secure: boolean;
 	};
@@ -175,6 +176,7 @@ export interface FrontendSettings {
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	unverifiedCommunityNodesEnabled: boolean;
+	communityNodesManagedByEnv: boolean;
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
@@ -292,7 +294,6 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
-		optinModalDismissed: boolean;
 		cloudManaged: boolean;
 	};
 
@@ -315,6 +316,14 @@ export type FrontendModuleSettings = {
 		roleBasedAccess: boolean;
 		/** Whether system roles (admin, editor) have external secrets scopes. */
 		systemRolesEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the OpenTelemetry module.
+	 */
+	otel?: {
+		/** Whether OpenTelemetry tracing is enabled on this instance. */
+		enabled: boolean;
 	};
 
 	/**

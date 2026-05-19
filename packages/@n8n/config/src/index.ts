@@ -15,7 +15,6 @@ import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
-import { EvaluationConfig } from './configs/evaluation.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExpressionEngineConfig } from './configs/expression-engine.config';
@@ -61,6 +60,7 @@ export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
+export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -164,9 +164,6 @@ export class GlobalConfig {
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;
-
-	@Nested
-	evaluation: EvaluationConfig;
 
 	@Nested
 	generic: GenericConfig;

@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
 
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { SuspendComponent } from './component-mapper';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -11,6 +12,12 @@ export interface AgentChatIntegrationContext {
 	credential: Record<string, unknown>;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
+}
+
+/** Response shape returned by `handleUnauthenticatedWebhook`. */
+export interface UnauthenticatedWebhookResponse {
+	status: number;
+	body: unknown;
 }
 
 /**
@@ -61,8 +68,38 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly disableStreaming: boolean = false;
 
+	/**
+	 * True if this integration must run on the leader main only.
+	 *
+	 * Polling-based platforms (e.g. Telegram in polling mode) require this so a
+	 * single instance owns the long-poll loop — otherwise updates race between
+	 * mains and either duplicate or get lost. Webhook-based platforms return
+	 * false so any main can answer inbound webhooks (which the load balancer
+	 * routes round-robin across all mains).
+	 */
+	requiresLeader(): boolean {
+		return false;
+	}
+
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Handle a webhook request that arrives before an integration is connected
+	 * (i.e. before credentials are configured). The canonical case is Slack's
+	 * `url_verification` challenge — sent when the user creates a Slack app
+	 * from the manifest, before they have pasted bot token / signing secret
+	 * into n8n. Without this hook, the standard handler returns 404 and the
+	 * user has to manually re-verify URLs after configuring the credential.
+	 *
+	 * Implementations inspect the parsed JSON body; return a response to send
+	 * back, or undefined to fall through to the standard 404.
+	 *
+	 * Security note: this hook bypasses signature verification, so it must
+	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
+	 * in the request itself).
+	 */
+	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
 
 	/**
 	 * Optional hook run BEFORE the adapter is built. Use it to reject the
@@ -73,6 +110,19 @@ export abstract class AgentChatIntegration {
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
+	 * Optional hook run BEFORE `chat.shutdown()` — use it to release any
+	 * external state owned by this integration (e.g. Telegram `deleteWebhook`
+	 * to free the bot for other applications). Runs only when the disconnect
+	 * is user-initiated; peer mains reacting to a multi-main PubSub broadcast,
+	 * graceful shutdowns, and leader-stepdown teardown all skip this hook so
+	 * the cluster-wide state isn't released by every main in turn.
+	 *
+	 * Errors are logged by the caller and swallowed — local teardown always
+	 * proceeds so a transient remote failure can't leak in-process resources.
+	 */
+	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
@@ -89,6 +139,14 @@ export abstract class AgentChatIntegration {
 		fromSdk: (thread: Thread<unknown, unknown>) => string;
 		toSdk: (threadId: string) => string;
 	};
+
+	/**
+	 * Optional per-user authorisation check called on every inbound mention,
+	 * subscribed message, and action before the bridge subscribes / executes.
+	 * Default (no implementation): allow. Telegram uses this to enforce the
+	 * Private-mode allowlist.
+	 */
+	isUserAllowed?(author: Author, settings: AgentCredentialIntegrationConfig | undefined): boolean;
 }
 
 /**

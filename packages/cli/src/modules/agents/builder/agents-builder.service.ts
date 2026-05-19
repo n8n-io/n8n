@@ -10,19 +10,21 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-
-const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
+import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -160,15 +162,22 @@ export class AgentsBuilderService {
 				.join('\n') || '(none)';
 
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
+		const modelRecommendationsSection = await getModelRecommendationsSection();
 		const instructions = buildBuilderPrompt({
 			configJson,
 			configHash: getAgentConfigHash(currentConfig),
 			configUpdatedAt: agent.updatedAt.toISOString(),
 			toolList,
-			builderModel: BUILDER_MODEL,
+			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
+			modelRecommendationsSection,
 		});
 
-		const tools = this.agentsBuilderToolsService.getTools(agentId, projectId, credentialProvider);
+		const tools = this.agentsBuilderToolsService.getTools(
+			agentId,
+			projectId,
+			credentialProvider,
+			user,
+		);
 
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 
@@ -178,6 +187,15 @@ export class AgentsBuilderService {
 			.instructions(instructions)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+
+		const telemetry = buildBuilderTelemetry({
+			agentId,
+			projectId,
+			userId: user.id,
+			threadId: builderThreadId(agentId),
+			model: modelConfig,
+		});
+		if (telemetry) builder.telemetry(telemetry);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);

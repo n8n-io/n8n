@@ -10,7 +10,7 @@ export const EXPRESSION_REFERENCE = `Available variables inside \`expr('{{ ... }
 
 - \`$json\` — current item's JSON data from the immediate predecessor node
 - \`$('NodeName').item.json\` — access any node's output by name
-- \`nodeJson(node, 'field.path')\` — SDK helper that creates \`={{ $('NodeName').item.json.field.path }}\`
+- \`nodeJson(node, 'field.path')\` — SDK helper equivalent to \`expr('{{ $("NodeName").item.json.field.path }}')\`
 - \`$input.first()\` — first item from immediate predecessor
 - \`$input.all()\` — all items from immediate predecessor
 - \`$input.item\` — current item being processed

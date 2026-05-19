@@ -25,7 +25,6 @@ import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { IConnections } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentNodes,
 	type WorkflowDocumentNodesDeps,
@@ -39,13 +38,17 @@ function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
 }
 
-function createNodesDeps(): WorkflowDocumentNodesDeps {
+function createNodesDeps(
+	workflowObj?: ReturnType<typeof useWorkflowDocumentWorkflowObject>,
+): WorkflowDocumentNodesDeps {
+	const obj = workflowObj ?? useWorkflowDocumentWorkflowObject({ workflowId: '' });
 	return {
 		getNodeType: vi.fn().mockReturnValue(null),
 		assignNodeId: vi.fn().mockReturnValue(''),
 		syncWorkflowObject: vi.fn(),
 		unpinNodeData: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
+		workflowObject: obj.workflowObject,
 	};
 }
 
@@ -53,18 +56,16 @@ describe('useWorkflowDocumentGraph', () => {
 	let nodes: ReturnType<typeof useWorkflowDocumentNodes>;
 	let connections: ReturnType<typeof useWorkflowDocumentConnections>;
 	let workflowObj: ReturnType<typeof useWorkflowDocumentWorkflowObject>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		workflowsStore = useWorkflowsStore();
-		nodes = useWorkflowDocumentNodes(createNodesDeps());
+		workflowObj = useWorkflowDocumentWorkflowObject({
+			workflowId: '',
+		});
+		nodes = useWorkflowDocumentNodes(createNodesDeps(workflowObj));
 		connections = useWorkflowDocumentConnections({
 			getNodeById: (id) => nodes.getNodeById(id),
 			syncWorkflowObject: vi.fn(),
-		});
-		workflowObj = useWorkflowDocumentWorkflowObject({
-			workflowId: '',
 		});
 	});
 
@@ -74,8 +75,8 @@ describe('useWorkflowDocumentGraph', () => {
 	): ReturnType<typeof useWorkflowDocumentGraph> {
 		nodes.setNodes(nodeList);
 		connections.setConnections(connectionMap);
-		workflowObj.syncWorkflowObjectNodes(workflowsStore.workflow.nodes);
-		workflowObj.syncWorkflowObjectConnections(workflowsStore.workflow.connections);
+		workflowObj.syncWorkflowObjectNodes(nodes.allNodes.value);
+		workflowObj.syncWorkflowObjectConnections(connections.connectionsBySourceNode.value);
 		return useWorkflowDocumentGraph(workflowObj.workflowObject);
 	}
 

@@ -30,10 +30,12 @@ vi.mock('vue-router', () => ({
 
 describe('NodeView', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
 	});
 
 	describe('Trigger node selection', () => {
@@ -42,7 +44,7 @@ describe('NodeView', () => {
 		const n2 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n2' });
 
 		beforeEach(() => {
-			workflowsStore.workflow.nodes = [n0, n1];
+			workflowDocumentStore.setNodes([n0, n1]);
 
 			const nodeTypesStore = useNodeTypesStore();
 			nodeTypesStore.setNodeTypes([
@@ -55,13 +57,13 @@ describe('NodeView', () => {
 
 		function renderNodeView() {
 			const workflowDocStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+				createWorkflowDocumentId(workflowDocumentStore.workflowId),
 			);
 
 			return renderComponent(NodeView, {
 				global: {
 					provide: {
-						[WorkflowIdKey as symbol]: computed(() => workflowsStore.workflowId),
+						[WorkflowIdKey as symbol]: computed(() => workflowDocumentStore.workflowId),
 						[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocStore),
 					},
 					stubs: {
@@ -74,16 +76,20 @@ describe('NodeView', () => {
 		it('should select newly added trigger node automatically', async () => {
 			renderNodeView();
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
-			workflowsStore.workflow.nodes.push(n2);
+			workflowDocumentStore.addNode(n2);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n2'));
 		});
 
 		it('should re-select a trigger when selected trigger gets disabled or removed', async () => {
 			renderNodeView();
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).removeNode(n0);
+			useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowDocumentStore.workflowId),
+			).removeNode(n0);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).setNodeValue({
+			useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowDocumentStore.workflowId),
+			).setNodeValue({
 				name: 'n1',
 				key: 'disabled',
 				value: true,

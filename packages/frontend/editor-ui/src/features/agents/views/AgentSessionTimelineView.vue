@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	CONTINUE_SESSION_ID_PARAM,
 	AGENT_SESSION_DETAIL_VIEW,
 } from '@/features/agents/constants';
@@ -75,10 +76,6 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
-		case 'working-memory-updated':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspension');
 		case 'suspension-waiting':
@@ -257,7 +254,7 @@ function onKeyUp(event: KeyboardEvent) {
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
-	selectedIndex.value = highlightedIndex.value;
+	selectTimelineItem(highlightedIndex.value);
 }
 
 useEventListener(document, 'keyup', onKeyUp);
@@ -312,7 +309,7 @@ function formatDate(fullDate: string): string {
 
 function continueChat() {
 	void router.push({
-		name: AGENT_BUILDER_VIEW,
+		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
 		query: { [CONTINUE_SESSION_ID_PARAM]: threadId.value },
 	});
@@ -600,12 +597,16 @@ function onSessionSelect(nextThreadId: string) {
 .tablePanel {
 	flex: 6;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
 }
 .detailPanel {
 	flex: 0 0 40%;
 	min-width: 0;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	border-left: var(--border);
 	background-color: var(--background--surface);
 }

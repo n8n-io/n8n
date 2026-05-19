@@ -7,22 +7,16 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import {
-	Agent,
-	Memory,
-	Tool,
-	UPDATE_WORKING_MEMORY_TOOL_NAME,
-	wrapToolForApproval,
-} from '@n8n/agents';
-import type { AgentSkill } from '@n8n/api-types';
+import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
 import { z } from 'zod';
-
 import type {
+	AgentSkill,
 	AgentJsonConfig,
-	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
-} from './agent-json-config';
+	AgentJsonSkillConfig,
+} from '@n8n/api-types';
+
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveProviderToolName } from './provider-tool-aliases';
 
@@ -37,28 +31,6 @@ export interface ToolExecutor {
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
-
-const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
-- User facts:
-- User preferences/instructions:
-- Current goal/task:
-- Current state:
-- Key active items:
-- Decisions made:
-- Open follow-ups:
-- Resolved or superseded:`;
-
-const DEFAULT_WORKING_MEMORY_INSTRUCTION = [
-	'You have thread-scoped working memory for this conversation.',
-	`When the user shares durable facts, preferences, decisions, goals, or unresolved follow-ups that will help later turns in this same thread, call ${UPDATE_WORKING_MEMORY_TOOL_NAME} with the complete updated memory.`,
-	'Treat working memory as a current-state snapshot, not an append-only log.',
-	'Keep it concise, factual, and current.',
-	'When facts, preferences, priorities, goals, decisions, or statuses change, replace outdated active items with the latest state.',
-	'Preserve distinctions the user makes between primary, secondary, active, resolved, and superseded items.',
-	'Move resolved or superseded items to that section only when they will help later; otherwise remove them.',
-	'Preserve useful existing notes, remove stale or contradicted notes, and do not store secrets or one-off details.',
-	`Only call ${UPDATE_WORKING_MEMORY_TOOL_NAME} when the memory should change.`,
-].join(' ');
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -86,19 +58,8 @@ export async function buildFromJson(
 ): Promise<Agent> {
 	const agent = new Agent(config.name);
 
-	// Derive the provider prefix for credential field remapping.
-	const slashIdx = config.model.indexOf('/');
-	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
-
-	// Resolve credentials upfront and embed them directly in the model config
-	// object so createModel() receives the full set of fields it needs.
-	if (config.credential) {
-		const raw = await options.credentialProvider.resolve(config.credential);
-		const mapped = mapCredentialForProvider(providerPrefix, raw);
-		agent.model({ id: config.model, ...mapped } as ModelConfig);
-	} else {
-		agent.model(config.model);
-	}
+	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
+	agent.model(resolvedModelConfig);
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
 	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
@@ -138,9 +99,6 @@ export async function buildFromJson(
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
-		if (config.config.requireToolApproval) {
-			agent.requireToolApproval();
-		}
 	}
 
 	return agent;
@@ -149,7 +107,7 @@ export async function buildFromJson(
 type ConfiguredSkill = { id: string; skill: AgentSkill };
 
 function getConfiguredSkills(
-	refs: Array<Extract<AgentJsonConfigRef, { type: 'skill' }>>,
+	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
 ): ConfiguredSkill[] {
 	const seen = new Set<string>();
@@ -301,10 +259,6 @@ async function applyMemoryFromConfig(
 
 	const builtMemory = memoryFactory(memoryConfig);
 	memory.storage(await Promise.resolve(builtMemory));
-	memory
-		.freeform(DEFAULT_WORKING_MEMORY_TEMPLATE)
-		.scope('thread')
-		.instruction(DEFAULT_WORKING_MEMORY_INSTRUCTION);
 
 	if (memoryConfig.lastMessages) {
 		memory.lastMessages(memoryConfig.lastMessages);
@@ -314,7 +268,42 @@ async function applyMemoryFromConfig(
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
 
+	if (memoryConfig.observationalMemory?.enabled !== false) {
+		const observationalMemory = memoryConfig.observationalMemory;
+
+		memory.observationalMemory({
+			...(observationalMemory?.observerThresholdTokens !== undefined && {
+				observerThresholdTokens: observationalMemory.observerThresholdTokens,
+			}),
+			...(observationalMemory?.reflectorThresholdTokens !== undefined && {
+				reflectorThresholdTokens: observationalMemory.reflectorThresholdTokens,
+			}),
+			...(observationalMemory?.renderTokenBudget !== undefined && {
+				renderTokenBudget: observationalMemory.renderTokenBudget,
+			}),
+			...(observationalMemory?.observationLogTailLimit !== undefined && {
+				observationLogTailLimit: observationalMemory.observationLogTailLimit,
+			}),
+			...(observationalMemory?.lockTtlMs !== undefined && {
+				lockTtlMs: observationalMemory.lockTtlMs,
+			}),
+		});
+	}
+
 	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
+}
+
+async function resolveModelConfig(
+	config: AgentJsonConfig,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	if (!config.credential) return config.model;
+
+	const slashIdx = config.model.indexOf('/');
+	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(providerPrefix, raw);
+	return { id: config.model, ...mapped } as ModelConfig;
 }

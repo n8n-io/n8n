@@ -51,6 +51,7 @@ import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -92,6 +93,7 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {}
 
 	async getMany(
@@ -338,17 +340,25 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
+		this.redactionEnforcementService.assertPolicyChangeAllowed(
+			workflow.settings?.redactionPolicy,
+			workflowUpdateData.settings?.redactionPolicy,
+		);
+
 		if (!forceSave && expectedChecksum) {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
 
-		// Update the workflow's version when changing nodes or connections
+		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const hasNodeGroupsKey = 'nodeGroups' in workflowUpdateData;
 		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
 		const connectionsChanged =
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
-		const saveNewVersion = nodesChanged || connectionsChanged;
+		const nodeGroupsChanged =
+			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
+		const saveNewVersion = nodesChanged || connectionsChanged || nodeGroupsChanged;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -377,6 +387,10 @@ export class WorkflowService {
 		WorkflowHelpers.validateWorkflowStructure({
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
+		});
+		WorkflowHelpers.validateWorkflowNodeGroups({
+			nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
 		});
 
 		// Strip redactionPolicy if instance lacks data-redaction license
@@ -440,6 +454,7 @@ export class WorkflowService {
 			'name',
 			'nodes',
 			'connections',
+			'nodeGroups',
 			'meta',
 			'settings',
 			'staticData',

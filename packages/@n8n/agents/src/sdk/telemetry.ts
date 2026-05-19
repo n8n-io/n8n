@@ -153,6 +153,8 @@ export class Telemetry {
 
 	protected recordOutputsValue = true;
 
+	protected runtimeRootSpanEnabledValue = true;
+
 	protected redactFn?: RedactFn;
 
 	protected integrationsList: TelemetryIntegration[] = [];
@@ -223,6 +225,12 @@ export class Telemetry {
 		return this;
 	}
 
+	/** Enable or disable the generic AgentRuntime root span around generate/stream loops. */
+	runtimeRootSpan(value: boolean): this {
+		this.runtimeRootSpanEnabledValue = value;
+		return this;
+	}
+
 	/**
 	 * Set a redaction callback. When set, all integration hooks will
 	 * have their event data passed through this function before the
@@ -287,6 +295,7 @@ export class Telemetry {
 			metadata: this.metadataValue,
 			recordInputs: this.recordInputsValue,
 			recordOutputs: this.recordOutputsValue,
+			runtimeRootSpanEnabled: this.runtimeRootSpanEnabledValue,
 			integrations,
 			tracer,
 			provider,

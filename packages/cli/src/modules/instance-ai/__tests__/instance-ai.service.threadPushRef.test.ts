@@ -17,20 +17,8 @@ jest.mock('@n8n/instance-ai', () => {
 		handleVerificationVerdict: jest.fn(),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
-		createMemory: jest.fn(),
-		mapMastraChunkToEvent: jest.fn(),
 	};
 });
-jest.mock('@mastra/core/agent', () => ({}));
-jest.mock('@mastra/core/storage', () => ({
-	MemoryStorage: class {},
-	MastraCompositeStore: class {},
-	WorkflowsStorage: class {},
-}));
-jest.mock('@mastra/memory', () => ({
-	Memory: class {},
-}));
-jest.mock('@mastra/core/workflows', () => ({}));
 
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -77,6 +65,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			backgroundTasks: { cancelThread: jest.Mock };
 			creditedThreads: Map<string, unknown>;
 			schedulerLocks: Map<string, unknown>;
+			liveness: { clearThreadState: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			eventBus: { clearThread: jest.Mock };
 			finalizeRemainingMessageTraceRoots: jest.Mock;
@@ -95,6 +84,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.backgroundTasks = { cancelThread: jest.fn(() => []) };
 		service.creditedThreads = new Map();
 		service.schedulerLocks = new Map();
+		service.liveness = { clearThreadState: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clearThread: jest.fn() };
 		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});

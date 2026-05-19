@@ -26,7 +26,8 @@ import { useExecutionRedaction } from '@/features/execution/executions/composabl
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
-import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { useMessageAgentSessionLink } from '@/features/agents/composables/useMessageAgentSessionLink';
 const MIN_IO_PANEL_WIDTH = 200;
 
 const {
@@ -69,6 +70,7 @@ const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecution
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
+const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
 const container = useTemplateRef<HTMLElement>('container');
 const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 	container,
@@ -127,6 +129,16 @@ function handleResizeEnd() {
 			</template>
 			<template #actions>
 				<div v-if="isOpen && !isTriggerNode && !isPlaceholderLog(logEntry)" :class="$style.actions">
+					<N8nButton
+						v-if="messageAgentSessionLink"
+						variant="subtle"
+						size="xsmall"
+						data-test-id="log-details-view-agent-session"
+						@click.stop="messageAgentSessionLink.open()"
+					>
+						<N8nIcon icon="external-link" :class="$style.viewSessionIcon" />
+						{{ locale.baseText('logs.details.header.actions.viewAgentSession') }}
+					</N8nButton>
 					<KeyboardShortcutTooltip
 						:label="locale.baseText('generic.shortcutHint')"
 						:shortcut="{ keys: ['i'] }"
@@ -253,6 +265,10 @@ function handleResizeEnd() {
 
 .icon {
 	margin-right: var(--spacing--2xs);
+}
+
+.viewSessionIcon {
+	margin-right: var(--spacing--3xs);
 }
 
 .executionSummary {

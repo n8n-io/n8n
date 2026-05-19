@@ -14,6 +14,19 @@ function slugify(text: string): string {
 		.replace(/(^-|-$)/g, '');
 }
 
+type TestInfoWithSlug = {
+	title: string;
+	annotations: Array<{ type: string; description?: string }>;
+};
+
+export function getInstanceAiTestSlug(testInfo: TestInfoWithSlug): string {
+	const expectationSlug = testInfo.annotations.find(
+		(annotation) => annotation.type === 'expectation-slug' && annotation.description,
+	)?.description;
+
+	return expectationSlug ?? slugify(testInfo.title);
+}
+
 async function loadTraceFile(folder: string): Promise<unknown[]> {
 	const filePath = join(EXPECTATIONS_DIR, folder, 'trace.jsonl');
 	try {
@@ -166,7 +179,7 @@ export const test = base.extend<InstanceAiFixtures>({
 				return;
 			}
 			const services = n8nContainer.services;
-			const testSlug = slugify(testInfo.title);
+			const testSlug = getInstanceAiTestSlug(testInfo);
 			const folder = `instance-ai/${testSlug}`;
 
 			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
@@ -215,6 +228,7 @@ export const test = base.extend<InstanceAiFixtures>({
 				const traceEvents = await loadTraceFile(folder);
 				await services.proxy.loadExpectations(folder, {
 					sequential: true,
+					repeatLastResponse: false,
 				});
 
 				// Load trace events for replay ID remapping

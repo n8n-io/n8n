@@ -1,8 +1,29 @@
 import type { JSONSchema7 } from 'json-schema';
+import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
+
+const BuilderPromptMemoryConfigSchema = z.object({
+	enabled: z.boolean(),
+	storage: z.literal('n8n'),
+	lastMessages: z.number().int().min(1).max(200).optional(),
+	observationalMemory: z
+		.object({
+			enabled: z.boolean().optional(),
+			observerThresholdTokens: z.number().int().min(1).optional(),
+			reflectorThresholdTokens: z.number().int().min(1).optional(),
+			renderTokenBudget: z.number().int().min(1).optional(),
+			observationLogTailLimit: z.number().int().min(1).optional(),
+			lockTtlMs: z.number().int().min(0).optional(),
+		})
+		.optional(),
+});
+
+const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend({
+	memory: BuilderPromptMemoryConfigSchema.optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Context sections — dynamic, injected at runtime
@@ -150,8 +171,11 @@ When: the user must choose a model/credential because the request is ambiguous,
 resolve_llm returned an ambiguous/missing credential result, or the user asks
 to pick/change/use a different model. Call AT MOST ONCE per build turn unless
 the user changes their mind.
+Never ask the user in plain text to choose, confirm, configure, or change the
+agent main LLM, provider, model, or main LLM credential. If the user needs to
+make that choice, call ask_llm so the picker card is shown.
 Returns: { provider, model, credentialId, credentialName }.
-After: set \`model = "{provider}/{model}"\` and \`credential = credentialName\`
+After: set \`model = "{provider}/{model}"\` and \`credential = credentialId\`
 via write_config or patch_config.
 
 ### ask_credential
@@ -172,8 +196,9 @@ When: you would otherwise ask a clarifying question whose answer is one (or
 more) of a known list. Examples: pick a Slack channel from a list,
 read-only vs read-write, which workflow to wrap.
 Inputs: \`question\`, \`options[{label,value,description?}]\`, \`allowMultiple?\`.
-Returns: { values: string[] }. Do NOT call ask_question for free-text input;
-ask in prose for that.
+Returns: { values: string[] }. Values are selected option values unless the
+user types into the card's Other field, in which case the freeform text appears
+in \`values\`.
 
 ### Rules
 - Never call two interactive tools in parallel. The run suspends on the first.
@@ -190,8 +215,8 @@ Use resolve_llm before ask_llm whenever the user's request contains enough
 information to resolve the main LLM without a picker.
 
 ### resolve_llm
-When: the user explicitly names a provider/model, or a fresh agent needs a
-default LLM and the user did not ask to choose.
+When: the user explicitly names a provider/model, or a fresh agent needs its
+main LLM set and the user did not ask to choose.
 
 Inputs: optional \`provider\`, optional \`model\`.
 - If the user says "Anthropic via OpenRouter", pass
@@ -202,14 +227,35 @@ Inputs: optional \`provider\`, optional \`model\`.
   \`"anthropic/claude-sonnet-4.6"\`.
 
 On \`{ ok: true, provider, model, credentialId, credentialName }\`: set
-\`model = "{provider}/{model}"\` and \`credential = credentialName\`.
+\`model = "{provider}/{model}"\` and \`credential = credentialId\`. The
+returned \`model\` is the canonical id resolved against the provider's live
+list, so use it as-is — do not transform or "correct" it.
 
-On \`ok: false\`: use ask_llm only when the user needs to choose/configure a
-credential or model. Do not guess credential names from list_credentials.
+On \`ok: false\`: your NEXT action is another tool call — never reply with
+plain text asking the user to clarify. Do not guess credential names from
+list_credentials. Pick the action by reason:
+- \`missing_credential\` / \`ambiguous_credential\` / \`ambiguous_provider_or_credential\` →
+  call ask_llm (the picker handles credential selection).
+- \`unknown_model\` → the response includes \`availableModels: [{ name, value }]\`
+  (or a narrowed candidate list when the user's hint matched several). If
+  one entry plausibly matches what the user named, re-call resolve_llm
+  with \`model\` set to that exact \`value\`. Otherwise call ask_llm.
+- \`model_lookup_failed\` (the live list could not be fetched, e.g. invalid
+  credentials) → call ask_llm.
+- \`unsupported_provider\` → call ask_llm. Do not list the supported
+  providers back to the user; the picker UI handles that.
 
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.
+- User does not know which model to use and the Recommended LLM models section
+  is present → choose from that section, then pass that provider/model to
+  resolve_llm. Prefer a provider the user already has credentials for.
+- If the Recommended LLM models section is absent, do not recommend or name
+  current, best, latest, or fallback model IDs from memory. Call ask_llm when
+  the user needs model guidance or choice.
 - User asks to pick/change/use a different model → ask_llm.
+- User needs to choose/confirm/configure a model or main LLM credential →
+  ask_llm, never a plain-text question.
 - No provider specified and resolve_llm reports ambiguity → ask_llm.`;
 
 export const N8N_EXPRESSIONS_SECTION = `\
@@ -248,7 +294,8 @@ OpenAI image generation:
 { "providerTools": { "openai.image_generation": {} } }
 \`\`\``;
 
-export const CONVERSATION_MODE_SECTION = `\
+export function getConversationModeSection(agentPreviewPath: string): string {
+	return `\
 ## When to build vs when to converse
 
 Not every user message is a build request. Before calling \`write_config\`,
@@ -260,9 +307,16 @@ something cool"), or asked a question — reply conversationally. Ask what they
 want the agent to do, what systems it needs to touch, what triggers it. Only
 start building once you have a real goal.
 
+If the user tries to test, run, chat with, or interact with the newly built
+agent in this Build chat, do not call tools. Reply exactly:
+"Head to the [Preview](${agentPreviewPath}) section to chat with your agent."
+Do not say anything else. Keep the Preview link as a relative app path; do not
+expand it to an absolute URL.
+
 Never call \`write_config\` with empty, placeholder, or guessed \`instructions\`.
 An agent without real instructions is broken and can't chat. If you don't have
 enough detail to write meaningful instructions, ask the user first.`;
+}
 
 export const RESEARCH_SECTION = `\
 ## Research
@@ -281,13 +335,23 @@ Don't search for things you already know (n8n internals, common JS/TS
 patterns, widely-known public APIs you've configured many times).`;
 
 export const MEMORY_PRESETS_SECTION = `\
-## Memory presets
+## Memory
 
-| Storage  | Description                                          |
-|----------|------------------------------------------------------|
-| n8n      | Default. Persists in n8n database. No config needed. |
-| sqlite   | Local SQLite file. Needs connection.path             |
-| postgres | PostgreSQL. Needs connection.credential              |`;
+Use n8n session-scoped memory only. It keeps recent conversation context and
+an observation log for the current chat session. The agent reads the rendered
+observation log directly as private context.
+
+Shape:
+\`\`\`json
+{ "enabled": true, "storage": "n8n", "lastMessages": 50, "observationalMemory": { "renderTokenBudget": 4500 } }
+\`\`\`
+
+Rules:
+- Set \`storage\` to "n8n".
+- \`lastMessages\` default: 50.
+- Observation-log memory is enabled by default when memory is enabled.
+- Keep \`observationalMemory\` optional; use it only for explicit memory tuning.
+- Supported tuning fields: \`enabled\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.`;
 
 export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)
@@ -307,14 +371,14 @@ Two kinds:
 2. **Chat integrations** — connect the agent to a messaging platform. Multiple allowed.
    Shape:
    \`\`\`json
-   { "type": "slack", "credentialId": "<id>", "credentialName": "<name>" }
+   { "type": "slack", "credentialId": "<id>" }
    \`\`\`
 
 ### Workflow for adding integrations
 
 1. Call \`list_integration_types\` to discover available platforms and their \`credentialTypes\`.
 2. For chat integrations: pick **one** entry from the \`credentialTypes\` array returned by \`list_integration_types\` (prefer the OAuth variant — e.g. \`slackOAuth2Api\` over \`slackApi\`) and pass it to \`ask_credential\` as the singular \`credentialType\` arg. It returns \`{ credentialId, credentialName }\`.
-3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, both \`credentialId\` and \`credentialName\` are required and must come from the \`ask_credential\` result. For schedule, write the cron expression directly.
+3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, only persist \`type\` and \`credentialId\`. For schedule, write the cron expression directly.
 
 Never invent credential IDs or names. Always go through \`ask_credential\`.`;
 
@@ -328,7 +392,7 @@ configuration as a JSON string and the \`baseConfigHash\` from that same
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"My Anthropic Key\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
+  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"{provider}/{model}\\", \\"credential\\": \\"<credentialId>\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
 }
 \`\`\`
 
@@ -358,7 +422,7 @@ Examples:
 \`\`\`json
 {
   "baseConfigHash": "<configHash from read_config>",
-  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"anthropic/claude-sonnet-4-5\\" }]"
+  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialId>\\" }]"
 }
 \`\`\`
 \`\`\`json
@@ -408,10 +472,12 @@ export const WORKFLOW_SECTION = `\
 ## Workflow
 
 1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call resolve_llm
-   when the user specified a provider/model or did not ask to choose. If
+   when the user specified a provider/model or left model choice to the builder. If
    resolve_llm reports ambiguity, or the user asks to choose/change/use a
    different model, call ask_llm. Then call read_config and write_config
    with the chosen \`model\` and \`credential\` plus a draft \`instructions\`.
+   Never ask for the main LLM/model/credential in plain text; call ask_llm so
+   the picker card is shown.
 2. Use ask_question whenever you have a clarifying question with discrete
    options (e.g. "Which Slack channel?" → list channels, "Read-only or
    read-write?"). Never put the question in plain text if options are known.
@@ -447,12 +513,12 @@ export const FEW_SHOT_FLOWS_SECTION = `\
        model: "anthropic/claude-sonnet-4.6",
        credentialId: "or1", credentialName: "OpenRouter" }
 2. read_config() → { configHash: "hash1", config: { ... } }
-3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"OpenRouter\\", and the requested instructions... }" })
+3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"or1\\", and the requested instructions... }" })
 
 ### User says "Use a different OpenRouter model"
 1. ask_llm({ purpose: "Choose a different OpenRouter model" })
 2. read_config() → { configHash: "hash1", config: { ... } }
-3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialName>\\" }]" }\`.
+3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialId>\\" }]" }\`.
 
 ### Adding a new node tool to an existing agent
 1. (skip ask_llm — already set)
@@ -503,7 +569,7 @@ export const IMPORTANT_SECTION = `\
   choice from a small set, use ask_question instead of asking in prose.
 - Use search_nodes + get_node_types to discover nodes before adding node tools
 - Prefer workflow tools and node tools over custom tools for real-world interactions
-- Memory with storage "n8n" is the default -- always enable it unless told otherwise
+- n8n session-scoped memory is the default -- always enable it unless told otherwise
 - \`build_custom_tool\` generates an opaque custom tool id, then compiles and stores the tool code. Register the returned id in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
 - \`create_skill\` stores the skill body only. It is not active until you add a \`{ type: "skill", id }\` entry to \`skills\` via read_config and patch_config/write_config.`;
 
@@ -525,21 +591,24 @@ Be concise but informative.
 // Dynamic sections — depend on runtime values
 // ---------------------------------------------------------------------------
 
-export function getConfigRulesSection(builderModel: string): string {
+export function getConfigRulesSection(): string {
 	return `\
 ## Agent config rules
 
-- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
-- \`credential\` must be the \`credentialName\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
-- \`memory.storage\` is a preset: "n8n" (recommended, persists in n8n DB), "sqlite", or "postgres"
-- \`memory.lastMessages\` default: 50
-- Use "n8n" as the default memory storage for all agents
-- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
+	- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
+	- \`credential\` must be the \`credentialId\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
+	- \`memory.storage\` must be "n8n"
+	- \`memory.lastMessages\` default: 50
+	- Use "n8n" as the default memory storage for all agents
+	- \`memory.observationalMemory\` tunes observation-log memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
+	  - Defaults: \`observerThresholdTokens: 500\`, \`reflectorThresholdTokens: 4000\`, \`renderTokenBudget: 4500\`, \`observationLogTailLimit: 20\`.
+	  - Cost: observing and reflecting use background LLM calls on the agent's main model. Mention this if the user asks about cost.
+	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
 }
 
 export function getSchemaReferenceSection(): string {
 	const jsonSchemaText = jsonSchemaToCompactText(
-		zodToJsonSchema(AgentJsonConfigSchema) as JSONSchema7,
+		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
 	);
 	return `\
 ## Config schema reference
@@ -558,26 +627,35 @@ export interface BuilderPromptContext {
 	configHash: string | null;
 	configUpdatedAt: string | null;
 	toolList: string;
-	builderModel: string;
+	agentPreviewPath: string;
+	modelRecommendationsSection: string | null;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, configHash, configUpdatedAt, toolList, builderModel } = ctx;
+	const {
+		configJson,
+		configHash,
+		configUpdatedAt,
+		toolList,
+		agentPreviewPath,
+		modelRecommendationsSection,
+	} = ctx;
 
-	return [
+	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		READ_CONFIG_SECTION,
-		CONVERSATION_MODE_SECTION,
+		getConversationModeSection(agentPreviewPath),
 		TOOL_TYPES_SECTION,
 		LLM_RESOLUTION_SECTION,
+		modelRecommendationsSection,
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		PROVIDER_TOOLS_SECTION,
 		MEMORY_PRESETS_SECTION,
 		INTEGRATIONS_SECTION,
 		RESEARCH_SECTION,
-		getConfigRulesSection(builderModel),
+		getConfigRulesSection(),
 		getSchemaReferenceSection(),
 		WORKFLOW_SECTION,
 		WRITE_CONFIG_SECTION,
@@ -585,5 +663,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		FEW_SHOT_FLOWS_SECTION,
 		IMPORTANT_SECTION,
 		RESPONSE_STYLE_SECTION,
-	].join('\n\n');
+	];
+
+	return sections.filter((section): section is string => section !== null).join('\n\n');
 }

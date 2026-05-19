@@ -75,18 +75,6 @@ export interface NewCredentialValue {
 }
 
 // =============================================================================
-// Placeholder Values
-// =============================================================================
-
-/**
- * Placeholder for values the user needs to fill in.
- */
-export interface PlaceholderValue {
-	readonly __placeholder: true;
-	readonly hint: string;
-}
-
-// =============================================================================
 // Error Handling
 // =============================================================================
 
@@ -432,7 +420,10 @@ export interface WorkflowContext {
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>;
+	credentials?: Record<
+		string,
+		string | CredentialReference | NewCredentialValue | { value: string }
+	>;
 	name?: string;
 	position?: [number, number];
 	webhookId?: string;
@@ -805,7 +796,8 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a branch directly to a specific input index.
  */
 export type IfElseTarget =
 	| null
@@ -817,10 +809,12 @@ export type IfElseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a case directly to a specific input index.
  */
 export type SwitchCaseTarget =
 	| null
@@ -832,7 +826,8 @@ export type SwitchCaseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
  * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,
@@ -1185,7 +1180,7 @@ export type StickyFn = (
 	config?: StickyNoteConfig,
 ) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
 
-export type PlaceholderFn = (hint: string) => PlaceholderValue;
+export type PlaceholderFn = (hint: string) => string;
 
 export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 

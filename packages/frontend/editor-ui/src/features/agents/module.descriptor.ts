@@ -1,10 +1,12 @@
 import { i18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
@@ -129,6 +131,12 @@ export const AgentsModule: FrontendModuleDescription = {
 					component: AgentBuilderView,
 				},
 				{
+					name: AGENT_PREVIEW_VIEW,
+					path: 'preview',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
 					name: AGENT_SESSIONS_LIST_VIEW,
 					path: 'sessions',
 					component: AgentSessionsListView,
@@ -164,6 +172,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				label: 'Agents',
 				value: AGENTS_LIST_VIEW,
 				preview: true,
+				insertAfter: VIEWS.WORKFLOWS,
 				to: {
 					name: AGENTS_LIST_VIEW,
 				},
@@ -174,6 +183,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				label: 'Agents',
 				value: PROJECT_AGENTS,
 				preview: true,
+				insertAfter: VIEWS.PROJECTS_WORKFLOWS,
 				dynamicRoute: {
 					name: PROJECT_AGENTS,
 					includeProjectId: true,

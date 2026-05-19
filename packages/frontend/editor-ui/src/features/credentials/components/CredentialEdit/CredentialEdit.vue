@@ -31,10 +31,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -73,6 +70,13 @@ import get from 'lodash/get';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
+
+const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
+	'scope',
+	'customScopes',
+	'enabledScopes',
+	'customScopesNotice',
+]);
 
 type Props = {
 	modalName: string;
@@ -129,15 +133,14 @@ const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
-const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.activeNode) return ndvStore.activeNode;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	if (isCredentialModalState(modalState) && modalState.contextNode) {
+		return modalState.contextNode;
+	}
 	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
 	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
 });
@@ -283,6 +286,10 @@ const managedOAuthAvailable = computed(() => {
 		false
 	);
 });
+
+const isManagedOAuthMode = computed(
+	() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
+);
 
 const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
 const credentialProperties = computed(() => {
@@ -573,6 +580,13 @@ async function beforeClose() {
 
 function displayCredentialParameter(parameter: INodeProperties): boolean {
 	if (parameter.type === 'hidden') {
+		return false;
+	}
+
+	if (
+		MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
+		(isEditingManagedCredential.value || isManagedOAuthMode.value)
+	) {
 		return false;
 	}
 
@@ -893,7 +907,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	const appliedAuthType = pendingAuthType.value;
-	if (appliedAuthType && contextNode.value && workflowDocumentStore.value) {
+	if (appliedAuthType && contextNode.value) {
 		updateNodeAuthType(
 			workflowDocumentStore.value.updateNodeProperties,
 			contextNode.value,
@@ -1512,6 +1526,7 @@ const { width } = useElementSize(credNameRef);
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@claimed="closeDialog"
 						@update:is-resolvable="onResolvableChange"
 					/>
 				</div>

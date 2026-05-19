@@ -55,14 +55,21 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			const result = await nodeCatalogService.searchNodes(queries);
+			const { results, queriesWithNoResults } = await nodeCatalogService.searchNodes(queries);
 
-			telemetryPayload.results = { success: true, data: { queryCount: queries.length } };
+			telemetryPayload.results = {
+				success: true,
+				data: {
+					queryCount: queries.length,
+					noResultQueryCount: queriesWithNoResults.length,
+					queriesWithNoResults,
+				},
+			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: result }],
-				structuredContent: { results: result },
+				content: [{ type: 'text', text: results }],
+				structuredContent: { results },
 			};
 		} catch (error) {
 			telemetryPayload.results = {

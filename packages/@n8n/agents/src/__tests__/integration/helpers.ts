@@ -1,6 +1,3 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { describe as _describe } from 'vitest';
 import { z } from 'zod';
 
@@ -12,7 +9,7 @@ import {
 	type StreamChunk,
 	type AgentMessage,
 } from '../../index';
-import { SqliteMemory } from '../../storage/sqlite-memory';
+import { InMemoryMemory } from '../../runtime/memory-store';
 
 export type { StreamChunk };
 
@@ -415,26 +412,14 @@ export const collectTextDeltas = (chunks: StreamChunk[]): string => {
 		.join('');
 };
 
-export function createSqliteMemory(): {
-	memory: SqliteMemory;
+export function createInMemoryAgentMemory(): {
+	memory: InMemoryMemory;
 	cleanup: () => void;
-	url: string;
 } {
-	const dbPath = path.join(
-		os.tmpdir(),
-		`test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
-	);
-	const url = `file:${dbPath}`;
-	const memory = new SqliteMemory({ url });
 	return {
-		memory,
-		url,
+		memory: new InMemoryMemory(),
 		cleanup: () => {
-			try {
-				fs.unlinkSync(dbPath);
-			} catch {
-				// File may already be removed — ignore
-			}
+			// no-op for in-memory backend
 		},
 	};
 }
