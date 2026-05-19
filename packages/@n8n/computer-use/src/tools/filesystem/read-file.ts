@@ -47,7 +47,7 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 		const fileContent = await fs.readFile(resolvedPath);
 		const buffer = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
 
-		const binaryType = detectBinaryFileType(buffer);
+		const binaryType = detectBinaryFileType(filePath);
 		if (binaryType) {
 			return buildBinaryResult(resolvedPath, buffer, binaryType);
 		}

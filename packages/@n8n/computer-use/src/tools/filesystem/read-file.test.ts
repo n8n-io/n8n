@@ -157,53 +157,33 @@ describe('readFileTool', () => {
 		});
 
 		it('returns PNG as image content', async () => {
-			const pngHeader = Buffer.from([
-				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad, 0xbe, 0xef,
-			]);
-			mockStat(pngHeader.length);
-			mockReadFile(pngHeader);
+			const bytes = Buffer.from([0xde, 0xad, 0xbe, 0xef]);
+			mockStat(bytes.length);
+			mockReadFile(bytes);
 
 			const result = await readFileTool.execute({ filePath: 'pic.png' }, CONTEXT);
 			expect(result.content).toEqual([
-				{ type: 'image', data: pngHeader.toString('base64'), mimeType: 'image/png' },
+				{ type: 'image', data: bytes.toString('base64'), mimeType: 'image/png' },
 			]);
 		});
 
-		it('returns JPEG as image content', async () => {
-			const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
-			mockStat(jpegHeader.length);
-			mockReadFile(jpegHeader);
+		it.each([
+			['pic.jpg', 'image/jpeg'],
+			['pic.jpeg', 'image/jpeg'],
+			['pic.gif', 'image/gif'],
+			['pic.webp', 'image/webp'],
+		])('returns %s as image content with mime %s', async (filePath, mimeType) => {
+			mockStat(8);
+			mockReadFile(Buffer.alloc(8));
 
-			const result = await readFileTool.execute({ filePath: 'pic.jpg' }, CONTEXT);
-			expect(result.content[0]).toMatchObject({ type: 'image', mimeType: 'image/jpeg' });
-		});
-
-		it('returns GIF as image content', async () => {
-			const gifHeader = Buffer.concat([Buffer.from('GIF89a'), Buffer.alloc(10)]);
-			mockStat(gifHeader.length);
-			mockReadFile(gifHeader);
-
-			const result = await readFileTool.execute({ filePath: 'pic.gif' }, CONTEXT);
-			expect(result.content[0]).toMatchObject({ type: 'image', mimeType: 'image/gif' });
-		});
-
-		it('returns WebP as image content', async () => {
-			const webpHeader = Buffer.concat([
-				Buffer.from('RIFF'),
-				Buffer.from([0x10, 0x00, 0x00, 0x00]),
-				Buffer.from('WEBP'),
-			]);
-			mockStat(webpHeader.length);
-			mockReadFile(webpHeader);
-
-			const result = await readFileTool.execute({ filePath: 'pic.webp' }, CONTEXT);
-			expect(result.content[0]).toMatchObject({ type: 'image', mimeType: 'image/webp' });
+			const result = await readFileTool.execute({ filePath }, CONTEXT);
+			expect(result.content[0]).toMatchObject({ type: 'image', mimeType });
 		});
 
 		it('returns PDF as embedded resource', async () => {
-			const pdfHeader = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(20)]);
-			mockStat(pdfHeader.length);
-			mockReadFile(pdfHeader);
+			const bytes = Buffer.from('PDF-bytes');
+			mockStat(bytes.length);
+			mockReadFile(bytes);
 
 			const result = await readFileTool.execute({ filePath: 'doc.pdf' }, CONTEXT);
 			expect(result.content).toHaveLength(1);
@@ -214,29 +194,18 @@ describe('readFileTool', () => {
 			expect(item.type).toBe('resource');
 			expect(item.resource.mimeType).toBe('application/pdf');
 			expect(item.resource.uri.startsWith('file://')).toBe(true);
-			expect(item.resource.blob).toBe(pdfHeader.toString('base64'));
+			expect(item.resource.blob).toBe(bytes.toString('base64'));
 		});
 
-		it('returns MP3 as audio content', async () => {
-			const mp3Header = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(20)]);
-			mockStat(mp3Header.length);
-			mockReadFile(mp3Header);
+		it.each([
+			['song.mp3', 'audio/mpeg'],
+			['song.wav', 'audio/wav'],
+		])('returns %s as audio content with mime %s', async (filePath, mimeType) => {
+			mockStat(8);
+			mockReadFile(Buffer.alloc(8));
 
-			const result = await readFileTool.execute({ filePath: 'song.mp3' }, CONTEXT);
-			expect(result.content[0]).toMatchObject({ type: 'audio', mimeType: 'audio/mpeg' });
-		});
-
-		it('returns WAV as audio content', async () => {
-			const wavHeader = Buffer.concat([
-				Buffer.from('RIFF'),
-				Buffer.from([0x10, 0x00, 0x00, 0x00]),
-				Buffer.from('WAVE'),
-			]);
-			mockStat(wavHeader.length);
-			mockReadFile(wavHeader);
-
-			const result = await readFileTool.execute({ filePath: 'song.wav' }, CONTEXT);
-			expect(result.content[0]).toMatchObject({ type: 'audio', mimeType: 'audio/wav' });
+			const result = await readFileTool.execute({ filePath }, CONTEXT);
+			expect(result.content[0]).toMatchObject({ type: 'audio', mimeType });
 		});
 
 		it('rejects path traversal', async () => {

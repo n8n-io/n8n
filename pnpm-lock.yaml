@@ -1227,6 +1227,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
+      mime-types:
+        specifier: 'catalog:'
+        version: 3.0.2
       node-screenshots:
         specifier: ^0.2.8
         version: 0.2.8
@@ -1246,6 +1249,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/mime-types':
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.21
