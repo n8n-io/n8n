@@ -3,13 +3,13 @@ import { stringify } from 'flatted';
 import * as flattedAsync from '../flatted-async';
 import { parseFlatted, SIZE_THRESHOLD } from '../parse-flatted';
 
-jest.mock('../flatted-async');
+vi.mock('../flatted-async');
 
 describe('parseFlatted', () => {
-	const parseFlattedAsyncMock = jest.mocked(flattedAsync.parseFlattedAsync);
+	const parseFlattedAsyncMock = vi.mocked(flattedAsync.parseFlattedAsync);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should use sync flatted.parse for small data', async () => {

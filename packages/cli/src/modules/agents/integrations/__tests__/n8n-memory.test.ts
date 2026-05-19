@@ -676,6 +676,20 @@ describe('N8nMemory', () => {
 			expect(observationLockRepository.findOneBy).not.toHaveBeenCalled();
 		});
 
+		it('stores the task kind for scoped observation-log task locks', async () => {
+			const { updateQueryBuilder } = mockLockWrite({ updateAffected: 1 });
+
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'reflector', {
+				ttlMs: 60_000,
+				holderId: 'A',
+			});
+
+			expect(handle).toMatchObject({ taskKind: 'reflector', holderId: 'A' });
+			expect(updateQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ taskKind: 'reflector', holderId: 'A' }),
+			);
+		});
+
 		it('refuses a different holder while the lock is live', async () => {
 			mockLockWrite({ updateAffected: 0 });
 
@@ -727,6 +741,22 @@ describe('N8nMemory', () => {
 				scopeKind: 'resource',
 				scopeId: 't-1',
 				taskKind: 'observer',
+				holderId: 'A',
+			});
+		});
+
+		it('releases observation-log task locks by scope and holder', async () => {
+			await memory.releaseObservationLogTaskLock({
+				scopeKind: 'resource',
+				scopeId: 't-1',
+				taskKind: 'reflector',
+				holderId: 'A',
+				heldUntil: new Date(),
+			});
+			expect(observationLockRepository.delete).toHaveBeenCalledWith({
+				scopeKind: 'resource',
+				scopeId: 't-1',
+				taskKind: 'reflector',
 				holderId: 'A',
 			});
 		});

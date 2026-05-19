@@ -65,6 +65,7 @@ export type {
 	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
@@ -91,6 +92,7 @@ export {
 
 export type {
 	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogMarker,
@@ -101,6 +103,8 @@ export type {
 	ObservationLogScope,
 	ObservationLogScopeKind,
 	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
 	TokenCounter,
 } from './sdk/observation-log';
 export {
