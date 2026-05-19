@@ -515,6 +515,51 @@ describe('resultFromPostStreamError', () => {
 		});
 	});
 
+	it('keeps supporting subworkflow IDs when recovering after a later terminal submit failure', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: '/home/daytona/workspace/src/subworkflow.ts',
+				sourceHash: 'sub',
+				success: true,
+				workflowId: 'WF_SUB',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_MAIN',
+				referencedWorkflowIds: ['WF_SUB'],
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['setup required after later edit'],
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Stop editing and route to setup.',
+				}),
+			},
+		];
+
+		const result = resultFromLaterFailedMainSubmit({
+			failedAttempt: submitAttempts[2],
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeDefined();
+		expect(result!.outcome).toMatchObject({
+			workflowId: 'WF_MAIN',
+			submitted: true,
+			supportingWorkflowIds: ['WF_SUB'],
+		});
+	});
+
 	it('does not preserve an earlier saved workflow when the final submit failure is code-fixable', () => {
 		const submitAttempts: SubmitWorkflowAttempt[] = [
 			{
@@ -1003,6 +1048,51 @@ describe('settleMissingMainWorkflowSubmit', () => {
 		);
 		expect(onSuccessfulSubmit).toHaveBeenCalledWith(finalAttempt);
 		expect(result.outcome).toMatchObject({ submitted: true, workflowId: 'WF_CREATED' });
+	});
+
+	it('uses a recorded successful final attempt if the submit handler throws afterward', async () => {
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(),
+		});
+		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+		const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
+		const currentMainWorkflow = 'workflow code';
+		const finalAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: sourceHash(currentMainWorkflow),
+			success: true,
+			workflowId: 'WF_CREATED',
+		};
+		const submitTool = createSubmitTool(() => {
+			submitAttempts.set(MAIN_PATH, finalAttempt);
+			submitAttemptHistory.push(finalAttempt);
+			throw new Error('report failed');
+		});
+		const onSuccessfulSubmit = createSuccessfulSubmitHandler();
+
+		const result = await settleMissingMainWorkflowSubmit({
+			context,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: undefined,
+			mainWorkflowPath: MAIN_PATH,
+			initialMainWorkflowSnapshot: createMainWorkflowSnapshot(null),
+			currentMainWorkflow,
+			currentMainWorkflowHash: finalAttempt.sourceHash,
+			submitTool,
+			submitAttempts,
+			submitAttemptHistory,
+			finalText: 'Builder finished',
+			onSuccessfulSubmit,
+			onRecoveredSubmit: createRecoveredSubmitHandler(),
+		});
+
+		expect(onSuccessfulSubmit).toHaveBeenCalledWith(finalAttempt);
+		expect(result.outcome).toMatchObject({
+			submitted: true,
+			workflowId: 'WF_CREATED',
+		});
 	});
 
 	it('reports not_submitted when an existing preloaded workflow is unchanged', async () => {

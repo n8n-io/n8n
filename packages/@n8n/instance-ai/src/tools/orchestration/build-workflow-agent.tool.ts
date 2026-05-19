@@ -914,7 +914,19 @@ export function resultFromLaterFailedMainSubmit(input: {
 		`A later submit failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, preservedAttempt, text),
+		outcome: buildOutcome(
+			input.workItemId,
+			input.runId,
+			input.taskId,
+			preservedAttempt,
+			text,
+			supportingWorkflowIdsFromSubmitAttempts(
+				input.submitAttempts,
+				input.mainWorkflowPath,
+				preservedAttempt.workflowId,
+				preservedAttempt.referencedWorkflowIds,
+			),
+		),
 	};
 }
 
@@ -1027,6 +1039,34 @@ export async function settleMissingMainWorkflowSubmit(input: {
 		finalSubmit = (await input.submitTool.handler(submitInput, {})) as SubmitWorkflowOutput;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
+		const recordedAttempt = input.submitAttempts.get(input.mainWorkflowPath);
+		if (isFreshAttemptForHash(recordedAttempt, input.currentMainWorkflowHash)) {
+			if (recordedAttempt.success) {
+				return await input.onSuccessfulSubmit(recordedAttempt);
+			}
+
+			if (shouldRecoverSavedWorkflowAfterFailedSubmit(recordedAttempt)) {
+				const recovered = resultFromLaterFailedMainSubmit({
+					failedAttempt: recordedAttempt,
+					submitAttempts: input.submitAttemptHistory,
+					mainWorkflowPath: input.mainWorkflowPath,
+					workItemId: input.workItemId,
+					runId: input.runId,
+					taskId: input.taskId,
+				});
+				if (recovered) {
+					return await input.onRecoveredSubmit(recovered);
+				}
+			}
+
+			const recordedErrors = recordedAttempt.errors?.join(' ') ?? message;
+			const text = `Error: final submit of /src/workflow.ts failed. ${recordedErrors}`;
+			return await finalizeBuildResult(input.context, input.workItemId, {
+				text,
+				outcome: buildOutcome(input.workItemId, input.runId, input.taskId, recordedAttempt, text),
+			});
+		}
+
 		const text = `Error: final submit of /src/workflow.ts failed before recording an attempt. ${message}`;
 		const result = {
 			text,
