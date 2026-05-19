@@ -47,6 +47,7 @@ import {
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -279,13 +280,14 @@ const canToggleMcp = computed(
 	() => workflowPermissions.value.update && !props.readOnly && !props.data.isArchived,
 );
 
-const showMcpToggle = computed(
-	() => props.isMcpEnabled && (canToggleMcp.value || isAvailableInMCP.value),
-);
+const showMcpToggle = computed(() => canToggleMcp.value || isAvailableInMCP.value);
 
 const mcpTooltipContent = computed(() => {
 	if (!canToggleMcp.value) {
 		return locale.baseText('workflows.item.availableInMCP');
+	}
+	if (!props.isMcpEnabled) {
+		return locale.baseText('workflows.item.connectMcp.tooltip');
 	}
 	return isAvailableInMCP.value
 		? locale.baseText('workflows.item.disableMCPAccess')
@@ -445,6 +447,18 @@ async function toggleMCPAccess(enabled: boolean) {
 }
 
 async function onMcpToggleClick() {
+	if (!props.isMcpEnabled) {
+		toast.showToast({
+			title: locale.baseText('workflows.item.connectMcp.toast.title'),
+			message: locale.baseText('workflows.item.connectMcp.toast.message'),
+			type: 'info',
+			closeOnClick: true,
+			onClick: async () => {
+				await router.push({ name: MCP_SETTINGS_VIEW });
+			},
+		});
+		return;
+	}
 	await toggleMCPAccess(!isAvailableInMCP.value);
 }
 

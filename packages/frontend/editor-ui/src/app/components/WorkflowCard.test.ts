@@ -640,17 +640,41 @@ describe('WorkflowCard', () => {
 		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
 	});
 
-	it('should hide MCP toggle when module is disabled', () => {
+	it('should show MCP toggle as deselected and open a connect-MCP toast when module is disabled', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
-				availableInMCP: true,
+				availableInMCP: false,
 			},
 		});
 
-		const { queryByTestId } = renderComponent({ props: { data } });
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+			},
+		});
 
-		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toHaveAttribute('aria-pressed', 'false');
+
+		await userEvent.click(mcpToggle);
+
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
+		expect(toast.showToast).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Connect MCP to your instance',
+				type: 'info',
+				closeOnClick: true,
+				onClick: expect.any(Function),
+			}),
+		);
+
+		const showToastMock = vi.mocked(toast.showToast);
+		const onClick = showToastMock.mock.calls[0][0].onClick;
+		await onClick?.();
+		expect(router.push).toHaveBeenCalledWith({ name: 'McpSettings' });
 	});
 
 	it('should show MCP toggle as disabled when user cannot update but workflow is available', () => {
