@@ -1,22 +1,19 @@
-import { WorkflowRepository } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 /**
- * Exposes methods for common use cases to check in workflow lifecycle hooks.
+ * Exposes methods for common helpers to use in workflow lifecycle hooks.
  */
 @Service()
 export class WorkflowHookContextService {
-	constructor(private readonly workflowRepository: WorkflowRepository) {}
+	constructor(private readonly tagRepository: TagRepository) {}
 
-	async hasWorkflowTags(workflowId: string, tagNames: [string, ...string[]]): Promise<boolean> {
-		const result = await this.workflowRepository
-			.createQueryBuilder('workflow')
-			.innerJoin('workflow.tags', 'tag')
-			.where('workflow.id = :workflowId', { workflowId })
-			.andWhere('tag.name IN (:...tagNames)', { tagNames })
-			.select('COUNT(*)', 'matchingTagsCount')
-			.getRawOne<{ matchingTagsCount: string }>();
+	async getWorkflowTags(workflowId: string): Promise<string[]> {
+		const tags = await this.tagRepository.find({
+			where: { workflows: { id: workflowId } },
+			select: { name: true },
+		});
 
-		return Number(result?.matchingTagsCount ?? 0) === tagNames.length;
+		return tags.map(({ name }) => name);
 	}
 }
