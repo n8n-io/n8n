@@ -549,7 +549,7 @@ export class WorkflowRunner {
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 					const error = new ManualExecutionCancelledError(executionId);
 					await this.processError(
-						error,
+						error as ExecutionError,
 						new Date(),
 						data.executionMode,
 						executionId,
@@ -566,18 +566,13 @@ export class WorkflowRunner {
 						undefined,
 						abortController.signal,
 					);
-				} catch (error) {
-					if (abortController.signal.aborted) {
-						error = new ManualExecutionCancelledError(executionId);
-					} else {
-						error = new Error(`Job completion lost or timed out for execution ${executionId}`);
-					}
+				} catch (caught) {
+					let error =
+						caught instanceof Error
+							? caught
+							: new Error(`Unknown queue error for execution ${executionId}`);
 
-					if (
-						error instanceof Error &&
-						typeof error.message === 'string' &&
-						error.message.includes('job stalled more than maxStalledCount')
-					) {
+					if (error.message.includes('job stalled more than maxStalledCount')) {
 						error = new MaxStalledCountError(error);
 						this.eventService.emit('job-stalled', {
 							executionId: job.data.executionId,
@@ -585,6 +580,10 @@ export class WorkflowRunner {
 							hostId: this.instanceSettings.hostId,
 							jobId: job.id.toString(),
 						});
+					} else if (abortController.signal.aborted) {
+						error = new ManualExecutionCancelledError(executionId);
+					} else {
+						error = new Error(`Job completion lost or timed out for execution ${executionId}`);
 					}
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
@@ -592,7 +591,7 @@ export class WorkflowRunner {
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 
 					await this.processError(
-						error,
+						error as ExecutionError,
 						new Date(),
 						data.executionMode,
 						executionId,

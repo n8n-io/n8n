@@ -215,7 +215,10 @@ export class ScalingService {
 		abortSignal?: AbortSignal,
 	): Promise<JobFinishedProps> {
 		const result = this.jobResults.get(executionId);
-		if (result) return result;
+		if (result) {
+			this.jobResults.delete(executionId);
+			return result;
+		}
 
 		return await new Promise<JobFinishedProps>((resolve, reject) => {
 			if (abortSignal?.aborted) {
@@ -228,6 +231,7 @@ export class ScalingService {
 			const interval = setInterval(() => {
 				const result = this.jobResults.get(executionId);
 				if (result) {
+					this.jobResults.delete(executionId);
 					cleanup();
 					resolve(result);
 					return;
