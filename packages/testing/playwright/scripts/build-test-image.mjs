@@ -56,7 +56,8 @@ function buildTestImage(targetImage) {
 		writeFileSync(
 			dockerfilePath,
 			`FROM ${targetImage}
-COPY temp-build-e2e/e2e.controller.js /usr/local/lib/node_modules/n8n/dist/controllers/e2e.controller.js`,
+COPY e2e.controller.js /usr/local/lib/node_modules/n8n/dist/controllers/e2e.controller.js
+`,
 		);
 
 		// Build and replace image
