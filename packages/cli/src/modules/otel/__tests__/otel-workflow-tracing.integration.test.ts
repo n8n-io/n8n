@@ -16,6 +16,8 @@ import type { OtelTestProvider } from './support/otel-test-provider';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { ExecutionRepository } from '@n8n/db';
 import { createTeamProject, createWorkflow } from '@n8n/backend-test-utils';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
@@ -92,5 +94,153 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan).toBeDefined();
 		expect(workflowSpan.spanContext().traceId).toBe(inboundTraceId);
+	});
+});
+
+describe('Custom Telemetry Tags', () => {
+	const createWorkflowWithCustomTagsFixture = () => ({
+		nodes: [
+			{
+				parameters: {},
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				id: uuid(),
+				name: 'Trigger',
+			},
+			{
+				parameters: { category: 'doNothing' },
+				type: 'n8n-nodes-base.debugHelper',
+				typeVersion: 1,
+				position: [200, 0] as [number, number],
+				id: uuid(),
+				name: 'DebugHelper',
+				customTelemetryTags: {
+					tag: [
+						{ key: 'environment', value: 'production' },
+						{ key: 'team', value: 'backend' },
+						{ key: 'env', value: '={{ $json.env }}' },
+					],
+				},
+			},
+		],
+		connections: {
+			Trigger: {
+				main: [
+					[
+						{
+							node: 'DebugHelper',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		pinData: {},
+	});
+
+	const createMultiNodeCustomTagsFixture = () => ({
+		nodes: [
+			{
+				parameters: {},
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				id: uuid(),
+				name: 'Trigger',
+			},
+			{
+				parameters: { category: 'doNothing' },
+				type: 'n8n-nodes-base.debugHelper',
+				typeVersion: 1,
+				position: [200, 0] as [number, number],
+				id: uuid(),
+				name: 'HelperA',
+				customTelemetryTags: {
+					tag: [{ key: 'service', value: 'auth' }],
+				},
+			},
+			{
+				parameters: { category: 'doNothing' },
+				type: 'n8n-nodes-base.debugHelper',
+				typeVersion: 1,
+				position: [400, 0] as [number, number],
+				id: uuid(),
+				name: 'HelperB',
+				customTelemetryTags: {
+					tag: [{ key: 'tier', value: 'premium' }],
+				},
+			},
+		],
+		connections: {
+			Trigger: {
+				main: [
+					[
+						{
+							node: 'HelperA',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+						{
+							node: 'HelperB',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		pinData: {},
+	});
+
+	it('should attach static custom telemetry tags as node span attributes', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWorkflowWithCustomTagsFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const nodeSpan = otel
+			.getFinishedSpans()
+			.find((s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper')!;
+
+		expect(nodeSpan).toBeDefined();
+		expect(nodeSpan.attributes['n8n.node.custom.environment']).toBe('production');
+		expect(nodeSpan.attributes['n8n.node.custom.team']).toBe('backend');
+	});
+
+	it('should evaluate expression-based custom telemetry tags', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWorkflowWithCustomTagsFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
+			triggerData: { env: 'staging' },
+		});
+		await waitForExecution(executionRepository, executionId);
+
+		const nodeSpan = otel
+			.getFinishedSpans()
+			.find((s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper')!;
+
+		expect(nodeSpan).toBeDefined();
+		expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('staging');
+		expect(nodeSpan.attributes['n8n.node.custom.environment']).toBe('production');
+	});
+
+	it('should attach custom tags to the correct node spans in a multi-node workflow', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeCustomTagsFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans().filter((s) => s.name === 'node.execute');
+		const helperA = spans.find((s) => s.attributes['n8n.node.name'] === 'HelperA')!;
+		const helperB = spans.find((s) => s.attributes['n8n.node.name'] === 'HelperB')!;
+
+		expect(helperA).toBeDefined();
+		expect(helperB).toBeDefined();
+		expect(helperA.attributes['n8n.node.custom.service']).toBe('auth');
+		expect(helperA.attributes['n8n.node.custom.tier']).toBeUndefined();
+		expect(helperB.attributes['n8n.node.custom.tier']).toBe('premium');
+		expect(helperB.attributes['n8n.node.custom.service']).toBeUndefined();
 	});
 });
