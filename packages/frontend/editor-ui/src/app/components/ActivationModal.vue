@@ -18,12 +18,10 @@ import {
 
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
-import { useWorkflowId } from '../composables/useWorkflowId';
 
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
-const workflowId = useWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -72,7 +70,7 @@ const triggerContent = computed(() => {
 
 const showExecutionsList = async () => {
 	const activeExecution = executionsStore.activeExecution;
-	const currentWorkflow = workflowId.value;
+	const currentWorkflow = workflowDocumentStore.value.workflowId;
 
 	if (activeExecution) {
 		router

@@ -28,7 +28,7 @@ import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const locale = useI18n();
 const ndvStore = injectNDVStore();
@@ -66,7 +66,7 @@ const emit = defineEmits<{
 	delete: [];
 }>();
 
-const workflowId = useWorkflowId();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
@@ -415,7 +415,7 @@ const handleDelete = (optionName: string, index?: number) => {
 
 const trackFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowId.value,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
@@ -423,7 +423,7 @@ const trackFieldAdded = () => {
 const trackFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowId.value,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };

@@ -27,7 +27,7 @@ import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/reso
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
-import { useWorkflowId } from '../composables/useWorkflowId';
+import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
@@ -35,7 +35,7 @@ const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const versionsStore = useVersionsStore();
-const workflowId = useWorkflowId();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
 const trackHelpItemClick = (itemType: string) => {
 	telemetry.track('User clicked help resource', {
 		type: itemType,
-		workflow_id: workflowId.value,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 };
 
