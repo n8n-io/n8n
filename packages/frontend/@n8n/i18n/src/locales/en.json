@@ -5907,6 +5907,7 @@
 	"agents.chat.misconfigured.missing.instructions": "Instructions",
 	"agents.chat.misconfigured.missing.model": "Model",
 	"agents.chat.misconfigured.missing.credential": "Credential",
+	"agents.chat.misconfigured.missing.episodicMemory.credential": "Cross-session recall credential",
 	"agents.chat.misconfigured.missing.agent": "Agent",
 	"agents.chat.misconfigured.missing.skill": "Skill ({id})",
 	"agents.chat.misconfigured.openBuild": "Finish setup in Build",

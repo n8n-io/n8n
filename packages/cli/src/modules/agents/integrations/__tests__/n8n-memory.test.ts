@@ -2,7 +2,7 @@ import type { NewObservationLogEntry } from '@n8n/agents';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import type { AgentMemoryEntryCursorEntity } from '../../entities/agent-memory-entry-cursor.entity';
+import { AgentMemoryEntryCursorEntity } from '../../entities/agent-memory-entry-cursor.entity';
 import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
 import { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
@@ -478,18 +478,28 @@ describe('N8nMemory', () => {
 				legacyScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, legacyScope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentObservationEntity, resourceScope);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				5,
+				4,
+				AgentMemoryEntryCursorEntity,
+				legacyScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentObservationEntity, resourceScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				6,
 				AgentObservationCursorEntity,
 				resourceScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				6,
+				7,
 				AgentObservationLockEntity,
 				resourceScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(7, AgentThreadEntity, { id: 'thread-1' });
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				8,
+				AgentMemoryEntryCursorEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(9, AgentThreadEntity, { id: 'thread-1' });
 			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
@@ -550,18 +560,28 @@ describe('N8nMemory', () => {
 				legacyScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, legacyScope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentObservationEntity, resourceScope);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				5,
+				4,
+				AgentMemoryEntryCursorEntity,
+				legacyScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentObservationEntity, resourceScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				6,
 				AgentObservationCursorEntity,
 				resourceScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				6,
+				7,
 				AgentObservationLockEntity,
 				resourceScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(7, AgentThreadEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				8,
+				AgentMemoryEntryCursorEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(9, AgentThreadEntity, {
 				id: Like('test-agent-1%'),
 			});
 			expect(observationRepository.delete).not.toHaveBeenCalled();

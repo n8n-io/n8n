@@ -74,7 +74,6 @@ export function resolveEpisodicMemoryConfig(
 		halfLifeDays: config.halfLifeDays ?? DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
 		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 		maxEntryLength: config.maxEntryLength ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
-		sync: config.sync,
 		embedder:
 			config.embedder ?? createEmbeddingModel(embeddingModel, config.embeddingProviderOptions),
 		embeddingModel,

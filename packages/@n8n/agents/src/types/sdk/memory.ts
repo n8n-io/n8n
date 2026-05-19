@@ -313,7 +313,6 @@ export interface EpisodicMemoryConfig {
 	halfLifeDays?: number;
 	maxEntriesPerRun?: number;
 	maxEntryLength?: number;
-	sync?: boolean;
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;

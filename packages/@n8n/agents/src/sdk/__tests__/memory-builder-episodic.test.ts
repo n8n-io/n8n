@@ -101,7 +101,6 @@ describe('Memory builder — episodic memory', () => {
 				halfLifeDays: 14,
 				maxEntriesPerRun: 2,
 				maxEntryLength: 400,
-				sync: true,
 				embedder,
 				embeddingModel: 'custom/model',
 				extract,
@@ -116,7 +115,6 @@ describe('Memory builder — episodic memory', () => {
 			halfLifeDays: 14,
 			maxEntriesPerRun: 2,
 			maxEntryLength: 400,
-			sync: true,
 			embeddingModel: 'custom/model',
 			prompts,
 		});

@@ -45,8 +45,9 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { isUniqueConstraintError } from '@/response-helper';
 
-import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
+import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
+import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
@@ -145,6 +146,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				await trx.delete(AgentObservationEntity, scope);
 				await trx.delete(AgentObservationCursorEntity, scope);
 				await trx.delete(AgentObservationLockEntity, scope);
+				await trx.delete(AgentMemoryEntryCursorEntity, scope);
 			}
 			await trx.delete(AgentThreadEntity, { id: threadId });
 		});
@@ -162,6 +164,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				await trx.delete(AgentObservationEntity, scope);
 				await trx.delete(AgentObservationCursorEntity, scope);
 				await trx.delete(AgentObservationLockEntity, scope);
+				await trx.delete(AgentMemoryEntryCursorEntity, scope);
 			}
 			await trx.delete(AgentThreadEntity, { id: scopeId });
 		});

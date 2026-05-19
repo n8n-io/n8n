@@ -1098,14 +1098,11 @@ describe('AgentsService', () => {
 	});
 
 	describe('clearTestChatMessages', () => {
-		it('deletes only the caller’s messages on their test-chat thread', async () => {
+		it('deletes the caller’s test-chat thread so derived memory is cleaned too', async () => {
 			await service.clearTestChatMessages(agentId, userId);
 
-			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(
-				chatThreadId(agentId, userId),
-				userId,
-			);
-			expect(n8nMemory.deleteThread).not.toHaveBeenCalled();
+			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId, userId));
+			expect(n8nMemory.deleteMessagesByThread).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1217,6 +1214,66 @@ describe('AgentsService', () => {
 			);
 
 			expect(result.missing).toContain('credential');
+		});
+
+		it('flags missing episodic memory credential when cross-session recall is enabled', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'missing-embedding-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).toContain('episodicMemory.credential');
+		});
+
+		it('accepts episodic memory credential when cross-session recall credential exists', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }, { id: 'embedding-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'embedding-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).not.toContain('episodicMemory.credential');
 		});
 
 		it('flags config skill refs that have no stored body', async () => {
