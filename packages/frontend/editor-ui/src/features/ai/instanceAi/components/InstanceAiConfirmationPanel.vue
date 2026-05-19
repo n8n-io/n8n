@@ -3,9 +3,10 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
+import { PlanEditControllerKey } from '../planEditContext';
 import { useToolLabel } from '../toolLabels';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -22,6 +23,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
+const planEditController = inject(PlanEditControllerKey, null);
 
 function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
@@ -258,22 +260,11 @@ function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
-function handlePlanRequestChanges(
-	conf: InstanceAiConfirmation,
-	feedback: string,
-	numTasks: number,
-) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'request-changes' }],
-		[],
-		{ num_tasks: numTasks, feedback },
-	);
-	thread.resolveConfirmation(conf.requestId, 'denied');
-	void thread.confirmAction(conf.requestId, {
-		kind: 'approval',
-		approved: false,
-		userInput: feedback,
+function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
+	planEditController?.startPlanEdit({
+		requestId: conf.requestId,
+		inputThreadId: conf.inputThreadId,
+		taskCount: numTasks,
 	});
 }
 
@@ -352,10 +343,9 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						)
 					"
 					@request-changes="
-						(feedback) =>
-							handlePlanRequestChanges(
+						() =>
+							handlePlanAskForEdits(
 								chunk.item.toolCall.confirmation,
-								feedback,
 								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
 							)
 					"

@@ -11,6 +11,7 @@ type InputTestProps = {
 	isStreaming: boolean;
 	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
+	isPlanEditMode: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -22,6 +23,7 @@ const defaultProps = (): InputTestProps => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
+	isPlanEditMode: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -376,6 +378,50 @@ describe('InstanceAiInput', () => {
 		await userEvent.click(getByTestId('instance-ai-research-toggle'));
 
 		expect(emitted()['toggle-research-mode']).toEqual([[]]);
+	});
+
+	it('uses plan edit mode for focused plan feedback', async () => {
+		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				isPlanEditMode: true,
+				isStreaming: true,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+
+		expect(getByTestId('instance-ai-plan-edit-context')).toHaveTextContent('Plan edits');
+		expect(textbox).toHaveAttribute('placeholder', 'What should we change?');
+		expect(queryByTestId('instance-ai-research-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
+
+		await userEvent.type(textbox, 'Make the first workflow simpler');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		expect(emitted().submit).toEqual([['Make the first workflow simpler', undefined]]);
+	});
+
+	it('emits cancel-plan-edit and clears the draft when the plan edit context is closed', async () => {
+		const { emitted, getByRole, getByTestId, rerender } = renderComponent({
+			props: {
+				isPlanEditMode: true,
+				isStreaming: true,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Change the plan');
+		await userEvent.click(getByTestId('instance-ai-plan-edit-cancel'));
+
+		expect(emitted()['cancel-plan-edit']).toEqual([[]]);
+
+		await rerender(inputProps({ isPlanEditMode: false }));
+
+		expect(textbox).toHaveValue('');
 	});
 
 	it('emits stop when the streaming stop button is clicked', async () => {

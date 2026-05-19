@@ -279,6 +279,31 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
 	});
 
+	test('currentTasks deduplicates repeated task descriptions from task updates', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tasks-update',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					tasks: {
+						tasks: [
+							{ id: 'task-1', description: 'Build workflow', status: 'todo' },
+							{ id: 'task-2', description: 'Verify workflow', status: 'todo' },
+							{ id: 'task-3', description: 'Build workflow', status: 'in_progress' },
+						],
+					},
+				},
+			}),
+		);
+
+		expect(activeRuntime(registry).currentTasks?.tasks).toEqual([
+			{ id: 'task-3', description: 'Build workflow', status: 'in_progress' },
+			{ id: 'task-2', description: 'Verify workflow', status: 'todo' },
+		]);
+	});
+
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
 		// First, create two assistant messages via normal events
 		capturedOnMessage!(

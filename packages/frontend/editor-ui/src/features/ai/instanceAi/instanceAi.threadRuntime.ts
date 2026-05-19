@@ -113,6 +113,18 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
 	return null;
 }
 
+function dedupeTaskList(tasks: TaskList | null): TaskList | null {
+	if (!tasks) return null;
+
+	const dedupedTasks = new Map<string, TaskList['tasks'][number]>();
+	for (const task of tasks.tasks) {
+		const key = task.description.trim().toLowerCase() || task.id;
+		dedupedTasks.set(key, task);
+	}
+
+	return dedupedTasks.size === tasks.tasks.length ? tasks : { tasks: [...dedupedTasks.values()] };
+}
+
 interface DebugEventEntry {
 	timestamp: string;
 	event: InstanceAiEvent;
@@ -276,8 +288,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		});
 
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
-	const currentTasks = computed(
-		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
+	const currentTasks = computed(() =>
+		dedupeTaskList(latestTasks.value ?? findLatestTasksFromMessages(messages.value)),
 	);
 
 	/**

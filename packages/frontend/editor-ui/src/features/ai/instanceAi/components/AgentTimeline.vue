@@ -7,18 +7,19 @@ import type {
 } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
+import { PlanEditControllerKey } from '../planEditContext';
 import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import DelegateCard from './DelegateCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
@@ -26,6 +27,7 @@ const i18n = useI18n();
 const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const planEditController = inject(PlanEditControllerKey, null);
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -105,6 +107,73 @@ const toolCallsById = computed(() => {
 	return map;
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isPlannedTaskArg(value: unknown): value is PlannedTaskArg {
+	if (!isRecord(value)) return false;
+	return (
+		typeof value.id === 'string' &&
+		typeof value.title === 'string' &&
+		typeof value.kind === 'string' &&
+		typeof value.spec === 'string' &&
+		isStringArray(value.deps) &&
+		(value.tools === undefined || isStringArray(value.tools)) &&
+		(value.workflowId === undefined || typeof value.workflowId === 'string')
+	);
+}
+
+function getPlannedTasksFromArgs(tc: InstanceAiToolCallState): PlannedTaskArg[] | undefined {
+	const tasks = tc.args.tasks;
+	if (!Array.isArray(tasks)) return undefined;
+	const plannedTasks = tasks.filter(isPlannedTaskArg);
+	return plannedTasks.length > 0 ? plannedTasks : undefined;
+}
+
+function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
+	return (
+		tc.confirmation?.planItems ??
+		getPlannedTasksFromArgs(tc) ??
+		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks) ??
+		[]
+	);
+}
+
+function getPlanTaskCount(tc: InstanceAiToolCallState): number {
+	return getPlanTasks(tc).length || tc.confirmation?.tasks?.tasks.length || 0;
+}
+
+function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
+	const requestId = tc.confirmation?.requestId;
+	const localStatus = requestId ? thread.resolvedConfirmationIds.get(requestId) : undefined;
+
+	if (localStatus === 'approved' || tc.confirmationStatus === 'approved') return 'approved';
+	if (localStatus === 'denied' || tc.confirmationStatus === 'denied') return 'changes-requested';
+
+	return 'pending';
+}
+
+function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
+	const requestId = tc.confirmation?.requestId;
+	return Boolean(
+		requestId &&
+			getPlanReviewStatus(tc) === 'changes-requested' &&
+			(planEditController?.updatingPlanRequestIds.value.has(requestId) || thread.isStreaming),
+	);
+}
+
+function isPlanReviewReadOnly(tc: InstanceAiToolCallState): boolean {
+	const requestId = tc.confirmation?.requestId;
+	return (
+		!tc.isLoading || (requestId !== undefined && thread.resolvedConfirmationIds.has(requestId))
+	);
+}
+
 /** Index children by agentId for O(1) lookup and proper reactivity tracking. */
 const childrenById = computed(() => {
 	const map: Record<string, InstanceAiAgentNode> = {};
@@ -118,7 +187,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
 
-	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
+	const numTasks = getPlanTaskCount(tc);
 	const eventProps = {
 		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
@@ -138,10 +207,24 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	telemetry.track('User finished providing input', eventProps);
 
 	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	if (planEditController?.activePlanEdit.value?.requestId === requestId) {
+		planEditController.cancelPlanEdit();
+	}
 	void thread.confirmAction(requestId, {
 		kind: 'approval',
 		approved,
 		...(feedback ? { userInput: feedback } : {}),
+	});
+}
+
+function handlePlanRequestChanges(tc: InstanceAiToolCallState) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId || isPlanReviewReadOnly(tc)) return;
+
+	planEditController?.startPlanEdit({
+		requestId,
+		inputThreadId: tc.confirmation?.inputThreadId,
+		taskCount: getPlanTaskCount(tc),
 	});
 }
 
@@ -216,15 +299,12 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				     (no planner child agent), that suppression would otherwise hide it. -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
-					:planned-tasks="
-						toolCallsById[entry.toolCallId].confirmation?.planItems ??
-						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
-						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
-						[]
-					"
-					:read-only="!toolCallsById[entry.toolCallId].isLoading"
+					:planned-tasks="getPlanTasks(toolCallsById[entry.toolCallId])"
+					:status="getPlanReviewStatus(toolCallsById[entry.toolCallId])"
+					:updating="isPlanReviewUpdating(toolCallsById[entry.toolCallId])"
+					:read-only="isPlanReviewReadOnly(toolCallsById[entry.toolCallId])"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
-					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+					@request-changes="handlePlanRequestChanges(toolCallsById[entry.toolCallId])"
 				/>
 				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
@@ -272,16 +352,16 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:key="plannerConfirmation?.confirmation?.requestId ?? 'plan-loading'"
 					:planned-tasks="
 						plannerConfirmation?.confirmation?.planItems ??
-						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
+						props.agentNode.planItems ??
 						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
 						[]
 					"
 					:loading="!plannerConfirmation"
-					:read-only="!!plannerConfirmation && !plannerConfirmation.isLoading"
+					:status="plannerConfirmation ? getPlanReviewStatus(plannerConfirmation) : 'pending'"
+					:updating="!!plannerConfirmation && isPlanReviewUpdating(plannerConfirmation)"
+					:read-only="!!plannerConfirmation && isPlanReviewReadOnly(plannerConfirmation)"
 					@approve="plannerConfirmation && handlePlanConfirm(plannerConfirmation, true)"
-					@request-changes="
-						(fb) => plannerConfirmation && handlePlanConfirm(plannerConfirmation, false, fb)
-					"
+					@request-changes="plannerConfirmation && handlePlanRequestChanges(plannerConfirmation)"
 				/>
 
 				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->
