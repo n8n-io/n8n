@@ -24,10 +24,36 @@ export class InboundSecretContextHook implements IContextEstablishmentHook {
 	}
 
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-		const items = options.triggerItems ?? [];
-		const clearedItems = this.inboundSecretsService.strip(items, options.triggerNode.type);
+		const { triggerItems, artifactsByItem } = this.inboundSecretsService.strip(
+			options.triggerItems ?? [],
+			options.triggerNode.type,
+			this.resolveDescriptionPaths(options),
+		);
+
+		if (!artifactsByItem.some((m) => Object.keys(m).length > 0)) return { triggerItems };
+
 		return {
-			triggerItems: clearedItems,
+			triggerItems,
+			contextUpdate: {
+				secureArtifacts: {
+					version: 1,
+					artifacts: { [options.triggerNode.name]: artifactsByItem },
+				},
+			},
 		};
+	}
+
+	// Fail open on unknown node type so admin rules still apply.
+	private resolveDescriptionPaths(options: ContextEstablishmentOptions): string[] {
+		try {
+			return (
+				options.workflow.nodeTypes.getByNameAndVersion(
+					options.triggerNode.type,
+					options.triggerNode.typeVersion,
+				).description.sensitiveOutputFields ?? []
+			);
+		} catch {
+			return [];
+		}
 	}
 }
