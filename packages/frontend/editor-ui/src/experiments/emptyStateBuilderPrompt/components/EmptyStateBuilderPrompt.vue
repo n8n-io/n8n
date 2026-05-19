@@ -15,7 +15,6 @@ import { useEmptyStateBuilderPromptStore } from '../stores/emptyStateBuilderProm
 const props = defineProps<{
 	projectId?: string;
 	parentFolderId?: string;
-	showBuildAgentButton?: boolean;
 }>();
 
 const router = useRouter();
@@ -27,7 +26,6 @@ const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const emit = defineEmits<{
 	submit: [prompt: string];
 	startFromScratch: [];
-	buildAgent: [];
 }>();
 
 const textInputValue = ref<string>('');
@@ -59,10 +57,6 @@ function onTemplate() {
 
 function onImportFromFile() {
 	importFileRef.value?.click();
-}
-
-function onBuildAgent() {
-	emit('buildAgent');
 }
 
 function handleFileImport() {
@@ -142,16 +136,6 @@ function handleFileImport() {
 						{{ i18n.baseText('emptyStateBuilderPrompt.fromScratch') }}
 					</N8nButton>
 				</N8nTooltip>
-				<N8nButton
-					v-if="props.showBuildAgentButton"
-					variant="subtle"
-					size="small"
-					icon="robot"
-					data-test-id="build-agent-button"
-					@click="onBuildAgent"
-				>
-					{{ i18n.baseText('workflows.empty.buildAgent') }}
-				</N8nButton>
 				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.templateTooltip')">
 					<N8nButton variant="subtle" size="small" icon="layout-template" @click="onTemplate">
 						{{ i18n.baseText('emptyStateBuilderPrompt.template') }}
