@@ -69,6 +69,10 @@ function projectRow(
 	return row;
 }
 
+function rowKey(row: Record<string, string>): string {
+	return JSON.stringify(row);
+}
+
 export async function extractRowsFromExecutionHistory(
 	ctx: InstanceAiContext,
 	input: ExtractRowsInput,
@@ -85,6 +89,7 @@ export async function extractRowsFromExecutionHistory(
 	});
 
 	const rows: Array<Record<string, string>> = [];
+	const seenRows = new Set<string>();
 	let scannedExecutions = 0;
 
 	for (const summary of summaries) {
@@ -116,7 +121,11 @@ export async function extractRowsFromExecutionHistory(
 		const agentJson = agentItem !== undefined && isRecord(agentItem) ? agentItem.json : undefined;
 
 		const row = projectRow(parentJson, agentJson, input.inputColumns, input.expectedToActualPairs);
-		if (row) rows.push(row);
+		if (!row) continue;
+		const key = rowKey(row);
+		if (seenRows.has(key)) continue;
+		seenRows.add(key);
+		rows.push(row);
 	}
 
 	return { rows, scannedExecutions };

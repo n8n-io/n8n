@@ -1,8 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 jest.mock('../../../utils/eval-agents', () => {
-	const actual: object = jest.requireActual('../../../utils/eval-agents');
-	return { ...actual, createEvalAgent: jest.fn(), extractText: jest.fn() };
+	return {
+		createEvalAgent: jest.fn(),
+		extractText: jest.fn(),
+		HAIKU_MODEL: 'test-haiku-model',
+	};
 });
 
 import { createEvalAgent, extractText } from '../../../utils/eval-agents';
@@ -30,15 +33,15 @@ const WF: WorkflowJSON = { name: 'Test', nodes: [], connections: {} } as unknown
 describe('generateSampleRows', () => {
 	beforeEach(() => jest.clearAllMocks());
 
-	it('returns parsed rows from valid JSON across batches', async () => {
-		setupAgentMock(JSON.stringify([{ input: 'q1', expected_output: 'a1' }]));
+	it('returns parsed input rows from valid JSON across batches', async () => {
+		setupAgentMock(JSON.stringify([{ input: 'q1' }]));
 		const rows = await generateSampleRows({
 			workflow: WF,
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
 		});
 		expect(rows.length).toBeGreaterThan(0);
-		expect(rows[0]).toEqual({ input: 'q1', expected_output: 'a1' });
+		expect(rows[0]).toEqual({ input: 'q1', expected_output: '' });
 	});
 
 	it('coerces non-string cell values to strings', async () => {
@@ -48,7 +51,7 @@ describe('generateSampleRows', () => {
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
 		});
-		expect(rows[0]).toEqual({ input: '42', expected_output: 'true' });
+		expect(rows[0]).toEqual({ input: '42', expected_output: '' });
 	});
 
 	it('fills missing columns with empty strings', async () => {
@@ -122,15 +125,37 @@ const BATCH_CONTEXT: AgentContext = {
 describe('runBatch', () => {
 	beforeEach(() => jest.clearAllMocks());
 
-	it('returns parsed rows on success', async () => {
-		setupAgentMock(JSON.stringify([{ input: 'q1', expected_output: 'a1' }]));
+	it('returns parsed input rows on success', async () => {
+		setupAgentMock(JSON.stringify([{ input: 'q1' }]));
 		const rows = await runBatch({
 			facet: BATCH_FACET,
 			rowCount: 1,
 			context: BATCH_CONTEXT,
 			columns: ['input', 'expected_output'],
 		});
-		expect(rows).toEqual([{ input: 'q1', expected_output: 'a1' }]);
+		expect(rows).toEqual([{ input: 'q1', expected_output: '' }]);
+	});
+
+	it('does not send expected output columns to the sample-row agent', async () => {
+		const generate = jest.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify([{ input: 'q1' }]));
+
+		await runBatch({
+			facet: BATCH_FACET,
+			rowCount: 1,
+			context: BATCH_CONTEXT,
+			columns: ['input', 'expected_output'],
+		});
+
+		const calls = generate.mock.calls as unknown as Array<
+			Array<Array<{ content: Array<{ text: string }> }>>
+		>;
+		const promptText = calls[0][0][0].content[0].text;
+		expect(promptText).toContain('Columns: input');
+		expect(promptText).not.toContain('expected_output');
 	});
 
 	it('returns empty array when generate throws (does not propagate)', async () => {
@@ -177,7 +202,7 @@ describe('runBatch', () => {
 			context: BATCH_CONTEXT,
 			columns: ['input', 'expected_output'],
 		});
-		expect(rows).toEqual([{ input: 'q', expected_output: 'a' }]);
+		expect(rows).toEqual([{ input: 'q', expected_output: '' }]);
 	});
 
 	it('passes facet instructions, rowCount, and agent context into the prompt', async () => {

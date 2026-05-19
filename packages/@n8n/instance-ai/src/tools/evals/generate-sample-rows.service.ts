@@ -123,6 +123,10 @@ export function extractAgentContext(
 
 const batchRowSchema = z.array(z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])));
 
+function isExpectedOutputColumn(column: string): boolean {
+	return column.startsWith('expected');
+}
+
 function buildAgentContextBlock(context: AgentContext | undefined): string {
 	if (!context) return 'Workflow context unavailable.';
 	const lines: string[] = [
@@ -165,6 +169,10 @@ function normalizeBatchRow(
 ): Record<string, string> {
 	const row: Record<string, string> = {};
 	for (const col of columns) {
+		if (isExpectedOutputColumn(col)) {
+			row[col] = '';
+			continue;
+		}
 		const v = rawRow[col];
 		if (v === undefined || v === null) row[col] = '';
 		else if (typeof v === 'string') row[col] = v;
@@ -182,6 +190,7 @@ function stripMarkdownFences(text: string): string {
 export async function runBatch(input: RunBatchInput): Promise<Array<Record<string, string>>> {
 	if (input.rowCount <= 0) return [];
 	try {
+		const generatedColumns = input.columns.filter((column) => !isExpectedOutputColumn(column));
 		const agent = createEvalAgent('eval-sample-rows', {
 			model: HAIKU_MODEL,
 			instructions: BATCH_SYSTEM_INSTRUCTIONS,
@@ -194,7 +203,7 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 			`Variation focus for this batch: length = ${input.facet.length}; mode = ${input.facet.edgeMode}.`,
 			input.facet.instructions,
 			'',
-			`Columns: ${input.columns.join(', ')}`,
+			`Columns: ${generatedColumns.join(', ')}`,
 			`Generate exactly ${input.rowCount} rows.`,
 		].join('\n');
 		const result = await agent.generate([

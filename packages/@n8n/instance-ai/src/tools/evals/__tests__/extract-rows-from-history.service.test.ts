@@ -108,6 +108,37 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.scannedExecutions).toBe(2);
 	});
 
+	it('deduplicates exact-match rows from execution history', async () => {
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([
+					executionSummary('e1'),
+					executionSummary('e2'),
+					executionSummary('e3'),
+				]),
+			getNodeOutput: jest
+				.fn<
+					ReturnType<ExecutionService['getNodeOutput']>,
+					Parameters<ExecutionService['getNodeOutput']>
+				>()
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'hello' }))
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'hello' }))
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'world' })),
+		});
+
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflow(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [],
+		});
+
+		expect(result.rows).toEqual([{ user_query: 'hello' }, { user_query: 'world' }]);
+		expect(result.scannedExecutions).toBe(3);
+	});
+
 	it('skips executions where the projected record is missing a required column', async () => {
 		const ctx = buildContext({
 			list: jest
