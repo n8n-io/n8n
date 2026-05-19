@@ -9,6 +9,7 @@ import { InstanceSettings } from 'n8n-core';
 export class AgentsModule implements ModuleInterface {
 	async init() {
 		await import('./agents.controller');
+		await import('./agent-debug.controller');
 		await import('./builder/agents-builder-settings.controller');
 
 		const { AgentsService } = await import('./agents.service');
@@ -21,6 +22,14 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
+
+		const { AgentDebugService } = await import('./agent-debug.service');
+		Container.get(AgentDebugService);
+
+		const { AgentEvaluationCaseRepository } = await import(
+			'./repositories/agent-evaluation-case.repository'
+		);
+		Container.get(AgentEvaluationCaseRepository);
 
 		const { AgentPublishedVersionRepository } = await import(
 			'./repositories/agent-published-version.repository'
@@ -94,6 +103,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
+		const { AgentEvaluationCase } = await import('./entities/agent-evaluation-case.entity');
 		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity');
 		const { AgentObservationCursorEntity } = await import(
@@ -109,6 +119,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentEvaluationCase,
 			AgentPublishedVersion,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
