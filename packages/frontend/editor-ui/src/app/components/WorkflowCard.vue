@@ -448,13 +448,17 @@ async function toggleMCPAccess(enabled: boolean) {
 
 async function onMcpToggleClick() {
 	if (!props.isMcpEnabled) {
+		const message = locale.baseText('workflows.item.connectMcp.toast.message');
+		const cta = locale.baseText('workflows.item.connectMcp.toast.cta');
 		toast.showToast({
 			title: locale.baseText('workflows.item.connectMcp.toast.title'),
-			message: locale.baseText('workflows.item.connectMcp.toast.message'),
+			message: `${message}<br/><a href="#" data-test-id="workflow-card-mcp-toast-cta">${cta}</a>`,
 			type: 'info',
-			closeOnClick: true,
-			onClick: async () => {
-				await router.push({ name: MCP_SETTINGS_VIEW });
+			onClick: async (event) => {
+				if (event?.target instanceof HTMLAnchorElement) {
+					event.preventDefault();
+					await router.push({ name: MCP_SETTINGS_VIEW });
+				}
 			},
 		});
 		return;

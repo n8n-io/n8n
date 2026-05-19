@@ -664,17 +664,27 @@ describe('WorkflowCard', () => {
 		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
 		expect(toast.showToast).toHaveBeenCalledWith(
 			expect.objectContaining({
-				title: 'Connect MCP to your instance',
+				title: "MCP isn't configured on this instance",
 				type: 'info',
-				closeOnClick: true,
+				message: expect.stringContaining('workflow-card-mcp-toast-cta'),
 				onClick: expect.any(Function),
 			}),
 		);
 
 		const showToastMock = vi.mocked(toast.showToast);
 		const onClick = showToastMock.mock.calls[0][0].onClick;
-		await onClick?.();
+		const anchor = document.createElement('a');
+		const anchorEvent = new MouseEvent('click', { bubbles: true });
+		Object.defineProperty(anchorEvent, 'target', { value: anchor });
+		await onClick?.(anchorEvent);
 		expect(router.push).toHaveBeenCalledWith({ name: 'McpSettings' });
+
+		vi.mocked(router.push).mockClear();
+		const nonAnchor = document.createElement('div');
+		const nonAnchorEvent = new MouseEvent('click', { bubbles: true });
+		Object.defineProperty(nonAnchorEvent, 'target', { value: nonAnchor });
+		await onClick?.(nonAnchorEvent);
+		expect(router.push).not.toHaveBeenCalled();
 	});
 
 	it('should show MCP toggle as disabled when user cannot update but workflow is available', () => {
