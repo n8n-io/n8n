@@ -37,18 +37,20 @@ export class WaitingForms extends WaitingWebhooks {
 		const lastNode = workflow.nodes[lastNodeExecuted];
 
 		if (
+			lastNode &&
 			!lastNode.disabled &&
 			lastNode.type === FORM_NODE_TYPE &&
-			lastNode.parameters.operation === 'completion'
+			lastNode.parameters?.operation === 'completion'
 		) {
 			return lastNodeExecuted;
 		} else {
 			return parentNodes.reverse().find((nodeName) => {
 				const node = workflow.nodes[nodeName];
 				return (
+					node &&
 					!node.disabled &&
 					node.type === FORM_NODE_TYPE &&
-					node.parameters.operation === 'completion' &&
+					node.parameters?.operation === 'completion' &&
 					runData[nodeName]
 				);
 			});

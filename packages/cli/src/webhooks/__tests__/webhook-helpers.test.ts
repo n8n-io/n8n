@@ -22,6 +22,7 @@ import {
 	WorkflowConfigurationError,
 	NodeOperationError,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
@@ -115,6 +116,43 @@ describe('autoDetectResponseMode', () => {
 		const workflowStartNode = mock<INode>({ type: 'someOtherNodeType', parameters: {} });
 		const result = autoDetectResponseMode(workflowStartNode, workflow, 'GET');
 		expect(result).toBeUndefined();
+	});
+
+	test('should return formPage when start node is FORM_TRIGGER_NODE_TYPE and method is POST and a Form node is connected downstream directly', () => {
+		const workflowStartNode = mock<INode>({
+			type: FORM_TRIGGER_NODE_TYPE,
+			name: 'startNode',
+			parameters: {},
+		});
+		workflow.getChildNodes.mockReturnValue(['childNode']);
+		workflow.nodes.childNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+			disabled: false,
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('formPage');
+	});
+
+	test('should return formPage when start node is FORM_TRIGGER_NODE_TYPE and method is POST and a Form node is connected downstream via Switch', () => {
+		const workflowStartNode = mock<INode>({
+			type: FORM_TRIGGER_NODE_TYPE,
+			name: 'startNode',
+			parameters: {},
+		});
+		workflow.getChildNodes.mockReturnValue(['SwitchNode', 'FormNode']);
+		workflow.nodes.SwitchNode = mock<INode>({
+			type: 'n8n-nodes-base.switch',
+			parameters: {},
+			disabled: false,
+		});
+		workflow.nodes.FormNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+			disabled: false,
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('formPage');
 	});
 });
 
