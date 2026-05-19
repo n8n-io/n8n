@@ -555,52 +555,7 @@ onMounted(async () => {
 						</div>
 					</div>
 
-					<div
-						v-else-if="isConnected(currentIntegration.type) && currentIntegration.type === 'slack'"
-						:class="$style.connectForm"
-					>
-						<label :class="$style.label">
-							<N8nText size="small" bold>
-								{{ currentIntegration.label }}
-								{{ i18n.baseText('agents.builder.addTrigger.credential') }}
-							</N8nText>
-						</label>
-						<N8nText
-							:class="$style.connectedDescription"
-							size="small"
-							data-testid="slack-connected-description"
-						>
-							{{ integrationConnectedText(currentIntegration.type) }}
-						</N8nText>
-						<div :class="$style.selectRow">
-							<AgentCredentialSelect
-								:model-value="connectedCredentials[currentIntegration.type]"
-								:class="$style.select"
-								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
-								:credentials="credentialsByType[currentIntegration.type] ?? []"
-								:credential-permissions="credentialPermissions"
-								:loading="credentialsLoading"
-								:disabled="true"
-								:data-test-id="`${currentIntegration.type}-credential-select`"
-								@create="onCreateCredential(currentIntegration)"
-							/>
-							<N8nButton
-								variant="destructive"
-								:loading="isLoading(currentIntegration.type)"
-								size="small"
-								:data-testid="`${currentIntegration.type}-disconnect-button`"
-								@click="onDisconnect(currentIntegration.type)"
-							>
-								<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
-								{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
-							</N8nButton>
-						</div>
-					</div>
-
-					<div
-						v-else-if="isConnected(currentIntegration.type) && currentIntegration.type !== 'slack'"
-						:class="$style.connectedSection"
-					>
+					<div v-else-if="isConnected(currentIntegration.type)" :class="$style.connectedSection">
 						<N8nText size="small">
 							{{ integrationConnectedText(currentIntegration.type) }}
 						</N8nText>
@@ -628,27 +583,18 @@ onMounted(async () => {
 								</label>
 								<div :class="$style.selectRow">
 									<AgentCredentialSelect
-										:model-value="
-											selectedCredentials[currentIntegration.type] ||
-											connectedCredentials[currentIntegration.type]
-										"
+										v-model="selectedCredentials[currentIntegration.type]"
 										:class="$style.select"
 										:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
 										:credentials="credentialsByType[currentIntegration.type] ?? []"
 										:credential-permissions="credentialPermissions"
 										:loading="credentialsLoading"
-										:disabled="
-											isConnected(currentIntegration.type) || isLoading(currentIntegration.type)
-										"
+										:disabled="isLoading(currentIntegration.type)"
 										:data-test-id="`${currentIntegration.type}-credential-select`"
-										@update:model-value="selectedCredentials[currentIntegration.type] = $event"
 										@create="onCreateCredential(currentIntegration)"
 									/>
 									<N8nButton
-										v-if="
-											!isConnected(currentIntegration.type) &&
-											selectedCredentials[currentIntegration.type]
-										"
+										v-if="selectedCredentials[currentIntegration.type]"
 										variant="outline"
 										size="small"
 										icon="pen"
@@ -657,18 +603,6 @@ onMounted(async () => {
 										@click="onEditCredential(currentIntegration.type)"
 									/>
 									<N8nButton
-										v-if="isConnected(currentIntegration.type)"
-										variant="destructive"
-										:loading="isLoading(currentIntegration.type)"
-										size="small"
-										:data-testid="`${currentIntegration.type}-disconnect-button`"
-										@click="onDisconnect(currentIntegration.type)"
-									>
-										<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
-										{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
-									</N8nButton>
-									<N8nButton
-										v-else
 										variant="solid"
 										:disabled="
 											!selectedCredentials[currentIntegration.type] ||
@@ -685,7 +619,7 @@ onMounted(async () => {
 									</N8nButton>
 								</div>
 								<N8nText
-									v-if="!isConnected(currentIntegration.type) && hasError(currentIntegration.type)"
+									v-if="hasError(currentIntegration.type)"
 									:class="$style.errorText"
 									size="small"
 								>
@@ -730,7 +664,10 @@ onMounted(async () => {
 			</div>
 		</template>
 
-		<template v-if="currentIntegration && currentIntegration.type !== 'slack'" #footer>
+		<template
+			v-if="currentIntegration && (currentIntegration.type !== 'slack' || isConnected('slack'))"
+			#footer
+		>
 			<div :class="$style.footer">
 				<div :class="$style.footerActions">
 					<template v-if="!isConnected(currentIntegration.type)">
@@ -868,10 +805,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-}
-
-.connectedDescription {
-	color: var(--color--text--tint-1);
 }
 
 .errorText {
