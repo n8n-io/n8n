@@ -37,13 +37,13 @@ const EMOJI_NAMES: Record<string, string> = {
 
 const EMOJI_ENTRIES = Object.entries(EMOJI_NAMES);
 
-/**
- * Generates a filesystem-safe slug from an entity name and ID.
- * Format: `{slug}-{shortId}` or just `{shortId}` if the name yields an empty slug.
- */
-export function generateSlug(name: string, id: string): string {
-	const shortId = id.slice(0, 6);
+const EMPTY_SLUG_FALLBACK = 'workflow';
 
+/**
+ * Generates a filesystem-safe slug from an entity name. Callers are responsible
+ * for disambiguating collisions (two workflows can legitimately share a name).
+ */
+export function generateSlug(name: string): string {
 	let slug = name;
 
 	for (const [emoji, emojiName] of EMOJI_ENTRIES) {
@@ -63,5 +63,5 @@ export function generateSlug(name: string, id: string): string {
 		// Remove any - at the start or end of the slug
 		.replace(/^-|-$/g, '');
 
-	return slug ? `${slug}-${shortId}` : shortId;
+	return slug || EMPTY_SLUG_FALLBACK;
 }

@@ -33,10 +33,10 @@ export class WorkflowExporter {
 		this.assertAllRequestedWorkflowsFound(request.workflowIds, workflows);
 
 		const entries: ManifestEntry[] = [];
+		const usedTargets = new Set<string>();
 
 		for (const workflow of workflows) {
-			const slug = generateSlug(workflow.name, workflow.id);
-			const target = `workflows/${slug}`;
+			const target = this.allocateUniqueFileName(workflow.name, usedTargets);
 			const serialized = this.workflowSerializer.serialize(workflow);
 
 			request.writer.writeDirectory(target);
@@ -50,6 +50,23 @@ export class WorkflowExporter {
 		}
 
 		return entries;
+	}
+
+	private allocateUniqueFileName(name: string, used: Set<string>): string {
+		const base = `workflows/${generateSlug(name)}`;
+
+		if (!used.has(base)) {
+			used.add(base);
+			return base;
+		}
+
+		for (let suffix = 2; ; suffix++) {
+			const candidate = `${base}-${suffix}`;
+			if (!used.has(candidate)) {
+				used.add(candidate);
+				return candidate;
+			}
+		}
 	}
 
 	private assertAllRequestedWorkflowsFound(

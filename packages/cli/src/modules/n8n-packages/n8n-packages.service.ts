@@ -6,12 +6,12 @@ import { N8N_VERSION } from '@/constants';
 
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
-import type { ExportWorkflowsRequest } from './packages.types';
+import type { ExportWorkflowsRequest } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import { packageManifestSchema } from './spec/manifest.schema';
 
 @Service()
-export class PackagesService {
+export class N8nPackagesService {
 	constructor(
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly instanceSettings: InstanceSettings,

@@ -5,16 +5,16 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { PassThrough } from 'node:stream';
 
-import { PackagesController } from '../packages.controller';
-import type { PackagesService } from '../packages.service';
+import { N8nPackagesController } from '../n8n-packages.controller';
+import type { N8nPackagesService } from '../n8n-packages.service';
 
-describe('ImportExportController', () => {
+describe('n8n-packages export', () => {
 	describe('exportWorkflows', () => {
 		it('sets gzip Content-Type and .n8np attachment Content-Disposition on the response', async () => {
-			const service = mock<PackagesService>();
+			const service = mock<N8nPackagesService>();
 			service.exportWorkflows.mockResolvedValue(new PassThrough());
 
-			const controller = new PackagesController(service);
+			const controller = new N8nPackagesController(service);
 			const req = { user: { id: 'user-1' } } as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
 
@@ -28,10 +28,10 @@ describe('ImportExportController', () => {
 		});
 
 		it('forwards the authenticated user and workflow ids to the service', async () => {
-			const service = mock<PackagesService>();
+			const service = mock<N8nPackagesService>();
 			service.exportWorkflows.mockResolvedValue(new PassThrough());
 
-			const controller = new PackagesController(service);
+			const controller = new N8nPackagesController(service);
 			const user = { id: 'user-1' };
 			const req = { user } as unknown as AuthenticatedRequest;
 
@@ -45,15 +45,12 @@ describe('ImportExportController', () => {
 	});
 
 	describe('route decorators', () => {
-		// Catches regressions where a future edit drops the license gate, or quietly
-		// re-introduces a controller-level scope decorator (the bulk endpoint must
-		// stay un-scoped — authorization is enforced per-workflow in the service).
 		const route = Container.get(ControllerRegistryMetadata)
-			.getControllerMetadata(PackagesController as never)
+			.getControllerMetadata(N8nPackagesController as never)
 			.routes.get('exportWorkflows');
 
-		it('is gated by the feat:packages license', () => {
-			expect(route?.licenseFeature).toBe('feat:packages');
+		it('is gated by the feat:n8nPackages license', () => {
+			expect(route?.licenseFeature).toBe('feat:n8nPackages');
 		});
 
 		it('has no @ProjectScope or @GlobalScope decorator', () => {

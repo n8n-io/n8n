@@ -4,14 +4,14 @@ import { Body, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 import type { Readable } from 'node:stream';
 
-import { PackagesService } from './packages.service';
+import { N8nPackagesService } from './n8n-packages.service';
 
-@RestController('/packages')
-export class PackagesController {
-	constructor(private readonly packagesService: PackagesService) {}
+@RestController('/n8n-packages')
+export class N8nPackagesController {
+	constructor(private readonly packagesService: N8nPackagesService) {}
 
 	@Post('/export')
-	@Licensed('feat:packages')
+	@Licensed('feat:n8nPackages')
 	async exportWorkflows(
 		req: AuthenticatedRequest,
 		res: Response,

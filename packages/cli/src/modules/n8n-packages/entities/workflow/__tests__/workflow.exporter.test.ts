@@ -79,4 +79,20 @@ describe('WorkflowExporter', () => {
 			}),
 		).rejects.toThrow(/missing-or-denied/);
 	});
+
+	it('disambiguates targets when two workflows share a name', async () => {
+		const a = makeWorkflow({ id: 'wf-aaaaa', name: 'Same Name' });
+		const b = makeWorkflow({ id: 'wf-bbbbb', name: 'Same Name' });
+		const { exporter } = makeExporter([a, b]);
+		const writer = new CapturingWriter();
+
+		const entries = await exporter.export({ user, workflowIds: [a.id, b.id], writer });
+
+		const targets = entries.map((e) => e.target);
+		expect(targets).toEqual(['workflows/same-name', 'workflows/same-name-2']);
+
+		const writtenPaths = writer.files.map((f) => f.path);
+		expect(writtenPaths).toContain('workflows/same-name/workflow.json');
+		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
+	});
 });

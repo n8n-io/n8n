@@ -44,7 +44,7 @@ export const LICENSE_FEATURES = {
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
-	PACKAGES: 'feat:packages',
+	N8N_PACKAGES: 'feat:n8nPackages',
 } as const;
 
 export const LICENSE_QUOTAS = {
