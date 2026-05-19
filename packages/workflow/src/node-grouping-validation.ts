@@ -4,7 +4,7 @@ import {
 	type ExtractableErrorResult,
 	type ExtractableSubgraphData,
 	type IConnectionAdjacencyList,
-} from '../graph/graph-utils';
+} from './graph/graph-utils';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -13,8 +13,8 @@ import {
 	type INodeOutputConfiguration,
 	type INodeTypeDescription,
 	type NodeConnectionType,
-} from '../interfaces';
-import { isTriggerNode } from '../node-helpers';
+} from './interfaces';
+import { isTriggerNode } from './node-helpers';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';

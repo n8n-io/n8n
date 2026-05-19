@@ -1,7 +1,7 @@
 import {
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
-} from '../src/common';
+} from '../src/node-grouping-validation';
 import {
 	NodeConnectionTypes,
 	type IConnections,

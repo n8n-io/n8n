@@ -3,4 +3,3 @@ export * from './get-connected-nodes';
 export * from './get-node-by-name';
 export * from './get-parent-nodes';
 export * from './map-connections-by-destination';
-export * from './node-grouping-validation';
