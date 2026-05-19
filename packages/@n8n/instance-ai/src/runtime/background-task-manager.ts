@@ -94,6 +94,10 @@ export type SpawnManagedBackgroundTaskResult =
 	| { status: 'limit-reached' }
 	| { status: 'duplicate'; existing: ManagedBackgroundTask };
 
+export interface BackgroundTaskTimeoutOptions {
+	shouldSkipTask?: (task: ManagedBackgroundTask) => boolean;
+}
+
 export interface BackgroundTaskMessageOptions<
 	TTask extends ManagedBackgroundTask = ManagedBackgroundTask,
 > {
@@ -245,10 +249,12 @@ export class BackgroundTaskManager {
 	async timeoutTimedOutTasks(
 		policy: InstanceAiLivenessPolicy,
 		now = Date.now(),
+		options: BackgroundTaskTimeoutOptions = {},
 	): Promise<ManagedBackgroundTask[]> {
 		const timedOut: ManagedBackgroundTask[] = [];
 		for (const task of [...this.tasks.values()]) {
 			if (task.status !== 'running') continue;
+			if (options.shouldSkipTask?.(task)) continue;
 			const decision = policy.evaluate({
 				surface: 'background-task',
 				startedAt: task.startedAt,
