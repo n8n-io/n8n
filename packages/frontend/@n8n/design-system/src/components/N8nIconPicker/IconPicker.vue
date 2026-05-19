@@ -485,6 +485,16 @@ function humanizeIconName(name: string): string {
 		width: 32px;
 		height: 32px;
 	}
+
+	.xlarge & {
+		width: 24px;
+		height: 24px;
+	}
+
+	.xxlarge & {
+		width: 32px;
+		height: 32px;
+	}
 }
 
 .emoji-button {
