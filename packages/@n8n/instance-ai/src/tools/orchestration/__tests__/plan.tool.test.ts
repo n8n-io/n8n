@@ -1,3 +1,4 @@
+import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
 import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
 
 // Mock heavy Mastra dependencies to avoid ESM issues in Jest
@@ -347,5 +348,57 @@ describe('createPlanTool — replan-only guard', () => {
 
 		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+});
+
+describe('createPlanTool — createPlan validation failures', () => {
+	it('returns a PlanValidationError as a tool result instead of throwing', async () => {
+		const validatorError = new PlanValidationError(
+			'Checkpoint task "chk-1" must depend on at least one build-workflow task',
+		);
+		const context = createMockContext({
+			currentUserMessage: 'replan after failure',
+			plannedTaskService: makePlannedTaskService({
+				createPlan: jest.fn().mockRejectedValue(validatorError),
+			}),
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+		const suspend = jest.fn();
+
+		const out = await tool.execute(
+			{
+				tasks: validTasks(),
+				skipPlannerDiscovery: true,
+				reason: 'bypass for test',
+			},
+			{ agent: { suspend } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain(validatorError.message);
+		expect(out.result).toContain('Revise the task graph and call this tool again');
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'plan tool: createPlan rejected by validator',
+			expect.objectContaining({ threadId: 'test-thread', error: validatorError.message }),
+		);
+	});
+
+	it('propagates non-validation errors (storage, abort, bugs)', async () => {
+		const storageError = new Error('connection refused');
+		const context = createMockContext({
+			currentUserMessage: 'replan',
+			plannedTaskService: makePlannedTaskService({
+				createPlan: jest.fn().mockRejectedValue(storageError),
+			}),
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		await expect(
+			tool.execute(
+				{ tasks: validTasks(), skipPlannerDiscovery: true, reason: 'bypass' },
+				{ agent: { suspend: jest.fn() } },
+			),
+		).rejects.toBe(storageError);
 	});
 });

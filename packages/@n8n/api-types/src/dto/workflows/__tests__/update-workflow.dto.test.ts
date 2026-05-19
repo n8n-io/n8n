@@ -89,6 +89,21 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['name'],
 			},
 			{
+				name: 'name containing a script tag',
+				request: { name: '<script>alert(1)</script>' },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'name containing an img onerror payload',
+				request: { name: '<img src=x onerror=alert(1)>' },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'name containing inline HTML markup',
+				request: { name: 'Report <b>bold</b>' },
+				expectedErrorPath: ['name'],
+			},
+			{
 				name: 'invalid nodes type',
 				request: { nodes: 'not-an-array' },
 				expectedErrorPath: ['nodes'],
