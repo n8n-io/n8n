@@ -265,27 +265,40 @@ export class ActiveWorkflows {
 						workflowId: workflow.id,
 					});
 
+					// The initial activation poll runs inside ActiveWorkflowManager's
+					// outer acquireIsolate window, which also covers countTriggers
+					// afterwards. Acquiring here would release the outer bridge early
+					// (acquire is idempotent per caller; release deletes it). Scheduled
+					// polls fire from the cron scheduler's own async context outside
+					// that window and must acquire/release per tick — see CAT-3147.
+					const ownsIsolate = !testingTrigger;
+					if (ownsIsolate) await workflow.expression.acquireIsolate();
+
 					try {
-						const pollResponse = await this.triggersAndPollers.runPoll(
-							workflow,
-							node,
-							pollFunctions,
-						);
+						try {
+							const pollResponse = await this.triggersAndPollers.runPoll(
+								workflow,
+								node,
+								pollFunctions,
+							);
 
-						if (pollResponse !== null) {
-							pollFunctions.__emit(pollResponse);
-						}
+							if (pollResponse !== null) {
+								pollFunctions.__emit(pollResponse);
+							}
 
-						span.setStatus({ code: SpanStatus.ok });
-					} catch (error) {
-						span.setStatus({ code: SpanStatus.error });
-						// If the poll function fails in the first activation
-						// throw the error back so we let the user know there is
-						// an issue with the trigger.
-						if (testingTrigger) {
-							throw error;
+							span.setStatus({ code: SpanStatus.ok });
+						} catch (error) {
+							span.setStatus({ code: SpanStatus.error });
+							// If the poll function fails in the first activation
+							// throw the error back so we let the user know there is
+							// an issue with the trigger.
+							if (testingTrigger) {
+								throw error;
+							}
+							pollFunctions.__emitError(error as Error);
 						}
-						pollFunctions.__emitError(error as Error);
+					} finally {
+						if (ownsIsolate) await workflow.expression.releaseIsolate();
 					}
 				},
 			);
