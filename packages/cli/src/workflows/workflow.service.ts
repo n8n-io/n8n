@@ -1,13 +1,7 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type {
-	User,
-	WorkflowEntity,
-	ListQueryDb,
-	WorkflowFolderUnionFull,
-	WorkflowHistory,
-} from '@n8n/db';
+import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
 	SharedWorkflow,
 	ExecutionRepository,
@@ -18,6 +12,7 @@ import {
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
+	WorkflowEntity,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -556,7 +551,6 @@ export class WorkflowService {
 	): Promise<void> {
 		let didPublish = false;
 		try {
-			await this.externalHooks.run('workflow.activate', [workflow]);
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
@@ -662,6 +656,7 @@ export class WorkflowService {
 	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The activated workflow
 	 */
+	// eslint-disable-next-line complexity
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
@@ -723,6 +718,23 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
+
+		// Run hook before destructive state changes so a rejection leaves
+		// the previous active version running instead of deactivating it.
+		const candidateWorkflow = Object.assign(new WorkflowEntity(), workflow, {
+			active: true,
+			activeVersionId: versionIdToActivate,
+			activeVersion: versionToActivate,
+		});
+
+		try {
+			await this.externalHooks.run('workflow.activate', [candidateWorkflow]);
+		} catch (error) {
+			throw new WorkflowActivationBadRequestError((error as Error).message, {
+				nodeId: getErrorNodeId(error),
+				description: getErrorDescription(error),
+			});
+		}
 
 		if (previousActiveVersionId) {
 			await this.activeWorkflowManager.remove(workflowId);
