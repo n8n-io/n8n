@@ -92,6 +92,7 @@ export {
 
 export type {
 	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogMarker,
@@ -102,6 +103,8 @@ export type {
 	ObservationLogScope,
 	ObservationLogScopeKind,
 	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
 	TokenCounter,
 } from './sdk/observation-log';
 export {
