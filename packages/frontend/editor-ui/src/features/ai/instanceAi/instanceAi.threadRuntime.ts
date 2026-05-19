@@ -59,8 +59,6 @@ type QueuedUserMessage = {
  * side effects reach back into store-owned state without a circular import.
  */
 export interface ThreadRuntimeHooks {
-	/** Read at `sendMessage` time — the instance-level UI pref. */
-	getResearchMode: () => boolean;
 	/** SSE delivered a `thread-title-updated` event for the active thread. */
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
@@ -723,7 +721,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				rootStore.restApiContext,
 				threadId,
 				message,
-				hooks.getResearchMode() || undefined,
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,

@@ -163,7 +163,6 @@ type RuntimeRegistry = {
 function createRuntimeRegistry(): RuntimeRegistry {
 	const runtimes = new Map<string, ThreadRuntime>();
 	const hooks = {
-		getResearchMode: () => false,
 		onTitleUpdated: vi.fn(),
 		onRunFinish: vi.fn(),
 		onMessageQueued: (...args: unknown[]) => mockOnMessageQueued(...args),
@@ -805,7 +804,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'hello',
 			undefined,
-			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
 		);
@@ -820,7 +818,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
-			undefined,
 			undefined,
 			expect.any(String),
 			undefined,
