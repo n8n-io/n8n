@@ -505,6 +505,7 @@ export class InstanceAiService {
 			n8nSandboxServiceApiKey,
 			sandboxImage,
 			sandboxTimeout,
+			sandboxNamePrefix,
 		} = this.instanceAiConfig;
 		if (!sandboxEnabled) {
 			return {
@@ -528,6 +529,7 @@ export class InstanceAiService {
 				image: sandboxImage || undefined,
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
+				namePrefix: sandboxNamePrefix || undefined,
 			};
 		}
 

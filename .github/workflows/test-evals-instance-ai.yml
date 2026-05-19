@@ -82,6 +82,7 @@ jobs:
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona \
+              -e N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX="evals-ci-${{ inputs.branch || github.ref_name }}" \
               -e DAYTONA_API_URL=https://app.daytona.io/api \
               -e DAYTONA_API_KEY="$DAYTONA_API_KEY" \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
