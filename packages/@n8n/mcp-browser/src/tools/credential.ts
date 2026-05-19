@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
+import { createConnectedTool, pageIdField } from './helpers';
+import { createRedactionMarkerFormatter } from '../redaction/redact';
+import { analyzeHtmlSensitivity } from '../sensitivity/analyze-html';
 import type {
 	AffectedResource,
 	CreateCredentialPayload,
@@ -9,7 +12,6 @@ import type {
 	ToolDefinition,
 } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createConnectedTool, pageIdField } from './helpers';
 
 export function createCredentialTools(connection: BrowserConnection): ToolDefinition[] {
 	return [browserCaptureSecret(connection), browserCreateCredential(connection)];
@@ -31,12 +33,24 @@ const browserCaptureSecretSchema = z
 			.string()
 			.describe('Key grouping related fields for one credential (e.g. "gcp-setup")'),
 		field: z.string().describe('Field name to store the captured value under (e.g. "clientId")'),
-		sourceRef: z
-			.string()
-			.describe('Element ref from browser_snapshot whose value will be captured'),
 		pageId: pageIdField,
+		element: z.union([
+			z.object({
+				ref: z.string().describe('Element ref from browser_snapshot whose value will be captured'),
+			}),
+			z.object({
+				redactedKey: z
+					.string()
+					.describe(
+						'Redacted secret ID as returned in the snapshots. Example "[REDACTED:password:1]"',
+					),
+			}),
+		]),
 	})
-	.describe('Capture a secret value from a DOM element into the session buffer');
+	.describe(
+		'Capture a secret value from a DOM element into the session buffer. Call `browser_snapshot` with `{ "interactive": false }` before capturing to see secrets that are not inside interactive elements. ' +
+			'Pass element as `{ "ref": "e12" }` for interactive elements, or `{ "redactedKey": "[REDACTED:password:1]" }` for non-interactive elements',
+	);
 
 function browserCaptureSecret(
 	connection: BrowserConnection,
@@ -48,7 +62,27 @@ function browserCaptureSecret(
 		browserCaptureSecretSchema,
 		async (state, args, pageId, context) => {
 			requireSecretsBuffer(context);
-			const value = await state.adapter.getElementValue(pageId, { ref: args.sourceRef });
+			let value = '';
+			if ('redactedKey' in args.element) {
+				const { redactedKey } = args.element;
+				const sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
+				if (sensitivity.ok) {
+					const formatMarker = createRedactionMarkerFormatter(sensitivity.hits);
+					const markerMap = sensitivity.hits.reduce((result, hit) => {
+						result.set(formatMarker(hit), hit.value);
+						return result;
+					}, new Map<string, string>());
+
+					if (!markerMap.get(redactedKey)) {
+						throw new Error(`The marker "${redactedKey}" was not found.`);
+					}
+					value = markerMap.get(redactedKey)!;
+				} else {
+					throw new Error(`Secret capturing failed with error: ${sensitivity.error}`);
+				}
+			} else {
+				value = await state.adapter.getElementValue(pageId, { ref: args.element.ref });
+			}
 			context.secretsBuffer.capture(args.credentialsKey, args.field, value);
 			return formatCallToolResult({ ok: true, fieldsCaptured: [args.field] });
 		},

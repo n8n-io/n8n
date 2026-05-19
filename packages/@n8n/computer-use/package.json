@@ -45,6 +45,7 @@
     "@napi-rs/image": "^1.12.0",
     "@vscode/ripgrep": "^1.17.1",
     "eventsource": "^3.0.6",
+    "fast-glob": "catalog:",
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",
     "yargs-parser": "21.1.1",
