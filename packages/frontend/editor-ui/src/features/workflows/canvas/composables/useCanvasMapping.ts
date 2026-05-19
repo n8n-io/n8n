@@ -390,7 +390,7 @@ export function useCanvasMapping({
 	const nodeHasIssuesById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			const hasExecutionErrors =
-				(renderData.value.executionIssues.get(node.name)?.value?.length ?? 0) > 0;
+				(renderData.value.executionIssuesByNodeName.get(node.name)?.value?.length ?? 0) > 0;
 			const hasValidationErrors = nodeValidationErrorsById.value[node.id]?.length > 0;
 
 			if (['crashed', 'error'].includes(nodeExecutionStatusById.value[node.id])) {

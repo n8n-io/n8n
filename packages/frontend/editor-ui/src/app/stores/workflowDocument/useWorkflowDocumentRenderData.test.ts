@@ -10,7 +10,7 @@ import { useWorkflowDocumentRenderData } from './useWorkflowDocumentRenderData';
 
 const nodeInputsByNodeId = shallowReactive(new Map<string, ComputedRef<CanvasConnectionPort[]>>());
 const nodeOutputsByNodeId = shallowReactive(new Map<string, ComputedRef<CanvasConnectionPort[]>>());
-const executionIssues = new Map<string, ComputedRef<string[]>>();
+const executionIssuesByNodeName = new Map<string, ComputedRef<string[]>>();
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/app/stores/workflowDocument.store')>();
@@ -26,7 +26,7 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
 
 vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn(() => ({
-		getActiveExecutionIssues: () => executionIssues,
+		getActiveExecutionIssuesByNodeName: () => executionIssuesByNodeName,
 	})),
 	createWorkflowExecutionStateId: (id: string) => id,
 }));
@@ -44,9 +44,9 @@ describe('useWorkflowDocumentRenderData', () => {
 		expect(renderData.nodeOutputsByNodeId).toBe(nodeOutputsByNodeId);
 	});
 
-	it('exposes executionIssues resolved via the workflow execution state store', () => {
+	it('exposes executionIssuesByNodeName resolved via the workflow execution state store', () => {
 		const renderData = useWorkflowDocumentRenderData(createWorkflowDocumentId('wf-1'));
 
-		expect(renderData.executionIssues).toBe(executionIssues);
+		expect(renderData.executionIssuesByNodeName).toBe(executionIssuesByNodeName);
 	});
 });

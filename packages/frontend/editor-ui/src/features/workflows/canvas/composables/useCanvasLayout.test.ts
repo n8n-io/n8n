@@ -46,7 +46,7 @@ describe('useCanvasLayout', () => {
 			shallowRef<CanvasRenderData>({
 				nodeInputsByNodeId: new Map(),
 				nodeOutputsByNodeId: new Map(),
-				executionIssues: new Map(),
+				executionIssuesByNodeName: new Map(),
 			}),
 		);
 

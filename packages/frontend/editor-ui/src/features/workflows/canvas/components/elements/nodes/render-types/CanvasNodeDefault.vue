@@ -53,7 +53,7 @@ const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const hasExecutionErrors = computed(
-	() => (renderData.value.executionIssues.get(name.value)?.value?.length ?? 0) > 0,
+	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
 );
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({

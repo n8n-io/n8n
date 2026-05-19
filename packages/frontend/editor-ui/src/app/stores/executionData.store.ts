@@ -78,7 +78,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		// against executionRunData keys (driven by watch below).
 		// effectScopes are children of the store's setup-scope, so $dispose
 		// cascades cleanup — no explicit teardown needed.
-		const executionIssues = shallowReactive(new Map<string, ComputedRef<string[]>>());
+		const executionIssuesByNodeName = shallowReactive(new Map<string, ComputedRef<string[]>>());
 		const executionIssueScopes = new Map<string, () => void>();
 
 		function computeNodeExecutionIssues(nodeName: string): string[] {
@@ -98,7 +98,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (executionIssueScopes.has(nodeName)) return;
 			const scope = effectScope();
 			scope.run(() => {
-				executionIssues.set(
+				executionIssuesByNodeName.set(
 					nodeName,
 					structuralComputed(() => computeNodeExecutionIssues(nodeName), isEqual),
 				);
@@ -109,7 +109,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		function applyRemoveExecutionIssuesEntry(nodeName: string) {
 			executionIssueScopes.get(nodeName)?.();
 			executionIssueScopes.delete(nodeName);
-			executionIssues.delete(nodeName);
+			executionIssuesByNodeName.delete(nodeName);
 		}
 
 		function applyReconcileExecutionIssuesEntries(nodeNames: string[]) {
@@ -410,7 +410,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,
-			executionIssues,
+			executionIssuesByNodeName,
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),
 			getExecutionRunDataByNodeName,

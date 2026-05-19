@@ -565,7 +565,7 @@ describe('executionData.store', () => {
 		});
 	});
 
-	describe('executionIssues', () => {
+	describe('executionIssuesByNodeName', () => {
 		function setExecutionWithRunData(
 			store: ReturnType<typeof useExecutionDataStore>,
 			runData: Record<string, Array<Record<string, unknown>>>,
@@ -581,7 +581,7 @@ describe('executionData.store', () => {
 
 		it('starts empty when no execution is set', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
-			expect(store.executionIssues.size).toBe(0);
+			expect(store.executionIssuesByNodeName.size).toBe(0);
 		});
 
 		it('adds an entry per node name present in runData on setExecution', async () => {
@@ -593,8 +593,8 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			expect(store.executionIssues.has('NodeA')).toBe(true);
-			expect(store.executionIssues.has('NodeB')).toBe(true);
+			expect(store.executionIssuesByNodeName.has('NodeA')).toBe(true);
+			expect(store.executionIssuesByNodeName.has('NodeB')).toBe(true);
 		});
 
 		it('returns the formatted error message with description', async () => {
@@ -605,7 +605,7 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			expect(store.executionIssues.get('NodeA')?.value).toEqual(['msg (desc)']);
+			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toEqual(['msg (desc)']);
 		});
 
 		it('returns just the message when no description is provided', async () => {
@@ -616,7 +616,7 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			expect(store.executionIssues.get('NodeA')?.value).toEqual(['msg']);
+			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toEqual(['msg']);
 		});
 
 		it('aggregates errors across multiple tasks', async () => {
@@ -630,7 +630,7 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			expect(store.executionIssues.get('NodeA')?.value).toEqual(['e1 (d1)', 'e2 (d2)']);
+			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toEqual(['e1 (d1)', 'e2 (d2)']);
 		});
 
 		it('returns [] when a node has tasks but no errors', async () => {
@@ -641,7 +641,7 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			expect(store.executionIssues.get('NodeA')?.value).toEqual([]);
+			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toEqual([]);
 		});
 
 		it('sanitises html in error messages', async () => {
@@ -652,7 +652,7 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			const issues = store.executionIssues.get('NodeA')?.value ?? [];
+			const issues = store.executionIssuesByNodeName.get('NodeA')?.value ?? [];
 			expect(issues[0]).not.toContain('<script>');
 		});
 
@@ -664,16 +664,16 @@ describe('executionData.store', () => {
 				NodeB: [{ executionStatus: 'success' }],
 			});
 			await flushPromises();
-			expect(store.executionIssues.has('NodeA')).toBe(true);
-			expect(store.executionIssues.has('NodeB')).toBe(true);
+			expect(store.executionIssuesByNodeName.has('NodeA')).toBe(true);
+			expect(store.executionIssuesByNodeName.has('NodeB')).toBe(true);
 
 			setExecutionWithRunData(store, {
 				NodeB: [{ executionStatus: 'success' }],
 			});
 			await flushPromises();
 
-			expect(store.executionIssues.has('NodeA')).toBe(false);
-			expect(store.executionIssues.has('NodeB')).toBe(true);
+			expect(store.executionIssuesByNodeName.has('NodeA')).toBe(false);
+			expect(store.executionIssuesByNodeName.has('NodeB')).toBe(true);
 		});
 
 		it('removes an entry when clearNodeExecutionData empties a node', async () => {
@@ -683,12 +683,12 @@ describe('executionData.store', () => {
 				NodeA: [{ executionStatus: 'success' }],
 			});
 			await flushPromises();
-			expect(store.executionIssues.has('NodeA')).toBe(true);
+			expect(store.executionIssuesByNodeName.has('NodeA')).toBe(true);
 
 			store.clearNodeExecutionData('NodeA');
 			await flushPromises();
 
-			expect(store.executionIssues.has('NodeA')).toBe(false);
+			expect(store.executionIssuesByNodeName.has('NodeA')).toBe(false);
 		});
 
 		it('clears all entries on resetExecutionData', async () => {
@@ -699,12 +699,12 @@ describe('executionData.store', () => {
 				NodeB: [{ executionStatus: 'success' }],
 			});
 			await flushPromises();
-			expect(store.executionIssues.size).toBe(2);
+			expect(store.executionIssuesByNodeName.size).toBe(2);
 
 			store.resetExecutionData();
 			await flushPromises();
 
-			expect(store.executionIssues.size).toBe(0);
+			expect(store.executionIssuesByNodeName.size).toBe(0);
 		});
 
 		it('migrates the entry from old to new name on renameExecutionDataNode', async () => {
@@ -714,13 +714,13 @@ describe('executionData.store', () => {
 				OldName: [{ error: { message: 'boom' } }],
 			});
 			await flushPromises();
-			expect(store.executionIssues.has('OldName')).toBe(true);
+			expect(store.executionIssuesByNodeName.has('OldName')).toBe(true);
 
 			store.renameExecutionDataNode('OldName', 'NewName');
 			await flushPromises();
 
-			expect(store.executionIssues.has('OldName')).toBe(false);
-			expect(store.executionIssues.get('NewName')?.value).toEqual(['boom']);
+			expect(store.executionIssuesByNodeName.has('OldName')).toBe(false);
+			expect(store.executionIssuesByNodeName.get('NewName')?.value).toEqual(['boom']);
 		});
 
 		it('produces a stable ComputedRef value across unrelated runData mutations', async () => {
@@ -732,7 +732,7 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			const nodeAEntry = store.executionIssues.get('NodeA');
+			const nodeAEntry = store.executionIssuesByNodeName.get('NodeA');
 			const before = nodeAEntry?.value;
 
 			// Mutate NodeB only; structuralComputed + isEqual should keep NodeA's
@@ -743,7 +743,7 @@ describe('executionData.store', () => {
 			});
 			await flushPromises();
 
-			expect(store.executionIssues.get('NodeA')?.value).toBe(before);
+			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toBe(before);
 		});
 	});
 });

@@ -70,21 +70,21 @@ const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>
 const testRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: renderNodeInputsMap,
 	nodeOutputsByNodeId: renderNodeOutputsMap,
-	executionIssues: new Map(),
+	executionIssuesByNodeName: new Map(),
 });
 
 const emptyRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: new Map(),
 	nodeOutputsByNodeId: new Map(),
-	executionIssues: new Map(),
+	executionIssuesByNodeName: new Map(),
 });
 
-function createRenderDataWithExecutionIssues(
-	executionIssuesByNodeName: Record<string, string[]> = {},
+function createRenderDataWithExecutionIssuesByNodeName(
+	issuesByNodeName: Record<string, string[]> = {},
 ): Ref<CanvasRenderData> {
-	const executionIssues = new Map<string, ComputedRef<string[]>>();
-	for (const [nodeName, issues] of Object.entries(executionIssuesByNodeName)) {
-		executionIssues.set(
+	const executionIssuesByNodeName = new Map<string, ComputedRef<string[]>>();
+	for (const [nodeName, issues] of Object.entries(issuesByNodeName)) {
+		executionIssuesByNodeName.set(
 			nodeName,
 			computed(() => issues),
 		);
@@ -92,7 +92,7 @@ function createRenderDataWithExecutionIssues(
 	return shallowRef({
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
-		executionIssues,
+		executionIssuesByNodeName,
 	});
 }
 
@@ -1141,7 +1141,7 @@ describe('useCanvasMapping', () => {
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-				const renderData = createRenderDataWithExecutionIssues({
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
 					[node.name]: ['Test error message (Test error description)'],
 				});
 
@@ -1192,7 +1192,7 @@ describe('useCanvasMapping', () => {
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-				const renderData = createRenderDataWithExecutionIssues({
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
 					[node.name]: ['Execution error (Error description)'],
 				});
 
@@ -1220,7 +1220,7 @@ describe('useCanvasMapping', () => {
 				const nodes = [node1, node2];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-				const renderData = createRenderDataWithExecutionIssues({
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
 					[node2.name]: ['Execution error (Error description)'],
 				});
 
@@ -1642,7 +1642,7 @@ describe('useCanvasMapping', () => {
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-				const renderData = createRenderDataWithExecutionIssues({
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
 					[node.name]: ['Execution error (Error description)'],
 				});
 				setPinData({});

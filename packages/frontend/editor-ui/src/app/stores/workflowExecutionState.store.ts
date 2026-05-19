@@ -14,7 +14,7 @@ import {
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
-const EMPTY_EXECUTION_ISSUES = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 
 export type WorkflowExecutionStateId = string;
 
@@ -179,16 +179,16 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		 * reactivity should invoke inside a Vue reactive context (computed,
 		 * watchEffect) so the underlying ref reads are tracked.
 		 */
-		function getActiveExecutionIssues(): Map<string, ComputedRef<string[]>> {
+		function getActiveExecutionIssuesByNodeName(): Map<string, ComputedRef<string[]>> {
 			if (typeof activeExecutionId.value === 'string') {
 				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
-					.executionIssues;
+					.executionIssuesByNodeName;
 			}
 			if (typeof displayedExecutionId.value === 'string') {
 				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
-					.executionIssues;
+					.executionIssuesByNodeName;
 			}
-			return EMPTY_EXECUTION_ISSUES;
+			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
 		}
 
 		const lastSuccessfulExecution = computed(() => {
@@ -496,7 +496,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			getAllLoadedFinishedExecutions,
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
-			getActiveExecutionIssues,
+			getActiveExecutionIssuesByNodeName,
 			resolveExecutionTriggerNodeName,
 			// Write API
 			trackExecutionId,

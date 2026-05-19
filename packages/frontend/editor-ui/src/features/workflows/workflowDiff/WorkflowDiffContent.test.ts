@@ -105,12 +105,12 @@ describe('WorkflowDiffContent', () => {
 		sourceRenderData: {
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),
-			executionIssues: new Map(),
+			executionIssuesByNodeName: new Map(),
 		},
 		targetRenderData: {
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),
-			executionIssues: new Map(),
+			executionIssuesByNodeName: new Map(),
 		},
 	};
 

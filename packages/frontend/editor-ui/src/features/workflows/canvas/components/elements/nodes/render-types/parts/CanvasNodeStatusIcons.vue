@@ -38,7 +38,7 @@ const {
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
 const executionErrors = computed(
-	() => renderData.value.executionIssues.get(name.value)?.value ?? [],
+	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
 const route = useRoute();

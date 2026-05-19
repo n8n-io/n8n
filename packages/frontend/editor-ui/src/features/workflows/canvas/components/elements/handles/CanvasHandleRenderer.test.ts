@@ -23,7 +23,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 		value: {
 			nodeInputsByNodeId: renderNodeInputsMap,
 			nodeOutputsByNodeId: renderNodeOutputsMap,
-			executionIssues: new Map(),
+			executionIssuesByNodeName: new Map(),
 		},
 	})),
 }));
