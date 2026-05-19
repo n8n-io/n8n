@@ -122,14 +122,12 @@ export const createSearchProjectsTool = (
 
 			const limitedScored = scoredProjects.slice(0, effectiveLimit);
 
-			const data = limitedScored.map(({ project, isExact }) => ({
-				id: project.id,
-				name: project.name,
-				type: project.type,
-				...(normalizedQuery
-					? { matchType: isExact ? ('exact' as const) : ('partial' as const) }
-					: {}),
-			}));
+			const data = limitedScored.map(({ project, isExact }) => {
+				const base = { id: project.id, name: project.name, type: project.type };
+				if (!normalizedQuery) return base;
+				const matchType: 'exact' | 'partial' = isExact ? 'exact' : 'partial';
+				return { ...base, matchType };
+			});
 
 			const exactMatchCount = scoredProjects.reduce((acc, p) => acc + (p.isExact ? 1 : 0), 0);
 			let hint: string | undefined;
