@@ -6,7 +6,6 @@ import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
-	researchMode?: boolean;
 	webhookBaseUrl?: string;
 	formBaseUrl?: string;
 	localGateway?: LocalGatewayStatus;
@@ -71,7 +70,6 @@ If the user asks for a blocked operation, explain that the instance is in read-o
 
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const {
-		researchMode,
 		webhookBaseUrl,
 		formBaseUrl,
 		localGateway,
@@ -177,15 +175,9 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 - **Credential setup** uses \`workflows(action="setup")\` when a workflowId is available — it opens the inline setup card in the AI Assistant panel and handles credentials, parameters, and triggers in one step. Use \`credentials(action="setup")\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor.
 - **Never expose credential secrets** — metadata only.
 
-${
-	researchMode
-		? `### Web research
+### Web research
 
-You have the \`research\` tool with \`web-search\` and \`fetch-url\` actions. Use them directly for most questions. Use \`plan\` with \`research\` tasks only for broad detached synthesis (comparing services, broad surveys across 3+ doc pages).`
-		: `### Web research
-
-You have the \`research\` tool with \`web-search\` and \`fetch-url\` actions. Use \`web-search\` for lookups, \`fetch-url\` to read pages. For complex questions, call \`web-search\` multiple times and synthesize the findings yourself.`
-}
+You have the \`research\` tool with \`web-search\` and \`fetch-url\` actions. Use them directly for most questions. Use \`plan\` with \`research\` tasks only for broad detached synthesis (comparing services, broad surveys across 3+ doc pages).
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
 ${getComputerUsePrompt({ browserAvailable, localGateway })}

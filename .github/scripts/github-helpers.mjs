@@ -352,6 +352,28 @@ export async function getPullRequestById(pullRequestId) {
 }
 
 /**
+ * Returns the set of files changed in a PR, including previous filenames for renames.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Set<string>> }
+ * */
+export async function getChangedFiles(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		per_page: 100,
+	});
+
+	return new Set([
+		...files.map((file) => file.filename),
+		...files.map((file) => file.previous_filename).filter((filename) => filename !== undefined),
+	]);
+}
+
+/**
  * @param {string} tag
  */
 export async function getExistingRelease(tag) {
