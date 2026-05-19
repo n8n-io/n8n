@@ -5,7 +5,6 @@ import type {
 	AgentDebugRunDetail,
 	AgentDebugRunsResponse,
 	AgentReviewCase,
-	AgentReviewCasesResponse,
 	UpsertAgentReviewCaseDto,
 } from '@n8n/api-types';
 
@@ -48,23 +47,6 @@ export const getAgentDebugInsights = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/debug/insights`,
-	);
-};
-
-export const listAgentDebugReviewCases = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	limit: number,
-	cursor?: string,
-): Promise<AgentReviewCasesResponse> => {
-	const params = new URLSearchParams({ limit: String(limit) });
-	if (cursor) params.set('cursor', cursor);
-
-	return await makeRestApiRequest<AgentReviewCasesResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/debug/reviews?${params.toString()}`,
 	);
 };
 

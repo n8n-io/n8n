@@ -3,7 +3,6 @@ import type {
 	AgentDebugRun,
 	AgentDebugRunDetail,
 	AgentDebugSignal,
-	AgentReviewCase,
 	AgentReviewStatus,
 } from '@n8n/api-types';
 import {
@@ -44,11 +43,18 @@ const visibleTimelineKinds = ref(new Set<string>());
 const expectedOutput = ref('');
 const reviewNotes = ref('');
 const savingReviewAction = ref<AgentReviewStatus | 'clear' | null>(null);
+const viewMode = ref<'list' | 'detail'>('list');
 
 const summary = computed(() => debugStore.insights);
-const reviewSummary = computed(() => debugStore.reviewSummary);
 
-type DebugRunFilter = 'all' | 'reviewed' | 'failed' | 'signals' | 'tool_failure' | 'slow_run';
+type DebugRunFilter =
+	| 'all'
+	| 'reviewed'
+	| 'not_reviewed'
+	| 'failed'
+	| 'signals'
+	| 'tool_failure'
+	| 'slow_run';
 
 const selectedFilter = ref<DebugRunFilter>('all');
 
@@ -59,6 +65,7 @@ function runHasSignal(run: AgentDebugRun, type: AgentDebugSignal['type']): boole
 function runMatchesFilter(run: AgentDebugRun, filter: DebugRunFilter): boolean {
 	if (filter === 'all') return true;
 	if (filter === 'reviewed') return run.review !== null;
+	if (filter === 'not_reviewed') return run.review === null;
 	if (filter === 'failed') return run.status === 'error';
 	if (filter === 'signals') return run.signals.length > 0;
 	if (filter === 'tool_failure') return runHasSignal(run, 'tool_failure');
@@ -76,6 +83,7 @@ function filterLabel(filter: DebugRunFilter): string {
 const filterOptions = computed<Array<{ label: string; value: DebugRunFilter }>>(() => [
 	{ label: filterLabel('all'), value: 'all' },
 	{ label: filterLabel('reviewed'), value: 'reviewed' },
+	{ label: filterLabel('not_reviewed'), value: 'not_reviewed' },
 	{ label: filterLabel('failed'), value: 'failed' },
 	{ label: filterLabel('signals'), value: 'signals' },
 	{ label: filterLabel('tool_failure'), value: 'tool_failure' },
@@ -197,22 +205,6 @@ function messageText(value: string): string {
 	return value.trim() || i18n.baseText('agentDebug.noMessageRecorded');
 }
 
-function reviewCaseInput(reviewCase: AgentReviewCase): string {
-	return truncate(messageText(reviewCase.input), 80);
-}
-
-function reviewCaseExpectedOutput(reviewCase: AgentReviewCase): string {
-	return truncate(messageText(reviewCase.expectedOutput), 80);
-}
-
-async function refreshReviewCases() {
-	try {
-		await debugStore.fetchReviewCases(projectId.value, agentId.value);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agentDebug.showError.loadReviews'));
-	}
-}
-
 async function saveReview(status: AgentReviewStatus) {
 	const run = debugStore.selectedRun;
 	if (!run) return;
@@ -224,7 +216,6 @@ async function saveReview(status: AgentReviewStatus) {
 			expectedOutput: expectedOutput.value,
 			notes: reviewNotes.value || undefined,
 		});
-		await refreshReviewCases();
 		toast.showMessage({
 			title: i18n.baseText('agentDebug.review.showMessage.saved'),
 			type: 'success',
@@ -243,7 +234,6 @@ async function clearReview() {
 	savingReviewAction.value = 'clear';
 	try {
 		await debugStore.clearRunReview(projectId.value, agentId.value, run.id);
-		await refreshReviewCases();
 		expectedOutput.value = run.assistantResponse;
 		reviewNotes.value = '';
 		toast.showMessage({
@@ -260,6 +250,7 @@ async function clearReview() {
 async function selectRun(runId: string) {
 	selectedRunId.value = runId;
 	selectedTimelineIndex.value = null;
+	viewMode.value = 'detail';
 	try {
 		await debugStore.fetchRunDetail(projectId.value, agentId.value, runId);
 	} catch (error) {
@@ -267,8 +258,10 @@ async function selectRun(runId: string) {
 	}
 }
 
-async function selectReviewCase(reviewCase: AgentReviewCase) {
-	await selectRun(reviewCase.executionId);
+function backToList() {
+	viewMode.value = 'list';
+	selectedRunId.value = null;
+	selectedTimelineIndex.value = null;
 }
 
 async function loadData() {
@@ -277,14 +270,7 @@ async function loadData() {
 		await Promise.all([
 			debugStore.fetchRuns(projectId.value, agentId.value),
 			debugStore.fetchInsights(projectId.value, agentId.value),
-			debugStore.fetchReviewCases(projectId.value, agentId.value),
 		]);
-		if (debugStore.runs[0]) {
-			await selectRun(debugStore.runs[0].id);
-		} else {
-			selectedRunId.value = null;
-			selectedTimelineIndex.value = null;
-		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agentDebug.showError.load'));
 	}
@@ -298,28 +284,6 @@ async function loadMore() {
 	}
 }
 
-async function loadMoreReviewCases() {
-	try {
-		await debugStore.loadMoreReviewCases(projectId.value, agentId.value);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agentDebug.showError.loadReviews'));
-	}
-}
-
-watch(selectedFilter, () => {
-	const selectedRunIsVisible = filteredRuns.value.some((run) => run.id === selectedRunId.value);
-	if (selectedRunIsVisible) return;
-
-	const nextRun = filteredRuns.value[0];
-	if (nextRun) {
-		void selectRun(nextRun.id);
-		return;
-	}
-
-	selectedRunId.value = null;
-	selectedTimelineIndex.value = null;
-});
-
 watch(
 	() => debugStore.selectedRun,
 	(run) => {
@@ -332,6 +296,7 @@ watch([projectId, agentId], () => {
 	debugStore.reset();
 	selectedRunId.value = null;
 	selectedTimelineIndex.value = null;
+	viewMode.value = 'list';
 	void loadData();
 });
 
@@ -343,6 +308,7 @@ onBeforeUnmount(() => {
 	debugStore.reset();
 	selectedRunId.value = null;
 	selectedTimelineIndex.value = null;
+	viewMode.value = 'list';
 });
 </script>
 
@@ -382,100 +348,8 @@ onBeforeUnmount(() => {
 			</N8nBadge>
 		</div>
 
-		<section :class="$style.reviewDataset" data-testid="agent-debug-reviewed-cases">
-			<div :class="$style.reviewDatasetHeader">
-				<div>
-					<N8nText bold>{{ i18n.baseText('agentDebug.reviewDataset.title') }}</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('agentDebug.reviewDataset.description') }}
-					</N8nText>
-				</div>
-				<div :class="$style.reviewDatasetMetrics">
-					<div :class="$style.reviewDatasetMetric">
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('agentDebug.reviewDataset.total') }}
-						</N8nText>
-						<N8nText bold>{{ formatNumber(reviewSummary?.total ?? 0) }}</N8nText>
-					</div>
-					<div :class="$style.reviewDatasetMetric">
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('agentDebug.reviewDataset.approved') }}
-						</N8nText>
-						<N8nText bold>{{ formatNumber(reviewSummary?.approved ?? 0) }}</N8nText>
-					</div>
-					<div :class="$style.reviewDatasetMetric">
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('agentDebug.reviewDataset.rejected') }}
-						</N8nText>
-						<N8nText bold>{{ formatNumber(reviewSummary?.rejected ?? 0) }}</N8nText>
-					</div>
-				</div>
-			</div>
-
-			<div
-				v-if="debugStore.reviewCases.length || debugStore.loadingReviewCases"
-				:class="$style.reviewDatasetTable"
-			>
-				<N8nTableBase>
-					<thead>
-						<tr>
-							<th>{{ i18n.baseText('agentDebug.reviewDataset.table.status') }}</th>
-							<th>{{ i18n.baseText('agentDebug.reviewDataset.table.input') }}</th>
-							<th>{{ i18n.baseText('agentDebug.reviewDataset.table.expectedOutput') }}</th>
-							<th>{{ i18n.baseText('agentDebug.reviewDataset.table.updated') }}</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr
-							v-for="reviewCase in debugStore.reviewCases"
-							:key="reviewCase.id"
-							:class="[
-								$style.reviewCaseRow,
-								selectedRunId === reviewCase.executionId && $style.selectedRun,
-							]"
-							data-testid="agent-debug-reviewed-case-row"
-							@click="selectReviewCase(reviewCase)"
-						>
-							<td>
-								<N8nBadge
-									:theme="reviewBadgeTheme(reviewCase.status)"
-									:style="reviewBadgeStyle(reviewCase.status)"
-									size="small"
-								>
-									{{ reviewLabel(reviewCase.status) }}
-								</N8nBadge>
-							</td>
-							<td :class="$style.reviewCaseText">{{ reviewCaseInput(reviewCase) }}</td>
-							<td :class="$style.reviewCaseText">{{ reviewCaseExpectedOutput(reviewCase) }}</td>
-							<td>{{ formatDate(reviewCase.updatedAt) }}</td>
-						</tr>
-						<template v-if="debugStore.loadingReviewCases && !debugStore.reviewCases.length">
-							<tr v-for="item in 3" :key="item">
-								<td v-for="col in 4" :key="col">
-									<ElSkeletonItem />
-								</td>
-							</tr>
-						</template>
-					</tbody>
-				</N8nTableBase>
-			</div>
-			<div v-else :class="$style.emptyCompact">
-				{{ i18n.baseText('agentDebug.reviewDataset.empty') }}
-			</div>
-
-			<div v-if="debugStore.reviewCasesNextCursor" :class="$style.reviewCasesLoadMore">
-				<N8nButton
-					icon="refresh-cw"
-					:label="i18n.baseText('agentDebug.reviewDataset.loadMore')"
-					:loading="debugStore.loadingReviewCases"
-					data-testid="agent-debug-reviewed-cases-load-more"
-					@click="loadMoreReviewCases"
-				/>
-			</div>
-		</section>
-
 		<div :class="$style.content">
-			<div :class="$style.runsPanel">
+			<div v-if="viewMode === 'list'" :class="$style.runsPanel">
 				<div :class="$style.filters">
 					<N8nRadioButtons
 						v-model="selectedFilter"
@@ -573,18 +447,23 @@ onBeforeUnmount(() => {
 				</div>
 			</div>
 
-			<div :class="$style.detailPanel">
+			<div v-if="viewMode === 'detail'" :class="$style.detailPanel">
+				<div :class="$style.detailBackRow">
+					<N8nButton
+						icon="arrow-left"
+						type="tertiary"
+						size="small"
+						:label="i18n.baseText('agentDebug.backToRuns')"
+						data-testid="agent-debug-back-to-runs"
+						@click="backToList"
+					/>
+				</div>
 				<div v-if="debugStore.loadingDetail" :class="$style.detailLoading">
 					<ElSkeletonItem v-for="item in 6" :key="item" />
 				</div>
 				<template v-else-if="debugStore.selectedRun">
 					<div :class="$style.detailHeader">
-						<div>
-							<N8nText bold>{{ i18n.baseText('agentDebug.runDetails') }}</N8nText>
-							<N8nText size="small" color="text-light">
-								{{ truncate(debugStore.selectedRun.userMessage, 80) }}
-							</N8nText>
-						</div>
+						<N8nText bold>{{ i18n.baseText('agentDebug.runDetails') }}</N8nText>
 						<div :class="$style.signalList">
 							<N8nBadge
 								v-for="signal in debugStore.selectedRun.signals"
@@ -776,75 +655,10 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--2xs);
 }
 
-.reviewDataset {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--border-radius-base);
-	background-color: var(--background--surface);
-}
-
-.reviewDatasetHeader {
-	display: flex;
-	justify-content: space-between;
-	gap: var(--spacing--md);
-	flex-shrink: 0;
-}
-
-.reviewDatasetMetrics {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(5rem, 1fr));
-	gap: var(--spacing--md);
-}
-
-.reviewDatasetMetric {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.reviewDatasetTable {
-	max-height: 14rem;
-	overflow: hidden;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-
-	> div {
-		height: auto;
-		max-height: 14rem;
-	}
-
-	> div > div {
-		max-height: 14rem;
-	}
-}
-
-.reviewCaseRow {
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--background--hover);
-	}
-}
-
-.reviewCaseText {
-	max-width: 22rem;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.reviewCasesLoadMore {
-	display: flex;
-	justify-content: center;
-}
-
 .content {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.9fr);
-	gap: var(--spacing--md);
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .runsPanel,
@@ -890,6 +704,12 @@ onBeforeUnmount(() => {
 	border: var(--border);
 	border-radius: var(--border-radius-base);
 	background-color: var(--background--surface);
+}
+
+.detailBackRow {
+	display: flex;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-bottom: var(--border);
 }
 
 .detailHeader {
@@ -1012,20 +832,9 @@ onBeforeUnmount(() => {
 	color: var(--color--text--tint-1);
 }
 
-.emptyCompact {
-	padding: var(--spacing--sm);
-	text-align: center;
-	color: var(--color--text--tint-1);
-}
-
 @media (max-width: 1200px) {
-	.summaryGrid,
-	.content {
+	.summaryGrid {
 		grid-template-columns: 1fr;
-	}
-
-	.reviewDatasetHeader {
-		flex-direction: column;
 	}
 
 	.runMetadata {
