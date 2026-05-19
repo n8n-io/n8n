@@ -228,6 +228,26 @@ type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
+/**
+ * Resolves a data table to a `"{name} (ID: {id})"` label for confirmation
+ * messages. Falls back to the raw `dataTableId` if the lookup fails — the
+ * agent's prior turn typically gave enough context that a bare ID is still
+ * recoverable.
+ */
+async function resolveDataTableLabel(
+	context: InstanceAiContext,
+	dataTableId: string,
+	projectId: string | undefined,
+): Promise<string> {
+	return await context.dataTableService
+		.list({ projectId })
+		.then((tables) => {
+			const match = tables.find((t) => t.id === dataTableId || t.name === dataTableId);
+			return match ? `${match.name} (ID: ${match.id})` : dataTableId;
+		})
+		.catch(() => dataTableId);
+}
+
 async function handleList(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'list' }>,
@@ -340,9 +360,10 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const label = await resolveDataTableLabel(context, input.dataTableId, input.projectId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete ${input.dataTableId}`,
+			message: `Delete ${label}`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };
@@ -374,9 +395,10 @@ async function handleAddColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const label = await resolveDataTableLabel(context, input.dataTableId, input.projectId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Add ${input.columnName} (${input.type}) to ${input.dataTableId}`,
+			message: `Add ${input.columnName} (${input.type}) to ${label}`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -412,9 +434,10 @@ async function handleDeleteColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const label = await resolveDataTableLabel(context, input.dataTableId, input.projectId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete ${input.columnId} from ${input.dataTableId}`,
+			message: `Delete ${input.columnId} from ${label}`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };
@@ -448,9 +471,10 @@ async function handleRenameColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const label = await resolveDataTableLabel(context, input.dataTableId, input.projectId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Rename ${input.columnId} to ${input.newName} in ${input.dataTableId}`,
+			message: `Rename ${input.columnId} to ${input.newName} in ${label}`,
 			severity: 'warning' as const,
 		});
 		return { success: false };
@@ -484,9 +508,10 @@ async function handleInsertRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const label = await resolveDataTableLabel(context, input.dataTableId, input.projectId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Insert ${input.rows.length} row(s) into ${input.dataTableId}`,
+			message: `Insert ${input.rows.length} row(s) into ${label}`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -519,9 +544,10 @@ async function handleUpdateRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const label = await resolveDataTableLabel(context, input.dataTableId, input.projectId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Update rows in ${input.dataTableId}`,
+			message: `Update rows in ${label}`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -563,9 +589,10 @@ async function handleDeleteRows(
 				}) => `${f.columnName} ${f.condition} ${String(f.value)}`,
 			)
 			.join(` ${input.filter.type} `);
+		const label = await resolveDataTableLabel(context, input.dataTableId, input.projectId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Delete rows where ${filterDesc}`,
+			message: `Delete rows from ${label} where ${filterDesc}`,
 			severity: 'destructive' as const,
 		});
 		return { success: false };
