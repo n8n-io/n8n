@@ -1086,4 +1086,25 @@ describe('createThreadRuntime - session always-allow', () => {
 		runtime.resetState();
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
+
+	it('keeps the confirmation pending when auto-approve POST fails', async () => {
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-fail',
+			requestId: 'req-fail',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-fail', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
+	});
 });

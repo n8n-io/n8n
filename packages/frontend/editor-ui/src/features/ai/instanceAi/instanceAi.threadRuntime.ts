@@ -374,34 +374,47 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		return true;
 	}
 
+	// In-flight guard for the auto-approve watcher. We can't rely on
+	// `resolvedConfirmationIds` to skip duplicates here because we only mark
+	// resolved *after* `confirmAction` succeeds — otherwise a failed request
+	// would hide the card while the backend still waits for approval.
+	const autoApproveInFlight = new Set<string>();
+
 	watch(
 		pendingConfirmations,
-		(items) => {
+		async (items) => {
 			if (sessionAlwaysAllowKeys.value.size === 0) return;
 			for (const item of items) {
 				const conf = item.toolCall.confirmation;
 				if (resolvedConfirmationIds.value.has(conf.requestId)) continue;
+				if (autoApproveInFlight.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
 				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
 				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
 
-				resolveConfirmation(conf.requestId, 'approved');
-				void confirmAction(conf.requestId, { kind: 'approval', approved: true });
-				telemetry.track('User finished providing input', {
-					thread_id: threadId,
-					input_thread_id: conf.inputThreadId ?? '',
-					instance_id: rootStore.instanceId,
-					type: 'approval',
-					provided_inputs: [
-						{
-							label: conf.message,
-							options: ['approve', 'deny', 'approve_always'],
-							option_chosen: 'approve_auto',
-						},
-					],
-					skipped_inputs: [],
-					auto_resolved: true,
-				});
+				autoApproveInFlight.add(conf.requestId);
+				try {
+					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
+					if (!ok) continue;
+					resolveConfirmation(conf.requestId, 'approved');
+					telemetry.track('User finished providing input', {
+						thread_id: threadId,
+						input_thread_id: conf.inputThreadId ?? '',
+						instance_id: rootStore.instanceId,
+						type: 'approval',
+						provided_inputs: [
+							{
+								label: conf.message,
+								options: ['approve', 'deny', 'approve_always'],
+								option_chosen: 'approve_auto',
+							},
+						],
+						skipped_inputs: [],
+						auto_resolved: true,
+					});
+				} finally {
+					autoApproveInFlight.delete(conf.requestId);
+				}
 			}
 		},
 		{ deep: true },
