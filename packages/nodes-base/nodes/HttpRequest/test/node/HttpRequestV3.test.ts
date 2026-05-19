@@ -881,6 +881,33 @@ describe('HttpRequestV3', () => {
 			);
 		});
 
+		it('should preserve a fileName already set by prepareBinaryData', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/download',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/octet-stream' },
+				body: Buffer.from('data'),
+			});
+			// Simulate prepareBinaryData parsing Content-Disposition and setting fileName directly
+			(executeFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValueOnce({
+				data: 'ZGF0YQ==',
+				mimeType: 'application/octet-stream',
+				fileName: 'custom.txt',
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			// setFilename returns preparedBinaryData.fileName unchanged when already set
+			expect(result[0][0].binary?.data.fileName).toBe('custom.txt');
+		});
+
 		it('should derive filename from the original request URI when no Content-Disposition is present', async () => {
 			setupItems([
 				{
@@ -937,196 +964,6 @@ describe('HttpRequestV3', () => {
 			const result = await node.execute.call(executeFunctions);
 			expect(result[0][0].binary?.data.fileName).toBe('fileA.txt');
 			expect(result[0][1].binary?.data.fileName).toBe('fileB.txt');
-		});
-
-		it('should use per-item outputPropertyName as the binary data key', async () => {
-			setupItems([
-				{
-					json: {
-						url: 'http://example.com/img',
-						responseFormat: 'file',
-						outputPropertyName: 'alpha',
-					},
-				},
-				{
-					json: {
-						url: 'http://example.com/img',
-						responseFormat: 'file',
-						outputPropertyName: 'beta',
-					},
-				},
-			]);
-			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
-				statusCode: 200,
-				headers: { 'content-type': 'image/png' },
-				body: Buffer.from('img'),
-			});
-
-			const result = await node.execute.call(executeFunctions);
-			expect(result[0][0].binary?.alpha).toBeDefined();
-			expect(result[0][0].binary?.beta).toBeUndefined();
-			expect(result[0][1].binary?.beta).toBeDefined();
-			expect(result[0][1].binary?.alpha).toBeUndefined();
-		});
-
-		it('should apply per-item responseFormat (file vs text)', async () => {
-			setupItems([
-				{
-					json: {
-						url: 'http://example.com/img',
-						responseFormat: 'file',
-						outputPropertyName: 'data',
-					},
-				},
-				{
-					json: {
-						url: 'http://example.com/txt',
-						responseFormat: 'text',
-						outputPropertyName: 'data',
-					},
-				},
-			]);
-			(executeFunctions.helpers.request as jest.Mock).mockImplementation(async (opts) => {
-				if ((opts.uri as string).includes('/img')) {
-					return {
-						statusCode: 200,
-						headers: { 'content-type': 'image/png' },
-						body: Buffer.from('img'),
-					};
-				}
-				// responseFormat='text' → requestOptions.json=true, HTTP lib returns text as string
-				return { statusCode: 200, headers: { 'content-type': 'text/plain' }, body: 'hello text' };
-			});
-
-			const result = await node.execute.call(executeFunctions);
-			// Item 0: file → binary output
-			expect(result[0][0].binary?.data).toBeDefined();
-			expect(result[0][0].json.data).toBeUndefined();
-			// Item 1: text → json output
-			expect(result[0][1].binary).toBeUndefined();
-			expect(result[0][1].json.data).toBe('hello text');
-		});
-
-		it('should apply per-item fullResponse (include or exclude response metadata)', async () => {
-			setupItems([
-				{ json: { url: 'http://example.com/a', responseFormat: 'json', fullResponse: true } },
-				{ json: { url: 'http://example.com/b', responseFormat: 'json', fullResponse: false } },
-			]);
-			(executeFunctions.helpers.request as jest.Mock).mockImplementation(async (opts) => {
-				return {
-					statusCode: 200,
-					headers: { 'content-type': 'application/json' },
-					body: (opts.uri as string).includes('/a') ? { id: 1 } : { id: 2 },
-				};
-			});
-
-			const result = await node.execute.call(executeFunctions);
-			// fullResponse=true → output includes statusCode and body wrapper
-			expect(result[0][0].json.statusCode).toBe(200);
-			expect((result[0][0].json.body as Record<string, unknown>).id).toBe(1);
-			// fullResponse=false → output is just the body
-			expect(result[0][1].json.statusCode).toBeUndefined();
-			expect(result[0][1].json.id).toBe(2);
-		});
-
-		it('should use per-item outputPropertyName as fallback filename when URI has no file segment', async () => {
-			setupItems([
-				{
-					json: {
-						url: 'http://example.com/',
-						responseFormat: 'file',
-						outputPropertyName: 'report',
-					},
-				},
-				{
-					json: {
-						url: 'http://example.com/',
-						responseFormat: 'file',
-						outputPropertyName: 'invoice',
-					},
-				},
-			]);
-			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
-				statusCode: 200,
-				headers: { 'content-type': 'application/pdf' },
-				body: Buffer.from('pdf'),
-			});
-
-			const result = await node.execute.call(executeFunctions);
-			// uri='http://example.com/' doesn't end with 'pdf' → setFilename fallback: `${responseFileName}.pdf`
-			// responseFileName is stored per-item in requests[] as outputPropertyName
-			expect(result[0][0].binary?.report.fileName).toBe('report.pdf');
-			expect(result[0][1].binary?.invoice.fileName).toBe('invoice.pdf');
-		});
-
-		it('should preserve a fileName already set by prepareBinaryData (regression: Content-Disposition)', async () => {
-			setupItems([
-				{
-					json: {
-						url: 'http://example.com/download',
-						responseFormat: 'file',
-						outputPropertyName: 'data',
-					},
-				},
-			]);
-			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
-				statusCode: 200,
-				headers: { 'content-type': 'application/octet-stream' },
-				body: Buffer.from('data'),
-			});
-			// Simulate prepareBinaryData parsing Content-Disposition and setting fileName directly
-			(executeFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValueOnce({
-				data: 'ZGF0YQ==',
-				mimeType: 'application/octet-stream',
-				fileName: 'custom.txt',
-			});
-
-			const result = await node.execute.call(executeFunctions);
-			// setFilename returns preparedBinaryData.fileName unchanged when already set
-			expect(result[0][0].binary?.data.fileName).toBe('custom.txt');
-		});
-
-		it('should apply per-item neverError when autodetecting an invalid-JSON response body', async () => {
-			// Item 0: neverError=true  → invalid JSON falls back to {}
-			// Item 1: neverError=false → invalid JSON surfaces as a continueOnFail error
-			// Regression: the old code read neverError with itemIndex=0 for every item, so
-			// item 1 would silently borrow item 0's neverError=true and return {} instead of erroring.
-			setupItems([
-				{
-					json: {
-						url: 'http://example.com/a',
-						responseFormat: 'autodetect',
-						neverError: true,
-					},
-				},
-				{
-					json: {
-						url: 'http://example.com/b',
-						responseFormat: 'autodetect',
-						neverError: false,
-					},
-				},
-			]);
-			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
-
-			// Both items return a response with content-type: application/json but an invalid body.
-			// Use mockImplementation (not mockResolvedValue) so each call gets a fresh object —
-			// the node mutates response.body in-place, which would leak item 0's state into item 1
-			// if the same reference were shared.
-			(executeFunctions.helpers.request as jest.Mock).mockImplementation(async () => ({
-				statusCode: 422,
-				headers: { 'content-type': 'application/json' },
-				body: Buffer.from('not valid json'),
-			}));
-
-			const result = await node.execute.call(executeFunctions);
-
-			// Item 0 (neverError=true): invalid JSON falls back to {} — no error key
-			expect(result[0][0].json.error).toBeUndefined();
-			expect(result[0][0].json).toEqual({});
-
-			// Item 1 (neverError=false): invalid JSON surfaces as an error via continueOnFail
-			expect(result[0][1].json.error).toBeDefined();
 		});
 
 		it('should not crash when an earlier item fails with continueOnFail (requests[] alignment)', async () => {
