@@ -32,7 +32,7 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { isWorkflowIdValid } from '@/utils';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 import { getDataLastExecutedNodeData } from '@/workflow-helpers';
-import { WorkflowLifecycleHookChecksService } from '@/workflow-lifecycle-hook-checks.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // eslint-disable-next-line import-x/no-cycle
@@ -441,9 +441,9 @@ function hookFunctionsPush(
 
 function hookFunctionsExternalHooks(hooks: ExecutionLifecycleHooks) {
 	const externalHooks = Container.get(ExternalHooks);
-	const workflowChecks = Container.get(WorkflowLifecycleHookChecksService);
+	const workflowContext = Container.get(WorkflowHookContextService);
 	hooks.addHandler('workflowExecuteBefore', async function (workflow) {
-		await externalHooks.run('workflow.preExecute', [workflow, this.mode, workflowChecks]);
+		await externalHooks.run('workflow.preExecute', [workflow, this.mode, workflowContext]);
 	});
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
 		await externalHooks.run('workflow.postExecute', [

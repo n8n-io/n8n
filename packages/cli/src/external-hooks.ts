@@ -17,7 +17,7 @@ import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
-import type { WorkflowLifecycleHookChecksService } from '@/workflow-lifecycle-hook-checks.service';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
 	User: UserRepository;
@@ -79,7 +79,7 @@ type ExternalHooksMap = {
 	'workflow.preExecute': [
 		workflow: Workflow,
 		mode: WorkflowExecuteMode,
-		workflowChecks: WorkflowLifecycleHookChecksService,
+		workflowContext: WorkflowHookContextService,
 	];
 	'workflow.postExecute': [
 		fullRunData: IRun | undefined,
