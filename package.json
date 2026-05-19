@@ -159,7 +159,6 @@
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
       "avsc": "5.7.9",
-      "brace-expansion@<=2.1.0": "2.1.0",
       "@xmldom/xmldom": "0.8.13",
       "yaml@<=2.8.3": "2.8.3",
       "axios": "1.16.0",
@@ -171,7 +170,8 @@
       "protobufjs": "7.5.6",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
-      "langsmith": "0.6.0"
+      "langsmith": "0.6.0",
+      "brace-expansion@<=5.0.6": "5.0.6"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
