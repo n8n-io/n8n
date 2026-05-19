@@ -93,6 +93,7 @@ export {
 	TestDataHygieneRule,
 	DuplicateLogicRule,
 	NoDirectPageInstantiationRule,
+	PreferRoleSelectorsRule,
 } from './rules/index.js';
 
 export {
@@ -210,6 +211,7 @@ import { DeduplicationRule } from './rules/deduplication.rule.js';
 import { DuplicateLogicRule } from './rules/duplicate-logic.rule.js';
 import { NoDirectPageInstantiationRule } from './rules/no-direct-page-instantiation.rule.js';
 import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
+import { PreferRoleSelectorsRule } from './rules/prefer-role-selectors.rule.js';
 import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from './rules/selector-purity.rule.js';
 import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
@@ -227,6 +229,7 @@ export function createDefaultRunner(): RuleRunner {
 	runner.registerRule(new TestDataHygieneRule());
 	runner.registerRule(new DuplicateLogicRule());
 	runner.registerRule(new NoDirectPageInstantiationRule());
+	runner.registerRule(new PreferRoleSelectorsRule());
 	return runner;
 }
 

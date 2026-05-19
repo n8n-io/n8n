@@ -435,6 +435,36 @@ async saveCredential() {
 
 **Threshold:** Methods/tests with fewer than 2 statements are ignored (configurable via `minStatements`).
 
+### Accessibility Rules
+
+#### `prefer-role-selectors`
+
+**Severity:** warning
+
+Flags `getByTestId()` calls in page objects where a `getByRole()` equivalent may exist. The ratio of `getByRole` to `getByTestId` in page objects becomes a proxy metric for UI accessibility coverage — if a test cannot use `getByRole`, the underlying component likely fails WCAG and should be fixed at the frontend layer.
+
+```typescript
+// Warning - test ID where a role likely exists
+get saveButton() {
+  return this.container.getByTestId('save-button');
+}
+
+// Good - role-based selector exposes accessibility intent
+get saveButton() {
+  return this.container.getByRole('button', { name: 'Save' });
+}
+```
+
+When a role-based selector genuinely isn't possible, the test ID can be added to `allowPatterns` and a frontend accessibility issue should be filed against the component:
+
+```typescript
+rules: {
+  'prefer-role-selectors': {
+    allowPatterns: [/^canvas-/], // Test IDs that intentionally cannot use roles
+  },
+}
+```
+
 ## Configuration Reference
 
 ```typescript

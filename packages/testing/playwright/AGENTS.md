@@ -63,6 +63,7 @@ Tests → Flows/Composables → Page Objects → Components → Playwright API
 | `dead-code` | Unused public methods in page objects |
 | `deduplication` | Same selector defined in multiple files |
 | `duplicate-logic` | Copy-pasted code across tests/pages (AST fingerprinting) |
+| `prefer-role-selectors` | `getByTestId` calls in page objects where `getByRole` may apply (a11y proxy metric) |
 
 ### Commands
 

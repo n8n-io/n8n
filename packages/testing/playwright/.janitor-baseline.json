@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-18T14:07:20.233Z",
-	"totalViolations": 412,
+	"generated": "2026-05-19T11:31:42.550Z",
+	"totalViolations": 1058,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -39,6 +39,138 @@
 				"line": 109,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 7,
+				"message": "getByTestId(\"ask-assistant-sidebar\") — consider getByRole if the element has an accessible role",
+				"hash": "fa671bbb7e0e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"ask-assistant-floating-button\") — consider getByRole if the element has an accessible role",
+				"hash": "876b2ec9bf2d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"ask-assistant-canvas-action-button\") — consider getByRole if the element has an accessible role",
+				"hash": "e22680a1315c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"ask-assistant-chat\") — consider getByRole if the element has an accessible role",
+				"hash": "487caef23c21"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 31,
+				"message": "getByTestId(\"placeholder-message\") — consider getByRole if the element has an accessible role",
+				"hash": "78d3c3a943f7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"chat-suggestions-input\") — consider getByRole if the element has an accessible role",
+				"hash": "a7d3bf4950cf"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 41,
+				"message": "getByTestId(\"chat-input\") — consider getByRole if the element has an accessible role",
+				"hash": "014883d38be8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"chat-input-with-mention\") — consider getByRole if the element has an accessible role",
+				"hash": "752b2f86646b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 49,
+				"message": "getByTestId(\"send-message-button\") — consider getByRole if the element has an accessible role",
+				"hash": "36cb81425cb7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 53,
+				"message": "getByTestId(\"close-chat-button\") — consider getByRole if the element has an accessible role",
+				"hash": "b4eb75b55f57"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 61,
+				"message": "getByTestId(\"node-error-view-ask-assistant-button\") — consider getByRole if the element has an accessible role",
+				"hash": "dde9434e50f0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 69,
+				"message": "getByTestId(\"chat-message-assistant\") — consider getByRole if the element has an accessible role",
+				"hash": "297d92bb46a8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 73,
+				"message": "getByTestId(\"chat-message-user\") — consider getByRole if the element has an accessible role",
+				"hash": "85edfb5bce64"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 77,
+				"message": "getByTestId(\"chat-message-system\") — consider getByRole if the element has an accessible role",
+				"hash": "5dbf65e03c95"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 81,
+				"message": "getByTestId(\"quick-replies\") — consider getByRole if the element has an accessible role",
+				"hash": "ae95d66eb927"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 85,
+				"message": "getByTestId(\"new-assistant-session-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "8e712d2f3c99"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 93,
+				"message": "getByTestId(\"code-diff-suggestion\") — consider getByRole if the element has an accessible role",
+				"hash": "8a7ff1444f6d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 97,
+				"message": "getByTestId(\"replace-code-button\") — consider getByRole if the element has an accessible role",
+				"hash": "c50278099477"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 101,
+				"message": "getByTestId(\"undo-replace-button\") — consider getByRole if the element has an accessible role",
+				"hash": "709e7b3fe9f9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 105,
+				"message": "getByTestId(\"code-replaced-message\") — consider getByRole if the element has an accessible role",
+				"hash": "d7a7b078c695"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 109,
+				"message": "getByTestId(\"credential-edit-ask-assistant-button\") — consider getByRole if the element has an accessible role",
+				"hash": "82e81f77c1a0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 113,
+				"message": "getByTestId(\"assistant-code-snippet-content\") — consider getByRole if the element has an accessible role",
+				"hash": "b215138591ff"
 			}
 		],
 		"pages/InstanceAiPage.ts": [
@@ -59,6 +191,150 @@
 				"line": 144,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"instance-ai-thread-list\") — consider getByRole if the element has an accessible role",
+				"hash": "e114848b30e1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 17,
+				"message": "getByTestId(\"instance-ai-workflow-setup\") — consider getByRole if the element has an accessible role",
+				"hash": "a4b2f4e8538f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"editCredential-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "4139bca20015"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"instance-ai-container\") — consider getByRole if the element has an accessible role",
+				"hash": "0e3775073a4b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 53,
+				"message": "getByTestId(\"instance-ai-sidebar-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "4201d5108611"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 69,
+				"message": "getByTestId(\"instance-ai-thread-list\") — consider getByRole if the element has an accessible role",
+				"hash": "e114848b30e1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 79,
+				"message": "getByTestId(\"instance-ai-send-button\") — consider getByRole if the element has an accessible role",
+				"hash": "c290ca7948de"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 83,
+				"message": "getByTestId(\"instance-ai-stop-button\") — consider getByRole if the element has an accessible role",
+				"hash": "908ad2e8b86f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 87,
+				"message": "getByTestId(\"instance-ai-user-message\") — consider getByRole if the element has an accessible role",
+				"hash": "7a25c456a0e8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 91,
+				"message": "getByTestId(\"instance-ai-assistant-message\") — consider getByRole if the element has an accessible role",
+				"hash": "3f373e5bfcff"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 103,
+				"message": "getByTestId(\"instance-ai-status-bar\") — consider getByRole if the element has an accessible role",
+				"hash": "bb15b1521b17"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 112,
+				"message": "getByTestId(\"instance-ai-empty-state\") — consider getByRole if the element has an accessible role",
+				"hash": "31e435064879"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 122,
+				"message": "getByTestId(\"chat-file\") — consider getByRole if the element has an accessible role",
+				"hash": "16f8d45a354a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 128,
+				"message": "getByTestId(\"instance-ai-panel-confirm-approve\") — consider getByRole if the element has an accessible role",
+				"hash": "3c4d8040e59e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 132,
+				"message": "getByTestId(\"instance-ai-panel-confirm-deny\") — consider getByRole if the element has an accessible role",
+				"hash": "c3f18b94c753"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 136,
+				"message": "getByTestId(\"domain-access-primary\") — consider getByRole if the element has an accessible role",
+				"hash": "05b260211308"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 140,
+				"message": "getByTestId(\"instance-ai-credential-continue-button\") — consider getByRole if the element has an accessible role",
+				"hash": "7527ef1d5584"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 150,
+				"message": "getByTestId(\"instance-ai-plan-approve\") — consider getByRole if the element has an accessible role",
+				"hash": "cddff077d4b4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 185,
+				"message": "getByTestId(\"instance-ai-artifacts-preview-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "78eca7711d52"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 189,
+				"message": "getByTestId(\"instance-ai-preview-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "fca20d70b06a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 193,
+				"message": "getByTestId(\"workflow-preview-iframe\") — consider getByRole if the element has an accessible role",
+				"hash": "d98c55c2dbbf"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 197,
+				"message": "getByTestId(\"execute-workflow-button\") — consider getByRole if the element has an accessible role",
+				"hash": "72fd4e42c575"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 223,
+				"message": "getByTestId(\"output-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "0b922c3e942f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 229,
+				"message": "getByTestId(\"instance-ai-artifact-card\") — consider getByRole if the element has an accessible role",
+				"hash": "02d6764bd6c8"
 			}
 		],
 		"pages/NodeDetailsViewPage.ts": [
@@ -289,6 +565,642 @@
 				"line": 891,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"ndv-input-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "fc5a7a15fdcc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"output-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "c142866ea5ac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"node-credentials-select\") — consider getByRole if the element has an accessible role",
+				"hash": "c6f1e52dfceb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"node-credentials-empty-state\") — consider getByRole if the element has an accessible role",
+				"hash": "441a6e884fc7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 34,
+				"message": "getByTestId(\"quick-connect-empty-state\") — consider getByRole if the element has an accessible role",
+				"hash": "b2e1fe6b387e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 66,
+				"message": "getByTestId(\"parameter-input-field\") — consider getByRole if the element has an accessible role",
+				"hash": "d10c03ec6f6a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 98,
+				"message": "getByTestId(\"output-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "c142866ea5ac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 102,
+				"message": "getByTestId(\"ndv\") — consider getByRole if the element has an accessible role",
+				"hash": "a4b7b8dd3368"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 106,
+				"message": "getByTestId(\"ndv-input-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "fc5a7a15fdcc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 110,
+				"message": "getByTestId(\"parameter-expression-preview-value\") — consider getByRole if the element has an accessible role",
+				"hash": "17412c063696"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 114,
+				"message": "getByTestId(\"parameter-expression-preview-output\") — consider getByRole if the element has an accessible role",
+				"hash": "3fdc73fe255f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 118,
+				"message": "getByTestId(\"inline-expression-editor-output\") — consider getByRole if the element has an accessible role",
+				"hash": "c817ff1d02f8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 124,
+				"message": "getByTestId(\"radio-button-expression\") — consider getByRole if the element has an accessible role",
+				"hash": "a87b73cc0988"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 124,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container .getByTestId(`${parameterName}-parameter-i...",
+				"hash": "c057b46c69b3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 131,
+				"message": "getByTestId(\"ndv-edit-pinned-data\") — consider getByRole if the element has an accessible role",
+				"hash": "bfa4f0cd268f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 135,
+				"message": "getByTestId(\"run-data-pane-header\") — consider getByRole if the element has an accessible role",
+				"hash": "39529d0532bb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 143,
+				"message": "getByTestId(\"ndv-data-container\") — consider getByRole if the element has an accessible role",
+				"hash": "f16a2ca5898b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 167,
+				"message": "getByTestId(\"assignment-collection-drop-area\") — consider getByRole if the element has an accessible role",
+				"hash": "d9a4fab8d128"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 167,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container .getByTestId(`assignment-collection-${para...",
+				"hash": "a9d84ccc2ad4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 173,
+				"message": "getByTestId(\"assignment-collection-drop-area\") — consider getByRole if the element has an accessible role",
+				"hash": "d9a4fab8d128"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 181,
+				"message": "getByTestId(\"assignment-value\") — consider getByRole if the element has an accessible role",
+				"hash": "c939668395b4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 181,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container .getByTestId(`assignment-collection-${para...",
+				"hash": "a9d84ccc2ad4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 202,
+				"message": "getByTestId(\"inline-expression-editor-input\") — consider getByRole if the element has an accessible role",
+				"hash": "7cb1c02d89c2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 204,
+				"message": "getByTestId(\"inline-expression-editor-input\") — consider getByRole if the element has an accessible role",
+				"hash": "7cb1c02d89c2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 208,
+				"message": "getByTestId(\"node-parameters\") — consider getByRole if the element has an accessible role",
+				"hash": "6b03a8dcb184"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 212,
+				"message": "getByTestId(\"parameter-input-hint\") — consider getByRole if the element has an accessible role",
+				"hash": "2a3aff169369"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 216,
+				"message": "getByTestId(\"input-label\") — consider getByRole if the element has an accessible role",
+				"hash": "c5d93ce50e28"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 224,
+				"message": "getByTestId(\"credentials-label\") — consider getByRole if the element has an accessible role",
+				"hash": "93fe698eecf1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 245,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`parameter-input-${parameterNa...",
+				"hash": "e3c791d23335"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 272,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`parameter-input-${parameterNa...",
+				"hash": "e3c791d23335"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 288,
+				"message": "getByTestId(\"collection-parameter-add\") — consider getByRole if the element has an accessible role",
+				"hash": "bf2a8ded17ac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 311,
+				"message": "getByTestId(\"code-node-tab-ai\") — consider getByRole if the element has an accessible role",
+				"hash": "500514f2ab47"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 315,
+				"message": "getByTestId(\"ask-ai-cta\") — consider getByRole if the element has an accessible role",
+				"hash": "4ee2cb6db8a0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 319,
+				"message": "getByTestId(\"ask-ai-prompt-input\") — consider getByRole if the element has an accessible role",
+				"hash": "d89434e09bfa"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 323,
+				"message": "getByTestId(\"ask-ai-prompt-counter\") — consider getByRole if the element has an accessible role",
+				"hash": "36b3f4d295e6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 327,
+				"message": "getByTestId(\"ask-ai-cta-tooltip-no-input-data\") — consider getByRole if the element has an accessible role",
+				"hash": "4ea657218d80"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 331,
+				"message": "getByTestId(\"ask-ai-cta-tooltip-no-prompt\") — consider getByRole if the element has an accessible role",
+				"hash": "bfd6b81fad8c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 335,
+				"message": "getByTestId(\"ask-ai-cta-tooltip-prompt-too-short\") — consider getByRole if the element has an accessible role",
+				"hash": "79cd3038049c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 339,
+				"message": "getByTestId(\"code-node-tab-code\") — consider getByRole if the element has an accessible role",
+				"hash": "8cd68dc50671"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 397,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`assignment-collection-${param...",
+				"hash": "6f151d825f9c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 407,
+				"message": "getByTestId(\"assignment\") — consider getByRole if the element has an accessible role",
+				"hash": "91e67b94af2c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 411,
+				"message": "getByTestId(\"assignment-name\") — consider getByRole if the element has an accessible role",
+				"hash": "a82eb1f740d2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 419,
+				"message": "getByTestId(\"mapping-fields-container\") — consider getByRole if the element has an accessible role",
+				"hash": "cbc7ceaaab47"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 423,
+				"message": "getByTestId(\"parameter-input\") — consider getByRole if the element has an accessible role",
+				"hash": "8b2d0ba814bc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 427,
+				"message": "getByTestId(\"matching-column-select\") — consider getByRole if the element has an accessible role",
+				"hash": "83fce0cdb75a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 431,
+				"message": "getByTestId(\"columns-parameter-input-options-container\") — consider getByRole if the element has an accessible role",
+				"hash": "080a992db748"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 435,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`remove-field-button-${fieldNa...",
+				"hash": "06d77f6886a9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 439,
+				"message": "getByTestId(\"action-removeAllFields\") — consider getByRole if the element has an accessible role",
+				"hash": "c0895e8d795e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 445,
+				"message": "getByTestId(\"action-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "99cf3a33b2cf"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 446,
+				"message": "getByTestId(\"action-refreshFieldList\") — consider getByRole if the element has an accessible role",
+				"hash": "8ed8b6b1f32e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 447,
+				"message": "getByTestId(\"action-refreshFieldList\") — consider getByRole if the element has an accessible role",
+				"hash": "8ed8b6b1f32e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 467,
+				"message": "getByTestId(\"inline-expression-editor-output\") — consider getByRole if the element has an accessible role",
+				"hash": "c817ff1d02f8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 471,
+				"message": "getByTestId(\"inline-expression-editor-item-input\") — consider getByRole if the element has an accessible role",
+				"hash": "2a0075b15a0b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 475,
+				"message": "getByTestId(\"inline-expression-editor-item-prev\") — consider getByRole if the element has an accessible role",
+				"hash": "4465575db777"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 479,
+				"message": "getByTestId(\"inline-expression-editor-item-next\") — consider getByRole if the element has an accessible role",
+				"hash": "90ee82e619f5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 494,
+				"message": "getByTestId(\"expander\") — consider getByRole if the element has an accessible role",
+				"hash": "c3d7b10f9220"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 497,
+				"message": "getByTestId(\"expression-modal-input\") — consider getByRole if the element has an accessible role",
+				"hash": "0f567d267b06"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 501,
+				"message": "getByTestId(\"expression-modal-input\") — consider getByRole if the element has an accessible role",
+				"hash": "0f567d267b06"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 512,
+				"message": "getByTestId(\"expression-modal-output\") — consider getByRole if the element has an accessible role",
+				"hash": "d729d7c73a6a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 527,
+				"message": "getByTestId(\"copy-input\") — consider getByRole if the element has an accessible role",
+				"hash": "fbe05b6bd394"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 531,
+				"message": "getByTestId(\"ndv-data-pagination\") — consider getByRole if the element has an accessible role",
+				"hash": "57553b38e851"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 556,
+				"message": "getByTestId(\"run-data-callout\") — consider getByRole if the element has an accessible role",
+				"hash": "f14214c52397"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 566,
+				"message": "getByTestId(\"setup-manually-link\") — consider getByRole if the element has an accessible role",
+				"hash": "eaefa47dd5d3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 567,
+				"message": "getByTestId(\"setup-credential-button\") — consider getByRole if the element has an accessible role",
+				"hash": "bd80e2129a1d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 568,
+				"message": "getByTestId(\"node-credentials-select\") — consider getByRole if the element has an accessible role",
+				"hash": "c6f1e52dfceb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 583,
+				"message": "getByTestId(\"node-credentials-select-item-new\") — consider getByRole if the element has an accessible role",
+				"hash": "6a02cf58e1d8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 589,
+				"message": "getByTestId(\"run-selector\") — consider getByRole if the element has an accessible role",
+				"hash": "9e18cd977b9c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 593,
+				"message": "getByTestId(\"run-selector\") — consider getByRole if the element has an accessible role",
+				"hash": "9e18cd977b9c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 601,
+				"message": "getByTestId(\"link-run\") — consider getByRole if the element has an accessible role",
+				"hash": "d2aa18fc8121"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 605,
+				"message": "getByTestId(\"node-error-message\") — consider getByRole if the element has an accessible role",
+				"hash": "078a92e7a517"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 609,
+				"message": "getByTestId(\"node-error-description\") — consider getByRole if the element has an accessible role",
+				"hash": "f8ca987f5f5f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 646,
+				"message": "getByTestId(\"node-execute-button\") — consider getByRole if the element has an accessible role",
+				"hash": "5b2c253f7e05"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 650,
+				"message": "getByTestId(\"trigger-execute-button\") — consider getByRole if the element has an accessible role",
+				"hash": "6eca778cacd5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 654,
+				"message": "getByTestId(\"code-editor-fullscreen-button\") — consider getByRole if the element has an accessible role",
+				"hash": "bb5f3f9f34eb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 658,
+				"message": "getByTestId(\"code-editor-fullscreen\") — consider getByRole if the element has an accessible role",
+				"hash": "932abc8cde2a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 670,
+				"message": "getByTestId(\"node-run-status-success\") — consider getByRole if the element has an accessible role",
+				"hash": "eb01ce253d56"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 674,
+				"message": "getByTestId(\"node-run-status-danger\") — consider getByRole if the element has an accessible role",
+				"hash": "82b3083d6328"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 678,
+				"message": "getByTestId(\"node-run-info\") — consider getByRole if the element has an accessible role",
+				"hash": "647a7c0d83f6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 682,
+				"message": "getByTestId(\"node-run-info-stale\") — consider getByRole if the element has an accessible role",
+				"hash": "cfdf5e0a7035"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 686,
+				"message": "getByTestId(\"node-execute-button\") — consider getByRole if the element has an accessible role",
+				"hash": "5b2c253f7e05"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 694,
+				"message": "getByTestId(\"tab-settings\") — consider getByRole if the element has an accessible role",
+				"hash": "8fa51944d81f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 698,
+				"message": "getByTestId(\"node-version\") — consider getByRole if the element has an accessible role",
+				"hash": "b7c7df83bf10"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 728,
+				"message": "getByTestId(\"node-title-container\") — consider getByRole if the element has an accessible role",
+				"hash": "bcd7d090b8c5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 760,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`add-subnode-${connectionType}...",
+				"hash": "9e03b7d42ea5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 774,
+				"message": "getByTestId(\"floating-node\") — consider getByRole if the element has an accessible role",
+				"hash": "55c2ba5e95d0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 778,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`fixed-collection-${collection...",
+				"hash": "10017c6611b3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 807,
+				"message": "getByTestId(\"fixed-collection-add-property\") — consider getByRole if the element has an accessible role",
+				"hash": "69200b81bdd5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 818,
+				"message": "getByTestId(\"parameter-item\") — consider getByRole if the element has an accessible role",
+				"hash": "237f7db55833"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 828,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`resource-locator-${paramName}`)",
+				"hash": "32f87c8742d1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 832,
+				"message": "getByTestId(\"rlc-input-container\") — consider getByRole if the element has an accessible role",
+				"hash": "3d67b0a182f6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 844,
+				"message": "getByTestId(\"rlc-mode-selector\") — consider getByRole if the element has an accessible role",
+				"hash": "9d37a4e200b6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 852,
+				"message": "getByTestId(\"rlc-error-container\") — consider getByRole if the element has an accessible role",
+				"hash": "04e827122235"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 860,
+				"message": "getByTestId(\"rlc-search\") — consider getByRole if the element has an accessible role",
+				"hash": "98fc2d8841fe"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 864,
+				"message": "getByTestId(\"parameter-issues\") — consider getByRole if the element has an accessible role",
+				"hash": "5652033253e4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 868,
+				"message": "getByTestId(\"rlc-item\") — consider getByRole if the element has an accessible role",
+				"hash": "53cd646de00d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 872,
+				"message": "getByTestId(\"rlc-item-add-resource\") — consider getByRole if the element has an accessible role",
+				"hash": "64f372f8b1d2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 880,
+				"message": "getByTestId(\"radio-button-expression\") — consider getByRole if the element has an accessible role",
+				"hash": "a87b73cc0988"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 885,
+				"message": "getByTestId(\"mode-id\") — consider getByRole if the element has an accessible role",
+				"hash": "24e8dcf8f75d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 895,
+				"message": "getByTestId(\"ndv-input-select\") — consider getByRole if the element has an accessible role",
+				"hash": "fd2e44ce5197"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 903,
+				"message": "getByTestId(\"ai-output-mode-select\") — consider getByRole if the element has an accessible role",
+				"hash": "101d5de13202"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 911,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`filter-${paramName}`)",
+				"hash": "8da617e09a6f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 915,
+				"message": "getByTestId(\"filter-condition\") — consider getByRole if the element has an accessible role",
+				"hash": "99a6426e420d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 919,
+				"message": "getByTestId(\"filter-condition-left\") — consider getByRole if the element has an accessible role",
+				"hash": "2bcbf68e9450"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 927,
+				"message": "getByTestId(\"filter-operator-select\") — consider getByRole if the element has an accessible role",
+				"hash": "093efdd65a68"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 931,
+				"message": "getByTestId(\"filter-remove-condition\") — consider getByRole if the element has an accessible role",
+				"hash": "4a4c70550215"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 935,
+				"message": "getByTestId(\"filter-add-condition\") — consider getByRole if the element has an accessible role",
+				"hash": "c4a32ba7c508"
 			}
 		],
 		"pages/SidebarPage.ts": [
@@ -345,6 +1257,132 @@
 				"line": 139,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"project-home-menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "3ac81f1de67c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"universal-add\") — consider getByRole if the element has an accessible role",
+				"hash": "2675a6f6c1b3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"navigation-submenu\") — consider getByRole if the element has an accessible role",
+				"hash": "4efe5dc8d4cc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"project-home-menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "3ac81f1de67c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 39,
+				"message": "getByTestId(\"project-personal-menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "0aeeb46e5855"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 51,
+				"message": "getByTestId(\"navigation-menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "edd000529835"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 85,
+				"message": "getByTestId(\"project-menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "4e03e961a85d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 94,
+				"message": "getByTestId(\"main-sidebar-settings\") — consider getByRole if the element has an accessible role",
+				"hash": "6718577cfd92"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 98,
+				"message": "getByTestId(\"main-sidebar-log-out\") — consider getByRole if the element has an accessible role",
+				"hash": "794d185a7229"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 102,
+				"message": "getByTestId(\"about-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "152e39250ed0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 106,
+				"message": "getByTestId(\"main-sidebar-help\") — consider getByRole if the element has an accessible role",
+				"hash": "0ade9c155e18"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 115,
+				"message": "getByTestId(\"about\") — consider getByRole if the element has an accessible role",
+				"hash": "6a640a750e01"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 123,
+				"message": "getByTestId(\"close-about-modal-button\") — consider getByRole if the element has an accessible role",
+				"hash": "b1e095de7872"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 127,
+				"message": "getByTestId(\"main-sidebar-cloud-admin\") — consider getByRole if the element has an accessible role",
+				"hash": "b550fbd82e24"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 131,
+				"message": "getByTestId(\"banners-TRIAL\") — consider getByRole if the element has an accessible role",
+				"hash": "3341ef8798e4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 135,
+				"message": "getByTestId(\"main-sidebar-templates\") — consider getByRole if the element has an accessible role",
+				"hash": "b430e24cbcd1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 139,
+				"message": "getByTestId(\"version-update-cta-button\") — consider getByRole if the element has an accessible role",
+				"hash": "143d4246d181"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 143,
+				"message": "getByTestId(\"main-sidebar-source-control-push\") — consider getByRole if the element has an accessible role",
+				"hash": "c279487cc6d7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 147,
+				"message": "getByTestId(\"main-sidebar-source-control-pull\") — consider getByRole if the element has an accessible role",
+				"hash": "97b384e0403f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 151,
+				"message": "getByTestId(\"main-sidebar-source-control-connected\") — consider getByRole if the element has an accessible role",
+				"hash": "0949895012f9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 173,
+				"message": "getByTestId(\"n8n-logo\") — consider getByRole if the element has an accessible role",
+				"hash": "71b74fa62e30"
 			}
 		],
 		"pages/WorkflowSettingsModal.ts": [
@@ -425,6 +1463,120 @@
 				"line": 145,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 7,
+				"message": "getByTestId(\"workflow-settings-dialog\") — consider getByRole if the element has an accessible role",
+				"hash": "631b991160ac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"workflow-menu\") — consider getByRole if the element has an accessible role",
+				"hash": "5a21e11eca51"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"workflow-menu-item-settings\") — consider getByRole if the element has an accessible role",
+				"hash": "a9f1e2f6dcd9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"workflow-settings-error-workflow\") — consider getByRole if the element has an accessible role",
+				"hash": "b06dda9054d2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"workflow-settings-timezone\") — consider getByRole if the element has an accessible role",
+				"hash": "085bf025ced7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 31,
+				"message": "getByTestId(\"workflow-settings-save-failed-executions\") — consider getByRole if the element has an accessible role",
+				"hash": "bf17697876e0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"workflow-settings-save-success-executions\") — consider getByRole if the element has an accessible role",
+				"hash": "d0f64484b4e1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 39,
+				"message": "getByTestId(\"workflow-settings-save-manual-executions\") — consider getByRole if the element has an accessible role",
+				"hash": "40188069ab0f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 43,
+				"message": "getByTestId(\"workflow-settings-save-execution-progress\") — consider getByRole if the element has an accessible role",
+				"hash": "a1996206b988"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 47,
+				"message": "getByTestId(\"workflow-settings-timeout-workflow\") — consider getByRole if the element has an accessible role",
+				"hash": "d6e83cf709b4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 51,
+				"message": "getByTestId(\"workflow-settings-timeout-form\") — consider getByRole if the element has an accessible role",
+				"hash": "f0190350b740"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 55,
+				"message": "getByTestId(\"workflow-menu-item-duplicate\") — consider getByRole if the element has an accessible role",
+				"hash": "324a143f9239"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 59,
+				"message": "getByTestId(\"workflow-menu-item-delete\") — consider getByRole if the element has an accessible role",
+				"hash": "bc508dcba992"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 63,
+				"message": "getByTestId(\"workflow-menu-item-archive\") — consider getByRole if the element has an accessible role",
+				"hash": "a2af4e930479"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 71,
+				"message": "getByTestId(\"workflow-menu-item-unarchive\") — consider getByRole if the element has an accessible role",
+				"hash": "54bc0f936995"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 75,
+				"message": "getByTestId(\"workflow-menu-item-push\") — consider getByRole if the element has an accessible role",
+				"hash": "80828f1effd0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 79,
+				"message": "getByTestId(\"workflow-menu-item-unpublish\") — consider getByRole if the element has an accessible role",
+				"hash": "e350bcc5b1fa"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 83,
+				"message": "getByTestId(\"workflow-history-version-unpublish-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "5543bce3aa3d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 99,
+				"message": "getByTestId(\"duplicate-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "c4bfd5c74e7f"
 			}
 		],
 		"pages/WorkflowSharingModal.ts": [
@@ -439,6 +1591,18 @@
 				"line": 5,
 				"message": "Duplicate locator: this.page.getByTestId(\"workflowShare-modal\") in pages scope",
 				"hash": "0de6cf556dcf"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 5,
+				"message": "getByTestId(\"workflowShare-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "8f31eb115384"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 9,
+				"message": "getByTestId(\"project-sharing-select\") — consider getByRole if the element has an accessible role",
+				"hash": "2ea21a47413f"
 			}
 		],
 		"composables/WorkflowComposer.ts": [
@@ -2461,6 +3625,30 @@
 				"line": 15,
 				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
 				"hash": "9a7686cd2015"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 13,
+				"message": "getByTestId(\"chatProviderSettingsModal-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "68df8376dce9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"editCredential-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "a492426d02af"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 22,
+				"message": "getByTestId(\"chat-providers-table\") — consider getByRole if the element has an accessible role",
+				"hash": "2b444e925254"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"action-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "5aa80d2a1dc6"
 			}
 		],
 		"pages/CredentialsPage.ts": [
@@ -2469,6 +3657,60 @@
 				"line": 11,
 				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
 				"hash": "26d5cec187a8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"editCredential-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "86e24a74f027"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"create-credential-button\") — consider getByRole if the element has an accessible role",
+				"hash": "b06ad6466ffc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 34,
+				"message": "getByTestId(\"new-credential-type-select-option\") — consider getByRole if the element has an accessible role",
+				"hash": "001b30d0d4df"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"new-credential-type-button\") — consider getByRole if the element has an accessible role",
+				"hash": "9938ee18c751"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 47,
+				"message": "getByTestId(\"resources-list-search\") — consider getByRole if the element has an accessible role",
+				"hash": "18f72e1f0c05"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 51,
+				"message": "getByTestId(\"resources-list-sort\") — consider getByRole if the element has an accessible role",
+				"hash": "c71094cc7408"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 56,
+				"message": "getByTestId(\"resources-list-sort\") — consider getByRole if the element has an accessible role",
+				"hash": "c71094cc7408"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 65,
+				"message": "getByTestId(\"new-credential-type-select-option\") — consider getByRole if the element has an accessible role",
+				"hash": "001b30d0d4df"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 69,
+				"message": "getByTestId(\"new-credential-type-button\") — consider getByRole if the element has an accessible role",
+				"hash": "9938ee18c751"
 			}
 		],
 		"pages/TemplateCredentialSetupPage.ts": [
@@ -2477,6 +3719,60 @@
 				"line": 11,
 				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
 				"hash": "f7601cdc2aea"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"editCredential-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "9d818d8b2053"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"info-callout\") — consider getByRole if the element has an accessible role",
+				"hash": "24562bcd7480"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 22,
+				"message": "getByTestId(\"setup-credentials-form-step\") — consider getByRole if the element has an accessible role",
+				"hash": "72ff4bb7337b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"credential-step-heading\") — consider getByRole if the element has an accessible role",
+				"hash": "faa262e8f45f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"credential-step-description\") — consider getByRole if the element has an accessible role",
+				"hash": "5970db016f82"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"continue-button\") — consider getByRole if the element has an accessible role",
+				"hash": "d1cf99ab0ae3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"setup-credentials-button\") — consider getByRole if the element has an accessible role",
+				"hash": "7d156991b2b8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 46,
+				"message": "getByTestId(\"setup-workflow-credentials-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "3f65eb817aba"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 50,
+				"message": "getByTestId(\"setup-credentials-form-step\") — consider getByRole if the element has an accessible role",
+				"hash": "72ff4bb7337b"
 			}
 		],
 		"pages/ChatHubWorkflowAgentsPage.ts": [
@@ -2485,6 +3781,12 @@
 				"line": 15,
 				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
 				"hash": "3a8429e96555"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"chat-agent-card\") — consider getByRole if the element has an accessible role",
+				"hash": "abbfe1e44ba5"
 			}
 		],
 		"pages/VariablesPage.ts": [
@@ -2493,6 +3795,54 @@
 				"line": 26,
 				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
 				"hash": "dd0cee10de0a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"variableModal-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "9d17a19129f3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 14,
+				"message": "getByTestId(\"unavailable-resources-list\") — consider getByRole if the element has an accessible role",
+				"hash": "477732d0a9eb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"resources-list\") — consider getByRole if the element has an accessible role",
+				"hash": "cf823fcd5316"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"resources-list-search\") — consider getByRole if the element has an accessible role",
+				"hash": "cfa5ed37d490"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"add-resource-variable\") — consider getByRole if the element has an accessible role",
+				"hash": "c679b7bb8059"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 34,
+				"message": "getByTestId(\"variables-row\") — consider getByRole if the element has an accessible role",
+				"hash": "a52a336b7c67"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 76,
+				"message": "getByTestId(\"variable-row-delete-button\") — consider getByRole if the element has an accessible role",
+				"hash": "2a48f6024068"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 90,
+				"message": "getByTestId(\"variable-row-edit-button\") — consider getByRole if the element has an accessible role",
+				"hash": "48831b9054a4"
 			}
 		],
 		"pages/WorkflowsPage.ts": [
@@ -2519,6 +3869,108 @@
 				"line": 50,
 				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
 				"hash": "2f37cf533810"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"workflow-card-actions\") — consider getByRole if the element has an accessible role",
+				"hash": "bdd2ef62e09c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 36,
+				"message": "getByTestId(\"project-name\") — consider getByRole if the element has an accessible role",
+				"hash": "497963d99d2d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 40,
+				"message": "getByTestId(\"resources-list-search\") — consider getByRole if the element has an accessible role",
+				"hash": "ce35f1ae9484"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 50,
+				"message": "getByTestId(\"action-delete\") — consider getByRole if the element has an accessible role",
+				"hash": "890708726c6c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 93,
+				"message": "getByTestId(\"show-archived-checkbox\") — consider getByRole if the element has an accessible role",
+				"hash": "9ec13a679d0d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 117,
+				"message": "getByTestId(\"folder-breadcrumbs-actions\") — consider getByRole if the element has an accessible role",
+				"hash": "9c8322014776"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 121,
+				"message": "getByTestId(\"action-toggle-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "0fee473c3057"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 125,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.getFolderBreadcrumbsActionToggle().getByTestId(`acti...",
+				"hash": "552367cd26ca"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 129,
+				"message": "getByTestId(\"add-folder-button\") — consider getByRole if the element has an accessible role",
+				"hash": "d62a43351dc0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 156,
+				"message": "getByTestId(\"deleteFolder-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "fb0f189e9925"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 160,
+				"message": "getByTestId(\"transfer-content-radio\") — consider getByRole if the element has an accessible role",
+				"hash": "b664ba4f3966"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 164,
+				"message": "getByTestId(\"confirm-delete-folder-button\") — consider getByRole if the element has an accessible role",
+				"hash": "a7237ad8e357"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 172,
+				"message": "getByTestId(\"move-to-folder-option\") — consider getByRole if the element has an accessible role",
+				"hash": "0f703df4dbfb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 177,
+				"message": "getByTestId(\"moveFolder-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "2c7d00db90ad"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 181,
+				"message": "getByTestId(\"move-to-folder-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "75ccf9218010"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 185,
+				"message": "getByTestId(\"move-to-folder-option\") — consider getByRole if the element has an accessible role",
+				"hash": "0f703df4dbfb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 189,
+				"message": "getByTestId(\"confirm-move-folder-button\") — consider getByRole if the element has an accessible role",
+				"hash": "308dc3d63c62"
 			}
 		],
 		"pages/WorkerViewPage.ts": [
@@ -2527,6 +3979,24 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 5,
+				"message": "getByTestId(\"worker-view-licensed\") — consider getByRole if the element has an accessible role",
+				"hash": "319a2871258e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 9,
+				"message": "getByTestId(\"worker-view-unlicensed\") — consider getByRole if the element has an accessible role",
+				"hash": "f491822ad4af"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 13,
+				"message": "getByTestId(\"menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "6a0e8ee84007"
 			}
 		],
 		"pages/WorkflowCredentialSetupModal.ts": [
@@ -2535,6 +4005,18 @@
 				"line": 12,
 				"message": "Duplicate locator: this.page.getByTestId(\"setup-workflow-credentials-modal\") in pages scope",
 				"hash": "bb31fb5ca716"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 12,
+				"message": "getByTestId(\"setup-workflow-credentials-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "682a98e5da24"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"continue-button\") — consider getByRole if the element has an accessible role",
+				"hash": "cbf2b0410ad0"
 			}
 		],
 		"pages/components/VariableModal.ts": [
@@ -2543,6 +4025,24 @@
 				"line": 36,
 				"message": "Duplicate method logic: VariableModal.close() has identical structure to pages/components/CredentialModal.ts:CredentialModal.close()",
 				"hash": "0da4699677e2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"variable-modal-key-input\") — consider getByRole if the element has an accessible role",
+				"hash": "1e952bbee5bc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"variable-modal-value-input\") — consider getByRole if the element has an accessible role",
+				"hash": "f9777d3c7fe1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 28,
+				"message": "getByTestId(\"variable-modal-save-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8a6747394120"
 			}
 		],
 		"tests/e2e/instance-ai/instance-ai-timeline.spec.ts": [
@@ -2556,7 +4056,7 @@
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 17,
+				"line": 18,
 				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 250 msg/s × 240s (1 main + 1 worker)\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
 				"hash": "388616eecbaa"
 			}
@@ -2564,7 +4064,7 @@
 		"tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 17,
+				"line": 18,
 				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 150k msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
 				"hash": "1c5033214063"
 			}
@@ -2572,7 +4072,7 @@
 		"tests/infrastructure/benchmarks/kafka/steady-rate-breaking-point.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 34,
+				"line": 35,
 				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
 				"hash": "5579d3e330e1"
 			}
@@ -2580,7 +4080,7 @@
 		"tests/infrastructure/benchmarks/kafka/output-size-impact.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 25,
+				"line": 26,
 				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/node-count-scaling.spec.ts:\"anonymous\"",
 				"hash": "d676f700b46d"
 			}
@@ -2588,7 +4088,7 @@
 		"tests/infrastructure/benchmarks/webhook/webhook-otel-overhead.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 26,
+				"line": 27,
 				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-main-scaling.spec.ts:\"anonymous\"",
 				"hash": "61c8c9b0f1ff"
 			}
@@ -2596,7 +4096,7 @@
 		"tests/infrastructure/benchmarks/webhook/webhook-single-instance.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 27,
+				"line": 28,
 				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-queue-baseline.spec.ts:\"anonymous\"",
 				"hash": "51d2d4fe3fdb"
 			}
@@ -2620,7 +4120,7 @@
 		"tests/performance/memory-consumption-instance-ai.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 22,
+				"line": 21,
 				"message": "Duplicate test logic: \"Idle baseline with Instance AI module loaded\" has identical structure to tests/performance/memory-consumption-agents.spec.ts:\"Idle baseline with Agents module loaded\"",
 				"hash": "ef1cde8770e1"
 			}
@@ -2639,6 +4139,2480 @@
 				"line": 44,
 				"message": "Direct page instantiation: new InstanceAiPage(threadPage)",
 				"hash": "99e5606866b2"
+			}
+		],
+		"pages/CanvasPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 21,
+				"message": "getByTestId(\"logs-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "351b4d45d9e1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 22,
+				"message": "getByTestId(\"focus-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "3bd5dabf025e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"editCredential-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "f2f8cf8be92d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 34,
+				"message": "getByTestId(\"node-creator-item-name\") — consider getByRole if the element has an accessible role",
+				"hash": "8bd77202fa69"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"node-creator-item-name\") — consider getByRole if the element has an accessible role",
+				"hash": "8bd77202fa69"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"nodes-list-header\") — consider getByRole if the element has an accessible role",
+				"hash": "195f00ee125c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 51,
+				"message": "getByTestId(\"overflow-node-button\") — consider getByRole if the element has an accessible role",
+				"hash": "f7564ba00651"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 55,
+				"message": "getByTestId(\"node-issues\") — consider getByRole if the element has an accessible role",
+				"hash": "ded83ffc9dad"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 59,
+				"message": "getByTestId(\"canvas-node-toolbar\") — consider getByRole if the element has an accessible role",
+				"hash": "14ddcc9c4892"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 63,
+				"message": "getByTestId(\"delete-node-button\") — consider getByRole if the element has an accessible role",
+				"hash": "06aa7f434090"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 67,
+				"message": "getByTestId(\"disable-node-button\") — consider getByRole if the element has an accessible role",
+				"hash": "99c21f4d8125"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 75,
+				"message": "getByTestId(\"canvas-node\") — consider getByRole if the element has an accessible role",
+				"hash": "2a35fc3ba7d2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 79,
+				"message": "getByTestId(\"canvas-choice-prompt\") — consider getByRole if the element has an accessible role",
+				"hash": "1b611bd51b09"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 140,
+				"message": "getByTestId(\"node-creator-category-item\") — consider getByRole if the element has an accessible role",
+				"hash": "01faae379a44"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 149,
+				"message": "getByTestId(\"node-creator-category-item\") — consider getByRole if the element has an accessible role",
+				"hash": "01faae379a44"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 158,
+				"message": "getByTestId(\"ndv-close-button\") — consider getByRole if the element has an accessible role",
+				"hash": "7c01e1816e1e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 183,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId(testId)",
+				"hash": "6814fbc41776"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 210,
+				"message": "getByTestId(\"canvas-node\") — consider getByRole if the element has an accessible role",
+				"hash": "2a35fc3ba7d2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 212,
+				"message": "getByTestId(\"canvas-node-status-pinned\") — consider getByRole if the element has an accessible role",
+				"hash": "d9b9f9e4d3ce"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 258,
+				"message": "getByTestId(\"inline-edit-input\") — consider getByRole if the element has an accessible role",
+				"hash": "e3ace3bbbed6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 263,
+				"message": "getByTestId(\"workflow-url-import-input\") — consider getByRole if the element has an accessible role",
+				"hash": "fc08b4a12108"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 308,
+				"message": "getByTestId(\"workflowShare-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "75974e02aedb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 319,
+				"message": "getByTestId(\"node-issues\") — consider getByRole if the element has an accessible role",
+				"hash": "ded83ffc9dad"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 323,
+				"message": "getByTestId(\"new-tag-link\") — consider getByRole if the element has an accessible role",
+				"hash": "b72315e02d40"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 327,
+				"message": "getByTestId(\"workflow-tags-container\") — consider getByRole if the element has an accessible role",
+				"hash": "f3839aae2d6b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 331,
+				"message": "getByTestId(\"workflow-tags\") — consider getByRole if the element has an accessible role",
+				"hash": "4596a60367ef"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 335,
+				"message": "getByTestId(\"workflow-tags-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "eee61ceec502"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 339,
+				"message": "getByTestId(\"workflow-tags-container\") — consider getByRole if the element has an accessible role",
+				"hash": "f3839aae2d6b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 345,
+				"message": "getByTestId(\"workflow-tags\") — consider getByRole if the element has an accessible role",
+				"hash": "4596a60367ef"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 349,
+				"message": "getByTestId(\"workflow-tags\") — consider getByRole if the element has an accessible role",
+				"hash": "4596a60367ef"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 353,
+				"message": "getByTestId(\"workflow-tags-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "eee61ceec502"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 361,
+				"message": "getByTestId(\"workflow-tags-container\") — consider getByRole if the element has an accessible role",
+				"hash": "f3839aae2d6b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 367,
+				"message": "getByTestId(\"tags-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "f45fea99709e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 395,
+				"message": "getByTestId(\"workflow-open-publish-modal-button\") — consider getByRole if the element has an accessible role",
+				"hash": "2287595b69b8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 399,
+				"message": "getByTestId(\"workflow-publish-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8a2e1f01670f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 411,
+				"message": "getByTestId(\"node-view-loader\") — consider getByRole if the element has an accessible role",
+				"hash": "2fed3a37d117"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 431,
+				"message": "getByTestId(\"suggested-action-count\") — consider getByRole if the element has an accessible role",
+				"hash": "e54aa98e800a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 439,
+				"message": "getByTestId(\"suggested-action-item\") — consider getByRole if the element has an accessible role",
+				"hash": "f4806342e835"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 447,
+				"message": "getByTestId(\"suggested-action-ignore-all\") — consider getByRole if the element has an accessible role",
+				"hash": "004d96be2ab6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 488,
+				"message": "getByTestId(\"node-creator-search-bar\") — consider getByRole if the element has an accessible role",
+				"hash": "981fbb2919b4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 492,
+				"message": "getByTestId(\"node-creator-item-name\") — consider getByRole if the element has an accessible role",
+				"hash": "8bd77202fa69"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 500,
+				"message": "getByTestId(\"node-creator-action-item\") — consider getByRole if the element has an accessible role",
+				"hash": "e8651dbd923d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 504,
+				"message": "getByTestId(\"node-creator-category-item\") — consider getByRole if the element has an accessible role",
+				"hash": "01faae379a44"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 523,
+				"message": "getByTestId(\"execute-node-button\") — consider getByRole if the element has an accessible role",
+				"hash": "0a37c801447f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 527,
+				"message": "getByTestId(\"workflow-archived-tag\") — consider getByRole if the element has an accessible role",
+				"hash": "2a1805300a4e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 531,
+				"message": "getByTestId(\"node-creator-plus-button\") — consider getByRole if the element has an accessible role",
+				"hash": "5c84d3d96ef0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 535,
+				"message": "getByTestId(\"canvas-wrapper\") — consider getByRole if the element has an accessible role",
+				"hash": "0de17c488c8f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 539,
+				"message": "getByTestId(\"canvas\") — consider getByRole if the element has an accessible role",
+				"hash": "d1a6fb543705"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 543,
+				"message": "getByTestId(\"toggle-focus-panel-button\") — consider getByRole if the element has an accessible role",
+				"hash": "b8056515a23d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 547,
+				"message": "getByTestId(\"stop-execution-button\") — consider getByRole if the element has an accessible role",
+				"hash": "4ed15b0e0ea4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 617,
+				"message": "getByTestId(\"add-connection-button\") — consider getByRole if the element has an accessible role",
+				"hash": "1dc341ceaff5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 636,
+				"message": "getByTestId(\"delete-connection-button\") — consider getByRole if the element has an accessible role",
+				"hash": "e22d2ea93d24"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 702,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId(`context-menu-item-${itemId}`)",
+				"hash": "f513b8fde1dc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 715,
+				"message": "getByTestId(\"clear-execution-data-button\") — consider getByRole if the element has an accessible role",
+				"hash": "af044fcd0e64"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 723,
+				"message": "getByTestId(\"canvas-chat\") — consider getByRole if the element has an accessible role",
+				"hash": "076a6ea18b36"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 754,
+				"message": "getByTestId(\"context-menu-item-toggle_activation\") — consider getByRole if the element has an accessible role",
+				"hash": "a8a40575c50b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 754,
+				"message": "getByTestId(\"context-menu\") — consider getByRole if the element has an accessible role",
+				"hash": "fbae5c0ded7c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 771,
+				"message": "getByTestId(\"workflow-chat-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8da314499768"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 777,
+				"message": "getByTestId(\"workflow-chat-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8da314499768"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 789,
+				"message": "getByTestId(\"canvas-chat\") — consider getByRole if the element has an accessible role",
+				"hash": "076a6ea18b36"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 848,
+				"message": "getByTestId(\"radio-button-executions\") — consider getByRole if the element has an accessible role",
+				"hash": "9ea271843c1a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 852,
+				"message": "getByTestId(\"zoom-in-button\") — consider getByRole if the element has an accessible role",
+				"hash": "6b047969858d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 856,
+				"message": "getByTestId(\"reset-zoom-button\") — consider getByRole if the element has an accessible role",
+				"hash": "0053de272121"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 897,
+				"message": "getByTestId(\"canvas-node-status-success\") — consider getByRole if the element has an accessible role",
+				"hash": "a5ecedf5ef94"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 901,
+				"message": "getByTestId(\"canvas-node-status-warning\") — consider getByRole if the element has an accessible role",
+				"hash": "794b570ac53b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 915,
+				"message": "getByTestId(\"canvas-node-status-success\") — consider getByRole if the element has an accessible role",
+				"hash": "a5ecedf5ef94"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 927,
+				"message": "getByTestId(\"stop-execution-waiting-for-webhook-button\") — consider getByRole if the element has an accessible role",
+				"hash": "72a1a1aea011"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 935,
+				"message": "getByTestId(\"canvas-plus-button\") — consider getByRole if the element has an accessible role",
+				"hash": "b3f5f4671ab7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 1029,
+				"message": "getByTestId(\"workflow-name-input\") — consider getByRole if the element has an accessible role",
+				"hash": "e8de395bffde"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 1034,
+				"message": "getByTestId(\"workflow-history-button\") — consider getByRole if the element has an accessible role",
+				"hash": "45d559a3ec55"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 1038,
+				"message": "getByTestId(\"workflow-history-close-button\") — consider getByRole if the element has an accessible role",
+				"hash": "932b6d5fe1bf"
+			}
+		],
+		"pages/ChatHubChatPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"chatCredentialSelectorModal-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "809546a519ed"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 32,
+				"message": "getByTestId(\"welcome-start-new-chat\") — consider getByRole if the element has an accessible role",
+				"hash": "c8aadf960f13"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 51,
+				"message": "getByTestId(\"chat-model-selector\") — consider getByRole if the element has an accessible role",
+				"hash": "e1534d24d13a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 55,
+				"message": "getByTestId(\"chat-model-selector-credential\") — consider getByRole if the element has an accessible role",
+				"hash": "c36026930d7b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 71,
+				"message": "getByTestId(\"chat-message-edit\") — consider getByRole if the element has an accessible role",
+				"hash": "389233027bdc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 83,
+				"message": "getByTestId(\"chat-message-regenerate\") — consider getByRole if the element has an accessible role",
+				"hash": "5c17ad33d828"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 87,
+				"message": "getByTestId(\"chat-message-prev-alternative\") — consider getByRole if the element has an accessible role",
+				"hash": "a9652f9053b5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 124,
+				"message": "getByTestId(\"chat-message-actions\") — consider getByRole if the element has an accessible role",
+				"hash": "d981111359e5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 136,
+				"message": "getByTestId(\"chat-tools-button\") — consider getByRole if the element has an accessible role",
+				"hash": "2db04900a2a5"
+			}
+		],
+		"pages/ChatHubPersonalAgentsPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 22,
+				"message": "getByTestId(\"chat-agent-card\") — consider getByRole if the element has an accessible role",
+				"hash": "9eafade7447b"
+			}
+		],
+		"pages/CommunityNodesPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 12,
+				"message": "getByTestId(\"community-package-card\") — consider getByRole if the element has an accessible role",
+				"hash": "4a9cccf18a6c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"action-box\") — consider getByRole if the element has an accessible role",
+				"hash": "842e9df69a5c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 28,
+				"message": "getByTestId(\"communityPackageInstall-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "0c7b0540e71d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 32,
+				"message": "getByTestId(\"communityPackageManageConfirm-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "be83170257c6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 40,
+				"message": "getByTestId(\"user-agreement-checkbox\") — consider getByRole if the element has an accessible role",
+				"hash": "b28acb155b22"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 44,
+				"message": "getByTestId(\"install-community-package-button\") — consider getByRole if the element has an accessible role",
+				"hash": "fda070818824"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 48,
+				"message": "getByTestId(\"action-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "ff4e32f4e275"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 52,
+				"message": "getByTestId(\"action-uninstall\") — consider getByRole if the element has an accessible role",
+				"hash": "98ffffe49558"
+			}
+		],
+		"pages/DataTableDetails.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 12,
+				"message": "getByTestId(\"data-table-details-view\") — consider getByRole if the element has an accessible role",
+				"hash": "3a76176f08f7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"home-project\") — consider getByRole if the element has an accessible role",
+				"hash": "d07be2af532a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"data-table-header-name-input\") — consider getByRole if the element has an accessible role",
+				"hash": "d52b8f486dd7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 36,
+				"message": "getByTestId(\"data-table-column-header\") — consider getByRole if the element has an accessible role",
+				"hash": "7c9b1c79b0aa"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 40,
+				"message": "getByTestId(\"data-table-no-rows-overlay\") — consider getByRole if the element has an accessible role",
+				"hash": "319d87002891"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 44,
+				"message": "getByTestId(\"data-table-add-column-trigger-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8a77b462b35f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 48,
+				"message": "getByTestId(\"data-table-add-column-trigger-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8a77b462b35f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 52,
+				"message": "getByTestId(\"add-column-popover-content\") — consider getByRole if the element has an accessible role",
+				"hash": "e4386edaa1ff"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 56,
+				"message": "getByTestId(\"data-table-add-column-submit-button\") — consider getByRole if the element has an accessible role",
+				"hash": "bc8e6da2c060"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 60,
+				"message": "getByTestId(\"data-table-column-header\") — consider getByRole if the element has an accessible role",
+				"hash": "7c9b1c79b0aa"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 62,
+				"message": "getByTestId(\"data-table-column-header-text\") — consider getByRole if the element has an accessible role",
+				"hash": "d7240647b6d3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 68,
+				"message": "getByTestId(\"data-table-column-header-text\") — consider getByRole if the element has an accessible role",
+				"hash": "d7240647b6d3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 89,
+				"message": "getByTestId(\"add-column-popover-content\") — consider getByRole if the element has an accessible role",
+				"hash": "e4386edaa1ff"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 95,
+				"message": "getByTestId(\"add-column-popover-content\") — consider getByRole if the element has an accessible role",
+				"hash": "e4386edaa1ff"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 110,
+				"message": "getByTestId(\"data-table-header-add-row-button\") — consider getByRole if the element has an accessible role",
+				"hash": "138783df80f8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 143,
+				"message": "getByTestId(\"selected-items-info\") — consider getByRole if the element has an accessible role",
+				"hash": "a82fa1d153e3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 147,
+				"message": "getByTestId(\"delete-selected-button\") — consider getByRole if the element has an accessible role",
+				"hash": "30fbf9d2e485"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 151,
+				"message": "getByTestId(\"clear-selection-button\") — consider getByRole if the element has an accessible role",
+				"hash": "743b1114b11a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 166,
+				"message": "getByTestId(\"data-table-column-header-text\") — consider getByRole if the element has an accessible role",
+				"hash": "d7240647b6d3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 168,
+				"message": "getByTestId(\"data-table-column-header-actions\") — consider getByRole if the element has an accessible role",
+				"hash": "83a2090a5c3b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 172,
+				"message": "getByTestId(\"data-table-column-header\") — consider getByRole if the element has an accessible role",
+				"hash": "7c9b1c79b0aa"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 173,
+				"message": "getByTestId(\"data-table-column-header-text\") — consider getByRole if the element has an accessible role",
+				"hash": "d7240647b6d3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 180,
+				"message": "getByTestId(\"data-table-column-header-actions-item-delete\") — consider getByRole if the element has an accessible role",
+				"hash": "08913dc668c5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 191,
+				"message": "getByTestId(\"data-table-column-header-text\") — consider getByRole if the element has an accessible role",
+				"hash": "d7240647b6d3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 195,
+				"message": "getByTestId(\"data-table-column-header-filter-button\") — consider getByRole if the element has an accessible role",
+				"hash": "54f174262e09"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 282,
+				"message": "getByTestId(\"data-table-content-pagination\") — consider getByRole if the element has an accessible role",
+				"hash": "79426e960d96"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 362,
+				"message": "getByTestId(\"data-table-column-header-text\") — consider getByRole if the element has an accessible role",
+				"hash": "d7240647b6d3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 389,
+				"message": "getByTestId(\"data-table-search-input\") — consider getByRole if the element has an accessible role",
+				"hash": "de678d062525"
+			}
+		],
+		"pages/DataTableView.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 13,
+				"message": "getByTestId(\"empty-data-table-action-box\") — consider getByRole if the element has an accessible role",
+				"hash": "be0bd65557e6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 21,
+				"message": "getByTestId(\"addDataTableModal-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "66ea7713ebfe"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 25,
+				"message": "getByTestId(\"data-table-name-input-select\") — consider getByRole if the element has an accessible role",
+				"hash": "8b3fc1590b01"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 29,
+				"message": "getByTestId(\"create-from-scratch-option\") — consider getByRole if the element has an accessible role",
+				"hash": "7c153f5ef515"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 33,
+				"message": "getByTestId(\"proceed-from-select-button\") — consider getByRole if the element has an accessible role",
+				"hash": "922952b983dc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 37,
+				"message": "getByTestId(\"data-table-card\") — consider getByRole if the element has an accessible role",
+				"hash": "c9d829dfdcd2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 45,
+				"message": "getByTestId(\"data-table-card-actions\") — consider getByRole if the element has an accessible role",
+				"hash": "03267081edca"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 49,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId('action-toggle-dropdown').getByTest...",
+				"hash": "54b74ed0f0ee"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 49,
+				"message": "getByTestId(\"action-toggle-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "208ea6d5e05e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 61,
+				"message": "getByTestId(\"resources-list-pagination\") — consider getByRole if the element has an accessible role",
+				"hash": "0e5fa9e98011"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 69,
+				"message": "getByTestId(\"resources-list-pagination\") — consider getByRole if the element has an accessible role",
+				"hash": "0e5fa9e98011"
+			}
+		],
+		"pages/DemoPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 10,
+				"message": "getByTestId(\"canvas-background\") — consider getByRole if the element has an accessible role",
+				"hash": "80e79ed85732"
+			}
+		],
+		"pages/ExecutionsPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 12,
+				"message": "getByTestId(\"logs-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "7031bc02e80e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 32,
+				"message": "getByTestId(\"auto-refresh-checkbox\") — consider getByRole if the element has an accessible role",
+				"hash": "7dae9c63a3ae"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 36,
+				"message": "getByTestId(\"workflow-preview-iframe\") — consider getByRole if the element has an accessible role",
+				"hash": "2c1a69bd4def"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 53,
+				"message": "getByTestId(\"current-executions-list\") — consider getByRole if the element has an accessible role",
+				"hash": "e683c0d0a851"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 57,
+				"message": "getByTestId(\"global-execution-list-item\") — consider getByRole if the element has an accessible role",
+				"hash": "5a2b70e8d073"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 61,
+				"message": "getByTestId(\"executions-sidebar\") — consider getByRole if the element has an accessible role",
+				"hash": "f4c7d00333fe"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 65,
+				"message": "getByTestId(\"execution-list-empty\") — consider getByRole if the element has an accessible role",
+				"hash": "a47c15f8a3cb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 95,
+				"message": "getByTestId(\"execution-preview-delete-button\") — consider getByRole if the element has an accessible role",
+				"hash": "1a19797c3216"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 101,
+				"message": "getByTestId(\"executions-filter-button\") — consider getByRole if the element has an accessible role",
+				"hash": "f05d993378e2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 105,
+				"message": "getByTestId(\"execution-filter-form\") — consider getByRole if the element has an accessible role",
+				"hash": "a910c4ca83d8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 109,
+				"message": "getByTestId(\"executions-filter-status-select\") — consider getByRole if the element has an accessible role",
+				"hash": "b5dcd1ead26c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 117,
+				"message": "getByTestId(\"execution-filter-badge\") — consider getByRole if the element has an accessible role",
+				"hash": "8596bfd3a292"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 121,
+				"message": "getByTestId(\"executions-filter-reset-button\") — consider getByRole if the element has an accessible role",
+				"hash": "c5ff6b59a8fc"
+			}
+		],
+		"pages/MfaLoginPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 10,
+				"message": "getByTestId(\"mfa-login-form\") — consider getByRole if the element has an accessible role",
+				"hash": "ce302f89fc8a"
+			}
+		],
+		"pages/MfaSetupModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"mfaSetup-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "8b15ea99b610"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"mfa-token-input\") — consider getByRole if the element has an accessible role",
+				"hash": "8537c2450743"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"mfa-recovery-codes-button\") — consider getByRole if the element has an accessible role",
+				"hash": "d04adfa768de"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"mfa-save-button\") — consider getByRole if the element has an accessible role",
+				"hash": "fd16f0a1ec87"
+			}
+		],
+		"pages/NpsSurveyPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"nps-survey-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "9747a77f9f6c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"nps-survey-ratings\") — consider getByRole if the element has an accessible role",
+				"hash": "a37b693b4dea"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"nps-survey-feedback\") — consider getByRole if the element has an accessible role",
+				"hash": "3b06be406c14"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"nps-survey-feedback-button\") — consider getByRole if the element has an accessible role",
+				"hash": "24f302fc6943"
+			}
+		],
+		"pages/ProjectSettingsPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 12,
+				"message": "getByTestId(\"project-settings-name-input\") — consider getByRole if the element has an accessible role",
+				"hash": "b07730a0c3ac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"project-settings-description-input\") — consider getByRole if the element has an accessible role",
+				"hash": "4fab253779d5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"project-settings-cancel-button\") — consider getByRole if the element has an accessible role",
+				"hash": "9cbb967be403"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 34,
+				"message": "getByTestId(\"project-settings-save-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8d705403f0f9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"project-settings-cancel-button\") — consider getByRole if the element has an accessible role",
+				"hash": "9cbb967be403"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"project-settings-delete-button\") — consider getByRole if the element has an accessible role",
+				"hash": "609ec1a434ca"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 55,
+				"message": "getByTestId(\"project-member-role-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "b4e99d395bf3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 62,
+				"message": "getByTestId(\"project-members-table\") — consider getByRole if the element has an accessible role",
+				"hash": "9ebc6d4e5615"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 71,
+				"message": "getByTestId(\"project-name\") — consider getByRole if the element has an accessible role",
+				"hash": "2c0a45c2536b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 97,
+				"message": "getByTestId(\"project-members-select\") — consider getByRole if the element has an accessible role",
+				"hash": "e1a342011a80"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 103,
+				"message": "getByTestId(\"icon-picker-button\") — consider getByRole if the element has an accessible role",
+				"hash": "6bb2210de697"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 111,
+				"message": "getByTestId(\"icon-picker-tabs\") — consider getByRole if the element has an accessible role",
+				"hash": "323a1fb907db"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 115,
+				"message": "getByTestId(\"icon-picker-emoji\") — consider getByRole if the element has an accessible role",
+				"hash": "8cb2cfda8ec7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 119,
+				"message": "getByTestId(\"external-secrets-section\") — consider getByRole if the element has an accessible role",
+				"hash": "d64004c8e0fc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 126,
+				"message": "getByTestId(\"external-secrets-table\") — consider getByRole if the element has an accessible role",
+				"hash": "b254e4662e41"
+			}
+		],
+		"pages/SecretsProviderSettingsPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 16,
+				"message": "getByTestId(\"secrets-provider-connections-content-licensed\") — consider getByRole if the element has an accessible role",
+				"hash": "4594f9961b8e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 21,
+				"message": "getByTestId(\"secrets-provider-connections-empty-state\") — consider getByRole if the element has an accessible role",
+				"hash": "c7fc13649416"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"secrets-provider-name\") — consider getByRole if the element has an accessible role",
+				"hash": "a696c40f577b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"secrets-providers-loading\") — consider getByRole if the element has an accessible role",
+				"hash": "4a39bb005737"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 40,
+				"message": "getByTestId(\"secrets-provider-global-badge\") — consider getByRole if the element has an accessible role",
+				"hash": "68be9712f1e5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 45,
+				"message": "getByTestId(\"secrets-provider-project-badge\") — consider getByRole if the element has an accessible role",
+				"hash": "810f46844f5c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 50,
+				"message": "getByTestId(\"secrets-provider-action-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "0e169220a1ad"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 73,
+				"message": "getByTestId(\"secrets-provider-name\") — consider getByRole if the element has an accessible role",
+				"hash": "a696c40f577b"
+			}
+		],
+		"pages/SettingsEnvironmentPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"source-control-connect-button\") — consider getByRole if the element has an accessible role",
+				"hash": "3254588a4469"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"source-control-disconnect-button\") — consider getByRole if the element has an accessible role",
+				"hash": "9bf7c2ab030a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"source-control-branch-select\") — consider getByRole if the element has an accessible role",
+				"hash": "05a102a6d72d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"source-control-save-settings-button\") — consider getByRole if the element has an accessible role",
+				"hash": "43cc31807b24"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 40,
+				"message": "getByTestId(\"source-control-read-only-checkbox\") — consider getByRole if the element has an accessible role",
+				"hash": "5d0855772b3c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 45,
+				"message": "getByTestId(\"source-control-read-only-checkbox\") — consider getByRole if the element has an accessible role",
+				"hash": "5d0855772b3c"
+			}
+		],
+		"pages/SettingsLogStreamingPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"action-box-unlicensed\") — consider getByRole if the element has an accessible role",
+				"hash": "58fa57b0cbb0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"action-box-licensed\") — consider getByRole if the element has an accessible role",
+				"hash": "290cf1716d0c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 31,
+				"message": "getByTestId(\"destination-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "02504d5399f3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"select-destination-type\") — consider getByRole if the element has an accessible role",
+				"hash": "e4ca3654e902"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 43,
+				"message": "getByTestId(\"select-destination-button\") — consider getByRole if the element has an accessible role",
+				"hash": "bcce344b98e1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 47,
+				"message": "getByTestId(\"subtitle-showing-type\") — consider getByRole if the element has an accessible role",
+				"hash": "3e2615ced3c0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 51,
+				"message": "getByTestId(\"destination-save-button\") — consider getByRole if the element has an accessible role",
+				"hash": "1b84880263f3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 55,
+				"message": "getByTestId(\"destination-delete-button\") — consider getByRole if the element has an accessible role",
+				"hash": "710a92c221c4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 59,
+				"message": "getByTestId(\"destination-card\") — consider getByRole if the element has an accessible role",
+				"hash": "fd869a47163f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 63,
+				"message": "getByTestId(\"action-toggle-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "e165d5711374"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 105,
+				"message": "getByTestId(\"parameter-input-field\") — consider getByRole if the element has an accessible role",
+				"hash": "a5e4740f1228"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 139,
+				"message": "getByTestId(\"action-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "96e7bbcea621"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 205,
+				"message": "getByTestId(\"parameter-input-host\") — consider getByRole if the element has an accessible role",
+				"hash": "808f5601938a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 206,
+				"message": "getByTestId(\"parameter-input-port\") — consider getByRole if the element has an accessible role",
+				"hash": "84d8481638a1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 223,
+				"message": "getByTestId(\"destination-test-button\") — consider getByRole if the element has an accessible role",
+				"hash": "c3f9efb72e2a"
+			}
+		],
+		"pages/SettingsPersonalPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 10,
+				"message": "getByTestId(\"menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "9e21a487d2da"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"current-user-role\") — consider getByRole if the element has an accessible role",
+				"hash": "8cd1823bf0bb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"personal-data-form\") — consider getByRole if the element has an accessible role",
+				"hash": "fb135be20e88"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"save-settings-button\") — consider getByRole if the element has an accessible role",
+				"hash": "c4612a40b44e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 74,
+				"message": "getByTestId(\"enable-mfa-button\") — consider getByRole if the element has an accessible role",
+				"hash": "0c447fa37321"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 78,
+				"message": "getByTestId(\"disable-mfa-button\") — consider getByRole if the element has an accessible role",
+				"hash": "538c33906095"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 86,
+				"message": "getByTestId(\"mfa-save-button\") — consider getByRole if the element has an accessible role",
+				"hash": "33e03512c248"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 115,
+				"message": "getByTestId(\"public-api-upgrade-cta\") — consider getByRole if the element has an accessible role",
+				"hash": "6b7ef82c58c1"
+			}
+		],
+		"pages/SettingsSsoPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"sso-auth-protocol-select\") — consider getByRole if the element has an accessible role",
+				"hash": "951e1e3b6bd2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"oidc-discovery-endpoint\") — consider getByRole if the element has an accessible role",
+				"hash": "bdca40ebe0d7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 24,
+				"message": "getByTestId(\"oidc-client-id\") — consider getByRole if the element has an accessible role",
+				"hash": "cb00d9a5737c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 28,
+				"message": "getByTestId(\"oidc-client-secret\") — consider getByRole if the element has an accessible role",
+				"hash": "3d27d7ad1de9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 32,
+				"message": "getByTestId(\"sso-oidc-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "c234ee228f1d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 36,
+				"message": "getByTestId(\"sso-oidc-save\") — consider getByRole if the element has an accessible role",
+				"hash": "7eafd328737e"
+			}
+		],
+		"pages/SettingsUsersPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"users-list-search\") — consider getByRole if the element has an accessible role",
+				"hash": "5792460d8576"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"user-role-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "621418290859"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"user-role-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "621418290859"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"project-sharing-info\") — consider getByRole if the element has an accessible role",
+				"hash": "9551ad2b88a9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 80,
+				"message": "getByTestId(\"action-toggle\") — consider getByRole if the element has an accessible role",
+				"hash": "50a076625ee9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 85,
+				"message": "getByTestId(\"action-delete\") — consider getByRole if the element has an accessible role",
+				"hash": "25559175e8ea"
+			}
+		],
+		"pages/SourceControlPullModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 7,
+				"message": "getByTestId(\"sourceControlPull-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "5aa64a373cad"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"force-pull\") — consider getByRole if the element has an accessible role",
+				"hash": "32ce9d03f1d2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"source-control-pull-modal-tab-workflow\") — consider getByRole if the element has an accessible role",
+				"hash": "56b977b2f8d6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"pull-modal-item\") — consider getByRole if the element has an accessible role",
+				"hash": "059f3936c4a4"
+			}
+		],
+		"pages/SourceControlPushModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 13,
+				"message": "getByTestId(\"sourceControlPush-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "b824d9b64db5"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 17,
+				"message": "getByTestId(\"source-control-push-modal-submit\") — consider getByRole if the element has an accessible role",
+				"hash": "1aed89e5e471"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 21,
+				"message": "getByTestId(\"source-control-push-modal-commit\") — consider getByRole if the element has an accessible role",
+				"hash": "40375b8e2b23"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"source-control-push-modal-tab-workflow\") — consider getByRole if the element has an accessible role",
+				"hash": "8924110f5af2"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"source-control-push-modal-tab-credential\") — consider getByRole if the element has an accessible role",
+				"hash": "ed77c4f320fd"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 61,
+				"message": "getByTestId(\"push-modal-item\") — consider getByRole if the element has an accessible role",
+				"hash": "abd0d0e8669f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 71,
+				"message": "getByTestId(\"source-control-push-modal-toggle-all\") — consider getByRole if the element has an accessible role",
+				"hash": "a193dcd64612"
+			}
+		],
+		"pages/TemplatesPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"template-card\") — consider getByRole if the element has an accessible role",
+				"hash": "cb473e630c08"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"use-template-button\") — consider getByRole if the element has an accessible role",
+				"hash": "32d65aa91894"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"templates-loading-container\") — consider getByRole if the element has an accessible role",
+				"hash": "df3f15947005"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 31,
+				"message": "getByTestId(\"template-description\") — consider getByRole if the element has an accessible role",
+				"hash": "74e9204cd024"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 39,
+				"message": "getByTestId(\"template-search-input\") — consider getByRole if the element has an accessible role",
+				"hash": "aa75d2007a47"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 43,
+				"message": "getByTestId(\"template-filter-all-categories\") — consider getByRole if the element has an accessible role",
+				"hash": "9e0966644522"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 55,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId(`template-filter-${category}`)",
+				"hash": "4ac1a51173f7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 59,
+				"message": "getByTestId(\"template-count-label\") — consider getByRole if the element has an accessible role",
+				"hash": "b50aa355d412"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 63,
+				"message": "getByTestId(\"collection-count-label\") — consider getByRole if the element has an accessible role",
+				"hash": "65c7790508fd"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 83,
+				"message": "getByTestId(\"template-card\") — consider getByRole if the element has an accessible role",
+				"hash": "cb473e630c08"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 85,
+				"message": "getByTestId(\"use-workflow-button\") — consider getByRole if the element has an accessible role",
+				"hash": "a2c1977a597a"
+			}
+		],
+		"pages/VersionsPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 5,
+				"message": "getByTestId(\"version-updates-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "b294847abd34"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 9,
+				"message": "getByTestId(\"version-card\") — consider getByRole if the element has an accessible role",
+				"hash": "7895b110cbff"
+			}
+		],
+		"pages/WorkflowActivationModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 7,
+				"message": "getByTestId(\"activation-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "6442b9b9c7f6"
+			}
+		],
+		"pages/components/AIBuilderPage.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"workflow-suggestions\") — consider getByRole if the element has an accessible role",
+				"hash": "d7b79b2cbf91"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 24,
+				"message": "getByTestId(\"canvas-choice-prompt\") — consider getByRole if the element has an accessible role",
+				"hash": "f0c9d13e8622"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"canvas-build-with-ai-button\") — consider getByRole if the element has an accessible role",
+				"hash": "e5aee91f7a1d"
+			}
+		],
+		"pages/components/AddResource.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"add-resource-workflow\") — consider getByRole if the element has an accessible role",
+				"hash": "d978734611e6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"add-resource-credential\") — consider getByRole if the element has an accessible role",
+				"hash": "1cceb94dcff3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"add-resource\") — consider getByRole if the element has an accessible role",
+				"hash": "644c89c19e2d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 31,
+				"message": "getByTestId(\"action-folder\") — consider getByRole if the element has an accessible role",
+				"hash": "eab21d238895"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 36,
+				"message": "getByTestId(\"add-resource-dataTable\") — consider getByRole if the element has an accessible role",
+				"hash": "8fdf1cdbb8ea"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"add-resource\") — consider getByRole if the element has an accessible role",
+				"hash": "644c89c19e2d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 39,
+				"message": "getByTestId(\"action-dataTable\") — consider getByRole if the element has an accessible role",
+				"hash": "133d05158a96"
+			}
+		],
+		"pages/components/Breadcrumbs.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 7,
+				"message": "getByTestId(\"breadcrumbs-item\") — consider getByRole if the element has an accessible role",
+				"hash": "4e1f8311b399"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 14,
+				"message": "getByTestId(\"breadcrumbs-item-current\") — consider getByRole if the element has an accessible role",
+				"hash": "49661e9d37e8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"hidden-items-menu\") — consider getByRole if the element has an accessible role",
+				"hash": "c09365b51e45"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 22,
+				"message": "getByTestId(\"home-project\") — consider getByRole if the element has an accessible role",
+				"hash": "e4cb35243b76"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId('action-toggle-dropdown').getByTest...",
+				"hash": "47072ac28b61"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"action-toggle-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "9d5c278b2ea7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"folder-breadcrumbs-actions\") — consider getByRole if the element has an accessible role",
+				"hash": "efa7e3b00984"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"inline-edit-preview\") — consider getByRole if the element has an accessible role",
+				"hash": "e76f242346cd"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 39,
+				"message": "getByTestId(\"inline-edit-input\") — consider getByRole if the element has an accessible role",
+				"hash": "e44636460a42"
+			}
+		],
+		"pages/components/BuilderSetupWizard.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"builder-setup-wizard\") — consider getByRole if the element has an accessible role",
+				"hash": "3ded17d8def8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"builder-setup-card\") — consider getByRole if the element has an accessible role",
+				"hash": "a262afee8b07"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 28,
+				"message": "getByTestId(\"wizard-card-footer-prev\") — consider getByRole if the element has an accessible role",
+				"hash": "265a2163dacd"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 33,
+				"message": "getByTestId(\"wizard-card-footer-next\") — consider getByRole if the element has an accessible role",
+				"hash": "6ec4b79b8a07"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"trigger-execute-button\") — consider getByRole if the element has an accessible role",
+				"hash": "273db8bdff20"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 43,
+				"message": "getByTestId(\"builder-setup-card-check\") — consider getByRole if the element has an accessible role",
+				"hash": "b1d8b182719e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 48,
+				"message": "getByTestId(\"credentials-label\") — consider getByRole if the element has an accessible role",
+				"hash": "14301ae288e3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 53,
+				"message": "getByTestId(\"node-credentials-select\") — consider getByRole if the element has an accessible role",
+				"hash": "057ad2257c27"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 58,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId(`parameter-input-${paramName}`)",
+				"hash": "231806424a06"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 63,
+				"message": "getByTestId(\"builder-setup-card-nodes-hint\") — consider getByRole if the element has an accessible role",
+				"hash": "6015d64aee21"
+			}
+		],
+		"pages/components/ChatHubCredentialModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"node-credentials-select-item-new\") — consider getByRole if the element has an accessible role",
+				"hash": "65d1f7c8039d"
+			}
+		],
+		"pages/components/ChatHubPersonalAgentModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"chat-model-selector\") — consider getByRole if the element has an accessible role",
+				"hash": "36bc49182d16"
+			}
+		],
+		"pages/components/ChatHubProviderSettingsModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"chat-provider-enabled-switch\") — consider getByRole if the element has an accessible role",
+				"hash": "e52d9aac966e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"chat-provider-limit-models-switch\") — consider getByRole if the element has an accessible role",
+				"hash": "d81d44a45444"
+			}
+		],
+		"pages/components/ChatHubSidebar.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"chat-conversation-list\") — consider getByRole if the element has an accessible role",
+				"hash": "52dae0c98296"
+			}
+		],
+		"pages/components/ChatHubToolsModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"node-credentials-select\") — consider getByRole if the element has an accessible role",
+				"hash": "66312cdd1a54"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.root.getByTestId(`parameter-input-${parameterName}`)",
+				"hash": "095308555602"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"from-ai-override-button\") — consider getByRole if the element has an accessible role",
+				"hash": "4b08039f55d3"
+			}
+		],
+		"pages/components/CommandBar.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 7,
+				"message": "getByTestId(\"command-bar\") — consider getByRole if the element has an accessible role",
+				"hash": "11156f6da076"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"command-bar-items-list\") — consider getByRole if the element has an accessible role",
+				"hash": "fad0931f782d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"command-bar-input-spinner\") — consider getByRole if the element has an accessible role",
+				"hash": "a28807cf0138"
+			}
+		],
+		"pages/components/ConvertToSubworkflowModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"submit-button\") — consider getByRole if the element has an accessible role",
+				"hash": "f4ce2d4ac63f"
+			}
+		],
+		"pages/components/CredentialModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"credential-name\") — consider getByRole if the element has an accessible role",
+				"hash": "dfa447060783"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 30,
+				"message": "getByTestId(\"inline-edit-input\") — consider getByRole if the element has an accessible role",
+				"hash": "b64561fe49b9"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 34,
+				"message": "getByTestId(\"credential-connection-parameter\") — consider getByRole if the element has an accessible role",
+				"hash": "ffab910fb0a7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.root.getByTestId(`parameter-input-${key}`)",
+				"hash": "a2a92d956b8f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 60,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.root .getByTestId('credential-connection-parameter')...",
+				"hash": "1ddd36435797"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 60,
+				"message": "getByTestId(\"credential-connection-parameter\") — consider getByRole if the element has an accessible role",
+				"hash": "ffab910fb0a7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 66,
+				"message": "getByTestId(\"parameter-options-container\") — consider getByRole if the element has an accessible role",
+				"hash": "1bdfe325a3cb"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 69,
+				"message": "getByTestId(\"radio-button-expression\") — consider getByRole if the element has an accessible role",
+				"hash": "59a531be2056"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 85,
+				"message": "getByTestId(\"credential-save-button\") — consider getByRole if the element has an accessible role",
+				"hash": "2044d3d22be4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 89,
+				"message": "getByTestId(\"parameter-input-hint\") — consider getByRole if the element has an accessible role",
+				"hash": "b612352b7409"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 151,
+				"message": "getByTestId(\"quick-connect-button\") — consider getByRole if the element has an accessible role",
+				"hash": "e6381d1e1b39"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 155,
+				"message": "getByTestId(\"oauth-connect-success-banner\") — consider getByRole if the element has an accessible role",
+				"hash": "a032ee32cd53"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 159,
+				"message": "getByTestId(\"credential-edit-button\") — consider getByRole if the element has an accessible role",
+				"hash": "4f1011208cab"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 163,
+				"message": "getByTestId(\"credential-delete-button\") — consider getByRole if the element has an accessible role",
+				"hash": "de61597b4988"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 177,
+				"message": "getByTestId(\"oauth-redirect-url\") — consider getByRole if the element has an accessible role",
+				"hash": "c3430d2725fc"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 181,
+				"message": "getByTestId(\"credential-mode-selector\") — consider getByRole if the element has an accessible role",
+				"hash": "1d235154ddc0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 185,
+				"message": "getByTestId(\"credential-mode-dropdown-trigger\") — consider getByRole if the element has an accessible role",
+				"hash": "877af2e172aa"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 194,
+				"message": "getByTestId(\"menu-item\") — consider getByRole if the element has an accessible role",
+				"hash": "5314c86314c0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 201,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.root.getByTestId(`parameter-input-${key}`)",
+				"hash": "a2a92d956b8f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 208,
+				"message": "getByTestId(\"project-sharing-select\") — consider getByRole if the element has an accessible role",
+				"hash": "f38c2cfd7899"
+			}
+		],
+		"pages/components/DeleteSecretsProviderModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"deleteSecretsProvider-modal\") — consider getByRole if the element has an accessible role",
+				"hash": "4722b6979ef0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"delete-confirmation-input\") — consider getByRole if the element has an accessible role",
+				"hash": "540366ea0cde"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 38,
+				"message": "getByTestId(\"confirm-delete-button\") — consider getByRole if the element has an accessible role",
+				"hash": "8ce371c4c93e"
+			}
+		],
+		"pages/components/FocusPanel.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"inline-edit-preview\") — consider getByRole if the element has an accessible role",
+				"hash": "8f33c6a17a56"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 22,
+				"message": "getByTestId(\"ndv-input-panel\") — consider getByRole if the element has an accessible role",
+				"hash": "007061e7c67d"
+			}
+		],
+		"pages/components/InstanceAiSidebar.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 7,
+				"message": "getByTestId(\"instance-ai-new-thread-button\") — consider getByRole if the element has an accessible role",
+				"hash": "4c9e80043c9a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"instance-ai-thread-item\") — consider getByRole if the element has an accessible role",
+				"hash": "feda4ce97944"
+			}
+		],
+		"pages/components/InstanceAiWorkflowSetup.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 47,
+				"message": "getByTestId(\"instance-ai-workflow-setup-card-skipped\") — consider getByRole if the element has an accessible role",
+				"hash": "ddb421eb0f1e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 51,
+				"message": "getByTestId(\"instance-ai-workflow-setup-card-nodes-hint\") — consider getByRole if the element has an accessible role",
+				"hash": "ec15d7a05c89"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 55,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.root.getByTestId(`parameter-input-${parameterName}`)",
+				"hash": "23dae1d7e327"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 59,
+				"message": "getByTestId(\"parameter-issues\") — consider getByRole if the element has an accessible role",
+				"hash": "7fb3e6378ab6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 59,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.root .getByTestId(`parameter-input-${parameterName}`)",
+				"hash": "afa8c730ea78"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 65,
+				"message": "getByTestId(\"instance-ai-workflow-setup-prev\") — consider getByRole if the element has an accessible role",
+				"hash": "30dbd0b0551a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 69,
+				"message": "getByTestId(\"instance-ai-workflow-setup-next\") — consider getByRole if the element has an accessible role",
+				"hash": "3409d8836ee7"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 73,
+				"message": "getByTestId(\"instance-ai-workflow-setup-group-card\") — consider getByRole if the element has an accessible role",
+				"hash": "75561bdcff04"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 77,
+				"message": "getByTestId(\"instance-ai-workflow-setup-group-card-check\") — consider getByRole if the element has an accessible role",
+				"hash": "75a0690c856c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 81,
+				"message": "getByTestId(\"instance-ai-workflow-setup-section\") — consider getByRole if the element has an accessible role",
+				"hash": "a13b2c4e4e2c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 87,
+				"message": "getByTestId(\"instance-ai-workflow-setup-section-header\") — consider getByRole if the element has an accessible role",
+				"hash": "c487768cb015"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 102,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.getSection(nodeName) .getByTestId(`parameter-input-$...",
+				"hash": "c793f6969f77"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 119,
+				"message": "getByTestId(\"instance-ai-workflow-setup-section-body\") — consider getByRole if the element has an accessible role",
+				"hash": "53b0824b323b"
+			}
+		],
+		"pages/components/LogsPanel.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"log-details-input\") — consider getByRole if the element has an accessible role",
+				"hash": "ed54b3bc4e61"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"log-details-output\") — consider getByRole if the element has an accessible role",
+				"hash": "2db20339602c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 29,
+				"message": "getByTestId(\"logs-overview-status\") — consider getByRole if the element has an accessible role",
+				"hash": "f737ab9cfba0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 33,
+				"message": "getByTestId(\"logs-overview-header\") — consider getByRole if the element has an accessible role",
+				"hash": "ff3106906095"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 40,
+				"message": "getByTestId(\"logs-overview-body\") — consider getByRole if the element has an accessible role",
+				"hash": "a21d840fd3c4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 44,
+				"message": "getByTestId(\"logs-overview-body\") — consider getByRole if the element has an accessible role",
+				"hash": "a21d840fd3c4"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 48,
+				"message": "getByTestId(\"canvas-chat\") — consider getByRole if the element has an accessible role",
+				"hash": "5e969791195d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 60,
+				"message": "getByTestId(\"chat-session-id\") — consider getByRole if the element has an accessible role",
+				"hash": "6d38a7d9ad4c"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 64,
+				"message": "getByTestId(\"refresh-session-button\") — consider getByRole if the element has an accessible role",
+				"hash": "a8cdbd2cd339"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 72,
+				"message": "getByTestId(\"logs-overview-header\") — consider getByRole if the element has an accessible role",
+				"hash": "ff3106906095"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 80,
+				"message": "getByTestId(\"log-details-header\") — consider getByRole if the element has an accessible role",
+				"hash": "c5fc82c7af62"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 94,
+				"message": "getByTestId(\"clear-execution-data-button\") — consider getByRole if the element has an accessible role",
+				"hash": "024f6da14ee3"
+			}
+		],
+		"pages/components/NodeCreator.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"node-creator\") — consider getByRole if the element has an accessible role",
+				"hash": "a2e3c37d3f08"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"node-creator-search-bar\") — consider getByRole if the element has an accessible role",
+				"hash": "0347ba0360c0"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 27,
+				"message": "getByTestId(\"item-iterator-item\") — consider getByRole if the element has an accessible role",
+				"hash": "1e85a591749f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 31,
+				"message": "getByTestId(\"node-creator-category-item\") — consider getByRole if the element has an accessible role",
+				"hash": "ce7abd205846"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"nodes-list-header\") — consider getByRole if the element has an accessible role",
+				"hash": "90374a42a051"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 39,
+				"message": "getByTestId(\"node-creator-no-results\") — consider getByRole if the element has an accessible role",
+				"hash": "d1af22dda058"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 43,
+				"message": "getByTestId(\"actions-panel-no-triggers-callout\") — consider getByRole if the element has an accessible role",
+				"hash": "9ec46721e90b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 47,
+				"message": "getByTestId(\"actions-panel-activation-callout\") — consider getByRole if the element has an accessible role",
+				"hash": "ffa2b3be4f1e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 72,
+				"message": "getByTestId(\"node-creator-plus-button\") — consider getByRole if the element has an accessible role",
+				"hash": "05d9e22e09da"
+			}
+		],
+		"pages/components/ProjectTabsComponent.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"project-tabs\") — consider getByRole if the element has an accessible role",
+				"hash": "d968d205227d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"project-tabs\") — consider getByRole if the element has an accessible role",
+				"hash": "d968d205227d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 25,
+				"message": "getByTestId(\"project-tabs\") — consider getByRole if the element has an accessible role",
+				"hash": "d968d205227d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 32,
+				"message": "getByTestId(\"project-tabs\") — consider getByRole if the element has an accessible role",
+				"hash": "d968d205227d"
+			}
+		],
+		"pages/components/ResourceCards.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 11,
+				"message": "getByTestId(\"folder-card\") — consider getByRole if the element has an accessible role",
+				"hash": "d7b183c41ca3"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 15,
+				"message": "getByTestId(\"resources-list-item-workflow\") — consider getByRole if the element has an accessible role",
+				"hash": "ee37a373d414"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 19,
+				"message": "getByTestId(\"resources-list-item\") — consider getByRole if the element has an accessible role",
+				"hash": "e60721a8f02b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 32,
+				"message": "getByTestId(\"card-content\") — consider getByRole if the element has an accessible role",
+				"hash": "9a09654d4aac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 37,
+				"message": "getByTestId(\"card-append\") — consider getByRole if the element has an accessible role",
+				"hash": "bf4af7a6542e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 44,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId(`action-${actionName}`)",
+				"hash": "5ab2096f528f"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 67,
+				"message": "getByTestId(\"card-content\") — consider getByRole if the element has an accessible role",
+				"hash": "9a09654d4aac"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 71,
+				"message": "getByTestId(\"card-content\") — consider getByRole if the element has an accessible role",
+				"hash": "9a09654d4aac"
+			}
+		],
+		"pages/components/ResourceMoveModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 10,
+				"message": "getByTestId(\"project-sharing-select\") — consider getByRole if the element has an accessible role",
+				"hash": "825a90da7371"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 14,
+				"message": "getByTestId(\"project-move-resource-modal-select\") — consider getByRole if the element has an accessible role",
+				"hash": "30f93f3f3862"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId(\"confirm-move-folder-button\") — consider getByRole if the element has an accessible role",
+				"hash": "78887e4a6eab"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 26,
+				"message": "getByTestId(\"move-to-folder-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "5d6e3c9c7942"
+			}
+		],
+		"pages/components/RunDataPanel.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 23,
+				"message": "getByTestId(\"run-selector\") — consider getByRole if the element has an accessible role",
+				"hash": "3d0c29df4d09"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 31,
+				"message": "getByTestId(\"ndv-items-count\") — consider getByRole if the element has an accessible role",
+				"hash": "2af062877e7b"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 35,
+				"message": "getByTestId(\"ndv-search\") — consider getByRole if the element has an accessible role",
+				"hash": "279d202e2023"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 39,
+				"message": "getByTestId(\"ndv-search-container\") — consider getByRole if the element has an accessible role",
+				"hash": "6535b4a777de"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 43,
+				"message": "getByTestId(\"ndv-data-container\") — consider getByRole if the element has an accessible role",
+				"hash": "455f980afac1"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 47,
+				"message": "getByTestId(\"ndv-pin-data\") — consider getByRole if the element has an accessible role",
+				"hash": "09132f77f042"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 103,
+				"message": "getByTestId(\"run-data-schema-item\") — consider getByRole if the element has an accessible role",
+				"hash": "a1c7e2fd3c76"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 115,
+				"message": "getByTestId(\"ndv-input-select\") — consider getByRole if the element has an accessible role",
+				"hash": "995e40da0e97"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 119,
+				"message": "getByTestId(\"link-run\") — consider getByRole if the element has an accessible role",
+				"hash": "91ef1300476e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 123,
+				"message": "getByTestId(\"related-execution-link\") — consider getByRole if the element has an accessible role",
+				"hash": "c9815ce8c118"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 127,
+				"message": "getByTestId(\"hovering-item\") — consider getByRole if the element has an accessible role",
+				"hash": "bf0eeabbf021"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 131,
+				"message": "getByTestId(\"node-error-message\") — consider getByRole if the element has an accessible role",
+				"hash": "0c09ae40225d"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 135,
+				"message": "getByTestId(\"link-run\") — consider getByRole if the element has an accessible role",
+				"hash": "91ef1300476e"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 151,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.root.getByTestId(`radio-button-${mode}`)",
+				"hash": "7d2c87fa3e14"
+			}
+		],
+		"pages/components/SecretsProviderConnectionModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"provider-name\") — consider getByRole if the element has an accessible role",
+				"hash": "83e43b022c34"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 32,
+				"message": "getByTestId(\"provider-type-select\") — consider getByRole if the element has an accessible role",
+				"hash": "297537a30d51"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 45,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.container.getByTestId(`parameter-input-${fieldName}`)",
+				"hash": "dc8a95f3757a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 54,
+				"message": "getByTestId(\"secrets-provider-connection-save-button\") — consider getByRole if the element has an accessible role",
+				"hash": "38382604e282"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 70,
+				"message": "getByTestId(\"connection-success-callout\") — consider getByRole if the element has an accessible role",
+				"hash": "8c7826859764"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 74,
+				"message": "getByTestId(\"connection-error-banner\") — consider getByRole if the element has an accessible role",
+				"hash": "c0a48ce89e71"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 82,
+				"message": "getByTestId(\"sidebar-item-sharing\") — consider getByRole if the element has an accessible role",
+				"hash": "efb80698e102"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 86,
+				"message": "getByTestId(\"secrets-provider-scope-select\") — consider getByRole if the element has an accessible role",
+				"hash": "8e23399c3539"
+			}
+		],
+		"pages/components/StickyComponent.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 20,
+				"message": "getByTestId(\"add-sticky-button\") — consider getByRole if the element has an accessible role",
+				"hash": "2bd077c72b6a"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 24,
+				"message": "getByTestId(\"sticky\") — consider getByRole if the element has an accessible role",
+				"hash": "98622adad8ae"
+			}
+		],
+		"pages/components/TagsManagerModal.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 25,
+				"message": "getByTestId(\"tags-table\") — consider getByRole if the element has an accessible role",
+				"hash": "991cbd65efc8"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 41,
+				"message": "getByTestId(\"delete-tag-button\") — consider getByRole if the element has an accessible role",
+				"hash": "48d9b18b5c70"
+			}
+		],
+		"pages/components/nodes/EditFieldsNode.ts": [
+			{
+				"rule": "prefer-role-selectors",
+				"line": 18,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page.getByTestId(`assignment-collection-${paramName}`)",
+				"hash": "a8786e46df68"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 22,
+				"message": "getByTestId(\"assignment\") — consider getByRole if the element has an accessible role",
+				"hash": "69c8424f1019"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 41,
+				"message": "getByTestId(\"assignment-collection-drop-area\") — consider getByRole if the element has an accessible role",
+				"hash": "da8b688e0799"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 42,
+				"message": "getByTestId(\"assignment\") — consider getByRole if the element has an accessible role",
+				"hash": "69c8424f1019"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 44,
+				"message": "getByTestId(\"assignment\") — consider getByRole if the element has an accessible role",
+				"hash": "69c8424f1019"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 46,
+				"message": "getByTestId(\"assignment-collection-drop-area\") — consider getByRole if the element has an accessible role",
+				"hash": "da8b688e0799"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 47,
+				"message": "getByTestId(\"assignment\") — consider getByRole if the element has an accessible role",
+				"hash": "69c8424f1019"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 53,
+				"message": "getByTestId(\"assignment-name\") — consider getByRole if the element has an accessible role",
+				"hash": "0bf608bb1c02"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 60,
+				"message": "getByTestId(\"assignment-type-select\") — consider getByRole if the element has an accessible role",
+				"hash": "b3a47293e2d6"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 64,
+				"message": "getByTestId call — consider getByRole if the element has an accessible role: this.page .getByTestId('assignment-type-select-dropdown')...",
+				"hash": "d59a4a110b37"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 64,
+				"message": "getByTestId(\"assignment-type-select-dropdown\") — consider getByRole if the element has an accessible role",
+				"hash": "ddf969b3db49"
+			},
+			{
+				"rule": "prefer-role-selectors",
+				"line": 77,
+				"message": "getByTestId(\"assignment-value\") — consider getByRole if the element has an accessible role",
+				"hash": "81fea6d3a226"
 			}
 		]
 	}

@@ -9,6 +9,7 @@ export { DeduplicationRule } from './deduplication.rule.js';
 export { TestDataHygieneRule } from './test-data-hygiene.rule.js';
 export { DuplicateLogicRule } from './duplicate-logic.rule.js';
 export { NoDirectPageInstantiationRule } from './no-direct-page-instantiation.rule.js';
+export { PreferRoleSelectorsRule } from './prefer-role-selectors.rule.js';
 
 // Re-export types for convenience
 export type { Violation, FixResult, RuleResult, RuleConfig } from '../types.js';
