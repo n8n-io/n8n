@@ -58,20 +58,7 @@ const sharedInputDraft = ref('');
 	>
 		<div v-if="initialized" :class="$style.floatingChatActions">
 			<div :class="$style.chatViewActions">
-				<N8nTooltip placement="left" :content="fullWidthToggleLabel">
-					<N8nButton
-						variant="ghost"
-						icon-only
-						size="small"
-						:class="$style.headerIconBtn"
-						:aria-label="fullWidthToggleLabel"
-						data-testid="agent-build-chat-full-width-toggle"
-						@click="emit('update:full-width', !isFullWidth)"
-					>
-						<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
-					</N8nButton>
-				</N8nTooltip>
-				<N8nTooltip placement="left" :content="hideChatLabel">
+				<N8nTooltip placement="right" :content="hideChatLabel">
 					<N8nButton
 						variant="ghost"
 						icon-only
@@ -82,6 +69,19 @@ const sharedInputDraft = ref('');
 						@click="emit('update:collapsed', true)"
 					>
 						<N8nIcon icon="chevrons-left" :size="14" />
+					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip placement="right" :content="fullWidthToggleLabel">
+					<N8nButton
+						variant="ghost"
+						icon-only
+						size="small"
+						:class="$style.headerIconBtn"
+						:aria-label="fullWidthToggleLabel"
+						data-testid="agent-build-chat-full-width-toggle"
+						@click="emit('update:full-width', !isFullWidth)"
+					>
+						<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
 					</N8nButton>
 				</N8nTooltip>
 			</div>
@@ -149,7 +149,9 @@ const sharedInputDraft = ref('');
 .chatViewActions {
 	display: flex;
 	flex-direction: column;
+	align-items: center;
 	gap: var(--spacing--4xs);
+	width: var(--spacing--xl);
 }
 
 .headerIconBtn {
@@ -163,8 +165,8 @@ const sharedInputDraft = ref('');
 
 .floatingChatActions {
 	position: absolute;
-	top: var(--spacing--2xs);
-	right: var(--spacing--md);
+	top: var(--spacing--sm);
+	left: 0;
 	z-index: 2;
 	display: flex;
 }
