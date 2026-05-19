@@ -300,6 +300,19 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 		});
 
+		test('returns a clear error when the provided projectId does not exist', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'missing-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('missing-project-id');
+			expect(response.error).toContain('search_projects');
+			expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+		});
+
 		test('includes targetProject in recovery output when post-save errors but workflow persists', async () => {
 			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
 				workflow.id = 'wf-recovery-1';

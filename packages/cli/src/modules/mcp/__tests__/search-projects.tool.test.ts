@@ -213,6 +213,36 @@ describe('search-projects MCP tool', () => {
 		expect(output.data.length).toBeLessThanOrEqual(2);
 	});
 
+	test('keeps the exact match under a tight limit even when it sits past the partial page head', async () => {
+		// Partial page returns the exact match at position 1, alphabetically after another partial.
+		const partialProjects = [
+			{ id: 'proj-archive', name: 'Apple Finance', type: 'team' },
+			{ id: 'proj-exact', name: 'Finance', type: 'team' },
+		];
+		const exactProjects = [{ id: 'proj-exact', name: 'Finance', type: 'team' }];
+		const { projectRepository, telemetry } = createMocks({
+			projects: partialProjects,
+			count: 2,
+			exactProjects,
+		});
+
+		const tool = createSearchProjectsTool(
+			user,
+			projectRepository as unknown as ProjectRepository,
+			telemetry,
+		);
+
+		const result = await callHandler(tool, { query: 'Finance', limit: 1 });
+
+		const output = result.structuredContent as {
+			data: Array<{ id: string; matchType: string }>;
+		};
+		expect(output.data).toHaveLength(1);
+		expect(output.data[0]).toEqual(
+			expect.objectContaining({ id: 'proj-exact', matchType: 'exact' }),
+		);
+	});
+
 	test('does not query exact-name endpoint when no query is provided', async () => {
 		const { projectRepository, telemetry } = createMocks({
 			projects: [{ id: 'proj-1', name: 'Anything', type: 'team' }],

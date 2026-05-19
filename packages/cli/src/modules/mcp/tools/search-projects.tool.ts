@@ -91,7 +91,7 @@ export const createSearchProjectsTool = (
 			const trimmedQuery = query?.trim();
 			const [[partialProjects, count], exactProjects] = await Promise.all([
 				projectRepository.getAccessibleProjectsAndCount(user.id, {
-					search: query,
+					search: trimmedQuery,
 					type,
 					take: effectiveLimit,
 				}),
@@ -103,7 +103,7 @@ export const createSearchProjectsTool = (
 			// Exact matches outside the partial page would otherwise be invisible to the ranker.
 			const partialIds = new Set(partialProjects.map((p) => p.id));
 			const novelExactProjects = exactProjects.filter((p) => !partialIds.has(p.id));
-			const mergedProjects = [...novelExactProjects, ...partialProjects].slice(0, effectiveLimit);
+			const mergedProjects = [...novelExactProjects, ...partialProjects];
 
 			const normalizedQuery = trimmedQuery?.toLowerCase();
 			const scoredProjects = mergedProjects.map((project) => ({
@@ -112,6 +112,7 @@ export const createSearchProjectsTool = (
 					normalizedQuery !== undefined && project.name.trim().toLowerCase() === normalizedQuery,
 			}));
 
+			// Rank before paginating so the exact match survives even when limit < merged.length.
 			if (normalizedQuery) {
 				scoredProjects.sort((a, b) => {
 					if (a.isExact !== b.isExact) return a.isExact ? -1 : 1;
@@ -119,7 +120,9 @@ export const createSearchProjectsTool = (
 				});
 			}
 
-			const data = scoredProjects.map(({ project, isExact }) => ({
+			const limitedScored = scoredProjects.slice(0, effectiveLimit);
+
+			const data = limitedScored.map(({ project, isExact }) => ({
 				id: project.id,
 				name: project.name,
 				type: project.type,
@@ -130,9 +133,9 @@ export const createSearchProjectsTool = (
 
 			const exactMatchCount = scoredProjects.reduce((acc, p) => acc + (p.isExact ? 1 : 0), 0);
 			let hint: string | undefined;
-			if (normalizedQuery && data.length > 1) {
-				if (exactMatchCount === 0) {
-					hint = `No exact match for "${query}". ${data.length} partial matches were returned — ask the user to clarify which project they meant before creating or updating a workflow.`;
+			if (normalizedQuery) {
+				if (exactMatchCount === 0 && count > 1) {
+					hint = `No exact match for "${query}". ${count} partial matches are available — ask the user to clarify which project they meant before creating or updating a workflow.`;
 				} else if (exactMatchCount > 1) {
 					hint = `Multiple projects are named "${query}". Ask the user to disambiguate (e.g. by team or owner) before creating or updating a workflow.`;
 				}

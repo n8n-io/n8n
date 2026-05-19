@@ -1,4 +1,4 @@
-import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
+import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -69,10 +69,7 @@ const outputSchema = {
 				.enum(['personal', 'team'])
 				.describe('Whether the workflow landed in a personal or team project'),
 		})
-		.optional()
-		.describe(
-			'The project the workflow was actually created in. Always surface this to the user so they know where to find the workflow — especially when it differs from the project they named.',
-		),
+		.describe('The project the workflow was actually created in.'),
 	note: z
 		.string()
 		.optional()
@@ -150,7 +147,7 @@ export const createCreateWorkflowFromCodeTool = (
 		}
 
 		let newWorkflow: WorkflowEntity | undefined;
-		let landingProject: Awaited<ReturnType<typeof projectRepository.findOneBy>> | null = null;
+		let landingProject: Project | undefined;
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -178,14 +175,20 @@ export const createCreateWorkflowFromCodeTool = (
 
 			stripNullCredentialStubs(newWorkflow.nodes);
 
-			let effectiveProjectId = projectId;
-			landingProject = effectiveProjectId
-				? await projectRepository.findOneBy({ id: effectiveProjectId })
-				: null;
-			if (!effectiveProjectId) {
-				landingProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-				effectiveProjectId = landingProject.id;
+			let resolvedProject: Project;
+			if (projectId) {
+				const found = await projectRepository.findOneBy({ id: projectId });
+				if (!found) {
+					throw new Error(
+						`Project with id "${projectId}" was not found. Use search_projects to look up a valid project id.`,
+					);
+				}
+				resolvedProject = found;
+			} else {
+				resolvedProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
 			}
+			landingProject = resolvedProject;
+			const effectiveProjectId = resolvedProject.id;
 
 			const { assignments: credentialAssignments, skippedHttpNodes } =
 				await autoPopulateNodeCredentials(
@@ -205,10 +208,6 @@ export const createCreateWorkflowFromCodeTool = (
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;
 
-			const targetProject = landingProject
-				? { id: landingProject.id, name: landingProject.name, type: landingProject.type }
-				: undefined;
-
 			telemetryPayload.results = {
 				success: true,
 				data: {
@@ -224,7 +223,11 @@ export const createCreateWorkflowFromCodeTool = (
 				nodeCount: savedWorkflow.nodes.length,
 				url: workflowUrl,
 				autoAssignedCredentials: credentialAssignments,
-				targetProject,
+				targetProject: {
+					id: resolvedProject.id,
+					name: resolvedProject.name,
+					type: resolvedProject.type,
+				},
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
@@ -252,7 +255,11 @@ export const createCreateWorkflowFromCodeTool = (
 					// Verification lookup failed — fall through and report the original error.
 				}
 
-				if (persisted) {
+				// landingProject is set in the same try block before save() can populate
+				// newWorkflow.id, so reaching this branch with persisted means landingProject
+				// is also defined. The check keeps TypeScript honest and degrades to the
+				// regular error path on the impossible case.
+				if (persisted && landingProject) {
 					const baseUrl = urlService.getInstanceBaseUrl();
 					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
 
@@ -266,17 +273,17 @@ export const createCreateWorkflowFromCodeTool = (
 					};
 					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-					const targetProject = landingProject
-						? { id: landingProject.id, name: landingProject.name, type: landingProject.type }
-						: undefined;
-
 					const output = {
 						workflowId: persisted.id,
 						name: persisted.name,
 						nodeCount: persisted.nodes.length,
 						url: workflowUrl,
 						autoAssignedCredentials: [],
-						targetProject,
+						targetProject: {
+							id: landingProject.id,
+							name: landingProject.name,
+							type: landingProject.type,
+						},
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
 					};
 
