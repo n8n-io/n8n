@@ -2,8 +2,7 @@ import type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
-import { Container } from '@n8n/di';
+import type { Logger } from '@n8n/backend-common';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
@@ -66,10 +65,15 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	 *   vendor SDK posts to the wire server instead of the real provider.
 	 *   Leaving this undefined keeps the helper's pre-rewrite behaviour for
 	 *   callers that don't opt into the unpin path.
+	 * @param logger Optional logger. When provided, the helper warns on each
+	 *   resolved credential whose type is unmapped (so unmapped HTTP providers
+	 *   like Anthropic don't silently escape interception). Optional so this
+	 *   helper stays usable in tests/sites that don't construct it from DI.
 	 */
 	constructor(
 		private readonly inner: ICredentialsHelper,
 		private readonly serverUrl?: string,
+		private readonly logger?: Logger,
 	) {
 		super();
 	}
@@ -181,7 +185,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			// URL, which means traffic for this provider escapes interception and
 			// hits the real API. Surface this loudly so the gap is visible until
 			// the Tier 1 follow-up tickets extend `EVAL_PROVIDER_URL_FIELD`.
-			Container.get(Logger).warn(
+			this.logger?.warn(
 				`[EvalMock] No URL rewrite mapping for credential type "${type}" — ` +
 					`vendor traffic from "${executeData?.node?.name ?? 'unknown'}" will hit the real provider.`,
 			);

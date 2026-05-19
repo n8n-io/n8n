@@ -148,10 +148,16 @@ export class EvalExecutionService {
 
 	/**
 	 * Resolves the PostHog kill-switch for the credential-rewrite code path.
-	 * Fail-closed: any error reading the flag treats it as OFF. The whole
-	 * point of the kill-switch is to disable the feature in an emergency, so
-	 * a PostHog outage must NOT let the rewrite run silently — the user's
-	 * request is refused (with a clear error) until the flag can be resolved.
+	 *
+	 * Two distinct cases:
+	 *   - **Unset flag (`undefined`)**: treated as ENABLED. The flag is a
+	 *     default-on kill-switch — operators flip it to `false` to disable.
+	 *     Until an explicit rule is configured in PostHog the rewrite path
+	 *     stays active for any caller that opts in via `unpinNodes`.
+	 *   - **Flag resolution error**: treated as DISABLED. A kill-switch's job
+	 *     is to disable the feature in emergencies, including when the flag
+	 *     plane itself is degraded — the user's request is refused (with a
+	 *     clear error) rather than silently running the rewrite.
 	 */
 	private async isInterceptionEnabled(user: User): Promise<boolean> {
 		try {
@@ -304,6 +310,7 @@ export class EvalExecutionService {
 			credentialsHelper = new EvalMockedCredentialsHelper(
 				additionalData.credentialsHelper,
 				serverUrl,
+				this.logger,
 			);
 			additionalData.credentialsHelper = credentialsHelper;
 			additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);

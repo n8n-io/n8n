@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
@@ -163,36 +164,33 @@ describe('EvalMockedCredentialsHelper', () => {
 				expect(helper.rewrittenCredentials).toEqual([]);
 			});
 
-			it('logs a warning when serverUrl is set but the credential type is unmapped', async () => {
-				// Spy on the Logger via DI Container so we don't have to mock
-				// the import. Restored in the afterEach via jest.restoreAllMocks.
-				// eslint-disable-next-line @typescript-eslint/no-var-requires
-				const { Container } = require('@n8n/di');
-				// eslint-disable-next-line @typescript-eslint/no-var-requires
-				const { Logger } = require('@n8n/backend-common');
+			it('logs a warning via the injected logger when the credential type is unmapped', async () => {
 				const warn = jest.fn();
-				const originalGet = Container.get.bind(Container);
-				const spy = jest.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-					if (token === Logger) return { warn } as never;
-					return originalGet(token);
+				const inner = makeInner({
+					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
 				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, {
+					warn,
+				} as unknown as Logger);
 
-				try {
-					const inner = makeInner({
-						getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
-					});
-					const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+				await helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'claudeApi', 'manual', {
+					node: { name: 'Anthropic Chat Model', id: 'a' } as INode,
+				} as IExecuteData);
 
-					await helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'claudeApi', 'manual', {
-						node: { name: 'Anthropic Chat Model', id: 'a' } as INode,
-					} as IExecuteData);
+				expect(warn).toHaveBeenCalledTimes(1);
+				expect(warn.mock.calls[0][0]).toContain('claudeApi');
+				expect(warn.mock.calls[0][0]).toContain('Anthropic Chat Model');
+			});
 
-					expect(warn).toHaveBeenCalledTimes(1);
-					expect(warn.mock.calls[0][0]).toContain('claudeApi');
-					expect(warn.mock.calls[0][0]).toContain('Anthropic Chat Model');
-				} finally {
-					spy.mockRestore();
-				}
+			it('is silent on unmapped types when no logger was passed', async () => {
+				const inner = makeInner({
+					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+
+				await expect(
+					helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'claudeApi', 'manual'),
+				).resolves.toEqual({ accessToken: 'real-token' });
 			});
 
 			it('is a no-op when serverUrl is undefined (today’s default path)', async () => {
