@@ -311,6 +311,42 @@ test('finds links', async ({ app }) => {
 });
 ```
 
+#### `prefer-role-selectors`
+
+**Severity:** warning | **Default:** off (opt-in)
+
+Flags `getByTestId(...)` calls inside page object files. Role-based selectors
+(`getByRole`, `getByLabel`, `getByText`) describe elements by their semantic
+contract instead of an implementation detail, so tests are easier to write and
+survive refactors better. When a test can't reach an element via `getByRole`,
+the underlying component is usually missing an accessible role — a WCAG gap
+worth filing against the frontend.
+
+The ratio of `getByRole` to `getByTestId` calls across page objects becomes a
+proxy metric for UI accessibility coverage.
+
+```typescript
+// Flagged - implementation-detail selector
+async openNode() {
+  await this.page.getByTestId('node-item').click();
+}
+
+// Preferred - semantic selector tied to the accessible name
+async openNode() {
+  await this.page.getByRole('button', { name: 'Add node' }).click();
+}
+```
+
+This rule is heuristic: it cannot prove a role selector exists, so every
+violation is surfaced for human review. Enable it once the page object layer is
+mature enough to benefit from the signal:
+
+```typescript
+rules: {
+  'prefer-role-selectors': { enabled: true, severity: 'warning' },
+}
+```
+
 #### `no-page-in-flow`
 
 **Severity:** warning

@@ -27,6 +27,7 @@ export type BuiltInRuleId =
 	| 'boundary-protection'
 	| 'scope-lockdown'
 	| 'selector-purity'
+	| 'prefer-role-selectors'
 	| 'no-page-in-flow'
 	| 'api-purity'
 	| 'dead-code'

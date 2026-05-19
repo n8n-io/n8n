@@ -163,6 +163,9 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 			navigationMethods: ['goto', 'navigate', 'visit', 'open'],
 		},
 		'selector-purity': { enabled: true, severity: 'error', allowInExpect: true },
+		// Opt-in rule: surfaces getByTestId usage in page objects as an accessibility/maintainability signal.
+		// Enable in projects that want to track role-selector coverage as an a11y proxy metric.
+		'prefer-role-selectors': { enabled: false, severity: 'warning' },
 		deduplication: { enabled: true, severity: 'warning' },
 		'dead-code': { enabled: true, severity: 'warning' },
 		'no-page-in-flow': {

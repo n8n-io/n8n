@@ -2,6 +2,7 @@ export { BaseRule } from './base-rule.js';
 export { BoundaryProtectionRule } from './boundary-protection.rule.js';
 export { ScopeLockdownRule } from './scope-lockdown.rule.js';
 export { SelectorPurityRule } from './selector-purity.rule.js';
+export { PreferRoleSelectorsRule } from './prefer-role-selectors.rule.js';
 export { DeadCodeRule } from './dead-code.rule.js';
 export { ApiPurityRule } from './api-purity.rule.js';
 export { NoPageInFlowRule } from './no-page-in-flow.rule.js';
