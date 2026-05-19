@@ -2,8 +2,7 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import type { ManifestEntry, ManifestFile } from '@n8n/workflow-sdk/examples-loader';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import JSZip from 'jszip';
 
 import {
 	BuilderTemplatesService,
@@ -12,89 +11,55 @@ import {
 
 const ORIGINAL_FETCH = globalThis.fetch;
 
-const SAMPLE_WORKFLOW: WorkflowJSON = {
-	name: 'wf',
-	nodes: [
-		{
-			id: '1',
-			name: 'Manual',
-			type: 'n8n-nodes-base.manualTrigger',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		},
-	],
-	connections: {},
-} as unknown as WorkflowJSON;
-
-function entry(slug: string, overrides: Partial<ManifestEntry> = {}): ManifestEntry {
-	return {
-		id: 1,
-		slug,
-		name: slug,
-		description: '',
-		nodes: ['n8n-nodes-base.cron'],
-		tags: ['demo'],
-		triggerType: 'manual',
-		hasAI: false,
-		score: 50,
-		source: 'n8n.io',
-		author: 'test',
-		success: true,
-		...overrides,
-	};
+interface ZipContent {
+	indexTxt?: string;
+	files?: Record<string, string>;
 }
 
-function jsonResponse(body: unknown): Response {
-	return new Response(JSON.stringify(body), {
-		status: 200,
-		headers: { 'content-type': 'application/json' },
-	});
+async function buildZip(content: ZipContent): Promise<Buffer> {
+	const zip = new JSZip();
+	if (content.indexTxt !== undefined) zip.file('index.txt', content.indexTxt);
+	for (const [name, body] of Object.entries(content.files ?? {})) {
+		zip.file(name, body);
+	}
+	return await zip.generateAsync({ type: 'nodebuffer' });
+}
+
+function zipResponse(buffer: Buffer, etag: string | null, status = 200): Response {
+	const headers: Record<string, string> = { 'content-type': 'application/zip' };
+	if (etag) headers.etag = etag;
+	return new Response(new Uint8Array(buffer), { status, headers });
 }
 
 interface MockState {
-	manifest: ManifestFile;
-	workflows: Record<string, WorkflowJSON>;
-	manifestStatus?: number;
-	missingWorkflows?: Set<string>;
-	calls: { manifest: number; workflows: Map<string, number> };
+	zip: Buffer;
+	etag: string | null;
+	zipStatus?: number;
+	respondNotModified?: boolean;
+	calls: { fetch: number; lastIfNoneMatch: string | null };
 }
 
 function installMockFetch(state: MockState): jest.Mock {
-	const mock = jest.fn(async (input: string | URL | Request) => {
+	const mock = jest.fn(async (input: string | URL | Request, init?: RequestInit) => {
+		state.calls.fetch++;
+		const headers = new Headers((init?.headers ?? {}) as Record<string, string>);
+		state.calls.lastIfNoneMatch = headers.get('if-none-match');
+
+		if (state.respondNotModified) {
+			return new Response(null, { status: 304 });
+		}
+
 		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-		if (url.endsWith('/manifest.json')) {
-			state.calls.manifest++;
-			const status = state.manifestStatus ?? 200;
-			if (status >= 400) return new Response('error', { status });
-			return jsonResponse(state.manifest);
+		if (!url.endsWith('/templates.zip')) {
+			return new Response('unhandled', { status: 500 });
 		}
-		const wfMatch = url.match(/\/workflows\/([^/]+)\.json$/);
-		if (wfMatch) {
-			const slug = wfMatch[1];
-			state.calls.workflows.set(slug, (state.calls.workflows.get(slug) ?? 0) + 1);
-			if (state.missingWorkflows?.has(slug)) return new Response('not found', { status: 404 });
-			const wf = state.workflows[slug];
-			if (!wf) return new Response('no fixture', { status: 500 });
-			return jsonResponse(wf);
-		}
-		return new Response('unhandled', { status: 500 });
+
+		const status = state.zipStatus ?? 200;
+		if (status >= 400) return new Response('error', { status });
+		return zipResponse(state.zip, state.etag, status);
 	});
 	globalThis.fetch = mock as unknown as typeof globalThis.fetch;
 	return mock;
-}
-
-function makeState(overrides: Partial<MockState> = {}): MockState {
-	return {
-		manifest: {
-			generatedAt: '2026-05-15T00:00:00Z',
-			version: 'sha-1',
-			workflows: [entry('alpha'), entry('beta', { id: 2 })],
-		},
-		workflows: { alpha: SAMPLE_WORKFLOW, beta: SAMPLE_WORKFLOW },
-		calls: { manifest: 0, workflows: new Map() },
-		...overrides,
-	};
 }
 
 async function makeTempDir(): Promise<string> {
@@ -114,33 +79,48 @@ function makeOptions(
 	};
 }
 
+async function makeState(): Promise<MockState> {
+	const zip = await buildZip({
+		indexTxt: 'alpha.ts | Alpha Workflow\nbeta.ts | Beta Workflow',
+		files: {
+			'alpha.ts': '// alpha example',
+			'beta.ts': '// beta example',
+		},
+	});
+	return {
+		zip,
+		etag: '"sha-1"',
+		calls: { fetch: 0, lastIfNoneMatch: null },
+	};
+}
+
 describe('BuilderTemplatesService', () => {
 	afterEach(() => {
 		globalThis.fetch = ORIGINAL_FETCH;
 	});
 
-	it('fetches manifest + workflows on first call and populates disk cache', async () => {
+	it('fetches templates.zip on first call and populates disk cache', async () => {
 		const cacheDir = await makeTempDir();
-		const state = makeState();
+		const state = await makeState();
 		installMockFetch(state);
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
 		const bundle = await svc.getBundle();
 
 		expect(bundle.files.map((f) => f.filename)).toEqual(['alpha.ts', 'beta.ts']);
-		expect(bundle.version).toBe('sha-1');
+		expect(bundle.indexTxt).toContain('Alpha Workflow');
+		expect(bundle.version).toBe('"sha-1"');
 
-		const cachedManifest = JSON.parse(
-			await fsp.readFile(path.join(cacheDir, 'manifest.json'), 'utf-8'),
-		);
-		expect(cachedManifest.version).toBe('sha-1');
-		const cachedAlpha = await fsp.readFile(path.join(cacheDir, 'workflows', 'alpha.json'), 'utf-8');
-		expect(JSON.parse(cachedAlpha)).toEqual(SAMPLE_WORKFLOW);
+		const cachedZip = await fsp.readFile(path.join(cacheDir, 'templates.zip'));
+		expect(cachedZip.length).toBeGreaterThan(0);
+		const cachedEtag = await fsp.readFile(path.join(cacheDir, 'etag.txt'), 'utf-8');
+		expect(cachedEtag).toBe('"sha-1"');
 	});
 
-	it('returns an empty bundle when the manifest fetch fails and there is no disk cache', async () => {
+	it('returns an empty bundle when the fetch fails and there is no disk cache', async () => {
 		const cacheDir = await makeTempDir();
-		const state = makeState({ manifestStatus: 500 });
+		const state = await makeState();
+		state.zipStatus = 500;
 		installMockFetch(state);
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
@@ -150,53 +130,42 @@ describe('BuilderTemplatesService', () => {
 		expect(bundle.version).toBeNull();
 	});
 
-	it('skips entries whose workflow returns 404', async () => {
-		const cacheDir = await makeTempDir();
-		const state = makeState({ missingWorkflows: new Set(['beta']) });
-		installMockFetch(state);
-
-		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
-		const bundle = await svc.getBundle();
-
-		expect(bundle.files.map((f) => f.filename)).toEqual(['alpha.ts']);
-	});
-
 	it('memoises subsequent calls and does not refetch when cache is fresh', async () => {
 		const cacheDir = await makeTempDir();
-		const state = makeState();
+		const state = await makeState();
 		installMockFetch(state);
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 60_000 }));
 		await svc.getBundle();
-		const callsAfterFirst = state.calls.manifest;
+		const callsAfterFirst = state.calls.fetch;
 		await svc.getBundle();
-		expect(state.calls.manifest).toBe(callsAfterFirst);
+		expect(state.calls.fetch).toBe(callsAfterFirst);
 	});
 
-	it('skips workflow fetches when the manifest version matches the disk cache', async () => {
+	it('sends If-None-Match on refresh and short-circuits on 304', async () => {
 		const cacheDir = await makeTempDir();
-		const state = makeState();
+		const state = await makeState();
 		installMockFetch(state);
 
-		// Seed the cache with the same version on disk.
 		const seedSvc = new BuilderTemplatesService(makeOptions(cacheDir));
 		await seedSvc.getBundle();
-		state.calls.workflows.clear();
 
-		// Backdate cache so the TTL window expires immediately, then make sure
-		// no workflow fetches happen on refresh.
-		await fsp.utimes(path.join(cacheDir, 'manifest.json'), 0, 0);
+		// Backdate the cache so the TTL window expires immediately.
+		await fsp.utimes(path.join(cacheDir, 'templates.zip'), 0, 0);
+		state.respondNotModified = true;
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 1 }));
-		await svc.getBundle();
+		const bundle = await svc.getBundle();
 		// Background refresh is fire-and-forget; let it run.
 		await new Promise((r) => setTimeout(r, 20));
-		expect(state.calls.workflows.size).toBe(0);
+
+		expect(bundle.version).toBe('"sha-1"');
+		expect(state.calls.lastIfNoneMatch).toBe('"sha-1"');
 	});
 
 	it('short-circuits to an empty bundle when disabled', async () => {
 		const cacheDir = await makeTempDir();
-		const state = makeState();
+		const state = await makeState();
 		const fetchMock = installMockFetch(state);
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { disabled: true }));
@@ -209,16 +178,13 @@ describe('BuilderTemplatesService', () => {
 
 	it('hydrates from disk and reports the cached version', async () => {
 		const cacheDir = await makeTempDir();
-		await fsp.mkdir(path.join(cacheDir, 'workflows'), { recursive: true });
-		const manifest: ManifestFile = {
-			version: 'pre-existing',
-			workflows: [entry('gamma')],
-		};
-		await fsp.writeFile(path.join(cacheDir, 'manifest.json'), JSON.stringify(manifest));
-		await fsp.writeFile(
-			path.join(cacheDir, 'workflows', 'gamma.json'),
-			JSON.stringify(SAMPLE_WORKFLOW),
-		);
+		await fsp.mkdir(cacheDir, { recursive: true });
+		const zip = await buildZip({
+			indexTxt: 'gamma.ts | Gamma',
+			files: { 'gamma.ts': '// gamma' },
+		});
+		await fsp.writeFile(path.join(cacheDir, 'templates.zip'), zip);
+		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"pre-existing"');
 
 		// Block any network call so we know hydration came from disk.
 		globalThis.fetch = jest.fn(
@@ -228,8 +194,27 @@ describe('BuilderTemplatesService', () => {
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 60_000 }));
 		const bundle = await svc.getBundle();
 
-		expect(bundle.version).toBe('pre-existing');
+		expect(bundle.version).toBe('"pre-existing"');
 		expect(bundle.files.map((f) => f.filename)).toEqual(['gamma.ts']);
-		expect(svc.getVersion()).toBe('pre-existing');
+		expect(svc.getVersion()).toBe('"pre-existing"');
+	});
+
+	it('keeps the existing bundle when the refresh fetch errors', async () => {
+		const cacheDir = await makeTempDir();
+		const state = await makeState();
+		installMockFetch(state);
+
+		const seedSvc = new BuilderTemplatesService(makeOptions(cacheDir));
+		await seedSvc.getBundle();
+
+		state.zipStatus = 503;
+		await fsp.utimes(path.join(cacheDir, 'templates.zip'), 0, 0);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 1 }));
+		const bundle = await svc.getBundle();
+		await new Promise((r) => setTimeout(r, 20));
+
+		expect(bundle.version).toBe('"sha-1"');
+		expect(bundle.files.map((f) => f.filename)).toEqual(['alpha.ts', 'beta.ts']);
 	});
 });

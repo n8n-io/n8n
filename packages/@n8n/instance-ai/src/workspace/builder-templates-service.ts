@@ -1,17 +1,24 @@
 /**
  * Builder templates service: fetches the curated workflow-template bundle from
- * the n8n-sdk-templates CDN, caches it on disk, and exposes it to the sandbox
- * setup as a ready-to-write `ExampleFilesBundle`.
+ * the n8n-sdk-templates CDN as a single `templates.zip`, caches it on disk,
+ * and exposes its contents to the sandbox setup as a ready-to-write
+ * `BuilderTemplatesBundle`.
+ *
+ * The zip is produced by `n8n-io/n8n-sdk-templates` and contains:
+ *   - `index.txt`        — pipe-delimited catalog used for grep-style lookup
+ *   - `<slug>.ts`        — one pre-rendered SDK file per publishable template
  *
  * Behaviour:
  *   - First call: read disk cache if present; otherwise do a blocking fetch
  *     with a hard timeout. On any fetch error, return an empty bundle.
  *   - Subsequent calls: return memoised bundle synchronously. If the disk
  *     cache is older than the TTL, fire a background refresh.
- *   - Refresh: GET manifest.json. If `version` matches the cached version,
- *     skip re-fetching workflows. Otherwise concurrently fetch all
- *     `workflows/<slug>.json` listed in the new manifest (bounded at 16),
- *     atomically swap on success, keep stale bundle on any failure.
+ *   - Refresh: GET `templates.zip` with `If-None-Match`. On 304 just bump the
+ *     timestamp; on 200 extract the new zip and atomically swap. On any
+ *     failure keep the existing bundle.
+ *
+ * The HTTP ETag doubles as the bundle version — surfaced via telemetry so we
+ * can correlate template-set revisions with usage events.
  *
  * Never throws.
  */
@@ -19,12 +26,7 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import {
-	buildExampleFiles,
-	type ExampleFile,
-	type ManifestFile,
-} from '@n8n/workflow-sdk/examples-loader';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import JSZip from 'jszip';
 
 import type { Logger } from '../logger';
 
@@ -32,12 +34,14 @@ const DEFAULT_CDN_BASE_URL = 'https://sdk-templates.n8n.io/v1';
 const DEFAULT_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_FETCH_TIMEOUT_MS = 30_000;
 const DEFAULT_CACHE_SUBDIR = 'n8n-sdk-templates';
-const FETCH_CONCURRENCY = 16;
+const ZIP_FILENAME = 'templates.zip';
+const ETAG_FILENAME = 'etag.txt';
+const INDEX_ENTRY = 'index.txt';
 
 export interface BuilderTemplatesServiceOptions {
-	/** Base URL hosting `manifest.json` + `workflows/<slug>.json`. */
+	/** Base URL hosting `templates.zip`. */
 	cdnBaseUrl?: string;
-	/** Directory where the service persists manifest + workflows between runs. */
+	/** Directory where the service persists the zip + ETag between runs. */
 	cacheDir?: string;
 	/** Time-to-live before a refresh fires in the background. Default 24h. */
 	refreshIntervalMs?: number;
@@ -49,10 +53,15 @@ export interface BuilderTemplatesServiceOptions {
 	logger?: Logger;
 }
 
+export interface ExampleFile {
+	filename: string;
+	content: string;
+}
+
 export interface BuilderTemplatesBundle {
 	files: ExampleFile[];
 	indexTxt: string;
-	/** Version string from the manifest (e.g. short git SHA), or null when no bundle has been loaded. */
+	/** ETag of the zip (content-hashed by R2), or null when no bundle has been loaded. */
 	version: string | null;
 }
 
@@ -64,7 +73,7 @@ interface CacheState {
 }
 
 export class BuilderTemplatesService {
-	private readonly cdnBaseUrl: string;
+	private readonly zipUrl: string;
 	private readonly cacheDir: string;
 	private readonly refreshIntervalMs: number;
 	private readonly fetchTimeoutMs: number;
@@ -76,7 +85,8 @@ export class BuilderTemplatesService {
 	private backgroundRefresh: Promise<void> | null = null;
 
 	constructor(opts: BuilderTemplatesServiceOptions = {}) {
-		this.cdnBaseUrl = (opts.cdnBaseUrl ?? DEFAULT_CDN_BASE_URL).replace(/\/+$/, '');
+		const base = (opts.cdnBaseUrl ?? DEFAULT_CDN_BASE_URL).replace(/\/+$/, '');
+		this.zipUrl = `${base}/${ZIP_FILENAME}`;
 		this.cacheDir = opts.cacheDir ?? path.join(os.homedir(), '.n8n', DEFAULT_CACHE_SUBDIR);
 		this.refreshIntervalMs = opts.refreshIntervalMs ?? DEFAULT_REFRESH_INTERVAL_MS;
 		this.fetchTimeoutMs = opts.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
@@ -105,7 +115,7 @@ export class BuilderTemplatesService {
 		return state.bundle;
 	}
 
-	/** Return the cached manifest version, or null if no bundle has been loaded. */
+	/** Return the cached bundle version (ETag), or null if no bundle has been loaded. */
 	getVersion(): string | null {
 		return this.state?.bundle.version ?? null;
 	}
@@ -125,16 +135,12 @@ export class BuilderTemplatesService {
 	}
 
 	private async loadFromDisk(): Promise<CacheState | null> {
+		const zipPath = path.join(this.cacheDir, ZIP_FILENAME);
 		try {
-			const manifestPath = path.join(this.cacheDir, 'manifest.json');
-			const stat = await fsp.stat(manifestPath);
-			const raw = await fsp.readFile(manifestPath, 'utf-8');
-			const manifest = JSON.parse(raw) as ManifestFile;
-			const workflows = await this.readWorkflowsFromDisk(manifest);
-			const bundle: BuilderTemplatesBundle = {
-				...buildExampleFiles({ manifest, workflows }),
-				version: manifest.version ?? null,
-			};
+			const stat = await fsp.stat(zipPath);
+			const buffer = await fsp.readFile(zipPath);
+			const etag = await this.readEtagFromDisk();
+			const bundle = await extractBundle(buffer, etag);
 			return { bundle, lastFetched: stat.mtimeMs };
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -146,161 +152,103 @@ export class BuilderTemplatesService {
 		}
 	}
 
-	private async readWorkflowsFromDisk(manifest: ManifestFile): Promise<Map<string, WorkflowJSON>> {
-		const workflows = new Map<string, WorkflowJSON>();
-		const workflowsDir = path.join(this.cacheDir, 'workflows');
-		await Promise.all(
-			(manifest.workflows ?? [])
-				.filter((e) => e.success && !e.skip)
-				.map(async (entry) => {
-					try {
-						const raw = await fsp.readFile(path.join(workflowsDir, `${entry.slug}.json`), 'utf-8');
-						workflows.set(entry.slug, JSON.parse(raw) as WorkflowJSON);
-					} catch {
-						// Missing files trigger a refresh anyway.
-					}
-				}),
-		);
-		return workflows;
-	}
-
-	private async refresh(): Promise<void> {
+	private async readEtagFromDisk(): Promise<string | null> {
 		try {
-			const manifest = await this.fetchManifest();
-			if (!manifest) return;
-
-			const cachedVersion = this.state?.bundle.version ?? null;
-			const newVersion = manifest.version ?? null;
-			const versionsMatch =
-				cachedVersion !== null && newVersion !== null && cachedVersion === newVersion;
-
-			if (versionsMatch && this.state) {
-				// Same content, just refresh the disk-cache timestamp so we stop probing.
-				await this.persistManifest(manifest);
-				this.state = { ...this.state, lastFetched: Date.now() };
-				return;
-			}
-
-			const workflows = await this.fetchWorkflows(manifest);
-			if (!workflows) return;
-
-			await this.persistManifest(manifest);
-			await this.persistWorkflows(manifest, workflows);
-
-			const bundle: BuilderTemplatesBundle = {
-				...buildExampleFiles({ manifest, workflows }),
-				version: newVersion,
-			};
-			this.state = { bundle, lastFetched: Date.now() };
-		} catch (error) {
-			this.logger?.warn('[builder-templates] refresh failed', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	private async fetchManifest(): Promise<ManifestFile | null> {
-		const url = `${this.cdnBaseUrl}/manifest.json`;
-		try {
-			const response = await fetch(url, { signal: AbortSignal.timeout(this.fetchTimeoutMs) });
-			if (!response.ok) {
-				this.logger?.warn('[builder-templates] manifest fetch returned non-OK', {
-					status: response.status,
-					url,
-				});
-				return null;
-			}
-			return (await response.json()) as ManifestFile;
-		} catch (error) {
-			this.logger?.warn('[builder-templates] manifest fetch failed', {
-				error: error instanceof Error ? error.message : String(error),
-				url,
-			});
+			const raw = await fsp.readFile(path.join(this.cacheDir, ETAG_FILENAME), 'utf-8');
+			return raw.trim() || null;
+		} catch {
 			return null;
 		}
 	}
 
-	private async fetchWorkflows(manifest: ManifestFile): Promise<Map<string, WorkflowJSON> | null> {
-		const entries = (manifest.workflows ?? []).filter((e) => e.success && !e.skip);
-		const workflows = new Map<string, WorkflowJSON>();
-
-		let cursor = 0;
-		const workers = Array.from(
-			{ length: Math.min(FETCH_CONCURRENCY, entries.length) },
-			async () => {
-				while (cursor < entries.length) {
-					const entry = entries[cursor++];
-					if (!entry) return;
-					const url = `${this.cdnBaseUrl}/workflows/${entry.slug}.json`;
-					try {
-						const response = await fetch(url, {
-							signal: AbortSignal.timeout(this.fetchTimeoutMs),
-						});
-						if (!response.ok) {
-							this.logger?.warn('[builder-templates] workflow fetch returned non-OK', {
-								status: response.status,
-								slug: entry.slug,
-							});
-							continue;
-						}
-						workflows.set(entry.slug, (await response.json()) as WorkflowJSON);
-					} catch (error) {
-						this.logger?.warn('[builder-templates] workflow fetch failed', {
-							error: error instanceof Error ? error.message : String(error),
-							slug: entry.slug,
-						});
-					}
-				}
-			},
-		);
-
-		await Promise.all(workers);
-		return workflows;
-	}
-
-	private async persistManifest(manifest: ManifestFile): Promise<void> {
-		await fsp.mkdir(this.cacheDir, { recursive: true });
-		await atomicWriteFile(path.join(this.cacheDir, 'manifest.json'), JSON.stringify(manifest));
-	}
-
-	private async persistWorkflows(
-		manifest: ManifestFile,
-		workflows: Map<string, WorkflowJSON>,
-	): Promise<void> {
-		const workflowsDir = path.join(this.cacheDir, 'workflows');
-		await fsp.mkdir(workflowsDir, { recursive: true });
-
-		await Promise.all(
-			Array.from(workflows).map(async ([slug, wf]) => {
-				await atomicWriteFile(path.join(workflowsDir, `${slug}.json`), JSON.stringify(wf));
-			}),
-		);
-
-		// Remove any workflow files no longer referenced by the manifest.
-		const keep = new Set<string>();
-		for (const entry of manifest.workflows ?? []) {
-			if (entry.success && !entry.skip) keep.add(`${entry.slug}.json`);
-		}
+	private async refresh(): Promise<void> {
 		try {
-			const existing = await fsp.readdir(workflowsDir);
-			await Promise.all(
-				existing
-					.filter((name) => name.endsWith('.json') && !keep.has(name))
-					.map(async (name) => {
-						try {
-							await fsp.unlink(path.join(workflowsDir, name));
-						} catch {
-							// best-effort cleanup
-						}
-					}),
-			);
-		} catch {
-			// readdir failure is non-fatal
+			const cachedEtag = this.state?.bundle.version ?? (await this.readEtagFromDisk());
+			const headers: Record<string, string> = {};
+			if (cachedEtag) headers['If-None-Match'] = cachedEtag;
+
+			const response = await fetch(this.zipUrl, {
+				headers,
+				signal: AbortSignal.timeout(this.fetchTimeoutMs),
+			});
+
+			if (response.status === 304 && this.state) {
+				await touchZipFile(path.join(this.cacheDir, ZIP_FILENAME));
+				this.state = { ...this.state, lastFetched: Date.now() };
+				return;
+			}
+
+			if (!response.ok) {
+				this.logger?.warn('[builder-templates] zip fetch returned non-OK', {
+					status: response.status,
+					url: this.zipUrl,
+				});
+				return;
+			}
+
+			const buffer = Buffer.from(await response.arrayBuffer());
+			const etag = normaliseEtag(response.headers.get('etag'));
+			const bundle = await extractBundle(buffer, etag);
+
+			await this.persist(buffer, etag);
+			this.state = { bundle, lastFetched: Date.now() };
+		} catch (error) {
+			this.logger?.warn('[builder-templates] refresh failed', {
+				error: error instanceof Error ? error.message : String(error),
+				url: this.zipUrl,
+			});
+		}
+	}
+
+	private async persist(buffer: Buffer, etag: string | null): Promise<void> {
+		await fsp.mkdir(this.cacheDir, { recursive: true });
+		await atomicWriteFile(path.join(this.cacheDir, ZIP_FILENAME), buffer);
+		if (etag) {
+			await atomicWriteFile(path.join(this.cacheDir, ETAG_FILENAME), etag);
+		} else {
+			try {
+				await fsp.unlink(path.join(this.cacheDir, ETAG_FILENAME));
+			} catch {
+				// best-effort cleanup
+			}
 		}
 	}
 }
 
-async function atomicWriteFile(target: string, contents: string): Promise<void> {
+function normaliseEtag(raw: string | null): string | null {
+	if (!raw) return null;
+	const trimmed = raw.trim();
+	if (!trimmed) return null;
+	// R2 emits weak ETags as `W/"hex"` — keep the full token so `If-None-Match`
+	// echoes it verbatim and the server can match.
+	return trimmed;
+}
+
+async function extractBundle(buffer: Buffer, etag: string | null): Promise<BuilderTemplatesBundle> {
+	const zip = await JSZip.loadAsync(buffer);
+	const files: ExampleFile[] = [];
+	let indexTxt = '';
+
+	const entries = Object.entries(zip.files).filter(([, entry]) => !entry.dir);
+	const reads = await Promise.all(
+		entries.map(async ([name, entry]) => ({ name, content: await entry.async('string') })),
+	);
+
+	for (const { name, content } of reads) {
+		if (name === INDEX_ENTRY) {
+			indexTxt = content;
+			continue;
+		}
+		if (name.endsWith('.ts')) {
+			files.push({ filename: name, content });
+		}
+	}
+
+	files.sort((a, b) => a.filename.localeCompare(b.filename));
+	return { files, indexTxt, version: etag };
+}
+
+async function atomicWriteFile(target: string, contents: Buffer | string): Promise<void> {
 	const tmp = `${target}.tmp-${process.pid}-${Date.now()}`;
 	try {
 		await fsp.writeFile(tmp, contents);
@@ -312,6 +260,15 @@ async function atomicWriteFile(target: string, contents: string): Promise<void> 
 			// best-effort cleanup
 		}
 		throw error;
+	}
+}
+
+async function touchZipFile(target: string): Promise<void> {
+	const now = new Date();
+	try {
+		await fsp.utimes(target, now, now);
+	} catch {
+		// non-fatal — next refresh will reset state.lastFetched anyway
 	}
 }
 
