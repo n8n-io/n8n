@@ -286,9 +286,6 @@ const mcpTooltipContent = computed(() => {
 	if (!canToggleMcp.value) {
 		return locale.baseText('workflows.item.availableInMCP');
 	}
-	if (!props.isMcpEnabled) {
-		return locale.baseText('workflows.item.connectMcp.tooltip');
-	}
 	return isAvailableInMCP.value
 		? locale.baseText('workflows.item.disableMCPAccess')
 		: locale.baseText('workflows.item.enableMCPAccess');

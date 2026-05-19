@@ -4082,7 +4082,6 @@
 	"resourceDependents.type.workflows": "Workflows",
 	"workflows.item.enableMCPAccess": "Enable MCP access",
 	"workflows.item.disableMCPAccess": "Remove MCP access",
-	"workflows.item.connectMcp.tooltip": "MCP isn't configured on this instance",
 	"workflows.item.connectMcp.toast.title": "MCP isn't configured on this instance",
 	"workflows.item.connectMcp.toast.message": "To connect n8n to coding tools like Claude and Cursor, set up MCP in instance settings.",
 	"workflows.item.connectMcp.toast.cta": "Enable MCP",
