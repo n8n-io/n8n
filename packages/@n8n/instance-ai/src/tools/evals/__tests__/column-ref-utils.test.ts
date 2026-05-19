@@ -1,6 +1,7 @@
 import {
 	collectStrings,
 	currentJsonExpression,
+	extractDirectJsonColumnRefs,
 	extractJsonColumnRefs,
 	extractNamedRefMatches,
 	nodeItemJsonExpression,
@@ -38,6 +39,20 @@ describe('column-ref-utils', () => {
 		});
 		it('returns [] when no patterns match', () => {
 			expect(extractJsonColumnRefs('plain text {{ $now }}')).toEqual([]);
+		});
+	});
+
+	describe('extractDirectJsonColumnRefs', () => {
+		it('extracts direct $json and $input.item.json references', () => {
+			expect(
+				extractDirectJsonColumnRefs(
+					'{{ $json.user_query }} and {{ $input.item.json.context }}',
+				).sort(),
+			).toEqual(['context', 'user_query']);
+		});
+
+		it('ignores named-node refs', () => {
+			expect(extractDirectJsonColumnRefs("{{ $('Voice').item.json.text }}")).toEqual([]);
 		});
 	});
 

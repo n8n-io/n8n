@@ -1,6 +1,8 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { IConnection, IConnections } from 'n8n-workflow';
+import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
-import { isRecord } from './column-ref-utils';
+import { isRecord, nodeHasName, nodeTypeEndsWith } from './column-ref-utils';
 import type { InstanceAiContext, NodeOutputResult } from '../../types';
 
 const SCAN_LIMIT = 100;
@@ -24,22 +26,68 @@ export interface ExtractRowsResult {
 	scannedExecutions: number;
 }
 
-function findParentNode(workflow: WorkflowJSON, targetNodeName: string): string | undefined {
-	const connections = workflow.connections ?? {};
-	for (const [sourceName, byType] of Object.entries(connections)) {
+function isEvaluationNode(workflow: WorkflowJSON, nodeName: string): boolean {
+	const node = workflow.nodes.find(
+		(candidate) => nodeHasName(candidate) && candidate.name === nodeName,
+	);
+	return (
+		node !== undefined &&
+		(nodeTypeEndsWith(node, 'evaluation') || nodeTypeEndsWith(node, 'evaluationTrigger'))
+	);
+}
+
+function toWorkflowMainConnections(connections: WorkflowJSON['connections']): IConnections {
+	const result: IConnections = {};
+
+	for (const [sourceName, byType] of Object.entries(connections ?? {})) {
 		if (!isRecord(byType)) continue;
 		const main = byType.main;
 		if (!Array.isArray(main)) continue;
+
+		const mainConnections: Array<IConnection[] | null> = [];
 		for (const slot of main) {
-			if (!Array.isArray(slot)) continue;
-			for (const conn of slot) {
-				if (isRecord(conn) && conn.node === targetNodeName) {
-					return sourceName;
+			if (!Array.isArray(slot)) {
+				mainConnections.push(null);
+				continue;
+			}
+
+			const slotConnections: IConnection[] = [];
+			for (const connection of slot) {
+				if (
+					isRecord(connection) &&
+					connection.type === NodeConnectionTypes.Main &&
+					typeof connection.node === 'string' &&
+					typeof connection.index === 'number'
+				) {
+					slotConnections.push({
+						node: connection.node,
+						type: NodeConnectionTypes.Main,
+						index: connection.index,
+					});
 				}
 			}
+			mainConnections.push(slotConnections);
 		}
+
+		result[sourceName] = { [NodeConnectionTypes.Main]: mainConnections };
 	}
-	return undefined;
+
+	return result;
+}
+
+function findParentNodeCandidates(workflow: WorkflowJSON, targetNodeName: string): string[] {
+	const connectionsByDestination = mapConnectionsByDestination(
+		toWorkflowMainConnections(workflow.connections),
+	);
+	const parents = getParentNodes(
+		connectionsByDestination,
+		targetNodeName,
+		NodeConnectionTypes.Main,
+		1,
+	);
+	const productionParents = parents.filter((parent) => !isEvaluationNode(workflow, parent));
+	const evalParents = parents.filter((parent) => isEvaluationNode(workflow, parent));
+	return [...productionParents, ...evalParents];
 }
 
 function projectRow(
@@ -77,16 +125,23 @@ export async function extractRowsFromExecutionHistory(
 	ctx: InstanceAiContext,
 	input: ExtractRowsInput,
 ): Promise<ExtractRowsResult> {
-	const parentNodeName = findParentNode(input.workflow, input.agentNodeName);
-	if (!parentNodeName) {
+	const parentNodeNames = findParentNodeCandidates(input.workflow, input.agentNodeName);
+	if (parentNodeNames.length === 0) {
 		return { rows: [], scannedExecutions: 0 };
 	}
 
-	const summaries = await ctx.executionService.list({
-		workflowId: input.workflowId,
-		status: 'success',
-		limit: SCAN_LIMIT,
-	});
+	const summaries = [
+		...(await ctx.executionService.list({
+			workflowId: input.workflowId,
+			status: 'success',
+			limit: SCAN_LIMIT,
+		})),
+		...(await ctx.executionService.list({
+			workflowId: input.workflowId,
+			status: 'error',
+			limit: SCAN_LIMIT,
+		})),
+	];
 
 	const rows: Array<Record<string, string>> = [];
 	const seenRows = new Set<string>();
@@ -95,33 +150,52 @@ export async function extractRowsFromExecutionHistory(
 	for (const summary of summaries) {
 		if (rows.length >= MAX_ROWS) break;
 
-		let parentOutput: NodeOutputResult | undefined;
 		let agentOutput: NodeOutputResult | undefined;
-		try {
-			parentOutput = await ctx.executionService.getNodeOutput(summary.id, parentNodeName, {
-				maxItems: 1,
-			});
-			if (input.expectedToActualPairs.length > 0) {
+		if (input.expectedToActualPairs.length > 0) {
+			try {
 				agentOutput = await ctx.executionService.getNodeOutput(summary.id, input.agentNodeName, {
 					maxItems: 1,
 				});
+			} catch (error) {
+				ctx.logger?.warn('extract-rows: getNodeOutput failed', {
+					executionId: summary.id,
+					nodeName: input.agentNodeName,
+					error,
+				});
+				continue;
 			}
-		} catch (error) {
-			ctx.logger?.warn('extract-rows: getNodeOutput failed', {
-				executionId: summary.id,
-				error,
-			});
-			continue;
 		}
-		scannedExecutions++;
 
-		const parentItem = parentOutput.items[0];
-		const parentJson = isRecord(parentItem) ? parentItem.json : undefined;
 		const agentItem = agentOutput?.items[0];
 		const agentJson = agentItem !== undefined && isRecord(agentItem) ? agentItem.json : undefined;
 
-		const row = projectRow(parentJson, agentJson, input.inputColumns, input.expectedToActualPairs);
+		let scannedExecution = false;
+		let row: Record<string, string> | undefined;
+		for (const parentNodeName of parentNodeNames) {
+			let parentOutput: NodeOutputResult | undefined;
+			try {
+				parentOutput = await ctx.executionService.getNodeOutput(summary.id, parentNodeName, {
+					maxItems: 1,
+				});
+			} catch (error) {
+				ctx.logger?.warn('extract-rows: getNodeOutput failed', {
+					executionId: summary.id,
+					nodeName: parentNodeName,
+					error,
+				});
+				continue;
+			}
+
+			scannedExecution = true;
+			const parentItem = parentOutput.items[0];
+			const parentJson = isRecord(parentItem) ? parentItem.json : undefined;
+			row = projectRow(parentJson, agentJson, input.inputColumns, input.expectedToActualPairs);
+			if (row) break;
+		}
+
+		if (scannedExecution) scannedExecutions++;
 		if (!row) continue;
+
 		const key = rowKey(row);
 		if (seenRows.has(key)) continue;
 		seenRows.add(key);

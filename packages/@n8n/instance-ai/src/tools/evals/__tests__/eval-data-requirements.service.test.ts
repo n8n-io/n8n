@@ -338,6 +338,49 @@ describe('analyzeEvalDataRequirements', () => {
 		expect(result.targets[0].expectedOutputColumns).toEqual(['expected_response']);
 	});
 
+	it('extracts expected tools columns from the metric expectedTools parameter', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'a',
+				},
+				{
+					name: 'Metric',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					parameters: {
+						operation: 'setMetrics',
+						metric: 'toolsUsed',
+						expectedTools: "={{ $('EvalTrig').item.json.expected_tools }}",
+						intermediateSteps: '={{ $json.intermediateSteps }}',
+					},
+					position: [400, 0],
+					id: 'm',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				Agent: { main: [[{ node: 'Metric', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets[0].expectedOutputColumns).toEqual(['expected_tools']);
+	});
+
 	it('returns empty inputColumns when no root AI node is reachable from the trigger', () => {
 		const workflow = wf(
 			[

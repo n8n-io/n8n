@@ -75,37 +75,6 @@ describe('describeMetricForWorkflow', () => {
 		});
 	});
 
-	describe('relevance', () => {
-		it('returns the RAG-fallback message when no retriever is present', () => {
-			const result = describeMetricForWorkflow(wf([baseAgent]), 'Chef Agent', 'relevance');
-			expect(result).toMatch(/RAG/);
-		});
-
-		it('lists the retriever name when one is wired to the agent', () => {
-			const workflow = wf(
-				[
-					baseAgent,
-					{
-						name: 'Pinecone Store',
-						type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-						typeVersion: 1,
-						parameters: {},
-						position: [0, 0],
-						id: 'v',
-					},
-				],
-				{
-					'Pinecone Store': {
-						ai_vectorStore: [[{ node: 'Chef Agent', type: 'ai_vectorStore', index: 0 }]],
-					},
-				},
-			);
-			const result = describeMetricForWorkflow(workflow, 'Chef Agent', 'relevance');
-			expect(result).toMatch(/Pinecone Store/);
-			expect(result).toMatch(/retrieved context/i);
-		});
-	});
-
 	describe('helpfulness', () => {
 		it('returns a generic description', () => {
 			const result = describeMetricForWorkflow(wf([baseAgent]), 'Chef Agent', 'helpfulness');
@@ -139,7 +108,7 @@ describe('recommendedMetricId', () => {
 		expect(recommendedMetricId(workflow, 'Chef Agent')).toBe('tool_use');
 	});
 
-	it('returns relevance when the agent has a retriever but no tools', () => {
+	it('returns correctness when the agent has a retriever but no supported retriever metric', () => {
 		const workflowRetrieverOnly = wf(
 			[
 				baseAgent,
@@ -158,7 +127,7 @@ describe('recommendedMetricId', () => {
 				},
 			},
 		);
-		expect(recommendedMetricId(workflowRetrieverOnly, 'Chef Agent')).toBe('relevance');
+		expect(recommendedMetricId(workflowRetrieverOnly, 'Chef Agent')).toBe('correctness');
 	});
 
 	it('returns correctness for a plain agent with no tools or retrievers', () => {

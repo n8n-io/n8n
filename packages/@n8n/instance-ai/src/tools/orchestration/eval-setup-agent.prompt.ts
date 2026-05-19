@@ -134,18 +134,20 @@ Top-level parameter:
   - \`helpfulness\` — AI-judged helpfulness (scale 1-5). Requires \`userQuery\` + \`actualAnswer\`.
   - \`stringSimilarity\` — character-level similarity (edit distance, 0-1). Requires \`expectedAnswer\` + \`actualAnswer\`.
   - \`categorization\` — exact string match (1 or 0). Requires \`expectedAnswer\` + \`actualAnswer\`.
-  - \`toolsUsed\` — whether tools were used (0-1). No ground-truth fields needed.
+  - \`toolsUsed\` — whether the agent used the expected tools (0-1). Requires \`expectedTools\` + \`intermediateSteps\`.
   - \`customMetrics\` — user-defined metrics (advanced, rarely chosen).
 
 How to reference the values (use the EvaluationTrigger's explicit name — see above; "Eval Trigger" if you followed the convention):
 - \`expectedAnswer\` (ground truth) — pulls from the EvaluationTrigger's emitted row. Example: \`={{ $('Eval Trigger').item.json.expected_output }}\`.
 - \`actualAnswer\` (agent's response) — pulls from the AI agent's output JSON, which is still on \`$json\` at the setMetrics stage (setOutputs forwards its input data unchanged). Example: \`={{ $json.output }}\`.
 - \`userQuery\` (for \`helpfulness\`) — pulls from the EvaluationTrigger row, e.g. \`={{ $('Eval Trigger').item.json.input }}\`.
+- \`expectedTools\` (for \`toolsUsed\`) — pulls from the EvaluationTrigger row, e.g. \`={{ $('Eval Trigger').item.json.expected_tools }}\`.
+- \`intermediateSteps\` (for \`toolsUsed\`) — pulls from the AI agent output, e.g. \`={{ $json.intermediateSteps }}\`. Ensure the agent returns intermediate steps before relying on this field.
 
 Required fields per \`metric\`:
 - \`correctness\` / \`stringSimilarity\` / \`categorization\`: \`expectedAnswer\` + \`actualAnswer\`.
 - \`helpfulness\`: \`userQuery\` + \`actualAnswer\`.
-- \`toolsUsed\`: no extra required fields.
+- \`toolsUsed\`: \`expectedTools\` + \`intermediateSteps\`.
 
 **CRITICAL — AI-judged metrics need an \`ai_languageModel\` connection**: when \`metric\` is \`correctness\` or \`helpfulness\` (the LLM-as-judge metrics), the setMetrics node has TWO inputs — the standard \`main\` from the eval branch AND a separate \`ai_languageModel\` slot for the LLM judge. The node will not work without an LLM connected to the \`ai_languageModel\` slot.
 
@@ -171,7 +173,6 @@ Canned metric key mapping from the task's \`canned=<key>\` hints to the \`metric
 - \`canned=correctness\` → \`metric: "correctness"\`
 - \`canned=helpfulness\` → \`metric: "helpfulness"\`
 - \`canned=tool_use\` → \`metric: "toolsUsed"\`
-- \`canned=relevance\` → \`metric: "categorization"\` (closest stock match)
 - If no canned key present → use \`customMetrics\` or pick the most appropriate built-in.
 
 **checkIfEvaluating**: gates the workflow flow based on whether the current run is an eval run. Place it immediately after the AI agent. IMPORTANT: this node has TWO native \`main\` output slots — no separate IF node needed:

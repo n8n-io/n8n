@@ -21,6 +21,7 @@ import {
 	METRIC_CATALOG,
 	METRIC_IDS,
 	getMetricsByIds,
+	getMetricDatasetColumns,
 	proposeDefaultMetricIds,
 	type MetricId,
 } from './metric-catalog';
@@ -152,8 +153,6 @@ type EvalsToolExecutionContext = {
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-const DEFAULT_EXPECTED_OUTPUT_COLUMN = 'expected_output';
 
 function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): string {
 	const subject =
@@ -548,9 +547,7 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	if (resolvedMetrics.length === 0) {
 		resolvedMetrics = getMetricsByIds(['correctness']);
 	}
-	const outputColumns = resolvedMetrics.some((metric) => metric.requiresExpected)
-		? [DEFAULT_EXPECTED_OUTPUT_COLUMN]
-		: [];
+	const outputColumns = getMetricDatasetColumns(resolvedMetrics);
 	const dataTableColumns = [...new Set([...inputColumns, ...outputColumns])];
 
 	let dataTableId: string | undefined = input.existingDataTableId;

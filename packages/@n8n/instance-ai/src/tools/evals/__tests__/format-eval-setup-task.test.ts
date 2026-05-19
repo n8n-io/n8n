@@ -1,5 +1,6 @@
 import { currentJsonExpression, nodeItemJsonExpression } from '../column-ref-utils';
 import { formatEvalSetupTask } from '../format-eval-setup-task';
+import { METRIC_CATALOG } from '../metric-catalog';
 
 const BASE = {
 	workflowId: 'w1',
@@ -243,5 +244,36 @@ describe('formatEvalSetupTask — metric instructions', () => {
 		expect(task).toContain("metric: 'helpfulness'");
 		expect(task).toContain('There is no native `relevance` metric option');
 		expect(task).not.toContain("metric: 'relevance'");
+	});
+});
+
+describe('formatEvalSetupTask — metric setup instructions', () => {
+	it('configures helpfulness with userQuery and actualAnswer', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['user_query'],
+			suggestedOutputColumns: [],
+			enabledMetrics: [METRIC_CATALOG.helpfulness],
+		});
+
+		expect(task).toContain('metric: "helpfulness"');
+		expect(task).toContain('userQuery');
+		expect(task).toContain("{{ $('Eval Trigger').item.json.user_query }}");
+		expect(task).toContain('actualAnswer');
+		expect(task).not.toContain('For each metric, set `expectedAnswer`');
+	});
+
+	it('configures tool use with expectedTools and intermediateSteps', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedOutputColumns: ['expected_tools'],
+			enabledMetrics: [METRIC_CATALOG.tool_use],
+		});
+
+		expect(task).toContain('metric: "toolsUsed"');
+		expect(task).toContain('expectedTools');
+		expect(task).toContain("{{ $('Eval Trigger').item.json.expected_tools }}");
+		expect(task).toContain('intermediateSteps');
+		expect(task).toMatch(/returning intermediate steps/i);
 	});
 });

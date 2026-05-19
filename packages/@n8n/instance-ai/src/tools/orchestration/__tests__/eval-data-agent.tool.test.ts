@@ -96,6 +96,42 @@ const evalWfWithMetrics = (): WorkflowJSON =>
 		settings: {},
 	}) as unknown as WorkflowJSON;
 
+const multiAgentEvalWf = (): WorkflowJSON =>
+	({
+		name: 't',
+		nodes: [
+			{
+				name: 'Router Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.router_query }}' },
+				position: [0, 0],
+				id: 'router',
+			},
+			{
+				name: 'EvalTrig',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				parameters: { dataTableId: { value: 'dt-1' } },
+				position: [0, 200],
+				id: 't',
+			},
+			{
+				name: 'Answer Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.answer_query }}' },
+				position: [200, 200],
+				id: 'answer',
+			},
+		],
+		connections: {
+			EvalTrig: { main: [[{ node: 'Answer Agent', type: 'main', index: 0 }]] },
+		},
+		pinData: {},
+		settings: {},
+	}) as unknown as WorkflowJSON;
+
 const defaultInsertResult = {
 	insertedCount: 0,
 	dataTableId: 'dt-1',
@@ -237,6 +273,38 @@ describe('eval-data tool', () => {
 		expect(result.source).toBe('synthetic');
 		expect(result.rowCount).toBe(10);
 		expect(dataTableService.insertRows).toHaveBeenCalled();
+	});
+
+	it('passes the EvaluationTrigger target agent to synthetic row generation', async () => {
+		const insertRows = jest.fn().mockResolvedValue(defaultInsertResult);
+		const ctx = buildOrchestrationCtx({
+			domainContext: {
+				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(multiAgentEvalWf()) },
+				dataTableService: {
+					insertRows,
+					getSchema: jest.fn().mockResolvedValue([{ name: 'answer_query' }]),
+					addColumn: jest.fn(),
+				},
+				executionService: {
+					list: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
+					getNodeOutput: jest.fn(),
+				},
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+			},
+		});
+		const generateSpy = jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ answer_query: 'generated' }]);
+
+		await runEvalDataTool(ctx, { workflowId: 'w1' });
+
+		expect(generateSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				columns: ['answer_query'],
+				targetAgentNodeName: 'Answer Agent',
+			}),
+		);
+		expect(insertRows).toHaveBeenCalledWith('dt-1', [{ answer_query: 'generated' }], undefined);
 	});
 
 	it('returns skipped when no eval target exists', async () => {

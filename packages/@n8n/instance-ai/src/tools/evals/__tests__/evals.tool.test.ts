@@ -185,6 +185,51 @@ function aiWfWithDirectAndNamedRef(): WorkflowJSON {
 	} as unknown as WorkflowJSON;
 }
 
+/** AI workflow with two named refs that share the same source field name. */
+function aiWfWithNamedRefCollision(): WorkflowJSON {
+	return {
+		name: 'AI Flow',
+		nodes: [
+			{
+				id: '1',
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: {
+					text: "={{ $('Voice or Text').item.json.text }}",
+					systemMessage: "={{ $('Memory Buffer').item.json.text }}",
+				},
+			},
+			{
+				id: '3',
+				name: 'Voice or Text',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3,
+				position: [-200, 0],
+				parameters: {},
+			},
+			{
+				id: '4',
+				name: 'Memory Buffer',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3,
+				position: [-200, 200],
+				parameters: {},
+			},
+		],
+		connections: {},
+	} as unknown as WorkflowJSON;
+}
+
 function aiWfWithMultipleAgents(): WorkflowJSON {
 	return {
 		name: 'Multi AI Flow',
@@ -665,6 +710,27 @@ describe('evals tool — propose action (changed)', () => {
 		expect(task).not.toContain('nope');
 	});
 
+	it('creates the expected tools column when tool_use is selected', async () => {
+		const ctx = makeCtx(aiWfWithTools());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.handler!(
+			{ action: 'propose', workflowId: 'w1', metrics: ['tool_use'] },
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		expect(ctx.dataTableService.create).toHaveBeenCalledWith(
+			'AI Flow With Tools — eval samples',
+			[
+				{ name: 'user_query', type: 'string' },
+				{ name: 'expected_tools', type: 'string' },
+			],
+			undefined,
+		);
+		expect(result.task).toContain('expectedTools');
+		expect(result.task).toContain('intermediateSteps');
+	});
+
 	it('falls back to ["correctness"] when metrics is empty', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
@@ -1043,7 +1109,10 @@ describe('evals tool — propose with named refs', () => {
 
 		expect(create).toHaveBeenCalledWith(
 			expect.any(String),
-			expect.arrayContaining([{ name: 'text', type: 'string' }]),
+			[
+				{ name: 'text', type: 'string' },
+				{ name: 'expected_output', type: 'string' },
+			],
 			undefined,
 		);
 	});
@@ -1063,6 +1132,26 @@ describe('evals tool — propose with named refs', () => {
 				{ name: 'context', type: 'string' },
 				{ name: 'user_query', type: 'string' },
 			]) as unknown,
+			undefined,
+		);
+	});
+
+	it('does not include the raw field name when named refs collide', async () => {
+		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
+		const ctx = makeCtx(aiWfWithNamedRefCollision(), { create });
+		const tool = createEvalsTool(ctx);
+
+		await tool.handler!({ action: 'propose', workflowId: 'w1', metrics: ['correctness'] }, {
+			agent: {},
+		} as never);
+
+		expect(create).toHaveBeenCalledWith(
+			expect.any(String),
+			[
+				{ name: 'voice_or_text_text', type: 'string' },
+				{ name: 'memory_buffer_text', type: 'string' },
+				{ name: 'expected_output', type: 'string' },
+			],
 			undefined,
 		);
 	});

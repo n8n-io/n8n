@@ -109,8 +109,10 @@ function expectedColumnsFromMetricNodes(nodes: WorkflowNode[]): string[] {
 			if (!nodeTypeEndsWith(node, 'evaluation') || readOperation(node) !== 'setMetrics') return [];
 			const parameters = node.parameters;
 			if (!isRecord(parameters)) return [];
-			const expectedRaw = parameters.expectedAnswer;
-			return typeof expectedRaw === 'string' ? extractEvalTriggerColumnRefs(expectedRaw) : [];
+			const expectedRawValues = [parameters.expectedAnswer, parameters.expectedTools];
+			return expectedRawValues.flatMap((expectedRaw) =>
+				typeof expectedRaw === 'string' ? extractEvalTriggerColumnRefs(expectedRaw) : [],
+			);
 		}),
 	);
 }

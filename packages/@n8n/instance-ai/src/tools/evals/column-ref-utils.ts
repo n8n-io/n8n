@@ -189,6 +189,21 @@ export function extractJsonColumnRefs(text: string): string[] {
 	return unique(refs);
 }
 
+export function extractDirectJsonColumnRefs(text: string): string[] {
+	const refs: string[] = [];
+	const patterns = [
+		/\$json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+		/\$input\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+		/(?:^|[^\w.])item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+	];
+	for (const pattern of patterns) {
+		for (const match of text.matchAll(pattern)) {
+			if (match[1]) refs.push(match[1]);
+		}
+	}
+	return unique(refs);
+}
+
 /**
  * Match named cross-node references in expressions.
  * Captures (sourceNodeName, field) pairs for:
