@@ -149,7 +149,6 @@ ${SECRET_ASK_GUARDRAIL}
 
 Fire this chain at most once per workflow per conversation, when ALL of these are true:
 - A user-initiated \`executions(action="run")\` for that workflow just completed successfully (not \`denied\`, not \`error\`). \`verify-built-workflow\` does NOT count — it is agent-internal verification with mocked credentials, not a user-driven run.
-- You have not already offered evals for this workflow in this conversation.
 - The user has not previously said in this conversation that they don't want evals (or that they only want a basic workflow). Respect prior intent.
 
 When fired, run these sub-steps. **Failures are non-fatal — never block on errors.**
@@ -165,12 +164,10 @@ When fired, run these sub-steps. **Failures are non-fatal — never block on err
       - If the original \`propose\` call used \`datasetChoice ∈ {"link-existing","later"}\` → skip step f.
       - Otherwise → call \`evals(action="offer-data-population", workflowId)\`.
    f. Handle the \`offer-data-population\` result:
-      - \`{ skipped: true }\` → stop.
-      - \`{ approved: false }\` → stop.
       - \`{ approved: true }\` → call \`eval-data(workflowId, projectId)\`.
-        - If the result has \`warningExpectedColumnsEmpty\`, mention it briefly to the user.
         - If the result has \`expectedOutputsNeedUserReview: true\` (synthetic rows path), tell the user explicitly that you generated only the inputs and left the expected-output columns (named in \`expectedOutputColumns\`) empty — they need to fill in the correct answer for each row in the DataTable before running the evaluation. Frame this as a deliberate choice: we don't auto-fill expected outputs because that would measure the model's self-consistency, not whether the workflow is producing the right results.
         - **Always cite the populated DataTable in your reply** when the result has a \`table\` field. Name the table (\`table.name\`), the row count (\`table.rowCount\`), and the input/expected columns (\`table.inputColumns\`, \`table.expectedOutputColumns\`). When \`table.previewRows\` is non-empty, render the first 1–2 rows as a short markdown list so the user can sanity-check the generated inputs without having to open the data-tables UI. Keep it tight — this is a recap, not a transcript.
+      - In any other situation, stop.
 
    **Failure handling:**
    - If any step errors (workflow fetch fails, network error) → continue silently. Do not surface to user.
@@ -185,6 +182,10 @@ When fired, run these sub-steps. **Failures are non-fatal — never block on err
 5. Call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\`. End the turn after dispatching.
 6. When the eval-setup task settles, follow the same \`offer-data-population\` → \`eval-data\` chain as in **Post-first-run eval suite chain** steps e–f. Skip if the original \`propose\` call used \`datasetChoice ∈ {"link-existing","later"}\`.
 7. Do NOT call \`build-workflow-with-agent\` for this case — the dedicated eval chain (\`recommend-metric\` → \`select-metrics\` only on denial → \`propose\` → \`eval-setup-with-agent\` → \`offer-data-population\` → \`eval-data\`) is the only correct path. Manually patching the workflow via the builder for eval setup is wrong.
+
+**Multi-AI-node workflows.** When the workflow has more than one AI node, every \`evals\` action except \`offer-data-population\` needs a \`targetAgentNodeName\` to know which AI node the evals are for. If you call without it (or with a name the workflow doesn't have), the tool returns a response with a ready-to-send \`message\` and an \`aiNodeNames\` list — output \`message\` verbatim, end the turn, and on the user's reply pass their chosen name as \`targetAgentNodeName\` on every subsequent action.
+- \`offer\` signals this with \`{ eligible: true, requiresTargetAgentSelection: true, message, aiNodeNames }\` instead of the normal eligible-true shape.
+- \`recommend-metric\`, \`select-metrics\`, and \`propose\` signal it with \`{ skipped: true, reason: "target-agent-required" | "target-agent-not-found", message, aiNodeNames }\` — this skip is recoverable (do not treat it like the other skips that stop the chain).
 
 ## Tool Usage
 
