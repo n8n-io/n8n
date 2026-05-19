@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { minimatch } from "minimatch";
 
 /**
  * @typedef Owner
@@ -53,18 +52,24 @@ export function parseOwnersFile(path = OWNERS_FILE) {
 }
 
 /**
- * Translate a CODEOWNERS-style pattern into a minimatch glob.
- *   "*"            -> "**"        (catch-all)
- *   "packages/x/"  -> "packages/x/**"  (directory, recursive)
- *   "path/to/f.ts" -> "path/to/f.ts"   (exact file or already a glob)
+ * Test whether `file` is matched by a CODEOWNERS-style pattern.
  *
+ * The OWNERS file uses three pattern shapes, all handled here:
+ *   "*"            catch-all (matches any file)
+ *   "packages/x/"  directory pattern (matches every file under packages/x/ recursively)
+ *   "path/to/f.ts" exact path
+ *
+ * If richer globs are ever introduced to OWNERS (e.g. `*.ts`, `**\/foo`),
+ * extend this helper rather than reaching for a dependency.
+ *
+ * @param { string } file
  * @param { string } pattern
- * @returns { string }
+ * @returns { boolean }
  * */
-function codeownersToMinimatch(pattern) {
-	if (pattern === "*") return "**";
-	if (pattern.endsWith("/")) return pattern + "**";
-	return pattern;
+export function matchesPattern(file, pattern) {
+	if (pattern === "*") return true;
+	if (pattern.endsWith("/")) return file.startsWith(pattern);
+	return file === pattern;
 }
 
 /**
@@ -76,19 +81,14 @@ function codeownersToMinimatch(pattern) {
  * @returns { Ownerships } team -> files it owns in this changeset
  * */
 export function assignOwnership(files, owners) {
-	const compiled = owners.map(owner => ({
-		team: owner.team,
-		glob: codeownersToMinimatch(owner.filepath),
-	}));
-
 	/** @type { Ownerships } */
 	const teamToFiles = new Map();
 
 	for (const file of files) {
 		// Walk rules in reverse so the *last* matching rule wins.
-		for (let i = compiled.length - 1; i >= 0; i--) {
-			if (minimatch(file, compiled[i].glob, { dot: true })) {
-				const team = compiled[i].team;
+		for (let i = owners.length - 1; i >= 0; i--) {
+			if (matchesPattern(file, owners[i].filepath)) {
+				const team = owners[i].team;
 				const bucket = teamToFiles.get(team);
 
 				if (bucket) {
