@@ -900,7 +900,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'fix this',
 			undefined,
-			undefined,
 			expect.any(String),
 			undefined,
 		);
@@ -943,7 +942,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'first queued',
 			undefined,
-			undefined,
 			expect.any(String),
 			undefined,
 		);
@@ -952,7 +950,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'second queued',
-			undefined,
 			undefined,
 			expect.any(String),
 			undefined,
