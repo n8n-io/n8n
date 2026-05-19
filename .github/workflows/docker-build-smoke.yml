@@ -18,6 +18,7 @@ on:
       - 'docker/images/runners/**'
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
+      - 'scripts/smoke-n8n-image.mjs'
   workflow_dispatch:
 
 jobs:
