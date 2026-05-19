@@ -61,6 +61,12 @@ function isGatewayResourceDecision(
 	return gatewayResourceDecisionSchema.safeParse(option).success;
 }
 
+function isMediaContent(item: { type: string; resource?: { blob?: string } }): boolean {
+	if (item.type === 'image' || item.type === 'audio') return true;
+	if (item.type === 'resource' && item.resource?.blob) return true;
+	return false;
+}
+
 function tryParseGatewayConfirmationRequired(
 	result: McpToolCallResult,
 ): GatewayConfirmationRequiredPayload | null {
@@ -265,7 +271,13 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 						? (result as { output: unknown }).output
 						: result
 				) as {
-					content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
+					content: Array<{
+						type: string;
+						text?: string;
+						data?: string;
+						mimeType?: string;
+						resource?: { uri?: string; mimeType?: string; blob?: string; text?: string };
+					}>;
 					structuredContent?: Record<string, unknown>;
 				};
 
@@ -273,7 +285,7 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 					return { type: 'text', value: JSON.stringify(result) };
 				}
 
-				const hasMedia = raw.content.some((item) => item.type === 'image');
+				const hasMedia = raw.content.some(isMediaContent);
 
 				// When we have structuredContent and no media, prefer it as compact text
 				if (raw.structuredContent && !hasMedia) {
@@ -283,7 +295,8 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 					};
 				}
 
-				// Convert MCP 'image' → Mastra 'media' (Mastra translates to 'image-data' for the provider)
+				// Convert MCP image/audio/resource(blob) → Mastra 'media' with the original IANA
+				// mediaType, so AI SDK passes it through as a file part to the provider.
 				const value = raw.content.map((item) => {
 					if (item.type === 'image') {
 						return {
@@ -291,6 +304,23 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 							data: item.data ?? '',
 							mediaType: item.mimeType ?? 'image/jpeg',
 						};
+					}
+					if (item.type === 'audio') {
+						return {
+							type: 'media' as const,
+							data: item.data ?? '',
+							mediaType: item.mimeType ?? 'audio/mpeg',
+						};
+					}
+					if (item.type === 'resource' && item.resource?.blob) {
+						return {
+							type: 'media' as const,
+							data: item.resource.blob,
+							mediaType: item.resource.mimeType ?? 'application/octet-stream',
+						};
+					}
+					if (item.type === 'resource' && item.resource?.text) {
+						return { type: 'text' as const, text: item.resource.text };
 					}
 					return { type: 'text' as const, text: item.text ?? '' };
 				});

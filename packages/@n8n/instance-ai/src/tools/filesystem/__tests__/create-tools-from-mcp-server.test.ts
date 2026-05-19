@@ -92,6 +92,23 @@ function getExecute(server: LocalMcpServer, toolName = 'write_file') {
 	) => Promise<McpToolCallResult>;
 }
 
+type ToModelOutput = (result: unknown) =>
+	| { type: 'text'; value: string }
+	| {
+			type: 'content';
+			value: Array<
+				{ type: 'text'; text: string } | { type: 'media'; data: string; mediaType: string }
+			>;
+	  };
+
+function getToModelOutput(server: LocalMcpServer, toolName = 'write_file'): ToModelOutput {
+	const tools = createToolsFromLocalMcpServer(server);
+	const tool = tools[toolName];
+	const fn = (tool as { toModelOutput?: ToModelOutput }).toModelOutput;
+	if (!fn) throw new Error(`Tool '${toolName}' has no toModelOutput function`);
+	return fn;
+}
+
 /** Build a ctx object with suspend/resumeData for use in execute calls. */
 function makeCtx(opts: {
 	suspend?: jest.Mock;
@@ -336,6 +353,76 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			// Returns the raw error result unchanged
 			expect(result).toEqual(PLAIN_CONFIRMATION_ERROR);
+		});
+	});
+
+	describe('toModelOutput', () => {
+		it('converts MCP image to Mastra media', () => {
+			const server = makeMockServer();
+			const toModel = getToModelOutput(server);
+
+			const out = toModel({
+				output: {
+					content: [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }],
+				},
+			});
+
+			expect(out).toEqual({
+				type: 'content',
+				value: [{ type: 'media', data: 'AAAA', mediaType: 'image/png' }],
+			});
+		});
+
+		it('converts MCP audio to Mastra media', () => {
+			const server = makeMockServer();
+			const toModel = getToModelOutput(server);
+
+			const out = toModel({
+				output: { content: [{ type: 'audio', data: 'BBBB', mimeType: 'audio/mpeg' }] },
+			});
+
+			expect(out).toEqual({
+				type: 'content',
+				value: [{ type: 'media', data: 'BBBB', mediaType: 'audio/mpeg' }],
+			});
+		});
+
+		it('converts MCP blob resource to Mastra media with resource mimeType', () => {
+			const server = makeMockServer();
+			const toModel = getToModelOutput(server);
+
+			const out = toModel({
+				output: {
+					content: [
+						{
+							type: 'resource',
+							resource: { uri: 'file:///a.pdf', mimeType: 'application/pdf', blob: 'CCCC' },
+						},
+					],
+				},
+			});
+
+			expect(out).toEqual({
+				type: 'content',
+				value: [{ type: 'media', data: 'CCCC', mediaType: 'application/pdf' }],
+			});
+		});
+
+		it('falls back to compact structuredContent text when no media is present', () => {
+			const server = makeMockServer();
+			const toModel = getToModelOutput(server);
+
+			const out = toModel({
+				output: {
+					content: [{ type: 'text', text: 'ignored' }],
+					structuredContent: { ok: true },
+				},
+			});
+
+			expect(out).toEqual({
+				type: 'content',
+				value: [{ type: 'text', text: JSON.stringify({ ok: true }) }],
+			});
 		});
 	});
 

@@ -92,8 +92,8 @@ describe('writeFileTool', () => {
 			expect(fs.writeFile).toHaveBeenCalledWith('/base/existing.txt', 'new data', 'utf-8');
 		});
 
-		it('rejects content larger than 512 KB', async () => {
-			const largeContent = 'x'.repeat(600 * 1024);
+		it('rejects content larger than 1 MB', async () => {
+			const largeContent = 'x'.repeat(2 * 1024 * 1024);
 
 			await expect(
 				writeFileTool.execute({ filePath: 'large.txt', content: largeContent }, CONTEXT),
