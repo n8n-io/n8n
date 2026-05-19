@@ -1200,7 +1200,6 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			freshUser,
 			'thread-a',
 			'follow-up message',
-			false,
 			'group-1',
 			true,
 		);
