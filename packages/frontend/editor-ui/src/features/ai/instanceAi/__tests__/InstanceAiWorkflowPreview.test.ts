@@ -170,40 +170,45 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
-	it('should emit fix-with-ai on a valid fixWithAi postMessage with context', async () => {
+	it('should emit workflow-failures on reportWorkflowFailures postMessage', async () => {
 		const { emitted } = renderComponent({ props: { workflowId: null } });
 
 		dispatchIframeMessage({
-			command: 'fixWithAi',
+			command: 'reportWorkflowFailures',
+			workflowId: 'wf-1',
 			workflowName: 'My Workflow',
+			executionId: 'exec-1',
 			errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
 		});
 
 		await waitFor(() => {
-			expect(emitted('fix-with-ai')).toBeTruthy();
+			expect(emitted('workflow-failures')).toBeTruthy();
 		});
-		expect(emitted('fix-with-ai')).toEqual([
+		expect(emitted('workflow-failures')).toEqual([
 			[
 				{
+					workflowId: 'wf-1',
 					workflowName: 'My Workflow',
+					executionId: 'exec-1',
 					errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
 				},
 			],
 		]);
 	});
 
-	it('should ignore fixWithAi when errors array is empty or invalid', async () => {
+	it('should ignore reportWorkflowFailures when payload is invalid', async () => {
 		const { emitted } = renderComponent({ props: { workflowId: null } });
 
-		dispatchIframeMessage({ command: 'fixWithAi', errors: [] });
+		dispatchIframeMessage({ command: 'reportWorkflowFailures', errors: [] });
 
 		dispatchIframeMessage({
-			command: 'fixWithAi',
-			errors: [{ nodeName: 1, errorMessage: null }, 'not an object'],
+			command: 'reportWorkflowFailures',
+			workflowId: 'wf-1',
+			errors: [{ nodeName: 'HTTP Request', errorMessage: 'Connection refused' }],
 		});
 
 		await waitFor(() => {
-			expect(emitted('fix-with-ai')).toBeUndefined();
+			expect(emitted('workflow-failures')).toBeUndefined();
 		});
 	});
 
@@ -213,7 +218,9 @@ describe('InstanceAiWorkflowPreview', () => {
 		window.dispatchEvent(
 			new MessageEvent('message', {
 				data: JSON.stringify({
-					command: 'fixWithAi',
+					command: 'reportWorkflowFailures',
+					workflowId: 'wf-1',
+					executionId: 'exec-1',
 					errors: [{ nodeName: 'HTTP Request', errorMessage: 'Connection refused' }],
 				}),
 				origin: 'https://evil.example',
@@ -221,19 +228,8 @@ describe('InstanceAiWorkflowPreview', () => {
 			}),
 		);
 
-		window.dispatchEvent(
-			new MessageEvent('message', {
-				data: JSON.stringify({
-					command: 'fixWithAi',
-					errors: [{ nodeName: 'HTTP Request', errorMessage: 'Connection refused' }],
-				}),
-				origin: window.location.origin,
-				source: null,
-			}),
-		);
-
 		await waitFor(() => {
-			expect(emitted('fix-with-ai')).toBeUndefined();
+			expect(emitted('workflow-failures')).toBeUndefined();
 			expect(emitted('iframe-ready')).toBeUndefined();
 		});
 	});

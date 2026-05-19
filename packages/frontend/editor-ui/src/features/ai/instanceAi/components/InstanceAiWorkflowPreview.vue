@@ -16,8 +16,10 @@ const props = withDefaults(
 	{ refreshKey: 0 },
 );
 
-export interface FixWithAiContext {
+export interface WorkflowFailuresReport {
+	workflowId: string;
 	workflowName?: string;
+	executionId: string;
 	errors: Array<{ nodeName: string; errorMessage: string }>;
 }
 
@@ -28,10 +30,8 @@ const emit = defineEmits<{
 	 * the iframe). Used by `useEventRelay` to gate buffered-event replay so the
 	 * iframe always receives `openWorkflow` before the `executionEvent`s. */
 	'workflow-loaded': [workflowId: string];
-	/** User clicked the "Fix with AI" button on the embedded canvas after one
-	 * or more nodes failed. Carries the workflow name and per-node errors so
-	 * the chat can pre-fill a debugging prompt. */
-	'fix-with-ai': [context: FixWithAiContext];
+	/** Embedded canvas finished a run with node failures (iframe push is isolated). */
+	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
 const i18n = useI18n();
@@ -46,6 +46,19 @@ let fetchGeneration = 0;
 function getPreviewIframe(): HTMLIFrameElement | null {
 	return (
 		(previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)?.iframeRef ?? null
+	);
+}
+
+function parseWorkflowFailureErrors(
+	errors: unknown,
+): Array<{ nodeName: string; errorMessage: string }> {
+	if (!Array.isArray(errors)) return [];
+	return errors.filter(
+		(e: unknown): e is { nodeName: string; errorMessage: string } =>
+			typeof e === 'object' &&
+			e !== null &&
+			typeof (e as { nodeName?: unknown }).nodeName === 'string' &&
+			typeof (e as { errorMessage?: unknown }).errorMessage === 'string',
 	);
 }
 
@@ -65,19 +78,19 @@ function handleIframeMessage(event: MessageEvent) {
 		const json = JSON.parse(event.data);
 		if (json.command === 'n8nReady') {
 			emit('iframe-ready');
-		} else if (json.command === 'fixWithAi') {
-			const errors = Array.isArray(json.errors)
-				? json.errors.filter(
-						(e: unknown): e is { nodeName: string; errorMessage: string } =>
-							typeof e === 'object' &&
-							e !== null &&
-							typeof (e as { nodeName?: unknown }).nodeName === 'string' &&
-							typeof (e as { errorMessage?: unknown }).errorMessage === 'string',
-					)
-				: [];
-			if (errors.length === 0) return;
-			emit('fix-with-ai', {
+		} else if (json.command === 'reportWorkflowFailures') {
+			const errors = parseWorkflowFailureErrors(json.errors);
+			if (
+				errors.length === 0 ||
+				typeof json.workflowId !== 'string' ||
+				typeof json.executionId !== 'string'
+			) {
+				return;
+			}
+			emit('workflow-failures', {
+				workflowId: json.workflowId,
 				workflowName: typeof json.workflowName === 'string' ? json.workflowName : undefined,
+				executionId: json.executionId,
 				errors,
 			});
 		}

@@ -40,14 +40,16 @@ import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
+import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import InstanceAiWorkflowPreview, {
-	type FixWithAiContext,
+	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
+import { useFixWithAiOffer, type FixWithAiError } from './useFixWithAiOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -79,6 +81,39 @@ const displayedMessages = computed(() => thread.messages.filter(messageHasVisibl
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
+const fixWithAiOffer = useFixWithAiOffer();
+
+const isChatInProgress = computed(
+	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
+);
+
+function findReadyFixWithAiOffer(workflowId?: string | null) {
+	const offers = fixWithAiOffer.offersByWorkflow.value;
+
+	if (workflowId) {
+		const preferred = offers.get(workflowId);
+		if (
+			preferred &&
+			preferred.errors.length > 0 &&
+			!fixWithAiOffer.isDismissed(preferred.executionId)
+		) {
+			return preferred;
+		}
+	}
+
+	for (const offer of offers.values()) {
+		if (offer.errors.length === 0) continue;
+		if (fixWithAiOffer.isDismissed(offer.executionId)) continue;
+		return offer;
+	}
+
+	return null;
+}
+
+const activeFixWithAiOffer = computed(() => {
+	if (isChatInProgress.value) return null;
+	return findReadyFixWithAiOffer(preview.activeWorkflowId.value);
+});
 
 // --- Header title ---
 // Returns the resolved title once we have one, or undefined while we're still
@@ -456,6 +491,7 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
+	fixWithAiOffer.cleanup();
 });
 
 // --- Workflow preview ref for iframe relay ---
@@ -481,7 +517,12 @@ function handleStop() {
 	void thread.cancelRun();
 }
 
-function buildFixWithAiPrompt(context: FixWithAiContext): string {
+interface FixWithAiPromptContext {
+	workflowName?: string;
+	errors: FixWithAiError[];
+}
+
+function buildFixWithAiPrompt(context: FixWithAiPromptContext): string {
 	if (context.errors.length === 1) {
 		const { nodeName, errorMessage } = context.errors[0];
 
@@ -515,12 +556,27 @@ function buildFixWithAiPrompt(context: FixWithAiContext): string {
 	});
 }
 
-function handleFixWithAi(context: FixWithAiContext) {
-	if (!context.errors.length) return;
+function handleFixWithAiFromOffer() {
+	const offer = activeFixWithAiOffer.value;
+	if (!offer) return;
 
+	fixWithAiOffer.dismiss(offer.executionId);
 	userScrolledUp.value = false;
+	void thread.sendMessage(
+		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
+		undefined,
+		rootStore.pushRef,
+	);
+}
 
-	void thread.sendMessage(buildFixWithAiPrompt(context), undefined, rootStore.pushRef);
+function dismissFixWithAiOffer() {
+	const offer = activeFixWithAiOffer.value;
+	if (!offer) return;
+	fixWithAiOffer.dismiss(offer.executionId);
+}
+
+function handleWorkflowFailures(report: WorkflowFailuresReport) {
+	fixWithAiOffer.registerOffer(report);
 }
 </script>
 
@@ -615,6 +671,16 @@ function handleFixWithAi(context: FixWithAiContext) {
 								/>
 							</div>
 							<InstanceAiConfirmationPanel />
+							<Transition name="confirmation-slide">
+								<InstanceAiFixWithAiPanel
+									v-if="activeFixWithAiOffer"
+									:node-name="activeFixWithAiOffer.errors[0].nodeName"
+									:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+									:failed-count="activeFixWithAiOffer.errors.length"
+									@fix-with-ai="handleFixWithAiFromOffer"
+									@dismiss="dismissFixWithAiOffer"
+								/>
+							</Transition>
 						</div>
 					</N8nScrollArea>
 
@@ -758,7 +824,7 @@ function handleFixWithAi(context: FixWithAiContext) {
 								:refresh-key="preview.workflowRefreshKey.value"
 								@iframe-ready="eventRelay.handleIframeReady"
 								@workflow-loaded="eventRelay.handleWorkflowLoaded"
-								@fix-with-ai="handleFixWithAi"
+								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.activeDataTableId.value"
