@@ -310,6 +310,7 @@ describe('BitbucketTrigger', () => {
 						value: 'workspace1',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'workspace2',
 						value: 'workspace2',
 					},
