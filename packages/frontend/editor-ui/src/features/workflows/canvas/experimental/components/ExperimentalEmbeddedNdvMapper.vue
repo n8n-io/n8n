@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import InputPanel from '@/features/ndv/panel/components/InputPanel.vue';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
 import { useStyles } from '@/app/composables/useStyles';
 import {
@@ -14,7 +14,6 @@ import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 import { N8nPopover } from '@n8n/design-system';
-import type { WorkflowObjectAccessors } from '@/app/types';
 type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
 
 const hoverOptions: UseElementHoverOptions = {
@@ -27,7 +26,6 @@ const {
 	reference,
 	visibleOnHover = false,
 } = defineProps<{
-	workflow: WorkflowObjectAccessors;
 	node: INodeUi;
 	inputNodeName: string;
 	visibleOnHover?: boolean;
@@ -36,7 +34,7 @@ const {
 
 const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const contentElRef = computed<HTMLElement | null>(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
@@ -115,7 +113,6 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 				ref="content"
 				:tabindex="-1"
 				:class="$style.inputPanel"
-				:workflow-object="workflow"
 				:run-index="0"
 				compact
 				push-ref=""

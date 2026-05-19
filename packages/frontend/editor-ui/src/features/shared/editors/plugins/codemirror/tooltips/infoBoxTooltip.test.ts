@@ -7,6 +7,7 @@ import { hoverTooltipSource, infoBoxTooltips } from './InfoBoxTooltip';
 import * as utils from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { completionStatus } from '@codemirror/autocomplete';
+import { WORKFLOW_DOCUMENT_FACET } from '@/features/shared/editors/plugins/codemirror/completions/constants';
 
 vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -162,7 +163,7 @@ async function hoverTooltip(docWithCursor: string) {
 
 	const state = EditorState.create({
 		doc,
-		extensions: [n8nLang(), infoBoxTooltips()],
+		extensions: [n8nLang(), infoBoxTooltips(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 
 	const view = new EditorView({ state, parent: document.createElement('div') });

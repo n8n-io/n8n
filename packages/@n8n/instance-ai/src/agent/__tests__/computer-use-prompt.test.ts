@@ -244,4 +244,55 @@ describe('getComputerUsePrompt', () => {
 			expect(result).toContain('Platform migration');
 		});
 	});
+
+	describe('signal → tool pairings', () => {
+		// The label tests above only check that each signal *appears*. These tests pin
+		// each signal to its tool on the same line, so a copy edit that drops the
+		// "→ *browser*" / "→ *filesystem*" mapping fails loudly even if the label survives.
+		const findSignalLine = (prompt: string, signal: string): string => {
+			const line = prompt.split('\n').find((l) => l.includes(signal));
+			if (!line) throw new Error(`Signal "${signal}" not found`);
+			return line;
+		};
+
+		const promptWithBrowser = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser', 'filesystem'] },
+			});
+
+		it('pairs Credential / OAuth setup with browser', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Credential / OAuth setup')).toContain('browser');
+		});
+
+		it('pairs Local file as context with filesystem', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Local file as context')).toContain('filesystem');
+		});
+
+		it('pairs Documentation / output to files with filesystem', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Documentation / output to files')).toContain(
+				'filesystem',
+			);
+		});
+
+		it('pairs Authenticated web research with browser', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Authenticated web research')).toContain(
+				'browser',
+			);
+		});
+
+		it('pairs Form / frontend testing with browser', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Form / frontend testing')).toContain('browser');
+		});
+
+		it('pairs Shell / environment with shell', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Shell / environment')).toContain('shell');
+		});
+
+		it('pairs Platform migration with both browser and filesystem', () => {
+			const line = findSignalLine(promptWithBrowser(), 'Platform migration');
+			expect(line).toContain('browser');
+			expect(line).toContain('filesystem');
+		});
+	});
 });

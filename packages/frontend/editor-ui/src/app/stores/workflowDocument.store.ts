@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { inject } from 'vue';
+import { computed, inject, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -20,6 +20,7 @@ import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
 import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
+import { useWorkflowDocumentRenderData } from './workflowDocument/useWorkflowDocumentRenderData';
 import { useWorkflowDocumentVersionData } from './workflowDocument/useWorkflowDocumentVersionData';
 import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
 import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
@@ -40,6 +41,7 @@ import { deepCopy } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import { useWorkflowsStore } from './workflows.store';
 
 export {
 	getPinDataSize,
@@ -163,12 +165,18 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
-		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+		const {
+			onStateDirty: onNodesStateDirty,
+			nodeInputsByNodeId,
+			nodeOutputsByNodeId,
+			...workflowDocumentNodes
+		} = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 			nodeMetadata: workflowDocumentNodeMetadata,
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
 			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -186,6 +194,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+		});
+		const workflowDocumentRenderData = useWorkflowDocumentRenderData({
+			nodeInputsByNodeId,
+			nodeOutputsByNodeId,
 		});
 
 		// --- Cross-cut orchestration ---
@@ -368,6 +380,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		}
 
 		return {
+			documentId: id,
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
@@ -393,6 +406,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
+			...workflowDocumentRenderData,
 			removeAllNodes,
 			hydrate,
 			reset,
@@ -405,6 +419,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	})();
 }
 
+export type WorkflowDocumentStore = ReturnType<typeof useWorkflowDocumentStore>;
+
 /**
  * Disposes a workflow document store instance.
  * Call this when a workflow document is unloaded (e.g., when navigating away from NodeView).
@@ -412,7 +428,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
  * Pinia's $dispose removes the store from its registry, but not from pinia.state.
  * Remove the state entry as well so recreating this scoped store starts clean.
  */
-export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflowDocumentStore>) {
+export function disposeWorkflowDocumentStore(store: WorkflowDocumentStore) {
 	const pinia = getActivePinia();
 	store.$dispose();
 
@@ -423,11 +439,21 @@ export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflo
 
 /**
  * Injects the workflow document store from the current component tree.
- * Returns null if not within a component context that has provided the store.
+ * Returns fallback document store if not within a component context
  *
  * Use this in composables/stores that need to interact with the current workflow's
- * document store but may be called outside of the NodeView tree.
+ * document store and avoid calling this outside a component tree.
  */
-export function injectWorkflowDocumentStore() {
-	return inject(WorkflowDocumentStoreKey, null);
+export function injectWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore> {
+	const workflowsStore = useWorkflowsStore();
+	const fallback = computed(() => {
+		// TODO: once usages outside of a component tree is eliminated,
+		// this can be replaced with useWorkflowId()
+		const fallbackWorkflowId = workflowsStore.workflowId;
+
+		return useWorkflowDocumentStore(createWorkflowDocumentId(fallbackWorkflowId));
+	});
+	const injected = inject(WorkflowDocumentStoreKey, null);
+
+	return computed(() => injected?.value ?? fallback.value);
 }

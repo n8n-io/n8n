@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import snowflake from 'snowflake-sdk';
 
 import { getResolvables } from '@utils/utilities';
@@ -39,9 +39,39 @@ export class Snowflake implements INodeType {
 			{
 				name: 'snowflake',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['credentials'],
+					},
+				},
+			},
+			{
+				name: 'snowflakeOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Credentials',
+						value: 'credentials',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'credentials',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -172,14 +202,38 @@ export class Snowflake implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = await this.getCredentials<SnowflakeCredential>('snowflake');
 		// Disable logging - https://docs.snowflake.com/en/developer-guide/node-js/nodejs-driver-logs#configure-the-default-logging-behavior
 		snowflake.configure({
 			logFilePath: 'STDOUT',
 			logLevel: 'OFF',
 		});
 
-		const connectionOptions = getConnectionOptions(credentials);
+		const authMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
+		let snowflakeCredential: SnowflakeCredential;
+
+		if (authMethod === 'oAuth2') {
+			const oauthCredentials = await this.getCredentials('snowflakeOAuth2Api');
+			const tokenData = oauthCredentials.oauthTokenData as { access_token?: string } | undefined;
+			if (!tokenData?.access_token) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'OAuth2 access token is missing. Please reconnect your Snowflake OAuth2 credential.',
+				);
+			}
+			snowflakeCredential = {
+				account: oauthCredentials.account as string,
+				database: oauthCredentials.database as string,
+				warehouse: oauthCredentials.warehouse as string,
+				schema: oauthCredentials.schema as string,
+				clientSessionKeepAlive: oauthCredentials.clientSessionKeepAlive as boolean,
+				authentication: 'oauth2',
+				token: tokenData.access_token,
+			};
+		} else {
+			snowflakeCredential = await this.getCredentials<SnowflakeCredential>('snowflake');
+		}
+
+		const connectionOptions = getConnectionOptions(snowflakeCredential);
 		const connection = snowflake.createConnection(connectionOptions);
 
 		await connect(connection);

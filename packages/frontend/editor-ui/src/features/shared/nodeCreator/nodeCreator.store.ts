@@ -23,10 +23,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { TelemetryNdvType } from '@/app/types/telemetry';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { isVueFlowConnection } from '@/app/utils/typeGuards';
@@ -48,9 +45,7 @@ import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeC
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -143,7 +138,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}: ToggleNodeCreatorOptions) {
 		if (!nodeCreatorView) {
 			nodeCreatorView =
-				workflowsStore.workflowTriggerNodes.length > 0
+				workflowDocumentStore.value.workflowTriggerNodes.length > 0
 					? REGULAR_NODE_CREATOR_VIEW
 					: TRIGGER_NODE_CREATOR_VIEW;
 		}

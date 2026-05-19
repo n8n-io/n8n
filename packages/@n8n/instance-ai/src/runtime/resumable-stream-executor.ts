@@ -30,6 +30,7 @@ export interface ResumableStreamContext {
 	eventBus: InstanceAiEventBus;
 	signal: AbortSignal;
 	logger: Logger;
+	onActivity?: () => void;
 }
 
 export interface ManualSuspensionControl {
@@ -59,6 +60,12 @@ export interface ExecuteResumableStreamOptions {
 	control: ResumableStreamControl;
 	initialMastraRunId?: string;
 	llmStepTraceHooks?: LlmStepTraceHooks;
+	/**
+	 * Optional side-channel observer for every mapped stream event. Used for
+	 * cross-cutting telemetry (e.g. template usage). Errors are swallowed so
+	 * the observer can never break stream consumption.
+	 */
+	onStreamEvent?: (event: InstanceAiEvent) => void;
 }
 
 export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
@@ -1835,6 +1842,7 @@ export async function executeResumableStream(
 		options.llmStepTraceHooks?.startSegment();
 
 		for await (const chunk of activeStream) {
+			options.context.onActivity?.();
 			if (options.context.signal.aborted) {
 				if (options.llmStepTraceHooks) {
 					await options.llmStepTraceHooks.finalize(activeSource, {
@@ -1925,6 +1933,13 @@ export async function executeResumableStream(
 			);
 			if (event) {
 				workSummaryAccumulator.observe(event);
+				if (options.onStreamEvent) {
+					try {
+						options.onStreamEvent(event);
+					} catch {
+						// Side-channel observers must never break stream consumption.
+					}
+				}
 				let shouldPublishEvent = true;
 
 				if (event.type === 'confirmation-request') {

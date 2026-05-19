@@ -9,7 +9,6 @@ export type {
 	ContentReasoning,
 	ContentFile,
 	ContentToolCall,
-	ContentToolResult,
 	ContentInvalidToolCall,
 	ContentProvider,
 	Message,
@@ -37,6 +36,7 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
@@ -61,11 +61,54 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	ObservationCapableMemory,
+	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
+
+export type {
+	BuiltObservationStore,
+	CompactFn,
+	NewObservation,
+	Observation,
+	ObservationCategory,
+	ObservationCursor,
+	ObservationGapContext,
+	ObservationLockHandle,
+	ObservationalMemoryConfig,
+	ObservationalMemoryTrigger,
+	ObserveFn,
+	ScopeKind,
+} from './sdk/observation';
+export {
+	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
+	OBSERVATION_CATEGORIES,
+	OBSERVATION_SCHEMA_VERSION,
+} from './sdk/observation';
+
+export type {
+	BuiltObservationLogStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	ObservationLogReadOptions,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogScopeKind,
+	ObservationLogStatus,
+	TokenCounter,
+} from './sdk/observation-log';
+export {
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
+} from './sdk/observation-log';
 
 export type {
 	EvalInput,

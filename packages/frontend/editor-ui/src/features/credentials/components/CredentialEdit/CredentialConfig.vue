@@ -72,6 +72,7 @@ type Props = {
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
+	hideAskAssistant?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -88,6 +89,7 @@ const emit = defineEmits<{
 	retest: [];
 	oauth: [];
 	quickConnect: [];
+	claimed: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
@@ -194,6 +196,7 @@ const isNewCredential = computed(() => props.mode === 'new' && !props.credential
 
 const isAskAssistantAvailable = computed(
 	() =>
+		!props.hideAskAssistant &&
 		documentationUrl.value &&
 		documentationUrl.value.includes(DOCS_DOMAIN) &&
 		props.credentialProperties.length &&
@@ -279,7 +282,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</N8nCallout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
-			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
+			<FreeAiCreditsCallout
+				:credential-type-name="credentialType?.name"
+				@claimed="$emit('claimed')"
+			/>
 
 			<CredentialModeSelector
 				v-if="canWrite"
@@ -293,7 +299,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<template v-if="isQuickConnectMode">
-				<QuickConnectBanner v-if="quickConnectBannerText" :text="quickConnectBannerText" />
+				<QuickConnectBanner
+					v-if="quickConnectBannerText || quickConnectOption?.disclaimer"
+					:text="quickConnectBannerText"
+					:disclaimer="quickConnectOption?.disclaimer"
+				/>
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -304,7 +314,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
+					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless

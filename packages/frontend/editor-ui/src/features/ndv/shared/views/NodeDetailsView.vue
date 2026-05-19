@@ -24,7 +24,7 @@ import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -63,7 +63,7 @@ const props = withDefaults(
 	},
 );
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
@@ -134,7 +134,7 @@ const workflowRunData = computed(() => {
 
 const parentNodes = computed(() => {
 	if (activeNode.value) {
-		return workflowObject.value?.getParentNodesByDepth(activeNode.value.name, 1) ?? [];
+		return workflowDocumentStore.value.getParentNodesByDepth(activeNode.value.name, 1) ?? [];
 	}
 	return [];
 });
@@ -170,7 +170,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		// For sub-nodes, we need to get their connected output node to determine the input
 		// because sub-nodes use specialized outputs (e.g. NodeConnectionTypes.AiTool)
 		// instead of the standard Main output type
-		const connectedOutputNode = workflowObject.value?.getChildNodes(
+		const connectedOutputNode = workflowDocumentStore.value.getChildNodes(
 			activeNode.value.name,
 			'ALL_NON_MAIN',
 		)?.[0];
@@ -247,7 +247,7 @@ const maxInputRun = computed(() => {
 		return 0;
 	}
 
-	const workflowNode = workflowObject.value?.getNode(activeNode.value.name);
+	const workflowNode = workflowDocumentStore.value.getNodeByName(activeNode.value.name);
 
 	if (!workflowNode || !activeNodeType.value || !workflowObject.value) {
 		return 0;
@@ -746,8 +746,7 @@ onBeforeUnmount(() => {
 						@activate="onWorkflowActivate"
 					/>
 					<InputPanel
-						v-else-if="!isTriggerNode && workflowObject"
-						:workflow-object="workflowObject"
+						v-else-if="!isTriggerNode"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
 						:linked-runs="linked"
@@ -775,9 +774,7 @@ onBeforeUnmount(() => {
 				</template>
 				<template #output>
 					<OutputPanel
-						v-if="workflowObject"
 						data-test-id="output-panel"
-						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"

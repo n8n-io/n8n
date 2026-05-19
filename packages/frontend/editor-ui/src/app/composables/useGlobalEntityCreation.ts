@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { VIEWS } from '@/app/constants';
+import { AGENTS_MODULE_NAME, NEW_AGENT_VIEW } from '@/features/agents/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
@@ -44,6 +45,7 @@ export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
 	const WORKFLOWS_MENU_ID = 'workflow';
 	const CREDENTIALS_MENU_ID = 'credential';
+	const AGENTS_MENU_ID = 'agent';
 	const DEFAULT_ICON: IconName = 'layers';
 
 	const settingsStore = useSettingsStore();
@@ -72,9 +74,15 @@ export const useGlobalEntityCreation = () => {
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(scopes).credential.create;
 
+	const disabledAgent = (scopes: Scope[] = []): boolean =>
+		sourceControlStore.preferences.branchReadOnly || !getResourcePermissions(scopes).agent?.create;
+
+	const isAgentsModuleActive = computed(() => settingsStore.isModuleActive(AGENTS_MODULE_NAME));
+
 	const menu = computed<Item[]>(() => {
 		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
 		const credentialTitle = i18n.baseText('projects.menu.create.credential');
+		const agentTitle = i18n.baseText('projects.menu.create.agent');
 		const projectTitle = i18n.baseText('projects.menu.create.project');
 
 		// Community
@@ -101,6 +109,18 @@ export const useGlobalEntityCreation = () => {
 						},
 					},
 				},
+				...(isAgentsModuleActive.value
+					? [
+							{
+								id: AGENTS_MENU_ID,
+								title: agentTitle,
+								route: {
+									name: NEW_AGENT_VIEW,
+									query: { projectId: projectsStore.personalProject?.id },
+								},
+							},
+						]
+					: []),
 				{
 					id: CREATE_PROJECT_ID,
 					title: projectTitle,
@@ -134,6 +154,19 @@ export const useGlobalEntityCreation = () => {
 						params: { projectId: projectsStore.personalProject?.id, credentialId: 'create' },
 					},
 				},
+				...(isAgentsModuleActive.value
+					? [
+							{
+								id: AGENTS_MENU_ID,
+								title: agentTitle,
+								disabled: disabledAgent(projectsStore.personalProject?.scopes),
+								route: {
+									name: NEW_AGENT_VIEW,
+									query: { projectId: projectsStore.personalProject?.id },
+								},
+							},
+						]
+					: []),
 				{
 					id: CREATE_PROJECT_ID,
 					title: projectTitle,
@@ -214,6 +247,44 @@ export const useGlobalEntityCreation = () => {
 					],
 				}),
 			},
+			...(isAgentsModuleActive.value
+				? [
+						{
+							id: AGENTS_MENU_ID,
+							title: agentTitle,
+							disabled: sourceControlStore.preferences.branchReadOnly,
+							...(!sourceControlStore.preferences.branchReadOnly && {
+								submenu: [
+									{
+										id: 'agent-title',
+										title: 'Create in',
+										disabled: true,
+									},
+									{
+										id: 'agent-personal',
+										title: i18n.baseText('projects.menu.personal'),
+										icon: 'user' as const,
+										disabled: disabledAgent(projectsStore.personalProject?.scopes),
+										route: {
+											name: NEW_AGENT_VIEW,
+											query: { projectId: projectsStore.personalProject?.id },
+										},
+									},
+									...displayProjects.value.map((project) => ({
+										id: `agent-${project.id}`,
+										title: project.name as string,
+										icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
+										disabled: disabledAgent(project.scopes),
+										route: {
+											name: NEW_AGENT_VIEW,
+											query: { projectId: project.id },
+										},
+									})),
+								],
+							}),
+						},
+					]
+				: []),
 			{
 				id: CREATE_PROJECT_ID,
 				title: projectTitle,

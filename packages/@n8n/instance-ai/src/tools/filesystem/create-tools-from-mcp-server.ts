@@ -7,12 +7,24 @@ import {
 	type GatewayConfirmationRequiredPayload,
 	type McpToolCallResult,
 } from '@n8n/api-types';
+import { browserCreateCredentialSchema } from '@n8n/mcp-browser/dist/tools/credential';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
 import type { JSONSchema } from 'zod-from-json-schema-v3';
 
-import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
+import {
+	addSafeMcpTools,
+	createClaimedToolNames,
+	McpToolNameValidationError,
+	validateMcpToolName,
+} from '../../agent/mcp-tool-name-validation';
+import {
+	assertMcpJsonSchemaWithinLimits,
+	McpSchemaSanitizationError,
+	sanitizeMcpToolSchemas,
+} from '../../agent/sanitize-mcp-schemas';
+import type { Logger } from '../../logger';
 import type { LocalMcpServer } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -27,14 +39,27 @@ const gatewayConfirmationSuspendSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema,
 });
 
+const gatewayResourceDecisionSchema = z.enum(['denyOnce', 'allowOnce', 'allowForSession']);
+
+const gatewayConfirmationRequiredWirePayloadSchema =
+	gatewayConfirmationRequiredPayloadSchema.extend({
+		options: z.array(z.string()),
+	});
+
 const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
-	resourceDecision: z.string().optional(),
+	resourceDecision: gatewayResourceDecisionSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
+
+function isGatewayResourceDecision(
+	option: string,
+): option is z.infer<typeof gatewayResourceDecisionSchema> {
+	return gatewayResourceDecisionSchema.safeParse(option).success;
+}
 
 function tryParseGatewayConfirmationRequired(
 	result: McpToolCallResult,
@@ -66,8 +91,13 @@ function tryParseGatewayConfirmationRequired(
 		const json = JSON.parse(
 			candidate.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length),
 		) as unknown;
-		const parsed = gatewayConfirmationRequiredPayloadSchema.safeParse(json);
-		return parsed.success ? parsed.data : null;
+		const parsed = gatewayConfirmationRequiredWirePayloadSchema.safeParse(json);
+		if (!parsed.success) return null;
+
+		const options = parsed.data.options.filter(isGatewayResourceDecision);
+		if (options.length === 0) return null;
+
+		return { ...parsed.data, options };
 	} catch {
 		return null;
 	}
@@ -76,6 +106,33 @@ function tryParseGatewayConfirmationRequired(
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
+
+const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
+
+function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+	return (error: McpSchemaSanitizationError) => {
+		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+			toolName: error.details.toolName,
+			source: LOCAL_GATEWAY_MCP_SOURCE,
+			path: error.details.path,
+			depth: error.details.depth,
+			maxDepth: error.details.maxDepth,
+			limitType: error.details.limitType,
+			limit: error.details.limit,
+			reason: error.message,
+		});
+	};
+}
+
+function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+	return (error: McpToolNameValidationError) => {
+		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+			toolName: error.toolName,
+			source: error.source,
+			reason: error.message,
+		});
+	};
+}
 
 /**
  * Build Mastra tools dynamically from the MCP tools advertised by a connected
@@ -94,20 +151,56 @@ function tryParseGatewayConfirmationRequired(
  * The `toModelOutput` callback converts MCP content blocks (text and image)
  * into the AI SDK's multimodal format so the LLM receives images.
  */
-export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInput {
+export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: Logger): ToolsInput {
 	const tools: ToolsInput = {};
+	const claimedToolNames = createClaimedToolNames([]);
+	const warnTool = warnSkippedLocalMcpTool(logger);
+	const warnSchema = warnSkippedLocalMcpSchema(logger);
 
 	for (const mcpTool of server.getAvailableTools()) {
 		const toolName = mcpTool.name;
 		const description = mcpTool.description ?? toolName;
 
+		try {
+			const normalizedName = validateMcpToolName(toolName, LOCAL_GATEWAY_MCP_SOURCE);
+			const claimedBy = claimedToolNames.get(normalizedName);
+			if (claimedBy) {
+				throw new McpToolNameValidationError(
+					`MCP tool "${toolName}" from ${LOCAL_GATEWAY_MCP_SOURCE} conflicts with "${claimedBy}"`,
+					toolName,
+					LOCAL_GATEWAY_MCP_SOURCE,
+				);
+			}
+			assertMcpJsonSchemaWithinLimits(mcpTool.inputSchema, { toolName });
+			claimedToolNames.set(normalizedName, toolName);
+		} catch (error) {
+			if (error instanceof McpToolNameValidationError) {
+				warnTool(error);
+				continue;
+			}
+			if (error instanceof McpSchemaSanitizationError) {
+				warnSchema(error);
+				continue;
+			}
+			throw error;
+		}
+
 		let inputSchema: z.ZodTypeAny;
 		try {
-			// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
-			// McpTool.inputSchema properties are typed as Record<string, unknown> to
-			// accommodate arbitrary JSON Schema values; the cast is safe here because
-			// the daemon always sends valid JSON Schema objects.
-			inputSchema = convertJsonSchemaToZod(mcpTool.inputSchema as JSONSchema);
+			if (toolName === 'browser_create_credential') {
+				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
+				// but during execution all unspecified key from `data` and `resolveData` are stripped.
+				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
+				// gets transformed to jsonSchema with `additionalProperties=false`
+				// this does not happen when passing the schema directly
+				inputSchema = browserCreateCredentialSchema;
+			} else {
+				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
+				// McpTool.inputSchema properties are typed as Record<string, unknown> to
+				// accommodate arbitrary JSON Schema values; the cast is safe here because
+				// the daemon always sends valid JSON Schema objects.
+				inputSchema = convertJsonSchemaToZod(mcpTool.inputSchema as JSONSchema);
+			}
 		} catch {
 			// Fallback: accept any object if conversion fails
 			inputSchema = z.record(z.unknown());
@@ -208,5 +301,14 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 		tools[toolName] = tool;
 	}
 
-	return sanitizeMcpToolSchemas(tools);
+	const sanitizedTools = sanitizeMcpToolSchemas(tools, {
+		onError: warnSkippedLocalMcpSchema(logger),
+	});
+	const safeTools: ToolsInput = {};
+	addSafeMcpTools(safeTools, sanitizedTools, {
+		source: LOCAL_GATEWAY_MCP_SOURCE,
+		claimedToolNames: createClaimedToolNames([]),
+		warn: warnTool,
+	});
+	return safeTools;
 }

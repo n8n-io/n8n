@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
@@ -14,7 +15,6 @@ import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
-import { EvaluationConfig } from './configs/evaluation.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExpressionEngineConfig } from './configs/expression-engine.config';
@@ -60,6 +60,7 @@ export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
+export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -78,6 +79,7 @@ export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
+export { AgentsConfig } from './configs/agents.config';
 export { RedisConfig } from './configs/redis.config';
 
 const protocolSchema = z.enum(['http', 'https']);
@@ -162,9 +164,6 @@ export class GlobalConfig {
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;
-
-	@Nested
-	evaluation: EvaluationConfig;
 
 	@Nested
 	generic: GenericConfig;
@@ -266,6 +265,9 @@ export class GlobalConfig {
 
 	@Nested
 	instanceAi: InstanceAiConfig;
+
+	@Nested
+	agents: AgentsConfig;
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;

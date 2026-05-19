@@ -17,6 +17,10 @@ jest.mock('@n8n/instance-ai', () => ({
 	})),
 }));
 
+// The controller imports validation helpers via the parsers subpath so they
+// don't pull in Mastra. Re-export the real implementation for the test.
+jest.mock('@n8n/instance-ai/parsers', () => jest.requireActual('@n8n/instance-ai/parsers'));
+
 jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
@@ -44,7 +48,7 @@ import type {
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -54,6 +58,7 @@ import { mock } from 'jest-mock-extended';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
 
@@ -95,6 +100,8 @@ describe('InstanceAiController', () => {
 	});
 
 	const subAgentEvalService = mock<SubAgentEvalService>();
+	const userRepository = mock<UserRepository>();
+	const credentialsService = mock<CredentialsService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -106,6 +113,8 @@ describe('InstanceAiController', () => {
 		moduleRegistry,
 		push,
 		urlService,
+		userRepository,
+		credentialsService,
 		globalConfig,
 	);
 
@@ -191,6 +200,40 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should reject unsupported attachment types before starting a run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			const badPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [{ data: '', mimeType: 'application/zip', fileName: 'archive.zip' }],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, badPayload)).rejects.toMatchObject({
+				message: expect.stringContaining('archive.zip'),
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
+		});
+
+		it('should accept supported attachment types and start the run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-3');
+			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [
+					{ data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
+					{ data: '', mimeType: 'image/png', fileName: 'photo.png' },
+				],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, goodPayload)).resolves.toEqual({
+				runId: 'run-3',
+			});
+			expect(instanceAiService.startRun).toHaveBeenCalled();
 		});
 	});
 
@@ -855,8 +898,14 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should return token and command', async () => {
+		it('should return token, command, and token expiry', async () => {
+			const nowSpy = jest
+				.spyOn(Date, 'now')
+				.mockReturnValue(new Date('2026-01-01T00:00:00.000Z').getTime());
 			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
+			instanceAiService.getGatewayApiKeyExpiresAt.mockReturnValue(
+				new Date('2026-01-01T00:05:00.000Z'),
+			);
 			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
 
 			const result = await controller.createGatewayLink(req);
@@ -864,8 +913,15 @@ describe('InstanceAiController', () => {
 			expect(result).toEqual({
 				token: 'pairing-token',
 				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
+				expiresAt: '2026-01-01T00:05:00.000Z',
+				ttlSeconds: 300,
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.getGatewayApiKeyExpiresAt).toHaveBeenCalledWith(
+				USER_ID,
+				'pairing-token',
+			);
+			nowSpy.mockRestore();
 		});
 	});
 
@@ -1099,6 +1155,69 @@ describe('InstanceAiController', () => {
 				[USER_ID],
 			);
 			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('gatewayCreateCredential', () => {
+		const makeGatewayReq = (key: string) =>
+			({ headers: { 'x-gateway-key': key } }) as unknown as Request;
+
+		const payload = {
+			name: 'My Slack Cred',
+			type: 'slackApi',
+			data: { accessToken: 'xoxb-token' },
+		};
+
+		it('should have no access scope (skipAuth)', () => {
+			expect(scopeOf('gatewayCreateCredential')).toBeUndefined();
+		});
+
+		it('should create credential and return credentialId', async () => {
+			const user = mock<User>({ id: USER_ID });
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			credentialsService.createUnmanagedCredential.mockResolvedValue(
+				mock<Awaited<ReturnType<CredentialsService['createUnmanagedCredential']>>>({
+					id: 'cred-1',
+				}),
+			);
+
+			const result = await controller.gatewayCreateCredential(
+				makeGatewayReq('session-key'),
+				res,
+				payload,
+			);
+
+			expect(result).toEqual({ credentialId: 'cred-1' });
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(payload, user);
+		});
+
+		it('should throw ForbiddenError when using the static env-var key', async () => {
+			const gatewayReq = makeGatewayReq('static-key');
+
+			await expect(controller.gatewayCreateCredential(gatewayReq, res, payload)).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('should throw ForbiddenError when the user is not found', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should throw ForbiddenError when the gateway is disabled', async () => {
+			const user = mock<User>({ id: USER_ID });
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 

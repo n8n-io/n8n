@@ -24,7 +24,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { readdir, readFile } from 'fs/promises';
 
-import { replaceInvalidCredentials } from '@/workflow-helpers';
+import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
@@ -33,7 +33,14 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import {
+	normalizeUserRowValueForDatabase,
+	quoteIdentifier,
+	toTableName,
+} from '@/modules/data-table/utils/sql-utils';
+
+const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 
 @Service()
 export class ImportService {
@@ -114,6 +121,7 @@ export class ImportService {
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
+			validateWorkflowStructure(workflow);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			// Only remove if the workflow already exists in the database and is active
@@ -327,49 +335,64 @@ export class ImportService {
 	/**
 	 * Get import metadata including table names and entity files
 	 * @param inputDir - Directory containing exported entity files
-	 * @returns Object containing table names and entity files grouped by entity name
+	 * @returns Object containing table names, entity files grouped by entity name,
+	 *   and data-table row files grouped by data table id.
 	 */
 	async getImportMetadata(inputDir: string): Promise<{
 		tableNames: string[];
 		entityFiles: Record<string, string[]>;
+		dataTableFiles: Record<string, string[]>;
 	}> {
 		const files = await readdir(inputDir);
 		const entityTableNamesMap: Record<string, string> = {};
 		const entityFiles: Record<string, string[]> = {};
+		const dataTableFiles: Record<string, string[]> = {};
 
 		for (const file of files) {
-			if (file.endsWith('.jsonl')) {
-				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
-				// Exclude migrations from regular entity import
-				if (entityName === 'migrations') {
+			if (!file.endsWith('.jsonl')) continue;
+
+			const baseName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+
+			// Exclude migrations from regular entity import
+			if (baseName === 'migrations') {
+				continue;
+			}
+
+			// Route data-table user-row files into their own bucket keyed by data table id.
+			if (baseName.startsWith(DATA_TABLE_ROWS_FILE_PREFIX)) {
+				const dataTableId = baseName.slice(DATA_TABLE_ROWS_FILE_PREFIX.length);
+				if (!dataTableFiles[dataTableId]) dataTableFiles[dataTableId] = [];
+				dataTableFiles[dataTableId].push(safeJoinPath(inputDir, file));
+				continue;
+			}
+
+			const entityName = baseName;
+
+			// Build table names map (only need to do this once per entity)
+			if (!entityTableNamesMap[entityName]) {
+				const entityMetadata = this.dataSource.entityMetadatas.find(
+					(meta) => meta.name.toLowerCase() === entityName,
+				);
+
+				if (!entityMetadata) {
+					this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
 					continue;
 				}
 
-				// Build table names map (only need to do this once per entity)
-				if (!entityTableNamesMap[entityName]) {
-					const entityMetadata = this.dataSource.entityMetadatas.find(
-						(meta) => meta.name.toLowerCase() === entityName,
-					);
-
-					if (!entityMetadata) {
-						this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
-						continue;
-					}
-
-					entityTableNamesMap[entityName] = entityMetadata.tableName;
-				}
-
-				// Build entity files map (only for entities with valid metadata)
-				if (!entityFiles[entityName]) {
-					entityFiles[entityName] = [];
-				}
-				entityFiles[entityName].push(safeJoinPath(inputDir, file));
+				entityTableNamesMap[entityName] = entityMetadata.tableName;
 			}
+
+			// Build entity files map (only for entities with valid metadata)
+			if (!entityFiles[entityName]) {
+				entityFiles[entityName] = [];
+			}
+			entityFiles[entityName].push(safeJoinPath(inputDir, file));
 		}
 
 		return {
 			tableNames: Object.values(entityTableNamesMap),
 			entityFiles,
+			dataTableFiles,
 		};
 	}
 
@@ -462,7 +485,7 @@ export class ImportService {
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
-			const { tableNames, entityFiles } = importMetadata;
+			const { tableNames, entityFiles, dataTableFiles } = importMetadata;
 			const entityNames = Object.keys(entityFiles);
 
 			if (truncateTables) {
@@ -499,9 +522,18 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
+			// Postgres IDENTITY sequences don't auto-advance when explicit ids are
+			// inserted, so subsequent implicit inserts would collide. Reset each
+			// imported table's sequence to MAX(col).
+			await this.advanceIdentitySequences(transactionManager, tableNames);
+
 			// After the data_table / data_table_column registry rows are imported,
-			// recreate the dynamic backing tables (empty) so the imported tables work.
-			await this.recreateDataTableUserTablesFromRegistry(transactionManager);
+			// recreate the dynamic backing tables and load any user rows from the archive.
+			await this.recreateDataTableUserTablesFromRegistry(
+				transactionManager,
+				dataTableFiles,
+				customEncryptionKey,
+			);
 
 			if (!skipTogglingForeignKeyConstraints) {
 				await this.enableForeignKeyConstraints(transactionManager);
@@ -704,15 +736,20 @@ export class ImportService {
 
 	/**
 	 * Recreate dynamic data-table backing tables for every entry in the imported
-	 * `data_table` registry. The export bug (ADO-5143) means archives produced
-	 * before this fix only contain registry rows; without recreating the backing
-	 * tables the imported data tables would reference tables that don't exist on
-	 * the destination.
+	 * `data_table` registry, and insert user rows from any matching JSONL files.
 	 *
 	 * Tables are dropped before recreation so the operation is idempotent and
-	 * handles stale tables left over from a partially-failed prior import.
+	 * handles stale tables left over from a partially-failed prior import. When
+	 * no row file exists for a table (e.g. an archive produced with
+	 * `--includeDataTableRows=false` or before this feature) the backing table
+	 * is recreated empty so the system stays functional.
 	 */
-	async recreateDataTableUserTablesFromRegistry(transactionManager: EntityManager): Promise<void> {
+	async recreateDataTableUserTablesFromRegistry(
+		transactionManager: EntityManager,
+		dataTableFiles: Record<string, string[]> = {},
+		customEncryptionKey?: string,
+	): Promise<void> {
+		const dbType = this.dataSource.options.type;
 		const tablePrefix = this.dataSource.options.entityPrefix || '';
 		const dataTableTableName = `${tablePrefix}data_table`;
 		const dataTableColumnTableName = `${tablePrefix}data_table_column`;
@@ -730,41 +767,136 @@ export class ImportService {
 			return;
 		}
 
-		if (dataTables.length === 0) return;
+		if (dataTables.length === 0) {
+			if (Object.keys(dataTableFiles).length > 0) {
+				this.logger.warn(
+					`   ⚠️  Found ${Object.keys(dataTableFiles).length} data-table row file(s) in the archive but no entries in the data_table registry; skipping.`,
+				);
+			}
+			return;
+		}
 
 		const escapedColumnTable = this.dataSource.driver.escape(dataTableColumnTableName);
 		const escapedDataTableId = this.dataSource.driver.escape('dataTableId');
 		const escapedIndex = this.dataSource.driver.escape('index');
 
-		const columnRows: Array<{
-			id: string;
-			dataTableId: string;
-			name: string;
-			type: 'string' | 'number' | 'boolean' | 'date';
-			index: number;
-		}> = await transactionManager.query(
+		const columnRows: DataTableColumn[] = await transactionManager.query(
 			`SELECT id, ${escapedDataTableId}, name, type, ${escapedIndex} FROM ${escapedColumnTable}`,
 		);
 
 		const columnsByDataTableId = new Map<string, DataTableColumn[]>();
 		for (const row of columnRows) {
 			const list = columnsByDataTableId.get(row.dataTableId) ?? [];
-			list.push(transactionManager.create(DataTableColumn, row));
+			list.push(row);
 			columnsByDataTableId.set(row.dataTableId, list);
 		}
 
 		this.logger.info(`\n📚 Recreating ${dataTables.length} data-table backing table(s)...`);
+		let totalRowsImported = 0;
 
 		for (const { id: dataTableId } of dataTables) {
+			const userTable = toTableName(dataTableId);
 			const cols = (columnsByDataTableId.get(dataTableId) ?? [])
 				.slice()
 				.sort((a, b) => a.index - b.index);
 
 			await this.dataTableDDLService.dropTable(dataTableId, transactionManager);
 			await this.dataTableDDLService.createTableWithColumns(dataTableId, cols, transactionManager);
+
+			const files = dataTableFiles[dataTableId];
+			if (!files || files.length === 0) continue;
+
+			const columnTypeMap = new Map<string, string>(cols.map((c) => [c.name, c.type]));
+			columnTypeMap.set('createdAt', 'date');
+			columnTypeMap.set('updatedAt', 'date');
+
+			const escapedTable = quoteIdentifier(userTable, dbType);
+			let rowsForTable = 0;
+
+			for (const filePath of files) {
+				const rows = await this.readEntityFile(filePath, customEncryptionKey);
+				for (const row of rows) {
+					const normalizedRow: Record<string, unknown> = {};
+					for (const [key, value] of Object.entries(row)) {
+						normalizedRow[key] = normalizeUserRowValueForDatabase(
+							value,
+							columnTypeMap.get(key),
+							dbType,
+						);
+					}
+
+					const columnNames = Object.keys(normalizedRow);
+					const escapedCols = columnNames.map((c) => quoteIdentifier(c, dbType)).join(', ');
+					const placeholders = columnNames.map((c) => `:${c}`).join(', ');
+					const [query, params] = this.dataSource.driver.escapeQueryWithParameters(
+						`INSERT INTO ${escapedTable} (${escapedCols}) VALUES (${placeholders})`,
+						normalizedRow,
+						{},
+					);
+					await transactionManager.query(query, params);
+					rowsForTable++;
+				}
+			}
+
+			// Postgres IDENTITY columns don't auto-advance when explicit ids are
+			// inserted, so the next implicit insert would collide. Reset to MAX(id).
+			if (rowsForTable > 0 && dbType === 'postgres') {
+				await this.advanceIdentitySequences(transactionManager, [userTable]);
+			}
+
+			if (rowsForTable > 0) {
+				this.logger.info(`   ✅ ${userTable}: ${rowsForTable} row(s) imported`);
+			}
+			totalRowsImported += rowsForTable;
 		}
 
-		this.logger.info(`✅ Recreated ${dataTables.length} data-table backing table(s)`);
+		this.logger.info(
+			`✅ Recreated ${dataTables.length} data-table backing table(s); imported ${totalRowsImported} row(s)`,
+		);
+	}
+
+	/**
+	 * Advance Postgres IDENTITY sequences to MAX(col) for every identity column
+	 * in the given tables. No-op on SQLite, where INTEGER PRIMARY KEY auto-bumps
+	 * its rowid sequence on inserts with explicit ids.
+	 */
+	async advanceIdentitySequences(
+		transactionManager: EntityManager,
+		tableNames: string[],
+	): Promise<void> {
+		if (this.dataSource.options.type !== 'postgres') return;
+		if (tableNames.length === 0) return;
+
+		this.logger.info('\n🔢 Advancing Postgres IDENTITY sequences...');
+		let advanced = 0;
+
+		for (const tableName of tableNames) {
+			const identityColumns: Array<{ column_name: string }> = await transactionManager.query(
+				`SELECT column_name FROM information_schema.columns
+					WHERE table_schema = current_schema()
+						AND table_name = $1
+						AND identity_generation IS NOT NULL`,
+				[tableName],
+			);
+
+			if (identityColumns.length === 0) continue;
+
+			const escapedTable = this.dataSource.driver.escape(tableName);
+			for (const { column_name: columnName } of identityColumns) {
+				const escapedCol = this.dataSource.driver.escape(columnName);
+				await transactionManager.query(
+					`SELECT setval(
+						pg_get_serial_sequence($1, $2),
+						COALESCE((SELECT MAX(${escapedCol}) FROM ${escapedTable}), 1),
+						(SELECT MAX(${escapedCol}) FROM ${escapedTable}) IS NOT NULL
+					)`,
+					[escapedTable, columnName],
+				);
+				advanced++;
+			}
+		}
+
+		this.logger.info(`✅ Advanced ${advanced} sequence(s) across ${tableNames.length} table(s)`);
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {

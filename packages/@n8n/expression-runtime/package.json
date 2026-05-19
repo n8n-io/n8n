@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -33,7 +33,7 @@
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
-    "isolated-vm": "^6.0.2",
+    "isolated-vm": "catalog:",
     "js-base64": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",
