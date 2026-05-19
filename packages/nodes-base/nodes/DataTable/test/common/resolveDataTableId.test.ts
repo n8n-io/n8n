@@ -186,5 +186,35 @@ describe('resolveDataTableId', () => {
 				take: 1,
 			});
 		});
+
+		it('should throw NodeOperationError when value is undefined in name mode', async () => {
+			const ctx = mock<IExecuteFunctions>();
+			ctx.getNode.mockReturnValue(mockNode);
+
+			const resourceLocator = {
+				mode: 'name' as const,
+				value: undefined as unknown as string,
+			};
+
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(NodeOperationError);
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(
+				'Data table name is empty or undefined',
+			);
+		});
+
+		it('should throw NodeOperationError when value is empty string in name mode', async () => {
+			const ctx = mock<IExecuteFunctions>();
+			ctx.getNode.mockReturnValue(mockNode);
+
+			const resourceLocator = {
+				mode: 'name' as const,
+				value: '',
+			};
+
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(NodeOperationError);
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(
+				'Data table name is empty or undefined',
+			);
+		});
 	});
 });
