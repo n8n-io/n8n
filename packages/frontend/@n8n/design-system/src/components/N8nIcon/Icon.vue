@@ -171,6 +171,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .fallbackIcon {
 	stroke-width: 1.5;
 }
@@ -183,15 +185,6 @@ watch(
 }
 
 .spin {
-	animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+	@include motion.spin;
 }
 </style>

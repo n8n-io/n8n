@@ -80,6 +80,25 @@ describe('IdRemapper', () => {
 				executionId: 'ex-new',
 			});
 		});
+
+		it('should learn workflow IDs embedded in matching guidance strings', () => {
+			const remapper = new IdRemapper();
+			remapper.learn(
+				{
+					guidance:
+						'Workflow verified successfully. Call `workflows(action="setup")` with workflowId "old-wf-1" to finish setup.',
+				},
+				{
+					guidance:
+						'Workflow verified successfully. Call `workflows(action="setup")` with workflowId "new-wf-9" to finish setup.',
+				},
+			);
+
+			expect(remapper.remapInput({ action: 'setup', workflowId: 'old-wf-1' })).toEqual({
+				action: 'setup',
+				workflowId: 'new-wf-9',
+			});
+		});
 	});
 
 	describe('remapInput', () => {
@@ -248,6 +267,29 @@ describe('TraceIndex', () => {
 		expect(() => index.next('unknown-role', 'search-nodes')).toThrow(
 			/Trace exhausted for role "unknown-role"/,
 		);
+	});
+
+	it('should scan forward for a matching tool when requested', () => {
+		const events: TraceEvent[] = [
+			makeToolCall(1, 'orchestrator', 'credentials'),
+			makeToolCall(2, 'orchestrator', 'build-workflow-with-agent'),
+			makeToolCall(3, 'orchestrator', 'plan'),
+		];
+
+		const index = new TraceIndex(events);
+
+		expect(index.nextMatching('orchestrator', 'plan')?.stepId).toBe(3);
+		expect(index.nextMatching('orchestrator', 'credentials')).toBeNull();
+	});
+
+	it('should return null from matching lookup when trace is exhausted or role is unknown', () => {
+		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'search-nodes')];
+
+		const index = new TraceIndex(events);
+
+		expect(index.nextMatching('unknown-role', 'search-nodes')).toBeNull();
+		expect(index.nextMatching('orchestrator', 'search-nodes')?.stepId).toBe(1);
+		expect(index.nextMatching('orchestrator', 'another-tool')).toBeNull();
 	});
 
 	it('should handle interleaved orchestrator and sub-agent calls', () => {

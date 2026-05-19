@@ -70,8 +70,7 @@ docs/
 ```
 
 The **`index.ts`** surface also exports `Workspace` / sandbox / filesystem types,
-`SqliteMemory` / `PostgresMemory`, `LangSmithTelemetry`, and `evals` alongside the
-core SDK builders.
+`InMemoryMemory`, `LangSmithTelemetry`, and `evals` alongside the core SDK builders.
 
 Optional **peer dependencies** (telemetry): `langsmith`, `@opentelemetry/sdk-trace-node`,
 `@opentelemetry/sdk-trace-base`, `@opentelemetry/exporter-trace-otlp-http` — all
@@ -135,3 +134,7 @@ pnpm build       # rimraf dist && tsc -p tsconfig.build.json → dist/
 pnpm typecheck   # tsc --noEmit
 pnpm test        # jest (unit)
 ```
+
+## PR naming convention
+
+The Agents feature is not generally available yet, so any PRs related to the Agents package should have (no-changelog) in the title to avoid generating a changelog entry.

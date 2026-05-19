@@ -24,7 +24,7 @@ export async function getCategoriesNames(
 export async function getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const response = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/mailFolders', {});
-	const folders = await getSubfolders.call(this, response);
+	const folders = await getSubfolders.call(this, response, true);
 	for (const folder of folders) {
 		returnData.push({
 			name: folder.displayName as string,

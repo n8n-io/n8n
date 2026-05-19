@@ -185,6 +185,99 @@ async def test_per_item_with_continue_on_fail(broker, manager):
     assert "division by zero" in done_msg["data"]["result"][0]["json"]["error"]
 
 
+@pytest.mark.asyncio
+async def test_per_item_datetime_strptime_works(broker, manager_with_stdlib_wildcard):
+    task_id = nanoid()
+    items = [{"json": {"value": "2026-04-23T16:04:28+0000"}}]
+    code = textwrap.dedent("""
+        from datetime import datetime
+        parsed = datetime.strptime(_item['json']['value'], "%Y-%m-%dT%H:%M:%S%z")
+        return {'parsed': parsed.isoformat()}
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    done_msg = await wait_for_task_done(broker, task_id)
+
+    assert done_msg["data"]["result"] == [
+        {"json": {"parsed": "2026-04-23T16:04:28+00:00"}, "pairedItem": {"item": 0}}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_per_item_datetime_strftime_works(broker, manager_with_stdlib_wildcard):
+    task_id = nanoid()
+    items = [{"json": {}}]
+    code = textwrap.dedent("""
+        from datetime import datetime
+        return {'formatted': datetime(2026, 4, 23).strftime('%Y-%m-%d')}
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    done_msg = await wait_for_task_done(broker, task_id)
+
+    assert done_msg["data"]["result"] == [
+        {"json": {"formatted": "2026-04-23"}, "pairedItem": {"item": 0}}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_per_item_time_strptime_works(broker, manager_with_stdlib_wildcard):
+    task_id = nanoid()
+    items = [{"json": {"value": "2026-04-23"}}]
+    code = textwrap.dedent("""
+        import time
+        parsed = time.strptime(_item['json']['value'], "%Y-%m-%d")
+        return {'year': parsed.tm_year, 'month': parsed.tm_mon, 'day': parsed.tm_mday}
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    done_msg = await wait_for_task_done(broker, task_id)
+
+    assert done_msg["data"]["result"] == [
+        {"json": {"year": 2026, "month": 4, "day": 23}, "pairedItem": {"item": 0}}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_per_item_warnings_warn_works(broker, manager_with_stdlib_wildcard):
+    task_id = nanoid()
+    items = [{"json": {}}]
+    code = textwrap.dedent("""
+        import warnings
+        warnings.warn('sample', stacklevel=1)
+        return {'ok': True}
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    done_msg = await wait_for_task_done(broker, task_id)
+
+    assert done_msg["data"]["result"] == [
+        {"json": {"ok": True}, "pairedItem": {"item": 0}}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_all_items_datetime_strptime_works(broker, manager_with_stdlib_wildcard):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        from datetime import datetime
+        parsed = datetime.strptime("2026-04-23T16:04:28+0000", "%Y-%m-%dT%H:%M:%S%z")
+        return [{'json': {'parsed': parsed.isoformat()}}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    done_msg = await wait_for_task_done(broker, task_id)
+
+    assert done_msg["data"]["result"] == [
+        {"json": {"parsed": "2026-04-23T16:04:28+00:00"}}
+    ]
+
+
 # ========== Security ===========
 
 

@@ -2,7 +2,7 @@
 import type { EditorState, SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { Segment } from '@/app/types/expressions';
 import { onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
@@ -31,7 +31,7 @@ withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 
 const i18n = useI18n();
 const theme = outputTheme();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const contentRef = useTemplateRef('content');
 const { APP_Z_INDEXES } = useStyles();
 

@@ -47,8 +47,12 @@ const PREFETCH_ICON_ROW_COUNT = 3;
 
 type Props = {
 	buttonTooltip: string;
-	buttonSize?: 'small' | 'large';
+	buttonSize?: 'small' | 'large' | 'xlarge';
 	isReadOnly?: boolean;
+	/** Additional CSS class(es) for the outer container element */
+	containerClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
+	/** Additional CSS class(es) for the trigger button */
+	buttonClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 };
 
 const { t } = useI18n();
@@ -257,7 +261,14 @@ function humanizeIconName(name: string): string {
 <template>
 	<div
 		ref="container"
-		:class="{ [$style.container]: true, [$style.isReadOnly]: isReadOnly }"
+		:class="[
+			{
+				[$style.container]: true,
+				[$style.isReadOnly]: isReadOnly,
+				[$style[props.buttonSize]]: true,
+			},
+			containerClass,
+		]"
 		:aria-expanded="popupVisible"
 		role="button"
 		aria-haspopup="true"
@@ -269,7 +280,7 @@ function humanizeIconName(name: string): string {
 				</template>
 				<N8nIconButton
 					v-if="model.type === 'icon'"
-					:class="$style['icon-button']"
+					:class="[$style['icon-button'], buttonClass]"
 					:icon="buttonIconName"
 					:size="buttonSize"
 					icon-only
@@ -284,7 +295,7 @@ function humanizeIconName(name: string): string {
 				/>
 				<N8nButton
 					v-else-if="model.type === 'emoji'"
-					:class="$style['emoji-button']"
+					:class="[$style['emoji-button'], buttonClass]"
 					:size="buttonSize"
 					icon-only
 					variant="subtle"
@@ -464,11 +475,33 @@ function humanizeIconName(name: string): string {
 		height: var(--spacing--md);
 		stroke-width: 1.5;
 	}
+
+	.xlarge & {
+		width: 24px;
+		height: 24px;
+	}
+
+	.xxlarge & {
+		width: 32px;
+		height: 32px;
+	}
 }
 
 .emoji-button {
 	padding: 0;
-	font-size: var(--font-size--xl);
+	font-size: 24px;
+
+	.small & {
+		font-size: 18px;
+	}
+
+	.xlarge & {
+		font-size: 32px;
+	}
+
+	.xxlarge & {
+		font-size: 40px;
+	}
 }
 
 .popup {

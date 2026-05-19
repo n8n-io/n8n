@@ -1,10 +1,6 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { WorkflowValidationIssue } from '@/Interface';
 import {
 	extractPlaceholderLabels,
@@ -39,12 +35,9 @@ export interface TodosTrackingPayload {
  * used by the AI builder.
  */
 export function useBuilderTodos() {
-	const workflowsStore = useWorkflowsStore();
 	const locale = useI18n();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	/**
 	 * Checks if a node is disabled, either directly or through any ancestor node.
@@ -142,7 +135,7 @@ export function useBuilderTodos() {
 		void _pinData;
 		void _nodes;
 
-		return workflowsStore.workflowValidationIssues.filter(
+		return workflowDocumentStore.value.nodeValidationIssues.filter(
 			(issue) =>
 				['credentials', 'parameters'].includes(issue.type) &&
 				!nodeHasPinnedData(issue.node) &&
@@ -225,7 +218,7 @@ export function useBuilderTodos() {
 		if (!pinData || Object.keys(pinData).length === 0) return false;
 
 		// Check base workflow issues that would show if not for pinned data
-		const wouldHaveBaseIssues = workflowsStore.workflowValidationIssues.some(
+		const wouldHaveBaseIssues = workflowDocumentStore.value.nodeValidationIssues.some(
 			(issue) =>
 				['credentials', 'parameters'].includes(issue.type) &&
 				nodeHasPinnedData(issue.node) &&
@@ -251,7 +244,7 @@ export function useBuilderTodos() {
 	 * Returns todos data formatted for telemetry tracking.
 	 */
 	function getTodosToTrack(): TodosTrackingPayload {
-		const credentials_todo_count = workflowsStore.workflowValidationIssues.filter(
+		const credentials_todo_count = workflowDocumentStore.value.nodeValidationIssues.filter(
 			(issue) => issue.type === 'credentials',
 		).length;
 		const placeholders_todo_count = placeholderIssues.value.length;

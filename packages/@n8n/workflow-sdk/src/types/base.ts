@@ -75,18 +75,6 @@ export interface NewCredentialValue {
 }
 
 // =============================================================================
-// Placeholder Values
-// =============================================================================
-
-/**
- * Placeholder for values the user needs to fill in.
- */
-export interface PlaceholderValue {
-	readonly __placeholder: true;
-	readonly hint: string;
-}
-
-// =============================================================================
 // Error Handling
 // =============================================================================
 
@@ -432,7 +420,10 @@ export interface WorkflowContext {
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	credentials?: Record<
+		string,
+		string | CredentialReference | NewCredentialValue | { value: string }
+	>;
 	name?: string;
 	position?: [number, number];
 	webhookId?: string;
@@ -533,9 +524,12 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
 	 *
+	 * Index is **0-based**: `.input(0)` is the FIRST input, `.input(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect to input 1 of a merge node
-	 * nodeA.to(mergeNode.input(1))
+	 * // Wire two sources to a merge node — first source to input 0, second to input 1
+	 * sourceA.to(mergeNode.input(0)) // first input
+	 * sourceB.to(mergeNode.input(1)) // second input
 	 */
 	input(index: number): InputTarget;
 
@@ -543,9 +537,11 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create an output selector for connecting from a specific output index.
 	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
 	 *
+	 * Index is **0-based**: `.output(0)` is the FIRST output, `.output(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect from output 1 of a classifier
-	 * classifier.output(1).to(categoryB)
+	 * classifier.output(0).to(categoryA) // first output
+	 * classifier.output(1).to(categoryB) // second output
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
@@ -780,7 +776,8 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a branch directly to a specific input index.
  */
 export type IfElseTarget =
 	| null
@@ -791,10 +788,13 @@ export type IfElseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a case directly to a specific input index.
  */
 export type SwitchCaseTarget =
 	| null
@@ -805,7 +805,25 @@ export type SwitchCaseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
+
+/**
+ * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,
+ * chain, null, plain array (fan-out), or nested control-flow builder.
+ */
+export type SplitInBatchesTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| Array<
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	  >
+	| IfElseBuilder<unknown>
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>;
 
 /**
  * Fluent builder for IF nodes with onTrue/onFalse methods.
@@ -848,10 +866,14 @@ export interface IfElseBuilder<TOutput = unknown> {
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
 
 	/**
-	 * Set the target for the error branch (output 2).
-	 * Only applicable when the IF node has onError: 'continueErrorOutput'.
+	 * Set the target for the IF node's own error output (output 2).
 	 *
-	 * @param target - The node or chain to execute on error
+	 * This wires the IF node's error branch — it is NOT a generic per-node
+	 * "on-error" output. Only applicable when the IF node's config sets
+	 * `onError: 'continueErrorOutput'`. For wiring a regular node's error
+	 * output, use `node.onError(handler)` on the source node instead.
+	 *
+	 * @param target - The node or chain to execute when the IF condition errors
 	 */
 	onError(target: IfElseTarget): IfElseBuilder<TOutput>;
 
@@ -938,16 +960,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onEachBatch(processNode.to(sibNode))
 	 *   .onDone(finalizeNode)
 	 */
-	onEachBatch(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onEachBatch(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 
 	/**
 	 * Fluent API: Set the "done" branch target (output 0).
@@ -959,16 +972,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onDone(finalizeNode)
 	 *   .onEachBatch(processNode.to(sibNode))
 	 */
-	onDone(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onDone(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 }
 
 // =============================================================================
@@ -1156,7 +1160,7 @@ export type StickyFn = (
 	config?: StickyNoteConfig,
 ) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
 
-export type PlaceholderFn = (hint: string) => PlaceholderValue;
+export type PlaceholderFn = (hint: string) => string;
 
 export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 

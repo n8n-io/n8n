@@ -1,44 +1,86 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import { useInstanceAiStore } from '../instanceAi.store';
 import type { InstanceAiAttachment } from '@n8n/api-types';
-import type { InstanceAiEmptyStateSuggestion } from '../emptyStateSuggestions';
+import {
+	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
+	type InstanceAiEmptyStateSuggestion,
+} from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
-const props = defineProps<{
-	isStreaming: boolean;
-	suggestions?: readonly InstanceAiEmptyStateSuggestion[];
-}>();
+type AmendContext = { agentId: string; role: string } | null;
+type SuggestionSelectionPayload = {
+	promptKey: BaseTextKey;
+	suggestionId: string;
+	suggestionKind: 'prompt' | 'quick_example';
+	position: number;
+};
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+type SelectedSuggestionDraft = SuggestionSelectionPayload & {
+	originalPrompt: string;
+};
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+type SuggestionsCyclePayload = {
+	visibleSuggestionIds: string[];
+	cycleCount: number;
+};
+const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
+
+const props = withDefaults(
+	defineProps<{
+		isStreaming?: boolean;
+		isSubmitting?: boolean;
+		isAwaitingConfirmation?: boolean;
+		currentThreadId?: string;
+		amendContext?: AmendContext;
+		contextualSuggestion?: string | null;
+		researchMode: boolean;
+		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+		suggestionsComponent?: Component;
+		suggestionCatalogVersion?: string;
+		placeholderKey?: BaseTextKey;
+	}>(),
+	{
+		isStreaming: false,
+		isSubmitting: false,
+		isAwaitingConfirmation: false,
+		currentThreadId: '',
+		amendContext: null,
+		contextualSuggestion: null,
+	},
+);
 
 const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
+	'toggle-research-mode': [];
 }>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 const previewPromptKey = ref<BaseTextKey | null>(null);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
 defineExpose({
 	focus: () => chatInputRef.value?.focus(),
 });
 
-const isBusy = computed(() => props.isStreaming || store.isSendingMessage);
+const isBusy = computed(() => props.isStreaming || props.isSubmitting);
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const isGatedBySetup = computed(() => store.isAwaitingConfirmation);
+const isGatedBySetup = computed(() => props.isAwaitingConfirmation);
 const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
 	() =>
@@ -47,9 +89,14 @@ const canShowSuggestions = computed(
 		!isBusy.value &&
 		!isGatedBySetup.value,
 );
-const visibleSuggestionThreadId = computed(() =>
-	canShowSuggestions.value ? store.currentThreadId : null,
+const resolvedSuggestionsComponent = computed(
+	() => props.suggestionsComponent ?? InstanceAiPromptSuggestions,
 );
+const resolvedSuggestionCatalogVersion = computed(
+	() => props.suggestionCatalogVersion ?? INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
+);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
@@ -58,24 +105,25 @@ const placeholder = computed(() => {
 	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
 		return i18n.baseText(previewPromptKey.value);
 	}
-	if (store.amendContext) {
+	if (props.amendContext) {
 		return i18n.baseText('instanceAi.input.amendPlaceholder', {
-			interpolate: { role: store.amendContext.role },
+			interpolate: { role: props.amendContext.role },
 		});
 	}
-	if (store.contextualSuggestion) {
-		return store.contextualSuggestion;
+	if (props.contextualSuggestion) {
+		return props.contextualSuggestion;
 	}
-	return i18n.baseText('instanceAi.input.placeholder');
+	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
 
 watch(
-	visibleSuggestionThreadId,
-	(threadId) => {
-		if (threadId) {
+	[shouldTrackVisibleSuggestions, resolvedSuggestionCatalogVersion, () => props.currentThreadId],
+	([shouldTrackSuggestions, suggestionCatalogVersion, threadId]) => {
+		if (shouldTrackSuggestions) {
 			promptSuggestionsTelemetry.trackSuggestionsShown({
-				threadId,
-				researchMode: store.researchMode,
+				threadId: threadId || undefined,
+				researchMode: props.researchMode,
+				suggestionCatalogVersion,
 			});
 			return;
 		}
@@ -84,6 +132,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+watch(inputText, (text) => {
+	if (text.length === 0) {
+		selectedSuggestionDraft.value = null;
+	}
+});
 
 function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
 	previewPromptKey.value = null;
@@ -104,6 +159,7 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 		return;
 	}
 
+	trackSelectedSuggestionSubmitted(message);
 	emitSubmittedMessage(message, attachments);
 	resetDraftComposer();
 }
@@ -132,8 +188,8 @@ function handleStop() {
 }
 
 function handleTabAutocomplete() {
-	if (!inputText.value && store.contextualSuggestion) {
-		inputText.value = store.contextualSuggestion;
+	if (!inputText.value && props.contextualSuggestion) {
+		inputText.value = props.contextualSuggestion;
 	}
 }
 
@@ -150,9 +206,26 @@ function handleFileRemove(file: File) {
 
 function getTelemetryContext() {
 	return {
-		threadId: store.currentThreadId,
-		researchMode: store.researchMode,
+		threadId: props.currentThreadId || undefined,
+		researchMode: props.researchMode,
+		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
 	};
+}
+
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+function trackSelectedSuggestionSubmitted(message: string) {
+	const selectedSuggestion = selectedSuggestionDraft.value;
+	if (!selectedSuggestion) {
+		return;
+	}
+
+	promptSuggestionsTelemetry.trackSuggestionSubmitted({
+		...getTelemetryContext(),
+		suggestionId: selectedSuggestion.suggestionId,
+		suggestionKind: selectedSuggestion.suggestionKind,
+		position: selectedSuggestion.position,
+		promptModified: message !== selectedSuggestion.originalPrompt,
+	});
 }
 
 function handleQuickExamplesOpened(payload: { suggestionId: string; position: number }) {
@@ -167,19 +240,43 @@ function handleQuickExamplesOpened(payload: { suggestionId: string; position: nu
 	});
 }
 
-function handleSuggestionSubmit(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 	promptSuggestionsTelemetry.trackSuggestionSelected({
 		...getTelemetryContext(),
 		suggestionId: payload.suggestionId,
 		suggestionKind: payload.suggestionKind,
 		position: payload.position,
 	});
+}
+
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
+	promptSuggestionsTelemetry.trackSuggestionsCycled({
+		researchMode: props.researchMode,
+		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
+		visibleSuggestionIds: payload.visibleSuggestionIds,
+		cycleCount: payload.cycleCount,
+	});
+}
+
+function handleSuggestionSubmit(payload: SuggestionSelectionPayload) {
+	trackSuggestionSelected(payload);
 	submitComposerMessage(i18n.baseText(payload.promptKey));
+}
+
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
+	trackSuggestionSelected(payload);
+	previewPromptKey.value = null;
+	const prompt = i18n.baseText(payload.promptKey);
+	selectedSuggestionDraft.value = {
+		...payload,
+		originalPrompt: prompt,
+	};
+	inputText.value = prompt;
+
+	await nextTick();
+	chatInputRef.value?.focus();
 }
 
 const resizable = computed(() => {
@@ -225,9 +322,9 @@ const resizable = computed(() => {
 					:show-after="300"
 				>
 					<button
-						:class="[$style.researchToggle, { [$style.active]: store.researchMode }]"
+						:class="[$style.researchToggle, { [$style.active]: props.researchMode }]"
 						data-test-id="instance-ai-research-toggle"
-						@click="store.toggleResearchMode()"
+						@click="emit('toggle-research-mode')"
 					>
 						<svg
 							:class="$style.researchIcon"
@@ -244,13 +341,16 @@ const resizable = computed(() => {
 				</N8nTooltip>
 			</template>
 		</ChatInputBase>
-		<Transition name="suggestions-fade">
-			<InstanceAiPromptSuggestions
+		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
+			<component
+				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
+				@cycle-suggestions="handleSuggestionsCycled"
+				@insert-suggestion="handleSuggestionInsert"
 				@submit-suggestion="handleSuggestionSubmit"
 			/>
 		</Transition>
@@ -311,16 +411,25 @@ const resizable = computed(() => {
 	flex-shrink: 0;
 }
 
-:global(.suggestions-fade-enter-active),
-:global(.suggestions-fade-leave-active) {
+:global(.suggestions-fade-enter-active) {
 	transition:
 		opacity 0.15s ease,
 		transform 0.15s ease;
 }
 
-:global(.suggestions-fade-enter-from),
-:global(.suggestions-fade-leave-to) {
+:global(.suggestions-fade-leave-active) {
+	transition:
+		opacity 0.18s ease,
+		transform 0.18s ease;
+}
+
+:global(.suggestions-fade-enter-from) {
 	opacity: 0;
 	transform: translateY(-4px);
+}
+
+:global(.suggestions-fade-leave-to) {
+	opacity: 0;
+	transform: translateY(4px);
 }
 </style>

@@ -148,6 +148,27 @@ describe('WorkflowRepository', () => {
 			expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
 			expect(updatedWorkflow?.active).toBe(true);
 		});
+
+		it('should throw when workflow does not exist', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			await expect(workflowRepository.publishVersion('non-existent-id')).rejects.toThrow(
+				'Workflow "non-existent-id" not found.',
+			);
+		});
+
+		it('should throw when workflow is archived', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithTriggerAndHistory({ isArchived: true });
+
+			await expect(workflowRepository.publishVersion(workflow.id)).rejects.toThrow(
+				'Cannot publish archived Workflow',
+			);
+
+			const updatedWorkflow = await getWorkflowById(workflow.id);
+			expect(updatedWorkflow?.activeVersionId).toBeNull();
+			expect(updatedWorkflow?.active).toBe(false);
+		});
 	});
 
 	describe('unpublishAll', () => {
@@ -227,6 +248,19 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('getAllActiveIds', () => {
+		it('should exclude archived workflows', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const activeNonArchived = await createActiveWorkflow();
+			const activeArchived = await createActiveWorkflow();
+			await workflowRepository.update(activeArchived.id, { isArchived: true });
+
+			const activeIds = await workflowRepository.getAllActiveIds();
+
+			expect(activeIds).toEqual([activeNonArchived.id]);
+		});
+	});
+
 	describe('getWorkflowsWithEvaluationCount', () => {
 		it('should return 0 when no workflows have test runs', async () => {
 			//
@@ -293,6 +327,94 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(count).toBe(2);
+		});
+	});
+
+	describe('versionCounter trigger', () => {
+		it('should bump versionCounter when nodes change', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				nodes: [
+					{
+						id: 'new-node',
+						name: 'New Node',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion + 1);
+		});
+
+		it('should bump versionCounter when settings change', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				settings: { errorWorkflow: 'some-other-workflow' },
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion + 1);
+		});
+
+		it('should not bump versionCounter when triggerCount changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.updateWorkflowTriggerCount(workflow.id, 42);
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+			expect(updated?.triggerCount).toBe(42);
+		});
+
+		it('should not bump versionCounter when active state changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithHistory();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				active: true,
+				activeVersionId: workflow.versionId,
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+
+		it('should not bump versionCounter when name or description changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				name: 'Renamed Workflow',
+				description: 'Something new',
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+
+		it('should not bump versionCounter when isArchived changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, { isArchived: true });
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
 		});
 	});
 

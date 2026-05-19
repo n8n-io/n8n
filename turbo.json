@@ -1,11 +1,16 @@
 {
-	"globalEnv": ["CI", "BUILD_WITH_COVERAGE", "RELEASE"],
+	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
 	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
+		},
+		"n8n-editor-ui#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck", "^build"]

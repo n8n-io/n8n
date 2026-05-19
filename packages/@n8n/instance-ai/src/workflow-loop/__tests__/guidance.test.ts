@@ -55,7 +55,9 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('inline setup card in the AI Assistant panel');
 			expect(result).toContain('Do not call');
+			expect(result).not.toContain('setup UI');
 		});
 
 		it('should include workflowId in workflow setup guidance when mockedCredentialTypes present', () => {
@@ -90,6 +92,19 @@ describe('formatWorkflowLoopGuidance', () => {
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('workflows(action="setup")');
 			expect(result).toContain('wf-ph-1');
+		});
+
+		it('should forbid invented canvas or editor setup instructions', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with placeholders',
+				workflowId: 'wf-ph-1',
+				hasUnresolvedPlaceholders: true,
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain(
+				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
+			);
 		});
 
 		it('should trigger workflow setup guidance when both mocked credentials and placeholders exist', () => {
@@ -157,6 +172,20 @@ describe('formatWorkflowLoopGuidance', () => {
 		});
 	});
 
+	// ── continue_building ─────────────────────────────────────────────────────
+
+	describe('action type "continue_building"', () => {
+		it('should instruct the builder to fix code and submit again', () => {
+			const action: WorkflowLoopAction = {
+				type: 'continue_building',
+				reason: 'Validation failed',
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('SUBMIT FAILED');
+			expect(result).toContain('submit-workflow');
+		});
+	});
+
 	// ── blocked ────────────────────────────────────────────────────────────────
 
 	describe('action type "blocked"', () => {
@@ -195,15 +224,16 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Node configuration is invalid after schema change');
 		});
 
-		it('should instruct to submit a new plan with build-workflow task', () => {
+		it('should instruct to call build-workflow-with-agent directly with workflowId', () => {
 			const action: WorkflowLoopAction = {
 				type: 'rebuild',
 				workflowId: 'wf-rebuild-2',
 				failureDetails: 'Broken connections',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('build-workflow');
-			expect(result).toContain('plan');
+			expect(result).toContain('build-workflow-with-agent');
+			expect(result).toContain('workflowId: "wf-rebuild-2"');
+			expect(result).toContain('no plan');
 			expect(result).toContain('structural repair');
 		});
 	});
@@ -249,7 +279,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).not.toContain('Suggested fix');
 		});
 
-		it('should instruct to submit a plan with patch mode', () => {
+		it('should instruct to call build-workflow-with-agent directly with workflowId', () => {
 			const action: WorkflowLoopAction = {
 				type: 'patch',
 				workflowId: 'wf-patch-4',
@@ -257,9 +287,10 @@ describe('formatWorkflowLoopGuidance', () => {
 				diagnosis: 'Condition always evaluates to true',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('build-workflow');
-			expect(result).toContain('mode "patch"');
-			expect(result).toContain('wf-patch-4');
+			expect(result).toContain('build-workflow-with-agent');
+			expect(result).toContain('workflowId: "wf-patch-4"');
+			expect(result).toContain('no plan');
+			expect(result).toContain('targeted fix');
 		});
 	});
 
@@ -285,7 +316,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('wf-xyz');
 		});
 
-		it('should not affect blocked or rebuild actions', () => {
+		it('should not affect blocked actions and should bind repair actions', () => {
 			const blocked = formatWorkflowLoopGuidance(
 				{ type: 'blocked', reason: 'No access' },
 				{ workItemId: 'wi-ignored' },
@@ -296,7 +327,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				{ type: 'rebuild', workflowId: 'wf-1', failureDetails: 'broken' },
 				{ workItemId: 'wi-ignored' },
 			);
-			expect(rebuild).not.toContain('wi-ignored');
+			expect(rebuild).toContain('wi-ignored');
 		});
 	});
 });

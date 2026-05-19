@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import snowflake from 'snowflake-sdk';
 
 import { getResolvables } from '@utils/utilities';
@@ -13,6 +13,8 @@ import { getResolvables } from '@utils/utilities';
 import {
 	connect,
 	destroy,
+	escapeSnowflakeIdentifier,
+	escapeSnowflakeObjectIdentifier,
 	execute,
 	getConnectionOptions,
 	type SnowflakeCredential,
@@ -37,9 +39,39 @@ export class Snowflake implements INodeType {
 			{
 				name: 'snowflake',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['credentials'],
+					},
+				},
+			},
+			{
+				name: 'snowflakeOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Credentials',
+						value: 'credentials',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'credentials',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -170,19 +202,43 @@ export class Snowflake implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = await this.getCredentials<SnowflakeCredential>('snowflake');
 		// Disable logging - https://docs.snowflake.com/en/developer-guide/node-js/nodejs-driver-logs#configure-the-default-logging-behavior
 		snowflake.configure({
 			logFilePath: 'STDOUT',
 			logLevel: 'OFF',
 		});
 
-		const connectionOptions = getConnectionOptions(credentials);
+		const authMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
+		let snowflakeCredential: SnowflakeCredential;
+
+		if (authMethod === 'oAuth2') {
+			const oauthCredentials = await this.getCredentials('snowflakeOAuth2Api');
+			const tokenData = oauthCredentials.oauthTokenData as { access_token?: string } | undefined;
+			if (!tokenData?.access_token) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'OAuth2 access token is missing. Please reconnect your Snowflake OAuth2 credential.',
+				);
+			}
+			snowflakeCredential = {
+				account: oauthCredentials.account as string,
+				database: oauthCredentials.database as string,
+				warehouse: oauthCredentials.warehouse as string,
+				schema: oauthCredentials.schema as string,
+				clientSessionKeepAlive: oauthCredentials.clientSessionKeepAlive as boolean,
+				authentication: 'oauth2',
+				token: tokenData.access_token,
+			};
+		} else {
+			snowflakeCredential = await this.getCredentials<SnowflakeCredential>('snowflake');
+		}
+
+		const connectionOptions = getConnectionOptions(snowflakeCredential);
 		const connection = snowflake.createConnection(connectionOptions);
 
 		await connect(connection);
 
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -203,7 +259,7 @@ export class Snowflake implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 		}
 
@@ -215,16 +271,18 @@ export class Snowflake implements INodeType {
 			const table = this.getNodeParameter('table', 0) as string;
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map((column) => column.trim());
-			const query = `INSERT INTO IDENTIFIER(?)(${columns.map(() => 'IDENTIFIER(?)').join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
+			const quotedTable = escapeSnowflakeObjectIdentifier(table);
+			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
+			const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 			const data = this.helpers.copyInputItems(items, columns);
-			const binds = data.map((element) => [table, ...columns, ...Object.values(element)]);
+			const binds = data.map((element) => [...Object.values(element)]);
 			await execute(connection, query, binds as unknown as snowflake.InsertBinds);
 			data.forEach((d, i) => {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(d),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			});
 		}
 
@@ -242,15 +300,18 @@ export class Snowflake implements INodeType {
 				columns.unshift(updateKey);
 			}
 
-			const query = `UPDATE IDENTIFIER(?) SET ${columns.map(() => 'IDENTIFIER(?) = ?').join(',')} WHERE IDENTIFIER(?) = ?;`;
+			const quotedTable = escapeSnowflakeObjectIdentifier(table);
+			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
+			const quotedUpdateKey = escapeSnowflakeIdentifier(updateKey);
+			const query = `UPDATE ${quotedTable} SET ${quotedColumns.map((col) => `${col} = ?`).join(',')} WHERE ${quotedUpdateKey} = ?;`;
 			const data = this.helpers.copyInputItems(items, columns);
 			const binds = data.map((element) => {
 				const values = Object.values(element);
-				const rowBinds: unknown[] = [table];
-				columns.forEach((col, idx) => {
-					rowBinds.push(col, values[idx]);
+				const rowBinds: unknown[] = [];
+				columns.forEach((_col, idx) => {
+					rowBinds.push(values[idx]);
 				});
-				rowBinds.push(updateKey, element[updateKey]);
+				rowBinds.push(element[updateKey]);
 				return rowBinds;
 			});
 			for (let i = 0; i < binds.length; i++) {
@@ -261,7 +322,7 @@ export class Snowflake implements INodeType {
 					this.helpers.returnJsonArray(d),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			});
 		}
 

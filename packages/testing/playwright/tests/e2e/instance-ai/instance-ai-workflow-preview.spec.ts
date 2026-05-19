@@ -14,11 +14,19 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "preview auto-open test"',
 			);
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Preview should auto-open with canvas nodes visible (no confirmation for simple builds)
-			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
-				timeout: 120_000,
-			});
+			const firstNode = n8n.instanceAi.getPreviewCanvasNodes().first();
+			await expect(firstNode).toBeVisible({ timeout: 120_000 });
+
+			// Regression guard for INS-256: if fitView runs against a near-zero
+			// container (mid slide-in), nodes end up microscopic. The fix re-fits
+			// once the panel transition completes. Poll until the node settles to
+			// a reasonable on-screen width.
+			await expect
+				.poll(async () => (await firstNode.boundingBox())?.width ?? 0, { timeout: 5_000 })
+				.toBeGreaterThan(50);
 		});
 
 		test('should display canvas nodes in preview iframe', async ({ n8n }) => {
@@ -27,6 +35,7 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a workflow with manual trigger connected to a set node called "canvas nodes test"',
 			);
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Should show canvas nodes in the preview
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -42,6 +51,9 @@ test.describe(
 				testInfo.project.name.includes('multi-main'),
 				'Execution preview replay is not yet stable in multi-main mode',
 			);
+			// End-to-end: plan + approve + build + execute + final assertions take >60s
+			// when recording against the real Anthropic API.
+			test.setTimeout(180_000);
 			await n8n.navigate.toInstanceAi();
 
 			// A Wait node creates a window where the downstream node is briefly
@@ -52,6 +64,7 @@ test.describe(
 					'and a Set node called "running state test". After it is built, ' +
 					'run it.',
 			);
+			await n8n.instanceAi.approveBuildPlan();
 
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmApproveButton().click();
@@ -70,14 +83,15 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "close preview test"',
 			);
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to auto-open
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
 
-			// Close the preview
-			await n8n.instanceAi.getPreviewCloseButton().click();
+			// Hide the preview
+			await n8n.instanceAi.getPreviewToggleButton().click();
 
 			// Preview iframe should no longer be visible
 			await expect(n8n.instanceAi.getPreviewIframeLocator()).toBeHidden();

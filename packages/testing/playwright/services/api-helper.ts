@@ -1,5 +1,5 @@
 // services/api-helper.ts
-import type { ClusterInfoResponse } from '@n8n/api-types';
+import type { ClusterInfoResponse, InstanceAiPermissions } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -28,6 +28,11 @@ import { WorkflowApiHelper } from './workflow-api-helper';
 export interface LoginResponseData {
 	id: string;
 	[key: string]: unknown;
+}
+
+export interface InstanceAiBackgroundTimeoutSimulation {
+	threadId: string;
+	timeoutAt: number;
 }
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
@@ -276,7 +281,6 @@ export class ApiHelpers {
 
 	/**
 	 * Fetch cluster info from the instance registry endpoint.
-	 * Requires `N8N_ENV_FEAT_INSTANCE_REGISTRY=true` on every container.
 	 */
 	async getClusterInfo(): Promise<ClusterInfoResponse> {
 		const response = await this.request.get('/rest/instance-registry');
@@ -288,6 +292,57 @@ export class ApiHelpers {
 		const plain = await response.json();
 		console.log('Cluster info: ', JSON.stringify(plain));
 		return (plain as { data: ClusterInfoResponse }).data;
+	}
+
+	async getInstanceAiToolTraceEvents(slug: string): Promise<unknown[]> {
+		const response = await this.request.get(`/rest/instance-ai/test/tool-trace/${slug}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/test/tool-trace/${slug} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: { events?: unknown[] } };
+		return body.data?.events ?? [];
+	}
+
+	async startInstanceAiBackgroundTimeoutSimulation(
+		userId: string,
+		threadId?: string,
+	): Promise<InstanceAiBackgroundTimeoutSimulation> {
+		const response = await this.request.post('/rest/instance-ai/test/background-timeout/start', {
+			data: { userId, ...(threadId ? { threadId } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/background-timeout/start failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiBackgroundTimeoutSimulation };
+		return body.data;
+	}
+
+	async runInstanceAiLivenessSweep(now?: number): Promise<void> {
+		const response = await this.request.post('/rest/instance-ai/test/liveness-sweep', {
+			data: { ...(now !== undefined ? { now } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/liveness-sweep failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', {
+			data: { permissions },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	/**
@@ -398,6 +453,22 @@ export class ApiHelpers {
 		const destinations = await this.getLogStreamingDestinations();
 		for (const destination of destinations) {
 			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
+	// ===== MCP REGISTRY METHODS =====
+
+	/**
+	 * Seed the MCP registry with mock server data
+	 * This inserts data into the mcp_registry_server table and triggers
+	 * a node type refresh so the synthetic MCP nodes become available.
+	 */
+	async seedMcpRegistry(): Promise<void> {
+		const response = await this.request.post('/rest/mcp-registry/test/seed');
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to seed MCP registry: ${response.status()} ${await response.text()}`,
+			);
 		}
 	}
 

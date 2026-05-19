@@ -41,7 +41,7 @@ import NodeTitle from '@/app/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -122,7 +122,7 @@ const slots = defineSlots<{ actions?: {} }>();
 const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -158,7 +158,8 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
-const { isPreviewMode } = useSettingsStore();
+const settingsStore = useSettingsStore();
+const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(() =>
 	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
@@ -434,6 +435,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+	} else if (parameterData.name.includes('.') || parameterData.name.includes('[')) {
+		// A nested property on the node itself changed (e.g. a fixedCollection setting
+		// like `customTelemetryTags.tag`). Update the nested path in `nodeValues`,
+		// then persist the whole top-level field back to the node.
+		const topLevelKey = parameterData.name.split(/[.[]/)[0];
+		const valueForSetter = newValue === undefined ? null : newValue;
+		nodeSettingsParameters.setValue(nodeValues, parameterData.name, valueForSetter);
+
+		workflowDocumentStore?.value?.setNodeValue({
+			name: _node.name,
+			key: topLevelKey,
+			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+		});
 	} else {
 		// A property on the node itself changed
 
@@ -488,7 +502,11 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(
+		isToolNode.value || isModelNode.value,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelEnabled,
+	),
 );
 
 const iconSource = useNodeIconSource(nodeType, node);
@@ -764,6 +782,7 @@ function handleSelectAction(params: INodeParameters) {
 					<QuickConnectBanner
 						v-if="showQuickConnectBanner"
 						:text="quickConnect?.text ?? ''"
+						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
 					<NodeCredentials
