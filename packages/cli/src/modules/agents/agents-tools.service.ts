@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { validateNodeConfig } from '@n8n/workflow-sdk';

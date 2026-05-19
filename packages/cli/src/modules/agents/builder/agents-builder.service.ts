@@ -3,8 +3,8 @@ import type {
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
+	Agent as RuntimeAgent,
 } from '@n8n/agents';
-import { Agent, Memory } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -145,7 +145,7 @@ export class AgentsBuilderService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
-	): Promise<Agent> {
+	): Promise<RuntimeAgent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -190,6 +190,8 @@ export class AgentsBuilderService {
 			user,
 		);
 
+		const { Agent, Memory } = await import('@n8n/agents');
+
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 
 		// Be careful with provider specific options, since user can change model to openai, grok, etc.
@@ -199,7 +201,7 @@ export class AgentsBuilderService {
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 
-		const telemetry = buildBuilderTelemetry({
+		const telemetry = await buildBuilderTelemetry({
 			agentId,
 			projectId,
 			userId: user.id,
