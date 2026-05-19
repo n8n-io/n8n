@@ -1,0 +1,20 @@
+{
+	"prompt": "When I run the workflow manually, download the PDF at https://example.com/sample.pdf using an HTTP Request node configured with Response Format = File. That's the entire workflow: just a Manual Trigger and an HTTP Request node. Do NOT add any Set, Code, or Extract from File nodes. Configure the HTTP Request node to put the response binary into the default property `data`.",
+	"complexity": "simple",
+	"tags": ["http-request", "binary", "pdf", "manual"],
+	"triggerType": "manual",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "HTTP Request returns a small valid PDF; the node's binary output carries correct PDF metadata",
+			"dataSetup": "The HTTP Request returns a small valid PDF (application/pdf, ~400 bytes).",
+			"successCriteria": "The workflow executes without errors. The HTTP Request node's output has a binary entry under key `data` with `mimeType` equal to 'application/pdf' and `fileExtension` equal to 'pdf'. The base64-encoded `data` field is a non-empty string."
+		},
+		{
+			"name": "large-pdf",
+			"description": "Same flow but the mock returns a PDF padded to ~64KB to verify sizeHint padding still mime-sniffs as PDF",
+			"dataSetup": "The HTTP Request returns a PDF padded to medium size (use sizeHint=medium so the response body is >=64KB) with content-type application/pdf.",
+			"successCriteria": "The workflow executes without errors. The HTTP Request node's output has binary.data.mimeType='application/pdf' and binary.data.fileExtension='pdf'. The base64-encoded `data` field is non-empty and substantially larger than in the happy-path scenario (indicating the size padding flowed through)."
+		}
+	]
+}
