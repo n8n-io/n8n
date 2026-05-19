@@ -132,6 +132,36 @@ describe('resolveDataTableId', () => {
 			});
 		});
 
+		it('should throw error when table name value is undefined', async () => {
+			const ctx = mock<IExecuteFunctions>();
+			ctx.getNode.mockReturnValue(mockNode);
+
+			const resourceLocator = {
+				mode: 'name' as const,
+				value: undefined,
+			};
+
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(NodeOperationError);
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(
+				'Data table name is required',
+			);
+		});
+
+		it('should throw error when table name value is empty string', async () => {
+			const ctx = mock<IExecuteFunctions>();
+			ctx.getNode.mockReturnValue(mockNode);
+
+			const resourceLocator = {
+				mode: 'name' as const,
+				value: '',
+			};
+
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(NodeOperationError);
+			await expect(resolveDataTableId(ctx, resourceLocator)).rejects.toThrow(
+				'Data table name is required',
+			);
+		});
+
 		it('should throw error when table name is not found', async () => {
 			const ctx = mock<IExecuteFunctions>();
 			ctx.getNode.mockReturnValue(mockNode);

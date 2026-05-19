@@ -27,10 +27,16 @@ function isDateLike(v: unknown): v is DateLike {
 // Helper function to resolve data table ID from resourceLocator
 export async function resolveDataTableId(
 	ctx: IExecuteFunctions | ILoadOptionsFunctions,
-	resourceLocator: { mode: 'list' | 'id' | 'name'; value: string },
+	resourceLocator: { mode: 'list' | 'id' | 'name'; value?: string },
 ): Promise<string> {
 	if (resourceLocator.mode === 'name') {
 		// Look up table by name
+		if (!resourceLocator.value) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Data table name is required when using "By Name" mode',
+			);
+		}
 		const aggregateProxy = await getDataTableAggregateProxy(ctx);
 		const response = await aggregateProxy.getManyAndCount({
 			filter: { name: resourceLocator.value.toLowerCase() },
@@ -47,6 +53,12 @@ export async function resolveDataTableId(
 		return response.data[0].id;
 	} else {
 		// For 'list' and 'id' modes, use the value from the resource locator
+		if (!resourceLocator.value) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Data table ID is required when using "${resourceLocator.mode}" mode`,
+			);
+		}
 		return resourceLocator.value;
 	}
 }
