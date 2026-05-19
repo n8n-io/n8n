@@ -28,6 +28,7 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSourceControlModalRouting } from '@/features/integrations/sourceControl.ee/useSourceControlModalRouting';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -117,6 +118,7 @@ const i18n = useI18n();
 
 const router = useRouter();
 const route = useRoute();
+const { openPushModal } = useSourceControlModalRouting();
 
 const locale = useI18n();
 const telemetry = useTelemetry();
@@ -617,36 +619,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
 				await onSaveButtonClick();
-				const status = await sourceControlStore.prefetchPushStatus();
-				if (!status.length) {
-					toast.showMessage({
-						title: locale.baseText('settings.sourceControl.modals.push.everythingIsUpToDate'),
-						message: '',
-						type: 'info',
-					});
-					break;
-				}
-
-				// Navigate to route with sourceControl param - modal will handle data loading and loading states
-				await router.push({
-					query: {
-						...route.query,
-						sourceControl: 'push',
-					},
-				});
+				await openPushModal();
 			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				switch (error.message) {
-					case 'source_control_not_connected':
-						toast.showError(
-							{ ...error, message: '' },
-							locale.baseText('settings.sourceControl.error.not.connected.title'),
-							locale.baseText('settings.sourceControl.error.not.connected.message'),
-						);
-						break;
-					default:
-						toast.showError(error, locale.baseText('error'));
-				}
+				toast.showError(error, locale.baseText('error'));
 			}
 
 			break;

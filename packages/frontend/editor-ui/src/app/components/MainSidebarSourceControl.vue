@@ -3,10 +3,9 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useToast } from '@/app/composables/useToast';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSourceControlModalRouting } from '@/features/integrations/sourceControl.ee/useSourceControlModalRouting';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRoute, useRouter } from 'vue-router';
 
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 defineProps<{
@@ -16,9 +15,7 @@ defineProps<{
 const sourceControlStore = useSourceControlStore();
 const projectStore = useProjectsStore();
 const i18n = useI18n();
-const toast = useToast();
-const route = useRoute();
-const router = useRouter();
+const { openPushModal, openPullModal } = useSourceControlModalRouting();
 const tooltipOpenDelay = ref(300);
 const isLoadingPushStatus = ref(false);
 
@@ -54,38 +51,10 @@ async function pushWorkfolder() {
 
 	isLoadingPushStatus.value = true;
 	try {
-		const status = await sourceControlStore.prefetchPushStatus();
-
-		if (!status.length) {
-			toast.showMessage({
-				title: i18n.baseText('settings.sourceControl.modals.push.everythingIsUpToDate'),
-				message: '',
-				type: 'info',
-			});
-			return;
-		}
-
-		await router.push({
-			query: {
-				...route.query,
-				sourceControl: 'push',
-			},
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
+		await openPushModal();
 	} finally {
 		isLoadingPushStatus.value = false;
 	}
-}
-
-function pullWorkfolder() {
-	// Navigate to route with sourceControl param - modal will handle the pull operation
-	void router.push({
-		query: {
-			...route.query,
-			sourceControl: 'pull',
-		},
-	});
 }
 </script>
 
@@ -136,7 +105,7 @@ function pullWorkfolder() {
 						size="mini"
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
-						@click="pullWorkfolder"
+						@click="openPullModal"
 					/>
 				</N8nTooltip>
 				<N8nTooltip
