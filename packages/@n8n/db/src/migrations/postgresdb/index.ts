@@ -179,8 +179,11 @@ import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
 import { ReplaceAgentObservationTables1784000000001 } from '../common/1784000000001-ReplaceAgentObservationTables';
 import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/1784000000002-DropAgentExecutionWorkingMemory';
-import { CreateInstanceAiCheckpointTable1784000000004 } from '../common/1784000000004-CreateInstanceAiCheckpointTable';
-import { ResetInstanceAiNativePersistence1784000000005 } from '../common/1784000000005-ResetInstanceAiNativePersistence';
+import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/1784000000004-AddInsightsRawTimestampIdIndex';
+import { CreateMcpRegistryServerTable1784000000005 } from '../common/1784000000005-CreateMcpRegistryServerTable';
+import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
+import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
+import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -365,6 +368,9 @@ export const postgresMigrations: Migration[] = [
 	ReplaceAgentObservationTables1784000000001,
 	DropAgentExecutionWorkingMemory1784000000002,
 	LimitWorkflowVersionTriggerToContent1784000000003,
-	CreateInstanceAiCheckpointTable1784000000004,
-	ResetInstanceAiNativePersistence1784000000005,
+	AddInsightsRawTimestampIdIndex1784000000004,
+	CreateMcpRegistryServerTable1784000000005,
+	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
+	CreateInstanceAiCheckpointTable1784000000007,
+	ResetInstanceAiNativePersistence1784000000008,
 ];

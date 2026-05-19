@@ -10,7 +10,7 @@ const runtimeTables = [
 	'instance_ai_threads',
 ] as const;
 
-export class ResetInstanceAiNativePersistence1784000000005 implements IrreversibleMigration {
+export class ResetInstanceAiNativePersistence1784000000008 implements IrreversibleMigration {
 	async up({ queryRunner, escape }: MigrationContext) {
 		for (const table of runtimeTables) {
 			await queryRunner.query(`DELETE FROM ${escape.tableName(table)}`);

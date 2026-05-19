@@ -487,6 +487,22 @@ export class ApiHelpers {
 		}
 	}
 
+	// ===== MCP REGISTRY METHODS =====
+
+	/**
+	 * Seed the MCP registry with mock server data
+	 * This inserts data into the mcp_registry_server table and triggers
+	 * a node type refresh so the synthetic MCP nodes become available.
+	 */
+	async seedMcpRegistry(): Promise<void> {
+		const response = await this.request.post('/rest/mcp-registry/test/seed');
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to seed MCP registry: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
 	// ===== MCP API KEY METHODS =====
 
 	/**

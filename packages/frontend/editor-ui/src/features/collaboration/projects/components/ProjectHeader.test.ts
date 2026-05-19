@@ -6,7 +6,7 @@ import * as router from 'vue-router';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import ProjectHeader from './ProjectHeader.vue';
 import { useProjectsStore } from '../projects.store';
-import type { Project } from '../projects.types';
+import type { Project, ProjectListItem } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { VIEWS } from '@/app/constants';
 import userEvent from '@testing-library/user-event';
@@ -306,9 +306,11 @@ describe('ProjectHeader', () => {
 	describe('new agent telemetry', () => {
 		beforeEach(() => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
-			projectsStore.currentProject = createTestProject({
+			const project = createTestProject({
 				scopes: ['workflow:create', 'agent:create'],
 			});
+			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
 		});
 
 		it('tracks source=button when the agent main button is clicked', async () => {
@@ -639,6 +641,7 @@ describe('ProjectHeader', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
 			const project = createTestProject({ scopes: ['agent:create'] });
 			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
 
 			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
 
@@ -650,6 +653,7 @@ describe('ProjectHeader', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
 			const project = createTestProject({ scopes: [] });
 			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
 
 			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
 
