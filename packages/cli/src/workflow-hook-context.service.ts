@@ -8,12 +8,15 @@ import { Service } from '@n8n/di';
 export class WorkflowHookContextService {
 	constructor(private readonly workflowRepository: WorkflowRepository) {}
 
-	async hasWorkflowTag(workflowId: string, tagName: string): Promise<boolean> {
-		const count = await this.workflowRepository
+	async hasWorkflowTags(workflowId: string, tagNames: [string, ...string[]]): Promise<boolean> {
+		const result = await this.workflowRepository
 			.createQueryBuilder('workflow')
-			.innerJoin('workflow.tags', 'tag', 'tag.name = :tagName', { tagName })
+			.innerJoin('workflow.tags', 'tag')
 			.where('workflow.id = :workflowId', { workflowId })
-			.getCount();
-		return count > 0;
+			.andWhere('tag.name IN (:...tagNames)', { tagNames })
+			.select('COUNT(*)', 'matchingTagsCount')
+			.getRawOne<{ matchingTagsCount: string }>();
+
+		return Number(result?.matchingTagsCount ?? 0) === tagNames.length;
 	}
 }

@@ -21,29 +21,31 @@ describe('WorkflowHookContextService', () => {
 		await testDb.terminate();
 	});
 
-	describe('hasWorkflowTag', () => {
-		it('returns true when the workflow has the tag', async () => {
+	describe('hasWorkflowTags', () => {
+		it('returns true when the workflow has all required tags', async () => {
+			const workflow = await createWorkflow();
+			await createTag({ name: 'tagOne' }, workflow);
+			await createTag({ name: 'tagTwo' }, workflow);
+
+			await expect(service.hasWorkflowTags(workflow.id, ['tagOne', 'tagTwo'])).resolves.toBe(true);
+		});
+
+		it('returns false when the workflow is missing some of the required tags', async () => {
 			const workflow = await createWorkflow();
 			await createTag({ name: 'tagOne' }, workflow);
 
-			await expect(service.hasWorkflowTag(workflow.id, 'tagOne')).resolves.toBe(true);
+			await expect(service.hasWorkflowTags(workflow.id, ['tagOne', 'tagTwo'])).resolves.toBe(false);
 		});
 
-		it('returns false when the workflow does not have the tag', async () => {
+		it('returns false when the workflow has none of the required tags', async () => {
 			const workflow = await createWorkflow();
-			await createTag({ name: 'otherTag' }, workflow);
+			await createTag({ name: 'unrelatedTag' }, workflow);
 
-			await expect(service.hasWorkflowTag(workflow.id, 'tagOne')).resolves.toBe(false);
-		});
-
-		it('returns false when the workflow has no tags', async () => {
-			const workflow = await createWorkflow();
-
-			await expect(service.hasWorkflowTag(workflow.id, 'tagOne')).resolves.toBe(false);
+			await expect(service.hasWorkflowTags(workflow.id, ['tagOne', 'tagTwo'])).resolves.toBe(false);
 		});
 
 		it('returns false when the workflow does not exist', async () => {
-			await expect(service.hasWorkflowTag('non-existent-id', 'tagOne')).resolves.toBe(false);
+			await expect(service.hasWorkflowTags('non-existent-id', ['tagOne'])).resolves.toBe(false);
 		});
 	});
 });
