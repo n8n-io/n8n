@@ -22,6 +22,7 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import WorkflowChatToggleButton from '@/features/ai/workflowChat/WorkflowChatToggleButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -498,6 +499,7 @@ onBeforeUnmount(() => {
 
 		<ConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" />
+			<WorkflowChatToggleButton v-if="!isNewWorkflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
 				ref="workflowHeaderActions"

@@ -5,6 +5,7 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
+	InstanceAiWorkflowContext,
 } from '@n8n/api-types';
 
 /**
@@ -19,6 +20,7 @@ export async function postMessage(
 	attachments?: InstanceAiAttachment[],
 	timeZone?: string,
 	pushRef?: string,
+	workflowContext?: InstanceAiWorkflowContext,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
 		context,
@@ -30,6 +32,7 @@ export async function postMessage(
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
+			...(workflowContext ? { workflowContext } : {}),
 		},
 	);
 }

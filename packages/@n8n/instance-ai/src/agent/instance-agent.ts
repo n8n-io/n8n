@@ -183,6 +183,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
+		workflowChatMode: !!context.currentWorkflowSnapshot,
 	});
 
 	// NOTE: we intentionally do NOT pass `workspace` to the orchestrator Agent.

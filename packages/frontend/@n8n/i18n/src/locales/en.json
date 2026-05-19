@@ -6204,5 +6204,9 @@
 	"instanceAi.welcomeModal.gateway.instructions.windows": "Open Terminal (Windows key, type \"Terminal\") and paste the command below.",
 	"instanceAi.welcomeModal.gateway.instructions.linux": "Open your terminal and paste the command below.",
 	"instanceAi.welcomeModal.gateway.tokenExpiresIn": "Token expires in {minutes} min",
-	"instanceAi.welcomeModal.gateway.tokenExpired": "Token has expired. Copy the command again."
+	"instanceAi.welcomeModal.gateway.tokenExpired": "Token has expired. Copy the command again.",
+	"workflowChat.toggle.tooltip": "Ask about this workflow",
+	"workflowChat.panel.title": "Workflow chat",
+	"workflowChat.panel.empty.title": "Ask anything about this workflow",
+	"workflowChat.panel.empty.body": "Try: \"What triggers this workflow?\", \"Which credentials are used?\", \"What happens if a node fails?\""
 }

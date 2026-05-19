@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { WORKFLOW_CHAT_READONLY_INSTRUCTIONS } from './workflow-chat-prompt';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
@@ -18,6 +19,12 @@ interface SystemPromptOptions {
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/**
+	 * When true, the agent is operating in workflow-chat read-only Q&A mode for
+	 * a specific open workflow. Appends instructions that forbid mutating tools
+	 * and direct the agent to the `workflow-context` tool.
+	 */
+	workflowChatMode?: boolean;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -80,9 +87,10 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		timeZone,
 		browserAvailable,
 		branchReadOnly,
+		workflowChatMode,
 	} = options;
 
-	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
+	const baseReturn = `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 
@@ -242,4 +250,7 @@ Used by both the checkpoint verification path and the bypassPlan post-build veri
 **Do not patch a workflow first when verify returns null downstream values.** Re-run verify with the corrected \`inputData\` shape. Only patch the workflow if the expression is wrong against the *production* trigger output shape (consult node descriptions), not the \`instanceAi\` pin data path.
 
 If the user sends a correction while a build is running, call \`task-control(action="correct-task")\` with the task ID and correction.`;
+
+	const workflowChatSection = workflowChatMode ? `\n\n${WORKFLOW_CHAT_READONLY_INSTRUCTIONS}` : '';
+	return baseReturn + workflowChatSection;
 }

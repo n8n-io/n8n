@@ -287,4 +287,16 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('## Instance Info');
 		});
 	});
+
+	describe('workflow chat mode', () => {
+		it('includes workflow-chat read-only instructions when workflowChatMode is true', () => {
+			const prompt = getSystemPrompt({ workflowChatMode: true });
+			expect(prompt).toContain('Workflow Chat (Read-Only Mode)');
+		});
+
+		it('omits workflow-chat read-only instructions by default', () => {
+			const prompt = getSystemPrompt({});
+			expect(prompt).not.toContain('Workflow Chat (Read-Only Mode)');
+		});
+	});
 });

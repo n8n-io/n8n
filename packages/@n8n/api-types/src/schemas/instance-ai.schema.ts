@@ -666,12 +666,34 @@ const instanceAiAttachmentSchema = z.object({
 
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
+const workflowContextNodeSchema = z.object({
+	name: z.string(),
+	type: z.string(),
+	typeVersion: z.number().optional(),
+	parameters: z.record(z.unknown()).optional(),
+	credentials: z.record(z.unknown()).optional(),
+	disabled: z.boolean().optional(),
+	position: z.array(z.number()).optional(),
+	webhookId: z.string().optional(),
+});
+
+const workflowContextSchema = z.object({
+	workflowId: z.string(),
+	name: z.string().optional(),
+	nodes: z.array(workflowContextNodeSchema).max(500),
+	connections: z.record(z.unknown()),
+	activeNodeName: z.string().optional(),
+});
+
+export type InstanceAiWorkflowContext = z.infer<typeof workflowContextSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
+	workflowContext: workflowContextSchema.optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
