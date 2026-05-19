@@ -1,4 +1,3 @@
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	getConnectionTypes,
 	NodeConnectionTypes,
@@ -26,6 +25,21 @@ export interface InvalidAiToolSource {
 	sourceNode: string;
 	sourceType: string;
 	targets: string[];
+}
+
+/**
+ * Minimal workflow shape the check reads. Declared structurally rather than as
+ * `Pick<WorkflowJSON, ...>` so callers can pass either the SDK's `WorkflowJSON`
+ * or an `n8n-workflow`-typed slice — the two declare duplicate but formally
+ * separate `IConnections` / node types that are not assignable to each other.
+ */
+export interface WorkflowForToolSourceCheck {
+	nodes: ReadonlyArray<{ name?: string; type: string; typeVersion?: number }>;
+	connections: {
+		[sourceNode: string]: {
+			[connectionType: string]: Array<Array<{ node: string }> | null>;
+		};
+	};
 }
 
 /**
@@ -60,7 +74,7 @@ function isValidAiToolSourceType(
  * node with its downstream targets.
  */
 export function findInvalidAiToolSources(
-	workflow: WorkflowJSON,
+	workflow: WorkflowForToolSourceCheck,
 	resolveOutputs: NodeOutputsResolver,
 ): InvalidAiToolSource[] {
 	const nodesByName = new Map<string, { type: string; typeVersion: number }>();
@@ -141,7 +155,7 @@ export function createNodeOutputsResolver(nodeTypes: NodeTypes): NodeOutputsReso
  * `create_workflow_from_code` returns `{ error }`.
  */
 export function buildInvalidAiToolSourceErrorResponse<T extends Record<string, unknown>>(
-	workflow: WorkflowJSON,
+	workflow: WorkflowForToolSourceCheck,
 	nodeTypes: NodeTypes,
 	buildOutput: (errorMessage: string) => T,
 	telemetryPayload: UserCalledMCPToolEventPayload,

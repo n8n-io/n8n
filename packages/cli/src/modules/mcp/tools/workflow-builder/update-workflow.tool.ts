@@ -148,11 +148,7 @@ export const createUpdateWorkflowTool = (
 			}
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
-				{
-					name: result.workflow.name,
-					nodes: result.workflow.nodes,
-					connections: result.workflow.connections,
-				} as unknown as WorkflowJSON,
+				{ nodes: result.workflow.nodes, connections: result.workflow.connections },
 				nodeTypes,
 				(errorMessage) => ({ error: errorMessage }),
 				telemetryPayload,
