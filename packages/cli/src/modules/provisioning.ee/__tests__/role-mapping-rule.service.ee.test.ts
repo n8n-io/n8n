@@ -1,3 +1,4 @@
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
@@ -377,6 +378,60 @@ describe('RoleMappingRuleService', () => {
 			expect(defaultUpdateSpy).toHaveBeenCalledWith(
 				expect.anything(),
 				{ id: 'rule-b' },
+				{ order: 2 },
+			);
+		});
+
+		it('should retry create after a concurrent temporary order conflict', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+
+			roleMappingRuleRepository.find
+				.mockResolvedValueOnce([{ id: 'rule-a', order: 0 } as RoleMappingRule])
+				.mockResolvedValueOnce([
+					{ id: 'rule-a', order: 0 } as RoleMappingRule,
+					{ id: 'rule-concurrent', order: 1 } as RoleMappingRule,
+				]);
+
+			const duplicateOrderError = new QueryFailedError(
+				'insert',
+				[],
+				Object.assign(new Error('duplicate key value violates unique constraint'), {
+					code: '23505',
+				}),
+			);
+
+			const savedRule = {
+				id: 'rule-new',
+				expression: 'claims.new',
+				role: globalRole,
+				type: 'instance',
+				order: 2,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save
+				.mockRejectedValueOnce(duplicateOrderError)
+				.mockResolvedValueOnce(savedRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			await service.create({
+				expression: 'claims.new',
+				role: globalRole.slug,
+				type: 'instance',
+			});
+
+			expect(roleMappingRuleRepository.find).toHaveBeenCalledTimes(2);
+			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(2);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-concurrent' },
+				{ order: 1 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-new' },
 				{ order: 2 },
 			);
 		});

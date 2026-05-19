@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
+import { type EntityManager, type FindOptionsOrder, In, QueryFailedError } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -99,37 +99,7 @@ export class RoleMappingRuleService {
 			throw new BadRequestError('One or more projects were not found');
 		}
 
-		const existingRules = await this.roleMappingRuleRepository.find({
-			where: { type: dto.type },
-			select: ['id', 'order'],
-			order: { order: 'ASC' },
-		});
-
-		// Clamp the requested index into the valid range. Omitted order appends.
-		const requestedOrder = dto.order ?? existingRules.length;
-		const targetIndex = Math.min(Math.max(requestedOrder, 0), existingRules.length);
-
-		// Save the new rule at a temporary order beyond any currently-used slot,
-		// so the unique (type, order) constraint cannot fire on the initial insert.
-		const maxOrder = existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
-		const tempOrder = Math.max(maxOrder, existingRules.length - 1) + 1;
-
-		const rule = new RoleMappingRule();
-		rule.expression = dto.expression;
-		rule.role = role;
-		rule.type = dto.type;
-		rule.order = tempOrder;
-		rule.projects = projects;
-
-		const saved = await this.roleMappingRuleRepository.save(rule);
-
-		// Build the final ordering: existing rules in their current order, with the
-		// newly saved rule spliced in at targetIndex. applyOrder atomically renumbers
-		// everything to [0..n-1] using its two-phase transaction.
-		const reorderedIds = existingRules.map((r) => r.id);
-		reorderedIds.splice(targetIndex, 0, saved.id);
-
-		await this.applyOrder(reorderedIds);
+		const saved = await this.saveWithOrderRetry(dto, role, projects);
 
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: saved.id },
@@ -137,6 +107,61 @@ export class RoleMappingRuleService {
 		});
 
 		return this.toResponse(loaded);
+	}
+
+	private async saveWithOrderRetry(
+		dto: CreateRoleMappingRuleInput,
+		role: RoleMappingRule['role'],
+		projects: RoleMappingRule['projects'],
+	): Promise<RoleMappingRule> {
+		const maxAttempts = 3;
+
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			const existingRules = await this.roleMappingRuleRepository.find({
+				where: { type: dto.type },
+				select: ['id', 'order'],
+				order: { order: 'ASC' },
+			});
+
+			// Clamp the requested index into the valid range. Omitted order appends.
+			const requestedOrder = dto.order ?? existingRules.length;
+			const targetIndex = Math.min(Math.max(requestedOrder, 0), existingRules.length);
+
+			// Save the new rule at a temporary order beyond any currently-used slot,
+			// so the unique (type, order) constraint cannot fire on the initial insert
+			// unless another create for the same type uses the same snapshot concurrently.
+			const maxOrder = existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
+			const tempOrder = Math.max(maxOrder, existingRules.length - 1) + 1;
+
+			const rule = new RoleMappingRule();
+			rule.expression = dto.expression;
+			rule.role = role;
+			rule.type = dto.type;
+			rule.order = tempOrder;
+			rule.projects = projects;
+
+			try {
+				const saved = await this.roleMappingRuleRepository.save(rule);
+
+				// Build the final ordering: existing rules in their current order, with the
+				// newly saved rule spliced in at targetIndex. applyOrder atomically renumbers
+				// everything to [0..n-1] using its two-phase transaction.
+				const reorderedIds = existingRules.map((r) => r.id);
+				reorderedIds.splice(targetIndex, 0, saved.id);
+
+				await this.applyOrder(reorderedIds);
+
+				return saved;
+			} catch (error) {
+				if (attempt < maxAttempts - 1 && isUniqueOrderViolation(error)) {
+					continue;
+				}
+
+				throw error;
+			}
+		}
+
+		throw new ConflictError('Could not create role mapping rule due to an order conflict');
 	}
 
 	async patch(id: string, dto: PatchRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
@@ -338,4 +363,19 @@ export class RoleMappingRuleService {
 			updatedAt: loaded.updatedAt.toISOString(),
 		};
 	}
+}
+
+function isUniqueOrderViolation(error: unknown) {
+	if (!(error instanceof QueryFailedError)) return false;
+
+	const driverError = error.driverError as { code?: string; message?: string; detail?: string } | undefined;
+	const code = driverError?.code;
+	const message = `${error.message} ${driverError?.message ?? ''} ${driverError?.detail ?? ''}`;
+
+	return (
+		code === '23505' ||
+		code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+		code === 'ER_DUP_ENTRY' ||
+		(code === 'SQLITE_CONSTRAINT' && message.includes('UNIQUE constraint failed'))
+	);
 }
