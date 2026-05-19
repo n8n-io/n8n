@@ -148,7 +148,6 @@
       "minimatch@<=5.1.8": "5.1.8",
       "minimatch@10": "10.2.3",
       "@hono/node-server": "1.19.13",
-      "protobufjs": "7.5.5",
       "follow-redirects": "1.16.0",
       "express-rate-limit": "8.2.2",
       "underscore": "1.13.8",
@@ -168,7 +167,10 @@
       "hono": "4.12.18",
       "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
       "uuid@<=13.0.1": "13.0.1",
-      "fast-uri": "3.1.2"
+      "fast-uri": "3.1.2",
+      "protobufjs": "7.5.6",
+      "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
+      "@opentelemetry/sdk-node@<=0.217.0": "0.217.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -184,6 +186,7 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
+      "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch"
     }
   }
