@@ -1,0 +1,15 @@
+---
+description: Env-var conventions for n8n
+globs: "packages/**/*.config.ts,packages/**/*.ts"
+alwaysApply: false
+---
+
+# n8n Env Configuration
+
+- Every new env var must be declared on a `@Config` class with the `@Env('VAR_NAME')` decorator from `@n8n/config` (or a module-local config class).
+- Provide a default value on the property (`string = ''`, `number = 60`, `boolean = false`). The decorator does not enforce typing without a default.
+- Add a docstring above the property describing what the var does, the default, and the unit (minutes, seconds, days, etc.).
+- Do not read `process.env.<NAME>` directly outside `@n8n/config` consumers. The decorator handles validation, type coercion, and `_FILE` indirection for secrets.
+- For module-local features (e.g. `packages/cli/src/modules/<feature>/<feature>.config.ts`), follow the same pattern. The module config gets injected via DI; you do not need to register it on `GlobalConfig`.
+- When the var enables a customer-facing feature, surface its current value through the relevant `FrontendModuleSettings` so the route guard can hide the feature when the var is off.
+- Keep naming consistent: feature-scoped vars use `N8N_<FEATURE>_<KNOB>`. LLM keys use `N8N_<FEATURE>_<PROVIDER>_API_KEY`. Demo flags use `N8N_DEMO_<FEATURE>` or `N8N_<FEATURE>_DEMO`.

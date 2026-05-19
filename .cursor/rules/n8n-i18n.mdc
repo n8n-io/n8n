@@ -1,0 +1,16 @@
+---
+description: i18n discipline for n8n frontend code
+globs: "packages/frontend/**/*.{ts,vue}"
+alwaysApply: false
+---
+
+# n8n i18n
+
+- All user-facing text goes through `@n8n/i18n`. Never hardcode English strings in templates.
+- When `baseText` substitutes a placeholder (`{count}`, `{name}`, etc.), the second argument MUST use `interpolate: { ... }`. A bare `{ count: 3 }` second argument silently fails to substitute and renders the literal placeholder text.
+  - Bad: `i18n.baseText('foo.bar', { count: 3 })`
+  - Good: `i18n.baseText('foo.bar', { interpolate: { count: 3 } })`
+- For pluralization, pair `interpolate` with `adjustToNumber`:
+  - `i18n.baseText('foo.bar', { interpolate: { count: n }, adjustToNumber: n })`
+- When you add a key, also add it to `packages/frontend/@n8n/i18n/src/locales/en.json`. Validate JSON syntax with a quick `node -e` parse before commit.
+- Reuse helper formatters that already wrap i18n correctly (e.g. `formatInsightsTimeSavedLabel` for time saved). Don't recreate inline `if (Math.abs(value) < 60) ...` formatting per component.

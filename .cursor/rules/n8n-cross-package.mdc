@@ -1,0 +1,14 @@
+---
+description: Cross-package change discipline for the n8n monorepo
+globs: "packages/@n8n/api-types/**,packages/cli/**,packages/frontend/**"
+alwaysApply: false
+---
+
+# n8n Cross-Package Changes
+
+- Cross-package changes follow the contract → producer → consumer order: extend `@n8n/api-types` first, then the cli, then the frontend.
+- After modifying `@n8n/api-types`, run `pnpm --filter @n8n/api-types build` before typechecking dependents. Frontend `vue-tsc` and cli `tsc` both consume the built `dist/`.
+- After modifying any `packages/@n8n/<name>` package that the frontend consumes (`@n8n/i18n`, `@n8n/rest-api-client`, `@n8n/stores`, `@n8n/design-system`), build that package before running the editor-ui typecheck.
+- For UI smoke tests via `pnpm start`, rebuild in this order: `@n8n/api-types → n8n → n8n-editor-ui → start`. The CLI serves the **built** editor from `packages/frontend/editor-ui/dist`.
+- Document the rebuild order in the PR description when api-types or any frontend workspace dep changed. Future reviewers will hit the same trap otherwise.
+- Verify both producer and consumer packages typecheck after a contract change. A green `cli` typecheck does not guarantee the frontend consumer compiles.

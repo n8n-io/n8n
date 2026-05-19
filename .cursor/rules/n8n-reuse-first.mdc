@@ -1,0 +1,31 @@
+---
+description: Search the design system and feature locals before adding a new component
+globs: "packages/frontend/editor-ui/src/**/*.{vue,ts}"
+alwaysApply: false
+---
+
+# n8n Reuse First
+
+Before creating a new component or composable, search for an existing equivalent. Custom UI introduced where a primitive exists is the largest source of duplicated work and visual drift in this codebase.
+
+## Search order
+
+1. `packages/frontend/@n8n/design-system/src/components/` — primitives (`N8nButton`, `N8nCard`, `N8nIconButton`, `N8nSelect`, `N8nDateRangePicker`, `N8nInput`, `N8nMarkdown`, etc.). Avoid components marked `@deprecated`.
+2. Feature-local equivalents in the area you're working on:
+   - Insights: `InsightsSummary`, `InsightsChart*`, `InsightsDataRangePicker`, `transformInsightsSummary`, `transformInsightsTimeSaved`, `formatInsightsTimeSavedLabel`.
+   - Chat surfaces: `ChatInputBase`, `ChatMarkdownChunk`, `ChatTypingIndicator`, the prompt-suggestion mixin in `_prompt-suggestion-buttons.scss`.
+   - AI assistant: `InstanceAi*` and `Agent*` already cover most chat patterns.
+3. Shared composables under `packages/frontend/editor-ui/src/app/composables/` and feature-local stores.
+
+## When you must create something new
+
+- Document the search in the PR description (which existing components you considered, why none fit). Future reviewers will check.
+- Place pure UI primitives in `@n8n/design-system`, not in editor-ui.
+- Place feature-specific composition in the feature folder, not under `app/`.
+- Use semantic tokens only. No hardcoded `px`/`rem`. No `_tokens.legacy.scss` imports.
+
+## Concrete recent examples
+
+- The Insights Analyst dashboard reuses `InsightsSummary` with the new `linkVariant="static"` prop instead of duplicating the KPI strip styling.
+- The Insights Analyst chat panel reuses `ChatInputBase` (sticky input + send/stop) and `ChatTypingIndicator` (three blinking dots) instead of recreating both.
+- Time-saved labels go through `formatInsightsTimeSavedLabel(minutes)` which centralizes the i18n + minute/hour switch.
