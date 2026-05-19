@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { readFileSync } from 'fs';
 import type ivm from 'isolated-vm';
 import path from 'path';
+
 import { AgentIsolatePool, type AgentIsolateSlot } from './agent-isolate-pool';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
