@@ -31,7 +31,6 @@ import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
-import { isEpisodicKnowledgeEnabled } from '../utils/agent-knowledge';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -123,10 +122,8 @@ const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
 const executionsCount = computed(() => sessionsStore.threads.length);
-const isKnowledgeEnabled = computed(() => isEpisodicKnowledgeEnabled(localConfig.value));
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
-	isKnowledgeEnabled,
 });
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();

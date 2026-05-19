@@ -6157,7 +6157,7 @@
 	"agents.builder.knowledge.listLabel": "Knowledge entries",
 	"agents.builder.knowledge.search.placeholder": "Search knowledge",
 	"agents.builder.knowledge.empty.title": "No knowledge yet",
-	"agents.builder.knowledge.empty.description": "Cross-session memories will show here when this agent creates them.",
+	"agents.builder.knowledge.empty.description": "This tab shows source-backed memories the agent can recall across chats. Entries appear after cross-session recall is enabled and conversations create durable knowledge.",
 	"agents.builder.knowledge.noResults.title": "No matching knowledge",
 	"agents.builder.knowledge.noResults.description": "Try another search term.",
 	"agents.builder.knowledge.inspectorLabel": "Knowledge trace",

@@ -1,9 +1,23 @@
 import type { AgentKnowledgeEntry } from '@n8n/api-types';
 
-import type { AgentJsonConfig } from '../types';
+export function areKnowledgeEntriesEquivalent(
+	currentEntries: AgentKnowledgeEntry[],
+	nextEntries: AgentKnowledgeEntry[],
+): boolean {
+	if (currentEntries.length !== nextEntries.length) return false;
 
-export function isEpisodicKnowledgeEnabled(config: AgentJsonConfig | null): boolean {
-	return config?.memory?.enabled === true && config.memory.episodicMemory?.enabled === true;
+	return currentEntries.every((entry, index) => {
+		const nextEntry = nextEntries[index];
+		return (
+			nextEntry !== undefined &&
+			entry.id === nextEntry.id &&
+			entry.content === nextEntry.content &&
+			entry.updatedAt === nextEntry.updatedAt &&
+			entry.lastSeenAt === nextEntry.lastSeenAt &&
+			entry.sourceCount === nextEntry.sourceCount &&
+			entry.sources.length === nextEntry.sources.length
+		);
+	});
 }
 
 export function doesKnowledgeEntryMatchSearch(entry: AgentKnowledgeEntry, query: string): boolean {

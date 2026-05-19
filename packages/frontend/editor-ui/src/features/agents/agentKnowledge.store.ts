@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { getAgentKnowledge } from './composables/useAgentApi';
+import { areKnowledgeEntriesEquivalent } from './utils/agent-knowledge';
 
 function keyFor(projectId: string, agentId: string) {
 	return `${projectId}:${agentId}`;
@@ -16,19 +17,25 @@ export const useAgentKnowledgeStore = defineStore('agentKnowledge', () => {
 
 	let latestKey: string | null = null;
 
-	async function fetchKnowledge(projectId: string, agentId: string) {
+	async function fetchKnowledge(
+		projectId: string,
+		agentId: string,
+		options: { silent?: boolean } = {},
+	) {
 		const key = keyFor(projectId, agentId);
 		latestKey = key;
-		loading.value = true;
+		if (!options.silent) loading.value = true;
 
 		try {
 			const rootStore = useRootStore();
 			const response = await getAgentKnowledge(rootStore.restApiContext, projectId, agentId);
 			if (latestKey !== key) return;
 			enabled.value = response.enabled;
-			entries.value = response.entries;
+			if (!areKnowledgeEntriesEquivalent(entries.value, response.entries)) {
+				entries.value = response.entries;
+			}
 		} finally {
-			if (latestKey === key) loading.value = false;
+			if (!options.silent && latestKey === key) loading.value = false;
 		}
 	}
 

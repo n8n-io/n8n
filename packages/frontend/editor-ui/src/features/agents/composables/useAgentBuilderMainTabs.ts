@@ -35,10 +35,8 @@ function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
 
 export function useAgentBuilderMainTabs({
 	executionsCount,
-	isKnowledgeEnabled,
 }: {
 	executionsCount: ComputedRef<number>;
-	isKnowledgeEnabled: ComputedRef<boolean>;
 }) {
 	const route = useRoute();
 	const router = useRouter();
@@ -54,9 +52,7 @@ export function useAgentBuilderMainTabs({
 
 	const activeMainTab = computed<AgentBuilderMainTab>({
 		get() {
-			if (selectedSection.value === KNOWLEDGE_SECTION_KEY && isKnowledgeEnabled.value) {
-				return 'knowledge';
-			}
+			if (selectedSection.value === KNOWLEDGE_SECTION_KEY) return 'knowledge';
 			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'executions';
 			if (selectedSection.value === 'raw') return 'raw';
 			return 'agent';
@@ -68,14 +64,10 @@ export function useAgentBuilderMainTabs({
 
 	const mainTabOptions = computed(() => [
 		{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' as const },
-		...(isKnowledgeEnabled.value
-			? [
-					{
-						label: i18n.baseText('agents.builder.header.tab.knowledge'),
-						value: 'knowledge' as const,
-					},
-				]
-			: []),
+		{
+			label: i18n.baseText('agents.builder.header.tab.knowledge'),
+			value: 'knowledge' as const,
+		},
 		{
 			label: i18n.baseText('agents.builder.header.tab.executions'),
 			value: 'executions' as const,

@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentKnowledgeEntry } from '@n8n/api-types';
 
-import type { AgentJsonConfig } from '../types';
 import {
+	areKnowledgeEntriesEquivalent,
 	doesKnowledgeEntryMatchSearch,
-	isEpisodicKnowledgeEnabled,
 } from '../utils/agent-knowledge';
 
 function makeEntry(overrides: Partial<AgentKnowledgeEntry> = {}): AgentKnowledgeEntry {
@@ -34,35 +33,16 @@ function makeEntry(overrides: Partial<AgentKnowledgeEntry> = {}): AgentKnowledge
 }
 
 describe('agent knowledge', () => {
-	it('is enabled only when session memory and episodic memory are both enabled', () => {
-		expect(
-			isEpisodicKnowledgeEnabled({
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					episodicMemory: { enabled: true, credential: 'credential-1' },
-				},
-			} as AgentJsonConfig),
-		).toBe(true);
+	it('detects unchanged knowledge entries', () => {
+		const entry = makeEntry();
 
+		expect(areKnowledgeEntriesEquivalent([], [])).toBe(true);
+		expect(areKnowledgeEntriesEquivalent([entry], [makeEntry()])).toBe(true);
 		expect(
-			isEpisodicKnowledgeEnabled({
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					episodicMemory: { enabled: false },
-				},
-			} as AgentJsonConfig),
-		).toBe(false);
-
-		expect(
-			isEpisodicKnowledgeEnabled({
-				memory: {
-					enabled: false,
-					storage: 'n8n',
-					episodicMemory: { enabled: true, credential: 'credential-1' },
-				},
-			} as AgentJsonConfig),
+			areKnowledgeEntriesEquivalent(
+				[entry],
+				[makeEntry({ lastSeenAt: '2026-05-19T11:00:00.000Z' })],
+			),
 		).toBe(false);
 	});
 

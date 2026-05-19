@@ -7,6 +7,7 @@ import type { BadgeTheme } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import { TIME } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentKnowledgeStore } from '../agentKnowledge.store';
@@ -23,12 +24,15 @@ interface SourceGroup {
 type KnowledgeMarker = NonNullable<AgentKnowledgeSource['observationMarker']>;
 type MarkerAccent = KnowledgeMarker | 'unknown';
 
+const KNOWLEDGE_REFRESH_INTERVAL_MS = 5 * TIME.SECOND;
+
 const route = useRoute();
 const i18n = useI18n();
 const toast = useToast();
 const knowledgeStore = useAgentKnowledgeStore();
 const selectedEntryId = ref<string | null>(null);
 const searchQuery = ref('');
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -92,6 +96,21 @@ function closeInspector() {
 	selectedEntryId.value = null;
 }
 
+function stopPolling() {
+	if (!refreshTimer) return;
+	clearInterval(refreshTimer);
+	refreshTimer = null;
+}
+
+function startPolling(currentProjectId: string, currentAgentId: string) {
+	stopPolling();
+	refreshTimer = setInterval(() => {
+		void knowledgeStore
+			.fetchKnowledge(currentProjectId, currentAgentId, { silent: true })
+			.catch(() => undefined);
+	}, KNOWLEDGE_REFRESH_INTERVAL_MS);
+}
+
 function markerLabel(marker: AgentKnowledgeSource['observationMarker'] | 'unknown'): string {
 	if (!marker || marker === 'unknown')
 		return i18n.baseText('agents.builder.knowledge.marker.unknown');
@@ -150,6 +169,7 @@ watch(
 watch(
 	[projectId, agentId],
 	async ([currentProjectId, currentAgentId]) => {
+		stopPolling();
 		if (!currentProjectId || !currentAgentId) return;
 		selectedEntryId.value = null;
 		try {
@@ -157,11 +177,14 @@ watch(
 		} catch (error) {
 			toast.showError(error, i18n.baseText('agents.builder.knowledge.loadError'));
 		}
+		if (projectId.value !== currentProjectId || agentId.value !== currentAgentId) return;
+		startPolling(currentProjectId, currentAgentId);
 	},
 	{ immediate: true },
 );
 
 onBeforeUnmount(() => {
+	stopPolling();
 	knowledgeStore.reset();
 });
 </script>
