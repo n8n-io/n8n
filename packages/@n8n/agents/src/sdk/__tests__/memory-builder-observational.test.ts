@@ -1,11 +1,12 @@
 import type { AgentRuntime } from '../../runtime/agent-runtime';
 import { InMemoryMemory } from '../../runtime/memory-store';
-import type { BuiltMemory, ObservationalMemoryConfig } from '../../types';
+import type { BuiltMemory, MemoryConfig, ObservationalMemoryConfig } from '../../types';
 import { Agent } from '../agent';
 import {
 	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
 	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 	Memory,
+	resolveMemoryConfigDefaults,
 	resolveObservationalMemoryConfig,
 } from '../memory';
 
@@ -99,6 +100,36 @@ describe('Memory builder — observation log memory', () => {
 		});
 		expect(resolved.observe).toBe(observe);
 		expect(resolved.reflect).toBe(reflect);
+	});
+
+	it('preserves explicit observation-log render budget when resolving defaults', () => {
+		const resolved = resolveMemoryConfigDefaults(
+			{
+				memory: new InMemoryMemory(),
+				lastMessages: 10,
+				observationLog: { renderTokenBudget: 123 },
+				observationalMemory: {},
+			} as MemoryConfig,
+			{ defaultModel: 'openai/gpt-4o-mini' },
+		);
+
+		expect(resolved.observationLog).toEqual({ renderTokenBudget: 123 });
+		expect(resolved.observationalMemory?.renderTokenBudget).toBe(123);
+	});
+
+	it('lets explicit observational render budget override observation-log render budget', () => {
+		const resolved = resolveMemoryConfigDefaults(
+			{
+				memory: new InMemoryMemory(),
+				lastMessages: 10,
+				observationLog: { renderTokenBudget: 123 },
+				observationalMemory: { renderTokenBudget: 456 },
+			} as MemoryConfig,
+			{ defaultModel: 'openai/gpt-4o-mini' },
+		);
+
+		expect(resolved.observationLog).toEqual({ renderTokenBudget: 456 });
+		expect(resolved.observationalMemory?.renderTokenBudget).toBe(456);
 	});
 
 	it('passes resolved observational memory config into the runtime', async () => {

@@ -112,7 +112,15 @@ export function resolveMemoryConfigDefaults(
 		);
 	}
 
-	const observationalMemory = resolveObservationalMemoryConfig(config.observationalMemory, options);
+	const observationalMemoryConfig =
+		config.observationLog?.renderTokenBudget !== undefined &&
+		config.observationalMemory.renderTokenBudget === undefined
+			? {
+					...config.observationalMemory,
+					renderTokenBudget: config.observationLog.renderTokenBudget,
+				}
+			: config.observationalMemory;
+	const observationalMemory = resolveObservationalMemoryConfig(observationalMemoryConfig, options);
 
 	return normalizeMemoryConfig({
 		...config,
