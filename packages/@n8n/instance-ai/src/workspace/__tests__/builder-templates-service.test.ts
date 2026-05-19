@@ -7,6 +7,7 @@ import JSZip from 'jszip';
 import {
 	BuilderTemplatesService,
 	type BuilderTemplatesServiceOptions,
+	builderTemplatesOptionsFromEnv,
 } from '../builder-templates-service';
 
 const ORIGINAL_FETCH = globalThis.fetch;
@@ -216,5 +217,76 @@ describe('BuilderTemplatesService', () => {
 
 		expect(bundle.version).toBe('"sha-1"');
 		expect(bundle.files.map((f) => f.filename)).toEqual(['alpha.ts', 'beta.ts']);
+	});
+
+	it('does not send If-None-Match on initial fetch when only an orphan etag exists on disk', async () => {
+		// Simulate a previously-cached etag without a matching zip — e.g. the zip
+		// was deleted or never finished writing. A 304 here would leave the service
+		// permanently empty for the process, so the initial request must be
+		// unconditional.
+		const cacheDir = await makeTempDir();
+		await fsp.mkdir(cacheDir, { recursive: true });
+		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"orphan"');
+
+		const state = await makeState();
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		expect(state.calls.lastIfNoneMatch).toBeNull();
+		expect(bundle.version).toBe('"sha-1"');
+		expect(bundle.files.map((f) => f.filename)).toEqual(['alpha.ts', 'beta.ts']);
+	});
+});
+
+describe('builderTemplatesOptionsFromEnv', () => {
+	const ORIGINAL_ENV = { ...process.env };
+
+	afterEach(() => {
+		process.env = { ...ORIGINAL_ENV };
+	});
+
+	function clearEnv() {
+		delete process.env.N8N_INSTANCE_AI_TEMPLATES_URL;
+		delete process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS;
+		delete process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED;
+	}
+
+	it('parses a valid refresh hours value', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '6';
+		const opts = builderTemplatesOptionsFromEnv();
+		expect(opts.refreshIntervalMs).toBe(6 * 60 * 60 * 1000);
+	});
+
+	it('omits refreshIntervalMs and warns when refresh hours is not a number', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = 'banana';
+		const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		const opts = builderTemplatesOptionsFromEnv({ logger });
+		expect(opts.refreshIntervalMs).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS'),
+			expect.objectContaining({ value: 'banana' }),
+		);
+	});
+
+	it('omits refreshIntervalMs when refresh hours is zero or negative', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '0';
+		expect(builderTemplatesOptionsFromEnv().refreshIntervalMs).toBeUndefined();
+
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '-4';
+		expect(builderTemplatesOptionsFromEnv().refreshIntervalMs).toBeUndefined();
+	});
+
+	it('honours the disabled flag and base URL', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED = 'true';
+		process.env.N8N_INSTANCE_AI_TEMPLATES_URL = 'https://example.com/v2';
+		const opts = builderTemplatesOptionsFromEnv();
+		expect(opts.disabled).toBe(true);
+		expect(opts.cdnBaseUrl).toBe('https://example.com/v2');
 	});
 });

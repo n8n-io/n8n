@@ -163,8 +163,12 @@ export class BuilderTemplatesService {
 
 	private async refresh(): Promise<void> {
 		try {
-			const cachedEtag = this.state?.bundle.version ?? (await this.readEtagFromDisk());
+			// Only send a conditional request when we already have a bundle in
+			// memory to fall back to. Sending If-None-Match with an orphan etag
+			// (e.g. zip missing/corrupt but etag.txt present) could return 304
+			// and leave the service permanently empty for this process.
 			const headers: Record<string, string> = {};
+			const cachedEtag = this.state?.bundle.version ?? null;
 			if (cachedEtag) headers['If-None-Match'] = cachedEtag;
 
 			const response = await fetch(this.zipUrl, {
@@ -275,14 +279,36 @@ async function touchZipFile(target: string): Promise<void> {
 /**
  * Read the env-driven configuration into a `BuilderTemplatesServiceOptions`.
  * Returned options can be overridden at the call site.
+ *
+ * Invalid `N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS` values are warned about and
+ * dropped so the constructor's default kicks in — otherwise `Number("abc")`
+ * would yield `NaN` and silently disable refreshes.
  */
-export function builderTemplatesOptionsFromEnv(): BuilderTemplatesServiceOptions {
+export function builderTemplatesOptionsFromEnv({
+	logger,
+}: { logger?: Logger } = {}): BuilderTemplatesServiceOptions {
 	const url = process.env.N8N_INSTANCE_AI_TEMPLATES_URL;
-	const hours = process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS;
+	const hoursRaw = process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS;
 	const disabled = process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED;
+
+	const refreshIntervalMs = parseRefreshHoursMs(hoursRaw, logger);
+
 	return {
 		...(url ? { cdnBaseUrl: url } : {}),
-		...(hours ? { refreshIntervalMs: Number(hours) * 60 * 60 * 1000 } : {}),
+		...(refreshIntervalMs !== null ? { refreshIntervalMs } : {}),
 		disabled: disabled === '1' || disabled?.toLowerCase() === 'true',
 	};
+}
+
+function parseRefreshHoursMs(raw: string | undefined, logger?: Logger): number | null {
+	if (raw === undefined || raw === '') return null;
+	const hours = Number(raw);
+	if (!Number.isFinite(hours) || hours <= 0) {
+		logger?.warn(
+			'[builder-templates] ignoring invalid N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS, using default',
+			{ value: raw },
+		);
+		return null;
+	}
+	return hours * 60 * 60 * 1000;
 }

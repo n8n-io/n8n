@@ -265,7 +265,7 @@ export class InstanceAiAdapterService {
 	private getTemplatesService(): BuilderTemplatesService {
 		if (!this.templatesService) {
 			this.templatesService = new BuilderTemplatesService({
-				...builderTemplatesOptionsFromEnv(),
+				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
 				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
 				logger: this.logger,
 			});
