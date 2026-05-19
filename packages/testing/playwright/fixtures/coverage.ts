@@ -43,6 +43,11 @@ function fileName(testInfo: TestInfo, suffix: string): string {
  * close mid-test; a final snapshot at fixture teardown captures coverage
  * from pages still open when the test finishes.
  */
+const log = (msg: string, extra?: Record<string, unknown>): void => {
+	const payload = extra ? ` ${JSON.stringify(extra)}` : '';
+	console.log(`[coverage-writer] ${msg}${payload}`);
+};
+
 export const coverageWriterFixtures = {
 	_coverageWriter: [
 		async (
@@ -50,46 +55,67 @@ export const coverageWriterFixtures = {
 			use: (value: undefined) => Promise<void>,
 			testInfo: TestInfo,
 		) => {
+			log('fixture entered', {
+				project: testInfo.project.name,
+				testId: testInfo.testId,
+				outDir: OUT_DIR,
+			});
 			if (testInfo.project.name !== COVERAGE_PROJECT_NAME) {
+				log('skipped: project name mismatch');
 				await use(undefined);
 				return;
 			}
 
-			await context.exposeFunction(BROWSER_HOOK, async (json: string) => {
-				if (!json) return;
-				try {
-					const parsed: unknown = JSON.parse(json);
-					if (parsed && typeof parsed === 'object') {
-						await writeCoverage(
-							parsed as IstanbulCoverage,
-							fileName(testInfo, `unload-${randomBytes(4).toString('hex')}`),
-						);
-					}
-				} catch {
-					// best-effort
-				}
-			});
-
-			await context.addInitScript((hook) => {
-				window.addEventListener('beforeunload', () => {
-					const cov = window.__coverage__;
-					const dump = (window as unknown as Record<string, unknown>)[hook];
-					if (cov && typeof dump === 'function') {
-						(dump as (json: string) => void)(JSON.stringify(cov));
+			try {
+				await context.exposeFunction(BROWSER_HOOK, async (json: string) => {
+					if (!json) return;
+					try {
+						const parsed: unknown = JSON.parse(json);
+						if (parsed && typeof parsed === 'object') {
+							const name = fileName(testInfo, `unload-${randomBytes(4).toString('hex')}`);
+							await writeCoverage(parsed as IstanbulCoverage, name);
+							log('wrote unload snapshot', { name });
+						}
+					} catch (error) {
+						log('unload write failed', { error: String(error) });
 					}
 				});
-			}, BROWSER_HOOK);
+				log('exposeFunction registered');
+			} catch (error) {
+				log('exposeFunction threw', { error: String(error) });
+			}
+
+			try {
+				await context.addInitScript((hook) => {
+					window.addEventListener('beforeunload', () => {
+						const cov = window.__coverage__;
+						const dump = (window as unknown as Record<string, unknown>)[hook];
+						if (cov && typeof dump === 'function') {
+							(dump as (json: string) => void)(JSON.stringify(cov));
+						}
+					});
+				}, BROWSER_HOOK);
+				log('addInitScript registered');
+			} catch (error) {
+				log('addInitScript threw', { error: String(error) });
+			}
 
 			await use(undefined);
 
-			for (const [index, page] of context.pages().entries()) {
+			const pages = context.pages();
+			log('test ended', { pageCount: pages.length });
+			for (const [index, page] of pages.entries()) {
 				try {
 					const cov = await page.evaluate(() => window.__coverage__);
 					if (cov) {
-						await writeCoverage(cov, fileName(testInfo, `final-${index}`));
+						const name = fileName(testInfo, `final-${index}`);
+						await writeCoverage(cov, name);
+						log('wrote final snapshot', { name, fileKeys: Object.keys(cov).length });
+					} else {
+						log('no coverage on page', { index });
 					}
-				} catch {
-					// best-effort
+				} catch (error) {
+					log('final read failed', { index, error: String(error) });
 				}
 			}
 		},
