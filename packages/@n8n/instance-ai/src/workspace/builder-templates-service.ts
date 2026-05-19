@@ -22,11 +22,10 @@
  *
  * Never throws.
  */
+import JSZip from 'jszip';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-
-import JSZip from 'jszip';
 
 import type { Logger } from '../logger';
 
@@ -99,7 +98,7 @@ export class BuilderTemplatesService {
 		if (this.disabled) return EMPTY_BUNDLE;
 
 		if (!this.state) {
-			if (!this.hydratePromise) this.hydratePromise = this.hydrate();
+			this.hydratePromise ??= this.hydrate();
 			await this.hydratePromise;
 		}
 

@@ -1,8 +1,7 @@
+import JSZip from 'jszip';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-
-import JSZip from 'jszip';
 
 import {
 	BuilderTemplatesService,
@@ -41,7 +40,7 @@ interface MockState {
 }
 
 function installMockFetch(state: MockState): jest.Mock {
-	const mock = jest.fn(async (input: string | URL | Request, init?: RequestInit) => {
+	const mock = jest.fn((input: string | URL | Request, init?: RequestInit) => {
 		state.calls.fetch++;
 		const headers = new Headers((init?.headers ?? {}) as Record<string, string>);
 		state.calls.lastIfNoneMatch = headers.get('if-none-match');
@@ -189,7 +188,7 @@ describe('BuilderTemplatesService', () => {
 
 		// Block any network call so we know hydration came from disk.
 		globalThis.fetch = jest.fn(
-			async () => new Response('', { status: 500 }),
+			() => new Response('', { status: 500 }),
 		) as unknown as typeof globalThis.fetch;
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 60_000 }));
