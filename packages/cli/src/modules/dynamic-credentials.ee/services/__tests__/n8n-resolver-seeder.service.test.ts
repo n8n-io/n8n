@@ -1,15 +1,18 @@
 import type { Logger } from '@n8n/backend-common';
+import type { ICredentialResolver } from '@n8n/decorators';
 import type { InstanceSettings, Cipher } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../../constants';
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
+import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { N8nResolverSeeder } from '../n8n-resolver-seeder.service';
 
 describe('N8nResolverSeeder', () => {
 	const repository = mock<DynamicCredentialResolverRepository>();
 	const cipher = mock<Cipher>();
+	const registry = mock<DynamicCredentialResolverRegistry>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -22,7 +25,13 @@ describe('N8nResolverSeeder', () => {
 	};
 
 	const buildSeeder = (isLeader: boolean) =>
-		new N8nResolverSeeder(repository, cipher, mock<InstanceSettings>({ isLeader }), logger);
+		new N8nResolverSeeder(
+			repository,
+			cipher,
+			mock<InstanceSettings>({ isLeader }),
+			registry,
+			logger,
+		);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -30,6 +39,8 @@ describe('N8nResolverSeeder', () => {
 		// `createQueryBuilder` returns a chainable insert builder whose execute() result
 		// is set per-test to simulate either a real insert or a no-op-on-conflict.
 		(repository.createQueryBuilder as unknown as jest.Mock).mockReturnValue(insertBuilder);
+		// Default: the system resolver class is registered. Drift tests override.
+		registry.getResolverByTypename.mockReturnValue(mock<ICredentialResolver>());
 	});
 
 	describe('on the leader main', () => {
@@ -60,6 +71,18 @@ describe('N8nResolverSeeder', () => {
 			expect(insertBuilder.orIgnore).toHaveBeenCalled();
 			expect(repository.findOneBy).toHaveBeenCalledWith({ id: SYSTEM_RESOLVER_ID });
 			expect(result).toBe(inserted);
+		});
+
+		it('throws when SYSTEM_RESOLVER_TYPE is not registered (drift between constant and resolver class)', async () => {
+			registry.getResolverByTypename.mockReturnValue(undefined);
+
+			await expect(buildSeeder(true).seed()).rejects.toThrow(
+				`SYSTEM_RESOLVER_TYPE "${SYSTEM_RESOLVER_TYPE}" is not registered`,
+			);
+
+			expect(registry.getResolverByTypename).toHaveBeenCalledWith(SYSTEM_RESOLVER_TYPE);
+			expect(cipher.encryptV2).not.toHaveBeenCalled();
+			expect(insertBuilder.execute).not.toHaveBeenCalled();
 		});
 
 		it('is idempotent under concurrency — orIgnore swallows the conflict and returns the existing row', async () => {
