@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 jest.mock('@n8n/instance-ai', () => ({
-	createMemory: jest.fn(),
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),

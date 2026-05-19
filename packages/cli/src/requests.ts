@@ -269,7 +269,7 @@ export declare namespace VariablesRequest {
 export declare namespace WorkflowHistoryRequest {
 	type GetList = AuthenticatedRequest<
 		{ workflowId: string },
-		Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>,
+		Array<Omit<WorkflowHistory, 'nodes' | 'connections' | 'nodeGroups'>>,
 		{},
 		ListQuery.Options
 	>;
