@@ -2,6 +2,13 @@ name: 'Release: Create Patch Release PR'
 run-name: 'Release: Create Patch Release PR for track ${{ inputs.track }}'
 
 on:
+  workflow_call:
+    inputs:
+      track:
+        description: 'Release Track'
+        required: true
+        type: string
+
   workflow_dispatch:
     inputs:
       track:
@@ -28,6 +35,7 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Determine release candidate branch from track
         id: determine-branch
@@ -53,3 +61,21 @@ jobs:
     with:
       base-branch: ${{ needs.determine-version-info.outputs.release_candidate_branch }}
       release-type: patch
+
+  notify-slack:
+    name: Notify Slack
+    needs: [create-release-pr]
+    if: needs.create-release-pr.result == 'success' && needs.create-release-pr.outputs.pull-request-number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C036AELNMV0 \
+            --text ':rocket: Patch release PR created for *${{ inputs.track }}* track. <${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.create-release-pr.outputs.pull-request-number }}|View PR> — close it to cancel the release.'

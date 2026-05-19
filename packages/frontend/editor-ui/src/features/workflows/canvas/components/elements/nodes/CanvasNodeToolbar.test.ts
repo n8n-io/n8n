@@ -10,6 +10,16 @@ import {
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+		},
+	})),
+}));
+
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
 describe('CanvasNodeToolbar', () => {
@@ -184,6 +194,67 @@ describe('CanvasNodeToolbar', () => {
 		await userEvent.click(screen.getAllByTestId('color')[0]);
 
 		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
+	});
+
+	it('should show execute button when readOnly is true and canExecute is true', () => {
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				readOnly: true,
+				canExecute: true,
+				showStatusIcons: false,
+				itemsClass: '',
+			},
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('execute-node-button')).toBeInTheDocument();
+	});
+
+	it('should hide execute button when readOnly is true and canExecute is false', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				readOnly: true,
+				canExecute: false,
+				showStatusIcons: false,
+				itemsClass: '',
+			},
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
+	});
+
+	it('should hide delete and disable buttons when readOnly is true regardless of canExecute', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				readOnly: true,
+				canExecute: true,
+				showStatusIcons: false,
+				itemsClass: '',
+			},
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(queryByTestId('delete-node-button')).not.toBeInTheDocument();
+		expect(queryByTestId('disable-node-button')).not.toBeInTheDocument();
 	});
 
 	it('should have "forceVisible" class when hovered', async () => {

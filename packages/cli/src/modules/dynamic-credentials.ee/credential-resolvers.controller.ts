@@ -3,9 +3,11 @@ import {
 	CredentialResolver,
 	credentialResolverSchema,
 	credentialResolversSchema,
+	credentialResolverAffectedWorkflowsSchema,
 	UpdateCredentialResolverDto,
 	CredentialResolverType,
 	credentialResolverTypesSchema,
+	type CredentialResolverAffectedWorkflow,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -21,12 +23,13 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
-import { DynamicCredentialResolverService } from './services/credential-resolver.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { CredentialResolutionError } from './errors/credential-resolution.error';
+import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
+import { DynamicCredentialResolverService } from './services/credential-resolver.service';
 
 @RestController('/credential-resolvers')
 export class CredentialResolversController {
@@ -79,6 +82,30 @@ export class CredentialResolversController {
 			if (e instanceof CredentialResolverValidationError) {
 				throw new BadRequestError(e.message);
 			}
+			if (e instanceof CredentialResolutionError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Get('/:id/workflows')
+	@GlobalScope('credentialResolver:read')
+	async getAffectedWorkflows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<CredentialResolverAffectedWorkflow[]> {
+		try {
+			const workflows = await this.service.findAffectedWorkflows(id);
+			return credentialResolverAffectedWorkflowsSchema.parse(workflows);
+		} catch (e: unknown) {
+			if (e instanceof DynamicCredentialResolverNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
 			}
@@ -129,6 +156,9 @@ export class CredentialResolversController {
 				throw new NotFoundError(e.message);
 			}
 			if (e instanceof CredentialResolverValidationError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof CredentialResolutionError) {
 				throw new BadRequestError(e.message);
 			}
 			if (e instanceof Error) {

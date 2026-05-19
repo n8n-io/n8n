@@ -23,10 +23,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { TelemetryNdvType } from '@/app/types/telemetry';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { isVueFlowConnection } from '@/app/utils/typeGuards';
@@ -48,11 +45,7 @@ import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeC
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -64,12 +57,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
 	const actions = ref<ActionsRecord<typeof mergedNodes.value>>({});
 
-	const showScrim = ref(false);
 	const openSource = ref<NodeCreatorOpenSource>('');
 
 	const isCreateNodeActive = ref<boolean>(false);
 
-	const oppeningContext = ref<null | 'replacement'>(null);
+	const openingContext = ref<null | 'replacement'>(null);
 
 	const nodePanelSessionId = ref<string>('');
 
@@ -87,10 +79,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	function setActions(nodes: ActionsRecord<typeof mergedNodes.value>) {
 		actions.value = nodes;
-	}
-
-	function setShowScrim(isVisible: boolean) {
-		showScrim.value = isVisible;
 	}
 
 	function setSelectedView(view: NodeFilterType) {
@@ -114,7 +102,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}) {
 		const nodeName = node ?? ndvStore.activeNodeName;
 		const nodeData = nodeName
-			? (workflowDocumentStore.value?.getNodeByName(nodeName) ?? null)
+			? (workflowDocumentStore.value.getNodeByName(nodeName) ?? null)
 			: null;
 
 		ndvStore.unsetActiveNodeName();
@@ -150,7 +138,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}: ToggleNodeCreatorOptions) {
 		if (!nodeCreatorView) {
 			nodeCreatorView =
-				workflowsStore.workflowTriggerNodes.length > 0
+				workflowDocumentStore.value.workflowTriggerNodes.length > 0
 					? REGULAR_NODE_CREATOR_VIEW
 					: TRIGGER_NODE_CREATOR_VIEW;
 		}
@@ -191,7 +179,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// Get the node and set it as active that new nodes
 		// which get created get automatically connected
 		// to it.
-		const sourceNode = workflowDocumentStore.value?.getNodeById(connection.source);
+		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		if (!sourceNode) {
 			return;
 		}
@@ -231,7 +219,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	async function openNodeCreatorWithNode(nodeName: string) {
 		const nodeData = nodeName
-			? (workflowDocumentStore.value?.getNodeByName(nodeName) ?? null)
+			? (workflowDocumentStore.value.getNodeByName(nodeName) ?? null)
 			: null;
 		if (!nodeData) {
 			return;
@@ -256,7 +244,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				type: 'node',
 				subcategory: '*',
 			},
-			getNodeIconSource(nodeType.name),
+			getNodeIconSource(nodeType.name, null, workflowDocumentStore.value.getExpressionHandler()),
 			'Regular',
 			nodeActions ?? [],
 		);
@@ -266,7 +254,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 		ndvStore.unsetActiveNodeName();
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
-		setShowScrim(true);
 		setNodeCreatorState({
 			source,
 			createNodeActive: true,
@@ -277,7 +264,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	function openNodeCreatorForRegularNodes(source: NodeCreatorOpenSource) {
 		ndvStore.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
-		setShowScrim(true);
 		setNodeCreatorState({
 			source,
 			createNodeActive: true,
@@ -465,14 +451,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	return {
 		isCreateNodeActive,
-		oppeningContext,
+		openingContext,
 		openSource,
 		selectedView,
-		showScrim,
 		mergedNodes,
 		actions,
 		allNodeCreatorNodes,
-		setShowScrim,
 		setSelectedView,
 		setOpenSource,
 		setActions,

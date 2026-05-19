@@ -7,6 +7,10 @@ import { ChatHubSidebar } from './components/ChatHubSidebar';
 import { ChatHubToolsModal } from './components/ChatHubToolsModal';
 
 export class ChatHubChatPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/chat');
+	}
+
 	readonly sidebar = new ChatHubSidebar(this.page.locator('#sidebar'));
 	readonly toolsModal = new ChatHubToolsModal(
 		this.page.getByRole('dialog').filter({ has: this.page.locator('[data-tools-manager-modal]') }),
@@ -48,7 +52,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.getModelSelectorButton().locator('span.n8n-text').first();
+		return this.page.getByTestId('chat-model-selector-credential');
 	}
 
 	getChatInput(): Locator {

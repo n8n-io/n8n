@@ -68,6 +68,28 @@ describe('MessageEventBusDestinationWebhook', () => {
 							port: 3128,
 						},
 					},
+				},
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+
+			expect(destination.axiosInstance.defaults.proxy).toEqual({
+				protocol: 'http',
+				host: '127.0.0.1',
+				port: 3128,
+			});
+		});
+
+		it('should handle flat proxy from legacy DB data', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: {
+					proxy: {
+						protocol: 'http',
+						host: '127.0.0.1',
+						port: 3128,
+					},
 				} as any,
 			};
 
@@ -89,6 +111,108 @@ describe('MessageEventBusDestinationWebhook', () => {
 			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
 
 			expect(destination.axiosInstance.defaults.proxy).toBe(false);
+		});
+	});
+
+	describe('serialize', () => {
+		it('should preserve nested proxy for frontend fixedCollection', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: {
+					proxy: {
+						proxy: {
+							protocol: 'http',
+							host: '127.0.0.1',
+							port: 3128,
+						},
+					},
+				},
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+			const serialized = destination.serialize();
+
+			expect(serialized.options?.proxy).toEqual({
+				proxy: {
+					protocol: 'http',
+					host: '127.0.0.1',
+					port: 3128,
+				},
+			});
+		});
+
+		it('should re-nest flat proxy from legacy DB data', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: {
+					proxy: {
+						protocol: 'http',
+						host: '127.0.0.1',
+						port: 3128,
+					},
+				} as any,
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+			const serialized = destination.serialize();
+
+			expect(serialized.options?.proxy).toEqual({
+				proxy: {
+					protocol: 'http',
+					host: '127.0.0.1',
+					port: 3128,
+				},
+			});
+		});
+
+		it('should re-nest flat redirect from legacy DB data', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: {
+					redirect: {
+						followRedirects: true,
+						maxRedirects: 10,
+					},
+				} as any,
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+			const serialized = destination.serialize();
+
+			expect(serialized.options?.redirect).toEqual({
+				redirect: {
+					followRedirects: true,
+					maxRedirects: 10,
+				},
+			});
+		});
+
+		it('should preserve nested redirect for frontend fixedCollection', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: {
+					redirect: {
+						redirect: {
+							followRedirects: true,
+							maxRedirects: 10,
+						},
+					},
+				},
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+			const serialized = destination.serialize();
+
+			expect(serialized.options?.redirect).toEqual({
+				redirect: {
+					followRedirects: true,
+					maxRedirects: 10,
+				},
+			});
 		});
 	});
 });

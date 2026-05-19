@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
@@ -9,6 +10,15 @@ import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+// Mock credentials auto-assign
+const mockAutoPopulateNodeCredentials = jest.fn();
+jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
+	autoPopulateNodeCredentials: (...args: unknown[]) =>
+		mockAutoPopulateNodeCredentials(...args) as unknown,
+	stripNullCredentialStubs: jest.fn(),
+}));
 
 // Mock dynamic imports
 const mockParseAndValidate = jest.fn();
@@ -92,6 +102,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
+		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 	});
 
 	const credentialsService = mockInstance(CredentialsService, {
@@ -100,11 +111,15 @@ describe('create-workflow-from-code MCP tool', () => {
 	const projectRepository = mockInstance(ProjectRepository, {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
 	});
+	const workflowFinderService = mockInstance(WorkflowFinderService, {
+		findWorkflowForUser: jest.fn().mockResolvedValue(null),
+	});
 
 	const createTool = () =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
+			workflowFinderService,
 			urlService,
 			telemetry,
 			nodeTypes,
@@ -119,6 +134,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			name?: string;
 			description?: string;
 			projectId?: string;
+			folderId?: string;
 		},
 		tool = createTool(),
 	) =>
@@ -128,6 +144,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				name: input.name as string,
 				description: input.description as string,
 				projectId: input.projectId as string,
+				folderId: input.folderId as string,
 			},
 			{} as never,
 		);
@@ -149,6 +166,16 @@ describe('create-workflow-from-code MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('validation', () => {
+		test('returns error when folderId is provided without projectId', async () => {
+			const result = await callHandler({ code: 'const wf = ...', folderId: 'folder-1' });
+
+			expect(result.isError).toBe(true);
+			const response = parseResult(result);
+			expect(response.error).toBe('projectId is required when folderId is provided');
 		});
 	});
 
@@ -222,7 +249,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: undefined },
+				{ projectId: undefined, source: 'n8n-mcp' },
 			);
 		});
 
@@ -232,7 +259,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'custom-project-id' },
+				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
 			);
 		});
 
@@ -256,6 +283,29 @@ describe('create-workflow-from-code MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe('Invalid syntax at line 5');
+		});
+
+		test('includes SDK reference hint only for parse errors', async () => {
+			const parseError = new Error('Failed to parse generated workflow code: unexpected token');
+			parseError.name = 'WorkflowCodeParseError';
+			mockParseAndValidate.mockRejectedValue(parseError);
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toContain('sdk_ref');
+			expect(response.hint).toContain('Workflow SDK reference');
+			expect(response.hint).toContain('validate_workflow_code until it returns valid=true');
+			expect(response.hint).toContain('create_workflow_from_code again');
+		});
+
+		test('does not include SDK reference hint for non-parse errors', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Permission denied'));
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toBeUndefined();
 		});
 
 		test('tracks telemetry on success', async () => {
@@ -314,6 +364,35 @@ describe('create-workflow-from-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('structuredContent conforms to declared outputSchema under strict validation', async () => {
+			// Regression for #28274: MCP publishes outputSchema with additionalProperties: false,
+			// so any field returned by the handler but missing from the schema breaks strict clients.
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [
+					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+				],
+				skippedHttpNodes: [],
+			});
+
+			const tool = createTool();
+			const result = (await tool.handler({ code: 'const wf = ...' } as never, {} as never)) as {
+				structuredContent: unknown;
+			};
+
+			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
+			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
+				z.ZodObject<z.ZodRawShape>
+			>;
+			const strictSchema = z
+				.object({
+					...envelopeShape,
+					autoAssignedCredentials: z.array(itemsField.element.strict()),
+				})
+				.strict();
+
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 	});
 });

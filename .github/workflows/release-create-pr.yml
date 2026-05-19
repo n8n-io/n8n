@@ -13,6 +13,11 @@ on:
         required: true
         type: string
 
+    outputs:
+      pull-request-number:
+        description: 'Number of the created pull request'
+        value: ${{ jobs.create-release-pr.outputs.pull-request-number }}
+
   workflow_dispatch:
     inputs:
       base-branch:
@@ -75,6 +80,7 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Setup corepack and pnpm
         run: |

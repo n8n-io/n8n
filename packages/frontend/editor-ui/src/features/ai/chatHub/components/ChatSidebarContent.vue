@@ -132,7 +132,7 @@ async function handleDeleteSession(sessionId: string) {
 }
 
 function handleNewChatClick() {
-	telemetry.track('User clicked new chat button', {});
+	telemetry.track('User clicked new chat button', { source: 'chat_hub' });
 }
 
 onMounted(() => {

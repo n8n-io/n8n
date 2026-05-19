@@ -549,8 +549,8 @@ onMounted(async () => {
 
 .mainContent {
 	flex: 1;
-	overflow: auto;
 	padding-bottom: 60px;
+	padding-inline: var(--spacing--xs);
 }
 
 .icon {

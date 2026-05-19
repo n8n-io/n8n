@@ -5,6 +5,7 @@ import {
 	filterMethodsFromPath,
 	parseVersion,
 	isPlaceholderValue,
+	containsPlaceholderMarker,
 	isResourceLocatorLike,
 	normalizeResourceLocators,
 	escapeNewlinesInStringLiterals,
@@ -103,6 +104,38 @@ describe('workflow-builder/string-utils', () => {
 
 		it('returns false for string that only starts with prefix', () => {
 			expect(isPlaceholderValue('<__PLACEHOLDER_VALUE__')).toBe(false);
+		});
+	});
+
+	describe('containsPlaceholderMarker', () => {
+		it('returns true for bare placeholder string', () => {
+			expect(containsPlaceholderMarker('<__PLACEHOLDER_VALUE__test__>')).toBe(true);
+		});
+
+		it('returns true for expr()-wrapped placeholder (leading "=")', () => {
+			expect(containsPlaceholderMarker('=<__PLACEHOLDER_VALUE__test__>')).toBe(true);
+		});
+
+		it('returns true for placeholder embedded in an expression block', () => {
+			expect(containsPlaceholderMarker('={{ "prefix-" + "<__PLACEHOLDER_VALUE__name__>" }}')).toBe(
+				true,
+			);
+		});
+
+		it('returns false for literal strings without the marker', () => {
+			expect(containsPlaceholderMarker('regular string')).toBe(false);
+			expect(containsPlaceholderMarker('=expression')).toBe(false);
+		});
+
+		it('returns false for incomplete marker (missing closing)', () => {
+			expect(containsPlaceholderMarker('<__PLACEHOLDER_VALUE__test')).toBe(false);
+		});
+
+		it('returns false for non-string values', () => {
+			expect(containsPlaceholderMarker(123)).toBe(false);
+			expect(containsPlaceholderMarker(null)).toBe(false);
+			expect(containsPlaceholderMarker(undefined)).toBe(false);
+			expect(containsPlaceholderMarker({})).toBe(false);
 		});
 	});
 

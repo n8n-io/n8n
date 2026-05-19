@@ -13,6 +13,53 @@ pnpm test:local           											# Starts a local server and runs the E2E te
 N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the instance running
 ```
 
+## Develop against running containers (avoid docker rebuilds)
+
+Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
+need `pnpm build:docker` each time. Boot only the services your local `pnpm dev`
+needs, and let dev mode pick them up.
+
+**Two-terminal workflow:**
+
+```bash
+# Terminal 1 — boot only the services. Writes packages/cli/bin/.env with the
+# host:port + credentials. Containers stay running in the background.
+pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy
+
+# Terminal 2 — run n8n locally as usual. It picks up the .env automatically.
+pnpm dev
+```
+
+Scope the `--services` list to what you actually need — booting fewer
+containers makes startup faster.
+
+| Service | What `pnpm dev` gets | Use when… |
+|---------|----------------------|-----------|
+| `postgres` | `DB_*` vars → PostgreSQL backend | testing migrations or PG-specific queries |
+| `redis` | `QUEUE_*`/`N8N_CACHE_*` → queue mode + cache | testing queue mode or distributed cache |
+| `mailpit` | `N8N_SMTP_*` → captured SMTP at `http://localhost:<mapped-port>` | testing email flows |
+| `proxy` | `HTTP_PROXY`/`HTTPS_PROXY`/`N8N_PROXY_*` → MockServer | testing outbound HTTP via the proxy |
+
+Other available services: `kafka`, `gitea`, `keycloak`, `kent`, `victoriaLogs`,
+`victoriaMetrics`, `vector`, `tracing`, `localstack`, `cloudflared`, `ngrok`.
+See `packages/testing/containers/README.md` for the full list.
+
+**Tear down when you're done:**
+
+```bash
+pnpm --filter n8n-containers services:clean
+```
+
+This stops the containers and removes `packages/cli/bin/.env`.
+
+**Running capability tests against this setup.** The `@capability:*` tags are
+gated to container mode by default. To exercise them against your local n8n
+(useful for fast iteration on proxy/email/SSO flows), use the
+`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` escape hatch documented under
+[`test:local:isolated`](#test-local-isolated--local-run-with-full-isolation)
+below. Capability fixtures must detect the no-container case and fall back —
+some do, some don't yet.
+
 ## Separate Backend and Frontend URLs
 
 When developing with separate backend and frontend servers (e.g., backend on port 5680, frontend on port 8080), you can use the following environment variables:
@@ -45,7 +92,43 @@ pnpm test:chaos									# Runs the chaos tests
 # Development
 pnpm test:all --grep "workflow"           # Pattern match, can run across all test types E2E/cli-workflow/performance
 pnpm test:local --ui            # To enable UI debugging and test running mode
+
+# Isolated local run: random port, throwaway DB, runs @capability:* too
+pnpm test:local:isolated tests/e2e/credentials/crud.spec.ts
 ```
+
+### `test:local:isolated` — local run with full isolation
+
+`pnpm test:local:isolated` is a generalized version of `test:local` for
+situations where `test:local`'s defaults aren't enough:
+
+- **Random free OS port** for n8n's HTTP server and the task-runner broker, so
+  multiple instances can run in parallel without colliding on `5678`/`5679`.
+  Pin a port with `N8N_BASE_URL=http://localhost:5680 …` when you need a
+  stable URL for browser inspection.
+- **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
+  Its `database.sqlite` is fully isolated from your local `~/.n8n` install.
+- **Container-only tests included.** `@capability:*` / `@licensed` /
+  `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
+  are responsible for detecting the missing container and skipping or falling
+  back.
+- **Self-managed n8n.** Boots n8n with a real readiness check against
+  `/rest/e2e/reset` (Playwright's default `webServer` favicon check is racy
+  with slower module startups) and skips Playwright's own webServer.
+
+Pass extra n8n env via `N8N_TEST_ENV` (the same convention `test:local` uses):
+
+```bash
+N8N_TEST_ENV='{"N8N_ENABLED_MODULES":"my-module"}' \
+  pnpm test:local:isolated tests/e2e/my-module
+```
+
+The two underlying env-var levers — usable independently of the script:
+
+| Env var | Effect |
+|---------|--------|
+| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Disables `grepInvert` so `@capability:*`, `@mode:*`, `@licensed`, and `@db:reset` tests are picked up by the local `e2e` project. The fixtures consumed by those tests must detect the missing container and either skip or fall back. |
+| `PLAYWRIGHT_SKIP_WEBSERVER=true` | Stops Playwright from launching its own n8n via the `webServer` config. Use when a wrapper script (like `scripts/run-local-isolated.mjs`) already manages n8n with custom env vars. |
 
 ## Test Tags
 ```typescript

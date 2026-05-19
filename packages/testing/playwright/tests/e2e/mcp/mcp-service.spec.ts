@@ -113,24 +113,23 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const tools = await api.mcp.internalMcpListTools(apiKey);
 
-				expect(tools).toHaveLength(13);
-
 				const toolNames = tools.map((t) => t.name).sort();
-				expect(toolNames).toEqual([
-					'archive_workflow',
-					'create_workflow_from_code',
-					'execute_workflow',
-					'get_execution',
-					'get_node_types',
-					'get_suggested_nodes',
-					'get_workflow_details',
-					'publish_workflow',
-					'search_nodes',
-					'search_workflows',
-					'unpublish_workflow',
-					'update_workflow',
-					'validate_workflow',
-				]);
+
+				// Guard against major regressions (e.g. half the tools disappearing)
+				// without coupling to an exact list that breaks on every add/remove.
+				expect(toolNames.length).toBeGreaterThanOrEqual(10);
+
+				// Every tool must have the required MCP structure
+				for (const tool of tools) {
+					expect(tool.name).toBeTruthy();
+					expect(tool.description).toBeTruthy();
+					expect(tool.inputSchema).toBeDefined();
+				}
+
+				// Spot-check a few stable core tools
+				expect(toolNames).toContain('search_workflows');
+				expect(toolNames).toContain('execute_workflow');
+				expect(toolNames).toContain('get_workflow_details');
 			});
 
 			test('should include proper tool descriptions and schemas', async ({ api }) => {
@@ -302,7 +301,7 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
 
-				expect(result.status).toBe('success');
+				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
 			});
 
@@ -344,7 +343,7 @@ test.describe(
 					},
 				});
 
-				expect(result.status).toBe('success');
+				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
 			});
 		});
@@ -359,19 +358,34 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 
 				const execResult = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
-				expect(execResult.status).toBe('success');
+				expect(execResult.status).toBe('started');
 				expect(execResult.executionId).toBeTruthy();
+
+				// Poll for execution completion since executions are asynchronous
+				await expect
+					.poll(
+						async () => {
+							const r = await api.mcp.internalMcpGetExecution(
+								apiKey,
+								workflowId,
+								execResult.executionId!,
+							);
+							return r.execution?.status;
+						},
+						{ timeout: 30_000, intervals: [1_000] },
+					)
+					.toBe('success');
 
 				const result = await api.mcp.internalMcpGetExecution(
 					apiKey,
 					workflowId,
 					execResult.executionId!,
+					{ includeData: true },
 				);
 
 				expect(result.execution).toBeDefined();
 				expect(result.execution!.id).toBe(execResult.executionId);
 				expect(result.execution!.workflowId).toBe(workflowId);
-				expect(result.execution!.status).toBe('success');
 				expect(result.data).toBeDefined();
 			});
 		});

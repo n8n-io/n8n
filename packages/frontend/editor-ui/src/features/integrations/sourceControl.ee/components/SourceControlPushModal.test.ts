@@ -156,6 +156,10 @@ describe('SourceControlPushModal', () => {
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings.enterprise = defaultSettings.enterprise;
+
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		projectsStore.globalProjectPermissions = { list: true };
 	});
 
 	it('mounts', async () => {
@@ -562,7 +566,7 @@ describe('SourceControlPushModal', () => {
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
 		mockRoute.name = VIEWS.WORKFLOW;
-		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
+		mockRoute.params = { workflowId: 'gTbbBkkYTnNyX1jD' };
 
 		const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
 			pinia,
@@ -1500,6 +1504,10 @@ describe('SourceControlPushModal', () => {
 		])('should filter %s by project', async (entity, name) => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.availableProjects = projects as unknown as ProjectListItem[];
+			projectsStore.searchProjects.mockResolvedValue({
+				count: projects.length,
+				data: projects as unknown as ProjectListItem[],
+			});
 
 			const status: SourceControlledFile[] = [
 				{
@@ -1808,7 +1816,7 @@ describe('SourceControlPushModal', () => {
 			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
 			mockRoute.name = 'SOME_OTHER_VIEW';
-			mockRoute.params = { name: 'differentId' };
+			mockRoute.params = { workflowId: 'differentId' };
 
 			const { getByTestId, getAllByTestId, getByText } = renderModal({
 				pinia,

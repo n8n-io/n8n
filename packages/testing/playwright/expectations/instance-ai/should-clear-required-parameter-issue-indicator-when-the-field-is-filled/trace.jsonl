@@ -1,0 +1,3 @@
+{"kind":"header","version":1,"testName":"recording","recordedAt":"2026-05-05T09:48:40.369Z"}
+{"kind":"tool-call","stepId":1,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"list","query":"B3 Workflow Setup Required Parameter"},"output":{"workflows":[{"id":"3jbqn6Rx4TScS58P","name":"B3 Workflow Setup Required Parameter","versionId":"cb6f9a5e-1491-4d19-a1f9-98663eeea4f2","activeVersionId":null,"createdAt":"2026-05-05T09:48:36.418Z","updatedAt":"2026-05-05T09:48:36.418Z"}]}}
+{"kind":"tool-call","stepId":2,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"setup","workflowId":"3jbqn6Rx4TScS58P"},"output":{"success":false}}

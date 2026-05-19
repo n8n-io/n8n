@@ -6,6 +6,11 @@ export default {
 	title: 'Core/UserInfo',
 	component: N8nUserInfo,
 	parameters: {
+		docs: {
+			description: {
+				component: 'A user identity display combining avatar, name, and supporting details.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

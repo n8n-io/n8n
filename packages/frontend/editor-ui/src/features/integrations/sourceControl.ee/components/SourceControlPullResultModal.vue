@@ -127,7 +127,7 @@ function close() {
 												<RouterLink
 													target="_blank"
 													rel="noopener noreferrer"
-													:to="{ name: VIEWS.WORKFLOW, params: { name: workflow.id } }"
+													:to="{ name: VIEWS.WORKFLOW, params: { workflowId: workflow.id } }"
 												>
 													{{ workflow.name }}
 												</RouterLink>

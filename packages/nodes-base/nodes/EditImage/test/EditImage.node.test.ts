@@ -86,6 +86,12 @@ const mockGmInstance: any = {
 		callback(null, createTestBuffer());
 		return this;
 	}),
+	autoOrient: jest.fn(function (this: any) {
+		return this;
+	}),
+	out: jest.fn(function (this: any) {
+		return this;
+	}),
 };
 
 jest.mock('gm', () => jest.fn(() => mockGmInstance));
@@ -1469,6 +1475,71 @@ describe('EditImage Node', () => {
 
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].binary).toHaveProperty('data');
+		});
+	});
+
+	describe('autoOrient', () => {
+		it('should call autoOrient when loading an existing image', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'blur';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'blur') return 5;
+				if (paramName === 'sigma') return 2;
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGmInstance.autoOrient).toHaveBeenCalled();
+			expect(mockGmInstance.out).toHaveBeenCalledWith('-orient', 'TopLeft');
+		});
+
+		it('should not call autoOrient for create operation', async () => {
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'create';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'width') return 100;
+				if (paramName === 'height') return 100;
+				if (paramName === 'backgroundColor') return 'white';
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: createTestBuffer().toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGmInstance.autoOrient).not.toHaveBeenCalled();
+			expect(mockGmInstance.out).not.toHaveBeenCalledWith('-orient', 'TopLeft');
 		});
 	});
 });

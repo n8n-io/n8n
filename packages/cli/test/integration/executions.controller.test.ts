@@ -139,7 +139,7 @@ describe('POST /executions/stop', () => {
 		await testServer
 			.authAgentFor(owner)
 			.post(`/executions/${incorrectExecutionId}/stop`)
-			.expect(500);
+			.expect(400);
 	});
 
 	test('should stop an execution we have access to', async () => {

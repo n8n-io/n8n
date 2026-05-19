@@ -23,7 +23,7 @@ export default {
 	'formInput.validator.uppercaseCharsRequired': (config: { minimum: number }) =>
 		`Must have at least ${config.minimum} uppercase character${config.minimum > 1 ? 's' : ''}`,
 	'formInput.validator.defaultPasswordRequirements':
-		'8+ characters, at least 1 number and 1 capital letter',
+		'{minimum}+ characters, at least 1 number and 1 capital letter',
 	'sticky.markdownHint':
 		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
@@ -33,7 +33,7 @@ export default {
 	'codeDiff.replaceMyCode': 'Replace my code',
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
-	'betaTag.beta': 'beta',
+	'previewTag.preview': 'Preview',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',
 	'assistantChat.builder.generatingFinalWorkflow': 'Generating final workflow...',
@@ -43,6 +43,11 @@ export default {
 	'assistantChat.builder.feedbackPlaceholder': 'Tell us about your experience',
 	'assistantChat.builder.success': 'Thanks for your feedback!',
 	'assistantChat.builder.feedbackSubmit': 'Submit feedback',
+	'assistantChat.rating.thumbsUp': 'Helpful',
+	'assistantChat.rating.thumbsDown': 'Not helpful',
+	'assistantChat.rating.feedbackPlaceholder': 'Tell us about your experience',
+	'assistantChat.rating.success': 'Thanks for your feedback!',
+	'assistantChat.rating.feedbackSubmit': 'Submit feedback',
 	'assistantChat.builder.workflowGenerated1': 'Your workflow was created successfully!',
 	'assistantChat.builder.workflowGenerated2': 'Fix any missing credentials before testing it.',
 	'assistantChat.builder.configuringNodes': 'Configuring nodes...',

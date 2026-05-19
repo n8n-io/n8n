@@ -150,6 +150,15 @@ BLOCKED_ATTRIBUTES = {
     "__thisclass__",
     "__self_class__",
     "__objclass__",
+    # serialization
+    "__reduce__",
+    "__reduce_ex__",
+    # metaclass
+    "__prepare__",
+    # match protocol
+    "__instancecheck__",
+    "__subclasscheck__",
+    "__match_args__",
     # introspection attributes
     "__base__",
     "__class__",
@@ -184,6 +193,12 @@ ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
 ERROR_MATCH_PATTERN_ATTRIBUTE = "Match pattern extracting attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_MATCH_POSITIONAL_PATTERN = (
+    "Positional match patterns are disallowed for security reasons."
+)
+ERROR_GLOBAL_BLOCKED_NAME = "Global declaration of '{name}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_FUNCDEF_BLOCKED_NAME = "Function named '{name}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_CLASSDEF_BLOCKED_NAME = "Class named '{name}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_WINDOWS_NOT_SUPPORTED = (
     "Error: This task runner is not supported on Windows. "
     "Please use a Unix-like system (Linux or macOS)."

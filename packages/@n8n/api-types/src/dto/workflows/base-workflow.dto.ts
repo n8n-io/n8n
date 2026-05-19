@@ -1,14 +1,26 @@
 import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { xssCheck } from '../../utils/xss-check';
+
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
+
+/** Maximum allowed size for pinned data in bytes (12 MB) */
+export const MAX_PINNED_DATA_SIZE = 1024 * 1024 * 12;
+
+/** Maximum allowed workflow size in bytes (16 MB) */
+export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16;
+
+/** Expected maximum workflow request metadata (i.e. headers) size in bytes (~2 KB) */
+export const MAX_EXPECTED_REQUEST_SIZE = 2048;
 
 export const workflowNameSchema = z
 	.string()
 	.min(1, { message: 'Workflow name is required' })
 	.max(WORKFLOW_NAME_MAX_LENGTH, {
 		message: `Workflow name must be ${WORKFLOW_NAME_MAX_LENGTH} characters or less`,
-	});
+	})
+	.refine(xssCheck, { message: 'Potentially malicious string' });
 
 export const workflowDescriptionSchema = z.string().nullable();
 

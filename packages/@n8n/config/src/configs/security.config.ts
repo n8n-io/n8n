@@ -65,6 +65,17 @@ export class SecurityConfig {
 	disableWebhookHtmlSandboxing: boolean = false;
 
 	/**
+	 * Whether to disable CSP sandboxing for form pages (Form Trigger, Send and Wait).
+	 *
+	 * WARNING: Disabling CSP protection leaves the instance vulnerable to attacks where a
+	 * malicious user can build a workflow that makes requests using other users' credentials.
+	 * The correct way to prevent this is to configure forms to be served from a different
+	 * (sub)domain instead of disabling the sandbox.
+	 */
+	@Env('N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX')
+	disableFormHtmlSandboxing: boolean = false;
+
+	/**
 	 * Whether to disable bare repositories support in the Git node.
 	 */
 	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')

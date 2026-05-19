@@ -18,6 +18,7 @@ import {
 	watch,
 } from 'vue';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
@@ -36,6 +37,7 @@ export function useResolvedExpression({
 }) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const { resolveExpression } = useWorkflowHelpers();
 
@@ -105,7 +107,11 @@ export function useResolvedExpression({
 			if (currentInvocation !== updateExpressionInvocation) return;
 
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
-			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+			resolvedExpressionString.value = stringifyExpressionResult(
+				resolved,
+				workflowDocumentStore.value.getPinDataSnapshot(),
+				hasRunData.value,
+			);
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';
@@ -119,7 +125,7 @@ export function useResolvedExpression({
 			toRef(additionalData),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
-			() => workflowsStore.workflow.name,
+			() => workflowDocumentStore.value.name,
 			targetItem,
 		],
 		debouncedUpdateExpression,

@@ -91,12 +91,18 @@ const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
 });
 
+const isManagedByEnv = computed((): boolean => {
+	return currentUser.value?.isManagedByEnv ?? false;
+});
+
 const isExternalAuthEnabled = computed((): boolean => {
 	const isLdapEnabled =
 		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
-		ssoStore.isEnterpriseOidcEnabled && currentUser.value?.signInType === 'oidc';
+		ssoStore.isEnterpriseOidcEnabled &&
+		ssoStore.isOidcLoginEnabled &&
+		currentUser.value?.signInType === 'oidc';
 	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
 });
 
@@ -165,7 +171,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'given-name',
 				capitalize: true,
-				disabled: isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
 			},
 		},
 		{
@@ -177,7 +183,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'family-name',
 				capitalize: true,
-				disabled: isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
 			},
 		},
 		{
@@ -190,7 +196,7 @@ onMounted(() => {
 				validationRules: [{ name: 'VALID_EMAIL' }],
 				autocomplete: 'email',
 				capitalize: true,
-				disabled: !isPersonalSecurityEnabled.value,
+				disabled: isManagedByEnv.value || !isPersonalSecurityEnabled.value,
 			},
 		},
 	];
@@ -368,6 +374,11 @@ onBeforeUnmount(() => {
 					i18n.baseText('settings.personal.basicInformation')
 				}}</N8nHeading>
 			</div>
+			<N8nNotice
+				v-if="isManagedByEnv"
+				:content="i18n.baseText('settings.personal.managedByEnv')"
+				data-test-id="managed-by-env-notice"
+			/>
 			<div data-test-id="personal-data-form">
 				<N8nFormInputs
 					v-if="formInputs"
@@ -379,7 +390,7 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 		</div>
-		<div v-if="isPersonalSecurityEnabled">
+		<div v-if="isPersonalSecurityEnabled && !isManagedByEnv">
 			<div class="mb-s">
 				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
 			</div>

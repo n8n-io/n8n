@@ -412,6 +412,14 @@ export function setSafeObjectProperty(
 	}
 }
 
+const DANGEROUS_XML_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function sanitizeXmlName(name: string) {
+	if (DANGEROUS_XML_NAMES.has(name)) return `sanitized_${name}`;
+
+	return name;
+}
+
 export function isDomainAllowed(
 	urlString: string,
 	options: {
@@ -464,6 +472,27 @@ export function isDomainAllowed(
 	}
 }
 
+/**
+ * Extracts the allow-listed domains configured on a credential via the
+ * `allowedHttpRequestDomains` + `allowedDomains` properties.
+ *
+ * Returns the comma-separated allow-list string when the credential is in
+ * 'domains' mode with a non-empty list, otherwise `undefined`. Callers that
+ * need to reject 'none' mode or an empty 'domains' list must handle that
+ * explicitly.
+ */
+export function getCredentialAllowedDomains(
+	credentialData: Record<string, unknown> | undefined,
+): string | undefined {
+	if (!credentialData || credentialData.allowedHttpRequestDomains !== 'domains') {
+		return undefined;
+	}
+	const allowedDomains = credentialData.allowedDomains;
+	if (typeof allowedDomains !== 'string') return undefined;
+	const trimmed = allowedDomains.trim();
+	return trimmed === '' ? undefined : trimmed;
+}
+
 const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
 export function isCommunityPackageName(packageName: string): boolean {
@@ -509,4 +538,11 @@ export function sanitizeFilename(fileName: string): string {
 	}
 
 	return sanitized;
+}
+
+/** Generates a cryptographically secure 64-character hex token (256 bits). */
+export function generateSecureToken(): string {
+	const bytes = new Uint8Array(32);
+	crypto.getRandomValues(bytes);
+	return bytes.reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
 }

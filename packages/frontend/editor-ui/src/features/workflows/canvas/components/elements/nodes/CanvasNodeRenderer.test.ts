@@ -7,17 +7,22 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasNodeRenderType } from '../../../canvas.types';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createTestWorkflowObject } from '@/__tests__/mocks';
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+		},
+	})),
+}));
 
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);
 
 beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
-	const workflowsStore = useWorkflowsStore();
-	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-	workflowsStore.workflowObject = workflowObject;
 });
 
 describe('CanvasNodeRenderer', () => {

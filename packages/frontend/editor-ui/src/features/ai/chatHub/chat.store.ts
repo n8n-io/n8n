@@ -39,6 +39,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
 	type ChatHubSendMessageRequest,
@@ -541,7 +545,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const workflowsStore = useWorkflowsStore();
 		if (workflowsStore.workflowId !== model.workflowId) return false;
 
-		const chatTrigger = workflowsStore.allNodes.find(
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const chatTrigger = workflowDocumentStore.allNodes.find(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
 		);
 		if (!chatTrigger) return false;
@@ -556,8 +563,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 */
 	function initManualExecutionScaffold() {
 		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
-		workflowsStore.workflowExecutionData = {
+		workflowsStore.setWorkflowExecutionData({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',
@@ -569,8 +579,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			data: createRunExecutionData({
 				resultData: { runData: {} },
 			}),
-			workflowData: workflowsStore.workflow,
-		};
+			workflowData: workflowDocumentStore.getSnapshot(),
+		});
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
 		workflowsStore.private.setActiveExecutionId(null);
@@ -607,10 +617,16 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agent,
 		};
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
+
 		telemetry.track('User sent chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
+			mode,
+			source,
 		});
 
 		const payload = {
@@ -624,11 +640,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agentName: agent.name,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
-
-		// Detect if this is a manual execution from the canvas.
-		// When the user is on a canvas with the same workflow as the selected n8n agent,
-		// use the manual endpoint to execute the draft version with canvas events.
-		const useManualMode = isCanvasManualExecution(agent.model);
 
 		try {
 			// Create session entry if new
@@ -726,14 +737,18 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			attachments: [...keptExistingAttachments, ...binaryData],
 		};
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
+
 		telemetry.track('User edited chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: editId,
+			mode,
+			source,
 		});
-
-		const useManualMode = isCanvasManualExecution(agent.model);
 
 		try {
 			if (useManualMode) {
@@ -795,14 +810,18 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			attachments: [],
 		};
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
+
 		telemetry.track('User regenerated chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: retryId,
+			mode,
+			source,
 		});
-
-		const useManualMode = isCanvasManualExecution(agent.model);
 
 		try {
 			if (useManualMode) {

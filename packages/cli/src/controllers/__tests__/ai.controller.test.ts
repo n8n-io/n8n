@@ -11,6 +11,7 @@ import { mock } from 'jest-mock-extended';
 import { AiController, type FlushableResponse } from '../ai.controller';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
@@ -19,12 +20,14 @@ describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
 	const aiUsageService = mock<AiUsageService>();
+	const aiGatewayService = mock<AiGatewayService>();
 	const controller = new AiController(
 		aiService,
 		workflowBuilderService,
 		mock(),
 		mock(),
 		aiUsageService,
+		aiGatewayService,
 	);
 
 	const request = mock<AuthenticatedRequest>({
@@ -323,7 +326,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -403,7 +406,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -543,7 +546,7 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
-				payload.codeBuilder,
+				undefined,
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -592,6 +595,24 @@ describe('AiController', () => {
 				payload.messageId,
 				undefined,
 			);
+		});
+	});
+
+	describe('getGatewayWallet', () => {
+		it('should return wallet from aiGatewayService', async () => {
+			const walletData = { budget: 10, balance: 7 };
+			aiGatewayService.getWallet.mockResolvedValue(walletData);
+
+			const result = await controller.getGatewayWallet(request);
+
+			expect(aiGatewayService.getWallet).toHaveBeenCalledWith(request.user.id);
+			expect(result).toEqual(walletData);
+		});
+
+		it('should throw InternalServerError when aiGatewayService throws', async () => {
+			aiGatewayService.getWallet.mockRejectedValue(new Error('Gateway unreachable'));
+
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(InternalServerError);
 		});
 	});
 });
