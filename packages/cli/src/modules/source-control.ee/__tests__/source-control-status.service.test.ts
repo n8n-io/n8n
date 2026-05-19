@@ -1728,6 +1728,24 @@ describe('getStatus', () => {
 	});
 
 	describe('data tables', () => {
+		it('should pass source control context when collecting data tables', async () => {
+			// ARRANGE
+			const user = globalAdminUserWithId;
+			const context = new SourceControlContext(user, [], []);
+			sourceControlContextFactory.createContext.mockResolvedValueOnce(context);
+
+			// ACT
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			expect(sourceControlImportService.getRemoteDataTablesFromFiles).toHaveBeenCalledWith(context);
+			expect(sourceControlImportService.getLocalDataTablesFromDb).toHaveBeenCalledWith(context);
+		});
+
 		it('should handle undefined data tables from remote (null safety)', async () => {
 			// ARRANGE
 			const user = globalAdminUserWithId;

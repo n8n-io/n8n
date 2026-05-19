@@ -417,7 +417,9 @@ export class SourceControlImportService {
 		return await this.variablesService.getAllCached({ globalOnly: true });
 	}
 
-	async getRemoteDataTablesFromFiles(): Promise<ExportableDataTable[]> {
+	async getRemoteDataTablesFromFiles(
+		context: SourceControlContext,
+	): Promise<ExportableDataTable[]> {
 		const dataTableFiles = await glob('*.json', {
 			cwd: this.dataTableExportFolder,
 			absolute: true,
@@ -440,11 +442,25 @@ export class SourceControlImportService {
 			}),
 		);
 
-		// Filter out null/undefined values from failed parses
-		return remoteTables.filter((table): table is ExportableDataTable => !!table);
+		return remoteTables.filter((table): table is ExportableDataTable => {
+			// Filter out null/undefined values from failed parses
+			if (!table) {
+				return false;
+			}
+
+			// Unless data is corrupted, there should always be an owner.
+			// We keep tables without an owner because they can still be imported
+			// and assigned to the pulling user's personal project.
+			const owner = table.ownedBy;
+			return (
+				!owner || context.hasAccessToAllProjects() || !!context.findAuthorizedProjectByOwner(owner)
+			);
+		});
 	}
 
-	async getLocalDataTablesFromDb(): Promise<StatusExportableDataTable[]> {
+	async getLocalDataTablesFromDb(
+		context: SourceControlContext,
+	): Promise<StatusExportableDataTable[]> {
 		try {
 			const dataTables = await this.dataTableRepository.find({
 				relations: [
@@ -453,6 +469,8 @@ export class SourceControlImportService {
 					'project.projectRelations',
 					'project.projectRelations.role',
 				],
+				where:
+					this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 			});
 			return dataTables.map((table) => {
 				let ownedBy: StatusResourceOwner | null = null;
