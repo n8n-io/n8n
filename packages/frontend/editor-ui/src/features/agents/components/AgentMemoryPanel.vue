@@ -58,6 +58,7 @@ function onMemoryToggle(enabled: boolean) {
 
 function enableEpisodicMemory(credentialId: string) {
 	const existingMemory = props.config?.memory;
+	const existingEpisodicMemory = existingMemory?.episodicMemory;
 	emit('update:config', {
 		memory: {
 			...existingMemory,
@@ -65,6 +66,7 @@ function enableEpisodicMemory(credentialId: string) {
 			storage: 'n8n',
 			lastMessages: existingMemory?.lastMessages ?? 10,
 			episodicMemory: {
+				...(existingEpisodicMemory?.enabled === true ? existingEpisodicMemory : {}),
 				enabled: true,
 				credential: credentialId,
 			},
