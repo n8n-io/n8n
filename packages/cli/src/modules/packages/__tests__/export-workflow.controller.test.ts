@@ -5,16 +5,16 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { PassThrough } from 'node:stream';
 
-import { ImportExportController } from '../import-export.controller';
-import type { ImportExportService } from '../import-export.service';
+import { PackagesController } from '../packages.controller';
+import type { PackagesService } from '../packages.service';
 
 describe('ImportExportController', () => {
 	describe('exportWorkflows', () => {
 		it('sets gzip Content-Type and .n8np attachment Content-Disposition on the response', async () => {
-			const service = mock<ImportExportService>();
+			const service = mock<PackagesService>();
 			service.exportWorkflows.mockResolvedValue(new PassThrough());
 
-			const controller = new ImportExportController(service);
+			const controller = new PackagesController(service);
 			const req = { user: { id: 'user-1' } } as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
 
@@ -28,10 +28,10 @@ describe('ImportExportController', () => {
 		});
 
 		it('forwards the authenticated user and workflow ids to the service', async () => {
-			const service = mock<ImportExportService>();
+			const service = mock<PackagesService>();
 			service.exportWorkflows.mockResolvedValue(new PassThrough());
 
-			const controller = new ImportExportController(service);
+			const controller = new PackagesController(service);
 			const user = { id: 'user-1' };
 			const req = { user } as unknown as AuthenticatedRequest;
 
@@ -49,11 +49,11 @@ describe('ImportExportController', () => {
 		// re-introduces a controller-level scope decorator (the bulk endpoint must
 		// stay un-scoped — authorization is enforced per-workflow in the service).
 		const route = Container.get(ControllerRegistryMetadata)
-			.getControllerMetadata(ImportExportController as never)
+			.getControllerMetadata(PackagesController as never)
 			.routes.get('exportWorkflows');
 
-		it('is gated by the feat:packageExport license', () => {
-			expect(route?.licenseFeature).toBe('feat:packageExport');
+		it('is gated by the feat:packages license', () => {
+			expect(route?.licenseFeature).toBe('feat:packages');
 		});
 
 		it('has no @ProjectScope or @GlobalScope decorator', () => {

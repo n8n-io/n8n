@@ -30,12 +30,7 @@ export class WorkflowExporter {
 			{ includeParentFolder: true },
 		);
 
-		// We need to check that all the ids that were found are also in the request
-		const foundIds = new Set(workflows.map((w) => w.id));
-		const missing = request.workflowIds.filter((id) => !foundIds.has(id));
-		if (missing.length > 0) {
-			throw new UserError(`Workflow(s) not found: ${missing.join(', ')}. Export aborted.`);
-		}
+		this.assertAllRequestedWorkflowsFound(request.workflowIds, workflows);
 
 		const entries: ManifestEntry[] = [];
 
@@ -55,5 +50,19 @@ export class WorkflowExporter {
 		}
 
 		return entries;
+	}
+
+	private assertAllRequestedWorkflowsFound(
+		requestedWorkflowIds: string[],
+		foundWorkflows: Array<{ id: string }>,
+	) {
+		const foundWorkflowIds = new Set(foundWorkflows.map(({ id }) => id));
+		const missingWorkflowIds = requestedWorkflowIds.filter((id) => !foundWorkflowIds.has(id));
+
+		if (missingWorkflowIds.length > 0) {
+			throw new UserError(
+				`Workflow(s) not found or not accessible: ${missingWorkflowIds.join(', ')}. Export aborted.`,
+			);
+		}
 	}
 }

@@ -55,7 +55,7 @@ export class ModuleRegistry {
 		'instance-version-history',
 		'encryption-key-manager',
 		'oauth-jwe',
-		'import-export',
+		'packages',
 		'inbound-secrets',
 		'mcp-registry',
 	];
