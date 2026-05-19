@@ -176,6 +176,7 @@ const sharedInputDraft = ref('');
 	min-height: 0;
 	overflow: hidden;
 	display: flex;
+	padding-inline-start: calc(var(--spacing--sm) + var(--spacing--xs));
 }
 
 .chatBody > * {
