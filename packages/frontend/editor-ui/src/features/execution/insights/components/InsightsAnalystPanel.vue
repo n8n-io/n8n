@@ -211,6 +211,7 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
 @use '@/features/ai/shared/styles/prompt-suggestion-buttons';
 
 .panel {
@@ -222,6 +223,15 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	border-radius: var(--radius--xl);
 	background: var(--background--surface);
 	overflow: hidden;
+
+	// On narrower viewports the dashboard stacks the chat below the main
+	// content, so a viewport-tall panel makes the page feel broken. Cap
+	// the panel height instead of relying on the sidebar layout.
+	@media (max-width: vars.$breakpoint-md) {
+		height: auto;
+		max-height: 70vh;
+		min-height: 420px;
+	}
 }
 
 .header {

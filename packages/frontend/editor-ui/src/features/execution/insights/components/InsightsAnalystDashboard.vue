@@ -235,6 +235,8 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
+
 .view {
 	flex: 1;
 	overflow: auto;
@@ -245,6 +247,14 @@ onMounted(async () => {
 	max-width: var(--content-container--width);
 	margin: 0 auto;
 	padding: var(--spacing--lg) var(--spacing--2xl);
+
+	@media (max-width: vars.$breakpoint-sm) {
+		padding: var(--spacing--md) var(--spacing--lg);
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--sm);
+	}
 }
 
 .title {
@@ -258,6 +268,12 @@ onMounted(async () => {
 		color: var(--text-color--subtle);
 		font-size: var(--font-size--md);
 		line-height: var(--line-height--lg);
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing--sm);
 	}
 }
 
@@ -276,14 +292,22 @@ onMounted(async () => {
 
 .layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 32%);
+	grid-template-columns: minmax(0, 1fr) minmax(320px, 32%);
 	gap: var(--spacing--lg);
 	align-items: start;
+
+	// Below the medium breakpoint, the chat sidebar overlaps the main
+	// content because the grid still tries to fit two columns. Collapse
+	// to a single column and let the chat sit beneath the dashboard.
+	@media (max-width: vars.$breakpoint-md) {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 .main {
 	display: grid;
 	gap: var(--spacing--lg);
+	min-width: 0;
 }
 
 .highlights,
@@ -291,6 +315,14 @@ onMounted(async () => {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing--sm);
+
+	@media (max-width: vars.$breakpoint-sm) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 .highlight,
@@ -386,6 +418,19 @@ onMounted(async () => {
 	border-radius: var(--radius--lg);
 	color: var(--text-color);
 	text-decoration: none;
+	min-width: 0;
+
+	> span:nth-child(2) {
+		min-width: 0;
+		flex: 1 1 auto;
+
+		strong {
+			display: block;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
 
 	&:hover .openInline,
 	&:focus-visible .openInline {
@@ -395,6 +440,12 @@ onMounted(async () => {
 	small {
 		display: block;
 		color: var(--text-color--subtle);
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		.trendChip {
+			display: none;
+		}
 	}
 }
 
@@ -434,5 +485,12 @@ onMounted(async () => {
 	position: sticky;
 	top: var(--spacing--lg);
 	align-self: start;
+	min-width: 0;
+
+	// Once the dashboard collapses to a single column, the chat sits
+	// below the main content and shouldn't try to stick to the viewport.
+	@media (max-width: vars.$breakpoint-md) {
+		position: static;
+	}
 }
 </style>
