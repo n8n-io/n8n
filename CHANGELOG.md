@@ -1,3 +1,11 @@
+## [1.123.45](https://github.com/n8n-io/n8n/compare/n8n@1.123.44...n8n@1.123.45) (2026-05-19)
+
+
+### Bug Fixes
+
+* Fix security issue in langsmith via minor version upgrade from 0.5.19 to 0.6.0 ([#30684](https://github.com/n8n-io/n8n/issues/30684)) ([e1c9c21](https://github.com/n8n-io/n8n/commit/e1c9c2123f45eaa96b54cdd2a99234b51cfc8f1f))
+
+
 ## [1.123.44](https://github.com/n8n-io/n8n/compare/n8n@1.123.43...n8n@1.123.44) (2026-05-18)
 
 
