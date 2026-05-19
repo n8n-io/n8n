@@ -22,25 +22,29 @@ import {
 	formatNodeRef,
 } from '../types';
 
-// `satisfies` makes TypeScript the source of truth: if a field is added to or
-// removed from `NodeConfig`, this list must be updated or the build fails.
-const KNOWN_CONFIG_KEYS: ReadonlySet<keyof NodeConfig> = new Set([
-	'parameters',
-	'credentials',
-	'name',
-	'position',
-	'webhookId',
-	'disabled',
-	'notes',
-	'notesInFlow',
-	'executeOnce',
-	'retryOnFail',
-	'alwaysOutputData',
-	'onError',
-	'pinData',
-	'output',
-	'subnodes',
-] as const satisfies ReadonlyArray<keyof NodeConfig>);
+// The `Record<keyof NodeConfig, true>` annotation makes TypeScript the source
+// of truth: if a field is added to `NodeConfig`, the literal errors with
+// "Property '<new field>' is missing"; if a field is removed, the literal
+// errors because the listed key is no longer assignable.
+const KNOWN_CONFIG_KEY_MAP: Record<keyof NodeConfig, true> = {
+	parameters: true,
+	credentials: true,
+	name: true,
+	position: true,
+	webhookId: true,
+	disabled: true,
+	notes: true,
+	notesInFlow: true,
+	executeOnce: true,
+	retryOnFail: true,
+	alwaysOutputData: true,
+	onError: true,
+	pinData: true,
+	output: true,
+	subnodes: true,
+};
+
+const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set(Object.keys(KNOWN_CONFIG_KEY_MAP));
 
 export const unknownConfigKeysValidator: ValidatorPlugin = {
 	id: 'core:unknown-config-keys',
@@ -57,7 +61,7 @@ export const unknownConfigKeysValidator: ValidatorPlugin = {
 		const unknownKeys = Object.keys(node.config).filter(
 			// Internal markers (e.g. `_originalName` set by fromJSON) are intentional
 			// and not part of the public NodeConfig contract.
-			(key) => !(KNOWN_CONFIG_KEYS as ReadonlySet<string>).has(key) && !key.startsWith('_'),
+			(key) => !KNOWN_CONFIG_KEYS.has(key) && !key.startsWith('_'),
 		);
 
 		if (unknownKeys.length === 0) return [];
