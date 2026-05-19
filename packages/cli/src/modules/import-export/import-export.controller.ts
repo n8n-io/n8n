@@ -6,11 +6,11 @@ import type { Readable } from 'node:stream';
 
 import { ImportExportService } from './import-export.service';
 
-@RestController('/import-export')
+@RestController('/packages')
 export class ImportExportController {
 	constructor(private readonly importExportService: ImportExportService) {}
 
-	@Post('/export/workflows')
+	@Post('/export')
 	@Licensed('feat:packageExport')
 	async exportWorkflows(
 		req: AuthenticatedRequest,

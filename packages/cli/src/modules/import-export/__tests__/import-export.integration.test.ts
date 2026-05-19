@@ -187,7 +187,7 @@ describe('workflow package export', () => {
 			).rejects.toThrow(/missing-1.*missing-2/);
 		});
 
-		it('denies a caller with no access, naming the workflow as "not found"', async () => {
+		it('denies a caller with no access', async () => {
 			// Unauthorized and truly-missing ids surface with the same message so a caller
 			// can't probe whether a workflow exists outside their permission scope.
 			const owner = await createOwner();
