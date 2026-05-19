@@ -21,7 +21,7 @@ export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'task-control' || toolName === 'updateWorkingMemory' || toolName === 'plan')
 		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
-	if (toolName === 'workspace') return 'folder';
+	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
 	if (toolName.includes('data-table')) return 'table';
 	if (
 		toolName.includes('workflow') ||

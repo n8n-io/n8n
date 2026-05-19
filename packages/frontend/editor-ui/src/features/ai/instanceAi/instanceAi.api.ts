@@ -15,7 +15,6 @@ export async function postMessage(
 	context: IRestApiContext,
 	threadId: string,
 	message: string,
-	researchMode?: boolean,
 	attachments?: InstanceAiAttachment[],
 	timeZone?: string,
 	pushRef?: string,
@@ -26,7 +25,6 @@ export async function postMessage(
 		`/instance-ai/chat/${threadId}`,
 		{
 			message,
-			...(researchMode ? { researchMode } : {}),
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),

@@ -521,7 +521,7 @@ async function writeOutputs(
 
 		// `toolCalls` is the ordered timeline captured by the trace collector.
 		// We count any tool call that errored OR returned a failed result —
-		// hard Mastra tool failures are rare, but `submit-workflow` rejections
+		// hard native agent tool failures are rare, but `submit-workflow` rejections
 		// and `execute_command` returning a non-zero `tsc` exit are common and
 		// dominate the "rough path" signal we care about. Suspensions are
 		// benign (auto-approved or surfaced via `errorClass` separately).
@@ -752,7 +752,7 @@ function safeFilename(s: string): string {
  * Whether a tool call should count toward the "tool error rate" metric.
  *
  * Catches three flavours:
- * 1. **Hard Mastra failure** (`trace.error` set) — tool threw / rejected.
+ * 1. **Hard native agent failure** (`trace.error` set) — tool threw / rejected.
  * 2. **Tool returned a failed result object** — e.g. `submit-workflow`
  *    returning `{ success: false, errors: [...] }`. Looks at top-level
  *    `success === false` or non-empty `errors` array, plus a string
