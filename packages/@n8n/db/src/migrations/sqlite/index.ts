@@ -116,6 +116,7 @@ import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common
 import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
 import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
+import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/1784000000004-AddInsightsRawTimestampIdIndex';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -237,6 +238,7 @@ const sqliteMigrations: Migration[] = [
 	CreateBinaryDataTable1763716655000,
 	CreateWorkflowPublishHistoryTable1764167920585,
 	BackfillMissingWorkflowHistoryRecords1765448186933,
+	AddInsightsRawTimestampIdIndex1784000000004,
 ];
 
 export { sqliteMigrations };
