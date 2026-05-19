@@ -1,9 +1,11 @@
+import type { BuiltTool } from '@n8n/agents';
 import type { Context, ContextManager } from '@opentelemetry/api';
 import { jsonParse } from 'n8n-workflow';
 import type * as AsyncHooks from 'node:async_hooks';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../tool-registry';
+import { TraceWriter, type TraceToolCall, type TraceToolSuspend } from '../trace-replay';
 
 jest.mock('@n8n/agents', () => {
 	const actual = jest.requireActual<Record<string, unknown>>('@n8n/agents');
@@ -304,6 +306,7 @@ const {
 	createDetachedSubAgentTraceContext,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
+	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
@@ -1334,6 +1337,104 @@ describe('createInstanceAiTraceContext', () => {
 			}),
 		);
 		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
+	});
+
+	it('records actual suspend calls with the suspend payload', async () => {
+		const writer = new TraceWriter('record-suspend');
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'record';
+		tracing.traceWriter = writer;
+
+		const suspendPayload = {
+			requestId: 'request-1',
+			inputType: 'approval',
+			message: 'Confirm workspace change',
+		};
+		const interruptibleTool: BuiltTool = {
+			name: 'approval-tool',
+			description: 'Requests approval.',
+			suspendSchema: {},
+			handler: async (_input, context) => {
+				if (!('suspend' in context) || typeof context.suspend !== 'function') {
+					throw new Error('Expected interruptible tool context');
+				}
+				return await context.suspend(suspendPayload);
+			},
+		};
+
+		const wrappedTools = tracing.wrapTools(
+			createToolRegistry([['approval-tool', interruptibleTool]]),
+			{ agentRole: 'workflow-builder' },
+		);
+		const wrappedTool = wrappedTools.get('approval-tool');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped approval-tool is not executable');
+		}
+
+		const result = await executeTool(
+			wrappedTool,
+			{ operation: 'write-file' },
+			{
+				resumeData: undefined,
+				suspend: async (payload: unknown): Promise<never> =>
+					await Promise.resolve({ denied: true, payload } as never),
+			},
+		);
+
+		expect(result).toEqual({ denied: true, payload: suspendPayload });
+		const suspend = writer.getEvents()[1] as TraceToolSuspend;
+		expect(suspend).toEqual({
+			kind: 'tool-suspend',
+			stepId: 1,
+			agentRole: 'workflow-builder',
+			toolName: 'approval-tool',
+			input: { operation: 'write-file' },
+			output: {},
+			suspendPayload,
+		});
+	});
+
+	it('records denied first-call outputs as normal tool calls when suspend is not called', async () => {
+		const writer = new TraceWriter('record-denied-output');
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'record';
+		tracing.traceWriter = writer;
+
+		const deniedTool: BuiltTool = {
+			name: 'admin-only-tool',
+			description: 'Returns a denied output.',
+			suspendSchema: {},
+			handler: async () => await Promise.resolve({ denied: true }),
+		};
+
+		const wrappedTools = tracing.wrapTools(createToolRegistry([['admin-only-tool', deniedTool]]), {
+			agentRole: 'orchestrator',
+		});
+		const wrappedTool = wrappedTools.get('admin-only-tool');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped admin-only-tool is not executable');
+		}
+
+		const result = await executeTool(
+			wrappedTool,
+			{ action: 'read-secret' },
+			{
+				resumeData: undefined,
+				suspend: async (payload: unknown): Promise<never> =>
+					await Promise.resolve({ denied: true, payload } as never),
+			},
+		);
+
+		expect(result).toEqual({ denied: true });
+		const call = writer.getEvents()[1] as TraceToolCall;
+		expect(call).toEqual({
+			kind: 'tool-call',
+			stepId: 1,
+			agentRole: 'orchestrator',
+			toolName: 'admin-only-tool',
+			input: { action: 'read-secret' },
+			output: { denied: true },
+		});
 	});
 
 	it('does not wrap local tools for duplicate product-level LangSmith spans', async () => {
