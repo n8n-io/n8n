@@ -3,6 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const OBSERVATION_SCOPE_KINDS = ['thread', 'resource'];
 const OBSERVATION_MARKERS = ['critical', 'important', 'info', 'completion'];
 const OBSERVATION_STATUSES = ['active', 'superseded', 'dropped'];
+const OBSERVATION_TASK_KINDS = ['observer', 'reflector'];
 
 /**
  * Replaces the first observational-memory schema with the observation-log
@@ -68,7 +69,7 @@ export class ReplaceAgentObservationTables1784000000001 implements ReversibleMig
 		await createTable('agents_observation_locks').withColumns(
 			column('scopeKind').varchar(20).notNull.primary.withEnumCheck(OBSERVATION_SCOPE_KINDS),
 			column('scopeId').varchar(255).notNull.primary,
-			column('taskKind').varchar(64).notNull.primary,
+			column('taskKind').varchar(20).notNull.primary.withEnumCheck(OBSERVATION_TASK_KINDS),
 			column('holderId')
 				.varchar(64)
 				.notNull.comment('Ephemeral background-task lock owner token, not a user ID'),
