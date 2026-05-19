@@ -1,4 +1,5 @@
-import { WithTimestamps } from '@n8n/db';
+import { JsonColumn, WithTimestamps } from '@n8n/db';
+import type { SerializableAgentState } from '@n8n/instance-ai';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { InstanceAiThread } from './instance-ai-thread.entity';
@@ -24,6 +25,6 @@ export class InstanceAiCheckpoint extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	resourceId: string | null;
 
-	@Column({ type: 'text' })
-	state: string;
+	@JsonColumn()
+	state: SerializableAgentState;
 }

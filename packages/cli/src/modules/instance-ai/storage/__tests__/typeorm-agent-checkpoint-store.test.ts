@@ -24,13 +24,13 @@ function makeState(overrides: Partial<SerializableAgentState> = {}): Serializabl
 	};
 }
 
-function makeCheckpoint(state = makeState()): InstanceAiCheckpoint {
+function makeCheckpoint(state: SerializableAgentState = makeState()): InstanceAiCheckpoint {
 	return {
 		key: 'checkpoint:run-1',
 		runId: 'run-1',
 		threadId: 'thread-1',
 		resourceId: 'user-1',
-		state: JSON.stringify(state),
+		state,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	} as InstanceAiCheckpoint;
@@ -62,6 +62,23 @@ describe('TypeORMAgentCheckpointStore', () => {
 		).rejects.toThrow('missing a thread id');
 
 		expect(checkpointRepo.save).not.toHaveBeenCalled();
+	});
+
+	it('stores checkpoint state as structured JSON', async () => {
+		const state = makeState();
+		const checkpoint = makeCheckpoint(state);
+		checkpointRepo.create.mockReturnValueOnce(checkpoint);
+
+		await store.save('checkpoint:run-1', state);
+
+		expect(checkpointRepo.create).toHaveBeenCalledWith({
+			key: 'checkpoint:run-1',
+			runId: 'run-1',
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			state,
+		});
+		expect(checkpointRepo.save).toHaveBeenCalledWith(checkpoint);
 	});
 
 	it('serializes concurrent loads so only one caller consumes a checkpoint per process', async () => {
