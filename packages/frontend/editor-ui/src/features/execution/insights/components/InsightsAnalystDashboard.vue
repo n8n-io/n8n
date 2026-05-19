@@ -256,6 +256,8 @@ onMounted(async () => {
 	p {
 		margin: var(--spacing--2xs) 0 0;
 		color: var(--text-color--subtle);
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--lg);
 	}
 }
 
