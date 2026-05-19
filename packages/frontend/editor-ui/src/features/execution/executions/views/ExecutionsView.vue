@@ -16,6 +16,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { storeToRefs } from 'pinia';
 import { onBeforeMount, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -27,6 +28,7 @@ const insightsStore = useInsightsStore();
 const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const isAgentsView = () => settingsStore.isModuleActive('agents') && route.query.view === 'agents';
 const overview = useProjectPages();
@@ -43,7 +45,9 @@ onBeforeMount(async () => {
 	await loadWorkflows();
 
 	void externalHooks.run('executionsList.openDialog');
-	telemetry.track('User opened Executions log');
+	telemetry.track('User opened Executions log', {
+		workflow_id: workflowDocumentStore.value.workflowId,
+	});
 });
 
 onMounted(async () => {
