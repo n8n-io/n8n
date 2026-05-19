@@ -226,7 +226,7 @@ export class AgentChatBridge {
 
 		const threadId = this.resolveThreadId(thread);
 		// threadId.id already encodes platform + user identity (e.g. Telegram:
-		// "chat:botId-userId") so it partitions cross-session recall for this
+		// "chat:botId-userId") so it partitions Episodic Memory for this
 		// integration context without leaking the n8n user identity.
 		// Always run the published snapshot — integrations are production traffic.
 		const stream = this.agentService.executeForChatPublished({
