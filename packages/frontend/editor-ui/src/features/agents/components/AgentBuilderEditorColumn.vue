@@ -11,6 +11,7 @@ import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
+import AgentKnowledgePanel from './AgentKnowledgePanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -62,6 +63,11 @@ const i18n = useI18n();
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
+					/>
+					<AgentPanelHeader
+						v-else-if="activeMainTab === 'knowledge'"
+						:title="i18n.baseText('agents.builder.header.tab.knowledge')"
+						:description="i18n.baseText('agents.builder.knowledge.description')"
 					/>
 					<AgentPanelHeader
 						v-else-if="activeMainTab === 'executions'"
@@ -139,6 +145,11 @@ const i18n = useI18n();
 				<AgentSessionsListView
 					v-else-if="activeMainTab === 'executions'"
 					data-testid="agent-executions-panel"
+				/>
+
+				<AgentKnowledgePanel
+					v-else-if="activeMainTab === 'knowledge'"
+					data-testid="agent-knowledge-panel"
 				/>
 
 				<div v-else-if="activeMainTab === 'raw'" :class="$style.rawPanel">

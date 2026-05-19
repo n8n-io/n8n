@@ -4,11 +4,15 @@ import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryValue } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
-import { EXECUTIONS_SECTION_KEY } from '../constants';
+import { EXECUTIONS_SECTION_KEY, KNOWLEDGE_SECTION_KEY } from '../constants';
 
-export type AgentBuilderMainTab = 'agent' | 'executions' | 'raw';
+export type AgentBuilderMainTab = 'agent' | 'knowledge' | 'executions' | 'raw';
 
-type AgentBuilderSection = typeof EXECUTIONS_SECTION_KEY | 'raw' | null;
+type AgentBuilderSection =
+	| typeof EXECUTIONS_SECTION_KEY
+	| typeof KNOWLEDGE_SECTION_KEY
+	| 'raw'
+	| null;
 
 const SECTION_QUERY_PARAM = 'section';
 
@@ -16,11 +20,14 @@ function getSectionFromQuery(
 	section: LocationQueryValue | LocationQueryValue[] | undefined,
 ): AgentBuilderSection {
 	const value = Array.isArray(section) ? section[0] : section;
-	if (value === EXECUTIONS_SECTION_KEY || value === 'raw') return value;
+	if (value === EXECUTIONS_SECTION_KEY || value === KNOWLEDGE_SECTION_KEY || value === 'raw') {
+		return value;
+	}
 	return null;
 }
 
 function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
+	if (tab === 'knowledge') return KNOWLEDGE_SECTION_KEY;
 	if (tab === 'executions') return EXECUTIONS_SECTION_KEY;
 	if (tab === 'raw') return 'raw';
 	return null;
@@ -28,8 +35,10 @@ function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
 
 export function useAgentBuilderMainTabs({
 	executionsCount,
+	isKnowledgeEnabled,
 }: {
 	executionsCount: ComputedRef<number>;
+	isKnowledgeEnabled: ComputedRef<boolean>;
 }) {
 	const route = useRoute();
 	const router = useRouter();
@@ -45,6 +54,9 @@ export function useAgentBuilderMainTabs({
 
 	const activeMainTab = computed<AgentBuilderMainTab>({
 		get() {
+			if (selectedSection.value === KNOWLEDGE_SECTION_KEY && isKnowledgeEnabled.value) {
+				return 'knowledge';
+			}
 			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'executions';
 			if (selectedSection.value === 'raw') return 'raw';
 			return 'agent';
@@ -56,6 +68,14 @@ export function useAgentBuilderMainTabs({
 
 	const mainTabOptions = computed(() => [
 		{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' as const },
+		...(isKnowledgeEnabled.value
+			? [
+					{
+						label: i18n.baseText('agents.builder.header.tab.knowledge'),
+						value: 'knowledge' as const,
+					},
+				]
+			: []),
 		{
 			label: i18n.baseText('agents.builder.header.tab.executions'),
 			value: 'executions' as const,

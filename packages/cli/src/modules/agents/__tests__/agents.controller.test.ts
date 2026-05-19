@@ -12,6 +12,7 @@ import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integra
 import type { AgentScheduleService } from '../integrations/agent-schedule.service';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
@@ -36,12 +37,14 @@ function makeController({
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentScheduleService = mock<AgentScheduleService>(),
 	agentRepository = mock<AgentRepository>(),
+	agentKnowledgeService = mock<AgentKnowledgeService>(),
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
 	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
 	agentScheduleService?: jest.Mocked<AgentScheduleService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
+	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
 } = {}) {
 	const controller = new AgentsController(
 		agentsService,
@@ -51,6 +54,7 @@ function makeController({
 		agentScheduleService,
 		agentRepository,
 		mock<AgentExecutionService>(),
+		agentKnowledgeService,
 		mock<ChatIntegrationRegistry>(),
 	);
 
@@ -61,6 +65,7 @@ function makeController({
 		chatIntegrationService,
 		agentScheduleService,
 		agentRepository,
+		agentKnowledgeService,
 	};
 }
 
@@ -124,6 +129,7 @@ describe('AgentsController integration credentials', () => {
 			mock<AgentScheduleService>(),
 			agentRepository,
 			mock<AgentExecutionService>(),
+			mock<AgentKnowledgeService>(),
 			mock<ChatIntegrationRegistry>(),
 		);
 
@@ -310,6 +316,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentScheduleService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
+			mock<AgentKnowledgeService>(),
 			mock<ChatIntegrationRegistry>(),
 		);
 
@@ -353,6 +360,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentScheduleService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
+			mock<AgentKnowledgeService>(),
 			mock<ChatIntegrationRegistry>(),
 		);
 
@@ -385,6 +393,7 @@ describe('AgentsController chat message history', () => {
 			mock<AgentScheduleService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
+			mock<AgentKnowledgeService>(),
 			mock<ChatIntegrationRegistry>(),
 		);
 

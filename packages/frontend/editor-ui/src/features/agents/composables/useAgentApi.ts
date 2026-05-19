@@ -1,5 +1,6 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentKnowledgeResponse,
 	AgentIntegrationStatusResponse,
 	AgentPersistedMessageDto,
 	AgentSkill,
@@ -32,6 +33,18 @@ export const getAgent = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}`,
+	);
+};
+
+export const getAgentKnowledge = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentKnowledgeResponse> => {
+	return await makeRestApiRequest<AgentKnowledgeResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge`,
 	);
 };
 

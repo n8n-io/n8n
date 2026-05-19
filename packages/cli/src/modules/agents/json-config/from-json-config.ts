@@ -285,6 +285,54 @@ async function applyMemoryFromConfig(
 			await resolveEpisodicMemoryConfig(memoryConfig.episodicMemory, credentialProvider),
 		);
 	}
+
+	if (memoryConfig.observationalMemory?.enabled !== false) {
+		const observationalMemory = memoryConfig.observationalMemory;
+
+		memory.observationalMemory({
+			...(observationalMemory?.observerThresholdTokens !== undefined && {
+				observerThresholdTokens: observationalMemory.observerThresholdTokens,
+			}),
+			...(observationalMemory?.reflectorThresholdTokens !== undefined && {
+				reflectorThresholdTokens: observationalMemory.reflectorThresholdTokens,
+			}),
+			...(observationalMemory?.renderTokenBudget !== undefined && {
+				renderTokenBudget: observationalMemory.renderTokenBudget,
+			}),
+			...(observationalMemory?.observationLogTailLimit !== undefined && {
+				observationLogTailLimit: observationalMemory.observationLogTailLimit,
+			}),
+			...(observationalMemory?.lockTtlMs !== undefined && {
+				lockTtlMs: observationalMemory.lockTtlMs,
+			}),
+		});
+	}
+
+	memory.titleGeneration({ sync: true });
+
+	agent.memory(memory);
+}
+
+async function resolveEpisodicMemoryConfig(
+	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
+	credentialProvider: CredentialProvider,
+) {
+	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
+	const embeddingProviderOptions = {
+		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
+		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
+	};
+
+	return {
+		enabled: true,
+		...(config.topK !== undefined && { topK: config.topK }),
+		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		embeddingProviderOptions,
+	};
+}
+
 async function resolveModelConfig(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
