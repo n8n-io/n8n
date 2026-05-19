@@ -80,6 +80,9 @@ export class CredentialResolversController {
 			});
 			return credentialResolverSchema.parse(createdResolver);
 		} catch (e: unknown) {
+			if (e instanceof SystemResolverModificationError) {
+				throw new BadRequestError(e.message);
+			}
 			if (e instanceof CredentialResolverValidationError) {
 				throw new BadRequestError(e.message);
 			}

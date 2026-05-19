@@ -62,6 +62,14 @@ describe('CredentialResolversController', () => {
 			).rejects.toThrow(errorMessage);
 		});
 
+		it('should throw BadRequestError when service throws SystemResolverModificationError', async () => {
+			service.create.mockRejectedValue(new SystemResolverModificationError('create'));
+
+			await expect(
+				controller.createResolver(req, res, { name: 'test', type: 'oauth2', config: {} }),
+			).rejects.toThrow(BadRequestError);
+		});
+
 		it('should throw InternalServerError for unknown errors', async () => {
 			service.create.mockRejectedValue(new Error('unexpected'));
 

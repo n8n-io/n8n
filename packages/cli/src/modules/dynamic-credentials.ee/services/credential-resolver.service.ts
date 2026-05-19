@@ -60,6 +60,9 @@ export class DynamicCredentialResolverService {
 	 * @throws {CredentialResolverValidationError} When the resolver type is unknown or config is invalid
 	 */
 	async create(params: CreateResolverParams): Promise<DynamicCredentialResolver> {
+		if (params.type === SYSTEM_RESOLVER_TYPE) {
+			throw new SystemResolverModificationError('create');
+		}
 		await this.validateConfig(params.type, params.config);
 
 		const encryptedConfig = await this.encryptConfig(params.config);
@@ -125,6 +128,9 @@ export class DynamicCredentialResolverService {
 	 */
 	async update(id: string, params: UpdateResolverParams): Promise<DynamicCredentialResolver> {
 		if (id === SYSTEM_RESOLVER_ID) {
+			throw new SystemResolverModificationError('update');
+		}
+		if (params.type === SYSTEM_RESOLVER_TYPE) {
 			throw new SystemResolverModificationError('update');
 		}
 		const existing = await this.repository.findOneBy({ id });

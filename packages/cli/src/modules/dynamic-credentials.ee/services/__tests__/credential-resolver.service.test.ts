@@ -686,10 +686,40 @@ describe('DynamicCredentialResolverService', () => {
 		});
 	});
 
+	describe('create — system resolver guard', () => {
+		it('refuses to create a resolver of the system type and does not touch the repository', async () => {
+			await expect(
+				service.create({
+					name: 'Sneaky',
+					type: SYSTEM_RESOLVER_TYPE,
+					config: {},
+					user: createMockUser(),
+				}),
+			).rejects.toThrow(SystemResolverModificationError);
+
+			expect(mockRegistry.getResolverByTypename).not.toHaveBeenCalled();
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+			expect(mockRepository.create).not.toHaveBeenCalled();
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('update — system resolver guard', () => {
 		it('refuses to update the system resolver and does not touch the repository', async () => {
 			await expect(
 				service.update(SYSTEM_RESOLVER_ID, { name: 'tampered', user: createMockUser() }),
+			).rejects.toThrow(SystemResolverModificationError);
+
+			expect(mockRepository.findOneBy).not.toHaveBeenCalled();
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('refuses to change a non-system resolver to the system type', async () => {
+			await expect(
+				service.update('resolver-id-123', {
+					type: SYSTEM_RESOLVER_TYPE,
+					user: createMockUser(),
+				}),
 			).rejects.toThrow(SystemResolverModificationError);
 
 			expect(mockRepository.findOneBy).not.toHaveBeenCalled();
