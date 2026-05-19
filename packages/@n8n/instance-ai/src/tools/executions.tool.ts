@@ -1,7 +1,7 @@
 /**
  * Consolidated executions tool — list, get, run, debug, get-node-output, stop.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -128,7 +128,7 @@ async function handleRun(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'run' }>,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
-	suspend: ((payload: z.infer<typeof suspendSchema>) => Promise<void>) | undefined,
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
 ) {
 	if (context.permissions?.runWorkflow === 'blocked') {
 		return {
@@ -155,17 +155,11 @@ async function handleRun(
 			.get(input.workflowId)
 			.then((wf) => wf.name)
 			.catch(() => input.workflowId);
-		await suspend?.({
+		return await suspend({
 			requestId: nanoid(),
 			message: `Execute ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
-		return {
-			executionId: '',
-			status: 'error' as const,
-			denied: true,
-			reason: 'Awaiting confirmation',
-		};
 	}
 
 	// If resumed with denial
@@ -205,26 +199,21 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export function createExecutionsTool(context: InstanceAiContext) {
-	return createTool({
-		id: 'executions',
-		description:
+	return new Tool('executions')
+		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, and stop.',
-		inputSchema,
-		suspendSchema,
-		resumeSchema,
-		execute: async (input: Input, ctx) => {
+		)
+		.input(inputSchema)
+		.suspend(suspendSchema)
+		.resume(resumeSchema)
+		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-
-					const suspend = ctx?.agent?.suspend as
-						| ((payload: z.infer<typeof suspendSchema>) => Promise<void>)
-						| undefined;
-					return await handleRun(context, input, resumeData, suspend);
+					return await handleRun(context, input, ctx.resumeData, ctx.suspend);
 				}
 				case 'debug':
 					return await handleDebug(context, input);
@@ -233,6 +222,6 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'stop':
 					return await handleStop(context, input);
 			}
-		},
-	});
+		})
+		.build();
 }
