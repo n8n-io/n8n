@@ -151,7 +151,7 @@ describe('AgentDebugService', () => {
 			source: 'chat',
 			createdAt: now,
 			updatedAt: now,
-		} as AgentExecution & { thread: AgentExecutionThread };
+		} as unknown as AgentExecution & { thread: AgentExecutionThread };
 	}
 
 	function mockRunLookup(execution: (AgentExecution & { thread: AgentExecutionThread }) | null) {

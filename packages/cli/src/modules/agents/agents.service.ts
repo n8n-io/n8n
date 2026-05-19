@@ -41,12 +41,14 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	deepCopy,
+	nodeNameToToolName,
 	OperationalError,
 	UserError,
 	type ExecuteAgentData,
 	type INodeParameters,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -71,12 +73,16 @@ import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
-import { ExecutionRecorder } from './execution-recorder';
+import { ExecutionRecorder, type RecordedToolCall } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import {
+	composeJsonConfig,
+	decomposeJsonConfig,
+	sanitizeToolName,
+} from './json-config/agent-config-composition';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -171,6 +177,29 @@ interface GetRuntimeParams {
 	integrationType?: string;
 	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
 	usePublishedVersion?: boolean;
+}
+
+export interface AgentEvaluationToolMock {
+	toolName: string;
+	outputs: unknown[];
+}
+
+export interface ExecuteEvaluationCaseConfig {
+	agentId: string;
+	projectId: string;
+	userId: string;
+	message: string;
+	toolMocks: AgentEvaluationToolMock[];
+}
+
+export interface AgentEvaluationExecutionResult {
+	output: string;
+	error: string | null;
+	finishReason: string;
+	durationMs: number;
+	toolCalls: RecordedToolCall[];
+	missingToolMocks: string[];
+	warnings: string[];
 }
 
 @Service()
@@ -957,6 +986,145 @@ export class AgentsService {
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
 		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
+	}
+
+	async executeEvaluationCase(
+		config: ExecuteEvaluationCaseConfig,
+	): Promise<AgentEvaluationExecutionResult> {
+		const { agentId, projectId, message, toolMocks } = config;
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+		if (!agentEntity.schema) throw new UserError('Agent has no JSON config.');
+
+		const evaluationConfig = this.toEvaluationRunConfig(agentEntity.schema);
+		const providerToolsDisabled =
+			agentEntity.schema.providerTools !== undefined &&
+			Object.keys(agentEntity.schema.providerTools).length > 0;
+		const warnings = providerToolsDisabled
+			? ['Provider tools are disabled in v0 evaluation runs.']
+			: [];
+
+		const toolDescriptors: Record<string, ToolDescriptor> = {};
+		for (const [toolId, toolEntry] of Object.entries(agentEntity.tools ?? {})) {
+			toolDescriptors[toolId] = toolEntry.descriptor;
+		}
+
+		const outputsByToolName = new Map(
+			toolMocks.map(({ toolName, outputs }) => [toolName, [...outputs]]),
+		);
+		const missingToolMocks = new Set<string>();
+		const takeMockOutput = (toolName: string, input: unknown): unknown => {
+			const outputs = outputsByToolName.get(toolName);
+			if (outputs && outputs.length > 0) {
+				return outputs.shift();
+			}
+			missingToolMocks.add(toolName);
+			return {
+				mocked: false,
+				toolName,
+				input,
+				message: `No recorded output is available for "${toolName}".`,
+			};
+		};
+
+		const toolExecutor = {
+			executeTool: async (toolName: string, input: unknown) => takeMockOutput(toolName, input),
+		};
+		const resolvedTools: BuiltTool[] = [];
+		const credentialProvider = this.createCredentialProvider(projectId);
+
+		const agentInstance = await buildFromJson(evaluationConfig, toolDescriptors, {
+			toolExecutor,
+			credentialProvider,
+			resolveTool: async (ref) => {
+				const resolved = this.createEvaluationMockTool(ref, takeMockOutput);
+				resolvedTools.push(resolved);
+				return resolved;
+			},
+			skills: agentEntity.skills ?? {},
+			memoryFactory: this.getMemoryFactory(),
+		});
+
+		const recorder = new ExecutionRecorder(buildToolRegistry(resolvedTools));
+		const resultStream = await agentInstance.stream(message, {
+			executionCounter: this.createAgentExecutionCounter(agentId),
+		});
+
+		const reader = resultStream.stream.getReader();
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				recorder.record(value);
+			}
+		} finally {
+			reader.releaseLock();
+		}
+
+		const record = recorder.getMessageRecord();
+		return {
+			output: record.assistantResponse,
+			error: record.error,
+			finishReason: record.finishReason,
+			durationMs: record.duration,
+			toolCalls: record.toolCalls,
+			missingToolMocks: [...missingToolMocks],
+			warnings,
+		};
+	}
+
+	private toEvaluationRunConfig(config: AgentJsonConfig): AgentJsonConfig {
+		const evaluationConfig = { ...config };
+		delete evaluationConfig.memory;
+		delete evaluationConfig.providerTools;
+		if (evaluationConfig.tools) {
+			evaluationConfig.tools = evaluationConfig.tools.map((tool) => ({
+				...tool,
+				requireApproval: false,
+			}));
+		}
+		return evaluationConfig;
+	}
+
+	private createEvaluationMockTool(
+		ref: AgentJsonToolConfig,
+		takeMockOutput: (toolName: string, input: unknown) => unknown,
+	): BuiltTool {
+		if (ref.type === 'workflow') {
+			const toolName = sanitizeToolName(ref.name ?? ref.workflow);
+			return {
+				name: toolName,
+				description: ref.description ?? `Replay the recorded output for "${ref.workflow}"`,
+				inputSchema: z.object({}).catchall(z.unknown()),
+				handler: async (input) => takeMockOutput(toolName, input),
+				editable: false,
+				metadata: {
+					kind: 'workflow',
+					workflowId: ref.workflow,
+					workflowName: ref.workflow,
+				},
+			};
+		}
+
+		if (ref.type !== 'node') {
+			throw new UserError(`Tool type "${ref.type}" cannot be mocked through resolveTool`);
+		}
+
+		const toolName = nodeNameToToolName(ref.name);
+		return {
+			name: toolName,
+			description: ref.description ?? `Replay the recorded output for "${ref.name}"`,
+			inputSchema: z.object({}).catchall(z.unknown()),
+			handler: async (input) => takeMockOutput(toolName, input),
+			editable: false,
+			metadata: {
+				kind: 'node',
+				nodeType: ref.node.nodeType,
+				nodeTypeVersion: ref.node.nodeTypeVersion,
+				displayName: ref.name,
+				nodeParameters: ref.node.nodeParameters,
+			},
+		};
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */

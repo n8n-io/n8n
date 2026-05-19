@@ -39,3 +39,53 @@ export interface AgentEvaluationSuiteSetupResponse {
 	readiness: AgentEvaluationDatasetReadiness;
 	suite: AgentEvaluationSuiteDraft | null;
 }
+
+export interface AgentEvaluationRunMetricResult {
+	id: string;
+	name: string;
+	score: number;
+	pass: boolean;
+	reason: string;
+}
+
+export interface AgentEvaluationRunToolCall {
+	name: string;
+	mocked: boolean;
+	missingMock: boolean;
+}
+
+export interface AgentEvaluationRunCaseResult {
+	caseId: string;
+	input: string;
+	expectedOutput: string;
+	output: string;
+	status: 'passed' | 'failed' | 'error';
+	durationMs: number;
+	error: string | null;
+	metrics: AgentEvaluationRunMetricResult[];
+	toolCalls: AgentEvaluationRunToolCall[];
+	missingToolMocks: string[];
+}
+
+export interface AgentEvaluationRunSummary {
+	totalCases: number;
+	passedCases: number;
+	failedCases: number;
+	errorCases: number;
+	averageScore: number;
+}
+
+export interface AgentEvaluationSuiteRun {
+	id: string;
+	suiteId: string;
+	startedAt: string;
+	completedAt: string;
+	summary: AgentEvaluationRunSummary;
+	cases: AgentEvaluationRunCaseResult[];
+	warnings: string[];
+}
+
+export interface AgentEvaluationSuiteRunResponse {
+	readiness: AgentEvaluationDatasetReadiness;
+	run: AgentEvaluationSuiteRun | null;
+}

@@ -18,4 +18,14 @@ export class AgentEvaluationsController {
 	async setupSuite(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		return await this.agentEvaluationsService.setupSuite(req.params.projectId, req.params.agentId);
 	}
+
+	@Post('/suite/run')
+	@ProjectScope('agent:execute')
+	async runSuite(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		return await this.agentEvaluationsService.runSuite(
+			req.params.projectId,
+			req.params.agentId,
+			req.user.id,
+		);
+	}
 }

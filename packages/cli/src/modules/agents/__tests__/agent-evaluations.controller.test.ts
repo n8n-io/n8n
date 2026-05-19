@@ -13,9 +13,14 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 }));
 
 describe('AgentEvaluationsController route access scopes', () => {
-	it.each(routeCases)('$handlerName is gated by a project-scoped agent read check', ({ route }) => {
-		expect(route.accessScope).toBeDefined();
-		expect(route.accessScope?.globalOnly).toBe(false);
-		expect(route.accessScope?.scope).toBe('agent:read');
-	});
+	it.each(routeCases)(
+		'$handlerName is gated by a project-scoped agent check',
+		({ handlerName, route }) => {
+			expect(route.accessScope).toBeDefined();
+			expect(route.accessScope?.globalOnly).toBe(false);
+			expect(route.accessScope?.scope).toBe(
+				handlerName === 'runSuite' ? 'agent:execute' : 'agent:read',
+			);
+		},
+	);
 });

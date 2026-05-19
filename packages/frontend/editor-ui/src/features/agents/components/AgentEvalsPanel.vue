@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { AgentEvaluationDatasetResponse, AgentEvaluationSuiteDraft } from '@n8n/api-types';
+import type {
+	AgentEvaluationDatasetResponse,
+	AgentEvaluationRunCaseResult,
+	AgentEvaluationSuiteDraft,
+	AgentEvaluationSuiteRun,
+} from '@n8n/api-types';
 import { AGENT_EVALUATION_MIN_REVIEWED_CASES } from '@n8n/api-types';
 import { N8nBadge, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -10,6 +15,7 @@ import { useToast } from '@/app/composables/useToast';
 
 import {
 	getAgentEvaluationDataset,
+	runAgentEvaluationSuite,
 	setupAgentEvaluationSuite,
 } from '../composables/useAgentEvaluationsApi';
 import type { AgentSchema } from '../types';
@@ -35,8 +41,10 @@ const toast = useToast();
 
 const dataset = ref<AgentEvaluationDatasetResponse | null>(null);
 const suite = ref<AgentEvaluationSuiteDraft | null>(null);
+const run = ref<AgentEvaluationSuiteRun | null>(null);
 const loading = ref(false);
 const settingUpSuite = ref(false);
+const runningSuite = ref(false);
 
 const evals = computed(() => props.schema?.evaluations ?? []);
 const readiness = computed(() => dataset.value?.readiness ?? null);
@@ -83,6 +91,7 @@ async function loadDataset() {
 	if (!props.projectId || !props.agentId) return;
 
 	suite.value = null;
+	run.value = null;
 	loading.value = true;
 	try {
 		dataset.value = await getAgentEvaluationDataset(
@@ -101,6 +110,7 @@ async function setupSuite() {
 	if (!props.projectId || !props.agentId) return;
 
 	settingUpSuite.value = true;
+	run.value = null;
 	try {
 		const response = await setupAgentEvaluationSuite(
 			rootStore.restApiContext,
@@ -122,6 +132,55 @@ async function setupSuite() {
 	} finally {
 		settingUpSuite.value = false;
 	}
+}
+
+async function runFirstEvaluation() {
+	if (!props.projectId || !props.agentId) return;
+
+	runningSuite.value = true;
+	try {
+		const response = await runAgentEvaluationSuite(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		if (dataset.value) {
+			dataset.value = { ...dataset.value, readiness: response.readiness };
+		}
+		run.value = response.run;
+		if (!response.run) {
+			toast.showMessage({
+				title: i18n.baseText('agents.builder.evaluations.run.notReady'),
+				type: 'warning',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.evaluations.run.loadError'));
+	} finally {
+		runningSuite.value = false;
+	}
+}
+
+function formatScore(score: number) {
+	return `${Math.round(score * 100)}%`;
+}
+
+function getCaseStatusLabel(result: AgentEvaluationRunCaseResult): string {
+	if (result.status === 'passed') {
+		return i18n.baseText('agents.builder.evaluations.run.status.passed');
+	}
+	if (result.status === 'error') {
+		return i18n.baseText('agents.builder.evaluations.run.status.error');
+	}
+	return i18n.baseText('agents.builder.evaluations.run.status.failed');
+}
+
+function getCaseStatusTheme(
+	result: AgentEvaluationRunCaseResult,
+): 'success' | 'danger' | 'warning' {
+	if (result.status === 'passed') return 'success';
+	if (result.status === 'error') return 'danger';
+	return 'warning';
 }
 
 watch(
@@ -279,9 +338,100 @@ watch(
 						</div>
 					</div>
 				</div>
+
+				<div :class="$style.suiteActions">
+					<N8nButton
+						icon="play"
+						:label="i18n.baseText('agents.builder.evaluations.run.button')"
+						:loading="runningSuite"
+						data-testid="agent-evaluations-run-suite"
+						@click="runFirstEvaluation"
+					/>
+				</div>
 			</N8nCard>
 
-			<div v-else :class="$style.dashedCard">
+			<N8nCard v-if="run" :class="$style.runCard" data-testid="agent-evaluations-run-results">
+				<div :class="$style.suiteHeader">
+					<div :class="$style.readinessCopy">
+						<N8nText :bold="true">
+							{{ i18n.baseText('agents.builder.evaluations.run.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.builder.evaluations.run.description') }}
+						</N8nText>
+					</div>
+					<N8nText size="small" color="text-light">
+						{{
+							i18n.baseText('agents.builder.evaluations.run.averageScore', {
+								interpolate: { score: formatScore(run.summary.averageScore) },
+							})
+						}}
+					</N8nText>
+				</div>
+
+				<div :class="$style.datasetStats">
+					<div :class="$style.datasetStat">
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.builder.evaluations.run.summary.total') }}
+						</N8nText>
+						<N8nText :bold="true">{{ run.summary.totalCases }}</N8nText>
+					</div>
+					<div :class="$style.datasetStat">
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.builder.evaluations.run.summary.passed') }}
+						</N8nText>
+						<N8nText :bold="true">{{ run.summary.passedCases }}</N8nText>
+					</div>
+					<div :class="$style.datasetStat">
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.builder.evaluations.run.summary.failed') }}
+						</N8nText>
+						<N8nText :bold="true">{{ run.summary.failedCases + run.summary.errorCases }}</N8nText>
+					</div>
+				</div>
+
+				<div v-if="run.warnings.length > 0" :class="$style.warningList">
+					<N8nText v-for="warning in run.warnings" :key="warning" size="small" color="text-light">
+						{{ warning }}
+					</N8nText>
+				</div>
+
+				<div :class="$style.runCases">
+					<div
+						v-for="result in run.cases"
+						:key="result.caseId"
+						:class="$style.runCase"
+						data-testid="agent-evaluations-run-case"
+					>
+						<div :class="$style.suiteHeader">
+							<div :class="$style.metricCopy">
+								<N8nText :bold="true" size="small">{{ result.input }}</N8nText>
+								<N8nText size="small" color="text-light">{{
+									result.output || result.error
+								}}</N8nText>
+							</div>
+							<N8nBadge :theme="getCaseStatusTheme(result)" size="small">
+								{{ getCaseStatusLabel(result) }}
+							</N8nBadge>
+						</div>
+						<div :class="$style.metricBadges">
+							<N8nBadge
+								v-for="metric in result.metrics"
+								:key="metric.id"
+								:theme="metric.pass ? 'success' : 'warning'"
+								size="small"
+							>
+								{{ metric.name }} {{ formatScore(metric.score) }}
+							</N8nBadge>
+							<N8nBadge v-if="result.missingToolMocks.length > 0" theme="warning" size="small">
+								{{ i18n.baseText('agents.builder.evaluations.run.missingMocks') }}
+							</N8nBadge>
+						</div>
+					</div>
+				</div>
+			</N8nCard>
+
+			<div v-if="!suite" :class="$style.dashedCard">
 				<N8nText :bold="true">
 					{{ i18n.baseText('agents.builder.evaluations.setup.title') }}
 				</N8nText>
@@ -328,6 +478,12 @@ watch(
 	gap: var(--spacing--sm);
 }
 
+.runCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
 .readinessHeader {
 	display: flex;
 	align-items: flex-start;
@@ -369,6 +525,12 @@ watch(
 .readinessActions {
 	display: flex;
 	flex-wrap: wrap;
+	gap: var(--spacing--xs);
+}
+
+.suiteActions {
+	display: flex;
+	justify-content: flex-end;
 	gap: var(--spacing--xs);
 }
 
@@ -428,6 +590,31 @@ watch(
 	gap: var(--spacing--2xs);
 	flex-wrap: wrap;
 	justify-content: flex-end;
+}
+
+.warningList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--border-radius-base);
+	background-color: var(--callout--color--background--warning);
+}
+
+.runCases {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.runCase {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--border-radius-base);
 }
 
 .evalCard {

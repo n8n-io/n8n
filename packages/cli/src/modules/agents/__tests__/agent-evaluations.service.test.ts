@@ -2,17 +2,41 @@ import { AGENT_EVALUATION_MIN_REVIEWED_CASES } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import { AgentEvaluationsService } from '../agent-evaluations.service';
+import type { AgentsService } from '../agents.service';
 import type { AgentEvaluationCase } from '../entities/agent-evaluation-case.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentEvaluationCaseRepository } from '../repositories/agent-evaluation-case.repository';
+import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
 describe('AgentEvaluationsService', () => {
 	const now = new Date('2026-05-18T12:00:00.000Z');
 	let agentEvaluationCaseRepository: jest.Mocked<AgentEvaluationCaseRepository>;
+	let agentExecutionRepository: jest.Mocked<AgentExecutionRepository>;
+	let agentsService: jest.Mocked<AgentsService>;
+	let queryBuilder: {
+		innerJoin: jest.Mock;
+		where: jest.Mock;
+		andWhere: jest.Mock;
+		getMany: jest.Mock;
+	};
 	let service: AgentEvaluationsService;
 
 	beforeEach(() => {
 		agentEvaluationCaseRepository = mock<AgentEvaluationCaseRepository>();
-		service = new AgentEvaluationsService(agentEvaluationCaseRepository);
+		agentExecutionRepository = mock<AgentExecutionRepository>();
+		agentsService = mock<AgentsService>();
+		queryBuilder = {
+			innerJoin: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			getMany: jest.fn().mockResolvedValue([]),
+		};
+		agentExecutionRepository.createQueryBuilder.mockReturnValue(queryBuilder as never);
+		service = new AgentEvaluationsService(
+			agentEvaluationCaseRepository,
+			agentExecutionRepository,
+			agentsService,
+		);
 	});
 
 	function reviewFixture(overrides: Partial<AgentEvaluationCase> = {}): AgentEvaluationCase {
@@ -129,6 +153,91 @@ describe('AgentEvaluationsService', () => {
 					expect.objectContaining({ id: 'expected-output-similarity', enabled: true }),
 					expect.objectContaining({ id: 'task-completion', enabled: true }),
 					expect.objectContaining({ id: 'rejected-pattern-check', enabled: true }),
+				],
+			}),
+		);
+	});
+
+	it('does not run a suite below the reviewed-case threshold', async () => {
+		agentEvaluationCaseRepository.countByStatus.mockResolvedValue({
+			total: 3,
+			approved: 2,
+			rejected: 1,
+		});
+		agentEvaluationCaseRepository.findByAgent.mockResolvedValue([reviewFixture()]);
+
+		const response = await service.runSuite('project-1', 'agent-1', 'user-1');
+
+		expect(response.run).toBeNull();
+		expect(agentExecutionRepository.createQueryBuilder).not.toHaveBeenCalled();
+		expect(agentsService.executeEvaluationCase).not.toHaveBeenCalled();
+	});
+
+	it('runs the first evaluation with reviewed cases and recorded tool mocks', async () => {
+		const review = reviewFixture({
+			expectedOutput: 'Expected answer',
+			actualOutput: 'Old answer',
+		});
+		agentEvaluationCaseRepository.countByStatus.mockResolvedValue({
+			total: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			approved: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			rejected: 0,
+		});
+		agentEvaluationCaseRepository.findByAgent.mockResolvedValue([review]);
+		queryBuilder.getMany.mockResolvedValue([
+			{
+				id: review.executionId,
+				timeline: [
+					{
+						type: 'tool-call',
+						name: 'lookup',
+						output: { answer: 42 },
+					},
+				],
+				toolCalls: null,
+			} as AgentExecution,
+		]);
+		agentsService.executeEvaluationCase.mockResolvedValue({
+			output: 'Expected answer',
+			error: null,
+			finishReason: 'stop',
+			durationMs: 125,
+			toolCalls: [{ name: 'lookup', input: { query: 'Question' }, output: { answer: 42 } }],
+			missingToolMocks: [],
+			warnings: [],
+		});
+
+		const response = await service.runSuite('project-1', 'agent-1', 'user-1');
+
+		expect(agentEvaluationCaseRepository.findByAgent).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			AGENT_EVALUATION_MIN_REVIEWED_CASES,
+		);
+		expect(agentsService.executeEvaluationCase).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			userId: 'user-1',
+			message: 'Question',
+			toolMocks: [{ toolName: 'lookup', outputs: [{ answer: 42 }] }],
+		});
+		expect(response.run).toEqual(
+			expect.objectContaining({
+				suiteId: 'agent-agent-1-reviewed-cases-v0',
+				summary: {
+					totalCases: 1,
+					passedCases: 1,
+					failedCases: 0,
+					errorCases: 0,
+					averageScore: 1,
+				},
+				cases: [
+					expect.objectContaining({
+						caseId: review.id,
+						status: 'passed',
+						output: 'Expected answer',
+						toolCalls: [{ name: 'lookup', mocked: true, missingMock: false }],
+					}),
 				],
 			}),
 		);

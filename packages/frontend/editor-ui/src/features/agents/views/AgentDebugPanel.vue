@@ -123,7 +123,6 @@ function toTimelineExecution(run: AgentDebugRunDetail): AgentExecution {
 		timeline: run.timeline,
 		error: run.error,
 		hitlStatus: run.hitlStatus,
-		workingMemory: run.workingMemory,
 		source: run.source,
 	};
 }
