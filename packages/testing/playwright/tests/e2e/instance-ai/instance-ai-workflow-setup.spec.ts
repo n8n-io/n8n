@@ -774,10 +774,6 @@ test.describe(
 		test('should clear required parameter issue indicator when the field is filled', async ({
 			n8n,
 		}) => {
-			test.fixme(
-				true,
-				'Broken by ParameterInput node-resolution refactor in #30219 — issues are computed against the global workflow document store node instead of the wizard displayNode.',
-			);
 			await n8n.api.workflows.createWorkflow(
 				createParameterOnlyWorkflow(PARAMETER_ISSUE_WORKFLOW_NAME),
 			);
