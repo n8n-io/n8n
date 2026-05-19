@@ -1222,7 +1222,6 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		message: string,
-		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
 		pushRef?: string,
@@ -1231,7 +1230,6 @@ export class InstanceAiService {
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
-			researchMode,
 		});
 
 		// Persist the user's time zone so checkpoint / replan / synthesize
@@ -1251,7 +1249,6 @@ export class InstanceAiService {
 			runId,
 			message,
 			abortController,
-			researchMode,
 			attachments,
 			messageGroupId,
 			timeZone,
@@ -1629,7 +1626,7 @@ export class InstanceAiService {
 		this.liveness.clearThreadState(threadId);
 
 		// Clear run-state registry entries (active/suspended runs, confirmations,
-		// user, research mode, and message-group mappings).
+		// user, time zone, and message-group mappings).
 		const { active, suspended } = this.runState.clearThread(threadId);
 		if (active) {
 			active.abortController.abort();
@@ -2270,7 +2267,6 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		abortSignal: AbortSignal,
-		researchMode?: boolean,
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
@@ -2395,7 +2391,6 @@ export class InstanceAiService {
 			domainTools,
 			abortSignal,
 			taskStorage,
-			researchMode,
 			timeZone: this.defaultTimeZone,
 			browserMcpConfig: this.instanceAiConfig.browserMcp
 				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
@@ -2616,7 +2611,6 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		message: string,
-		researchMode: boolean | undefined,
 		messageGroupId?: string,
 		isReplanFollowUp: boolean = false,
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
@@ -2629,7 +2623,6 @@ export class InstanceAiService {
 		const { runId, abortController } = this.runState.startRun({
 			threadId,
 			user,
-			researchMode,
 			messageGroupId,
 		});
 
@@ -2650,7 +2643,6 @@ export class InstanceAiService {
 			runId,
 			message,
 			abortController,
-			researchMode,
 			undefined,
 			messageGroupId,
 			timeZone,
@@ -2705,7 +2697,6 @@ export class InstanceAiService {
 				this.buildPlannedTaskFollowUpMessage('replan', action.graph, {
 					failedTask: action.failedTask,
 				}),
-				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
 				true,
 			);
@@ -2726,7 +2717,6 @@ export class InstanceAiService {
 				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
-				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
 			);
 			// Same rollback as replan: tick() transitioned to `completed`, but if
@@ -2766,7 +2756,6 @@ export class InstanceAiService {
 				this.buildPlannedTaskFollowUpMessage('checkpoint', graphAfterMark, {
 					checkpoint: checkpointRecord,
 				}),
-				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
 				false,
 				{ isCheckpointFollowUp: true, checkpointTaskId: checkpoint.id },
@@ -2793,7 +2782,6 @@ export class InstanceAiService {
 			threadId,
 			action.graph.planRunId,
 			createInertAbortSignal(),
-			this.runState.getThreadResearchMode(threadId),
 			action.graph.messageGroupId,
 			// Route planned-task workflow runs (build agent, checkpoint verifications)
 			// to the user's iframe session so live execution push events reach the
@@ -2815,7 +2803,6 @@ export class InstanceAiService {
 		runId: string,
 		message: string,
 		abortController: AbortController,
-		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
 		timeZone?: string,
@@ -2865,7 +2852,6 @@ export class InstanceAiService {
 				threadId,
 				runId,
 				signal,
-				researchMode,
 				messageGroupId,
 				executionPushRef,
 			);
@@ -2912,7 +2898,6 @@ export class InstanceAiService {
 							})),
 						}
 					: {}),
-				...(researchMode !== undefined ? { researchMode } : {}),
 				...(messageGroupId ? { messageGroupId } : {}),
 			};
 			tracing = resumeReason
@@ -3534,7 +3519,6 @@ export class InstanceAiService {
 				user,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('checkpoint', graph, { checkpoint }),
-				this.runState.getThreadResearchMode(threadId),
 				messageGroupId,
 				false,
 				{ isCheckpointFollowUp: true, checkpointTaskId },
@@ -4254,7 +4238,6 @@ export class InstanceAiService {
 							user,
 							opts.threadId,
 							`<background-task-completed>\n${payload}\n</background-task-completed>\n\n${AUTO_FOLLOW_UP_MESSAGE}`,
-							this.runState.getThreadResearchMode(opts.threadId),
 							task.messageGroupId,
 						);
 					}

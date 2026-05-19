@@ -163,7 +163,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
 	const systemPrompt = getSystemPrompt({
-		researchMode: orchestrationContext?.researchMode,
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,

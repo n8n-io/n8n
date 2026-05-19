@@ -164,7 +164,6 @@ type BackgroundTaskFollowUpServiceInternals = {
 		getThreadUser: jest.MockedFunction<(threadId: string) => User | undefined>;
 		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
 		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
-		getThreadResearchMode: jest.MockedFunction<(threadId: string) => boolean | undefined>;
 	};
 	liveness: {
 		hasTimedOutActiveRunThread: jest.MockedFunction<(threadId: string) => boolean>;
@@ -199,7 +198,6 @@ type BackgroundTaskFollowUpServiceInternals = {
 			user: User,
 			threadId: string,
 			message: string,
-			researchMode?: boolean,
 			messageGroupId?: string,
 		) => Promise<string | undefined>
 	>;
@@ -250,7 +248,6 @@ function createBackgroundTaskFollowUpService({
 		getThreadUser: jest.fn((_threadId: string) => fakeUser),
 		getActiveRunId: jest.fn((_threadId: string) => undefined),
 		hasSuspendedRun: jest.fn((_threadId: string) => false),
-		getThreadResearchMode: jest.fn((_threadId: string) => false),
 	};
 	service.liveness = {
 		hasTimedOutActiveRunThread: jest.fn((threadId: string) =>
@@ -279,13 +276,8 @@ function createBackgroundTaskFollowUpService({
 		) => {},
 	);
 	service.startInternalFollowUpRun = jest.fn(
-		async (
-			_user: User,
-			_threadId: string,
-			_message: string,
-			_researchMode?: boolean,
-			_messageGroupId?: string,
-		) => 'run-follow-up',
+		async (_user: User, _threadId: string, _message: string, _messageGroupId?: string) =>
+			'run-follow-up',
 	);
 	service.queuePendingCheckpointReentry = jest.fn();
 	service.maybeReenterParentCheckpoint = jest.fn(
@@ -310,7 +302,7 @@ type StartRunServiceInternals = {
 	};
 	runState: {
 		startRun: jest.MockedFunction<
-			(options: { threadId: string; user: User; researchMode?: boolean }) => {
+			(options: { threadId: string; user: User }) => {
 				runId: string;
 				abortController: AbortController;
 				messageGroupId?: string;
@@ -714,7 +706,6 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			fakeUser,
 			'thread-a',
 			expect.stringContaining('<background-task-completed>'),
-			false,
 			'group-1',
 		);
 	});

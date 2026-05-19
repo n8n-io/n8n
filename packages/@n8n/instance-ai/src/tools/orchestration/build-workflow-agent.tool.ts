@@ -102,6 +102,25 @@ const BUILDER_CREDENTIAL_ACTIONS = [
 	'test',
 ] as const satisfies readonly CredentialAction[];
 
+// The builder owns its tool/action surface here. The generic tool factories only enforce
+// the action list they are given, which keeps agent policy out of shared tools.
+const BUILDER_SANDBOX_TOOL_NAMES = [
+	'nodes',
+	'executions',
+	DATA_TABLES_TOOL_ID,
+	ASK_USER_TOOL_ID,
+	'research',
+] as const;
+
+const BUILDER_TOOL_MODE_TOOL_NAMES = [
+	'build-workflow',
+	'nodes',
+	'workflows',
+	DATA_TABLES_TOOL_ID,
+	ASK_USER_TOOL_ID,
+	'research',
+] as const;
+
 function createBuilderWorkflowsTool(context: InstanceAiContext) {
 	return createWorkflowsTool(context, {
 		allowedActions: BUILDER_WORKFLOW_ACTIONS,
@@ -865,10 +884,8 @@ export async function startBuildWorkflowAgentTask(
 		const builderWorkflowsTool = createBuilderWorkflowsTool(domainContext);
 		const builderCredentialsTool = createBuilderCredentialsTool(domainContext);
 
-		const toolNames = ['nodes', 'executions', DATA_TABLES_TOOL_ID, ASK_USER_TOOL_ID];
-
 		builderTools = createToolRegistry();
-		for (const name of toolNames) {
+		for (const name of BUILDER_SANDBOX_TOOL_NAMES) {
 			const tool = context.domainTools.get(name);
 			if (tool) {
 				builderTools.set(name, tool);
@@ -882,15 +899,7 @@ export async function startBuildWorkflowAgentTask(
 	} else {
 		builderTools = createToolRegistry();
 
-		const toolNames = [
-			'build-workflow',
-			'nodes',
-			'workflows',
-			DATA_TABLES_TOOL_ID,
-			ASK_USER_TOOL_ID,
-			...(context.researchMode ? ['research'] : []),
-		];
-		for (const name of toolNames) {
+		for (const name of BUILDER_TOOL_MODE_TOOL_NAMES) {
 			const tool = context.domainTools.get(name);
 			if (tool) {
 				builderTools.set(name, tool);

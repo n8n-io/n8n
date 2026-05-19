@@ -166,7 +166,6 @@ export class InstanceAiController {
 			req.user,
 			threadId,
 			payload.message,
-			payload.researchMode,
 			payload.attachments,
 			payload.timeZone,
 			payload.pushRef,

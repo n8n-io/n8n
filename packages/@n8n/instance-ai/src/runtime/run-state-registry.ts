@@ -88,7 +88,6 @@ export interface RunStateTimeoutDetails {
 export interface StartRunOptions<TUser> {
 	threadId: string;
 	user: TUser;
-	researchMode?: boolean;
 	messageGroupId?: string;
 }
 
@@ -104,8 +103,6 @@ export class RunStateRegistry<TUser = unknown> {
 	private readonly pendingConfirmations = new Map<string, PendingConfirmation>();
 
 	private readonly threadUsers = new Map<string, TUser>();
-
-	private readonly threadResearchMode = new Map<string, boolean>();
 
 	private readonly threadMessageGroupId = new Map<string, string>();
 
@@ -128,9 +125,6 @@ export class RunStateRegistry<TUser = unknown> {
 			lastActivityAt: now,
 		});
 		this.threadUsers.set(options.threadId, options.user);
-		if (options.researchMode !== undefined) {
-			this.threadResearchMode.set(options.threadId, options.researchMode);
-		}
 
 		// When creating a fresh message group (no reuse), clean up the previous
 		// one so runIdsByMessageGroup doesn't leak entries indefinitely.
@@ -362,10 +356,6 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadUsers.get(threadId);
 	}
 
-	getThreadResearchMode(threadId: string): boolean | undefined {
-		return this.threadResearchMode.get(threadId);
-	}
-
 	setTimeZone(threadId: string, timeZone: string): void {
 		this.threadTimeZones.set(threadId, timeZone);
 	}
@@ -508,7 +498,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/**
 	 * Remove all per-thread state: active/suspended runs, confirmations,
-	 * user, research mode, and message-group mappings.
+	 * user, time zone, and message-group mappings.
 	 * Returns the cancelled active/suspended runs so the caller can abort them.
 	 */
 	clearThread(
@@ -523,7 +513,6 @@ export class RunStateRegistry<TUser = unknown> {
 		if (active) this.activeRuns.delete(threadId);
 
 		this.threadUsers.delete(threadId);
-		this.threadResearchMode.delete(threadId);
 		this.threadTimeZones.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
@@ -548,7 +537,6 @@ export class RunStateRegistry<TUser = unknown> {
 		this.suspendedRuns.clear();
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
-		this.threadResearchMode.clear();
 		this.threadTimeZones.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
