@@ -13,6 +13,7 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { listAgents } from '../composables/useAgentApi';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
@@ -26,6 +27,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
+const agentTelemetry = useAgentTelemetry();
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
@@ -76,6 +78,7 @@ function onAgentDeleted(agentId: string) {
 }
 
 function onCreateAgentClick() {
+	agentTelemetry.trackClickedNewAgent('button');
 	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
 }
 

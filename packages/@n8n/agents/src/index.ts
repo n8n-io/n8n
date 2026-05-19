@@ -28,6 +28,7 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
 	MemoryDescriptor,
 	ObservationCapableMemory,
 	TitleGenerationConfig,
@@ -150,6 +151,29 @@ export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
+export {
+	parseObservationLogMarkdown,
+	renderObserverTranscript,
+	runObservationLogObserver,
+} from './runtime/observation-log-observer';
+export {
+	buildObservationLogObserverPrompt,
+	createObservationLogObserveFn,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from './runtime/observation-log-defaults';
+export type { CreateObservationLogObserveFnOptions } from './runtime/observation-log-defaults';
+export type {
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
+	ObservationLogObserverMemory,
+	ParsedObservationLogEntry,
+	ParseObservationLogMarkdownResult,
+	RenderObserverTranscriptOptions,
+	RunObservationLogObserverOpts,
+	RunObservationLogObserverResult,
+} from './runtime/observation-log-observer';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
