@@ -1116,7 +1116,7 @@ function requestFixWithAi() {
 			workflowName: workflowDocumentStore?.value?.name ?? undefined,
 			errors: fixWithAiRunFailures.value.errors,
 		}),
-		'*',
+		window.location.origin,
 	);
 }
 

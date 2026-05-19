@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { defineComponent } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -12,10 +13,23 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	})),
 }));
 
+let mockIframeWindow: Window;
+const mockIframeElement = { contentWindow: null as Window | null };
+
+function dispatchIframeMessage(data: unknown, source: Window | null = mockIframeWindow) {
+	window.dispatchEvent(
+		new MessageEvent('message', {
+			data: typeof data === 'string' ? data : JSON.stringify(data),
+			origin: window.location.origin,
+			source,
+		}),
+	);
+}
+
 const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 	global: {
 		stubs: {
-			WorkflowPreview: {
+			WorkflowPreview: defineComponent({
 				template:
 					'<div data-test-id="workflow-preview" :data-can-execute="canExecute" :data-suppress-notifications="suppressNotifications" :data-allow-error-notifications="allowErrorNotifications" />',
 				props: [
@@ -28,7 +42,10 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 					'allowErrorNotifications',
 					'loaderType',
 				],
-			},
+				setup(_, { expose }) {
+					expose({ iframeRef: mockIframeElement });
+				},
+			}),
 		},
 	},
 });
@@ -48,6 +65,8 @@ describe('InstanceAiWorkflowPreview', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		vi.clearAllMocks();
+		mockIframeWindow = { postMessage: vi.fn() } as unknown as Window;
+		mockIframeElement.contentWindow = mockIframeWindow;
 	});
 
 	it('should render without throwing', () => {
@@ -103,14 +122,10 @@ describe('InstanceAiWorkflowPreview', () => {
 			props: { workflowId: null },
 		});
 
-		window.dispatchEvent(
-			new MessageEvent('message', {
-				data: JSON.stringify({
-					command: 'n8nReady',
-					pushRef: 'iframe-push-ref-abc',
-				}),
-			}),
-		);
+		dispatchIframeMessage({
+			command: 'n8nReady',
+			pushRef: 'iframe-push-ref-abc',
+		});
 
 		await waitFor(() => {
 			expect(emitted('iframe-ready')).toBeTruthy();
@@ -148,11 +163,7 @@ describe('InstanceAiWorkflowPreview', () => {
 			props: { workflowId: null },
 		});
 
-		window.dispatchEvent(
-			new MessageEvent('message', {
-				data: JSON.stringify({ command: 'n8nReady' }),
-			}),
-		);
+		dispatchIframeMessage({ command: 'n8nReady' });
 
 		await waitFor(() => {
 			expect(emitted('iframe-ready')).toBeTruthy();
@@ -162,15 +173,11 @@ describe('InstanceAiWorkflowPreview', () => {
 	it('should emit fix-with-ai on a valid fixWithAi postMessage with context', async () => {
 		const { emitted } = renderComponent({ props: { workflowId: null } });
 
-		window.dispatchEvent(
-			new MessageEvent('message', {
-				data: JSON.stringify({
-					command: 'fixWithAi',
-					workflowName: 'My Workflow',
-					errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
-				}),
-			}),
-		);
+		dispatchIframeMessage({
+			command: 'fixWithAi',
+			workflowName: 'My Workflow',
+			errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+		});
 
 		await waitFor(() => {
 			expect(emitted('fix-with-ai')).toBeTruthy();
@@ -188,9 +195,29 @@ describe('InstanceAiWorkflowPreview', () => {
 	it('should ignore fixWithAi when errors array is empty or invalid', async () => {
 		const { emitted } = renderComponent({ props: { workflowId: null } });
 
+		dispatchIframeMessage({ command: 'fixWithAi', errors: [] });
+
+		dispatchIframeMessage({
+			command: 'fixWithAi',
+			errors: [{ nodeName: 1, errorMessage: null }, 'not an object'],
+		});
+
+		await waitFor(() => {
+			expect(emitted('fix-with-ai')).toBeUndefined();
+		});
+	});
+
+	it('should ignore postMessages from unexpected origins or sources', async () => {
+		const { emitted } = renderComponent({ props: { workflowId: null } });
+
 		window.dispatchEvent(
 			new MessageEvent('message', {
-				data: JSON.stringify({ command: 'fixWithAi', errors: [] }),
+				data: JSON.stringify({
+					command: 'fixWithAi',
+					errors: [{ nodeName: 'HTTP Request', errorMessage: 'Connection refused' }],
+				}),
+				origin: 'https://evil.example',
+				source: mockIframeWindow,
 			}),
 		);
 
@@ -198,13 +225,16 @@ describe('InstanceAiWorkflowPreview', () => {
 			new MessageEvent('message', {
 				data: JSON.stringify({
 					command: 'fixWithAi',
-					errors: [{ nodeName: 1, errorMessage: null }, 'not an object'],
+					errors: [{ nodeName: 'HTTP Request', errorMessage: 'Connection refused' }],
 				}),
+				origin: window.location.origin,
+				source: null,
 			}),
 		);
 
 		await waitFor(() => {
 			expect(emitted('fix-with-ai')).toBeUndefined();
+			expect(emitted('iframe-ready')).toBeUndefined();
 		});
 	});
 });

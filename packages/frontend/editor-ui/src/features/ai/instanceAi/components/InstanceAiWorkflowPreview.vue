@@ -43,7 +43,23 @@ const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
 let fetchGeneration = 0;
 
+function getPreviewIframe(): HTMLIFrameElement | null {
+	return (
+		(previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)?.iframeRef ?? null
+	);
+}
+
+function isMessageFromPreviewIframe(event: MessageEvent): boolean {
+	if (event.origin !== window.location.origin) return false;
+
+	const iframeWindow = getPreviewIframe()?.contentWindow;
+	if (!iframeWindow) return false;
+
+	return event.source === iframeWindow;
+}
+
 function handleIframeMessage(event: MessageEvent) {
+	if (!isMessageFromPreviewIframe(event)) return;
 	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
 	try {
 		const json = JSON.parse(event.data);
@@ -71,10 +87,9 @@ function handleIframeMessage(event: MessageEvent) {
 }
 
 function relayPushEvent(event: PushMessage) {
-	const iframe = (previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)
-		?.iframeRef;
-	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage(
+	const iframeWindow = getPreviewIframe()?.contentWindow;
+	if (!iframeWindow) return;
+	iframeWindow.postMessage(
 		JSON.stringify({ command: 'executionEvent', event }),
 		window.location.origin,
 	);
