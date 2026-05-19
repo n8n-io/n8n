@@ -1,10 +1,6 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
-import {
-	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
-	type AgentIntegrationStatusEntry,
-} from '@n8n/api-types';
+import { type AgentIntegrationStatusEntry, isAgentScheduleIntegration } from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -92,7 +88,7 @@ function integrationStatusEntriesFromConfig(
 			continue;
 		}
 
-		if (isAgentCredentialIntegration(integration)) {
+		if (!isAgentScheduleIntegration(integration)) {
 			entries.push({ type: integration.type, credentialId: integration.credentialId });
 		}
 	}
@@ -293,6 +289,18 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		previousSkills = [];
 	}
 
+	function trackOpenedToolFromList(toolType: string) {
+		agentTelemetry.trackOpenedToolFromList({ agentId: deps.agentId.value, toolType });
+	}
+
+	function trackOpenedSkillFromList(skillId: string) {
+		agentTelemetry.trackOpenedSkillFromList({ agentId: deps.agentId.value, skillId });
+	}
+
+	function trackOpenedAddSkillModal() {
+		agentTelemetry.trackOpenedAddSkillModal({ agentId: deps.agentId.value });
+	}
+
 	return {
 		recordConfigEdit,
 		flushConfigEdits,
@@ -304,5 +312,8 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		captureSkillsBaseline,
 		fetchInitialTriggersBaseline,
 		resetForAgentSwitch,
+		trackOpenedToolFromList,
+		trackOpenedSkillFromList,
+		trackOpenedAddSkillModal,
 	};
 }

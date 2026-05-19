@@ -109,6 +109,21 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['name'],
 			},
 			{
+				name: 'name containing a script tag',
+				request: { name: '<script>alert(1)</script>', nodes: [], connections: {} },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'name containing an img onerror payload',
+				request: { name: '<img src=x onerror=alert(1)>', nodes: [], connections: {} },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'name containing inline HTML markup',
+				request: { name: 'Report <b>bold</b>', nodes: [], connections: {} },
+				expectedErrorPath: ['name'],
+			},
+			{
 				name: 'missing nodes',
 				request: { name: 'Test', connections: {} },
 				expectedErrorPath: ['nodes'],

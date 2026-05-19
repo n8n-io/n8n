@@ -3,6 +3,8 @@ name: 'Test: E2E Infrastructure'
 on:
   workflow_call:
   workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
   pull_request:
     paths:
       - 'packages/testing/playwright/tests/infrastructure/**'
@@ -23,20 +25,27 @@ jobs:
 
   benchmark:
     needs: [prepare-docker]
-    name: benchmarking
+    name: ${{ matrix.lane }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: blacksmith-8vcpu-ubuntu-2204
+          - lane: ui
+            grep: '@bench:ui'
+            shards: '[{"shard":1,"images":""}]'
+          - lane: webhook
+            grep: '@bench:webhook'
+            shards: '[{"shard":1,"images":""}]'
+          - lane: kafka
+            grep: '@bench:kafka'
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
-      # Runs the full benchmark suite. Each spec brings its own container via
-      # `test.use({ capability })`, so workers must be 1 (one container at a time).
-      test-command: 'pnpm --filter=n8n-playwright test:benchmark'
+      test-command: 'pnpm --filter=n8n-playwright test:benchmark --grep ${{ matrix.grep }}'
+      pre-generated-matrix: ${{ matrix.shards }}
       workers: '1'
-      runner: ${{ matrix.runner }}
+      runner: blacksmith-8vcpu-ubuntu-2204
       timeout-minutes: 120
-      artifact-prefix: benchmark
+      artifact-prefix: 'benchmark-${{ matrix.lane }}'
     secrets: inherit

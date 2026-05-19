@@ -3,8 +3,8 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
-import type { AgentPersistedMessageDto } from '@n8n/api-types';
 
 import {
 	applyOpenSuspensions,
