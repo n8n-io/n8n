@@ -275,28 +275,26 @@ export class ActiveWorkflows {
 					if (ownsIsolate) await workflow.expression.acquireIsolate();
 
 					try {
-						try {
-							const pollResponse = await this.triggersAndPollers.runPoll(
-								workflow,
-								node,
-								pollFunctions,
-							);
+						const pollResponse = await this.triggersAndPollers.runPoll(
+							workflow,
+							node,
+							pollFunctions,
+						);
 
-							if (pollResponse !== null) {
-								pollFunctions.__emit(pollResponse);
-							}
-
-							span.setStatus({ code: SpanStatus.ok });
-						} catch (error) {
-							span.setStatus({ code: SpanStatus.error });
-							// If the poll function fails in the first activation
-							// throw the error back so we let the user know there is
-							// an issue with the trigger.
-							if (testingTrigger) {
-								throw error;
-							}
-							pollFunctions.__emitError(error as Error);
+						if (pollResponse !== null) {
+							pollFunctions.__emit(pollResponse);
 						}
+
+						span.setStatus({ code: SpanStatus.ok });
+					} catch (error) {
+						span.setStatus({ code: SpanStatus.error });
+						// If the poll function fails in the first activation
+						// throw the error back so we let the user know there is
+						// an issue with the trigger.
+						if (testingTrigger) {
+							throw error;
+						}
+						pollFunctions.__emitError(error as Error);
 					} finally {
 						if (ownsIsolate) await workflow.expression.releaseIsolate();
 					}
