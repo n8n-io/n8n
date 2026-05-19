@@ -171,7 +171,8 @@
       "protobufjs": "7.5.6",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
-      "langsmith": "0.6.0"
+      "langsmith": "0.6.0",
+      "timeago.js": "4.0.2"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
