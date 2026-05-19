@@ -1526,6 +1526,7 @@ const { width } = useElementSize(credNameRef);
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@claimed="closeDialog"
 						@update:is-resolvable="onResolvableChange"
 					/>
 				</div>

@@ -40,6 +40,7 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const renderData = computed(() => workflowDocumentStore.value.render);
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
@@ -58,6 +59,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+	renderData,
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
@@ -152,6 +154,7 @@ defineExpose({
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:render-data="renderData"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:can-execute="canExecute"

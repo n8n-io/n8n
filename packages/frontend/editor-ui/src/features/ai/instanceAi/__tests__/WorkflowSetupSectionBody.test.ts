@@ -1,3 +1,4 @@
+import { createTestingPinia } from '@pinia/testing';
 import { computed, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
@@ -20,6 +21,10 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 }));
 
 vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
+	default: { template: '<div />' },
+}));
+
+vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
 	default: { template: '<div />' },
 }));
 
@@ -46,6 +51,11 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: () => null,
 		communityNodeType: () => null,
+		getAllNodeTypes: () => ({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	}),
 }));
 
@@ -65,6 +75,7 @@ function makeContext(): WorkflowSetupContext {
 		credentialSelections: ref({}),
 		terminalState: ref(null),
 		isReady: ref(true),
+		workflowId: computed(() => undefined),
 		projectId: computed(() => undefined),
 		credentialFlow: computed(() => undefined),
 		isActionPending: ref(false),
@@ -92,6 +103,7 @@ function renderComponent(section: WorkflowSetupSection) {
 	return mount(WorkflowSetupSectionBody, {
 		props: { section },
 		global: {
+			plugins: [createTestingPinia({ stubActions: false })],
 			stubs: {
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: {

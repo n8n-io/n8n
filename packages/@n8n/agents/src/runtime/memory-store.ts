@@ -10,12 +10,16 @@ import type {
 } from '../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
+	ObservationLogScopeKind,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
 
@@ -58,7 +62,11 @@ function compareKeyset(
  * The most recently saved thread is used when `saveMessages` is called.
  */
 export class InMemoryMemory
-	implements BuiltMemory, BuiltObservationStore, BuiltObservationLogStore
+	implements
+		BuiltMemory,
+		BuiltObservationStore,
+		BuiltObservationLogStore,
+		BuiltObservationLogTaskLockStore
 {
 	private threads = new Map<string, Thread>();
 
@@ -438,17 +446,39 @@ export class InMemoryMemory
 		scopeId: string,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<ObservationLockHandle | null> {
+		return await this.acquireScopeLock(scopeKind, scopeId, opts);
+	}
+
+	async acquireObservationLogTaskLock(
+		scopeKind: ObservationLogScopeKind,
+		scopeId: string,
+		taskKind: ObservationLogTaskKind,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<ObservationLogTaskLockHandle | null> {
+		const handle = await this.acquireScopeLock(scopeKind, scopeId, opts, taskKind);
+		if (!handle) return null;
+		return { scopeKind, scopeId, taskKind, holderId: handle.holderId, heldUntil: handle.heldUntil };
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async acquireScopeLock(
+		scopeKind: ScopeKind,
+		scopeId: string,
+		opts: { ttlMs: number; holderId: string },
+		taskKind?: ObservationLogTaskKind,
+	): Promise<(ObservationLockHandle & { taskKind?: ObservationLogTaskKind }) | null> {
 		const key = scopeKey(scopeKind, scopeId);
 		const existing = this.locksByScope.get(key);
 		const now = Date.now();
 		if (existing && existing.holderId !== opts.holderId && existing.heldUntil.getTime() > now) {
 			return null;
 		}
-		const handle: ObservationLockHandle = {
+		const handle: ObservationLockHandle & { taskKind?: ObservationLogTaskKind } = {
 			scopeKind,
 			scopeId,
 			holderId: opts.holderId,
 			heldUntil: new Date(now + opts.ttlMs),
+			...(taskKind !== undefined && { taskKind }),
 		};
 		this.locksByScope.set(key, handle);
 		return { ...handle };
@@ -456,6 +486,15 @@ export class InMemoryMemory
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async releaseObservationLock(handle: ObservationLockHandle): Promise<void> {
+		await this.releaseScopeLock(handle);
+	}
+
+	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
+		await this.releaseScopeLock(handle);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async releaseScopeLock(handle: ObservationLockHandle): Promise<void> {
 		const key = scopeKey(handle.scopeKind, handle.scopeId);
 		const current = this.locksByScope.get(key);
 		if (current && current.holderId === handle.holderId) {

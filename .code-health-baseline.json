@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-15T10:02:10.261Z",
-	"totalViolations": 102,
+	"generated": "2026-05-18T09:49:47.866Z",
+	"totalViolations": 99,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -52,55 +52,55 @@
 		"packages/@n8n/nodes-langchain/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 266,
+				"line": 268,
 				"message": "@n8n/typeorm@0.3.20-16 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "a7c1bca1c439"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 267,
+				"line": 269,
 				"message": "mysql2@3.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "2d7d1b715d0c"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 293,
+				"line": 295,
 				"message": "openai@^6.34.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "3c1f53f0afe3"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 300,
+				"line": 302,
 				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "88d67e2ef747"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 259,
+				"line": 261,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "69d6fa7e46f9"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 275,
+				"line": 277,
 				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8cd029bb871e"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 285,
+				"line": 287,
 				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "26f20ebea4b1"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 290,
+				"line": 292,
 				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "46cb48884e22"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 294,
+				"line": 296,
 				"message": "pdf-parse appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "0c7d44a9c2e4"
 			}
@@ -503,6 +503,14 @@
 				"hash": "733c3960022e"
 			}
 		],
+		"packages/@n8n/computer-use/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 47,
+				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f50c1eee2ed6"
+			}
+		],
 		"packages/workflow/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -521,14 +529,6 @@
 				"line": 68,
 				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "b660317b5f6f"
-			}
-		],
-		"packages/@n8n/computer-use/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 47,
-				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "f50c1eee2ed6"
 			}
 		],
 		"packages/@n8n/eslint-plugin-community-nodes/package.json": [
@@ -551,30 +551,6 @@
 				"line": 45,
 				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "955f3fe044c7"
-			}
-		],
-		"packages/@n8n/db/src/migrations/common/1783000000000-CreateAgentTables.ts": [
-			{
-				"rule": "migration-timestamp",
-				"line": 1,
-				"message": "1783000000000-CreateAgentTables.ts is prefixed with a future timestamp (1783000000000). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "6599e9e66680"
-			}
-		],
-		"packages/@n8n/db/src/migrations/common/1783000000001-CreateAgentExecutionTables.ts": [
-			{
-				"rule": "migration-timestamp",
-				"line": 1,
-				"message": "1783000000001-CreateAgentExecutionTables.ts is prefixed with a future timestamp (1783000000001). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "e55008535c0e"
-			}
-		],
-		"packages/@n8n/db/src/migrations/common/1784000000000-CreateAgentObservationTables.ts": [
-			{
-				"rule": "migration-timestamp",
-				"line": 1,
-				"message": "1784000000000-CreateAgentObservationTables.ts is prefixed with a future timestamp (1784000000000). Migration prefixes must be the exact Date.now() value at the time of creation — AI agents commonly fabricate future timestamps.",
-				"hash": "5f4857aa8248"
 			}
 		],
 		"package.json": [

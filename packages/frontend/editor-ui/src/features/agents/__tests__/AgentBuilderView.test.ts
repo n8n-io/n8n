@@ -104,6 +104,9 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
 		trackSkillsAdded: vi.fn(),
+		trackOpenedToolFromList: vi.fn(),
+		trackOpenedSkillFromList: vi.fn(),
+		trackOpenedAddSkillModal: vi.fn(),
 	}),
 }));
 
@@ -363,12 +366,6 @@ const commonStubs = {
 		template: '<div data-testid="stub-agent-skill-viewer" />',
 		props: ['skill', 'disabled', 'errors'],
 		emits: ['update:skill'],
-	},
-	AgentIntegrationsPanel: {
-		name: 'AgentIntegrationsPanel',
-		template: '<div data-testid="stub-agent-integrations-panel" />',
-		props: ['projectId', 'agentId', 'agentName', 'focusType', 'onlyConnected'],
-		emits: ['update:connected-triggers', 'trigger-added'],
 	},
 	AgentSessionsListView: {
 		name: 'AgentSessionsListView',
@@ -884,23 +881,3 @@ describe('AgentBuilderView — three-column shell', () => {
 		]);
 	});
 });
-
-/*
- * DROPPED SPECS (no UI entry point in PR1):
- *
- * 1. 'fires User edited agent config with part=name when the agent name is updated'
- *    — relied on AgentHomeContent emitting 'update:name'. AgentHomeContent is
- *    removed from the three-column shell; name editing has no new UI entry point
- *    in PR1. Re-add once a name-edit surface lands in the editor column.
- *
- * 2. 'fires User edited agent config with part=description when the description is updated'
- *    — relied on AgentHomeContent emitting 'update:description'. Same reason as above.
- *
- * 3. 'fires User edited agent config with part=triggers when the connected-triggers list changes'
- *    — relied on AgentSettingsSidebar emitting 'update:connected-triggers'. The
- *    integrations panel is deleted in PR1; triggers telemetry has no new entry point.
- *    Re-add when AgentIntegrationsPanel or equivalent lands.
- *
- * 4. 'does not fire User edited agent config when the connected-triggers list is unchanged'
- *    — same as above.
- */

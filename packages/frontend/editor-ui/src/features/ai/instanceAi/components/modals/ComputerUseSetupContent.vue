@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nCallout, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import MacOsIcon from '../../assets/os-icons/macos-icon.svg';
 import WindowsIcon from '../../assets/os-icons/windows-icon.svg';
@@ -21,6 +22,7 @@ const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> =
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
+const telemetry = useTelemetry();
 
 const selectedOs = ref<'mac' | 'windows' | 'linux'>('mac');
 const copied = ref(false);
@@ -133,6 +135,9 @@ async function copyCommand() {
 		}
 		if (!store.setupCommand) return;
 		await navigator.clipboard.writeText(store.setupCommand);
+		telemetry.track('User copied computer use connection command', {
+			os: selectedOs.value,
+		});
 		copied.value = true;
 		setTimeout(() => {
 			copied.value = false;
@@ -145,6 +150,9 @@ async function copyCommand() {
 // Fetch the paste-ready setup command from the server. No daemon calls here —
 // the local daemon is only contacted when the user clicks Connect.
 onMounted(() => {
+	telemetry.track('User opened computer use connection modal', {
+		is_connected: store.isGatewayConnected,
+	});
 	void store.fetchSetupCommand();
 });
 
