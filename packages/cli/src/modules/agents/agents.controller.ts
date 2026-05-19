@@ -41,6 +41,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
 import {
 	type FlushableResponse,
@@ -55,6 +56,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { Agent } from './entities/agent.entity';
 
 /**
@@ -103,6 +105,7 @@ export class AgentsController {
 		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
@@ -320,6 +323,21 @@ export class AgentsController {
 		return { success: true };
 	}
 
+	@Get('/:agentId/knowledge')
+	@ProjectScope('agent:read')
+	async getKnowledge(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const knowledge = await this.agentKnowledgeService.listAgentKnowledge({
+			projectId,
+			agentId,
+			userId: req.user.id,
+		});
+		if (!knowledge) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+		return knowledge;
+	}
+
 	@Get('/:agentId')
 	@ProjectScope('agent:read')
 	async get(
@@ -481,7 +499,10 @@ export class AgentsController {
 					projectId,
 					message,
 					userId: req.user.id,
-					memory: { threadId, resourceId: req.user.id },
+					memory: {
+						threadId,
+						resourceId: draftChatMemoryResourceId(req.user.id),
+					},
 				}),
 				send,
 			);
