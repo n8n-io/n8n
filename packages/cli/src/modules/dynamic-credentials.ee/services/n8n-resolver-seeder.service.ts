@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../constants';
-import type { DynamicCredentialResolver } from '../database/entities/credential-resolver';
+import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 /**
@@ -31,23 +31,30 @@ export class N8nResolverSeeder {
 			return;
 		}
 
-		const existing = await this.repository.findOneBy({ id: SYSTEM_RESOLVER_ID });
-		if (existing) {
+		const encryptedConfig = await this.cipher.encryptV2({});
+
+		// Idempotent insert: on conflict with the unique id, do nothing. Avoids the
+		// check-then-write race when two leaders briefly overlap during handoff.
+		const result = await this.repository
+			.createQueryBuilder()
+			.insert()
+			.into(DynamicCredentialResolver)
+			.values({
+				id: SYSTEM_RESOLVER_ID,
+				name: SYSTEM_RESOLVER_NAME,
+				type: SYSTEM_RESOLVER_TYPE,
+				config: encryptedConfig,
+			})
+			.orIgnore()
+			.execute();
+
+		const inserted = result.identifiers.length > 0;
+		if (inserted) {
+			this.logger.info(`Seeded system credential resolver "${SYSTEM_RESOLVER_ID}"`);
+		} else {
 			this.logger.debug(`System credential resolver "${SYSTEM_RESOLVER_ID}" already seeded`);
-			return existing;
 		}
 
-		const encryptedConfig = await this.cipher.encryptV2({});
-		const entity = this.repository.create({
-			id: SYSTEM_RESOLVER_ID,
-			name: SYSTEM_RESOLVER_NAME,
-			type: SYSTEM_RESOLVER_TYPE,
-			config: encryptedConfig,
-		});
-
-		await this.repository.save(entity);
-		this.logger.info(`Seeded system credential resolver "${SYSTEM_RESOLVER_ID}"`);
-
-		return entity;
+		return (await this.repository.findOneBy({ id: SYSTEM_RESOLVER_ID })) ?? undefined;
 	}
 }
