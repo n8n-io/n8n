@@ -173,7 +173,13 @@ const i18n = useI18n();
 					/>
 				</div>
 
-				<AgentEvalsPanel v-else data-testid="agent-evaluations-panel" />
+				<AgentEvalsPanel
+					v-else
+					:project-id="projectId"
+					:agent-id="agentId"
+					data-testid="agent-evaluations-panel"
+					@open-review="emit('update:activeMainTab', 'debug')"
+				/>
 			</div>
 		</div>
 	</section>

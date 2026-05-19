@@ -10,6 +10,7 @@ export class AgentsModule implements ModuleInterface {
 	async init() {
 		await import('./agents.controller');
 		await import('./agent-debug.controller');
+		await import('./agent-evaluations.controller');
 		await import('./builder/agents-builder-settings.controller');
 
 		const { AgentsService } = await import('./agents.service');
@@ -25,6 +26,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentDebugService } = await import('./agent-debug.service');
 		Container.get(AgentDebugService);
+
+		const { AgentEvaluationsService } = await import('./agent-evaluations.service');
+		Container.get(AgentEvaluationsService);
 
 		const { AgentEvaluationCaseRepository } = await import(
 			'./repositories/agent-evaluation-case.repository'
