@@ -6,19 +6,24 @@ import type {
 	BuiltObservationLogStore,
 	ObservationLogEntry,
 	ObservationLogMarker,
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
 	ObservationLogScopeKind,
 	TokenCounter,
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
 
-const MARKER_BY_SYMBOL: Record<string, ObservationLogMarker> = {
-	'🔴': 'critical',
-	'🟡': 'important',
-	'🟢': 'info',
-	'✅': 'completion',
+export type { ObservationLogObserveFn, ObservationLogObserverInput };
+
+const MARKER_BY_TOKEN: Record<string, ObservationLogMarker> = {
+	CRITICAL: 'critical',
+	IMPORTANT: 'important',
+	INFO: 'info',
+	COMPLETION: 'completion',
 };
 
-const BULLET_PATTERN = /^(\s*)[*-]\s+([🔴🟡🟢✅])(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/u;
+const BULLET_PATTERN =
+	/^(\s*)[*-]\s+(CRITICAL|IMPORTANT|INFO|COMPLETION)(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/iu;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
@@ -48,24 +53,11 @@ export interface RenderObserverTranscriptOptions {
 	maxObjectKeys?: number;
 }
 
-export interface ObservationLogObserverInput {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
-	now: Date;
-	deltaMessages: AgentDbMessage[];
-	transcript: string;
-	transcriptTokenCount: number;
-	observationLogTail: ObservationLogEntry[];
-	renderedObservationLogTail: string | null;
-}
-
-export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
-
 export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservationLogStore {
 	getMessagesForScope(
 		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
-		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
 	): Promise<AgentDbMessage[]>;
 	getCursor(scopeKind: ObservationLogScopeKind, scopeId: string): Promise<ObservationCursor | null>;
 	setCursor(cursor: ObservationCursor & { scopeKind: ObservationLogScopeKind }): Promise<void>;
@@ -80,6 +72,7 @@ export interface RunObservationLogObserverOpts {
 	observe: ObservationLogObserveFn;
 	tokenCounter?: TokenCounter;
 	now?: Date;
+	messageSource?: { threadId: string; resourceId?: string };
 	onMalformedLine?: (line: string) => void;
 }
 
@@ -108,8 +101,8 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 			continue;
 		}
 
-		const [, indentation, markerSymbol, text] = match;
-		const marker = MARKER_BY_SYMBOL[markerSymbol];
+		const [, indentation, markerToken, text] = match;
+		const marker = MARKER_BY_TOKEN[markerToken.toUpperCase()];
 		const isChild = indentation.length > 0;
 		if (isChild && currentParentIndex === null) {
 			skippedLines.push(rawLine);
@@ -167,17 +160,24 @@ export async function runObservationLogObserver(
 ): Promise<RunObservationLogObserverResult> {
 	const { memory, scopeKind, scopeId } = opts;
 	const cursor = await memory.getCursor(scopeKind, scopeId);
+	const messageScopeKind = opts.messageSource ? 'thread' : scopeKind;
+	const messageScopeId = opts.messageSource?.threadId ?? scopeId;
 	const deltaMessages = await memory.getMessagesForScope(
-		scopeKind,
-		scopeId,
+		messageScopeKind,
+		messageScopeId,
 		cursor
 			? {
+					...(opts.messageSource?.resourceId !== undefined && {
+						resourceId: opts.messageSource.resourceId,
+					}),
 					since: {
 						sinceCreatedAt: cursor.lastObservedAt,
 						sinceMessageId: cursor.lastObservedMessageId,
 					},
 				}
-			: undefined,
+			: opts.messageSource?.resourceId !== undefined
+				? { resourceId: opts.messageSource.resourceId }
+				: undefined,
 	);
 	if (deltaMessages.length === 0) return { status: 'skipped', reason: 'no-delta' };
 

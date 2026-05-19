@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nTooltip } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
@@ -39,7 +38,6 @@ const props = withDefaults(
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
-		researchMode: boolean;
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
 		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 		suggestionsComponent?: Component;
@@ -59,7 +57,6 @@ const props = withDefaults(
 const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
-	'toggle-research-mode': [];
 }>();
 
 const i18n = useI18n();
@@ -122,7 +119,6 @@ watch(
 		if (shouldTrackSuggestions) {
 			promptSuggestionsTelemetry.trackSuggestionsShown({
 				threadId: threadId || undefined,
-				researchMode: props.researchMode,
 				suggestionCatalogVersion,
 			});
 			return;
@@ -207,7 +203,6 @@ function handleFileRemove(file: File) {
 function getTelemetryContext() {
 	return {
 		threadId: props.currentThreadId || undefined,
-		researchMode: props.researchMode,
 		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
 	};
 }
@@ -252,7 +247,6 @@ function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
 	promptSuggestionsTelemetry.trackSuggestionsCycled({
-		researchMode: props.researchMode,
 		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
 		visibleSuggestionIds: payload.visibleSuggestionIds,
 		cycleCount: payload.cycleCount,
@@ -315,31 +309,6 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template #footer-start>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.input.researchToggle.tooltip')"
-					placement="top"
-					:show-after="300"
-				>
-					<button
-						:class="[$style.researchToggle, { [$style.active]: props.researchMode }]"
-						data-test-id="instance-ai-research-toggle"
-						@click="emit('toggle-research-mode')"
-					>
-						<svg
-							:class="$style.researchIcon"
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 16 16"
-							fill="currentColor"
-						>
-							<path
-								d="M6.5 1a5.5 5.5 0 0 1 4.383 8.823l3.897 3.897a.75.75 0 0 1-1.06 1.06l-3.897-3.897A5.5 5.5 0 1 1 6.5 1Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"
-							/>
-						</svg>
-						{{ i18n.baseText('instanceAi.input.researchToggle') }}
-					</button>
-				</N8nTooltip>
-			</template>
 		</ChatInputBase>
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
@@ -368,47 +337,6 @@ const resizable = computed(() => {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-}
-
-.researchToggle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: transparent;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	cursor: pointer;
-	transition:
-		background 0.15s,
-		color 0.15s,
-		border-color 0.15s;
-	user-select: none;
-
-	&:hover {
-		color: var(--color--text);
-		border-color: var(--color--foreground--shade-1);
-	}
-
-	&.active {
-		background: var(--color--primary);
-		color: var(--button--color--text--primary);
-		border-color: var(--color--primary);
-
-		&:hover {
-			background: var(--color--primary--shade-1);
-			border-color: var(--color--primary--shade-1);
-		}
-	}
-}
-
-.researchIcon {
-	width: 14px;
-	height: 14px;
-	flex-shrink: 0;
 }
 
 :global(.suggestions-fade-enter-active) {
