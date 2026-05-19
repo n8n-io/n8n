@@ -564,4 +564,190 @@ describe('executionData.store', () => {
 			expect(recreated.executionStartedData).toBeUndefined();
 		});
 	});
+
+	describe('executionIssues', () => {
+		function setExecutionWithRunData(
+			store: ReturnType<typeof useExecutionDataStore>,
+			runData: Record<string, Array<Record<string, unknown>>>,
+		) {
+			store.setExecution(
+				createTestExecution({
+					data: {
+						resultData: { runData, lastNodeExecuted: '' },
+					} as never,
+				}),
+			);
+		}
+
+		it('starts empty when no execution is set', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			expect(store.executionIssues.size).toBe(0);
+		});
+
+		it('adds an entry per node name present in runData on setExecution', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ executionStatus: 'success' }],
+				NodeB: [{ executionStatus: 'error' }],
+			});
+			await flushPromises();
+
+			expect(store.executionIssues.has('NodeA')).toBe(true);
+			expect(store.executionIssues.has('NodeB')).toBe(true);
+		});
+
+		it('returns the formatted error message with description', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ error: { message: 'msg', description: 'desc' } }],
+			});
+			await flushPromises();
+
+			expect(store.executionIssues.get('NodeA')?.value).toEqual(['msg (desc)']);
+		});
+
+		it('returns just the message when no description is provided', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ error: { message: 'msg' } }],
+			});
+			await flushPromises();
+
+			expect(store.executionIssues.get('NodeA')?.value).toEqual(['msg']);
+		});
+
+		it('aggregates errors across multiple tasks', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [
+					{ error: { message: 'e1', description: 'd1' } },
+					{ error: { message: 'e2', description: 'd2' } },
+				],
+			});
+			await flushPromises();
+
+			expect(store.executionIssues.get('NodeA')?.value).toEqual(['e1 (d1)', 'e2 (d2)']);
+		});
+
+		it('returns [] when a node has tasks but no errors', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ executionStatus: 'success' }],
+			});
+			await flushPromises();
+
+			expect(store.executionIssues.get('NodeA')?.value).toEqual([]);
+		});
+
+		it('sanitises html in error messages', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ error: { message: '<script>x</script>', description: 'd' } }],
+			});
+			await flushPromises();
+
+			const issues = store.executionIssues.get('NodeA')?.value ?? [];
+			expect(issues[0]).not.toContain('<script>');
+		});
+
+		it('removes entries that no longer appear in runData on subsequent setExecution', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ executionStatus: 'success' }],
+				NodeB: [{ executionStatus: 'success' }],
+			});
+			await flushPromises();
+			expect(store.executionIssues.has('NodeA')).toBe(true);
+			expect(store.executionIssues.has('NodeB')).toBe(true);
+
+			setExecutionWithRunData(store, {
+				NodeB: [{ executionStatus: 'success' }],
+			});
+			await flushPromises();
+
+			expect(store.executionIssues.has('NodeA')).toBe(false);
+			expect(store.executionIssues.has('NodeB')).toBe(true);
+		});
+
+		it('removes an entry when clearNodeExecutionData empties a node', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ executionStatus: 'success' }],
+			});
+			await flushPromises();
+			expect(store.executionIssues.has('NodeA')).toBe(true);
+
+			store.clearNodeExecutionData('NodeA');
+			await flushPromises();
+
+			expect(store.executionIssues.has('NodeA')).toBe(false);
+		});
+
+		it('clears all entries on resetExecutionData', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ executionStatus: 'success' }],
+				NodeB: [{ executionStatus: 'success' }],
+			});
+			await flushPromises();
+			expect(store.executionIssues.size).toBe(2);
+
+			store.resetExecutionData();
+			await flushPromises();
+
+			expect(store.executionIssues.size).toBe(0);
+		});
+
+		it('migrates the entry from old to new name on renameExecutionDataNode', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				OldName: [{ error: { message: 'boom' } }],
+			});
+			await flushPromises();
+			expect(store.executionIssues.has('OldName')).toBe(true);
+
+			store.renameExecutionDataNode('OldName', 'NewName');
+			await flushPromises();
+
+			expect(store.executionIssues.has('OldName')).toBe(false);
+			expect(store.executionIssues.get('NewName')?.value).toEqual(['boom']);
+		});
+
+		it('produces a stable ComputedRef value across unrelated runData mutations', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [{ error: { message: 'a-err' } }],
+				NodeB: [{ error: { message: 'b-err' } }],
+			});
+			await flushPromises();
+
+			const nodeAEntry = store.executionIssues.get('NodeA');
+			const before = nodeAEntry?.value;
+
+			// Mutate NodeB only; structuralComputed + isEqual should keep NodeA's
+			// value reference stable.
+			setExecutionWithRunData(store, {
+				NodeA: [{ error: { message: 'a-err' } }],
+				NodeB: [{ error: { message: 'b-changed' } }],
+			});
+			await flushPromises();
+
+			expect(store.executionIssues.get('NodeA')?.value).toBe(before);
+		});
+	});
 });
+
+async function flushPromises() {
+	await new Promise((resolve) => setTimeout(resolve, 0));
+}

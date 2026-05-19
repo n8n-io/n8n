@@ -115,6 +115,7 @@ function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	const renderData = shallowRef<CanvasRenderData>({
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
+		executionIssues: new Map(),
 	});
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
 
