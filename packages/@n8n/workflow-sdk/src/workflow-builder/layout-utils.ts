@@ -410,12 +410,85 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 
 const WRAPPED_STICKY_PADDING = 50;
 
+// Heuristic constants for estimating sticky text dimensions. Rough averages
+// for n8n's default sticky font sizes — pixel-perfect measurement would need
+// DOM/canvas access, which the SDK does not have at serialization time.
+const STICKY_HEADER_CHAR_WIDTH = 11;
+const STICKY_HEADER_LINE_HEIGHT = 30;
+const STICKY_TEXT_CHAR_WIDTH = 7;
+const STICKY_TEXT_LINE_HEIGHT = 20;
+const STICKY_EMPTY_LINE_HEIGHT = 12;
+const STICKY_TEXT_INTERNAL_PADDING = 32;
+const STICKY_MIN_TEXT_RESERVE = 80;
+// Minimum auto-width: comfortable for a short heading + a couple of wrapped
+// body lines. Below this and even a small heading looks cramped.
+const STICKY_AUTO_MIN_WIDTH = 240;
+// Upper bound on heading-driven width. Stickies wider than this start to
+// dominate the canvas; we'd rather let a very long heading wrap to two lines.
+const STICKY_AUTO_MAX_HEADER_WIDTH = 500;
+
 function getWrappedNodeNames(graphNode: GraphNode | undefined): string[] | undefined {
 	const raw = (graphNode?.instance.config as Record<string, unknown> | undefined)
 		?._wrappedNodeNames;
 	if (!Array.isArray(raw)) return undefined;
 	const names = raw.filter((name): name is string => typeof name === 'string');
 	return names.length > 0 ? names : undefined;
+}
+
+function getStickyContent(graphNode: GraphNode | undefined): string | undefined {
+	const params = graphNode?.instance.config?.parameters as Record<string, unknown> | undefined;
+	return typeof params?.content === 'string' ? params.content : undefined;
+}
+
+/**
+ * Pick an auto-layout width for a sticky that wraps a node group.
+ *
+ * Width is the larger of: the wrapped-node bounding box (plus side padding),
+ * a comfortable minimum, and the widest markdown header line in the content
+ * (so short titles don't wrap). Body text is allowed to word-wrap.
+ */
+function estimateStickyWidth(content: string | undefined, nodeGroupWidth: number): number {
+	const baseWidth = Math.max(nodeGroupWidth + WRAPPED_STICKY_PADDING * 2, STICKY_AUTO_MIN_WIDTH);
+	if (!content) return baseWidth;
+
+	let headerWidth = 0;
+	for (const line of content.split('\n')) {
+		const headerMatch = /^(#+)\s(.*)/.exec(line);
+		if (!headerMatch) continue;
+		const headerText = headerMatch[2];
+		const w = headerText.length * STICKY_HEADER_CHAR_WIDTH + STICKY_TEXT_INTERNAL_PADDING * 2;
+		headerWidth = Math.max(headerWidth, w);
+	}
+	headerWidth = Math.min(headerWidth, STICKY_AUTO_MAX_HEADER_WIDTH);
+
+	return Math.max(baseWidth, headerWidth);
+}
+
+/**
+ * Estimate the rendered height of a sticky's markdown content at a given
+ * render width. Long lines are assumed to word-wrap based on character count
+ * — close enough to keep the sticky from clipping its body text.
+ */
+function estimateStickyTextHeight(content: string | undefined, availableWidth: number): number {
+	if (!content) return 0;
+	const usable = Math.max(80, availableWidth - STICKY_TEXT_INTERNAL_PADDING * 2);
+	let totalHeight = 0;
+	for (const line of content.split('\n')) {
+		if (line.length === 0) {
+			totalHeight += STICKY_EMPTY_LINE_HEIGHT;
+			continue;
+		}
+		const headerMatch = /^(#+)\s/.exec(line);
+		if (headerMatch) {
+			const textLen = line.length - headerMatch[1].length - 1;
+			const wrapped = Math.max(1, Math.ceil((textLen * STICKY_HEADER_CHAR_WIDTH) / usable));
+			totalHeight += wrapped * STICKY_HEADER_LINE_HEIGHT;
+		} else {
+			const wrapped = Math.max(1, Math.ceil((line.length * STICKY_TEXT_CHAR_WIDTH) / usable));
+			totalHeight += wrapped * STICKY_TEXT_LINE_HEIGHT;
+		}
+	}
+	return totalHeight;
 }
 
 function repositionStickyNotes(
@@ -439,7 +512,7 @@ function repositionStickyNotes(
 		// stickies that share the same pre-layout footprint (the typical AI
 		// builder case where wrapped nodes lack explicit positions) still end
 		// up over their own group, with dimensions resized to match the
-		// post-layout spread of those nodes.
+		// post-layout spread of those nodes and the sticky's own text content.
 		if (wrappedNames) {
 			const wrappedBoxesAfter = wrappedNames
 				.map((name) => positionsAfter.get(name))
@@ -448,13 +521,31 @@ function repositionStickyNotes(
 			if (wrappedBoxesAfter.length === 0) continue;
 
 			const wrappedAfter = compositeBoundingBox(wrappedBoxesAfter);
-			const newX = wrappedAfter.x - WRAPPED_STICKY_PADDING;
-			const newY = wrappedAfter.y - WRAPPED_STICKY_PADDING;
-			const newWidth = wrappedAfter.width + WRAPPED_STICKY_PADDING * 2;
-			const newHeight = wrappedAfter.height + WRAPPED_STICKY_PADDING * 2;
+			const content = getStickyContent(graphNode);
+
+			// Width is driven by the wider of the wrapped-node group and the
+			// content's heading; body text is allowed to wrap. Height is then
+			// computed at that width so we have enough vertical room for the
+			// text to sit above the nodes without clipping.
+			const newWidth = estimateStickyWidth(content, wrappedAfter.width);
+			const textHeight = estimateStickyTextHeight(content, newWidth);
+			const topReserve = Math.max(
+				STICKY_MIN_TEXT_RESERVE,
+				textHeight + STICKY_TEXT_INTERNAL_PADDING,
+			);
+			const newHeight = wrappedAfter.height + topReserve + WRAPPED_STICKY_PADDING;
+
+			const newX = wrappedAfter.x - (newWidth - wrappedAfter.width) / 2;
+			const newY = wrappedAfter.y - topReserve;
 
 			positions.set(stickyName, [snapToGrid(newX), snapToGrid(newY)]);
-			stickyDimensions.set(stickyName, { width: newWidth, height: newHeight });
+			// Snap dimensions to grid too — left edge already snaps via newX,
+			// snapping width/height keeps padding symmetric on the right and
+			// bottom.
+			stickyDimensions.set(stickyName, {
+				width: snapToGrid(newWidth),
+				height: snapToGrid(newHeight),
+			});
 			continue;
 		}
 

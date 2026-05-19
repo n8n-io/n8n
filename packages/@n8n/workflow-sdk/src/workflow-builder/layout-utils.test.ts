@@ -507,6 +507,42 @@ describe('calculateNodePositionsDagre', () => {
 			expect(stickies).toHaveLength(2);
 			expect(stickies[0].position).not.toEqual(stickies[1].position);
 		});
+
+		it('grows auto-sized stickies to fit longer text content', () => {
+			const short = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Short' },
+			});
+			const long = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Long' },
+			});
+
+			const wf = workflow('wf', 'wf')
+				.add(short)
+				.add(long)
+				.add(sticky('## Short', [short], { name: 'NoteShort' }))
+				.add(
+					sticky(
+						'## Detailed walkthrough\n\nThis sticky has multiple lines of body text that should make it taller than the short one, and a longer heading that should also widen it.',
+						[long],
+						{ name: 'NoteLong' },
+					),
+				);
+
+			const json = wf.toJSON({ tidyUp: true });
+			const noteShort = json.nodes.find((n) => n.name === 'NoteShort')!;
+			const noteLong = json.nodes.find((n) => n.name === 'NoteLong')!;
+
+			expect(Number(noteLong.parameters?.height)).toBeGreaterThan(
+				Number(noteShort.parameters?.height),
+			);
+			expect(Number(noteLong.parameters?.width)).toBeGreaterThan(
+				Number(noteShort.parameters?.width),
+			);
+		});
 	});
 
 	describe('getNodeDimensions', () => {
