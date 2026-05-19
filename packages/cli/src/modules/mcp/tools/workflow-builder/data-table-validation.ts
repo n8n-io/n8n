@@ -29,12 +29,6 @@ interface DataTableReference {
 const isResourceLocatorMode = (v: unknown): v is ResourceLocatorMode =>
 	v === 'list' || v === 'id' || v === 'name';
 
-/**
- * Read a node's `dataTableId` resourceLocator if it's a node type that references
- * a data table and the locator has a usable value. Returns null otherwise (no
- * reference, expression value, empty, or wrong shape — all left for the SDK
- * validator / runtime to handle).
- */
 function extractDataTableReference(node: INode): DataTableReference | null {
 	if (!isAllowedNode(node.type)) return null;
 
@@ -47,15 +41,8 @@ function extractDataTableReference(node: INode): DataTableReference | null {
 	return { mode, value: rl.value };
 }
 
-/**
- * Verify that a single data table reference resolves to an accessible table in
- * the given project. Returns a user-facing error message on failure, or null
- * on success.
- *
- * Lookup goes through `getManyAndCount`, which already filters by the caller's
- * accessible projects — so a table that exists in a project the user can't see
- * counts as "not found" here.
- */
+// `getManyAndCount` already filters by the caller's accessible projects, so a
+// table in a project the user can't see correctly resolves as "not found".
 async function checkDataTableReference(
 	ref: DataTableReference,
 	projectId: string,
@@ -98,13 +85,6 @@ function buildNotFoundError(ref: DataTableReference): string {
 	);
 }
 
-/**
- * Validate every data table reference on the given nodes against the user's
- * accessible data tables in the target project.
- *
- * Used by `create_workflow_from_code` to check the whole workflow before save.
- * The returned failure carries no `opIndex` because creates are single-shot.
- */
 export async function validateDataTableReferencesForWorkflow(
 	nodes: INode[],
 	projectId: string,
@@ -125,25 +105,9 @@ export async function validateDataTableReferencesForWorkflow(
 	return { ok: true };
 }
 
-/**
- * Validate data table references on nodes touched by an update batch.
- *
- * Mirrors `validateCredentialReferences`: only nodes whose parameters were
- * added or modified by ops in this batch are checked, so a pre-existing
- * dangling reference can't block an unrelated edit. The first failure stops
- * the batch and is surfaced through the standard `Operation N failed: ...`
- * envelope.
- *
- * `getProjectId` is lazy and only invoked once a real data-table reference is
- * found — callers may skip the shared-workflow DB lookup when no touched node
- * references a data table.
- *
- * @param nodesAfterApply - the workflow nodes after `applyOperations`, so we
- *   already see the merged/replaced parameter values for `updateNodeParameters`,
- *   `setNodeParameter`, and `addNode`.
- * @param touchedNodes - map of touched node name -> opIndex of the first op
- *   that touched it. Used to attribute failures back to the right operation.
- */
+// Mirrors `validateCredentialReferences`: only nodes touched by this batch are
+// checked, so a pre-existing dangling reference can't block an unrelated edit.
+// `getProjectId` is lazy so callers skip the DB lookup when nothing matches.
 export async function validateDataTableReferencesForUpdate(
 	nodesAfterApply: INode[],
 	touchedNodes: Map<string, number>,

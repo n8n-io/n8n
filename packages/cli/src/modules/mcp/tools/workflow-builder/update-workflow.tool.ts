@@ -29,12 +29,8 @@ import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 
-/**
- * Build a map of touched node names to the opIndex of the first op that
- * touched them, following renames so the final name in the post-apply workflow
- * is the key. Used to scope data table validation to nodes the batch actually
- * introduced or mutated.
- */
+// Renames are followed so the key matches the node's name in the post-apply
+// workflow.
 function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, number> {
 	const touched = new Map<string, number>();
 	const recordTouch = (name: string, opIndex: number) => {
