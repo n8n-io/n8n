@@ -4,7 +4,6 @@
     "beforeSubmitPrompt": [
       {
         "command": "node .cursor/hooks/secrets-prompt-warning.mjs",
-        "matcher": "UserPromptSubmit",
         "failClosed": false
       }
     ]

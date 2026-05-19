@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Example warn-only secret scanner for beforeSubmitPrompt.
+ * Warn-only secret scanner for beforeSubmitPrompt.
  *
- * Shows a user_message when a likely secret is detected but always allows the
- * prompt through (continue: true). Swap this in for secrets-prompt-guard.mjs in
- * hooks.json if you want warnings without blocking.
+ * Cursor only surfaces user_message when continue is false, so this hook
+ * soft-blocks: the prompt is not sent until you remove the secret and submit
+ * again. See https://cursor.com/docs/hooks#beforesubmitprompt
  */
 
 import fs from 'node:fs';
@@ -34,14 +34,18 @@ function writeSecurityLog(match, payload) {
 	}
 }
 
-function allowPrompt(userMessage) {
-	const response = { continue: true };
+function allowPrompt() {
+	process.stdout.write(JSON.stringify({ continue: true }));
+}
 
-	if (userMessage) {
-		response.user_message = userMessage;
-	}
-
-	process.stdout.write(JSON.stringify(response));
+function warnAndHoldPrompt(message) {
+	// Cursor shows user_message only when continue is false.
+	process.stdout.write(
+		JSON.stringify({
+			continue: false,
+			user_message: message,
+		}),
+	);
 }
 
 async function main() {
@@ -52,8 +56,8 @@ async function main() {
 
 		if (match) {
 			writeSecurityLog(match, payload);
-			allowPrompt(
-				`Possible secret detected (${match.label}). Remove the raw value, use a placeholder like <API_KEY>, or load it from your environment. This hook warns only and did not block your prompt.`,
+			warnAndHoldPrompt(
+				`Possible secret detected (${match.label}). Your prompt was not sent. Remove the raw value, use a placeholder like <API_KEY>, or load it from your environment, then submit again.`,
 			);
 			return;
 		}
