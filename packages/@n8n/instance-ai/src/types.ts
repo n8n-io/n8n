@@ -1043,8 +1043,6 @@ export interface OrchestrationContext {
 	checkpointTaskId?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
-	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */
-	researchMode?: boolean;
 	/** Thread-scoped iteration log for accumulating attempt history across retries */
 	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */

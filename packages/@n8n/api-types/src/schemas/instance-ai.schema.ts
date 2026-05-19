@@ -668,7 +668,6 @@ export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
-	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
