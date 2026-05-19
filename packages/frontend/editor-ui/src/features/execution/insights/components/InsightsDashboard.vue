@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import type {
+	ProjectListItem,
+	ProjectSharingData,
+} from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
@@ -20,12 +22,13 @@ import {
 	shallowRef,
 	watch,
 } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 
-import { N8nHeading, N8nSpinner } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nSpinner } from '@n8n/design-system';
+import { VIEWS } from '@/app/constants';
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/execution/insights/components/InsightsPaywall.vue'),
 );
@@ -59,6 +62,7 @@ const props = defineProps<{
 }>();
 
 const route = useRoute();
+const router = useRouter();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
@@ -199,6 +203,8 @@ const searchFn = useAvailableProjectSearch();
 const filterFn = (project: ProjectListItem) =>
 	!!project.name && !emailPattern.test(project.name.trim());
 
+const openAnalyst = async () => await router.push({ name: VIEWS.INSIGHTS_ANALYST });
+
 onBeforeMount(async () => {
 	// Members filter locally over myProjects — preload them.
 	// Admins use remote search, so skip the unpaginated GET /projects call.
@@ -211,11 +217,23 @@ onBeforeMount(async () => {
 <template>
 	<div :class="$style.insightsView">
 		<div :class="$style.insightsContainer">
-			<N8nHeading bold tag="h2" size="xlarge">
-				{{ i18n.baseText('insights.dashboard.title') }}
-			</N8nHeading>
+			<header :class="$style.header">
+				<N8nHeading bold tag="h2" size="xlarge">
+					{{ i18n.baseText('insights.dashboard.title') }}
+				</N8nHeading>
 
-			<div class="mt-s" style="display: flex; gap: 12px; align-items: center">
+				<N8nButton
+					size="small"
+					variant="outline"
+					icon="sparkles"
+					data-test-id="insights-open-analyst-button"
+					@click="openAnalyst"
+				>
+					{{ i18n.baseText('insights.dashboard.openAnalyst') }}
+				</N8nButton>
+			</header>
+
+			<div :class="$style.toolbar">
 				<ProjectSharing
 					v-model="selectedProject"
 					:search-fn="searchFn"
@@ -311,6 +329,20 @@ onBeforeMount(async () => {
 		border-bottom-left-radius: 0;
 		border-bottom-right-radius: 0;
 	}
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--sm);
 }
 
 .insightsContent {

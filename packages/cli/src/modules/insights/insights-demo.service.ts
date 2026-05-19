@@ -354,10 +354,13 @@ export class InsightsDemoService {
 
 	private getHighlights(rows: InsightsByWorkflow['data']): InsightsAnalystHighlight[] {
 		const byTimeSaved = [...rows].sort((a, b) => b.timeSaved - a.timeSaved);
+		const byTimeSavedPerRun = [...rows].sort(
+			(a, b) => this.getTimeSavedPerRun(a) - this.getTimeSavedPerRun(b),
+		);
 		const byFailures = [...rows].sort((a, b) => b.failed - a.failed);
 		return [
 			this.createHighlight('highest-impact', 'Highest automation impact', byTimeSaved[0]),
-			this.createHighlight('lowest-impact', 'Lowest time saved per run', byTimeSaved.at(-1)),
+			this.createHighlight('lowest-impact', 'Lowest time saved per run', byTimeSavedPerRun[0]),
 			this.createHighlight('needs-attention', 'Needs attention', byFailures[0]),
 		].filter((highlight): highlight is InsightsAnalystHighlight => highlight !== null);
 	}
@@ -378,7 +381,12 @@ export class InsightsDemoService {
 			workflowName: row.workflowName,
 			description: definition?.story ?? row.projectName,
 			trend: definition?.trend ?? 'neutral',
-			value: id === 'needs-attention' ? row.failed : row.timeSaved,
+			value:
+				id === 'needs-attention'
+					? row.failed
+					: id === 'lowest-impact'
+						? this.getTimeSavedPerRun(row)
+						: row.timeSaved,
 			unit: id === 'needs-attention' ? 'count' : 'minute',
 		};
 	}
@@ -387,7 +395,7 @@ export class InsightsDemoService {
 		rows: InsightsByWorkflow['data'],
 	): InsightsAnalystLowImpactWorkflow[] {
 		return [...rows]
-			.sort((a, b) => a.timeSaved - b.timeSaved)
+			.sort((a, b) => this.getTimeSavedPerRun(a) - this.getTimeSavedPerRun(b))
 			.slice(0, 3)
 			.flatMap((row) => {
 				if (!row.workflowId) return [];
@@ -402,5 +410,9 @@ export class InsightsDemoService {
 					},
 				];
 			});
+	}
+
+	private getTimeSavedPerRun(row: InsightsByWorkflow['data'][number]) {
+		return row.total > 0 ? row.timeSaved / row.total : 0;
 	}
 }

@@ -2,7 +2,11 @@
 import { computed, defineAsyncComponent, onMounted, ref, shallowRef } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getLocalTimeZone, today } from '@internationalized/date';
-import type { InsightsAnalystHighlight, InsightsSummaryType } from '@n8n/api-types';
+import type {
+	InsightsAnalystHighlight,
+	InsightsAnalystLowImpactWorkflow,
+	InsightsSummaryType,
+} from '@n8n/api-types';
 import { N8nHeading, N8nIcon, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
@@ -69,14 +73,35 @@ const chartComponents = computed(() => ({
 	averageRunTime: InsightsChartAverageRuntime,
 }));
 
-const getMetricValue = (highlight: InsightsAnalystHighlight) => {
+const getHighlightMetricValue = (highlight: InsightsAnalystHighlight) => {
+	if (highlight.id === 'lowest-impact' && highlight.unit === 'minute') {
+		return formatTimeSavedPerRunLabel(highlight.value);
+	}
 	if (highlight.unit === 'minute') return formatInsightsTimeSavedLabel(highlight.value);
 	if (highlight.unit === 'ratio') {
 		return i18n.baseText('insights.analyst.citation.percent', {
 			interpolate: { count: smartDecimal(highlight.value * 100) },
 		});
 	}
+	if (highlight.id === 'needs-attention' && highlight.unit === 'count') {
+		return i18n.baseText('insights.analyst.highlight.failedExecutions', {
+			interpolate: { count: smartDecimal(highlight.value).toLocaleString('en-US') },
+			adjustToNumber: highlight.value,
+		});
+	}
 	return smartDecimal(highlight.value).toLocaleString('en-US');
+};
+
+const getTimeSavedPerRunValue = (workflow: InsightsAnalystLowImpactWorkflow) => {
+	const minutesPerRun = workflow.total > 0 ? workflow.timeSaved / workflow.total : 0;
+
+	return formatTimeSavedPerRunLabel(minutesPerRun);
+};
+
+const formatTimeSavedPerRunLabel = (minutes: number) => {
+	return i18n.baseText('insights.analyst.lowImpact.timeSavedPerRun', {
+		interpolate: { count: smartDecimal(minutes).toLocaleString('en-US') },
+	});
 };
 
 onMounted(async () => {
@@ -135,7 +160,7 @@ onMounted(async () => {
 								</div>
 								<p>{{ highlight.description }}</p>
 								<div :class="$style.highlightFooter">
-									<span>{{ getMetricValue(highlight) }}</span>
+									<span>{{ getHighlightMetricValue(highlight) }}</span>
 									<RouterLink
 										:to="{ name: VIEWS.WORKFLOW, params: { workflowId: highlight.workflowId } }"
 										:class="$style.openWorkflow"
@@ -193,7 +218,7 @@ onMounted(async () => {
 								>
 									<strong>{{ workflow.workflowName }}</strong>
 									<p>{{ workflow.description }}</p>
-									<span>{{ formatInsightsTimeSavedLabel(workflow.timeSaved) }}</span>
+									<span>{{ getTimeSavedPerRunValue(workflow) }}</span>
 								</article>
 							</div>
 						</section>
@@ -278,16 +303,20 @@ onMounted(async () => {
 .highlight,
 .lowImpactTile {
 	display: grid;
+	grid-template-rows: auto 1fr auto;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 }
 
-.highlightHeader,
-.highlightFooter,
-.rankingRow {
-	display: flex;
-	align-items: center;
+.highlightHeader {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
 	gap: var(--spacing--sm);
+
+	strong {
+		line-height: var(--line-height--sm);
+	}
 }
 
 .highlight p,
@@ -310,8 +339,14 @@ onMounted(async () => {
 }
 
 .highlightFooter {
-	justify-content: space-between;
+	display: grid;
+	gap: var(--spacing--2xs);
+	align-content: end;
 	font-weight: var(--font-weight--bold);
+
+	> span {
+		white-space: nowrap;
+	}
 }
 
 .openWorkflow,
@@ -319,6 +354,11 @@ onMounted(async () => {
 	color: var(--color--primary);
 	font-weight: var(--font-weight--regular);
 	text-decoration: none;
+}
+
+.openWorkflow {
+	justify-self: start;
+	max-width: 100%;
 }
 
 .chartCard {
@@ -336,6 +376,9 @@ onMounted(async () => {
 
 .rankingRow {
 	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--lg);

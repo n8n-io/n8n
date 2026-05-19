@@ -38,10 +38,27 @@ const messages = ref<ChatMessage[]>([
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 
 const canSubmit = computed(() => input.value.trim().length > 0 && !isWaiting.value);
+const showSuggestedPrompts = computed(
+	() => messages.value.length === 1 && props.suggestedPrompts.length > 0,
+);
 
 const scrollToBottom = async () => {
 	await nextTick();
 	scrollContainer.value?.scrollTo({ top: scrollContainer.value.scrollHeight, behavior: 'smooth' });
+};
+
+const scrollToMessage = async (messageId: string) => {
+	await nextTick();
+
+	const container = scrollContainer.value;
+	const messageElement = container?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+
+	if (!container || !messageElement) return;
+
+	container.scrollTo({
+		top: messageElement.offsetTop - container.offsetTop,
+		behavior: 'smooth',
+	});
 };
 
 const submitPrompt = async (prompt = input.value) => {
@@ -57,25 +74,28 @@ const submitPrompt = async (prompt = input.value) => {
 	isWaiting.value = true;
 	await scrollToBottom();
 
+	let responseMessageId = '';
 	try {
 		const response = await insightsStore.askAnalyst(question);
+		responseMessageId = `assistant-${Date.now()}`;
 		messages.value.push({
-			id: `assistant-${Date.now()}`,
+			id: responseMessageId,
 			role: 'assistant',
 			content: response.answer,
 			mode: response.mode,
 			citations: response.citations,
 		});
 	} catch {
+		responseMessageId = `assistant-${Date.now()}`;
 		messages.value.push({
-			id: `assistant-${Date.now()}`,
+			id: responseMessageId,
 			role: 'assistant',
 			content: i18n.baseText('insights.analyst.chat.error'),
 			citations: [],
 		});
 	} finally {
 		isWaiting.value = false;
-		await scrollToBottom();
+		await scrollToMessage(responseMessageId);
 	}
 };
 
@@ -105,6 +125,7 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 			<div
 				v-for="message in messages"
 				:key="message.id"
+				:data-message-id="message.id"
 				:class="[$style.message, $style[message.role]]"
 			>
 				<div :class="$style.bubble">
@@ -127,14 +148,15 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 				</div>
 			</div>
 			<div v-if="isWaiting" :class="[$style.message, $style.assistant]">
-				<div :class="$style.bubble">
+				<div :class="[$style.bubble, $style.waitingBubble]">
 					<ChatTypingIndicator />
+					<span>{{ i18n.baseText('insights.analyst.chat.thinking') }}</span>
 				</div>
 			</div>
 		</div>
 
 		<div :class="$style.promptArea">
-			<div :class="$style.suggestions">
+			<div v-if="showSuggestedPrompts" :class="$style.suggestions">
 				<button
 					v-for="prompt in props.suggestedPrompts"
 					:key="prompt"
@@ -167,7 +189,7 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	display: grid;
 	grid-template-rows: auto 1fr auto;
 	min-height: 0;
-	max-height: calc(100vh - var(--spacing--5xl) - var(--spacing--5xl));
+	height: calc(100vh - var(--spacing--5xl) - var(--spacing--5xl));
 	border: var(--border);
 	border-radius: var(--radius--xl);
 	background: var(--background--surface);
@@ -188,12 +210,13 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 }
 
 .messages {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 	overflow: auto;
-	min-height: calc(var(--spacing--5xl) + var(--spacing--5xl));
+	min-height: 0;
 }
 
 .message {
@@ -218,6 +241,8 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	p {
 		margin: 0;
 		line-height: var(--line-height--lg);
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
 	}
 }
 
@@ -228,6 +253,13 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 
 .assistant .bubble {
 	width: 100%;
+}
+
+.waitingBubble {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	color: var(--text-color--subtle);
 }
 
 .powered {
