@@ -71,24 +71,22 @@ describe('rankEpisodicMemoryEntries', () => {
 
 		expect(results.map((result) => result.id)).toEqual(['newer', 'older']);
 		expect(results[0].vectorScore).toBeGreaterThan(results[1].vectorScore);
-		expect(results[0].recencyFactor).toBeGreaterThan(results[1].recencyFactor);
+		expect(results[0].finalScore).toBeGreaterThan(results[1].finalScore);
 	});
 
-	it('uses recency as a ranking signal when current-state entries are otherwise close', () => {
+	it('uses recency as a ranking signal when relevant entries are otherwise tied', () => {
 		const now = new Date();
 		const stalePlanning = entry({
 			id: 'stale-planning',
-			content:
-				'Midwest and Southeast rollout current state planning: manager mapping and invoice review were unresolved.',
+			content: 'Midwest Southeast rollout current state manager mapping invoice review summary.',
 			embedding: [1, 0],
 			createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
 			lastSeenAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
 		});
 		const currentState = entry({
 			id: 'current-state',
-			content:
-				'Midwest and Southeast rollout current state: manager mapping is fixed; invoice review remains open.',
-			embedding: [0.99, 0.01],
+			content: 'Midwest Southeast rollout current state manager mapping invoice review summary.',
+			embedding: [1, 0],
 			createdAt: now,
 			lastSeenAt: now,
 		});
@@ -431,6 +429,50 @@ describe('runEpisodicMemoryIndexer', () => {
 		);
 	});
 
+	it('stores extracted entries longer than 800 characters without truncating them', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				scopeKind: 'thread',
+				scopeId: 'thread:thread-1:resource:user-1',
+				marker: 'critical',
+				text: 'User settled the Harborlight vendor intake pilot details.',
+			},
+		]);
+		const longContent = `${'Harborlight vendor intake detail. '.repeat(30)}Final retained identifier VENDORSTATUSCOMPLETE`;
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: longContent,
+						sources: [
+							{
+								observationId: observation.id,
+								evidence: 'Harborlight vendor intake pilot details',
+							},
+						],
+					},
+				],
+			});
+
+		await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { agentId: 'agent-1', resourceId: 'user-1' },
+			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			threadId: 'thread-1',
+			eventBus: new AgentEventBus(),
+		});
+
+		const [stored] = await memory.searchEpisodicMemoryEntries(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'VENDORSTATUSCOMPLETE',
+			{ topK: 1 },
+		);
+		expect(stored.content).toBe(longContent);
+		expect(stored.content.length).toBeGreaterThan(800);
+	});
+
 	it('rejects extracted entries that are not backed by observation evidence', async () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
@@ -686,6 +728,76 @@ describe('runEpisodicMemoryIndexer', () => {
 				}),
 			]),
 		);
+	});
+
+	it('stores reflection merge replacements longer than 800 characters without truncating them', async () => {
+		const memory = new InMemoryMemory();
+		const [oldEntry] = await memory.saveEpisodicMemoryEntries([
+			{
+				agentId: 'agent-1',
+				resourceId: 'user-1',
+				content: 'User planned a Harborlight vendor intake pilot.',
+				embedding: [1, 0],
+			},
+		]);
+		await memory.saveEpisodicMemoryEntrySources([
+			{
+				memoryEntryId: oldEntry.id,
+				observationId: 'obs-old',
+				threadId: 'thread-old',
+				evidenceText: 'Harborlight vendor intake pilot',
+			},
+		]);
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				scopeKind: 'thread',
+				scopeId: 'thread:thread-1:resource:user-1',
+				marker: 'critical',
+				text: 'User added final Harborlight ownership details.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User added final Harborlight ownership details.',
+						sources: [
+							{
+								observationId: observation.id,
+								evidence: 'final Harborlight ownership details',
+							},
+						],
+					},
+				],
+			});
+		const longReplacement = `${'Harborlight reflected ownership detail. '.repeat(25)}Final reflected identifier REFLECTEDVENDORSTATUSCOMPLETE`;
+		const reflect: EpisodicMemoryReflectFn = async (input) =>
+			await Promise.resolve({
+				drop: [],
+				merge: [
+					{
+						supersedes: [oldEntry.id, input.seedEntryIds[0]],
+						content: longReplacement,
+					},
+				],
+			});
+
+		await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract, reflect },
+			scope: { agentId: 'agent-1', resourceId: 'user-1' },
+			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			threadId: 'thread-1',
+			eventBus: new AgentEventBus(),
+		});
+
+		const [stored] = await memory.searchEpisodicMemoryEntries(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'REFLECTEDVENDORSTATUSCOMPLETE',
+			{ topK: 1 },
+		);
+		expect(stored.content).toBe(longReplacement);
+		expect(stored.content.length).toBeGreaterThan(800);
 	});
 
 	it('reflects obvious noise as dropped and excludes it from active search', async () => {

@@ -3,9 +3,7 @@ import { createHash } from 'crypto';
 import { z } from 'zod';
 
 import {
-	DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
-	DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
@@ -32,7 +30,6 @@ import type { ObservationLogEntry, ObservationLogScope } from '../types/sdk/obse
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
 const RRF_K = 60;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const RECENCY_RRF_WEIGHT = 1;
 const MIN_VECTOR_RELEVANCE_SCORE = 0.2;
 
@@ -49,7 +46,6 @@ const RecallMemoryOutputSchema = z.object({
 			lexicalScore: z.number(),
 			vectorScore: z.number(),
 			rrfScore: z.number(),
-			recencyFactor: z.number(),
 			finalScore: z.number(),
 		}),
 	),
@@ -59,9 +55,7 @@ type RecallMemoryOutput = z.infer<typeof RecallMemoryOutputSchema>;
 
 interface NormalizedEpisodicMemoryConfig {
 	topK: number;
-	halfLifeDays: number;
 	maxEntriesPerRun: number;
-	maxEntryLength: number;
 	embedder: NonNullable<EpisodicMemoryConfig['embedder']>;
 	embeddingModel: string;
 	extract: EpisodicMemoryConfig['extract'];
@@ -114,9 +108,7 @@ export function withEpisodicMemoryDefaults(
 
 	return {
 		topK: config.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K,
-		halfLifeDays: config.halfLifeDays ?? DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
 		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
-		maxEntryLength: config.maxEntryLength ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
 		embedder: config.embedder,
 		embeddingModel: config.embeddingModel ?? 'custom',
 		extract: config.extract,
@@ -142,7 +134,7 @@ export async function runEpisodicMemoryIndexer(
 		const existingEntries = await opts.memory.searchEpisodicMemoryEntries(
 			opts.scope,
 			observations.map((entry) => entry.text).join('\n'),
-			{ topK: Math.max(normalized.topK, 20), halfLifeDays: normalized.halfLifeDays },
+			{ topK: Math.max(normalized.topK, 20) },
 		);
 
 		const extraction = await normalized.extract({
@@ -154,11 +146,10 @@ export async function runEpisodicMemoryIndexer(
 			existingEntries,
 		});
 
-		const candidates = validateCandidates(
-			extraction.entries,
-			observations,
-			normalized.maxEntryLength,
-		).slice(0, normalized.maxEntriesPerRun);
+		const candidates = validateCandidates(extraction.entries, observations).slice(
+			0,
+			normalized.maxEntriesPerRun,
+		);
 
 		const savedEntries: EpisodicMemoryEntry[] = [];
 		if (candidates.length > 0) {
@@ -213,7 +204,6 @@ export function createRecallMemoryTool(opts: {
 			});
 			const entries = await opts.memory.searchEpisodicMemoryEntries(opts.scope, query, {
 				topK: normalized.topK,
-				halfLifeDays: normalized.halfLifeDays,
 				queryEmbedding,
 			});
 			return { entries: entries.map(toRecallToolEntry) };
@@ -239,7 +229,7 @@ export function rankEpisodicMemoryEntries(
 	const lexical = candidates
 		.map((entry) => ({ entry, score: lexicalScore(queryTokens, tokenize(entry.content)) }))
 		.filter((item) => item.score > 0)
-		.sort((a, b) => b.score - a.score);
+		.sort(compareScoredEntries);
 	const vector = candidates
 		.map((entry) => ({
 			entry,
@@ -249,7 +239,7 @@ export function rankEpisodicMemoryEntries(
 					: 0,
 		}))
 		.filter((item) => item.score >= MIN_VECTOR_RELEVANCE_SCORE)
-		.sort((a, b) => b.score - a.score);
+		.sort(compareScoredEntries);
 	const relevantIds = new Set([
 		...lexical.map((item) => item.entry.id),
 		...vector.map((item) => item.entry.id),
@@ -283,20 +273,13 @@ export function rankEpisodicMemoryEntries(
 	}
 	return [...scores.values()]
 		.filter((score) => score.rrfScore > 0)
-		.map((score) => {
-			const recencyFactor = computeRecencyFactor(
-				getEntryRecencyDate(score.entry),
-				opts.halfLifeDays,
-			);
-			return {
-				...score.entry,
-				lexicalScore: score.lexicalScore,
-				vectorScore: score.vectorScore,
-				rrfScore: score.rrfScore,
-				recencyFactor,
-				finalScore: score.rrfScore * recencyFactor,
-			};
-		})
+		.map((score) => ({
+			...score.entry,
+			lexicalScore: score.lexicalScore,
+			vectorScore: score.vectorScore,
+			rrfScore: score.rrfScore,
+			finalScore: score.rrfScore,
+		}))
 		.sort(
 			(a, b) =>
 				b.finalScore - a.finalScore ||
@@ -408,7 +391,6 @@ async function runEpisodicMemoryReflection(
 			entries: cluster,
 			sources,
 		}),
-		config.maxEntryLength,
 	);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return;
 
@@ -451,7 +433,6 @@ async function buildReflectionCluster(
 	].join('\n');
 	const related = await opts.memory.searchEpisodicMemoryEntries(opts.scope, query, {
 		topK: Math.max(config.topK, 20),
-		halfLifeDays: config.halfLifeDays,
 	});
 	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
 	for (const saved of savedEntries) {
@@ -464,7 +445,6 @@ async function buildReflectionCluster(
 function normalizeEpisodicMemoryReflection(
 	activeEntries: EpisodicMemoryEntry[],
 	reflection: EpisodicMemoryReflection,
-	maxEntryLength: number,
 ): EpisodicMemoryReflection {
 	const activeIds = new Set(
 		activeEntries.filter((entry) => entry.status === 'active').map((entry) => entry.id),
@@ -477,7 +457,7 @@ function normalizeEpisodicMemoryReflection(
 		drop: reflection.drop,
 		merge: reflection.merge,
 		normalizeMerge: (entry, supersedes) => {
-			const content = normalizeEntryContent(entry.content, maxEntryLength);
+			const content = normalizeEntryContent(entry.content);
 			return content ? { supersedes, content } : null;
 		},
 	});
@@ -508,7 +488,6 @@ interface ValidatedCandidate {
 function validateCandidates(
 	candidates: EpisodicMemoryExtractionCandidate[],
 	observations: ObservationLogEntry[],
-	maxEntryLength: number,
 ): ValidatedCandidate[] {
 	const observationsById = new Map(observations.map((entry) => [entry.id, entry]));
 	const valid: ValidatedCandidate[] = [];
@@ -525,7 +504,7 @@ function validateCandidates(
 			return [{ observationId: source.observationId, evidence }];
 		});
 		if (sources.length === 0) continue;
-		const content = normalizeEntryContent(candidate.content, maxEntryLength);
+		const content = normalizeEntryContent(candidate.content);
 		if (!content) continue;
 		const evidenceText = sources.map((source) => source.evidence).join('\n');
 		const sourceText = sources
@@ -553,10 +532,8 @@ function isFailedRecallCandidate(content: string, evidence: string, sourceText: 
 	].some((pattern) => pattern.test(text));
 }
 
-function normalizeEntryContent(content: string, maxLength: number): string {
-	const normalized = content.replace(/\s+/g, ' ').trim();
-	if (normalized.length <= maxLength) return normalized;
-	return normalized.slice(0, maxLength).trim();
+function normalizeEntryContent(content: string): string {
+	return content.replace(/\s+/g, ' ').trim();
 }
 
 function normalizeHashContent(content: string): string {
@@ -596,13 +573,14 @@ function getEntryRecencyDate(entry: Pick<EpisodicMemoryEntry, 'createdAt' | 'las
 	return entry.lastSeenAt ?? entry.createdAt;
 }
 
-function computeRecencyFactor(
-	createdAt: Date,
-	halfLifeDays = DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
+function compareScoredEntries(
+	a: { entry: EpisodicMemoryEntry; score: number },
+	b: { entry: EpisodicMemoryEntry; score: number },
 ): number {
-	const ageMs = Math.max(0, Date.now() - createdAt.getTime());
-	const ageDays = ageMs / MS_PER_DAY;
-	return Math.pow(0.5, ageDays / halfLifeDays);
+	return (
+		b.score - a.score ||
+		getEntryRecencyDate(b.entry).getTime() - getEntryRecencyDate(a.entry).getTime()
+	);
 }
 
 function compareKeyset(
@@ -624,7 +602,6 @@ function toRecallToolEntry(
 		lexicalScore: entry.lexicalScore,
 		vectorScore: entry.vectorScore,
 		rrfScore: entry.rrfScore,
-		recencyFactor: entry.recencyFactor,
 		finalScore: entry.finalScore,
 	};
 }
@@ -635,7 +612,6 @@ function toRetrievedEntry(entry: EpisodicMemoryEntry): RetrievedEpisodicMemoryEn
 		lexicalScore: 0,
 		vectorScore: 0,
 		rrfScore: 0,
-		recencyFactor: 1,
 		finalScore: 0,
 	};
 }

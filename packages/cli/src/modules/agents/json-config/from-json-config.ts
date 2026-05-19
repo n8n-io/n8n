@@ -328,9 +328,7 @@ async function resolveEpisodicMemoryConfig(
 	return {
 		enabled: true,
 		...(config.topK !== undefined && { topK: config.topK }),
-		...(config.halfLifeDays !== undefined && { halfLifeDays: config.halfLifeDays }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
-		...(config.maxEntryLength !== undefined && { maxEntryLength: config.maxEntryLength }),
 		embeddingProviderOptions,
 	};
 }

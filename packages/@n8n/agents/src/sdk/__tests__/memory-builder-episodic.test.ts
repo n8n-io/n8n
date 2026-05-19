@@ -1,9 +1,7 @@
 import type { AgentRuntime } from '../../runtime/agent-runtime';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-	DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
-	DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from '../../runtime/episodic-memory-defaults';
 import { InMemoryMemory } from '../../runtime/memory-store';
@@ -63,11 +61,11 @@ describe('Memory builder — episodic memory', () => {
 
 		expect(runtimeConfig.episodicMemory).toMatchObject({
 			topK: DEFAULT_EPISODIC_MEMORY_TOP_K,
-			halfLifeDays: DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
 			maxEntriesPerRun: DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
-			maxEntryLength: DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
 			embeddingModel: DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 		});
+		expect(runtimeConfig.episodicMemory).not.toHaveProperty('halfLifeDays');
+		expect(runtimeConfig.episodicMemory).not.toHaveProperty('maxEntryLength');
 		expect(typeof runtimeConfig.episodicMemory?.extract).toBe('function');
 		expect(typeof runtimeConfig.episodicMemory?.reflect).toBe('function');
 		expect(embedder.provider).toBe('openai');
@@ -98,26 +96,26 @@ describe('Memory builder — episodic memory', () => {
 		const resolved = resolveEpisodicMemoryConfig(
 			{
 				topK: 7,
-				halfLifeDays: 14,
 				maxEntriesPerRun: 2,
+				halfLifeDays: 14,
 				maxEntryLength: 400,
 				embedder,
 				embeddingModel: 'custom/model',
 				extract,
 				reflect,
 				prompts,
-			},
+			} as unknown as EpisodicMemoryConfig,
 			{ defaultModel: 'openai/gpt-4o-mini' },
 		);
 
 		expect(resolved).toMatchObject({
 			topK: 7,
-			halfLifeDays: 14,
 			maxEntriesPerRun: 2,
-			maxEntryLength: 400,
 			embeddingModel: 'custom/model',
 			prompts,
 		});
+		expect(resolved).not.toHaveProperty('halfLifeDays');
+		expect(resolved).not.toHaveProperty('maxEntryLength');
 		expect(resolved.embedder).toBe(embedder);
 		expect(resolved.extract).toBe(extract);
 		expect(resolved.reflect).toBe(reflect);

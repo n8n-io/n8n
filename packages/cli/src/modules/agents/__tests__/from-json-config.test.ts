@@ -90,9 +90,7 @@ describe('buildFromJson()', () => {
 					};
 					episodicMemory?: {
 						topK?: number;
-						halfLifeDays?: number;
 						maxEntriesPerRun?: number;
-						maxEntryLength?: number;
 						embedder?: unknown;
 						embeddingModel?: string;
 						embeddingProviderOptions?: {
@@ -575,7 +573,6 @@ describe('buildFromJson()', () => {
 					enabled: true,
 					credential: 'openai-key',
 					topK: 7,
-					maxEntryLength: 800,
 				},
 			},
 		});
@@ -594,7 +591,6 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
 			topK: 7,
-			maxEntryLength: 800,
 			embeddingProviderOptions: {
 				apiKey: 'test-api-key',
 				baseURL: 'https://custom.example/v1',

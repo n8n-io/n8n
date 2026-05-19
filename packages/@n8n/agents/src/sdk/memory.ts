@@ -1,9 +1,7 @@
 import { hasEpisodicMemoryStore, isEpisodicMemoryEnabled } from '../runtime/episodic-memory';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-	DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
-	DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
@@ -71,9 +69,7 @@ export function resolveEpisodicMemoryConfig(
 	return {
 		enabled: config.enabled,
 		topK: config.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K,
-		halfLifeDays: config.halfLifeDays ?? DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS,
 		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
-		maxEntryLength: config.maxEntryLength ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH,
 		embedder:
 			config.embedder ?? createEmbeddingModel(embeddingModel, config.embeddingProviderOptions),
 		embeddingModel,

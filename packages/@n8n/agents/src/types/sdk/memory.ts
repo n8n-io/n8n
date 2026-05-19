@@ -198,13 +198,11 @@ export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
 	lexicalScore: number;
 	vectorScore: number;
 	rrfScore: number;
-	recencyFactor: number;
 	finalScore: number;
 }
 
 export interface EpisodicMemorySearchOptions {
 	topK?: number;
-	halfLifeDays?: number;
 	queryEmbedding?: number[];
 	includeStatuses?: EpisodicMemoryStatus[];
 }
@@ -310,9 +308,7 @@ export interface EpisodicMemoryEmbeddingProviderOptions {
 export interface EpisodicMemoryConfig {
 	enabled?: boolean;
 	topK?: number;
-	halfLifeDays?: number;
 	maxEntriesPerRun?: number;
-	maxEntryLength?: number;
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;

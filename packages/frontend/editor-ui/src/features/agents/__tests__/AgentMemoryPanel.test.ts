@@ -47,9 +47,7 @@ describe('AgentMemoryPanel', () => {
 					enabled: true,
 					credential: 'old-credential',
 					topK: 7,
-					halfLifeDays: 90,
 					maxEntriesPerRun: 8,
-					maxEntryLength: 1200,
 				},
 			},
 		} satisfies AgentJsonConfig;
@@ -69,9 +67,7 @@ describe('AgentMemoryPanel', () => {
 					enabled: true,
 					credential: 'new-credential',
 					topK: 7,
-					halfLifeDays: 90,
 					maxEntriesPerRun: 8,
-					maxEntryLength: 1200,
 				},
 			},
 		});

@@ -17,9 +17,7 @@ import type {
 
 export const DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 export const DEFAULT_EPISODIC_MEMORY_TOP_K = 5;
-export const DEFAULT_EPISODIC_MEMORY_HALF_LIFE_DAYS = 180;
 export const DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN = 5;
-export const DEFAULT_EPISODIC_MEMORY_MAX_ENTRY_LENGTH = 800;
 export const DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION =
 	'Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.';
 

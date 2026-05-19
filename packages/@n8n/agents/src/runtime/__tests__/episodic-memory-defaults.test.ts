@@ -40,7 +40,6 @@ describe('episodic memory defaults', () => {
 			lexicalScore: 1,
 			vectorScore: 1,
 			rrfScore: 1,
-			recencyFactor: 1,
 			finalScore: 1,
 		};
 

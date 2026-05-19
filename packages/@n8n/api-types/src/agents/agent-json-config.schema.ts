@@ -31,9 +31,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 		enabled: z.literal(true),
 		credential: z.string().min(1),
 		topK: z.number().int().min(1).max(100).optional(),
-		halfLifeDays: z.number().int().min(1).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
-		maxEntryLength: z.number().int().min(1).max(4_000).optional(),
 	}),
 ]);
 
