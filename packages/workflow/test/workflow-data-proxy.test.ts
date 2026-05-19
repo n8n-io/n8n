@@ -2044,4 +2044,230 @@ describe('WorkflowDataProxy', () => {
 			expect(proxy.$('Edit').item.json.test).toBe('1111');
 		});
 	});
+
+	describe('Array Mutations in Expressions (Issue #30708)', () => {
+		test('should not mutate original arrays on reverse/sort/splice/etc.', () => {
+			const originalArray = [1, 2, 3, 'four'];
+			const workflow: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node2',
+						name: 'Set initial array',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					Start: {
+						main: [[{ node: 'Set initial array', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+				active: false,
+			};
+
+			const run: IRun = {
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							Start: [
+								{
+									startTime: 123,
+									executionTime: 10,
+									executionIndex: 0,
+									source: [null],
+									data: {
+										main: [
+											[
+												{
+													json: { array: originalArray },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+							'Set initial array': [
+								{
+									startTime: 124,
+									executionTime: 10,
+									executionIndex: 0,
+									source: [
+										{
+											previousNode: 'Start',
+											previousNodeOutput: 0,
+											previousNodeRun: 0,
+										},
+									],
+									data: {
+										main: [
+											[
+												{
+													json: { array: originalArray },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				}),
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'success',
+				storedAt: 'db',
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'Set initial array');
+
+			// Access untouched array
+			const untouched = proxy.$json.array;
+			expect(untouched).toEqual([1, 2, 3, 'four']);
+
+			// Perform mutating array operations inside expression contexts
+			const reversed = untouched.reverse();
+			expect(reversed).toEqual(['four', 3, 2, 1]);
+
+			// Verify that a fresh proxy (representing a sibling/subsequent parameter evaluation)
+			// gets the original, unmutated array!
+			const siblingProxy = getProxyFromFixture(workflow, run, 'Set initial array');
+			const siblingUntouched = siblingProxy.$json.array;
+			expect(siblingUntouched).toEqual([1, 2, 3, 'four']);
+
+			// Mutating method: sort
+			const numbersArray = [3, 1, 2];
+			const proxyWithNumbers = getProxyFromFixture(
+				workflow,
+				{
+					...run,
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								Start: [
+									{
+										startTime: 123,
+										executionTime: 10,
+										executionIndex: 0,
+										source: [null],
+										data: {
+											main: [
+												[
+													{
+														json: { array: numbersArray },
+														pairedItem: { item: 0 },
+													},
+												],
+											],
+										},
+									},
+								],
+								'Set initial array': [
+									{
+										startTime: 124,
+										executionTime: 10,
+										executionIndex: 0,
+										source: [
+											{
+												previousNode: 'Start',
+												previousNodeOutput: 0,
+												previousNodeRun: 0,
+											},
+										],
+										data: {
+											main: [
+												[
+													{
+														json: { array: numbersArray },
+														pairedItem: { item: 0 },
+													},
+												],
+											],
+										},
+									},
+								],
+							},
+						},
+					}),
+				},
+				'Set initial array',
+			);
+
+			const untouchedNumbers = proxyWithNumbers.$json.array;
+			const sorted = untouchedNumbers.sort();
+			expect(sorted).toEqual([1, 2, 3]);
+
+			// Verify that a fresh proxy for numbers gets the original, unmutated array!
+			const siblingProxyWithNumbers = getProxyFromFixture(
+				workflow,
+				{
+					...run,
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								Start: [
+									{
+										startTime: 123,
+										executionTime: 10,
+										executionIndex: 0,
+										source: [null],
+										data: {
+											main: [
+												[
+													{
+														json: { array: numbersArray },
+														pairedItem: { item: 0 },
+													},
+												],
+											],
+										},
+									},
+								],
+								'Set initial array': [
+									{
+										startTime: 124,
+										executionTime: 10,
+										executionIndex: 0,
+										source: [
+											{
+												previousNode: 'Start',
+												previousNodeOutput: 0,
+												previousNodeRun: 0,
+											},
+										],
+										data: {
+											main: [
+												[
+													{
+														json: { array: numbersArray },
+														pairedItem: { item: 0 },
+													},
+												],
+											],
+										},
+									},
+								],
+							},
+						},
+					}),
+				},
+				'Set initial array',
+			);
+			const siblingUntouchedNumbers = siblingProxyWithNumbers.$json.array;
+			expect(siblingUntouchedNumbers).toEqual([3, 1, 2]);
+		});
+	});
 });
