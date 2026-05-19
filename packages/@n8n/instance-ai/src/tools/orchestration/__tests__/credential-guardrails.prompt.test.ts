@@ -44,13 +44,30 @@ describe('credential guardrail prompts', () => {
 		);
 		expect(PLANNER_AGENT_PROMPT).toContain('builder will use a mocked or unresolved credential');
 		expect(PLANNER_AGENT_PROMPT).toContain(
-			'If there is more than one credential of the same required type',
+			'If `credentials(action="list")` proves there is more than one existing credential',
 		);
+		expect(PLANNER_AGENT_PROMPT).toContain('credentials(action="list")` proves');
 		expect(PLANNER_AGENT_PROMPT).toContain('ask once with a single-select');
 		expect(PLANNER_AGENT_PROMPT).toContain('cannot be discovered, only chosen');
+		expect(PLANNER_AGENT_PROMPT).toContain('Do not ask this question speculatively');
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'do not ask for an account email or auth detail as a substitute',
+		);
 		expect(PLANNER_AGENT_PROMPT).toContain('credential-backed resource investigation');
 		expect(PLANNER_AGENT_PROMPT).toContain('Do not turn that into a credential-choice question');
 		expect(PLANNER_AGENT_PROMPT).toContain('Record the chosen credential name in `assumptions`');
+	});
+
+	it('tells the planner not to ask for account or auth selectors during planning', () => {
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'Never ask for service accounts, account emails, auth choices, API keys, tokens',
+		);
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'Do not ask for credential names except in the multiple-existing-credentials case below',
+		);
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'keep the plan generic and let the builder/setup flow collect or mock the unresolved value',
+		);
 	});
 
 	it('tells the planner to use the contextual timezone before asking', () => {

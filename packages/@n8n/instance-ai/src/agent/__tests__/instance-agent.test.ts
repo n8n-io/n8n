@@ -33,6 +33,7 @@ jest.mock('../../tools', () => ({
 		(context: { runLabel?: string }) =>
 			new Map([
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 			]),
@@ -41,6 +42,7 @@ jest.mock('../../tools', () => ({
 		(context: { runLabel?: string }) =>
 			new Map([
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
@@ -82,10 +84,6 @@ const { createToolsFromLocalMcpServer } =
 	require('../../tools/filesystem/create-tools-from-mcp-server') as {
 		createToolsFromLocalMcpServer: jest.Mock;
 	};
-const { createOrchestratorDomainTools } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('../../tools') as { createOrchestratorDomainTools: jest.Mock };
-
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
 	browserTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
@@ -266,18 +264,12 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 	});
 
-	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
-		createOrchestratorDomainTools.mockReturnValueOnce(
-			new Map([
-				['workflows', { id: 'workflows' }],
-				['browser_connect', { id: 'browser_connect' }],
-				['browser_navigate', { id: 'browser_navigate' }],
-			]),
-		);
+	it('exposes localMcpServer browser tools when eager-loading tools', async () => {
 		createToolsFromLocalMcpServer.mockReturnValue(
 			new Map([
 				['browser_connect', { id: 'browser_connect' }],
 				['browser_navigate', { id: 'browser_navigate' }],
+				['browser_screenshot', { id: 'browser_screenshot' }],
 			]),
 		);
 
@@ -285,7 +277,11 @@ describe('createInstanceAgent', () => {
 		const localMcpServer = {
 			getToolsByCategory: jest
 				.fn()
-				.mockReturnValue([{ name: 'browser_connect' }, { name: 'browser_navigate' }]),
+				.mockReturnValue([
+					{ name: 'browser_connect' },
+					{ name: 'browser_navigate' },
+					{ name: 'browser_screenshot' },
+				]),
 		};
 
 		await createInstanceAgent({
@@ -306,6 +302,7 @@ describe('createInstanceAgent', () => {
 		expect(agentTools).toMatchObject({
 			browser_connect: { id: 'browser_connect' },
 			browser_navigate: { id: 'browser_navigate' },
+			browser_screenshot: { id: 'browser_screenshot' },
 		});
 	});
 
@@ -350,5 +347,33 @@ describe('createInstanceAgent', () => {
 		expect(agentTools.custom_plan).toMatchObject({ marker: 'custom-plan' });
 		expect(mcpContextTools.get('shared_tool')).toMatchObject({ marker: 'local-shared' });
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
+	});
+
+	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
+		const memoryConfig = { lastMessages: 20 } as never;
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'evals-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'evals-test',
+				browserMcpConfig: undefined,
+			},
+			memoryConfig,
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		expect(attachedTools['evals-evals-test']).toMatchObject({
+			name: 'evals-evals-test',
+		});
+		expect(deferredTools['evals-evals-test']).toBeUndefined();
 	});
 });

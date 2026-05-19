@@ -6,12 +6,7 @@ import {
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
 import { getSystemPrompt } from './system-prompt';
-import {
-	createToolRegistry,
-	filterToolRegistry,
-	mergeToolRegistries,
-	toolRegistryValues,
-} from '../tool-registry';
+import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
@@ -29,6 +24,7 @@ const ALWAYS_LOADED_TOOLS = new Set([
 	'build-workflow-with-agent',
 	'verify-built-workflow',
 	'research',
+	'evals',
 	'web-search',
 	'fetch-url',
 ]);
@@ -81,8 +77,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
 		: createToolRegistry();
 
-	// Browser tool names are excluded from the orchestrator's direct toolset.
-	// They remain available to browser-oriented sub-agents via orchestrationContext.mcpTools.
+	// Browser tool names are tracked for prompt state. They are exposed both to
+	// the orchestrator for explicit browser requests and to browser-oriented
+	// sub-agents via orchestrationContext.mcpTools.
 	const browserToolNames = new Set([
 		...browserMcpTools.keys(),
 		...(context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? []),
@@ -105,7 +102,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
 
 	// Store all MCP tools (external + browser + local gateway) on orchestrationContext for
-	// sub-agents. These are not all given to the orchestrator directly.
+	// sub-agents. The direct orchestrator set is validated separately below.
 	const allMcpTools = createToolRegistry();
 	const mcpContextToolNames = createClaimedToolNames(reservedToolNames);
 	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
@@ -124,17 +121,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		warn: warnSkippedMcpTool,
 	});
 
-	const orchestratorLocalMcpTools = filterToolRegistry(
-		rawLocalMcpTools,
-		([name]) => !browserToolNames.has(name),
-	);
 	if (orchestrationContext && allMcpTools.size > 0) {
 		orchestrationContext.mcpTools = allMcpTools;
 	}
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools = createToolRegistry();
-	addSafeMcpTools(safeLocalMcpTools, orchestratorLocalMcpTools, {
+	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
 		source: 'local gateway MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
@@ -142,6 +135,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const safeMcpTools = createToolRegistry();
 	addSafeMcpTools(safeMcpTools, mcpTools, {
 		source: 'external MCP',
+		claimedToolNames: claimedOrchestratorToolNames,
+		warn: warnSkippedMcpTool,
+	});
+	addSafeMcpTools(safeMcpTools, browserMcpTools, {
+		source: 'browser MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
