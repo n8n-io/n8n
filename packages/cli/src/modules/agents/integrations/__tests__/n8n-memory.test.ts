@@ -486,8 +486,7 @@ describe('N8nMemory', () => {
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentObservationEntity, resourceScope);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				6,
-				AgentObservationCursorEntity,
+				6,				AgentObservationCursorEntity,
 				resourceScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
@@ -500,8 +499,7 @@ describe('N8nMemory', () => {
 				AgentMemoryEntryCursorEntity,
 				resourceScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(9, AgentThreadEntity, { id: 'thread-1' });
-			expect(observationRepository.delete).not.toHaveBeenCalled();
+			expect(transactionDelete).toHaveBeenNthCalledWith(9, AgentThreadEntity, { id: 'thread-1' });			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
 			expect(threadRepository.delete).not.toHaveBeenCalled();
@@ -568,8 +566,7 @@ describe('N8nMemory', () => {
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentObservationEntity, resourceScope);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				6,
-				AgentObservationCursorEntity,
+				6,				AgentObservationCursorEntity,
 				resourceScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
@@ -582,8 +579,7 @@ describe('N8nMemory', () => {
 				AgentMemoryEntryCursorEntity,
 				resourceScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(9, AgentThreadEntity, {
-				id: Like('test-agent-1%'),
+			expect(transactionDelete).toHaveBeenNthCalledWith(9, AgentThreadEntity, {				id: Like('test-agent-1%'),
 			});
 			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();

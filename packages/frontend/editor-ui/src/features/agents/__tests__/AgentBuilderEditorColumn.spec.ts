@@ -11,19 +11,7 @@ vi.mock('@n8n/i18n', () => ({
 					'Keeps recent messages from this session available as context.',
 				'agents.builder.memory.episodicMemory.label': 'Cross-session recall',
 				'agents.builder.memory.episodicMemory.hint':
-					'Retrieves source-backed memories from previous conversations.',
-				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
-			})[key] ?? key,
-	}),
-}));
-
-vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({
-		openModalWithData: vi.fn(),
-	}),
-}));
-
-vi.mock('@n8n/design-system', () => ({
+					'Retrieves source-backed memories from previous conversations.',vi.mock('@n8n/design-system', () => ({
 	N8nCard: { template: '<div><slot /></div>', props: ['variant'] },
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['size'] },
 	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
@@ -68,8 +56,7 @@ async function mountColumn() {
 }
 
 describe('AgentBuilderEditorColumn', () => {
-	it('renders session memory and cross-session recall controls in the builder memory card', async () => {
-		const wrapper = await mountColumn();
+	it('renders session memory and cross-session recall controls in the builder memory card', async () => {		const wrapper = await mountColumn();
 
 		expect(wrapper.text()).toContain('Session Memory');
 		expect(wrapper.text()).toContain(
@@ -78,6 +65,5 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.text()).toContain('Cross-session recall');
 		expect(wrapper.text()).toContain(
 			'Retrieves source-backed memories from previous conversations.',
-		);
-	});
+		);	});
 });

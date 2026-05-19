@@ -5455,8 +5455,6 @@
 	"instanceAi.statusBar.waitingForInput": "Waiting for your input",
 	"instanceAi.input.send": "Send",
 	"instanceAi.input.stop": "Stop",
-	"instanceAi.input.researchToggle": "Deep research",
-	"instanceAi.input.researchToggle.tooltip": "Search the web, read documentation, and synthesize findings before responding",
 	"instanceAi.toolCall.input": "Input",
 	"instanceAi.toolCall.output": "Output",
 	"instanceAi.toolCall.running": "Running...",

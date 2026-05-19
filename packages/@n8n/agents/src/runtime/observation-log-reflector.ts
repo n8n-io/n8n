@@ -121,8 +121,7 @@ export function normalizeObservationLogReflection(
 	const merge = reflection.merge
 		.map((entry) => {
 			const ownSeeds = new Set(entry.supersedes.filter((id) => activeById.has(id)));
-			const supersedes = uniqueStrings(
-				entry.supersedes
+			const supersedes = uniqueStrings(				entry.supersedes
 					.filter((id) => activeById.has(id))
 					.filter((id) => !isChildOnlyRemoval(id, ownSeeds, allMergeSeeds, dropSeeds, activeById))
 					.flatMap((id) => [id, ...descendantIds(id, childrenByParent)]),

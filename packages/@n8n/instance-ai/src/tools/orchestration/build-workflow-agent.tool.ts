@@ -105,6 +105,7 @@ const BUILDER_SANDBOX_TOOL_NAMES = [
 	'executions',
 	'data-tables',
 	'ask-user',
+	'research',
 ] as const;
 
 const BUILDER_TOOL_MODE_TOOL_NAMES = [
@@ -113,6 +114,7 @@ const BUILDER_TOOL_MODE_TOOL_NAMES = [
 	'workflows',
 	'data-tables',
 	'ask-user',
+	'research',
 ] as const;
 
 function createBuilderWorkflowsTool(context: InstanceAiContext) {
@@ -947,10 +949,7 @@ export async function startBuildWorkflowAgentTask(
 	} else {
 		builderTools = {};
 
-		const toolNames = context.researchMode
-			? [...BUILDER_TOOL_MODE_TOOL_NAMES, 'research']
-			: BUILDER_TOOL_MODE_TOOL_NAMES;
-		for (const name of toolNames) {
+		for (const name of BUILDER_TOOL_MODE_TOOL_NAMES) {
 			if (name in context.domainTools) {
 				builderTools[name] = context.domainTools[name];
 			}

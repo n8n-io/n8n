@@ -34,14 +34,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
 	}),
 ]);
-
-const MemoryConfigSchema = z.object({
-	enabled: z.boolean(),
-	storage: z.enum(['n8n']),
-	lastMessages: z.number().int().min(1).max(200).optional(),
-	semanticRecall: SemanticRecallSchema.optional(),
-	observationalMemory: ObservationalMemoryConfigSchema.optional(),
-	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
 
 const ThinkingConfigSchema = z.object({

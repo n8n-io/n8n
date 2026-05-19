@@ -22,6 +22,10 @@ inputs:
     description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
     required: false
     default: 'pnpm install --frozen-lockfile'
+  cache-dependency-path:
+    description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
+    required: false
+    default: 'pnpm-lock.yaml'
 
 runs:
   using: 'composite'
@@ -34,6 +38,7 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137

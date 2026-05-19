@@ -98,42 +98,7 @@ describe('buildFromJson()', () => {
 							baseURL?: string;
 						};
 						extract?: unknown;
-						reflect?: unknown;
-					};
-				};
-			}
-		).memoryConfig;
-
-	const makeMockMemoryFactory = () => jest.fn();
-
-	const makeMockMemoryBackend = () => ({
-		getThread: jest.fn(),
-		saveThread: jest.fn(),
-		deleteThread: jest.fn(),
-		getMessages: jest.fn().mockResolvedValue([]),
-		saveMessages: jest.fn(),
-		deleteMessages: jest.fn(),
-		appendObservationLogEntries: jest.fn(),
-		getActiveObservationLog: jest.fn(),
-		getObservationLog: jest.fn(),
-		dropObservationLogEntries: jest.fn(),
-		supersedeObservationLogEntries: jest.fn(),
-		applyObservationLogReflection: jest.fn(),
-		getMessagesForScope: jest.fn(),
-		getCursor: jest.fn(),
-		setCursor: jest.fn(),
-		acquireObservationLogTaskLock: jest.fn(),
-		releaseObservationLogTaskLock: jest.fn(),
-		saveEpisodicMemoryEntries: jest.fn(),
-		saveEpisodicMemoryEntrySources: jest.fn(),
-		saveEpisodicMemoryEntryWithSources: jest.fn(),
-		searchEpisodicMemoryEntries: jest.fn(),
-		supersedeEpisodicMemoryEntries: jest.fn(),
-		getEpisodicMemoryCursor: jest.fn(),
-		setEpisodicMemoryCursor: jest.fn(),
-		getEpisodicMemoryEntrySources: jest.fn(),
-		applyEpisodicMemoryReflection: jest.fn(),
-		describe: jest
+						reflect?: unknown;		describe: jest
 			.fn()
 			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
 		close: jest.fn(),
