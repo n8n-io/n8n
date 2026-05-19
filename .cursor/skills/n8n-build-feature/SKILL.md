@@ -1,6 +1,6 @@
 ---
 name: n8n-build-feature
-description: Fully autonomous orchestrator for shipping a feature in the n8n monorepo. Use when the user asks to "build a feature", "implement this", or "ship X". Plans, implements, and verifies end-to-end without prompting for confirmation between phases.
+description: Fully autonomous orchestrator for shipping a feature in the n8n monorepo. Use when the user asks to "build a feature", "implement this", or "ship X". Switches to Plan Mode first, then implements and verifies end-to-end without prompting for confirmation between phases.
 ---
 
 # n8n Build Feature
@@ -11,6 +11,10 @@ You are running this skill because the user asked for a feature to be implemente
 - A destructive git action that `git-hygiene` blocks (force push, hard reset, dropping unrelated changes).
 
 Everything else is your responsibility.
+
+## Mode selection
+
+Immediately request Plan Mode via `SwitchMode` before researching or editing. Use Plan Mode to gather context, identify the implementation path, and present a concise plan. When the plan is ready, request Agent Mode and implement without asking for additional confirmation between implementation phases, unless a stop condition above applies.
 
 ## Before editing
 
