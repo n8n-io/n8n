@@ -7,6 +7,8 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
@@ -147,7 +149,7 @@ export const createCreateWorkflowFromCodeTool = (
 		}
 
 		let newWorkflow: WorkflowEntity | undefined;
-		let landingProject: Project | undefined;
+		let landingProject: Project | null = null;
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -175,20 +177,15 @@ export const createCreateWorkflowFromCodeTool = (
 
 			stripNullCredentialStubs(newWorkflow.nodes);
 
-			let resolvedProject: Project;
-			if (projectId) {
-				const found = await projectRepository.findOneBy({ id: projectId });
-				if (!found) {
-					throw new Error(
-						`Project with id "${projectId}" was not found. Use search_projects to look up a valid project id.`,
-					);
-				}
-				resolvedProject = found;
-			} else {
-				resolvedProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
+			landingProject = projectId
+				? await projectRepository.findOneBy({ id: projectId })
+				: await projectRepository.getPersonalProjectForUserOrFail(user.id);
+			if (!landingProject) {
+				throw new NotFoundError(
+					`Project with id "${projectId}" was not found. Use search_projects to look up a valid project id.`,
+				);
 			}
-			landingProject = resolvedProject;
-			const effectiveProjectId = resolvedProject.id;
+			const effectiveProjectId = landingProject.id;
 
 			const { assignments: credentialAssignments, skippedHttpNodes } =
 				await autoPopulateNodeCredentials(
@@ -200,7 +197,7 @@ export const createCreateWorkflowFromCodeTool = (
 				);
 
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
-				projectId,
+				projectId: effectiveProjectId,
 				parentFolderId: folderId,
 				source: 'n8n-mcp',
 			});
@@ -224,9 +221,9 @@ export const createCreateWorkflowFromCodeTool = (
 				url: workflowUrl,
 				autoAssignedCredentials: credentialAssignments,
 				targetProject: {
-					id: resolvedProject.id,
-					name: resolvedProject.name,
-					type: resolvedProject.type,
+					id: landingProject.id,
+					name: landingProject.name,
+					type: landingProject.type,
 				},
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
@@ -255,10 +252,6 @@ export const createCreateWorkflowFromCodeTool = (
 					// Verification lookup failed — fall through and report the original error.
 				}
 
-				// landingProject is set in the same try block before save() can populate
-				// newWorkflow.id, so reaching this branch with persisted means landingProject
-				// is also defined. The check keeps TypeScript honest and degrades to the
-				// regular error path on the impossible case.
 				if (persisted && landingProject) {
 					const baseUrl = urlService.getInstanceBaseUrl();
 					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;

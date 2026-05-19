@@ -255,13 +255,13 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(createWorkflowMock.mock.calls[0][1].description).toBeUndefined();
 		});
 
-		test('passes undefined projectId to service when not provided', async () => {
+		test('resolves the personal project id and passes it to the service when projectId is not provided', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: undefined, source: 'n8n-mcp' },
+				{ projectId: 'personal-project-1', source: 'n8n-mcp' },
 			);
 		});
 
