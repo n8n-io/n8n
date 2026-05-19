@@ -18,10 +18,9 @@ import type {
 } from '@n8n/design-system/v2/components/Select/Select.types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { RedactionScope } from '@n8n/api-types';
+import type { RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
-import * as redactionEnforcementApi from '@n8n/rest-api-client/api/redaction-enforcement';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -44,10 +43,21 @@ const dataRedactionTooltipKey = 'settings.security.dataRedaction.unlicensed_tool
 const showPublishingDialog = ref(false);
 const showSharingDialog = ref(false);
 
-const redactionScopeOptions = computed<Array<SelectItemProps & { value: RedactionScope }>>(() =>
-	(['manual-only', 'non-manual', 'all'] as RedactionScope[]).map((value) => ({
+type EnforcedFloor = Exclude<RedactionFloor, 'off'>;
+
+// Map the new floor enum to the existing i18n key suffixes so we don't
+// churn translations. 'production' uses the legacy 'non-manual' suffix.
+const FLOOR_TO_LEGACY_KEY: Record<EnforcedFloor, 'non-manual' | 'all'> = {
+	production: 'non-manual',
+	all: 'all',
+};
+
+const redactionFloorOptions = computed<Array<SelectItemProps & { value: EnforcedFloor }>>(() =>
+	(['production', 'all'] as EnforcedFloor[]).map((value) => ({
 		value,
-		label: i18n.baseText(`settings.security.dataRedaction.scope.option.${value}` as BaseTextKey),
+		label: i18n.baseText(
+			`settings.security.dataRedaction.scope.option.${FLOOR_TO_LEGACY_KEY[value]}` as BaseTextKey,
+		),
 	})),
 );
 
@@ -94,16 +104,9 @@ const { state } = useAsyncState(async () => {
 		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
+		redactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
 	};
 }, undefined);
-
-const { state: redactionState } = useAsyncState(
-	async () =>
-		isRedactionEnforcementFlagEnabled.value
-			? await redactionEnforcementApi.getRedactionEnforcement(rootStore.restApiContext)
-			: undefined,
-	undefined,
-);
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 
@@ -193,33 +196,25 @@ const sharingCountText = computed(() => {
 	});
 });
 
-async function updateRedactionEnforcement(payload: {
-	redactionEnforced?: boolean;
-	redactionScope?: RedactionScope;
-}) {
-	const previous = redactionState.value
-		? {
-				redactionEnforced: redactionState.value.redactionEnforced,
-				redactionScope: redactionState.value.redactionScope,
-			}
-		: undefined;
+async function updateRedactionFloor(nextFloor: RedactionFloor, isToggling: boolean) {
+	const previousFloor = state.value?.redactionFloor ?? 'off';
 	try {
-		await redactionEnforcementApi.updateRedactionEnforcement(rootStore.restApiContext, payload);
-		const isToggling = payload.redactionEnforced !== undefined;
+		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
+			redactionEnforcement: { floor: nextFloor },
+		});
 		showToast({
 			type: 'success',
 			title: isToggling
-				? payload.redactionEnforced
+				? nextFloor !== 'off'
 					? i18n.baseText('settings.security.dataRedaction.enforce.success.enabled')
 					: i18n.baseText('settings.security.dataRedaction.enforce.success.disabled')
 				: i18n.baseText('settings.security.dataRedaction.scope.success'),
 			message: '',
 		});
 	} catch (error) {
-		if (redactionState.value && previous) {
-			redactionState.value = { ...redactionState.value, ...previous };
+		if (state.value) {
+			state.value = { ...state.value, redactionFloor: previousFloor };
 		}
-		const isToggling = payload.redactionEnforced !== undefined;
 		showError(
 			error,
 			isToggling
@@ -230,34 +225,39 @@ async function updateRedactionEnforcement(payload: {
 }
 
 const dataRedactionEnforced = computed({
-	get: () => redactionState.value?.redactionEnforced ?? false,
+	get: () => (state.value?.redactionFloor ?? 'off') !== 'off',
 	set: (value: boolean) => {
-		if (redactionState.value) {
-			redactionState.value = { ...redactionState.value, redactionEnforced: value };
+		const nextFloor: RedactionFloor = value ? 'production' : 'off';
+		if (state.value) {
+			state.value = { ...state.value, redactionFloor: nextFloor };
 		}
-		void updateRedactionEnforcement({ redactionEnforced: value });
+		void updateRedactionFloor(nextFloor, true);
 	},
 });
 
-const dataRedactionScope = computed<RedactionScope>(
-	() => redactionState.value?.redactionScope ?? 'non-manual',
-);
+const dataRedactionFloor = computed<EnforcedFloor>(() => {
+	const current = state.value?.redactionFloor ?? 'off';
+	return current === 'off' ? 'production' : current;
+});
 
-function onSelectRedactionScope(value: SelectValue | undefined) {
-	if (!value || value === dataRedactionScope.value) return;
-	const scope = value as RedactionScope;
-	if (redactionState.value) {
-		redactionState.value = { ...redactionState.value, redactionScope: scope };
+function onSelectRedactionFloor(value: SelectValue | undefined) {
+	if (!value) return;
+	const nextFloor = value as EnforcedFloor;
+	if (nextFloor === dataRedactionFloor.value) return;
+	if (state.value) {
+		state.value = { ...state.value, redactionFloor: nextFloor };
 	}
-	void updateRedactionEnforcement({ redactionScope: scope });
+	void updateRedactionFloor(nextFloor, false);
 }
 
 const affectedScopeText = computed(() => {
-	if (!redactionState.value?.redactionEnforced) {
+	const floor = state.value?.redactionFloor ?? 'off';
+	if (floor === 'off') {
 		return i18n.baseText('settings.security.dataRedaction.affectedScope.none');
 	}
-	const scope = redactionState.value.redactionScope;
-	return i18n.baseText(`settings.security.dataRedaction.affectedScope.${scope}` as BaseTextKey);
+	return i18n.baseText(
+		`settings.security.dataRedaction.affectedScope.${FLOOR_TO_LEGACY_KEY[floor]}` as BaseTextKey,
+	);
 });
 </script>
 
@@ -349,7 +349,7 @@ const affectedScopeText = computed(() => {
 					<div :class="$style.settingsContainerAction">
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
 							<ElSwitch
-								v-if="redactionState !== undefined"
+								v-if="state !== undefined"
 								v-model="dataRedactionEnforced"
 								size="large"
 								:disabled="isManagedByEnv"
@@ -358,7 +358,7 @@ const affectedScopeText = computed(() => {
 							<template #fallback>
 								<N8nTooltip>
 									<ElSwitch
-										v-if="redactionState !== undefined"
+										v-if="state !== undefined"
 										:model-value="dataRedactionEnforced"
 										size="large"
 										:disabled="true"
@@ -381,7 +381,7 @@ const affectedScopeText = computed(() => {
 					</div>
 				</div>
 				<div
-					v-if="redactionState !== undefined && dataRedactionEnforced && isDataRedactionLicensed"
+					v-if="state !== undefined && dataRedactionEnforced && isDataRedactionLicensed"
 					:class="$style.settingsContainer"
 					data-test-id="redaction-enforcement-scope-row"
 				>
@@ -395,12 +395,12 @@ const affectedScopeText = computed(() => {
 					</div>
 					<div :class="$style.settingsContainerAction">
 						<N8nSelect2
-							:model-value="dataRedactionScope"
-							:items="redactionScopeOptions"
+							:model-value="dataRedactionFloor"
+							:items="redactionFloorOptions"
 							size="medium"
 							:disabled="isManagedByEnv"
 							data-test-id="redaction-enforcement-scope-select"
-							@update:model-value="onSelectRedactionScope"
+							@update:model-value="onSelectRedactionFloor"
 						/>
 					</div>
 				</div>
