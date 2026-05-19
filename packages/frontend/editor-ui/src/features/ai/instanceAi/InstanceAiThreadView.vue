@@ -638,10 +638,8 @@ function handleStop() {
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:contextual-suggestion="thread.contextualSuggestion"
-										:research-mode="store.researchMode"
 										@submit="handleSubmit"
 										@stop="handleStop"
-										@toggle-research-mode="store.toggleResearchMode()"
 									/>
 								</Transition>
 							</div>

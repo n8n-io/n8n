@@ -28,8 +28,6 @@ const icon = computed((): IconName => {
 			return 'workflow';
 		case 'node':
 			return 'box';
-		case 'working-memory':
-			return 'brain';
 		case 'suspension':
 		case 'idle':
 			return 'clock';
