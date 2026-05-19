@@ -15,7 +15,6 @@ import { detectAgentNamedRefs, type NamedRef } from './detect-agent-named-refs.s
 import { detectAiNodes, type DetectAiNodesResult } from './detect-ai-nodes';
 import { detectToolRefs } from './detect-tool-refs.service';
 import { createEmptyEvalDataTable } from './ensure-eval-data-table.service';
-import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
 import { generateToolRefPinData } from './generate-tool-ref-pin-data.service';
 import {
@@ -73,9 +72,7 @@ const selectMetricsAction = z.object({
 const proposeAction = z.object({
 	action: z
 		.literal('propose')
-		.describe(
-			'Build the eval-setup task spec for the eval-setup sub-agent. Creates an empty DataTable by default — population is the responsibility of `eval-data`, invoked via `offer-data-population`.',
-		),
+		.describe('Build the eval-setup task spec and create or link the eval DataTable.'),
 	workflowId: z.string(),
 	projectId: z.string().optional(),
 	metrics: z.array(z.string()).default([]),
@@ -87,22 +84,12 @@ const proposeAction = z.object({
 		.describe('Required when the workflow has more than one AI node.'),
 });
 
-const offerDataPopulationAction = z.object({
-	action: z
-		.literal('offer-data-population')
-		.describe(
-			'After eval setup completes, ask the user whether to auto-populate the empty DataTable. Suspends with approve/deny.',
-		),
-	workflowId: z.string(),
-});
-
 const inputSchema = sanitizeInputSchema(
 	z.discriminatedUnion('action', [
 		offerAction,
 		recommendMetricAction,
 		selectMetricsAction,
 		proposeAction,
-		offerDataPopulationAction,
 	]),
 );
 
@@ -335,8 +322,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 			"Eval suite orchestration. action='offer' → eligibility precheck after a fresh build; when eligible, returns a chat message you must output verbatim and then end the turn so the user can reply naturally. " +
 				"action='recommend-metric' → opinionated single-metric suggestion; suspends with approve/deny. Call FIRST when choosing metrics. " +
 				"action='select-metrics' → multi-select picker; call ONLY when `recommend-metric` was denied. " +
-				"action='propose' → build the task spec for the eval-setup sub-agent (creates an empty DataTable by default). " +
-				"action='offer-data-population' → approve/deny widget after eval setup, asking whether to auto-populate the empty DataTable.",
+				"action='propose' → build the task spec for the eval-setup sub-agent and create or link the DataTable.",
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
@@ -351,8 +337,6 @@ export function createEvalsTool(context: InstanceAiContext) {
 					return await executeSelectMetrics(context, input, ctx);
 				case 'propose':
 					return await executePropose(context, input);
-				case 'offer-data-population':
-					return await executeOfferDataPopulation(context, input, ctx);
 			}
 		})
 		.build();
@@ -626,52 +610,4 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 			: {}),
 		datasetChoice,
 	};
-}
-
-// ── action: offer-data-population ──────────────────────────────────────────
-
-async function executeOfferDataPopulation(
-	context: InstanceAiContext,
-	input: z.infer<typeof offerDataPopulationAction>,
-	ctx: EvalsToolExecutionContext,
-) {
-	const resumeData = getConfirmResume(ctx);
-	const suspend = getSuspend(ctx);
-
-	const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
-	const reqs = analyzeEvalDataRequirements(wf);
-	const target = reqs.targets[0];
-	if (!target) {
-		return { skipped: true as const, reason: 'no-eval-target' as const };
-	}
-
-	if (hasResumeData(ctx)) {
-		if (!resumeData?.approved) {
-			return { approved: false as const };
-		}
-		return {
-			approved: true as const,
-			workflowId: input.workflowId,
-			dataTableId: target.dataTableId,
-		};
-	}
-
-	// Detect already-populated table — sample one row to avoid full scans.
-	try {
-		const sample = await context.dataTableService.queryRows(target.dataTableId, { limit: 1 });
-		if (sample.data.length > 0) {
-			return { skipped: true as const, reason: 'already-populated' as const };
-		}
-	} catch {
-		// fall through — assume empty / unknown and continue with the offer
-	}
-
-	if (suspend) {
-		return await suspend({
-			requestId: nanoid(),
-			message: 'Generate some sample test inputs to get you started?',
-			severity: 'info' as const,
-		});
-	}
-	return { approved: false as const };
 }
