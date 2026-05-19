@@ -26,7 +26,7 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
 
 vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn(() => ({
-		getActiveExecutionIssuesByNodeName: () => executionIssuesByNodeName,
+		activeExecutionIssuesByNodeName: executionIssuesByNodeName,
 	})),
 	createWorkflowExecutionStateId: (id: string) => id,
 }));

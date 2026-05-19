@@ -12,13 +12,11 @@ import {
  *
  * Thin façade that re-exposes the per-node port maps owned by
  * `useWorkflowDocumentNodes` and the active execution's per-node-name
- * `executionIssuesByNodeName` map (resolved via `useWorkflowExecutionStateStore`,
- * which in turn routes through the keyed `useExecutionDataStore`).
- *
- * Call inside a Vue reactive context (e.g. `computed`) — the resolver
- * reads `activeExecutionId` / `displayedExecutionId`, so identity of the
- * returned `executionIssuesByNodeName` map changes when the active or displayed
- * execution swaps and the wrapping computed re-runs.
+ * `executionIssuesByNodeName` map. Reactivity is owned by the underlying
+ * stores: the port maps are stable references on the workflow document
+ * store, and `executionIssuesByNodeName` resolves through a `computed`
+ * on the workflow execution state store that swaps between the active
+ * and displayed execution's per-execution maps.
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
@@ -29,6 +27,6 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	return {
 		nodeInputsByNodeId: workflowDocumentStore.nodeInputsByNodeId,
 		nodeOutputsByNodeId: workflowDocumentStore.nodeOutputsByNodeId,
-		executionIssuesByNodeName: executionStateStore.getActiveExecutionIssuesByNodeName(),
+		executionIssuesByNodeName: executionStateStore.activeExecutionIssuesByNodeName,
 	};
 }

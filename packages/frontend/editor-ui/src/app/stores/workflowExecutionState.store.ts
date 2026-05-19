@@ -172,14 +172,14 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		}
 
 		/**
-		 * Resolves the per-node-name execution issues map for the active or
-		 * displayed execution. Mirrors the fallback chain in `activeExecution`
-		 * (active id → displayed id → empty). The returned Map identity changes
-		 * when the active/displayed execution swaps; callers that need this
-		 * reactivity should invoke inside a Vue reactive context (computed,
-		 * watchEffect) so the underlying ref reads are tracked.
+		 * Per-node-name execution issues map for the active or displayed
+		 * execution. Mirrors the fallback chain in `activeExecution`
+		 * (active id → displayed id → empty). Map identity changes when the
+		 * active/displayed execution swaps; per-name `ComputedRef` entries
+		 * inside each Map are owned by the per-execution data store and gate
+		 * downstream propagation via `isEqual`.
 		 */
-		function getActiveExecutionIssuesByNodeName(): Map<string, ComputedRef<string[]>> {
+		const activeExecutionIssuesByNodeName = computed(() => {
 			if (typeof activeExecutionId.value === 'string') {
 				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
 					.executionIssuesByNodeName;
@@ -189,7 +189,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 					.executionIssuesByNodeName;
 			}
 			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
-		}
+		});
 
 		const lastSuccessfulExecution = computed(() => {
 			const lid = lastSuccessfulExecutionId.value;
@@ -496,7 +496,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			getAllLoadedFinishedExecutions,
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
-			getActiveExecutionIssuesByNodeName,
+			activeExecutionIssuesByNodeName,
 			resolveExecutionTriggerNodeName,
 			// Write API
 			trackExecutionId,
