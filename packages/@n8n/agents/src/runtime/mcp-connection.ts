@@ -22,35 +22,36 @@ interface McpSdkModule {
 	CallToolResultSchema: typeof import('@modelcontextprotocol/sdk/types.js').CallToolResultSchema;
 }
 
-let cachedSdk: McpSdkModule | undefined;
+let mcpSdkPromise: Promise<McpSdkModule> | undefined;
 
 /**
- * Load the @modelcontextprotocol/sdk subpaths on first use. Deferred so the
- * agents module's startup cost stays low — the SDK loads ~12 MB of code that
- * is only needed once a user actually configures an MCP server.
+ * Load the @modelcontextprotocol/sdk client subpaths on first use. Deferred so
+ * the agents module's startup cost stays low — the SDK loads ~12 MB of code
+ * that is only needed once a user actually configures an MCP server.
  */
-function loadMcpSdk(): McpSdkModule {
-	if (cachedSdk) return cachedSdk;
-	/* eslint-disable @typescript-eslint/no-require-imports */
-	cachedSdk = {
-		Client: (
-			require('@modelcontextprotocol/sdk/client/index.js') as typeof import('@modelcontextprotocol/sdk/client/index.js')
-		).Client,
-		SSEClientTransport: (
-			require('@modelcontextprotocol/sdk/client/sse.js') as typeof import('@modelcontextprotocol/sdk/client/sse.js')
-		).SSEClientTransport,
-		StdioClientTransport: (
-			require('@modelcontextprotocol/sdk/client/stdio.js') as typeof import('@modelcontextprotocol/sdk/client/stdio.js')
-		).StdioClientTransport,
-		StreamableHTTPClientTransport: (
-			require('@modelcontextprotocol/sdk/client/streamableHttp.js') as typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')
-		).StreamableHTTPClientTransport,
-		CallToolResultSchema: (
-			require('@modelcontextprotocol/sdk/types.js') as typeof import('@modelcontextprotocol/sdk/types.js')
-		).CallToolResultSchema,
-	};
-	/* eslint-enable @typescript-eslint/no-require-imports */
-	return cachedSdk;
+async function loadMcpSdk(): Promise<McpSdkModule> {
+	mcpSdkPromise ??= Promise.all([
+		import('@modelcontextprotocol/sdk/client/index.js'),
+		import('@modelcontextprotocol/sdk/client/sse.js'),
+		import('@modelcontextprotocol/sdk/client/stdio.js'),
+		import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
+		import('@modelcontextprotocol/sdk/types.js'),
+	]).then(
+		([
+			{ Client },
+			{ SSEClientTransport },
+			{ StdioClientTransport },
+			{ StreamableHTTPClientTransport },
+			{ CallToolResultSchema },
+		]) => ({
+			Client,
+			SSEClientTransport,
+			StdioClientTransport,
+			StreamableHTTPClientTransport,
+			CallToolResultSchema,
+		}),
+	);
+	return await mcpSdkPromise;
 }
 
 /** Wraps a single MCP SDK Client instance for one server. Not publicly exported. */
@@ -74,7 +75,7 @@ export class McpConnection {
 		if (this.connectionPromise !== undefined) {
 			return await this.connectionPromise;
 		}
-		const sdk = loadMcpSdk();
+		const sdk = await loadMcpSdk();
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config, sdk));
 		try {
@@ -162,7 +163,7 @@ export class McpConnection {
 
 	async callTool(name: string, args: Record<string, unknown>): Promise<McpCallToolResult> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
-		const { CallToolResultSchema } = loadMcpSdk();
+		const { CallToolResultSchema } = await loadMcpSdk();
 		const result = await this.client.callTool({ name, arguments: args }, CallToolResultSchema);
 		return result as McpCallToolResult;
 	}
