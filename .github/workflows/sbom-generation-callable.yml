@@ -12,7 +12,7 @@ on:
         required: true
         type: string
     secrets:
-      SLACK_WEBHOOK_URL:
+      QBOT_SLACK_TOKEN:
         required: true
 
   workflow_dispatch:
@@ -80,10 +80,9 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ job.status }}
-          channel: '#alerts-build'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: |
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }} >
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }}>'
