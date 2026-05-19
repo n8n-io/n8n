@@ -13,6 +13,7 @@ import {
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
 	validatePinDataSize,
+	validateWorkflowNodeGroups,
 } from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
@@ -377,6 +378,74 @@ describe('removeDefaultValues', () => {
 		const originalSettings = { ...settings };
 		removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(settings).toEqual(originalSettings);
+	});
+});
+
+describe('validateWorkflowNodeGroups', () => {
+	const makeNode = (id: string) =>
+		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+
+	it('should pass when nodeGroups is undefined', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+		).not.toThrow();
+	});
+
+	it('should pass when nodeGroups is empty', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+		).not.toThrow();
+	});
+
+	it('should pass when all nodeIds reference existing nodes', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+			}),
+		).not.toThrow();
+	});
+
+	it('should throw when a nodeId does not reference an existing node', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+			}),
+		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
+	});
+
+	it('should throw for the first invalid nodeId found', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [],
+				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+			}),
+		).toThrow('Group "Empty Group" references node ID "bad1"');
+	});
+
+	it('should throw when a node belongs to multiple groups', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+				],
+			}),
+		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
+	});
+
+	it('should throw when group names are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+				],
+			}),
+		).toThrow('Duplicate node group name "Duplicate".');
 	});
 });
 
