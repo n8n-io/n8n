@@ -538,8 +538,10 @@ export class WorkflowRunner {
 
 		const workflowExecution: PCancelable<IRun> = new PCancelable(
 			async (resolve, reject, onCancel) => {
+				const abortController = new AbortController();
 				onCancel.shouldReject = false;
 				onCancel(async () => {
+					abortController.abort();
 					await this.scalingService.stopJob(job);
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
@@ -558,8 +560,19 @@ export class WorkflowRunner {
 				});
 
 				try {
-					await job.finished();
+					await this.scalingService.waitForJobResult(
+						executionId,
+						undefined,
+						undefined,
+						abortController.signal,
+					);
 				} catch (error) {
+					if (abortController.signal.aborted) {
+						error = new ManualExecutionCancelledError(executionId);
+					} else {
+						error = new Error(`Job completion lost or timed out for execution ${executionId}`);
+					}
+
 					if (
 						error instanceof Error &&
 						typeof error.message === 'string' &&

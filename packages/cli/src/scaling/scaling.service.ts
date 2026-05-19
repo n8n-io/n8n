@@ -29,6 +29,9 @@ import type {
 	JobFailedMessage,
 } from './scaling.types';
 
+const JOB_RESULT_WAIT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
+const JOB_RESULT_WAIT_POLL_INTERVAL_MS = 250;
+
 @Service()
 export class ScalingService {
 	private queue: JobQueue;
@@ -202,6 +205,52 @@ export class ScalingService {
 		const result = this.jobResults.get(executionId);
 		this.jobResults.delete(executionId);
 		return result;
+	}
+
+	// Avoid Bull's leaky `job.finished()` listener when completion events are missed.
+	async waitForJobResult(
+		executionId: string,
+		timeoutMs = JOB_RESULT_WAIT_TIMEOUT_MS,
+		pollIntervalMs = JOB_RESULT_WAIT_POLL_INTERVAL_MS,
+		abortSignal?: AbortSignal,
+	): Promise<JobFinishedProps> {
+		const result = this.jobResults.get(executionId);
+		if (result) return result;
+
+		return await new Promise<JobFinishedProps>((resolve, reject) => {
+			if (abortSignal?.aborted) {
+				reject(new Error(`Waiting for job result for execution ${executionId} was cancelled`));
+				return;
+			}
+
+			const start = Date.now();
+
+			const interval = setInterval(() => {
+				const result = this.jobResults.get(executionId);
+				if (result) {
+					cleanup();
+					resolve(result);
+					return;
+				}
+
+				if (Date.now() - start >= timeoutMs) {
+					cleanup();
+					reject(new Error(`Timeout waiting for job result for execution ${executionId}`));
+				}
+			}, pollIntervalMs);
+
+			const cleanup = () => {
+				clearInterval(interval);
+				abortSignal?.removeEventListener('abort', abort);
+			};
+
+			const abort = () => {
+				cleanup();
+				reject(new Error(`Waiting for job result for execution ${executionId} was cancelled`));
+			};
+
+			abortSignal?.addEventListener('abort', abort, { once: true });
+		});
 	}
 
 	async getPendingJobCounts() {
