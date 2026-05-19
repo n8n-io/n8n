@@ -656,6 +656,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(redacted.attributes['ai.toolCall.action']).toBe('search');
 		expect(redacted.attributes['ai.toolCall.display_name']).toBe('nodes[search]');
 		expect(redacted.attributes['langsmith.metadata.display_action']).toBe('search');
+		expect(redacted.attributes['langsmith.metadata.ls_run_name']).toBe('nodes[search]');
 		expect(redacted.attributes['instance_ai.canonical_name']).toBe('nodes');
 	});
 

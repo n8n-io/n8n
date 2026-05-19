@@ -815,6 +815,7 @@ function renameNativeToolSpanForLangSmith(
 	setLangSmithMetadataAttribute(attributes, 'display_kind', 'tool');
 	setLangSmithMetadataAttribute(attributes, 'display_group', toolName);
 	setLangSmithMetadataAttribute(attributes, 'ai_sdk.operation', operationId ?? 'ai.toolCall');
+	attributes['langsmith.metadata.ls_run_name'] = displayName;
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.display_name', displayName);
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.canonical_name', toolName);
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.run_name', displayName);
