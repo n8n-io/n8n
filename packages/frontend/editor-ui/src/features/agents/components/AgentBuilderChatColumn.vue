@@ -31,6 +31,7 @@ const emit = defineEmits<{
 	'update:tools': [tools: AgentJsonToolRef[]];
 	'update:connected-triggers': [triggers: string[]];
 	'update:full-width': [fullWidth: boolean];
+	'update:collapsed': [collapsed: boolean];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'agent-published': [agent: AgentResource];
 }>();
@@ -44,6 +45,7 @@ const fullWidthToggleLabel = computed(() =>
 			: 'agents.builder.chat.fullWidth.expand.ariaLabel',
 	),
 );
+const hideChatLabel = computed(() => i18n.baseText('agents.builder.chat.hide.ariaLabel'));
 
 const sharedInputDraft = ref('');
 </script>
@@ -54,21 +56,36 @@ const sharedInputDraft = ref('');
 		:aria-label="i18n.baseText('agents.builder.chatColumn.ariaLabel')"
 		data-testid="agent-builder-chat-column"
 	>
-		<span v-if="initialized" :class="$style.floatingFullWidthToggle">
-			<N8nTooltip placement="left" :content="fullWidthToggleLabel">
-				<N8nButton
-					variant="ghost"
-					icon-only
-					size="small"
-					:class="$style.headerIconBtn"
-					:aria-label="fullWidthToggleLabel"
-					data-testid="agent-build-chat-full-width-toggle"
-					@click="emit('update:full-width', !isFullWidth)"
-				>
-					<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
-				</N8nButton>
-			</N8nTooltip>
-		</span>
+		<div v-if="initialized" :class="$style.floatingChatActions">
+			<div :class="$style.chatViewActions">
+				<N8nTooltip placement="left" :content="fullWidthToggleLabel">
+					<N8nButton
+						variant="ghost"
+						icon-only
+						size="small"
+						:class="$style.headerIconBtn"
+						:aria-label="fullWidthToggleLabel"
+						data-testid="agent-build-chat-full-width-toggle"
+						@click="emit('update:full-width', !isFullWidth)"
+					>
+						<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
+					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip placement="left" :content="hideChatLabel">
+					<N8nButton
+						variant="ghost"
+						icon-only
+						size="small"
+						:class="$style.headerIconBtn"
+						:aria-label="hideChatLabel"
+						data-testid="agent-build-chat-collapse-toggle"
+						@click="emit('update:collapsed', true)"
+					>
+						<N8nIcon icon="chevrons-left" :size="14" />
+					</N8nButton>
+				</N8nTooltip>
+			</div>
+		</div>
 		<div :class="$style.chatBody">
 			<AgentChatPanel
 				v-if="initialized && isBuilderConfigured"
@@ -129,6 +146,12 @@ const sharedInputDraft = ref('');
 	width: 100%;
 }
 
+.chatViewActions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
 .headerIconBtn {
 	color: var(--text-color--subtle);
 
@@ -138,10 +161,10 @@ const sharedInputDraft = ref('');
 	}
 }
 
-.floatingFullWidthToggle {
+.floatingChatActions {
 	position: absolute;
 	top: var(--spacing--2xs);
-	right: var(--spacing--sm);
+	right: var(--spacing--md);
 	z-index: 2;
 	display: flex;
 }

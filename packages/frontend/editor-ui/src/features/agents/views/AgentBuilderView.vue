@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nResizeWrapper,
+	N8nTooltip,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -126,6 +132,10 @@ const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
+const isChatCollapsed = ref(false);
+const shouldShowChatColumn = computed(() => !isChatCollapsed.value);
+const shouldShowEditorColumn = computed(() => !isChatFullWidth.value || isChatCollapsed.value);
+const showChatLabel = computed(() => locale.baseText('agents.builder.chat.show.ariaLabel'));
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -158,6 +168,16 @@ const chatPanelResizer = useResizablePanel(LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANE
 	minSize: AGENT_CHAT_PANEL_MIN_WIDTH,
 	maxSize: getMaxChatPanelWidth,
 });
+
+function setChatFullWidth(fullWidth: boolean) {
+	isChatFullWidth.value = fullWidth;
+	if (fullWidth) isChatCollapsed.value = false;
+}
+
+function setChatCollapsed(collapsed: boolean) {
+	isChatCollapsed.value = collapsed;
+	if (collapsed) isChatFullWidth.value = false;
+}
 
 watch(
 	config,
@@ -524,6 +544,7 @@ async function initialize() {
 	builderTelemetry.resetForAgentSwitch();
 
 	agent.value = null;
+	isChatCollapsed.value = false;
 	activeChatSessionId.value = null;
 	localConfig.value = null;
 	connectedTriggers.value = [];
@@ -864,74 +885,97 @@ function onSwitchAgent(nextAgentId: string) {
 				@continue-loaded="onContinueLoaded"
 				@open-build="onOpenBuildFromChat"
 			/>
-			<N8nResizeWrapper
-				v-else
-				:class="{
-					[$style.chatResizer]: true,
-					[$style.chatResizerFullWidth]: isChatFullWidth,
-				}"
-				:width="isChatFullWidth ? 0 : chatPanelResizer.size.value"
-				:style="{ width: isChatFullWidth ? '100%' : `${chatPanelResizer.size.value}px` }"
-				:is-resizing-enabled="!isChatFullWidth"
-				:supported-directions="isChatFullWidth ? [] : ['right']"
-				:min-width="AGENT_CHAT_PANEL_MIN_WIDTH"
-				:max-width="AGENT_CHAT_PANEL_MAX_WIDTH"
-				:grid-size="8"
-				outset
-				data-testid="agent-builder-chat-resizer"
-				@resize="chatPanelResizer.onResize"
-				@resizeend="chatPanelResizer.onResizeEnd"
-			>
-				<AgentBuilderChatColumn
-					:initialized="initialized"
+			<template v-else>
+				<N8nResizeWrapper
+					v-show="shouldShowChatColumn"
+					:class="{
+						[$style.chatResizer]: true,
+						[$style.chatResizerFullWidth]: isChatFullWidth,
+					}"
+					:width="isChatFullWidth ? 0 : chatPanelResizer.size.value"
+					:style="{ width: isChatFullWidth ? '100%' : `${chatPanelResizer.size.value}px` }"
+					:is-resizing-enabled="!isChatFullWidth"
+					:supported-directions="isChatFullWidth ? [] : ['right']"
+					:min-width="AGENT_CHAT_PANEL_MIN_WIDTH"
+					:max-width="AGENT_CHAT_PANEL_MAX_WIDTH"
+					:grid-size="8"
+					outset
+					data-testid="agent-builder-chat-resizer"
+					@resize="chatPanelResizer.onResize"
+					@resizeend="chatPanelResizer.onResizeEnd"
+				>
+					<AgentBuilderChatColumn
+						:initialized="initialized"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-name="agentName"
+						:agent="agent"
+						:local-config="localConfig"
+						:connected-triggers="connectedTriggers"
+						:initial-prompt="initialPrompt"
+						:is-builder-configured="isBuilderConfigured"
+						:is-published="Boolean(agent?.publishedVersion)"
+						:is-full-width="isChatFullWidth"
+						:can-edit-agent="canEditAgent"
+						:before-build-send="flushAutosave"
+						@config-updated="onConfigUpdated"
+						@update:streaming="onBuildChatStreamingChange"
+						@update:tools="onQuickActionAddTool"
+						@update:connected-triggers="onConnectedTriggersUpdate"
+						@update:full-width="setChatFullWidth"
+						@update:collapsed="setChatCollapsed"
+						@trigger-added="onTriggerAdded"
+						@agent-published="onPublished"
+					/>
+				</N8nResizeWrapper>
+
+				<div
+					v-if="isChatCollapsed"
+					:class="$style.collapsedChatRail"
+					data-testid="agent-builder-chat-collapsed-rail"
+				>
+					<N8nTooltip :content="showChatLabel" placement="right">
+						<N8nButton
+							variant="ghost"
+							icon-only
+							size="small"
+							:class="$style.collapsedChatButton"
+							:aria-label="showChatLabel"
+							data-testid="agent-chat-show-toggle"
+							@click="setChatCollapsed(false)"
+						>
+							<N8nIcon icon="chevrons-right" :size="14" />
+						</N8nButton>
+					</N8nTooltip>
+				</div>
+
+				<AgentBuilderEditorColumn
+					v-if="shouldShowEditorColumn"
+					:class="$style.editorColumn"
+					v-model:active-main-tab="activeMainTab"
+					:local-config="localConfig"
+					:agent="agent"
 					:project-id="projectId"
 					:agent-id="agentId"
-					:agent-name="agentName"
-					:agent="agent"
-					:local-config="localConfig"
+					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
-					:initial-prompt="initialPrompt"
-					:is-builder-configured="isBuilderConfigured"
-					:is-published="Boolean(agent?.publishedVersion)"
-					:is-full-width="isChatFullWidth"
+					:is-build-chat-streaming="isBuildChatStreaming"
 					:can-edit-agent="canEditAgent"
-					:before-build-send="flushAutosave"
-					@config-updated="onConfigUpdated"
-					@update:streaming="onBuildChatStreamingChange"
-					@update:tools="onQuickActionAddTool"
+					:main-tab-options="mainTabOptions"
+					:executions-description="executionsDescription"
+					@update:config="onConfigFieldUpdate"
+					@open-tool="onOpenToolFromList"
+					@open-skill="onOpenSkillFromList"
+					@open-trigger="onOpenAddTriggerModal"
+					@add-tool="onOpenAddToolModal"
+					@add-skill="onOpenAddSkillModal"
+					@add-trigger="onOpenAddTriggerModal"
+					@remove-tool="onRemoveTool"
+					@remove-skill="onRemoveSkill"
 					@update:connected-triggers="onConnectedTriggersUpdate"
-					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
-					@agent-published="onPublished"
 				/>
-			</N8nResizeWrapper>
-
-			<AgentBuilderEditorColumn
-				v-if="!isPreviewMode && !isChatFullWidth"
-				:class="$style.editorColumn"
-				v-model:active-main-tab="activeMainTab"
-				:local-config="localConfig"
-				:agent="agent"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:applied-skills="appliedSkills"
-				:connected-triggers="connectedTriggers"
-				:is-build-chat-streaming="isBuildChatStreaming"
-				:can-edit-agent="canEditAgent"
-				:main-tab-options="mainTabOptions"
-				:executions-description="executionsDescription"
-				@update:config="onConfigFieldUpdate"
-				@open-tool="onOpenToolFromList"
-				@open-skill="onOpenSkillFromList"
-				@open-trigger="onOpenAddTriggerModal"
-				@add-tool="onOpenAddToolModal"
-				@add-skill="onOpenAddSkillModal"
-				@add-trigger="onOpenAddTriggerModal"
-				@remove-tool="onRemoveTool"
-				@remove-skill="onRemoveSkill"
-				@update:connected-triggers="onConnectedTriggersUpdate"
-				@trigger-added="onTriggerAdded"
-			/>
+			</template>
 		</div>
 	</div>
 </template>
@@ -946,7 +990,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 .builder {
 	display: flex;
-	height: 100%;
+	flex: 1 1 auto;
 	min-height: 0;
 	overflow: hidden;
 }
@@ -984,6 +1028,25 @@ function onSwitchAgent(nextAgentId: string) {
 
 .chatResizerFullWidth {
 	flex: 1 1 auto;
+}
+
+.collapsedChatRail {
+	flex: 0 0 var(--spacing--xl);
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding-top: var(--spacing--sm);
+	background-color: var(--background--surface);
+	border-right: var(--border);
+}
+
+.collapsedChatButton {
+	color: var(--text-color--subtle);
+
+	&:hover,
+	&:focus-visible {
+		color: var(--text-color);
+	}
 }
 
 .isResizingChat {
