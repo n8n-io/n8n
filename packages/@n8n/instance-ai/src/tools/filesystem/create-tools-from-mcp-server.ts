@@ -12,7 +12,7 @@ import {
 	type GatewayConfirmationRequiredPayload,
 	type McpToolCallResult,
 } from '@n8n/api-types';
-import { browserCreateCredentialSchema } from '@n8n/mcp-browser/dist/tools/credential';
+import { browserCreateCredentialSchema } from '@n8n/mcp-browser';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
