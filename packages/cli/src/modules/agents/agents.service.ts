@@ -605,15 +605,7 @@ export class AgentsService {
 	}
 
 	private getMemoryFactory(): MemoryFactory {
-		return (params: AgentJsonMemoryConfig) => {
-			if (params.storage === 'n8n') {
-				return this.n8nMemory;
-			}
-			if (params.storage === 'sqlite') {
-				return new agents.SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params));
-			}
-			throw new Error(`Unsupported memory storage: ${params.storage}`);
-		};
+		return (_params: AgentJsonMemoryConfig) => this.n8nMemory;
 	}
 
 	/** Create a credential provider scoped to a project. */
@@ -951,8 +943,7 @@ export class AgentsService {
 
 	/**
 	 * Return persisted test-chat messages for an agent scoped to the current
-	 * user. Test-chat threads are keyed by agent and user so thread-scoped
-	 * working memory stays isolated.
+	 * user. Test-chat threads are keyed by agent and user so memory stays isolated.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
 		return await this.n8nMemory.getMessages(chatThreadId(agentId, userId), {
