@@ -10,7 +10,11 @@ import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
+
+import { floorToSettings, settingsToFloor } from './redaction-enforcement-mapper';
 
 @RestController('/settings/security')
 export class SecuritySettingsController {
@@ -18,6 +22,7 @@ export class SecuritySettingsController {
 		private readonly securitySettingsService: SecuritySettingsService,
 		private readonly eventService: EventService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 	) {}
 
 	@Licensed('feat:personalSpacePolicy')
@@ -35,12 +40,18 @@ export class SecuritySettingsController {
 			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalCredentialsCount(),
 		]);
+
+		const redactionEnforcement = isRedactionEnforcementEnabled()
+			? { floor: settingsToFloor(await this.instanceRedactionEnforcementService.get()) }
+			: undefined;
+
 		return {
 			...settings,
 			publishedPersonalWorkflowsCount,
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
 			managedByEnv: this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv,
+			...(redactionEnforcement ? { redactionEnforcement } : {}),
 		};
 	}
 
@@ -58,7 +69,7 @@ export class SecuritySettingsController {
 			);
 		}
 
-		const updatedSettings: Record<string, boolean> = {};
+		const updatedSettings: Record<string, unknown> = {};
 		if (dto.personalSpacePublishing !== undefined) {
 			await this.securitySettingsService.setPersonalSpaceSetting(
 				PERSONAL_SPACE_PUBLISHING_SETTING,
@@ -96,6 +107,13 @@ export class SecuritySettingsController {
 				settingName: 'workflow_sharing',
 				value: dto.personalSpaceSharing,
 			});
+		}
+
+		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
+			await this.instanceRedactionEnforcementService.set(
+				floorToSettings(dto.redactionEnforcement.floor),
+			);
+			updatedSettings.redactionEnforcement = { floor: dto.redactionEnforcement.floor };
 		}
 
 		return updatedSettings;
