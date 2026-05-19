@@ -38,6 +38,8 @@ jest.mock('ai', () => {
 	const actual = jest.requireActual<AiImport>('ai');
 	return {
 		...actual,
+		embed: jest.fn(),
+		embedMany: jest.fn(),
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		tool: jest.fn((config: unknown) => config),
@@ -52,7 +54,9 @@ jest.mock('ai', () => {
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { generateText, streamText } = require('ai') as {
+const { embed, embedMany, generateText, streamText } = require('ai') as {
+	embed: jest.Mock;
+	embedMany: jest.Mock;
 	generateText: jest.Mock;
 	streamText: jest.Mock;
 };
@@ -2609,6 +2613,107 @@ describe('AgentRuntime — observation log jobs', () => {
 				text: 'User asked for generate observation memory.',
 			},
 		]);
+	});
+
+	it('indexes episodic memory after observation jobs complete', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } });
+		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
+		const memory = new InMemoryMemory();
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
+			},
+			episodicMemory: {
+				embedder: fakeEmbedder,
+				extract: async ({ observations }) =>
+					await Promise.resolve({
+						entries: [
+							{
+								content: 'User chose Postgres for memory storage.',
+								sources: [
+									{
+										observationId: observations[0].id,
+										evidence: 'User chose Postgres',
+									},
+								],
+							},
+						],
+					}),
+			},
+		});
+
+		await runtime.generate('Please remember the Postgres decision.', {
+			persistence: { agentId: 'agent-1', threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		const entries = await memory.searchEpisodicMemoryEntries(
+			{ agentId: 'agent-1', resourceId: 'resource-1' },
+			'Postgres storage',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(entries).toHaveLength(1);
+		expect(entries[0].content).toBe('User chose Postgres for memory storage.');
+		const cursor = await memory.getEpisodicMemoryCursor({
+			scopeKind: 'thread',
+			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
+		});
+		expect(typeof cursor?.lastIndexedObservationId).toBe('string');
+	});
+
+	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
+		const memory = new InMemoryMemory();
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		await memory.saveEpisodicMemoryEntries([
+			{
+				agentId: 'agent-1',
+				resourceId: 'resource-1',
+				content: 'Earlier session: user chose Postgres for memory storage.',
+				embedding: [1, 0],
+			},
+		]);
+		await memory.saveEpisodicMemoryEntries([
+			{
+				agentId: 'agent-1',
+				resourceId: 'resource-2',
+				content: 'Earlier session: user chose SQLite for memory storage.',
+				embedding: [1, 0],
+			},
+		]);
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: fakeEmbedder },
+		});
+
+		await runtime.generate('What storage did we choose?', {
+			persistence: { agentId: 'agent-1', threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
+			messages: Array<{ content: string }>;
+			tools: Record<string, unknown>;
+		};
+		const systemPrompt = callArgs.messages[0]?.content ?? '';
+		expect(systemPrompt).not.toContain('<episodic_memory>');
+		expect(systemPrompt).not.toContain('Postgres');
+		expect(systemPrompt).not.toContain('SQLite');
+		expect(callArgs.tools).toHaveProperty('recall_memory');
+		expect(embed).not.toHaveBeenCalled();
 	});
 
 	it('does not schedule observation jobs without policy callbacks', async () => {
