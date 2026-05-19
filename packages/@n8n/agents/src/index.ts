@@ -56,6 +56,7 @@ export type {
 	ObserveFn,
 	ScopeKind,
 	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogMarker,
@@ -66,6 +67,8 @@ export type {
 	ObservationLogScope,
 	ObservationLogScopeKind,
 	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
 	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
@@ -157,13 +160,26 @@ export {
 	runObservationLogObserver,
 } from './runtime/observation-log-observer';
 export {
+	parseObservationLogReflectionJson,
+	renderObservationLogForReflection,
+	runObservationLogReflector,
+} from './runtime/observation-log-reflector';
+export { ScopedMemoryTaskRunner } from './runtime/scoped-memory-task-runner';
+export {
+	buildObservationLogReflectorPrompt,
 	buildObservationLogObserverPrompt,
+	createObservationLogReflectFn,
 	createObservationLogObserveFn,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 } from './runtime/observation-log-defaults';
-export type { CreateObservationLogObserveFnOptions } from './runtime/observation-log-defaults';
+export type {
+	CreateObservationLogObserveFnOptions,
+	CreateObservationLogReflectFnOptions,
+} from './runtime/observation-log-defaults';
 export type {
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
@@ -174,6 +190,24 @@ export type {
 	RunObservationLogObserverOpts,
 	RunObservationLogObserverResult,
 } from './runtime/observation-log-observer';
+export type {
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
+	ObservationLogReflectorMemory,
+	ObservationLogReflectorWarning,
+	RunObservationLogReflectorOpts,
+	RunObservationLogReflectorResult,
+} from './runtime/observation-log-reflector';
+export type {
+	ScopedMemoryTaskDescriptor,
+	ScopedMemoryTaskError,
+	ScopedMemoryTaskEvent,
+	ScopedMemoryTaskHandle,
+	ScopedMemoryTaskInfo,
+	ScopedMemoryTaskResult,
+	ScopedMemoryTaskRunnerOptions,
+	ScopedMemoryTaskStatus,
+} from './runtime/scoped-memory-task-runner';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';

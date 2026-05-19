@@ -44,49 +44,219 @@ describe('browser_capture_secret', () => {
 	const getTool = () =>
 		findTool(createCredentialTools(mockConn.connection), 'browser_capture_secret');
 
-	it('captures element value into the buffer', async () => {
-		await getTool().execute(
-			{ credentialsKey: 'k1', field: 'apiKey', sourceRef: 'e42' },
-			makeContext({ secretsBuffer: buffer }),
-		);
+	describe('with element.ref', () => {
+		it('captures element value into the buffer', async () => {
+			await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e42' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
 
-		expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', 'secret-value');
+			expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', 'secret-value');
+		});
+
+		it('does NOT include the secret value in the response', async () => {
+			const result = await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e42' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			const text = JSON.stringify(result);
+			expect(text).not.toContain('secret-value');
+		});
+
+		it('returns ok:true with fieldsCaptured', async () => {
+			const result = await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e42' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(structuredOf(result)).toMatchObject({ ok: true, fieldsCaptured: ['apiKey'] });
+		});
+
+		it('passes ref to getElementValue', async () => {
+			await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e99' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(mockConn.adapter.getElementValue).toHaveBeenCalledWith('page1', { ref: 'e99' });
+		});
+
+		it('does not probe HTML when ref is provided', async () => {
+			await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e42' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(mockConn.adapter.probePageHtml).not.toHaveBeenCalled();
+		});
+
+		it('returns an error result when secretsBuffer is missing from context', async () => {
+			const result = await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e1' } },
+				makeContext(),
+			);
+			expect(result.isError).toBe(true);
+		});
 	});
 
-	it('does NOT include the secret value in the response', async () => {
-		const result = await getTool().execute(
-			{ credentialsKey: 'k1', field: 'apiKey', sourceRef: 'e42' },
-			makeContext({ secretsBuffer: buffer }),
-		);
+	describe('with element.redactedKey', () => {
+		const htmlWithPasswordInput = (value: string) =>
+			`<html><body><input type="password" value="${value}"></body></html>`;
 
-		const text = JSON.stringify(result);
-		expect(text).not.toContain('secret-value');
-	});
+		const htmlWithTwoPasswordInputs = (v1: string, v2: string) =>
+			`<html><body><input type="password" value="${v1}"><input type="password" value="${v2}"></body></html>`;
 
-	it('returns ok:true with fieldsCaptured', async () => {
-		const result = await getTool().execute(
-			{ credentialsKey: 'k1', field: 'apiKey', sourceRef: 'e42' },
-			makeContext({ secretsBuffer: buffer }),
-		);
+		function mockProbe(html: string): void {
+			mockConn.adapter.probePageHtml.mockResolvedValue({
+				ok: true,
+				root: {
+					kind: 'document',
+					html,
+					url: 'http://test.com',
+					children: [],
+					errors: [],
+				},
+			});
+		}
 
-		expect(structuredOf(result)).toMatchObject({ ok: true, fieldsCaptured: ['apiKey'] });
-	});
+		it('captures the secret value matching the redacted marker', async () => {
+			mockProbe(htmlWithPasswordInput('top-secret-pwd'));
 
-	it('passes sourceRef as the element ref to getElementValue', async () => {
-		await getTool().execute(
-			{ credentialsKey: 'k1', field: 'apiKey', sourceRef: 'e99' },
-			makeContext({ secretsBuffer: buffer }),
-		);
+			await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
 
-		expect(mockConn.adapter.getElementValue).toHaveBeenCalledWith('page1', { ref: 'e99' });
-	});
+			expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', 'top-secret-pwd');
+		});
 
-	it('returns an error result when secretsBuffer is missing from context', async () => {
-		const result = await getTool().execute(
-			{ credentialsKey: 'k1', field: 'apiKey', sourceRef: 'e1' },
-			makeContext(),
-		);
-		expect(result.isError).toBe(true);
+		it('does NOT include the secret value in the response', async () => {
+			mockProbe(htmlWithPasswordInput('top-secret-pwd'));
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(JSON.stringify(result)).not.toContain('top-secret-pwd');
+		});
+
+		it('returns ok:true with fieldsCaptured', async () => {
+			mockProbe(htmlWithPasswordInput('top-secret-pwd'));
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(structuredOf(result)).toMatchObject({ ok: true, fieldsCaptured: ['apiKey'] });
+		});
+
+		it('resolves the second secret when redactedKey points to index 2', async () => {
+			mockProbe(htmlWithTwoPasswordInputs('first-pwd', 'second-pwd'));
+
+			await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:2]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', 'second-pwd');
+		});
+
+		it('does not call getElementValue when redactedKey is provided', async () => {
+			mockProbe(htmlWithPasswordInput('top-secret-pwd'));
+
+			await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(mockConn.adapter.getElementValue).not.toHaveBeenCalled();
+		});
+
+		it('returns an error result when the redactedKey does not match any marker', async () => {
+			mockProbe(htmlWithPasswordInput('top-secret-pwd'));
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:99]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		it('returns an error result when no sensitive content is found', async () => {
+			mockProbe('<html><body><p>Hello world</p></body></html>');
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		it('returns an error result when the HTML probe fails', async () => {
+			mockConn.adapter.probePageHtml.mockResolvedValue({ ok: false, error: 'probe boom' });
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		it('returns an error result when secretsBuffer is missing from context', async () => {
+			mockProbe(htmlWithPasswordInput('top-secret-pwd'));
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext(),
+			);
+
+			expect(result.isError).toBe(true);
+		});
 	});
 });
 

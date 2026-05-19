@@ -1,7 +1,9 @@
+import { createTestingPinia } from '@pinia/testing';
 import { computed, nextTick, ref } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
 import WorkflowSetupSectionBody from './WorkflowSetupSectionBody.vue';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
@@ -22,6 +24,9 @@ const nodeTypesStore = vi.hoisted(() => ({
 }));
 
 const renderedCredentials = vi.hoisted(() => [] as unknown[]);
+const workflowDocumentStoreRef = vi.hoisted(() => ({
+	current: null as WorkflowDocumentStore | null,
+}));
 
 vi.mock('../composables/useWorkflowSetupContext', () => ({
 	useWorkflowSetupContext: () => workflowSetupContext.current,
@@ -33,11 +38,6 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => nodeTypesStore,
-}));
-
-vi.mock('@/features/settings/environments.ee/environments.store', () => ({
-	default: () => ({ variablesAsObject: {} }),
-	useEnvironmentsStore: () => ({ variablesAsObject: {} }),
 }));
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
@@ -52,13 +52,17 @@ vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
 }));
 
 vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () => {
-	const { defineComponent, h } = await import('vue');
+	const { defineComponent, h, inject } = await import('vue');
+	const { WorkflowDocumentStoreKey } = await import('@/app/constants/injectionKeys');
 
 	return {
 		default: defineComponent({
 			props: ['node'],
 			emits: ['valueChanged', 'parameterBlur'],
 			setup(props, { emit }) {
+				const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+				workflowDocumentStoreRef.current = workflowDocumentStore?.value ?? null;
+
 				return () => {
 					renderedCredentials.push((props.node as INodeUi | undefined)?.credentials);
 
@@ -80,7 +84,9 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 	};
 });
 
-const renderComponent = createComponentRenderer(WorkflowSetupSectionBody);
+const renderComponent = createComponentRenderer(WorkflowSetupSectionBody, {
+	pinia: createTestingPinia({ stubActions: false }),
+});
 
 function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 	const parameters = ref({ formId: '' });
@@ -95,6 +101,7 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 		credentialSelections: ref({ [section.targetNodeName]: { typeformApi: 'cred-1' } }),
 		terminalState: ref(null),
 		isReady: ref(true),
+		workflowId: computed(() => 'workflow-1'),
 		projectId: computed(() => 'project-1'),
 		credentialFlow: computed(() => undefined),
 		isActionPending: ref(false),
@@ -126,6 +133,7 @@ describe('WorkflowSetupSectionBody', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		renderedCredentials.length = 0;
+		workflowDocumentStoreRef.current = null;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		nodeTypesStore.getNodeType.mockReturnValue({
 			name: 'n8n-nodes-base.typeformTrigger',
@@ -169,5 +177,38 @@ describe('WorkflowSetupSectionBody', () => {
 		await nextTick();
 
 		expect(renderedCredentials.at(-1)).toBe(credentialsBeforeParameterChange);
+	});
+
+	it('provides a scoped workflow document store with the display node', async () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Typeform Trigger:typeformApi',
+			targetNodeName: 'Typeform Trigger',
+			parameterNames: ['formId'],
+			node: {
+				id: 'typeform-trigger',
+				name: 'Typeform Trigger',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '' },
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		const { getByTestId } = renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(workflowDocumentStoreRef.current?.documentId).toBe(
+			'workflow-1@Typeform Trigger:typeformApi',
+		);
+		expect(workflowDocumentStoreRef.current?.getNodeByName('Typeform Trigger')?.parameters).toEqual(
+			{ formId: '' },
+		);
+
+		await fireEvent.click(getByTestId('change-parameter'));
+		await nextTick();
+
+		expect(workflowDocumentStoreRef.current?.getNodeByName('Typeform Trigger')?.parameters).toEqual(
+			{ formId: 'form-1' },
+		);
 	});
 });

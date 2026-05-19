@@ -16,6 +16,7 @@ import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
 import { UserWithContext } from './mcp.types';
 
 import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 
 /**
  * Manages OAuth 2.1 token lifecycle for MCP server
@@ -23,7 +24,8 @@ import { JwtService } from '@/services/jwt.service';
  */
 @Service()
 export class McpOAuthTokenService {
-	private readonly MCP_AUDIENCE = 'mcp-server-api';
+	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
+	private readonly MCP_RESOURCE_PATH = '/mcp-server/http';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
@@ -33,7 +35,16 @@ export class McpOAuthTokenService {
 		private readonly userRepository: UserRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
+		private readonly urlService: UrlService,
 	) {}
+
+	private getResourceUrl(): string {
+		return `${this.urlService.getInstanceBaseUrl()}${this.MCP_RESOURCE_PATH}`;
+	}
+
+	private getAcceptedAudiences(): [string, ...string[]] {
+		return [this.LEGACY_MCP_AUDIENCE, this.getResourceUrl()];
+	}
 
 	getAccessTokenExpirySeconds(): number {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
@@ -45,7 +56,7 @@ export class McpOAuthTokenService {
 	): { accessToken: string; refreshToken: string } {
 		const accessToken = this.jwtService.sign({
 			sub: userId,
-			aud: this.MCP_AUDIENCE,
+			aud: this.getResourceUrl(),
 			client_id: clientId,
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
@@ -147,7 +158,7 @@ export class McpOAuthTokenService {
 		let decoded;
 
 		try {
-			decoded = this.jwtService.verify(token, { audience: this.MCP_AUDIENCE });
+			decoded = this.jwtService.verify(token, { audience: this.getAcceptedAudiences() });
 		} catch (error) {
 			throw new JWTVerificationError();
 		}
