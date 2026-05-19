@@ -424,6 +424,10 @@ describe('GlobalConfig', () => {
 				interval: 180,
 				batchSize: 100,
 			},
+			queueRetention: {
+				keepLastCompleted: 0,
+				keepLastFailed: 0,
+			},
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
