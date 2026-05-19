@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
 import AgentAddTriggerModal from '../components/AgentAddTriggerModal.vue';
@@ -12,6 +12,7 @@ const {
 	getIntegrationStatus,
 	connectIntegration,
 	disconnectIntegration,
+	createSlackAgentApp,
 	ensureLoaded,
 } = vi.hoisted(() => ({
 	fetchAllCredentialsForWorkflow: vi.fn(),
@@ -20,6 +21,7 @@ const {
 	getIntegrationStatus: vi.fn(),
 	connectIntegration: vi.fn(),
 	disconnectIntegration: vi.fn(),
+	createSlackAgentApp: vi.fn(),
 	ensureLoaded: vi.fn(),
 }));
 
@@ -86,6 +88,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	getIntegrationStatus,
 	connectIntegration,
 	disconnectIntegration,
+	createSlackAgentApp,
 }));
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
@@ -109,13 +112,22 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 }));
 
 const AgentCredentialSelectStub = {
-	props: ['modelValue', 'credentials', 'dataTestId', 'placeholder', 'credentialPermissions'],
+	props: [
+		'modelValue',
+		'credentials',
+		'dataTestId',
+		'placeholder',
+		'credentialPermissions',
+		'disabled',
+	],
 	emits: ['create', 'update:modelValue'],
 	template: `
 		<div
 			data-testid="agent-credential-select-stub"
 			:data-test-id-prop="dataTestId"
 			:data-can-create="String(credentialPermissions.create)"
+			:data-disabled="String(!!disabled)"
+			:data-model-value="modelValue"
 			:data-options="credentials.map((credential) => credential.name).join('|')"
 		>
 			<button data-testid="stub-create-credential" @click="$emit('create')" />
@@ -124,6 +136,24 @@ const AgentCredentialSelectStub = {
 				@click="$emit('update:modelValue', credentials[0]?.id)"
 			/>
 		</div>
+	`,
+};
+
+const N8nCollapsiblePanelStub = {
+	props: ['modelValue', 'title'],
+	emits: ['update:modelValue'],
+	template: `
+		<section data-testid="slack-manual-configuration" :data-open="String(modelValue)">
+			<button
+				data-testid="slack-manual-configuration-toggle"
+				@click="$emit('update:modelValue', !modelValue)"
+			>
+				{{ title }}
+			</button>
+			<div v-if="modelValue" data-testid="slack-manual-configuration-content">
+				<slot />
+			</div>
+		</section>
 	`,
 };
 
@@ -145,6 +175,8 @@ const globalStubs = {
 	N8nDialog: { template: '<div><slot /></div>' },
 	N8nHeading: { template: '<h2><slot /></h2>' },
 	N8nIcon: { template: '<i />' },
+	N8nCollapsiblePanel: N8nCollapsiblePanelStub,
+	CollapsiblePanel: N8nCollapsiblePanelStub,
 	N8nInput: {
 		props: ['modelValue'],
 		emits: ['update:modelValue'],
@@ -162,8 +194,36 @@ const globalStubs = {
 };
 
 describe('agent integration credential picker usage', () => {
+	let broadcastHandler: ((event: MessageEvent) => void) | undefined;
+
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		vi.clearAllMocks();
+		fetchAllCredentialsForWorkflow.mockReset();
+		openNewCredential.mockReset();
+		openExistingCredential.mockReset();
+		getIntegrationStatus.mockReset();
+		connectIntegration.mockReset();
+		disconnectIntegration.mockReset();
+		createSlackAgentApp.mockReset();
+		ensureLoaded.mockReset();
+		broadcastHandler = undefined;
+		class BroadcastChannelTestDouble {
+			addEventListener(_event: string, handler: (event: MessageEvent) => void) {
+				broadcastHandler = handler;
+			}
+
+			close() {}
+		}
+		vi.stubGlobal('BroadcastChannel', BroadcastChannelTestDouble);
+		Object.defineProperty(window, 'BroadcastChannel', {
+			value: BroadcastChannelTestDouble,
+			configurable: true,
+		});
+		vi.spyOn(window, 'open').mockReturnValue({
+			close: vi.fn(),
+			closed: false,
+		} as unknown as Window);
 		projectState.currentProject = {
 			id: 'project-1',
 			name: 'Project',
@@ -180,7 +240,11 @@ describe('agent integration credential picker usage', () => {
 		]);
 	});
 
-	it('uses the shared credential picker in the add-trigger modal', async () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('keeps the Slack credential picker and app manifest inside manual configuration', async () => {
 		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
 				modalName: 'agentAddTriggerModal',
@@ -199,10 +263,29 @@ describe('agent integration credential picker usage', () => {
 		});
 		await flushPromises();
 
+		expect(wrapper.find('[data-testid="slack-app-configuration-token"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-testid="slack-app-configuration-token-link"]').attributes('href'),
+		).toBe('https://api.slack.com/apps');
+		expect(wrapper.find('[data-testid="slack-manual-configuration"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-credential-select-stub"]').exists()).toBe(false);
+		expect(wrapper.find('pre').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="slack-manual-configuration-toggle"]').trigger('click');
+		await flushPromises();
+
 		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
 		expect(picker.exists()).toBe(true);
 		expect(picker.attributes('data-test-id-prop')).toBe('slack-credential-select');
 		expect(picker.attributes('data-can-create')).toBe('true');
+		expect(wrapper.text()).toContain('agents.builder.addTrigger.slack.manual.description');
+		expect(wrapper.find('pre').exists()).toBe(true);
+		const manualContentHtml = wrapper
+			.find('[data-testid="slack-manual-configuration-content"]')
+			.html();
+		expect(manualContentHtml.indexOf('<pre')).toBeLessThan(
+			manualContentHtml.indexOf('agent-credential-select-stub'),
+		);
 
 		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
 
@@ -237,9 +320,328 @@ describe('agent integration credential picker usage', () => {
 		});
 		await flushPromises();
 
+		await wrapper.find('[data-testid="slack-manual-configuration-toggle"]').trigger('click');
+		await flushPromises();
+
 		const manifest = wrapper.find('pre').text();
 		expect(manifest).not.toContain('redirect_urls');
 		expect(manifest).not.toContain('oauth2-credential');
+	});
+
+	it('connects an existing Slack credential from manual configuration', async () => {
+		const onTriggerAdded = vi.fn();
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-manual-configuration-toggle"]').trigger('click');
+		await flushPromises();
+		await wrapper.find('[data-testid="stub-select-first-credential"]').trigger('click');
+		await wrapper.find('[data-testid="slack-connect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(connectIntegration).toHaveBeenCalledWith(
+			{},
+			'project-1',
+			'agent-1',
+			'slack',
+			'cred-1',
+			undefined,
+		);
+		expect(onTriggerAdded).toHaveBeenCalledWith({
+			triggerType: 'slack',
+			triggers: ['slack'],
+		});
+	});
+
+	it('shows the connected Slack credential disabled with disconnect outside manual configuration', async () => {
+		getIntegrationStatus.mockResolvedValue({
+			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+		});
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-manual-configuration"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="slack-app-configuration-token"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="slack-connected-description"]').text()).toBe(
+			'agents.builder.addTrigger.connectedText.slack',
+		);
+
+		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
+		expect(picker.attributes('data-disabled')).toBe('true');
+		expect(picker.attributes('data-model-value')).toBe('cred-1');
+		expect(wrapper.find('[data-testid="slack-connect-button"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="slack-disconnect-button"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="slack-disconnect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(disconnectIntegration).toHaveBeenCalledWith(
+			{},
+			'project-1',
+			'agent-1',
+			'slack',
+			'cred-1',
+		);
+	});
+
+	it('creates and installs a Slack app with a temporary app configuration token', async () => {
+		getIntegrationStatus
+			.mockResolvedValue({ integrations: [{ type: 'slack', credentialId: 'cred-created' }] })
+			.mockResolvedValueOnce({ integrations: [] })
+			.mockResolvedValueOnce({ integrations: [] });
+		fetchAllCredentialsForWorkflow
+			.mockResolvedValueOnce([{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' }])
+			.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
+				{ id: 'cred-created', name: 'Slack - Agent', type: 'slackApi' },
+			]);
+		createSlackAgentApp.mockResolvedValue({
+			appId: 'A123',
+			installUrl: 'https://slack.com/oauth/v2/authorize?state=setup-state',
+		});
+		const onConnectedTriggersChange = vi.fn();
+		const onTriggerAdded = vi.fn();
+
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange,
+					onTriggerAdded,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-app-configuration-token"]').setValue('xoxe-config');
+		await wrapper.find('[data-testid="slack-create-app"]').trigger('click');
+		await flushPromises();
+
+		expect(createSlackAgentApp).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'xoxe-config');
+		expect(window.open).toHaveBeenCalledWith(
+			'https://slack.com/oauth/v2/authorize?state=setup-state',
+			'Slack App Authorization',
+			expect.any(String),
+		);
+
+		for (let attempts = 0; attempts < 3 && !broadcastHandler; attempts++) {
+			await flushPromises();
+		}
+		expect(broadcastHandler).toBeDefined();
+		broadcastHandler?.({ data: 'success' } as MessageEvent);
+		await flushPromises();
+		await flushPromises();
+
+		expect(onConnectedTriggersChange).toHaveBeenLastCalledWith(['slack']);
+		expect(onTriggerAdded).toHaveBeenCalledWith({
+			triggerType: 'slack',
+			triggers: ['slack'],
+		});
+	});
+
+	it('waits for the Slack OAuth callback even if the cross-origin popup reports closed', async () => {
+		vi.useFakeTimers();
+		getIntegrationStatus
+			.mockResolvedValue({ integrations: [{ type: 'slack', credentialId: 'cred-created' }] })
+			.mockResolvedValueOnce({ integrations: [] })
+			.mockResolvedValueOnce({ integrations: [] });
+		fetchAllCredentialsForWorkflow
+			.mockResolvedValueOnce([{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' }])
+			.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
+				{ id: 'cred-created', name: 'Slack - Agent', type: 'slackApi' },
+			]);
+		createSlackAgentApp.mockResolvedValue({
+			appId: 'A123',
+			installUrl: 'https://slack.com/oauth/v2/authorize?state=setup-state',
+		});
+		vi.mocked(window.open).mockReturnValue({
+			close: vi.fn(() => {
+				throw new Error('Cross-origin popup close blocked');
+			}),
+			closed: true,
+		} as unknown as Window);
+		const onConnectedTriggersChange = vi.fn();
+		const onTriggerAdded = vi.fn();
+
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange,
+					onTriggerAdded,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-app-configuration-token"]').setValue('xoxe-config');
+		await wrapper.find('[data-testid="slack-create-app"]').trigger('click');
+		await flushPromises();
+
+		await vi.advanceTimersByTimeAsync(500);
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-app-setup-error"]').exists()).toBe(false);
+		expect(onTriggerAdded).not.toHaveBeenCalled();
+
+		expect(broadcastHandler).toBeDefined();
+		expect(() => broadcastHandler?.({ data: 'success' } as MessageEvent)).not.toThrow();
+		await flushPromises();
+		await flushPromises();
+
+		expect(onConnectedTriggersChange).toHaveBeenLastCalledWith(['slack']);
+		expect(onTriggerAdded).toHaveBeenCalledWith({
+			triggerType: 'slack',
+			triggers: ['slack'],
+		});
+	});
+
+	it('polls Slack integration status when the OAuth callback is on another origin', async () => {
+		vi.useFakeTimers();
+		getIntegrationStatus
+			.mockResolvedValue({ integrations: [{ type: 'slack', credentialId: 'cred-created' }] })
+			.mockResolvedValueOnce({ integrations: [] })
+			.mockResolvedValueOnce({ integrations: [] });
+		fetchAllCredentialsForWorkflow
+			.mockResolvedValueOnce([{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' }])
+			.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
+				{ id: 'cred-created', name: 'Slack - Agent', type: 'slackApi' },
+			]);
+		createSlackAgentApp.mockResolvedValue({
+			appId: 'A123',
+			installUrl: 'https://slack.com/oauth/v2/authorize?state=setup-state',
+		});
+		const onConnectedTriggersChange = vi.fn();
+		const onTriggerAdded = vi.fn();
+
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange,
+					onTriggerAdded,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-app-configuration-token"]').setValue('xoxe-config');
+		await wrapper.find('[data-testid="slack-create-app"]').trigger('click');
+		await flushPromises();
+
+		expect(onTriggerAdded).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(2000);
+		await flushPromises();
+		await flushPromises();
+
+		expect(onConnectedTriggersChange).toHaveBeenLastCalledWith(['slack']);
+		expect(onTriggerAdded).toHaveBeenCalledWith({
+			triggerType: 'slack',
+			triggers: ['slack'],
+		});
+	});
+
+	it('starts checking Slack integration status immediately after opening the install window', async () => {
+		vi.useFakeTimers();
+		getIntegrationStatus
+			.mockResolvedValue({ integrations: [{ type: 'slack', credentialId: 'cred-created' }] })
+			.mockResolvedValueOnce({ integrations: [] });
+		fetchAllCredentialsForWorkflow
+			.mockResolvedValueOnce([{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' }])
+			.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
+				{ id: 'cred-created', name: 'Slack - Agent', type: 'slackApi' },
+			]);
+		createSlackAgentApp.mockResolvedValue({
+			appId: 'A123',
+			installUrl: 'https://slack.com/oauth/v2/authorize?state=setup-state',
+		});
+		const onConnectedTriggersChange = vi.fn();
+		const onTriggerAdded = vi.fn();
+
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange,
+					onTriggerAdded,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-app-configuration-token"]').setValue('xoxe-config');
+		await wrapper.find('[data-testid="slack-create-app"]').trigger('click');
+		await flushPromises();
+		await flushPromises();
+
+		expect(onConnectedTriggersChange).toHaveBeenLastCalledWith(['slack']);
+		expect(onTriggerAdded).toHaveBeenCalledWith({
+			triggerType: 'slack',
+			triggers: ['slack'],
+		});
+		expect(wrapper.find('[data-testid="slack-create-app"]').exists()).toBe(false);
 	});
 
 	it('passes denied credential creation permission to the shared picker', async () => {
@@ -261,6 +663,9 @@ describe('agent integration credential picker usage', () => {
 			},
 			global: { stubs: globalStubs },
 		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-manual-configuration-toggle"]').trigger('click');
 		await flushPromises();
 
 		expect(

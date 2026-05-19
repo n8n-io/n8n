@@ -54,6 +54,11 @@ export interface AgentIntegrationStatusResponse {
 	integrations: AgentIntegrationStatusEntry[];
 }
 
+export interface CreateSlackAgentAppResponse {
+	appId: string;
+	installUrl: string;
+}
+
 export interface AgentSkill {
 	name: string;
 	description: string;

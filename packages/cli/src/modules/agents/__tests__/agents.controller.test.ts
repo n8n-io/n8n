@@ -11,15 +11,20 @@ import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentScheduleService } from '../integrations/agent-schedule.service';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 
-// The webhook route is the single exception: it is `skipAuth: true` (no
-// req.user) and authenticates inbound third-party callbacks via per-platform
-// signature verification inside the handler.
-const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook']);
+const UNAUTHENTICATED_HANDLERS = new Set([
+	// Third-party webhook callback: no req.user; per-platform signature
+	// verification happens inside the platform handler.
+	'handleWebhook',
+	// Slack OAuth callback: no req.user; the one-time state token created
+	// during authenticated setup binds the callback to a user, project, and agent.
+	'handleSlackAppOAuthCallback',
+]);
 
 const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 	AgentsController as never,
@@ -37,6 +42,7 @@ function makeController({
 	agentScheduleService = mock<AgentScheduleService>(),
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
+	slackAppSetupService = mock<SlackAppSetupService>(),
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
@@ -44,6 +50,7 @@ function makeController({
 	agentScheduleService?: jest.Mocked<AgentScheduleService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
 	chatIntegrationRegistry?: jest.Mocked<ChatIntegrationRegistry>;
+	slackAppSetupService?: jest.Mocked<SlackAppSetupService>;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
 		chatIntegrationRegistry.require.mockImplementation(
@@ -65,6 +72,7 @@ function makeController({
 		agentRepository,
 		mock<AgentExecutionService>(),
 		chatIntegrationRegistry,
+		slackAppSetupService,
 	);
 
 	return {
@@ -75,6 +83,7 @@ function makeController({
 		agentScheduleService,
 		agentRepository,
 		chatIntegrationRegistry,
+		slackAppSetupService,
 	};
 }
 
@@ -101,6 +110,7 @@ describe('AgentsController route access scopes', () => {
 		['updateSkill', 'agent:update'],
 		['deleteSkill', 'agent:update'],
 		['revertToPublished', 'agent:update'],
+		['createSlackApp', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -139,6 +149,7 @@ describe('AgentsController integration credentials', () => {
 			agentRepository,
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
+			mock<SlackAppSetupService>(),
 		);
 
 		await expect(
@@ -356,6 +367,83 @@ describe('AgentsController integration credentials', () => {
 			],
 		});
 	});
+
+	it('starts Slack app setup with the temporary app configuration token', async () => {
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		slackAppSetupService.createApp.mockResolvedValue({
+			appId: 'A123',
+			installUrl: 'https://slack.com/oauth/v2/authorize?state=setup-state',
+		});
+		const { controller } = makeController({ slackAppSetupService });
+
+		await expect(
+			controller.createSlackApp(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ appConfigurationToken: 'xoxe-config' },
+			),
+		).resolves.toEqual({
+			appId: 'A123',
+			installUrl: 'https://slack.com/oauth/v2/authorize?state=setup-state',
+		});
+
+		expect(slackAppSetupService.createApp).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			appConfigurationToken: 'xoxe-config',
+			user: { id: 'user-1' },
+		});
+	});
+
+	it('completes Slack app setup from the OAuth callback and renders the success template', async () => {
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		const { controller } = makeController({ slackAppSetupService });
+		const res = { render: jest.fn() };
+
+		await controller.handleSlackAppOAuthCallback(
+			{
+				params: { projectId: 'project-1' },
+				query: { code: 'slack-code', state: 'setup-state' },
+			} as never,
+			res as never,
+			'agent-1',
+		);
+
+		expect(slackAppSetupService.completeInstall).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			code: 'slack-code',
+			state: 'setup-state',
+		});
+		expect(res.render).toHaveBeenCalledWith('oauth-callback');
+	});
+
+	it('renders the Slack OAuth error callback when Slack denies setup', async () => {
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		const { controller } = makeController({ slackAppSetupService });
+		const res = { render: jest.fn() };
+
+		await controller.handleSlackAppOAuthCallback(
+			{
+				params: { projectId: 'project-1' },
+				query: { error: 'access_denied', error_description: 'User denied install' },
+			} as never,
+			res as never,
+			'agent-1',
+		);
+
+		expect(slackAppSetupService.completeInstall).not.toHaveBeenCalled();
+		expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+			error: {
+				message: 'access_denied',
+				reason: 'User denied install',
+			},
+		});
+	});
 });
 
 describe('AgentsController agent resource', () => {
@@ -376,6 +464,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
+			mock<SlackAppSetupService>(),
 		);
 
 		const result = await controller.get(
@@ -419,6 +508,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
+			mock<SlackAppSetupService>(),
 		);
 
 		const result = await controller.get(
@@ -451,6 +541,7 @@ describe('AgentsController chat message history', () => {
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
+			mock<SlackAppSetupService>(),
 		);
 
 		return { controller, agentsService };
