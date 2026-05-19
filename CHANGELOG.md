@@ -1,3 +1,11 @@
+## [2.20.12](https://github.com/n8n-io/n8n/compare/n8n@2.20.11...n8n@2.20.12) (2026-05-19)
+
+
+### Bug Fixes
+
+* Restore /usr/local/bin/n8n compat symlink in production image ([#30658](https://github.com/n8n-io/n8n/issues/30658)) ([cffe344](https://github.com/n8n-io/n8n/commit/cffe344cb83c7d1f9653f0a7837cd2df6b7eefe2))
+
+
 ## [2.20.10](https://github.com/n8n-io/n8n/compare/n8n@2.20.9...n8n@2.20.10) (2026-05-18)
 
 
