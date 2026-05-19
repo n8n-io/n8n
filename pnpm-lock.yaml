@@ -1224,6 +1224,9 @@ importers:
       eventsource:
         specifier: ^3.0.6
         version: 3.0.6
+      fast-glob:
+        specifier: 'catalog:'
+        version: 3.2.12
       node-screenshots:
         specifier: ^0.2.8
         version: 0.2.8
