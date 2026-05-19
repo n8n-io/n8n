@@ -58,10 +58,9 @@ describe('AgentExecutionService', () => {
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
 			expect(result).toEqual({ thread, executions });
-			expect(n8nMemory.getWorkingMemory).not.toHaveBeenCalled();
 		});
 
-		it('does not read working memory for a thread outside the requested scope', async () => {
+		it('does not read executions for a thread outside the requested scope', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
 				makeThread({ projectId: 'other-project' }),
 			);
@@ -69,7 +68,6 @@ describe('AgentExecutionService', () => {
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
 			expect(result).toBeNull();
-			expect(n8nMemory.getWorkingMemory).not.toHaveBeenCalled();
 			expect(agentExecutionRepository.findByThreadIdOrdered).not.toHaveBeenCalled();
 		});
 	});
