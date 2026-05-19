@@ -134,3 +134,33 @@ export interface AgentBuilderMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
 }
+
+export type AgentKnowledgeObservationMarker = 'critical' | 'important' | 'info' | 'completion';
+
+export interface AgentKnowledgeSource {
+	id: string;
+	threadId: string;
+	threadTitle: string | null;
+	threadSessionNumber: number | null;
+	observationId: string;
+	observationMarker: AgentKnowledgeObservationMarker | null;
+	observationText: string | null;
+	observationCreatedAt: string | null;
+	evidenceText: string;
+	createdAt: string;
+}
+
+export interface AgentKnowledgeEntry {
+	id: string;
+	content: string;
+	createdAt: string;
+	updatedAt: string;
+	lastSeenAt: string;
+	sourceCount: number;
+	sources: AgentKnowledgeSource[];
+}
+
+export interface AgentKnowledgeResponse {
+	enabled: boolean;
+	entries: AgentKnowledgeEntry[];
+}

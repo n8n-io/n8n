@@ -63,6 +63,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
@@ -868,6 +869,8 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
+	 *   - "episodicMemory.credential": configured cross-session recall credential
+	 *                     does not resolve to a real credential in the project
 	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
@@ -895,17 +898,33 @@ export class AgentsService {
 			missing.push('model');
 		}
 
+		let credentialList: Awaited<ReturnType<CredentialProvider['list']>> | undefined;
+		const credentialExists = async (credentialId: string) => {
+			credentialList ??= await credentialProvider.list();
+			return credentialList.some((credential) => credential.id === credentialId);
+		};
+
 		if (!config.credential?.trim()) {
 			missing.push('credential');
 		} else {
 			try {
 				const credentialId = config.credential.trim();
-				const creds = await credentialProvider.list();
-				const exists = creds.some((c) => c.id === credentialId);
-				if (!exists) missing.push('credential');
+				if (!(await credentialExists(credentialId))) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
 				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		const episodicMemory = config.memory?.episodicMemory;
+		if (config.memory?.enabled && episodicMemory?.enabled === true) {
+			try {
+				if (!(await credentialExists(episodicMemory.credential.trim()))) {
+					missing.push('episodicMemory.credential');
+				}
+			} catch {
+				// Same behavior as the main model credential: runtime reconstruction
+				// surfaces permission/listing failures with the concrete error.
 			}
 		}
 
@@ -949,7 +968,7 @@ export class AgentsService {
 		return await this.n8nMemory
 			.getImplementation(agentId)
 			.getMessages(chatThreadId(agentId, userId), {
-				resourceId: userId,
+				resourceId: draftChatMemoryResourceId(userId),
 			});
 	}
 
@@ -959,7 +978,7 @@ export class AgentsService {
 	async clearTestChatMessages(agentId: string, userId: string) {
 		await this.n8nMemory
 			.getImplementation(agentId)
-			.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
+			.deleteThread(chatThreadId(agentId, userId));
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
