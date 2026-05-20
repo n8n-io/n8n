@@ -23,10 +23,9 @@ import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocumen
 
 /**
  * Per-node canvas render data (input/output port maps) shape, as produced by
- * the workflow document store's render composable and consumed by canvas
- * components.
+ * `useWorkflowDocumentRenderData` and consumed by canvas components.
  */
-export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>['render'];
+export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
 
 /**
  * Injects the canvas render data from the component tree. Provided by an
