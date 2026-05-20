@@ -398,19 +398,29 @@ describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
 		expect(accessed).toEqual(['first', 'last', 'all']);
 	});
 
-	it('non-RPC properties (`.item`) still delegate to the lazy proxy', () => {
+	it('non-RPC properties (`.item`) still delegate to the lazy proxy (host getter)', () => {
 		// `.item` on $input is a host getter, not a typed RPC. The synthetic
 		// proxy should fall through to the lazy proxy which fetches via
-		// getValueAtPath. Reading `.item.id` (a primitive on the getter's
-		// result) exercises that path end-to-end.
+		// getValueAtPath — and the host's `.item` getter must be invoked on
+		// the host side. Defining `.item` as a real getter (instead of a
+		// plain property) proves the getter ran: the bridge can only reach
+		// it via host-side property access, which is what `getValueAtPath`
+		// does. If the routing had wrongly sent a typed RPC, the dispatcher
+		// would reject the unknown `type` and return undefined.
+		let getterInvocations = 0;
 		const data: Record<string, unknown> = {
-			$input: {
-				item: { id: 42 },
-			},
+			$input: Object.defineProperty({} as Record<string, unknown>, 'item', {
+				get() {
+					getterInvocations += 1;
+					return { id: 42 };
+				},
+				enumerable: true,
+			}),
 		};
 
 		const result = evaluator.evaluate('{{ $input.item.id }}', data, caller);
 		expect(result).toBe(42);
+		expect(getterInvocations).toBeGreaterThan(0);
 	});
 
 	it("'first', 'last', 'all' are reported by $input's `has` trap", () => {
