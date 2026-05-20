@@ -166,9 +166,10 @@ export class HttpRequestV3 implements INodeType {
 		};
 
 		const requests: Array<{
-			options?: IRequestOptions;
+			options: IRequestOptions;
 			authKeys: IAuthDataSanitizeKeys;
 			credentialType?: string;
+			responseFileName?: string;
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
@@ -617,6 +618,7 @@ export class HttpRequestV3 implements INodeType {
 					options: requestOptions,
 					authKeys: authDataKeys,
 					credentialType: nodeCredentialType ?? genericCredentialType,
+					responseFileName,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -786,9 +788,13 @@ export class HttpRequestV3 implements INodeType {
 				// Ensure requests[] stays index-aligned with requestPromises[]/items[].
 				// If an item failed during request building, its slot may be empty.
 				// Assign a placeholder at the exact index so later items don't shift.
-				// options is intentionally absent — error items are skipped before options is ever read.
+				// Assign a placeholder with an empty options object to keep types happy.
+				// Error items are skipped before options is ever read.
 				if (!requests[itemIndex]) {
-					requests[itemIndex] = { authKeys: {} };
+					requests[itemIndex] = {
+						options: {} as IRequestOptions,
+						authKeys: {},
+					};
 				}
 
 				continue;
@@ -833,6 +839,8 @@ export class HttpRequestV3 implements INodeType {
 
 					continue;
 				}
+
+				const { responseFileName } = requests[itemIndex];
 
 				if (responseData!.status !== 'fulfilled') {
 					if (responseData.reason.statusCode === 429) {
@@ -1008,7 +1016,7 @@ export class HttpRequestV3 implements INodeType {
 						preparedBinaryData.fileName = setFilename(
 							preparedBinaryData,
 							// options is always set here: error items are skipped before this branch
-							requests[itemIndex].options!,
+							requests[itemIndex].options,
 							responseFileName,
 						);
 
