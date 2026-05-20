@@ -8,6 +8,18 @@
  *   - `index.txt`        — pipe-delimited catalog used for grep-style lookup
  *   - `<slug>.ts`        — one pre-rendered SDK file per publishable template
  *
+ * Versioning:
+ *   - The companion repo emits one archive per supported SDK minor and
+ *     uploads it to `/v<major>.<minor>/templates.tar.gz`. The newest minor
+ *     is mirrored to `/latest/templates.tar.gz`.
+ *   - The instance derives its CDN path from the bundled `@n8n/workflow-sdk`
+ *     version and prefers that exact path. On 404 (no archive published for
+ *     this minor yet) the service falls back to `/latest/`. Other transport
+ *     failures keep the existing cached bundle and do not trigger fallback.
+ *   - The current channel (`exact` or `latest`) is persisted on disk so warm
+ *     restarts pick the same URL on refresh and the cached ETag is only
+ *     echoed back to its originating path.
+ *
  * Behaviour:
  *   - First call: read disk cache if present; otherwise do a blocking fetch
  *     with a hard timeout. On any fetch error, return an empty bundle.
@@ -26,11 +38,13 @@
  *     against transport corruption and accidental CDN inconsistency — not
  *     against tampering, since the sidecar shares the archive's trust root.
  *
- * The HTTP ETag doubles as the bundle version — surfaced via telemetry so we
- * can correlate template-set revisions with usage events.
+ * The HTTP ETag is exposed via `getVersion()` prefixed with the channel
+ * (`v0.15:<etag>` or `latest:<etag>`) so telemetry can track template-set
+ * revisions and fallback rate.
  *
  * Never throws.
  */
+import workflowSdkPackage from '@n8n/workflow-sdk/package.json';
 import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
@@ -38,7 +52,8 @@ import * as path from 'node:path';
 
 import type { Logger } from '../logger';
 
-const DEFAULT_CDN_BASE_URL = 'https://sdk-templates.n8n.io/v1';
+const DEFAULT_CDN_BASE_URL = 'https://sdk-templates.n8n.io';
+const WORKFLOW_SDK_VERSION = (workflowSdkPackage as { version: string }).version;
 const DEFAULT_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_FETCH_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_ATTEMPTS = 3;
@@ -48,10 +63,20 @@ const DEFAULT_CACHE_SUBDIR = 'n8n-sdk-templates';
 const ARCHIVE_FILENAME = 'templates.tar.gz';
 const ETAG_FILENAME = 'etag.txt';
 const SHA256_FILENAME = 'templates.tar.gz.sha256';
+const CHANNEL_FILENAME = 'channel.txt';
 
 export interface BuilderTemplatesServiceOptions {
-	/** Base URL hosting `templates.tar.gz` and `templates.tar.gz.sha256`. */
+	/**
+	 * CDN root. The service appends a channel prefix:
+	 *   - `<base>/v<major>.<minor>/templates.tar.gz` (matched to `sdkVersion`)
+	 *   - `<base>/latest/templates.tar.gz` (404-fallback)
+	 */
 	cdnBaseUrl?: string;
+	/**
+	 * SDK version the instance is running, used to build `/v<major>.<minor>/`.
+	 * Defaults to the version of `@n8n/workflow-sdk` resolved at module load.
+	 */
+	sdkVersion?: string;
 	/** Directory where the service persists the archive + ETag + sha sidecar between runs. */
 	cacheDir?: string;
 	/** Time-to-live before a refresh fires in the background. Default 24h. */
@@ -77,11 +102,15 @@ export interface BuilderTemplatesBundle {
 
 const EMPTY_BUNDLE: BuilderTemplatesBundle = { archive: null, version: null };
 
+type Channel = 'exact' | 'latest';
+
 interface CacheState {
 	bundle: BuilderTemplatesBundle;
 	lastFetched: number;
 	/** sha256 hex of the archive currently in `bundle`, when known. */
 	sha256: string | null;
+	/** Which CDN folder the cached bundle came from. */
+	channel: Channel;
 }
 
 interface FetchedBundle {
@@ -90,8 +119,9 @@ interface FetchedBundle {
 }
 
 export class BuilderTemplatesService {
-	private readonly archiveUrl: string;
-	private readonly sha256Url: string;
+	private readonly cdnBase: string;
+	private readonly versionPrefix: string;
+	private readonly sdkVersion: string;
 	private readonly cacheDir: string;
 	private readonly refreshIntervalMs: number;
 	private readonly fetchTimeoutMs: number;
@@ -105,9 +135,9 @@ export class BuilderTemplatesService {
 	private backgroundRefresh: Promise<void> | null = null;
 
 	constructor(opts: BuilderTemplatesServiceOptions = {}) {
-		const base = (opts.cdnBaseUrl ?? DEFAULT_CDN_BASE_URL).replace(/\/+$/, '');
-		this.archiveUrl = `${base}/${ARCHIVE_FILENAME}`;
-		this.sha256Url = `${base}/${SHA256_FILENAME}`;
+		this.cdnBase = (opts.cdnBaseUrl ?? DEFAULT_CDN_BASE_URL).replace(/\/+$/, '');
+		this.sdkVersion = opts.sdkVersion ?? WORKFLOW_SDK_VERSION;
+		this.versionPrefix = sdkVersionToPrefix(this.sdkVersion);
 		this.cacheDir = opts.cacheDir ?? path.join(os.homedir(), '.n8n', DEFAULT_CACHE_SUBDIR);
 		this.refreshIntervalMs = opts.refreshIntervalMs ?? DEFAULT_REFRESH_INTERVAL_MS;
 		this.fetchTimeoutMs = opts.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
@@ -115,6 +145,18 @@ export class BuilderTemplatesService {
 		this.retryBackoffBaseMs = opts.retryBackoffBaseMs ?? DEFAULT_RETRY_BACKOFF_BASE_MS;
 		this.disabled = opts.disabled ?? false;
 		this.logger = opts.logger;
+	}
+
+	private channelPrefix(channel: Channel): string {
+		return channel === 'exact' ? this.versionPrefix : 'latest';
+	}
+
+	private archiveUrlFor(channel: Channel): string {
+		return `${this.cdnBase}/${this.channelPrefix(channel)}/${ARCHIVE_FILENAME}`;
+	}
+
+	private sha256UrlFor(channel: Channel): string {
+		return `${this.cdnBase}/${this.channelPrefix(channel)}/${SHA256_FILENAME}`;
 	}
 
 	/** Return the memoised bundle, hydrating from disk or network on first call. */
@@ -145,9 +187,11 @@ export class BuilderTemplatesService {
 	 * exact token.
 	 */
 	getVersion(): string | null {
-		const raw = this.state?.bundle.version ?? null;
-		if (!raw) return null;
-		return raw.replace(/^W\//, '').replace(/^"|"$/g, '');
+		const state = this.state;
+		const raw = state?.bundle.version ?? null;
+		if (!raw || !state) return null;
+		const normalised = raw.replace(/^W\//, '').replace(/^"|"$/g, '');
+		return `${this.channelPrefix(state.channel)}:${normalised}`;
 	}
 
 	private async hydrate(): Promise<void> {
@@ -180,11 +224,24 @@ export class BuilderTemplatesService {
 				return null;
 			}
 
+			const channel = await this.readChannelFromDisk();
+			if (!channel) {
+				// Pre-versioned cache layout (no channel.txt). We can't tell which
+				// CDN folder this archive came from, so its etag is unsafe to echo
+				// back in If-None-Match. Drop the cache and let the next refresh
+				// repopulate from scratch.
+				this.logger?.debug(
+					'[builder-templates] disk cache missing channel.txt, treating as legacy and refetching',
+				);
+				return null;
+			}
+
 			const etag = await this.readEtagFromDisk();
 			return {
 				bundle: { archive: buffer, version: etag },
 				lastFetched: stat.mtimeMs,
 				sha256: actualSha,
+				channel,
 			};
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -214,55 +271,97 @@ export class BuilderTemplatesService {
 		}
 	}
 
+	private async readChannelFromDisk(): Promise<Channel | null> {
+		try {
+			const raw = (await fsp.readFile(path.join(this.cacheDir, CHANNEL_FILENAME), 'utf-8')).trim();
+			if (raw === 'exact' || raw === 'latest') return raw;
+			return null;
+		} catch {
+			return null;
+		}
+	}
+
 	private async refresh({ isInitial }: { isInitial: boolean }): Promise<void> {
 		try {
 			const maxAttempts = isInitial ? this.maxAttempts : 1;
-			const fetched = await this.fetchBundleWithRetries(maxAttempts);
-			if (!fetched) return;
 
-			await this.persist(fetched.bundle.archive, fetched.bundle.version, fetched.sha256);
+			let outcome = await this.fetchBundleWithRetries('exact', maxAttempts);
+			let channel: Channel = 'exact';
+
+			if (outcome.kind === 'not-found') {
+				this.logger?.warn(
+					'[builder-templates] no archive at /v<minor>/, falling back to /latest/',
+					{ sdkVersion: this.sdkVersion },
+				);
+				outcome = await this.fetchBundleWithRetries('latest', maxAttempts);
+				channel = 'latest';
+			}
+
+			if (outcome.kind !== 'fetched') return;
+
+			await this.persist(
+				outcome.bundle.bundle.archive,
+				outcome.bundle.bundle.version,
+				outcome.bundle.sha256,
+				channel,
+			);
 			this.state = {
-				bundle: fetched.bundle,
+				bundle: outcome.bundle.bundle,
 				lastFetched: Date.now(),
-				sha256: fetched.sha256,
+				sha256: outcome.bundle.sha256,
+				channel,
 			};
 		} catch (error) {
 			this.logger?.warn('[builder-templates] refresh failed', {
 				error: error instanceof Error ? error.message : String(error),
-				url: this.archiveUrl,
 			});
 		}
 	}
 
-	private async fetchBundleWithRetries(maxAttempts: number): Promise<FetchedBundle | null> {
+	private async fetchBundleWithRetries(
+		channel: Channel,
+		maxAttempts: number,
+	): Promise<
+		| { kind: 'fetched'; bundle: FetchedBundle }
+		| { kind: 'not-modified' }
+		| { kind: 'not-found' }
+		| { kind: 'failed' }
+	> {
 		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-			const outcome = await this.tryFetchBundleOnce();
-			if (outcome.kind === 'fetched') return outcome.bundle;
-			if (outcome.kind === 'not-modified') return null;
-			if (!outcome.retryable || attempt === maxAttempts) return null;
+			const outcome = await this.tryFetchBundleOnce(channel);
+			if (outcome.kind === 'fetched') return outcome;
+			if (outcome.kind === 'not-modified') return outcome;
+			if (outcome.kind === 'not-found') return outcome;
+			if (!outcome.retryable || attempt === maxAttempts) return { kind: 'failed' };
 
 			const delay = Math.min(this.retryBackoffBaseMs * 2 ** (attempt - 1), RETRY_BACKOFF_CAP_MS);
 			await sleep(delay);
 		}
-		return null;
+		return { kind: 'failed' };
 	}
 
-	private async tryFetchBundleOnce(): Promise<
+	private async tryFetchBundleOnce(
+		channel: Channel,
+	): Promise<
 		| { kind: 'fetched'; bundle: FetchedBundle }
 		| { kind: 'not-modified' }
+		| { kind: 'not-found' }
 		| { kind: 'failed'; retryable: boolean }
 	> {
+		const archiveUrl = this.archiveUrlFor(channel);
+
 		// Only send a conditional request when we already have a bundle in
-		// memory to fall back to. Sending If-None-Match with an orphan etag
-		// (e.g. archive missing/corrupt but etag.txt present) could return 304
-		// and leave the service permanently empty for this process.
+		// memory from the SAME channel — etags from /v<minor>/ don't match
+		// /latest/ even when the file is byte-identical, since R2 hashes per
+		// path. Sending If-None-Match with an orphan etag would also risk a
+		// stale 304 that leaves the service empty for the process.
 		const headers: Record<string, string> = {};
-		const cachedEtag = this.state?.bundle.version ?? null;
+		const cachedEtag = this.state?.channel === channel ? (this.state.bundle.version ?? null) : null;
 		if (cachedEtag) headers['If-None-Match'] = cachedEtag;
 
 		let response: Response;
 		try {
-			response = await fetch(this.archiveUrl, {
+			response = await fetch(archiveUrl, {
 				headers,
 				signal: AbortSignal.timeout(this.fetchTimeoutMs),
 			});
@@ -270,34 +369,40 @@ export class BuilderTemplatesService {
 			// Network / abort errors — assume transient.
 			this.logger?.warn('[builder-templates] archive fetch threw', {
 				error: error instanceof Error ? error.message : String(error),
-				url: this.archiveUrl,
+				url: archiveUrl,
 			});
 			return { kind: 'failed', retryable: true };
 		}
 
-		if (response.status === 304 && this.state) {
+		if (response.status === 304 && this.state?.channel === channel) {
 			await touchArchiveFile(path.join(this.cacheDir, ARCHIVE_FILENAME));
 			this.state = { ...this.state, lastFetched: Date.now() };
 			return { kind: 'not-modified' };
 		}
 
+		if (response.status === 404) {
+			// 404 is the unique trigger for fallback — the folder simply isn't
+			// published. Other non-OK statuses are transport-level failures.
+			return { kind: 'not-found' };
+		}
+
 		if (!response.ok) {
 			this.logger?.warn('[builder-templates] archive fetch returned non-OK', {
 				status: response.status,
-				url: this.archiveUrl,
+				url: archiveUrl,
 			});
 			return { kind: 'failed', retryable: isRetryableStatus(response.status) };
 		}
 
 		const buffer = Buffer.from(await response.arrayBuffer());
 		const actualSha = sha256Hex(buffer);
-		const expectedSha = await this.fetchSha256Sidecar();
+		const expectedSha = await this.fetchSha256Sidecar(channel);
 
 		if (expectedSha && expectedSha !== actualSha) {
 			this.logger?.warn('[builder-templates] sha256 mismatch on downloaded archive, rejecting', {
 				expected: expectedSha,
 				actual: actualSha,
-				url: this.archiveUrl,
+				url: archiveUrl,
 			});
 			// Treat as a hard failure that isn't worth retrying — the sidecar
 			// and archive come from the same origin, so a retry will almost
@@ -315,22 +420,23 @@ export class BuilderTemplatesService {
 		};
 	}
 
-	private async fetchSha256Sidecar(): Promise<string | null> {
+	private async fetchSha256Sidecar(channel: Channel): Promise<string | null> {
+		const sha256Url = this.sha256UrlFor(channel);
 		try {
-			const response = await fetch(this.sha256Url, {
+			const response = await fetch(sha256Url, {
 				signal: AbortSignal.timeout(this.fetchTimeoutMs),
 			});
 			if (response.status === 404) {
 				this.logger?.warn(
 					'[builder-templates] sha256 sidecar missing — proceeding without integrity check',
-					{ url: this.sha256Url },
+					{ url: sha256Url },
 				);
 				return null;
 			}
 			if (!response.ok) {
 				this.logger?.warn(
 					'[builder-templates] sha256 sidecar fetch returned non-OK — proceeding without integrity check',
-					{ status: response.status, url: this.sha256Url },
+					{ status: response.status, url: sha256Url },
 				);
 				return null;
 			}
@@ -340,7 +446,7 @@ export class BuilderTemplatesService {
 				'[builder-templates] sha256 sidecar fetch threw — proceeding without integrity check',
 				{
 					error: error instanceof Error ? error.message : String(error),
-					url: this.sha256Url,
+					url: sha256Url,
 				},
 			);
 			return null;
@@ -351,6 +457,7 @@ export class BuilderTemplatesService {
 		buffer: Buffer | null,
 		etag: string | null,
 		sha256: string | null,
+		channel: Channel,
 	): Promise<void> {
 		if (!buffer) return;
 		await fsp.mkdir(this.cacheDir, { recursive: true });
@@ -368,8 +475,20 @@ export class BuilderTemplatesService {
 		} else {
 			await unlinkIfExists(path.join(this.cacheDir, SHA256_FILENAME));
 		}
+		await atomicWriteFile(path.join(this.cacheDir, CHANNEL_FILENAME), channel);
 		await atomicWriteFile(path.join(this.cacheDir, ARCHIVE_FILENAME), buffer);
 	}
+}
+
+/**
+ * Turn an SDK version like `0.15.0` (or `0.15.0-beta.3`) into the `v0.15`
+ * channel prefix used in the CDN URL. Falls back to `latest` if the version
+ * can't be parsed — defensive against unexpected pkg.json shapes at boot.
+ */
+function sdkVersionToPrefix(sdkVersion: string): string {
+	const match = sdkVersion.match(/^(\d+)\.(\d+)/);
+	if (!match) return 'latest';
+	return `v${match[1]}.${match[2]}`;
 }
 
 function normaliseEtag(raw: string | null): string | null {
