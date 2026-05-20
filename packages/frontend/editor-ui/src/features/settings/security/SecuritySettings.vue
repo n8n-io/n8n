@@ -42,6 +42,8 @@ const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tool
 const dataRedactionTooltipKey = 'settings.security.dataRedaction.unlicensed_tooltip';
 const showPublishingDialog = ref(false);
 const showSharingDialog = ref(false);
+const showRedactionEnableDialog = ref(false);
+const showRedactionDisableDialog = ref(false);
 
 type EnforcedFloor = Exclude<RedactionFloor, 'off'>;
 
@@ -227,13 +229,29 @@ async function updateRedactionFloor(nextFloor: RedactionFloor, isToggling: boole
 const dataRedactionEnforced = computed({
 	get: () => (state.value?.redactionFloor ?? 'off') !== 'off',
 	set: (value: boolean) => {
-		const nextFloor: RedactionFloor = value ? 'production' : 'off';
-		if (state.value) {
-			state.value = { ...state.value, redactionFloor: nextFloor };
+		if (value) {
+			showRedactionEnableDialog.value = true;
+			return;
 		}
-		void updateRedactionFloor(nextFloor, true);
+		showRedactionDisableDialog.value = true;
 	},
 });
+
+function confirmEnableRedactionEnforcement() {
+	showRedactionEnableDialog.value = false;
+	if (state.value) {
+		state.value = { ...state.value, redactionFloor: 'production' };
+	}
+	void updateRedactionFloor('production', true);
+}
+
+function confirmDisableRedactionEnforcement() {
+	showRedactionDisableDialog.value = false;
+	if (state.value) {
+		state.value = { ...state.value, redactionFloor: 'off' };
+	}
+	void updateRedactionFloor('off', true);
+}
 
 const dataRedactionFloor = computed<EnforcedFloor>(() => {
 	const current = state.value?.redactionFloor ?? 'off';
@@ -564,6 +582,30 @@ const affectedScopeText = computed(() => {
 			@action="confirmDisableSharing"
 			@cancel="showSharingDialog = false"
 			@update:open="showSharingDialog = $event"
+		/>
+
+		<N8nAlertDialog
+			:open="showRedactionEnableDialog"
+			:title="i18n.baseText('settings.security.dataRedaction.enforce.confirmEnable.headline')"
+			:description="i18n.baseText('settings.security.dataRedaction.enforce.confirmEnable.message')"
+			:action-label="i18n.baseText('settings.security.dataRedaction.enforce.confirmEnable.action')"
+			size="medium"
+			data-test-id="redaction-enforcement-enable-confirm"
+			@action="confirmEnableRedactionEnforcement"
+			@cancel="showRedactionEnableDialog = false"
+			@update:open="showRedactionEnableDialog = $event"
+		/>
+
+		<N8nAlertDialog
+			:open="showRedactionDisableDialog"
+			:title="i18n.baseText('settings.security.dataRedaction.enforce.confirmDisable.headline')"
+			:description="i18n.baseText('settings.security.dataRedaction.enforce.confirmDisable.message')"
+			:action-label="i18n.baseText('settings.security.dataRedaction.enforce.confirmDisable.action')"
+			size="medium"
+			data-test-id="redaction-enforcement-disable-confirm"
+			@action="confirmDisableRedactionEnforcement"
+			@cancel="showRedactionDisableDialog = false"
+			@update:open="showRedactionDisableDialog = $event"
 		/>
 	</div>
 </template>

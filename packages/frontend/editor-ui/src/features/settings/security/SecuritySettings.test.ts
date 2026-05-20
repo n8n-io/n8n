@@ -546,17 +546,23 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('should call updateSecuritySettings with floor=production on toggle on', async () => {
+		it('should show enable dialog and POST floor=production when confirming', async () => {
 			enableRedactionEnforcementFlag(true);
 			updateSecuritySettings.mockResolvedValue(undefined);
 
-			const { getByTestId } = renderView();
+			const { getByTestId, getByRole } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
 			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
 
 			await waitFor(() => {
 				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
@@ -570,7 +576,27 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('should call updateSecuritySettings with floor=off on toggle off', async () => {
+		it('should not POST when cancelling enable dialog', async () => {
+			enableRedactionEnforcementFlag(true);
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show disable dialog and POST floor=off when confirming', async () => {
 			enableRedactionEnforcementFlag(true);
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,
@@ -578,13 +604,19 @@ describe('SecuritySettings', () => {
 			});
 			updateSecuritySettings.mockResolvedValue(undefined);
 
-			const { getByTestId } = renderView();
+			const { getByTestId, getByRole } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
 			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Disable' }));
 
 			await waitFor(() => {
 				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
@@ -593,17 +625,23 @@ describe('SecuritySettings', () => {
 			});
 		});
 
-		it('should show error toast when toggle update fails', async () => {
+		it('should show error toast when confirmed enable fails', async () => {
 			enableRedactionEnforcementFlag(true);
 			updateSecuritySettings.mockRejectedValue(new Error('boom'));
 
-			const { getByTestId } = renderView();
+			const { getByTestId, getByRole } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
 			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
 
 			await waitFor(() => {
 				expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
