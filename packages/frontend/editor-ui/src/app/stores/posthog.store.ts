@@ -187,6 +187,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 		window.posthog?.init(config.apiKey, options);
 		identify();
+		groupIdentify('company', instanceId);
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;

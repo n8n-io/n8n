@@ -9,10 +9,11 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { DATA_TABLES_TOOL_ID } from './tool-ids';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
 
-export const DATA_TABLES_TOOL_ID = 'data-tables';
+export { DATA_TABLES_TOOL_ID };
 
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 

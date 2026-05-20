@@ -773,7 +773,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		pushRef?: string,
 	): Promise<boolean> {
 		try {
-			await postMessage(
+			const { runId } = await postMessage(
 				rootStore.restApiContext,
 				threadId,
 				message,
@@ -781,6 +781,10 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 			);
+
+			if (runId) {
+				activeRunId.value = runId;
+			}
 			return true;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
