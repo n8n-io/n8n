@@ -242,6 +242,8 @@ export class CredentialsController {
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
+		newCredentialData.metadata = body.metadata ?? credential.metadata;
+
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,

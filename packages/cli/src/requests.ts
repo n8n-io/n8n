@@ -80,6 +80,7 @@ export declare namespace CredentialRequest {
 		isManaged?: boolean;
 		isGlobal?: boolean;
 		isResolvable?: boolean;
+		metadata?: Record<string, unknown> | null;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;

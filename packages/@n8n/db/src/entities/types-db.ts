@@ -99,6 +99,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	isManaged?: boolean;
+	metadata?: Record<string, unknown> | null;
 }
 
 export interface IExecutionResponse extends IExecutionBase {

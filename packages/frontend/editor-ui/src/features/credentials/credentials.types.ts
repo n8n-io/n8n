@@ -16,6 +16,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	metadata?: Record<string, unknown> | null;
 }
 
 export interface IUsedCredential {

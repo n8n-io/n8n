@@ -10,4 +10,5 @@ export class CreateCredentialDto extends Z.class({
 	uiContext: z.string().optional(),
 	isGlobal: z.boolean().optional(),
 	isResolvable: z.boolean().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
 }) {}
