@@ -787,7 +787,7 @@ describe('AgentsService', () => {
 	});
 
 	describe('executeForWorkflow', () => {
-		it('passes agentId into persistence so scoped memory can run for workflow executions', async () => {
+		it('passes an episodic namespace into persistence so scoped memory can run for workflow executions', async () => {
 			const schema: AgentJsonConfig = {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -834,7 +834,11 @@ describe('AgentsService', () => {
 			expect(stream).toHaveBeenCalledWith(
 				'hello',
 				expect.objectContaining({
-					persistence: { resourceId: 'execution-1', threadId: 'thread-1', agentId },
+					persistence: {
+						resourceId: 'execution-1',
+						threadId: 'thread-1',
+						episodicMemoryNamespace: agentId,
+					},
 				}),
 			);
 			expect(releaseLock).toHaveBeenCalled();
