@@ -274,6 +274,114 @@ describe('Anthropic Node', () => {
 		});
 	});
 
+	describe('Empty Prompt Validation', () => {
+		it('should throw error when text messages are all empty without attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'addAttachments':
+						return false;
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when text messages are whitespace-only without attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '   ' }];
+					case 'addAttachments':
+						return false;
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should NOT throw for empty messages when attachments are enabled', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'addAttachments':
+						return true;
+					case 'attachmentsInputType':
+						return 'url';
+					case 'attachmentsUrls':
+						return 'https://example.com/file.pdf';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			executeFunctionsMock.helpers.httpRequest.mockResolvedValue({
+				headers: { 'content-type': 'application/pdf' },
+			});
+			getConnectedToolsMock.mockResolvedValue([]);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Response' }],
+				stop_reason: 'end_turn',
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).resolves.toBeDefined();
+		});
+
+		it('should throw error when image analyze text is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'inputType':
+						return 'url';
+					case 'imageUrls':
+						return 'https://example.com/image.png';
+					case 'text':
+						return '';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(image.analyze.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('File -> Upload', () => {
 		it('should upload file from URL', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
