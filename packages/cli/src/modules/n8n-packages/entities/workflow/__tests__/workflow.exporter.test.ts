@@ -101,6 +101,27 @@ describe('WorkflowExporter', () => {
 		);
 	});
 
+	it('writes one entry per finder-returned workflow, even if the request repeats an id', async () => {
+		// The finder is responsible for deduping; the exporter must iterate the
+		// finder's output (not the input ids) so a repeated id can't double-write.
+		const workflow = makeWorkflow({ id: 'wf-repeated', name: 'Repeated' });
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		const entries = await exporter.export({
+			user,
+			workflowIds: [workflow.id, workflow.id],
+			writer,
+		});
+
+		expect(entries).toEqual([
+			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated' },
+		]);
+		expect(writer.files.filter((f) => f.path === 'workflows/repeated/workflow.json')).toHaveLength(
+			1,
+		);
+	});
+
 	it('disambiguates targets when two workflows share a name', async () => {
 		const a = makeWorkflow({ id: 'wf-aaaaa', name: 'Same Name' });
 		const b = makeWorkflow({ id: 'wf-bbbbb', name: 'Same Name' });
