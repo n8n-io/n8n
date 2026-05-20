@@ -1,3 +1,5 @@
+import './source-map-filter';
+
 export { MAX_STEPS } from './constants/max-steps';
 export type {
 	AgentDbMessage,
