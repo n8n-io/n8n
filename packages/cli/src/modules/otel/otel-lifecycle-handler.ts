@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { OnLifecycleEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -21,6 +22,7 @@ export class OtelLifecycleHandler {
 		private readonly traceContextService: TraceContextService,
 		private readonly config: OtelConfig,
 		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
 	) {}
 
 	@OnLifecycleEvent('workflowExecuteBefore')
@@ -34,7 +36,14 @@ export class OtelLifecycleHandler {
 
 		const project = await this.ownershipService
 			.getWorkflowProjectCached(ctx.workflow.id)
-			.catch(() => undefined);
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to fetch project for OTEL span', {
+					workflowId: ctx.workflow.id,
+					executionId: ctx.executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return undefined;
+			});
 
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
@@ -59,7 +68,14 @@ export class OtelLifecycleHandler {
 
 		const project = await this.ownershipService
 			.getWorkflowProjectCached(ctx.workflow.id)
-			.catch(() => undefined);
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to fetch project for OTEL span', {
+					workflowId: ctx.workflow.id,
+					executionId: ctx.executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return undefined;
+			});
 
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
