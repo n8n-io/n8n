@@ -30,7 +30,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
 	const chatPanelStateStore = useChatPanelStateStore();
-	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 	const isFeatureEnabled = computed(() => {
 		return posthogStore.isVariantEnabled(

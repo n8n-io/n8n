@@ -36,8 +36,8 @@ export function useTypescript(
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const workflowsStore = useWorkflowsStore();
-	const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = useNDVStore(workflowDocumentStore.value.documentId);
 	const { debounce } = useDebounce();
 	const activeNodeName = toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();

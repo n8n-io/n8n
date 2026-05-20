@@ -256,7 +256,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
-	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
