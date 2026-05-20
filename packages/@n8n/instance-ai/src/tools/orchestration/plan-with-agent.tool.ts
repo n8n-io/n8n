@@ -56,7 +56,7 @@ const PLANNER_DOMAIN_TOOL_NAMES = [
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
 
-const RELEVANT_PRIOR_TOOL_NAMES = new Set([
+const RELEVANT_PRIOR_TOOL_NAMES = new Set<string>([
 	ASK_USER_TOOL_ID,
 	CREDENTIALS_TOOL_ID,
 	DATA_TABLES_TOOL_ID,
