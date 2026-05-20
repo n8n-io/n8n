@@ -499,6 +499,38 @@ describe('AgentsService', () => {
 			expect(savedEntity.description).toBe(agent.description);
 		});
 
+		it('rejects the final merged schema when preserved providerTools conflict with new webSearch', async () => {
+			const previousSchema = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Old instructions',
+				providerTools: {
+					'anthropic.web_search': {},
+				},
+			} as AgentJsonConfig;
+			const agent = makeAgent({ schema: previousSchema });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const update = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Updated instructions',
+				webSearch: {
+					enabled: true,
+					mode: 'auto',
+				},
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: update,
+			});
+
+			await expect(service.updateConfig(agentId, projectId, update)).rejects.toThrow(
+				'Do not configure web-search providerTools manually',
+			);
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
 		it('updates stored webSearch when the inbound config provides it', async () => {
 			const agent = makeAgent({
 				schema: {

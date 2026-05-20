@@ -60,7 +60,7 @@ const DomainNameSchema = z
 	.min(1)
 	.max(253)
 	.regex(
-		/^(?=.{1,253}$)(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/i,
+		/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i,
 		'Domain must be a hostname like "docs.n8n.io"',
 	);
 

@@ -1231,18 +1231,20 @@ describe('AgentJsonConfigSchema', () => {
 	});
 
 	it('rejects webSearch with malformed domains', () => {
-		const config = {
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'my-key',
-			instructions: '',
-			webSearch: {
-				enabled: true,
-				allowedDomains: ['https://docs.n8n.io/path'],
-			},
-		};
+		for (const domain of ['https://docs.n8n.io/path', 'foo-.example.com']) {
+			const config = {
+				name: 'test',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'my-key',
+				instructions: '',
+				webSearch: {
+					enabled: true,
+					allowedDomains: [domain],
+				},
+			};
 
-		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+			expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+		}
 	});
 
 	it('rejects unsupported webSearch credential types', () => {

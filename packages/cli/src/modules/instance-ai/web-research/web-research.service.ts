@@ -60,13 +60,20 @@ export class WebResearchService {
 		const ssrf = this.ssrfProtectionService;
 		const scopeId = params.scopeId;
 
-		let resolvedSearchMethod: ReturnType<WebResearchService['buildSearchMethod']>;
-		let searchResolved = false;
+		let searchMethodPromise:
+			| Promise<ReturnType<WebResearchService['buildSearchMethod']>>
+			| undefined;
 		const lazySearch: InstanceAiWebResearchService['search'] = async (query, options) => {
-			if (!searchResolved) {
-				resolvedSearchMethod = this.buildSearchMethod(await params.resolveBackend(), scopeId);
-				searchResolved = true;
+			if (!searchMethodPromise) {
+				searchMethodPromise = params
+					.resolveBackend()
+					.then((backend) => this.buildSearchMethod(backend, scopeId))
+					.catch((error: unknown) => {
+						searchMethodPromise = undefined;
+						throw error;
+					});
 			}
+			const resolvedSearchMethod = await searchMethodPromise;
 			if (!resolvedSearchMethod) return { query, results: [] };
 			return await resolvedSearchMethod(query, options);
 		};

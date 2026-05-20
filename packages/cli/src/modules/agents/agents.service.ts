@@ -1323,14 +1323,12 @@ export class AgentsService {
 			};
 		}
 
-		if (config.webSearch?.enabled) {
-			const providerToolName = findManualWebSearchProviderToolName(config);
-			if (providerToolName) {
-				return {
-					valid: false,
-					error: `Do not configure web-search providerTools manually when webSearch.enabled is true. Remove "${providerToolName}" and use webSearch instead.`,
-				};
-			}
+		const webSearchProviderToolError = this.getWebSearchProviderToolError(config);
+		if (webSearchProviderToolError) {
+			return {
+				valid: false,
+				error: webSearchProviderToolError,
+			};
 		}
 
 		try {
@@ -1349,6 +1347,15 @@ export class AgentsService {
 		}
 
 		return { valid: true, config };
+	}
+
+	private getWebSearchProviderToolError(config: AgentJsonConfig): string | null {
+		if (!config.webSearch?.enabled) return null;
+
+		const providerToolName = findManualWebSearchProviderToolName(config);
+		if (!providerToolName) return null;
+
+		return `Do not configure web-search providerTools manually when webSearch.enabled is true. Remove "${providerToolName}" and use webSearch instead.`;
 	}
 
 	private validateNodeToolExpressions(config: AgentJsonConfig): void {
@@ -1424,6 +1431,10 @@ export class AgentsService {
 			...(webSearchProvided ? { webSearch: decomposedSchema.webSearch } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 		};
+		const webSearchProviderToolError = this.getWebSearchProviderToolError(nextSchema);
+		if (webSearchProviderToolError) {
+			throw new UserError(`Invalid agent config: ${webSearchProviderToolError}`);
+		}
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
