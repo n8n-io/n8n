@@ -24,11 +24,10 @@ import {
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectStrict } from '@/app/utils/injectStrict';
-import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
@@ -36,7 +35,6 @@ interface PostMessageHandlerDeps {
 
 export function usePostMessageHandler({ workflowState }: PostMessageHandlerDeps) {
 	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
-	const currentNDVStore = injectStrict(NDVStoreKey);
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
@@ -140,7 +138,6 @@ export function usePostMessageHandler({ workflowState }: PostMessageHandlerDeps)
 		if (wfId) {
 			const workflowDocumentId = createWorkflowDocumentId(wfId);
 			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(workflowDocumentId);
-			currentNDVStore.value = useNDVStore(workflowDocumentId);
 		}
 
 		void nextTick(() => {

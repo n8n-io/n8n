@@ -9,7 +9,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { NDVStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
 import ExperimentalNodeDetailsDrawer from './ExperimentalNodeDetailsDrawer.vue';
 import { nextTick, shallowRef } from 'vue';
@@ -28,7 +28,6 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let ndvStore: ReturnType<typeof useNDVStore>;
-	let ndvStoreRef: ReturnType<typeof shallowRef<ReturnType<typeof useNDVStore>>>;
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 	const mockNodes = [
@@ -54,7 +53,8 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setNodes(mockNodes);
-		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
+		const workflowDocumentStoreRef = shallowRef(workflowDocumentStore);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(workflowDocumentStoreRef);
 		nodeTypesStore = useNodeTypesStore(pinia);
 		nodeTypesStore.setNodeTypes([
 			{
@@ -70,11 +70,10 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 			},
 		]);
 		ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
-		ndvStoreRef = shallowRef(ndvStore);
 		renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer, {
 			global: {
 				provide: {
-					[NDVStoreKey as symbol]: ndvStoreRef,
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 			},
 		});

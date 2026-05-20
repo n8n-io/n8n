@@ -7,7 +7,7 @@ import { usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectStrict } from '@/app/utils/injectStrict';
-import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -108,17 +108,14 @@ function createMockWorkflowState(): WorkflowState {
 
 function setupInjectedStores({
 	workflowDocumentStoreRef = shallowRef(null) as ShallowRef<unknown>,
-	ndvStoreRef = shallowRef(null) as ShallowRef<unknown>,
 }: {
 	workflowDocumentStoreRef?: ShallowRef<unknown>;
-	ndvStoreRef?: ShallowRef<unknown>;
 } = {}) {
 	vi.mocked(injectStrict).mockImplementation((key) => {
 		if (key === WorkflowDocumentStoreKey) return workflowDocumentStoreRef;
-		if (key === NDVStoreKey) return ndvStoreRef;
 		throw new Error(`Unexpected injection key: ${String(key.description)}`);
 	});
-	return { workflowDocumentStoreRef, ndvStoreRef };
+	return { workflowDocumentStoreRef };
 }
 
 function dispatchPostMessage(payload: Record<string, unknown>) {

@@ -27,7 +27,7 @@ import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
-import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	createResultOk,
 	NodeConnectionTypes,
@@ -290,7 +290,6 @@ describe('VirtualSchema.vue', () => {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
-		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
@@ -305,7 +304,6 @@ describe('VirtualSchema.vue', () => {
 				},
 				provide: {
 					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
-					[NDVStoreKey as symbol]: shallowRef(ndvStore),
 				},
 				mocks: {
 					$locale: {

@@ -18,7 +18,7 @@ import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { NDVStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -64,7 +64,7 @@ const renderNodeSettings = (runData?: IRunData) => {
 	nodeTypesStore.setNodeTypes([httpNodeType]);
 	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	ndvStore.activeNodeName = httpNode.name;
-	const ndvStoreRef = shallowRef(ndvStore);
+	const workflowDocumentStoreRef = shallowRef(workflowDocumentStore);
 
 	if (runData) {
 		workflowState.setWorkflowExecutionData({
@@ -94,7 +94,7 @@ const renderNodeSettings = (runData?: IRunData) => {
 	return createComponentRenderer(NodeSettings, {
 		global: {
 			provide: {
-				[NDVStoreKey as symbol]: ndvStoreRef,
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 			},
 			stubs: {
 				NodeTitle: true,

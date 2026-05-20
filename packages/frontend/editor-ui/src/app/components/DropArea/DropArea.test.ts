@@ -1,8 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import { NDVStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
@@ -10,11 +13,16 @@ import { createPinia, setActivePinia } from 'pinia';
 import { shallowRef } from 'vue';
 import DropArea from './DropArea.vue';
 
-function setupNdvStore() {
+function setupStores() {
 	const workflowsStore = useWorkflowsStore();
 	workflowsStore.setWorkflowId('test-workflow');
-	const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
-	return { ndvStore, ndvStoreRef: shallowRef(ndvStore) };
+	const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+	const ndvStore = useNDVStore(workflowDocumentId);
+	return {
+		ndvStore,
+		workflowDocumentStoreRef: shallowRef(workflowDocumentStore),
+	};
 }
 
 async function fireDrop(
@@ -40,13 +48,13 @@ describe('DropArea.vue', () => {
 		const pinia = createPinia();
 		setActivePinia(pinia);
 
-		const { ndvStore, ndvStoreRef } = setupNdvStore();
+		const { ndvStore, workflowDocumentStoreRef } = setupStores();
 
 		const renderComponent = createComponentRenderer(DropArea, {
 			pinia: createTestingPinia(),
 			global: {
 				provide: {
-					[NDVStoreKey as symbol]: ndvStoreRef,
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 			},
 		});

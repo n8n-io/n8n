@@ -4,7 +4,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowImport } from './useWorkflowImport';
 import { injectStrict } from '@/app/utils/injectStrict';
-import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { VIEWS } from '@/app/constants';
 
@@ -43,13 +43,11 @@ vi.mock('@/app/utils/nodeViewUtils', () => ({
 
 function setupInjectedStores() {
 	const storeRef = shallowRef(null) as ShallowRef<unknown>;
-	const ndvStoreRef = shallowRef(null) as ShallowRef<unknown>;
 	vi.mocked(injectStrict).mockImplementation((key) => {
 		if (key === WorkflowDocumentStoreKey) return storeRef;
-		if (key === NDVStoreKey) return ndvStoreRef;
 		throw new Error(`Unexpected injection key: ${String(key.description)}`);
 	});
-	return { storeRef, ndvStoreRef };
+	return { storeRef };
 }
 
 describe('useWorkflowImport', () => {
