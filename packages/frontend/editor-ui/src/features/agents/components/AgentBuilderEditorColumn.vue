@@ -5,9 +5,11 @@ import { useI18n } from '@n8n/i18n';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
+import AgentDebugPanel from '../views/AgentDebugPanel.vue';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentEvalsPanel from './AgentEvalsPanel.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
@@ -55,7 +57,12 @@ const i18n = useI18n();
 		data-testid="agent-builder-editor-column"
 	>
 		<div :class="$style.panelArea">
-			<div :class="$style.panelAreaContainer">
+			<div
+				:class="[
+					$style.panelAreaContainer,
+					activeMainTab === 'debug' && $style.scrollablePanelAreaContainer,
+				]"
+			>
 				<div :class="$style.panelHeaderRow">
 					<AgentIdentityHeader
 						v-if="activeMainTab === 'agent'"
@@ -67,6 +74,20 @@ const i18n = useI18n();
 						v-else-if="activeMainTab === 'executions'"
 						:title="i18n.baseText('agents.builder.header.tab.executions')"
 						:description="executionsDescription"
+					/>
+					<AgentPanelHeader
+						v-else-if="activeMainTab === 'debug'"
+						:title="i18n.baseText('agents.builder.header.tab.debug')"
+						:description="i18n.baseText('agentDebug.description')"
+					/>
+					<AgentPanelHeader
+						v-else-if="activeMainTab === 'evaluations'"
+						:title="i18n.baseText('agents.builder.header.tab.evaluations')"
+						:description="
+							i18n.baseText('agents.builder.evaluations.configuredInCode', {
+								interpolate: { count: '0' },
+							})
+						"
 					/>
 					<AgentPanelHeader
 						v-else-if="activeMainTab === 'raw'"
@@ -141,6 +162,8 @@ const i18n = useI18n();
 					data-testid="agent-executions-panel"
 				/>
 
+				<AgentDebugPanel v-else-if="activeMainTab === 'debug'" data-testid="agent-debug-tab" />
+
 				<div v-else-if="activeMainTab === 'raw'" :class="$style.rawPanel">
 					<AgentJsonEditor
 						:value="localConfig"
@@ -149,6 +172,14 @@ const i18n = useI18n();
 						@update:value="emit('update:config', $event)"
 					/>
 				</div>
+
+				<AgentEvalsPanel
+					v-else
+					:project-id="projectId"
+					:agent-id="agentId"
+					data-testid="agent-evaluations-panel"
+					@open-review="emit('update:activeMainTab', 'debug')"
+				/>
 			</div>
 		</div>
 	</section>
@@ -189,6 +220,12 @@ const i18n = useI18n();
 	height: 100%;
 }
 
+.scrollablePanelAreaContainer {
+	height: auto;
+	min-height: 100%;
+	flex-shrink: 0;
+}
+
 .panelHeaderRow {
 	flex-shrink: 0;
 	display: flex;
@@ -200,10 +237,10 @@ const i18n = useI18n();
 	> *:first-child {
 		width: 100%;
 	}
+}
 
-	> .mainTabs {
-		margin-left: auto;
-	}
+.mainTabs {
+	margin-left: auto;
 }
 
 .rawPanel {

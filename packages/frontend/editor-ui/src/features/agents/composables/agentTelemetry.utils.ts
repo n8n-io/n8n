@@ -2,12 +2,17 @@ import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types'
 
 export type AgentTelemetryStatus = 'draft' | 'production';
 
+type AgentConfigFingerprintMemory = Pick<
+	NonNullable<AgentJsonConfig['memory']>,
+	'enabled' | 'storage'
+>;
+
 export type AgentConfigFingerprint = {
 	instructions: string;
 	tools: string[];
 	skills: string[];
 	triggers: string[];
-	memory: { enabled: boolean; storage: 'n8n' } | null;
+	memory: AgentConfigFingerprintMemory | null;
 	model: string | null;
 	config_version: string;
 };

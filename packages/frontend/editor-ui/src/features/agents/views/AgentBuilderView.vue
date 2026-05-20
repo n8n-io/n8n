@@ -159,6 +159,9 @@ const chatPanelResizer = useResizablePanel(LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANE
 	maxSize: getMaxChatPanelWidth,
 });
 
+watch(activeMainTab, (tab) => {
+	if (tab === 'debug') isChatFullWidth.value = false;
+});
 watch(
 	config,
 	(c) => {

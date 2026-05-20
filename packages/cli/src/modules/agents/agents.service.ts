@@ -1,5 +1,6 @@
 import type {
 	Agent as RuntimeAgent,
+	AgentMessage,
 	AgentExecutionCounter,
 	BuiltAgent,
 	BuiltTool,
@@ -41,12 +42,14 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	deepCopy,
+	nodeNameToToolName,
 	OperationalError,
 	UserError,
 	type ExecuteAgentData,
 	type INodeParameters,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -64,6 +67,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { getAgentCurrentVersionId } from './utils/agent-version.utils';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
@@ -71,12 +75,16 @@ import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
-import { ExecutionRecorder } from './execution-recorder';
+import { ExecutionRecorder, type RecordedToolCall } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import {
+	composeJsonConfig,
+	decomposeJsonConfig,
+	sanitizeToolName,
+} from './json-config/agent-config-composition';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -158,6 +166,7 @@ interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
+	agentVersionId: string;
 	message: string;
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -171,6 +180,36 @@ interface GetRuntimeParams {
 	integrationType?: string;
 	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
 	usePublishedVersion?: boolean;
+}
+
+export interface AgentEvaluationToolMock {
+	toolName: string;
+	outputs: unknown[];
+}
+
+export interface AgentEvaluationConversationMessage {
+	role: 'user' | 'assistant';
+	text: string;
+}
+
+export interface ExecuteEvaluationCaseConfig {
+	agentId: string;
+	agentVersionId?: string;
+	projectId: string;
+	userId: string;
+	message: string;
+	conversationHistory?: AgentEvaluationConversationMessage[];
+	toolMocks: AgentEvaluationToolMock[];
+}
+
+export interface AgentEvaluationExecutionResult {
+	output: string;
+	error: string | null;
+	finishReason: string;
+	durationMs: number;
+	toolCalls: RecordedToolCall[];
+	missingToolMocks: string[];
+	warnings: string[];
 }
 
 @Service()
@@ -188,7 +227,13 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
+		{
+			agent: RuntimeAgent;
+			agentId: string;
+			agentVersionId: string;
+			toolRegistry: ToolRegistry;
+			projectId: string;
+		}
 	>(30 * Time.minutes.toMilliseconds);
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -620,6 +665,7 @@ export class AgentsService {
 	private async getRuntime(params: GetRuntimeParams): Promise<{
 		agent: RuntimeAgent;
 		agentId: string;
+		agentVersionId: string;
 		toolRegistry: ToolRegistry;
 		projectId: string;
 	}> {
@@ -635,6 +681,7 @@ export class AgentsService {
 
 		let n8nUserId = params.n8nUserId;
 		let agentData: Agent = agentEntity;
+		let agentVersionId = getAgentCurrentVersionId(agentEntity);
 
 		if (usePublishedVersion) {
 			const publishedSchema = agentEntity.publishedVersion?.schema;
@@ -650,6 +697,9 @@ export class AgentsService {
 
 			// Resolve n8n user from publishedById when not provided by the caller.
 			n8nUserId ??= agentEntity.publishedVersion?.publishedById ?? undefined;
+			agentVersionId =
+				agentEntity.publishedVersion?.publishedFromVersionId ??
+				getAgentCurrentVersionId(agentEntity);
 		}
 
 		if (!n8nUserId) {
@@ -664,7 +714,13 @@ export class AgentsService {
 			integrationType,
 		);
 
-		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
+		this.runtimes.set(cacheKey, {
+			agent: agentInstance,
+			agentId,
+			agentVersionId,
+			toolRegistry,
+			projectId,
+		});
 		const runtime = this.runtimes.get(cacheKey);
 		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		return runtime;
@@ -845,6 +901,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId: runtime.agentVersionId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: '',
@@ -936,6 +993,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -957,6 +1015,256 @@ export class AgentsService {
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
 		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
+	}
+
+	async executeEvaluationCase(
+		config: ExecuteEvaluationCaseConfig,
+	): Promise<AgentEvaluationExecutionResult> {
+		const {
+			agentId,
+			agentVersionId,
+			projectId,
+			message,
+			conversationHistory = [],
+			toolMocks,
+		} = config;
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+
+		const currentAgentVersionId = getAgentCurrentVersionId(agentEntity);
+		const publishedAgentVersionId = agentEntity.publishedVersion?.publishedFromVersionId ?? null;
+		const shouldUsePublishedVersion =
+			agentVersionId !== undefined &&
+			agentVersionId !== currentAgentVersionId &&
+			agentVersionId === publishedAgentVersionId;
+		if (
+			agentVersionId !== undefined &&
+			agentVersionId !== currentAgentVersionId &&
+			!shouldUsePublishedVersion
+		) {
+			throw new UserError('Agent version is no longer available to run.');
+		}
+
+		const sourceSchema = shouldUsePublishedVersion
+			? agentEntity.publishedVersion?.schema
+			: agentEntity.schema;
+		if (!sourceSchema) throw new UserError('Agent has no JSON config.');
+
+		const sourceTools = shouldUsePublishedVersion
+			? (agentEntity.publishedVersion?.tools ?? {})
+			: (agentEntity.tools ?? {});
+		const sourceSkills = shouldUsePublishedVersion
+			? (agentEntity.publishedVersion?.skills ?? {})
+			: (agentEntity.skills ?? {});
+
+		const evaluationConfig = this.toEvaluationRunConfig(sourceSchema);
+		const providerToolsDisabled =
+			sourceSchema.providerTools !== undefined &&
+			Object.keys(sourceSchema.providerTools).length > 0;
+		const warnings = providerToolsDisabled
+			? ['Provider tools are disabled in v0 evaluation runs.']
+			: [];
+
+		const toolDescriptors: Record<string, ToolDescriptor> = {};
+		for (const [toolId, toolEntry] of Object.entries(sourceTools)) {
+			toolDescriptors[toolId] = toolEntry.descriptor;
+		}
+
+		const outputsByToolName = new Map(
+			toolMocks.map(({ toolName, outputs }) => [toolName, [...outputs]]),
+		);
+		const missingToolMocks = new Set<string>();
+		const takeMockOutput = (toolName: string, input: unknown): unknown => {
+			const outputs = outputsByToolName.get(toolName);
+			if (outputs && outputs.length > 0) {
+				return outputs.shift();
+			}
+			missingToolMocks.add(toolName);
+			return {
+				mocked: false,
+				toolName,
+				input,
+				message: `No recorded output is available for "${toolName}".`,
+			};
+		};
+
+		const toolExecutor = {
+			executeTool: async (toolName: string, input: unknown) => takeMockOutput(toolName, input),
+		};
+		const resolvedTools: BuiltTool[] = [];
+		const credentialProvider = this.createCredentialProvider(projectId);
+
+		const agentInstance = await buildFromJson(evaluationConfig, toolDescriptors, {
+			toolExecutor,
+			credentialProvider,
+			resolveTool: async (ref) => {
+				const resolved = this.createEvaluationMockTool(ref, takeMockOutput);
+				resolvedTools.push(resolved);
+				return resolved;
+			},
+			skills: sourceSkills,
+			memoryFactory: this.getMemoryFactory(),
+		});
+		const runtimeTools = await this.injectEvaluationRuntimeMocks({
+			agent: agentInstance,
+			config: evaluationConfig,
+			credentialProvider,
+			projectId,
+			takeMockOutput,
+			warnings,
+		});
+		resolvedTools.push(...runtimeTools);
+
+		const recorder = new ExecutionRecorder(buildToolRegistry(resolvedTools));
+		const input = this.toEvaluationInput(message, conversationHistory);
+		const resultStream = await agentInstance.stream(input, {
+			executionCounter: this.createAgentExecutionCounter(agentId),
+		});
+
+		const reader = resultStream.stream.getReader();
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				recorder.record(value);
+			}
+		} finally {
+			reader.releaseLock();
+		}
+
+		const record = recorder.getMessageRecord();
+		return {
+			output: record.assistantResponse,
+			error: record.error,
+			finishReason: record.finishReason,
+			durationMs: record.duration,
+			toolCalls: record.toolCalls,
+			missingToolMocks: [...missingToolMocks],
+			warnings,
+		};
+	}
+
+	private toEvaluationInput(
+		message: string,
+		conversationHistory: AgentEvaluationConversationMessage[],
+	): string | AgentMessage[] {
+		if (conversationHistory.length === 0) return message;
+
+		return [
+			...conversationHistory.map((historyMessage) => this.toAgentTextMessage(historyMessage)),
+			this.toAgentTextMessage({ role: 'user', text: message }),
+		];
+	}
+
+	private toAgentTextMessage(message: AgentEvaluationConversationMessage): AgentMessage {
+		return {
+			role: message.role,
+			content: [{ type: 'text', text: message.text }],
+		};
+	}
+
+	private toEvaluationRunConfig(config: AgentJsonConfig): AgentJsonConfig {
+		const evaluationConfig = { ...config };
+		delete evaluationConfig.memory;
+		delete evaluationConfig.providerTools;
+		if (evaluationConfig.tools) {
+			evaluationConfig.tools = evaluationConfig.tools.map((tool) => ({
+				...tool,
+				requireApproval: false,
+			}));
+		}
+		return evaluationConfig;
+	}
+
+	private createEvaluationMockTool(
+		ref: AgentJsonToolConfig,
+		takeMockOutput: (toolName: string, input: unknown) => unknown,
+	): BuiltTool {
+		if (ref.type === 'workflow') {
+			const toolName = sanitizeToolName(ref.name ?? ref.workflow);
+			return {
+				name: toolName,
+				description: ref.description ?? `Replay the recorded output for "${ref.workflow}"`,
+				inputSchema: z.object({}).catchall(z.unknown()),
+				handler: async (input) => takeMockOutput(toolName, input),
+				editable: false,
+				metadata: {
+					kind: 'workflow',
+					workflowId: ref.workflow,
+					workflowName: ref.workflow,
+				},
+			};
+		}
+
+		if (ref.type !== 'node') {
+			throw new UserError(`Tool type "${ref.type}" cannot be mocked through resolveTool`);
+		}
+
+		const toolName = nodeNameToToolName(ref.name);
+		return {
+			name: toolName,
+			description: ref.description ?? `Replay the recorded output for "${ref.name}"`,
+			inputSchema: z.object({}).catchall(z.unknown()),
+			handler: async (input) => takeMockOutput(toolName, input),
+			editable: false,
+			metadata: {
+				kind: 'node',
+				nodeType: ref.node.nodeType,
+				nodeTypeVersion: ref.node.nodeTypeVersion,
+				displayName: ref.name,
+				nodeParameters: ref.node.nodeParameters,
+			},
+		};
+	}
+
+	private async injectEvaluationRuntimeMocks(params: {
+		agent: RuntimeAgent;
+		config: AgentJsonConfig;
+		credentialProvider: CredentialProvider;
+		projectId: string;
+		takeMockOutput: (toolName: string, input: unknown) => unknown;
+		warnings: string[];
+	}): Promise<BuiltTool[]> {
+		const { agent, config, credentialProvider, projectId, takeMockOutput, warnings } = params;
+		const tools: BuiltTool[] = [];
+
+		try {
+			const { createGetEnvironmentTool } = await import('./tools/environment-tool');
+			tools.push(
+				this.toEvaluationRuntimeMockTool(createGetEnvironmentTool().build(), takeMockOutput),
+			);
+		} catch (toolError) {
+			this.logger.warn('Failed to inject get_environment mock tool for evaluation', {
+				error: toolError instanceof Error ? toolError.message : String(toolError),
+			});
+			warnings.push('The get_environment tool is unavailable in this evaluation run.');
+		}
+
+		if (this.shouldAttachNodeTools(config.config)) {
+			tools.push(
+				...this.agentsToolsService
+					.getRuntimeTools(credentialProvider, projectId)
+					.map((tool) => this.toEvaluationRuntimeMockTool(tool, takeMockOutput)),
+			);
+		}
+
+		if (tools.length > 0) agent.tool(tools);
+		return tools;
+	}
+
+	private toEvaluationRuntimeMockTool(
+		tool: BuiltTool,
+		takeMockOutput: (toolName: string, input: unknown) => unknown,
+	): BuiltTool {
+		return {
+			...tool,
+			handler: async (input) => takeMockOutput(tool.name, input),
+			editable: false,
+			metadata: {
+				...tool.metadata,
+				evaluationRuntimeTool: true,
+			},
+		};
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
@@ -988,6 +1296,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1020,6 +1329,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1035,7 +1345,16 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
+		const {
+			agentInstance,
+			toolRegistry,
+			agentId,
+			agentVersionId,
+			message,
+			memory,
+			projectId,
+			source,
+		} = config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
@@ -1071,6 +1390,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,
@@ -1207,6 +1527,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId: getAgentCurrentVersionId(agentEntity),
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,

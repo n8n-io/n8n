@@ -14,6 +14,7 @@ import {
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_DEBUG_RUN_DETAIL_VIEW,
 	NEW_AGENT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
@@ -28,6 +29,8 @@ const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
+const AgentDebugRunView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentDebugRunView.vue');
 const NewAgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/NewAgentView.vue');
 const SettingsAgentBuilderView = async (): Promise<unknown> =>
@@ -145,6 +148,11 @@ export const AgentsModule: FrontendModuleDescription = {
 					name: AGENT_SESSION_DETAIL_VIEW,
 					path: 'sessions/:threadId',
 					component: AgentSessionTimelineView,
+				},
+				{
+					name: AGENT_DEBUG_RUN_DETAIL_VIEW,
+					path: 'debug/runs/:runId',
+					component: AgentDebugRunView,
 				},
 			],
 		},
